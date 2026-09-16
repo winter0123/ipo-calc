@@ -43,5 +43,3 @@ docker-compose.override.yml
 
 # Test / coverage
 coverage/
-
-git status --short
