@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: vibe-ai-team-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vibe_ai_team
+      POSTGRES_USER: vibe
+      POSTGRES_PASSWORD: vibe_local_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
