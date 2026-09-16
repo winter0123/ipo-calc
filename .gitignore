@@ -43,3 +43,4 @@ docker-compose.override.yml
 
 # Test / coverage
 coverage/
+.envrc
