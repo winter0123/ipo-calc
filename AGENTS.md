@@ -529,6 +529,12 @@ main
 - 예외: 정말 의존관계 없는 두 Epic을 backend에서 동시에 구현해야만 할 때, 임시로 `backend-2`를 추가로 만들 수 있다(최대 2개까지). `backend-2`는 그 Epic들의 PR이 머지되면 정리한다 — 기본 3개(backend/frontend/planning)와 달리 임시 워크스페이스이므로 삭제 대상이다.
 - **전환기 메모(2026-09-20):** Epic 1(account-authentication)은 이 정책이 생기기 전에 `/Users/joy/orca/workspaces/vibe-ai-team/account-authentication`에서 시작해 SF-6까지 진행 중이었다. 이 브랜치는 그 디렉토리에서 끝까지 완료하고 PR 머지까지 마친 뒤, `backend` 워크스페이스로 정식 이관한다(이관 후 `account-authentication` 디렉토리는 `orca worktree rm`으로 정리). Epic 2부터는 처음부터 `backend` 워크스페이스 안에서 브랜치를 판다.
 
+> **사고 기록 및 재발 방지(2026-09-20, `backend` 워크스페이스 재생성 사고):** 사용자가 로컬 `backend` 디렉토리를 삭제해 `orca worktree create --repo name:vibe-ai-team --name backend --base-branch origin/main --no-parent`로 재생성했는데, **`--no-parent` 플래그 때문에 `backend`가 `planning`/`frontend`와 달리 부모 워크트리 없는 "별도 프로젝트"처럼 Orca에 등록되는 사고가 발생했다.** 사용자가 "왜 backend만 별도 프로젝트로 등록해서 쓰냐"고 확인할 때까지 발견하지 못함.
+>   - **원인**: `planning`/`frontend`는 원래 `parentWorktreeId`가 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)로 설정돼 있었는데, `--no-parent`를 넣어 재생성한 `backend`만 `parentWorktreeId: null`이 되어 Orca UI에서 나머지 둘과 다르게(계열 관계 없는 독립 워크트리로) 보였다.
+>   - **재발 방지 규칙**: `backend`/`frontend`/`planning` 3개 고정 워크스페이스를 새로 만들거나 재생성할 때는 **`--no-parent`를 절대 쓰지 않는다.** 대신 아래처럼 생성 직후 반드시 `orca worktree list --json`으로 세 워크스페이스의 `parentWorktreeId`가 모두 메인 저장소로 동일한지 확인하고, 다르면 `orca worktree set --worktree path:<경로> --parent-worktree path:/Users/joy/IdeaProjects/vibe-ai-team`으로 즉시 맞춘다(재생성 없이 메타데이터만 수정 가능).
+>   - **덤으로 확인된 별개 버그**: `orca worktree rm`이 `{"removed": true}`를 반환해도 디렉토리와 레지스트리 항목이 실제로는 남아있던 사례가 있었다(`backend-2`). `rm` 이후에는 항상 `ls`와 `orca worktree list --json`으로 실제로 사라졌는지 재확인하고, 남아있으면 `--force`를 붙여 다시 `rm`한다.
+>   - **참고**: 고정 워크스페이스 경로 이름에 `-2`/`-3` 같은 숫자가 자동으로 붙는 것 자체는(Orca 내부 브랜치 네이밍 충돌 회피) 정상이며 문제가 아니다 — `displayName`이 "backend"로 올바르면 무해하다. 문제는 오직 `parentWorktreeId`가 다른 고정 워크스페이스와 일치하는지 여부다.
+
 **Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
 > **주의(git 제약, 2026-09-20 확인):** 같은 저장소의 여러 워크트리에서 **동일한 브랜치를 동시에 체크아웃할 수 없다.** Master의 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)가 항상 `main`을 체크아웃하고 있으므로, backend/frontend/planning 워크스페이스에서 `git checkout main`을 실행하면 오류가 난다. **절대 로컬 `main`을 체크아웃하지 말고, 항상 `origin/main`을 기준으로 새 브랜치를 바로 딴다.**
