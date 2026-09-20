@@ -27,6 +27,7 @@ build/
 target/
 *.class
 *.log
+.gradle/
 
 # Python
 __pycache__/
