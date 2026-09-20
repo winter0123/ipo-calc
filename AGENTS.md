@@ -520,12 +520,13 @@ main
 
 | 워크스페이스 | 역할 | 경로(예시) | 담당 Epic |
 |---|---|---|---|
-| `backend` | 백엔드 구현(B그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/account-authentication` (Epic 1 착수 시 만든 워크스페이스를 그대로 backend로 승격해 재사용) | Epic 1~12 |
+| `backend` | 백엔드 구현(B그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/backend` | Epic 1~12 |
 | `frontend` | 프론트 구현(B그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` | Epic 13~16 |
 | `planning` | 조사·기획·설계(A그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/planning` (backend/frontend와 동일하게 별도로 만든 전용 워크스페이스 — Master의 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)는 절대 작업 공간으로 쓰지 않고 항상 main 브랜치로 유지) | 모든 Epic의 Phase 0 및 기획 산출물 |
 
 - 3개 모두 처음 필요해지는 시점에 한 번만 만들고(이미 있으면 재사용), 이후로는 **절대 `orca worktree rm`으로 지우지 않는다.**
 - 예외: 정말 의존관계 없는 두 Epic을 backend에서 동시에 구현해야만 할 때, 임시로 `backend-2`를 추가로 만들 수 있다(최대 2개까지). `backend-2`는 그 Epic들의 PR이 머지되면 정리한다 — 기본 3개(backend/frontend/planning)와 달리 임시 워크스페이스이므로 삭제 대상이다.
+- **전환기 메모(2026-09-20):** Epic 1(account-authentication)은 이 정책이 생기기 전에 `/Users/joy/orca/workspaces/vibe-ai-team/account-authentication`에서 시작해 SF-6까지 진행 중이었다. 이 브랜치는 그 디렉토리에서 끝까지 완료하고 PR 머지까지 마친 뒤, `backend` 워크스페이스로 정식 이관한다(이관 후 `account-authentication` 디렉토리는 `orca worktree rm`으로 정리). Epic 2부터는 처음부터 `backend` 워크스페이스 안에서 브랜치를 판다.
 
 **Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
