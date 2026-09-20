@@ -64,6 +64,10 @@ public class Account {
         this.failedLoginAttempts = 0;
     }
 
+    public boolean isAccountLocked() {
+        return this.lockedUntil != null && this.lockedUntil.isAfter(LocalDateTime.now());
+    }
+
     public static class AccountBuilder {
         private String email;
 

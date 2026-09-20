@@ -20,7 +20,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/logout", "/accounts", "/css/**", "/js/**", "/error").permitAll()
+                .requestMatchers("/login", "/logout", "/accounts", "/auth/**", "/css/**", "/js/**", "/error").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .maxSessionsPreventsLogin(false)
             )
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**", "/accounts")
+                .ignoringRequestMatchers("/api/**", "/accounts", "/auth/login", "/auth/logout")
             )
             .rememberMe(remember -> remember
                 .key("account-authentication-remember-me-key")

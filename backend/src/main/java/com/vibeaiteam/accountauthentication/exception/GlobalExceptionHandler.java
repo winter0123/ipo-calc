@@ -33,6 +33,28 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("INVALID_CREDENTIALS")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex, HttpServletRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("ACCOUNT_LOCKED")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
+
     @ExceptionHandler(ValidationFailedException.class)
     public ResponseEntity<ErrorResponse> handleValidationFailed(ValidationFailedException ex, HttpServletRequest request) {
         ErrorResponse response = ErrorResponse.builder()

@@ -170,3 +170,42 @@ PASS — SF-3 완료.
 
 ### 다음 단계
 SF-4: 로그인/로그아웃 API (task_19a56f7ed4e8) 착수.
+
+---
+
+## 2026-09-20 — SF-4: 로그인/로그아웃 API (task_19a56f7ed4e8)
+
+### 완료된 작업
+- Test 워커: `AuthControllerTest.java` 작성 (AC-004~008). 5개 테스트 모두 예상대로 실패 확인.
+- Implementation 워커: 테스트를 통과시키는 프로덕션 코드 작성
+  - `controller/AuthController.java` — POST /auth/login, POST /auth/logout
+  - `application/service/AuthService.java` — 로그인 검증/세션 생성/로그아웃
+  - `application/service/FailedLoginService.java` — 실패 횟수 증가/계정 잠금을 별도 트랜잭션으로 처리(별도 서비스 빈으로 분리해 self-invocation 문제 회피)
+  - `domain/model/account/Account.java` — `isAccountLocked()` 메서드 추가
+  - `exception/{AccountLockedException,InvalidCredentialsException}.java` + GlobalExceptionHandler 핸들러 추가
+  - `config/security/SecurityConfig.java` — `/auth/**` permitAll 추가
+
+### 중간에 발생한 문제 3건 (Implementation 워커가 스스로 진단·수정)
+1. **302 리다이렉트**: `/auth/login`, `/auth/logout`이 SecurityConfig의 permitAll 목록에 없어 인증 요구 → 무한 루프(로그인하려면 인증이 먼저 필요) → `/auth/**`를 permitAll에 추가.
+2. **`@Transactional` self-invocation 버그**: 같은 클래스 안에서 `@Transactional` 메서드를 호출하면 Spring AOP 프록시를 우회해 트랜잭션이 적용되지 않음 → 로그인 실패 시 실패 횟수 증가가 예외 발생과 함께 롤백되어 저장 안 됨. TransactionTemplate 시도 후 최종적으로 별도 `@Service` 빈(`FailedLoginService`)으로 분리해 프록시를 통한 정상 호출이 되도록 해결.
+3. **compileTestJava 에러**: `Account.isAccountLocked()` 메서드가 없어 컴파일 실패 → 메서드 추가.
+- 이번에도 세 문제 모두 워커가 스스로 정확히 진단하고 수정함(Master 개입 없음, 관찰만 함).
+
+### 실행한 검증
+- `./gradlew test --tests "*AuthControllerTest"` → 5개 테스트 전부 통과
+- `./gradlew test` (전체) → BUILD SUCCESSFUL, 24개 테스트 전부 통과 (Master 직접 재실행 재확인)
+
+### 결과
+PASS — SF-4 완료.
+
+### 변경된 파일
+- backend/src/main/java/.../controller/AuthController.java (신규)
+- backend/src/main/java/.../controller/dto/LoginRequest.java (신규)
+- backend/src/main/java/.../application/service/{AuthService,FailedLoginService}.java (신규)
+- backend/src/main/java/.../exception/{AccountLockedException,InvalidCredentialsException}.java (신규), GlobalExceptionHandler.java (핸들러 추가)
+- backend/src/main/java/.../domain/model/account/Account.java (isAccountLocked() 추가)
+- backend/src/main/java/.../config/security/SecurityConfig.java (/auth/** permitAll)
+- backend/src/test/java/.../controller/AuthControllerTest.java (신규)
+
+### 다음 단계
+SF-5: 데이터 격리(인가) 방어 (task_bd0beb33cfb4) 착수.
