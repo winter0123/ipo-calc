@@ -290,10 +290,10 @@ class PasswordChangeControllerTest {
                         .session(unauthenticatedSession))
                 .andReturn();
 
-        // Then: 401 Unauthorized 또는 302 리다이렉트 반환 (DataIsolationTest 패턴, AC-010)
+        // Then: 401 Unauthorized 반환 (D-I-006: AuthenticationEntryPoint 401로 전역 변경, 이전: 401 또는 302)
         int status = result.getResponse().getStatus();
 
-        assertThat(status).as("인증되지 않은 요청은 401 또는 302를 반환해야 합니다 (AC-010)").isIn(401, 302);
+        assertThat(status).as("인증되지 않은 요청은 401 Unauthorized를 반환해야 합니다 (AC-010)").isEqualTo(401);
     }
 
     @Test
@@ -340,8 +340,9 @@ class PasswordChangeControllerTest {
         assertThat(afterChange1.getResponse().getStatus()).as("변경을 수행한 세션은 유지되어야 함").isNotIn(401, 302);
 
         // 다른 세션(session2)은 무효화되어야 함 (D-007 결정)
+        // 무효화된 세션은 sessionManagement.expiredUrl(/login?expired)에 따라 302로 리다이렉트될 수 있음
         MvcResult afterChange2 = mockMvc.perform(get("/api/test-protected").session(session2)).andReturn();
-        assertThat(afterChange2.getResponse().getStatus()).as("다른 세션은 무효화되어 401/302를 반환해야 함 (D-007)").isIn(401, 302);
+        assertThat(afterChange2.getResponse().getStatus()).as("다른 세션은 무효화되어 401 또는 302를 반환해야 함 (D-007)").isIn(401, 302);
 
         // 새 비밀번호로 로그인하면 새로운 세션 생성 가능
         var newLoginRequest = Map.of(

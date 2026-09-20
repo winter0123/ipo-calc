@@ -69,3 +69,52 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 
 ### 남은 작업
 - SF-3 투자자 등록 API (POST /investors)부터 Controller/Service 작성. 본 SF에서는 Controller/Service 미작성(지시 준수).
+
+## 2026-09-21 — SF-3 (투자자 등록 API POST /investors) 구현 완료 + D-I-006 (SecurityConfig 전역 변경)
+
+### D-I-006: CSRF 전역 비활성 + 미인증 401 반환 (Master 결정, 워커가 실험으로 근거 확보 후 확정)
+
+**발견 배경**: SF-3 테스트 작성 중 `POST /investors`의 실제 동작을 프로브 테스트로 실험한 결과,
+- 미인증(세션·csrf 없음) `POST /investors` → **403**(CSRF 차단)
+- 인증(세션) + csrf 없음 → **403**(CSRF)
+- 인증 + csrf 포함 → **404**(보안 통과, 컨트롤러 미구현)
+
+즉 기존 SecurityConfig(formLogin + CSRF 활성)로는 스펙 AC-003의 401이 나올 수 없었고, 기존 테스트들(SecurityConfigTest/DataIsolationTest/PasswordChangeControllerTest)이 "401 또는 302"를 허용하던 것도 같은 원인이었다. `/investors`는 CSRF ignore 목록(`/api/**` 등)에도 없어서, 무인증·무csrf POST는 CSRF 필터에서 막혔다. 워커가 `orca orchestration ask`로 Master에게 질문 → 아래 결정 확정.
+
+**Master 결정**:
+1. **CSRF 전역 비활성** — `.csrf(csrf -> csrf.disable())`. 근거: 프로젝트 전체 로드맵(16개 Epic)에 브라우저 폼 제출 플로우가 없고 React SPA가 JSON으로 /auth/* 호출하는 방식뿐. formLogin의 /login HTML은 어느 스펙에서도 실제로 안 쓰이는 기본 스캐폴딩. CSRF 토큰을 요구하는 스펙 없음. CSRF 토큰 없이는 PATCH/DELETE 등 쓰기 API가 403으로 막혀 Epic 2~12 전체에서 재발할 문제라 전역 비활성이 맞다.
+2. **미인증 요청 401 반환** — `.exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))`. formLogin 기본 302 리다이렉트 대체.
+3. **회귀 범위**: 기존 Epic 1 테스트 전체 재실행. `SecurityConfigTest`/`DataIsolationTest`/`PasswordChangeControllerTest`의 미인증 케이스를 401 기대로 갱신(기존 401-or-302 허용 → 401 엄격). 단 `passwordChangeInvalidatesOtherSessions`의 무효화 세션 케이스는 302(`expiredUrl=/login?expired`, ConcurrentSessionFilter 경로)라 원래대로 `isIn(401, 302)` 유지 — 이는 인증 진입점이 아니라 세션 만료 리다이렉트라 401로 바꾸는 게 오히려 잘못된 기대.
+
+### 완료 작업 (Test-First: RED 확인 → GREEN 확인)
+- [x] `SecurityConfig.java`: CSRF ignore 목록 → 전역 disable, `exceptionHandling` 401 `HttpStatusEntryPoint` 추가 (D-I-006)
+- [x] 기존 테스트 3건 401 기대로 갱신: `SecurityConfigTest.unauthenticatedRequestToProtectedApiReturnsUnauthorized`, `DataIsolationTest.unauthenticatedRequestToProtectedEndpointReturnsUnauthorizedOrRedirect`→401, `PasswordChangeControllerTest.passwordChangeWithoutAuthenticationReturnsUnauthorizedOrRedirect`→401
+- [x] `InvestorControllerTest` 신규 4개 테스트 (RED→GREEN):
+  - AC-001 성공: 유효 요청 → 201 + id/displayName/accountId/status=ACTIVE/deletedAt=null/createdAt/updatedAt 검증 + DB 레코드 1건 생성 확인
+  - AC-002 실패: 빈 displayName(공백만) → 400 + `{"error":"VALIDATION_ERROR",...}` + 레코드 미생성
+  - spec 대비 추가: 50자 초과 → 400 VALIDATION_ERROR + 레코드 미생성
+  - AC-003 실패: 미인증 요청 → 401 (레코드 미생성)
+- [x] 신규 구현: `InvestorController`(`POST /investors`, 201), `InvestorService.register`(getCurrentAccountId → displayName 검증 → Investor 저장), `InvestorRegisterRequest`/`InvestorResponse` DTO(camelCase), `InvestorValidationException` + `InvestorExceptionHandler`(VALIDATION_ERROR/400)
+  - Validation: null/빈/공백 → "표시 이름은 필수입니다." / trim 후 50자 초과 → "표시 이름은 최대 50자까지 가능합니다." / 저장값은 trim 적용
+  - status=ACTIVE, createdAt/updatedAt=now(), deletedAt=null 명시 설정 (D-I-003)
+
+### 확인 사항 (검증 결과)
+- `DB_PASSWORD=vibe_local_password ./gradlew test` 전체 **GREEN: 45개 테스트(11 suites), 0 실패 0 에러** (기존 41 + 신규 4)
+- D-I-006 변경(CSRF disable·401 진입점) 후 Epic 1 테스트 포함 전체 회귀 없음 확인.
+
+### 변경 파일
+- `backend/src/main/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfig.java` (수정)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/InvestorController.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/dto/InvestorRegisterRequest.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/dto/InvestorResponse.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/service/investor/InvestorService.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorValidationException.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorExceptionHandler.java` (신규)
+- `backend/src/test/java/com/vibeaiteam/investormanagement/controller/investor/InvestorControllerTest.java` (신규)
+- `backend/src/test/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfigTest.java` (수정)
+- `backend/src/test/java/com/vibeaiteam/accountauthentication/config/security/DataIsolationTest.java` (수정)
+- `backend/src/test/java/com/vibeaiteam/accountauthentication/controller/PasswordChangeControllerTest.java` (수정)
+
+### 남은 작업
+- SF-4 투자자 목록/상세 조회 API (GET /investors, GET /investors/{id}, SecurityUtils 계정 소유권 403 검증)
+- 참고: JSON 응답 키는 기존 코드베이스 관례(camelCase: displayName/accountId 등)로 구현 — spec 초안의 snake_case 표기는 사용하지 않음. 스펙·아키텍처 문서의 snake_case 표기는 필요 시 별도 문서 수정 대상.

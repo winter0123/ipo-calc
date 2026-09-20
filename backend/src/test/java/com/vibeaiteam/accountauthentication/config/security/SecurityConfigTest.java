@@ -58,7 +58,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void unauthenticatedRequestToProtectedApiReturnsUnauthorizedOrRedirect() throws Exception {
+    void unauthenticatedRequestToProtectedApiReturnsUnauthorized() throws Exception {
         // Given: 인증이 필요한 경로가 보호되어 있음
         // - architecture.md: 인증 필요 경로 보호 (authorizeHttpRequests)
         // - breakdown AC-2: SecurityFilterChain이 인증이 필요한 경로를 보호한다
@@ -70,9 +70,11 @@ class SecurityConfigTest {
 
         int status = result.getStatus();
 
-        // Then: 401 (인증 필요) 또는 302 (로그인 리다이렉트) 응답
+        // Then: 401 (인증 필요) 응답
+        // D-I-006 (2026-09-21): AuthenticationEntryPoint를 HttpStatusEntryPoint(401)로 변경하여
+        // 기존 formLogin 302 리다이렉트 대신 401을 반환한다. (이전: 401 또는 302 허용)
         assertThat(status)
-                .as("인증되지 않은 요청은 401 또는 302를 반환해야 합니다")
-                .isIn(401, 302);
+                .as("인증되지 않은 요청은 401 Unauthorized를 반환해야 합니다")
+                .isEqualTo(401);
     }
 }
