@@ -461,9 +461,10 @@ git checkout -- <file>
 ### 브랜치 네이밍
 
 ```
-feature/[epic-slug]
-fix/[epic-slug]
+<git사용자명>/[epic-slug]
 ```
+
+> 2026-09-20 확인: `orca worktree create --name <epic-slug>`는 브랜치를 항상 `<git사용자명>/[epic-slug]`(예: `winter0123/account-authentication`)로 만들며, `feature/`·`fix/` 접두사를 CLI로 강제할 방법이 없다. 과거 버전 문서는 `feature/[epic-slug]`를 표준으로 적었으나 실제 Orca 동작과 달라 실전 표기로 수정한다. `--name`에 `epic-slug` 그대로(슬래시 없이)를 넘긴다.
 
 `[epic-slug]`는 9장 문서 종류별 폴더 안의 파일명(`docs/research/[epic-slug].md` 등)과 동일해야 한다.
 
