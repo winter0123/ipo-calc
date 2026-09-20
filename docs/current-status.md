@@ -2,11 +2,9 @@
 
 > 마지막 갱신: 2026-09-21
 
-## ⚠️ 현재 블로커: OpenRouter 무료 모델 계정 일일 한도 도달 (2026-09-21)
+## ✅ 해결됨: OpenRouter 무료 모델 계정 일일 한도 블로커 (2026-09-21, 우회 경로 확보)
 
-`free-models-per-day-high-balance` 오류가 서로 다른 프로바이더 3종(Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1)에서 동일하게 발생 — 특정 모델이 아닌 **계정 전체의 일일 무료 모델 사용량 한도**로 판단됨. Epic 3 architecture 작업(task_fde9cec7e6fd)이 이 시점에서 대기 중이며, 10분 간격 자동 재시도 루프가 가동되어 한도가 풀리는 즉시 이어서 진행하도록 설정됨. 한도가 언제 초기화되는지는 확인되지 않음(자정 UTC 또는 24시간 롤링일 가능성).
-
-**업데이트(16:35 UTC 기준)**: 15:03 UTC부터 시작한 재시도 루프가 10회 연속(약 1시간 32분) 모두 동일한 한도 오류로 실패. 자정 UTC 리셋 가설이 맞다면 앞으로 약 7시간 25분 더 대기 필요. 그동안 Master는 PR #41(Epic 1) 상태를 확인함 — 아직 리뷰 없음, 사람 승인 대기 계속 중. 워커 의존 작업(Epic 3 architecture 등)은 모두 정지 상태이며, 재시도 루프만 지속 가동 중.
+`free-models-per-day-high-balance` 오류가 서로 다른 프로바이더 3종(Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1) 및 Google Gemma까지 총 4종에서 동일하게 발생 — 계정 전체의 일일 무료 모델 사용량 한도로 최종 확인됨. 12회 재시도(15:03~16:55 UTC)까지 모두 실패한 뒤, **`opencode/` 프로바이더 자체의 무료 모델(OpenCode Zen)** 이 OpenRouter와 별개의 quota pool임을 발견 — `opencode/big-pickle`로 즉시 Epic 3 architecture 작업 성공. AGENTS.md 22장에 대체 경로로 문서화함. OpenRouter 재시도 루프(`bbqngsqy6`)는 중복 방지를 위해 정지시켰고, 앞으로 OpenRouter 한도가 풀릴 때까지는 `opencode/` 모델(big-pickle, mimo-v2.5-free, ling-3.0-flash-fin-free 등)을 우선 사용(2026-09-21 사용자 지시: "오픈라우터 한도풀릴때 까지는 오픈코드무료모델 이것저것 써보면서 해").
 
 ## 워크스페이스 구조 (2026-09-20부터 역할별 고정 3개, 절대 삭제하지 않음)
 
@@ -23,7 +21,7 @@
 |---|---|---|---|
 | 1 | 로그인 계정과 인증·인가 | account-authentication | **구현 완료**(SF-1~6, 34개 테스트 통과), PR #41 사람 승인 대기 |
 | 2 | 투자자 관리 | investor-management | **Phase 0 전체 완료**(조사+spec+architecture, D-I-001~005 결정 포함), 머지됨. 다음: SF 분해 |
-| 3 | 증권사 기준정보 관리 | securities-firm-catalog | 조사 완료, 머지됨 |
+| 3 | 증권사 기준정보 관리 | securities-firm-catalog | **Phase 0 전체 완료**(조사+spec+architecture), PR #50 병합됨. 다음: SF 분해 |
 | 4 | 증권계좌 관리 | securities-account-management | 조사 완료, 머지됨 |
 | 5 | 공모주 기준정보 관리 | ipo-catalog | 조사 완료, 머지됨 |
 | 6 | 청약 기록 | subscription-management | 조사 완료, 머지됨 |
@@ -38,12 +36,12 @@
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | 조사 완료, 머지됨 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | 조사 완료, 머지됨 |
 
-**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2는 Phase 0 전체(조사→기획→설계) 완료, 병합됨. Epic 3~16은 조사만 완료, 기획(spec)/설계(architecture)/구현은 아직 시작 전.**
+**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2·3은 Phase 0 전체(조사→기획→설계) 완료, 병합됨. Epic 4~16은 조사만 완료, 기획(spec)/설계(architecture)/구현은 아직 시작 전.**
 
 ## 다음 단계 후보
 1. Epic 1 PR #41 사람 승인 및 머지 확인 → `account-authentication` 워크스페이스를 `backend`로 정식 이관
 2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 (backend 워크스페이스, Epic 1 PR 머지 확인 후)
-3. Epic 3(securities-firm-catalog) 기획(spec)·설계(architecture) 진행 (선행 조사 이미 완료됨, planning 워크스페이스에서 병렬 가능)
+3. Epic 4(securities-account-management) 이후 기획(spec)·설계(architecture) 계속 진행 (planning 워크스페이스, opencode zen 무료 모델 사용)
 
 ## 알려진 이슈/결정 사항
 - Epic 1 구현 중 SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드 등 3건의 Spring Security 버그를 Master가 직접 진단하여 수정 지시함(자세한 내용은 `docs/work-log/account-authentication.md` 참고).

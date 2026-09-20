@@ -15,4 +15,5 @@
 
 - Epic 2(investor-management) Phase 0 전체(기획 spec + 설계 architecture) 완료 및 병합(PR #49). Master 결정 사항 D-I-001~005 기록(`docs/work-log/investor-management.md`) — 특히 D-I-001: 초안의 UUID 제안을 기존 Account 엔티티(Long IDENTITY)와의 일관성을 위해 Long ID로 최종 결정.
 - Epic 3(securities-firm-catalog) spec 작성 완료 및 병합. 초안의 논리 오류(DELETE 엔드포인트가 연결된 계좌 있으면 실패하도록 잘못 작성됨 — 실제로는 논리 삭제이므로 연결 여부와 무관하게 항상 성공해야 함)를 Master가 발견해 수정.
-- **OpenRouter 무료 모델 계정 전체에 일일 사용량 한도(`free-models-per-day-high-balance`) 도달** — Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1 등 서로 다른 프로바이더 3종 모두에서 동일한 오류 확인, 특정 모델이 아닌 계정 단위 일일 한도로 판단됨. Epic 3 architecture 작업이 이 시점에서 막힘 — 10분 간격으로 자동 재시도하는 루프를 가동해 한도가 풀리는 즉시 이어서 진행하도록 설정.
+- **OpenRouter 무료 모델 계정 전체에 일일 사용량 한도(`free-models-per-day-high-balance`) 도달** — Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1, Google Gemma 4종 서로 다른 프로바이더 모두에서 동일한 오류 확인, 특정 모델이 아닌 계정 단위 일일 한도로 최종 판단됨. Epic 3 architecture 작업이 이 시점에서 막힘 — 10분 간격 자동 재시도 루프를 12회(약 1시간 52분) 가동했으나 모두 실패.
+- **우회 경로 발견 및 해결**: `opencode/` 프로바이더 자체의 무료 모델(OpenCode Zen)이 OpenRouter와 별개의 quota pool임을 확인 — `opencode/big-pickle`로 즉시 Epic 3 architecture 작성 성공(문서 품질 양호, UUID/DELETE 로직 오류 없음, 다만 Flyway SQL의 `ON UPDATE` 문법 오류를 Master가 직접 수정). PR #50으로 병합 완료. AGENTS.md 22장에 대체 경로 문서화. 사용자 지시("오픈라우터 한도풀릴때 까지는 오픈코드무료모델 이것저것 써보면서 해")에 따라 OpenRouter 한도가 풀릴 때까지는 opencode zen 모델을 우선 사용하기로 함.
