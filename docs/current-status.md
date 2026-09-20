@@ -32,16 +32,16 @@
 | 11 | 투자 내역 조회 API | investment-query-api | **Phase 0 전체 완료**(조사+spec+architecture, D-Q-001~006로 Subscription 기준 조회 정정 포함), PR #58 병합됨. 다음: SF 분해 |
 | 12 | 대시보드 집계 API | dashboard-aggregation-api | **Phase 0 전체 완료**(조사+spec+architecture, D-D-001~007 정렬 + 계정 격리 보안 결함 수정 포함), PR #59 병합됨. 다음: SF 분해 |
 | 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | **Phase 0 전체 완료**(조사+spec+architecture, D-W13-001~006로 API 계약 최신화 포함), PR #60 병합됨 — 첫 프론트엔드 Epic. 다음: SF 분해 |
-| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | 조사 완료, 머지됨 |
+| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W14-001~006 최신화 포함), PR #61 병합됨. 다음: SF 분해 |
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | 조사 완료, 머지됨 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | 조사 완료, 머지됨 |
 
-**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2~13은 Phase 0 전체(조사→기획→설계) 완료, 병합됨 — Epic 13은 첫 프론트엔드 Epic. Epic 14~16(웹 화면)은 조사만 완료, 기획(spec)/설계(architecture)/구현은 아직 시작 전.**
+**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2~14는 Phase 0 전체(조사→기획→설계) 완료, 병합됨. Epic 15~16(웹 화면)만 남음.**
 
 ## 다음 단계 후보
 1. Epic 1 PR #41 사람 승인 및 머지 확인 → `account-authentication` 워크스페이스를 `backend`로 정식 이관
 2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 (backend 워크스페이스, Epic 1 PR 머지 확인 후)
-3. Epic 14(web-subscription-workflow) 이후 기획(spec)·설계(architecture) 계속 진행 (planning 워크스페이스, opencode zen 무료 모델 사용) — Epic 14/15는 이전 세션에서 실시간 결제 처리로 잘못 조사됐던 이력이 있어 스코프 재확인 필요(요약 참고: "Epic 14/15 조사 초안이 실시간 결제/거래 처리를 전제로 작성되는 오류 발견 - Master가 이미 수정함", 하지만 spec 작성 시 재차 확인 권장)
+3. Epic 15(web-sale-profit-workflow) 이후 기획(spec)·설계(architecture) 계속 진행 (planning 워크스페이스, opencode zen 무료 모델 사용) — Epic 13/14 패턴대로 Epic 13에서 만든 FSD entities/shared 컴포넌트 재사용, API 계약은 Epic 8(Sale)/Epic 10(Profit) spec에서 정확히 인용
 
 ## 알려진 이슈/결정 사항
 - Epic 1 구현 중 SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드 등 3건의 Spring Security 버그를 Master가 직접 진단하여 수정 지시함(자세한 내용은 `docs/work-log/account-authentication.md` 참고).
