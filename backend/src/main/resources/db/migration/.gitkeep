@@ -1,0 +1,2 @@
+# Flyway migration directory
+# Place SQL migration files here (e.g., V1__init_account.sql)
