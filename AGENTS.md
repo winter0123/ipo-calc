@@ -619,6 +619,12 @@ Acceptance Criteria → 테스트 작성 → 실패 확인 → 최소 구현 →
 
 React, TypeScript. 프로젝트에 설치된 버전의 공식 권장 방식을 우선한다. API를 지어내지 않는다.
 
+### 코드 스타일 (2026-09-20 사용자 지시 — 예외 없이 적용)
+
+- **ESLint + Prettier + `tsc --strict`** 를 프로젝트에 설정하고, 모든 워커는 코드를 작성한 뒤 반드시 이 세 가지를 통과시킨다.
+- **들여쓰기 2칸.** 탭 금지.
+- Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. 완료 조건(Definition of Done)에 `npm run lint`, `npm run typecheck`(또는 `tsc --noEmit --strict`), `npx prettier --check .` 통과를 포함한다.
+
 ### 아키텍처 (FSD)
 
 ```
@@ -657,6 +663,12 @@ app → pages → widgets → features → entities → shared
 ### 스택
 
 Java 21, Spring Boot, PostgreSQL. 실제 설치된 버전을 따른다.
+
+### 코드 스타일 (2026-09-20 사용자 지시 — 예외 없이 적용)
+
+- **Google Java Style Check(checkstyle)를 엄격 모드로 적용한다.**
+- **들여쓰기 4칸.** 탭 금지.
+- Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. build.gradle.kts에 checkstyle 플러그인(Google Java Style 설정)이 없으면 먼저 추가한다. 완료 조건(Definition of Done)에 `./gradlew checkstyleMain checkstyleTest` 통과를 포함한다.
 
 ### 레이어 책임
 
