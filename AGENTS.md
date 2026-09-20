@@ -692,6 +692,7 @@ Java 21, Spring Boot, PostgreSQL. 실제 설치된 버전을 따른다.
 - 조회·변경 API에 테넌트/권한 범위 적용.
 - 상태 변경은 허용된 전이만 검증.
 - 운영 DB 파괴적 변경은 승인 없이 금지. 마이그레이션 전략/기존 데이터/인덱스/트랜잭션 경계 고려.
+- **이 프로젝트의 DB는 PostgreSQL이다.** architecture 문서에 Flyway SQL DDL 예시를 작성할 때 MySQL 문법(`AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`, `CREATE TABLE` 내부에 조건부 `WHERE` 유니크 인덱스 삽입 등)을 쓰지 않는다. PK 자동증가는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도의 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 분리한다(2026-09-21, Epic 4 architecture에서 MySQL/PostgreSQL 문법 혼용 오류를 Master가 직접 발견·수정한 뒤 재발 방지용으로 추가).
 
 ---
 

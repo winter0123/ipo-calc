@@ -188,20 +188,23 @@ SecuritiesAccount (Many) --securities_firm_id FK (ON DELETE RESTRICT)--> Securit
 > **주의**: 실제로는 기존 마이그레이션 번호를 확인한 뒤 이어지는 번호를 사용한다. V3 제안은 V1, V2가 각각 accounts/investors임을 전제로 한 것이며, 실제 적용 시 마지막 버전을 확인해 번호를 맞춘다.
 
 ### V3__create_securities_firms_table.sql (제안)
+
+> **수정(2026-09-21, Master)**: 원안이 MySQL 문법(`AUTO_INCREMENT`, `ENGINE=InnoDB`)을 사용했으나 이 프로젝트는 PostgreSQL 기준이므로 `GENERATED ALWAYS AS IDENTITY`로 교체한다.
+
 ```sql
 CREATE TABLE securities_firms (
-    id BIGINT NOT NULL AUTO_INCREMENT,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     external_code VARCHAR(255) NULL,
     business_registration_number VARCHAR(255) NULL,
     status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE',
     deleted_at TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE INDEX uk_securities_firm_name_active (name, status),
-    INDEX idx_securities_firm_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uk_securities_firm_name_active ON securities_firms(name, status);
+CREATE INDEX idx_securities_firm_status ON securities_firms(status);
 ```
 
 ### SecuritiesAccount FK 추가 마이그레이션 (참조)
