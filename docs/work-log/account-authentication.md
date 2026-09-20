@@ -209,3 +209,32 @@ PASS — SF-4 완료.
 
 ### 다음 단계
 SF-5: 데이터 격리(인가) 방어 (task_bd0beb33cfb4) 착수.
+
+---
+
+## 2026-09-20 — SF-5: 데이터 격리(인가) 방어
+
+### 완료된 작업
+- [x] `DataIsolationTest.java` 작성 (Test 워커, Nemotron 3 Ultra) — 커밋 `2228595`
+- [x] GitHub 이슈 #39 생성 (Git Manager 워커, Nemotron 3 Ultra)
+
+### 문제 3건
+1. 테스트 워커가 1차 작성 시 존재하지 않는 쿠키 접근 로직(`new MockHttpServletRequest().getCookies()[0]`)을 넣어 NPE 위험이 있었음 → 워커가 스스로 재실행 결과를 보고 `MockHttpSession`으로 교체해 수정. Master 개입 없음.
+2. Git Manager가 `--label "status:in-progress"`를 시도했으나 저장소에 해당 라벨이 없어 실패 → 라벨 없이 재시도해 이슈 생성 성공. 라벨 자체는 부수적이라 그대로 진행.
+3. Master가 병렬로 cost-recording 조사 워커를 띄우는 과정에서 모델 ID를 축약형(`nemotron-3-super`)으로 잘못 입력 → opencode가 금지 모델(Nex-N2.5-Pro)로 기본 실행됨을 발견, 즉시 터미널 종료 후 태스크를 ready로 되돌리고 AGENTS.md의 정확한 전체 모델 ID(`openrouter/nvidia/nemotron-3-ultra-550b-a55b:free`)로 재실행. SF-5 작업과는 별개 워크스페이스(main)에서 발생한 사고였음.
+
+### 실행한 검증
+- `./gradlew test --tests "*DataIsolationTest"` → 3개 테스트 전부 통과
+- `./gradlew test` (전체) → BUILD SUCCESSFUL, 27개 테스트 전부 통과 (Master 직접 재실행 재확인)
+
+### 결과
+PASS — SF-5 완료. **별도 Implementation 태스크 불필요** (Master 판단, D-009).
+
+### Master 결정 사항 D-009
+SF-2/SF-4에서 이미 구현된 `SecurityConfig`(`anyRequest().authenticated()`, `formLogin`)가 AC-010(무인증 접근 시 401/302 차단)을 이미 만족시킴이 테스트로 확인됨. 새로 작성/수정할 프로덕션 코드가 없으므로 SF-5는 테스트 작성만으로 완료 처리한다. AC-011(계정 간 데이터 격리)은 실제 보호 리소스(투자자 API 등)가 존재하지 않아 이번 Epic 범위에서 테스트 불가 — 후속 Epic(investor-management 등)에서 재검증 필요. 이 결정은 되돌리기 쉬우며(향후 AuthenticationEntryPoint 커스텀 등 필요 시 새 태스크로 추가 가능), 사용자가 다른 의견이 있으면 언제든 변경 가능.
+
+### 변경된 파일
+- backend/src/test/java/.../config/security/DataIsolationTest.java (신규)
+
+### 다음 단계
+SF-6: 비밀번호 변경 API (task_3c83aa6f4e97) 착수. SF-5 완료 후 이슈 #39 종료 처리 예정.
