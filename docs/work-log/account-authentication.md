@@ -238,3 +238,39 @@ SF-2/SF-4에서 이미 구현된 `SecurityConfig`(`anyRequest().authenticated()`
 
 ### 다음 단계
 SF-6: 비밀번호 변경 API (task_3c83aa6f4e97) 착수. SF-5 완료 후 이슈 #39 종료 처리 예정.
+
+---
+
+## 2026-09-20 — SF-6: 비밀번호 변경 API (Epic 1 마지막 세부 기능)
+
+### 완료된 작업
+- [x] `PasswordChangeControllerTest.java` RED 테스트 작성 (7개 케이스) — 커밋 `e4930ea`
+- [x] GitHub 이슈 #40 생성
+- [x] `PasswordChangeController`, `PasswordChangeService`, `PasswordChangeRequest`, `SuccessResponse`, `InvalidCurrentPasswordException` 구현
+- [x] `SecurityConfig`, `AuthService`, `GlobalExceptionHandler` 수정 — 전체 34개 테스트 GREEN
+
+### 문제 3건 이상 (이번 SF는 특히 난이도가 높아 여러 라운드에 걸쳐 해결됨)
+1. **1차 구현 워커가 비용 한도(cost limit)로 중단**: 7개 중 3개만 통과한 상태에서 opencode 세션이 "Exit due to cost limit"로 종료됨. Master가 git diff로 실제 진행 상황(파일별 변경 내역)을 확인한 뒤, 정확히 어디까지 됐는지 파악해서 이어하기 태스크로 재개시킴.
+2. **SessionRegistry 인스턴스 불일치**: `SecurityConfig`의 `sessionManagement().maximumSessions(1)` DSL이 `.sessionRegistry(...)`를 명시하지 않으면 자기만의 새 SessionRegistry를 내부적으로 생성한다. 별도로 선언된 `@Bean SessionRegistry` 빈과 다른 인스턴스라서 `PasswordChangeService`가 세션을 expire해도 실제 인증 필터에는 반영되지 않았음(테스트 결과: 401/302 대신 403/404). Master가 직접 SecurityConfig.java를 읽고 원인을 진단해 `.sessionRegistry(sessionRegistry())`를 추가하도록 정확한 수정 지시를 내림 — 워커가 두 번 연속(다른 모델로도) 이 특정 버그를 스스로 찾지 못하고 반복적으로 멈춰서(stall) Master가 개입.
+3. **AuthService가 SessionAuthenticationStrategy를 건너뜀**: 커스텀 로그인(`AuthService.createSession()`)이 SecurityContext를 수동으로 만들고 `securityContextRepository.saveContext()`만 호출해서, Spring Security 표준 인증 필터를 거치지 않아 로그인해도 세션이 SessionRegistry에 전혀 등록되지 않았음(테스트 결과: 404 — 인증 필터를 그냥 통과해버림). Master가 근본 원인을 직접 진단(AuthService.java와 SecurityConfig.java를 대조 분석)해서, `SessionAuthenticationStrategy` 빈을 주입받아 `createSession()` 안에서 `onAuthentication()`을 명시적으로 호출하도록 정확한 수정 지시를 내림.
+4. **만료된 세션의 기본 응답이 200**: 3번 수정 후 세션 등록/만료 자체는 정상 동작했지만(404→200으로 변화), Spring Security의 `ConcurrentSessionFilter`는 `expiredUrl`/`expiredSessionStrategy`가 없으면 기본적으로 상태 코드 200으로 메시지만 응답한다. Master가 `.expiredUrl("/login?expired")`를 추가하도록 지시해서 302로 리다이렉트되게 만들어 최종 해결.
+5. **무료 모델의 반복적 stall**: 이번 SF 전체 과정에서 워커가 "이제 ~하겠다"고 말만 하고 실제 도구 호출(tool call) 없이 멈추는 현상이 여러 번 발생(Implementation 태스크에서 특히 잦음). AGENTS.md 23.7의 컨텍스트 초과 대응과는 다른 패턴(컨텍스트는 낮은데도 멈춤) — Master가 매번 `terminal read`로 실제 화면과 `git diff`로 실제 파일 변경을 대조 확인해서, 진짜 멈춘 건지 그냥 느린 건지 구분한 뒤에만 개입(interrupt → 모델 교체 재시도)했다.
+
+### 실행한 검증
+- `./gradlew test --tests "*PasswordChangeControllerTest*"` → 7개 전부 통과
+- `./gradlew test` (전체) → BUILD SUCCESSFUL, 34개 테스트 전부 통과 (Master 직접 재실행 재확인)
+
+### 결과
+PASS — SF-6 완료. **Epic 1(account-authentication) 전체 완료.**
+
+### 변경된 파일
+- backend/src/main/java/.../controller/PasswordChangeController.java (신규)
+- backend/src/main/java/.../controller/dto/{PasswordChangeRequest,SuccessResponse}.java (신규)
+- backend/src/main/java/.../application/service/PasswordChangeService.java (신규)
+- backend/src/main/java/.../exception/InvalidCurrentPasswordException.java (신규), GlobalExceptionHandler.java (핸들러 추가)
+- backend/src/main/java/.../application/service/AuthService.java (SessionAuthenticationStrategy 주입 및 onAuthentication 호출 추가)
+- backend/src/main/java/.../config/security/SecurityConfig.java (sessionRegistry 명시적 연결, expiredUrl 추가)
+- backend/src/test/java/.../controller/PasswordChangeControllerTest.java (신규)
+
+### 다음 단계
+Epic 1 PR 생성 및 병합(사람 승인 필요 - 대규모 Epic 단위 PR이므로 12.4-1의 "일상적 기능 완료 PR" 예외에 해당하지 않음). PR 머지 확인 후 `account-authentication` 워크스페이스를 `backend` 워크스페이스로 이관(12.4 전환기 메모 참고). 이후 Epic 2(investor-management) 착수는 `backend` 워크스페이스에서 새 브랜치로 시작.

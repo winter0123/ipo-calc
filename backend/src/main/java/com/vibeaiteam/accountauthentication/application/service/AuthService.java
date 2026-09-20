@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class AuthService {
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final FailedLoginService failedLoginService;
+    private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     @Transactional
@@ -93,6 +95,12 @@ public class AuthService {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
+
+        try {
+            sessionAuthenticationStrategy.onAuthentication(authentication, httpServletRequest, httpServletResponse);
+        } catch (org.springframework.security.web.authentication.session.SessionAuthenticationException e) {
+            // 세션 등록 실패는 이 서비스 레벨에서는 무시 - 이미 세션이 생성된 상태이므로 계속 진행
+        }
 
         securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
 

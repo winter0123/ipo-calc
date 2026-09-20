@@ -4,6 +4,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,35 +20,52 @@ import java.util.Map;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
+@Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/logout", "/accounts", "/auth/**", "/css/**", "/js/**", "/error").permitAll()
-                .anyRequest().authenticated()
+                    .requestMatchers("/login", "/logout", "/accounts", "/auth/login", "/auth/logout", "/css/**", "/js/**", "/error").permitAll()
+                    .anyRequest().authenticated()
             )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutUrl("/logout")
-                .logoutSuccessUrl("/login?logout")
-                .permitAll()
-            )
-            .sessionManagement(session -> session
-                .maximumSessions(1)
-                .maxSessionsPreventsLogin(false)
-            )
-            .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**", "/accounts", "/auth/login", "/auth/logout")
-            )
-            .rememberMe(remember -> remember
-                .key("account-authentication-remember-me-key")
-                .tokenValiditySeconds(1209600)
-            );
+                    .formLogin(form -> form
+                            .loginPage("/login")
+                            .permitAll()
+                    )
+                    .logout(logout -> logout
+                            .logoutUrl("/logout")
+                            .logoutSuccessUrl("/login?logout")
+                            .permitAll()
+                    )
+                    .sessionManagement(session -> session
+                            .maximumSessions(1)
+                            .maxSessionsPreventsLogin(false)
+                            .sessionRegistry(sessionRegistry())
+                            .expiredUrl("/login?expired")
+                    )
+                    .csrf(csrf -> csrf
+                            .ignoringRequestMatchers("/api/**", "/accounts", "/auth/login", "/auth/logout", "/auth/password-change")
+                    )
+                    .rememberMe(remember -> remember
+                            .key("account-authentication-remember-me-key")
+                            .tokenValiditySeconds(1209600)
+                    );
 
         return http.build();
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
+    @Bean
+    public RegisterSessionAuthenticationStrategy sessionAuthenticationStrategy(SessionRegistry sessionRegistry) {
+        return new RegisterSessionAuthenticationStrategy(sessionRegistry);
     }
 
     @Bean

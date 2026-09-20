@@ -44,6 +44,17 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCurrentPassword(InvalidCurrentPasswordException ex, HttpServletRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("INVALID_CURRENT_PASSWORD")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
+
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex, HttpServletRequest request) {
         ErrorResponse response = ErrorResponse.builder()
