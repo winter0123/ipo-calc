@@ -19,7 +19,7 @@
 9. 모든 문서·커밋 메시지·보고는 **한글**로 작성한다.
 10. 프로젝트 공통 문서 3종(`docs/current-status.md`, `docs/setup-history.md`, `docs/daily-log.md`, 9.2 참고)은 세션 종료 전 항상 최신 상태로 갱신한다.
 11. 워커를 만들 때마다(A/B/C 어느 것이든) `worker-start`에 **역할별 모델을 `--model`로 반드시 명시**한다. 생략해서 아무 모델이나 상속되게 두지 않는다(22장 배정표 참고).
-12. 워크스페이스(worktree)는 로드맵의 Epic에 대해 필요할때마다 만든다. **동시에 최대 3개까지** 병렬로 만든다. 각 워크스페이스 안에서는 **워커를 동시에 최대 5개까지**만 돌린다. PR이 main에 merge된 걸 확인한 뒤 즉시 정리한다(12.4, 2026-09-20 사용자 지시).
+12. **워크스페이스(worktree)는 역할별로 고정 3개(backend/frontend/planning)를 만들어 두고 절대 삭제하지 않는다** (2026-09-20 사용자 지시). Epic이 끝나도 워크스페이스 자체는 지우지 않고, 그 안에서 브랜치만 바꿔가며 다음 Epic을 진행한다. 각 워크스페이스 안에서는 **워커를 동시에 최대 5개까지**만 돌린다. 정말 독립적인 Epic을 backend에서 동시에 구현해야 할 때만 예외적으로 `backend-2`를 임시로 추가할 수 있고(최대 2개), 그 경우에도 PR 머지 후에는 `backend-2`만 정리한다 — 기본 3개는 항상 유지한다(12.4 참고).
 12-1. **같은 문서를 여러 워커가 동시에 쓰면 충돌**하므로 금지. 반대로 **서로 다른 문서를 조사/작성하는 작업이거나, 의존관계 없이 이미 쪼개진 기능**이면 여러 워커에게 병렬로 맡겨 빨리 끝낸다. 최상위 결정이 필요해 워커 하나만 순차로 돌려야 하는 경우가 아니라면 병렬화를 기본으로 한다(2026-09-20 사용자 지시).
 13. 티켓 상태를 바꾸면 Orca에서만 바꾸고 끝내지 않는다. **즉시 Git Manager에게 알려 GitHub 이슈도 같이 갱신**한다(8.4).
 14. 워커에게 10분을 기다려도 응답(`worker_done`/`escalation`)이 없으면, 바로 재배분하지 말고 **먼저 `terminal read`로 화면을 확인**한다. 토큰 초과 에러면 `/compact` 후 같은 태스크를 재주입해 재개한다(23.7).
@@ -510,37 +510,55 @@ main
 └── feature/worktree-c
 ```
 
-### 12.4 워크트리(하위 워크스페이스) 생성·삭제 시점 — 동시 최대 3개, 무분별하게 안 만든다
+### 12.4 워크트리(하위 워크스페이스) — 역할별 고정 3개, 절대 삭제하지 않는다
 
-> 과거 실패: 로드맵에 있는 모든 Epic에 대해 하위 워크스페이스(worktree)를 한꺼번에 미리 만들어 놓아서 세션이 난립했다. 이제는 **동시 개수 상한만 정확히 고정**한다.
-> 2026-09-20 수정(사용자 지시): 로드맵의 Epic 중 필요할 때마다(그 Epic 구현에 실제로 착수하는 시점) 워크스페이스를 만든다. 여러 Epic이 동시에 착수 가능해지면 **동시에 최대 3개까지** 병렬로 만들어도 된다. 각 워크스페이스 안에서는 워커를 동시에 최대 5개까지만 돌린다.
+> 과거 실패 1: 로드맵에 있는 모든 Epic에 대해 하위 워크스페이스(worktree)를 한꺼번에 미리 만들어 놓아서 세션이 난립했다.
+> 과거 실패 2(2026-09-20): Epic마다 워크스페이스를 새로 만들고 PR 머지 후 지우는 방식으로 운영했더니, Epic이 16개라 워크스페이스 생성·삭제가 계속 반복되고 백엔드/프론트/기획 문서 작업이 뒤섞여 관리됐다. 또한 기획(조사·설계) 워커가 브랜치 없이 main에 직접 커밋해 버려 리뷰 없이 바로 main에 반영되는 문제가 있었다.
+> 2026-09-20 최종 수정(사용자 지시): **워크스페이스는 Epic 단위가 아니라 역할(backend/frontend/planning) 단위로 고정 3개만 만들고, 프로젝트가 끝날 때까지 절대 삭제하지 않는다.** 각 워크스페이스 안에서 Epic을 시작할 때마다 브랜치만 새로 파서 순차로 진행한다. 기획(planning)도 이제 Epic별 브랜치를 파고 PR을 거친다 — main에 직접 커밋하지 않는다.
 
-**생성 — 그 Epic/기능 구현에 실제로 착수하는 시점, 동시 최대 3개**
+**고정 워크스페이스 3개**
+
+| 워크스페이스 | 역할 | 경로(예시) | 담당 Epic |
+|---|---|---|---|
+| `backend` | 백엔드 구현(B그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/account-authentication` (Epic 1 착수 시 만든 워크스페이스를 그대로 backend로 승격해 재사용) | Epic 1~12 |
+| `frontend` | 프론트 구현(B그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` | Epic 13~16 |
+| `planning` | 조사·기획·설계(A그룹) | `/Users/joy/orca/workspaces/vibe-ai-team/planning` (backend/frontend와 동일하게 별도로 만든 전용 워크스페이스 — Master의 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)는 절대 작업 공간으로 쓰지 않고 항상 main 브랜치로 유지) | 모든 Epic의 Phase 0 및 기획 산출물 |
+
+- 3개 모두 처음 필요해지는 시점에 한 번만 만들고(이미 있으면 재사용), 이후로는 **절대 `orca worktree rm`으로 지우지 않는다.**
+- 예외: 정말 의존관계 없는 두 Epic을 backend에서 동시에 구현해야만 할 때, 임시로 `backend-2`를 추가로 만들 수 있다(최대 2개까지). `backend-2`는 그 Epic들의 PR이 머지되면 정리한다 — 기본 3개(backend/frontend/planning)와 달리 임시 워크스페이스이므로 삭제 대상이다.
+
+**Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
 ```bash
-orca worktree create --repo id:<repoId> --name <epic-slug> --agent opencode --json
+cd <워크스페이스 경로>
+git checkout main && git pull origin main
+git checkout -b <username>/<epic-slug>          # 구현(backend/frontend)
+git checkout -b <username>/<epic-slug>-research # 기획(planning) — 조사/기획/설계 전용 브랜치
+git push -u origin <username>/<epic-slug>[-research]
 ```
 
-- 로드맵의 Epic 중 착수 가능한(선행 Epic의 Phase 0/구현이 필요한 만큼 진행된) 것부터 필요할 때마다 워크스페이스를 만든다.
-- 이미 3개가 열려 있으면 그중 하나가 merge되어 정리될 때까지 4번째 워크스페이스를 만들지 않는다.
-- 각 워크스페이스 안에서 5.4의 브랜치 레벨 재분해(A그룹) → B그룹 배분 → 구현이 이어진다. 워크스페이스 하나당 동시 워커는 최대 5개.
+- planning 워크스페이스도 이제 이 브랜치를 만든 뒤 A그룹 워커를 그 브랜치 위에서 돌리고, 조사/기획/설계 문서가 끝나면 Git Manager가 PR을 만들어 사람 승인 후 머지한다. **main에 직접 `git commit`·`git push`하지 않는다.**
+- 워크스페이스 하나당 동시 워커는 최대 5개(12번 규칙). backend/frontend는 물리적으로 브랜치 하나만 체크아웃되므로 Epic은 순차 진행이 기본이다(위 예외 상황에서만 backend-2로 두 번째 Epic을 동시에 진행).
 
-**삭제 — Git Manager가 main merge를 확인한 직후, 다음 순서로만**
+**Epic/기획 브랜치 완료 후 — 워크스페이스는 유지, 브랜치만 정리**
 
 ```bash
 # 1. 병합 확인 (Git Manager 담당)
 gh pr view <PR번호> --json state,mergedAt
 
-# 2. 해당 B그룹 워커 정리
+# 2. 해당 B/A그룹 워커 정리 (터미널만 종료, 워크스페이스는 유지)
 orca orchestration worker-release --dispatch <dispatch_id> --json
 
-# 3. 워크트리 제거
-orca worktree rm --worktree "path:<경로>" --json
+# 3. 워크스페이스 안에서 main으로 복귀 + 병합된 브랜치 정리 (워크트리 자체는 지우지 않음)
+cd <워크스페이스 경로>
+git checkout main && git pull origin main
+git branch -d <username>/<epic-slug>
 ```
 
-- **병합이 확인되기 전에는 절대 worktree를 지우지 않는다.** 지우면 검증되지 않은 채 사라진 작업이 생길 수 있다.
+- **병합이 확인되기 전에는 절대 브랜치를 지우거나 다음 Epic으로 넘어가지 않는다.** 지우면 검증되지 않은 채 사라진 작업이 생길 수 있다.
+- **`backend-2` 같은 임시 예외 워크스페이스만 `orca worktree rm`으로 삭제한다.** 기본 3개(backend/frontend/planning)는 절대 삭제하지 않는다.
 - Master(Claude Code) 코디네이터 자신은 이 규칙과 무관하다 — 워크트리를 갖지 않으며 프로젝트 종료까지 계속 존재한다.
-- worktree를 정리해도 종류별 폴더의 `[epic-slug].md` 문서들과 GitHub 이슈 이력은 삭제하지 않는다. 정리 대상은 코드 작업 공간(worktree/워커 터미널)뿐이다.
+- 워크스페이스/브랜치를 정리해도 종류별 폴더의 `[epic-slug].md` 문서들과 GitHub 이슈 이력은 삭제하지 않는다.
 
 ### 충돌 처리
 
