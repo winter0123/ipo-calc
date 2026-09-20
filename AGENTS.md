@@ -19,7 +19,8 @@
 9. 모든 문서·커밋 메시지·보고는 **한글**로 작성한다.
 10. 프로젝트 공통 문서 3종(`docs/current-status.md`, `docs/setup-history.md`, `docs/daily-log.md`, 9.2 참고)은 세션 종료 전 항상 최신 상태로 갱신한다.
 11. 워커를 만들 때마다(A/B/C 어느 것이든) `worker-start`에 **역할별 모델을 `--model`로 반드시 명시**한다. 생략해서 아무 모델이나 상속되게 두지 않는다(22장 배정표 참고).
-12. 워크스페이스(worktree)는 로드맵의 모든 Epic에 대해 미리 만들지 않는다. **지금 시작하는 Epic 하나만** 만들고, PR이 main에 merge된 걸 확인한 뒤 즉시 정리한다(12.4).
+12. 워크스페이스(worktree)는 로드맵의 모든 Epic에 대해 미리 만들지 않는다. **동시에 최대 3개까지**, 서로 독립적인(의존관계 없는) Epic/기능일 때만 병렬로 만든다. 각 워크스페이스 안에서는 **워커를 동시에 최대 5개까지**만 돌린다. PR이 main에 merge된 걸 확인한 뒤 즉시 정리한다(12.4, 2026-09-20 사용자 지시).
+12-1. **같은 문서를 여러 워커가 동시에 쓰면 충돌**하므로 금지. 반대로 **서로 다른 문서를 조사/작성하는 작업이거나, 의존관계 없이 이미 쪼개진 기능**이면 여러 워커에게 병렬로 맡겨 빨리 끝낸다. 최상위 결정이 필요해 워커 하나만 순차로 돌려야 하는 경우가 아니라면 병렬화를 기본으로 한다(2026-09-20 사용자 지시).
 13. 티켓 상태를 바꾸면 Orca에서만 바꾸고 끝내지 않는다. **즉시 Git Manager에게 알려 GitHub 이슈도 같이 갱신**한다(8.4).
 14. 워커에게 10분을 기다려도 응답(`worker_done`/`escalation`)이 없으면, 바로 재배분하지 말고 **먼저 `terminal read`로 화면을 확인**한다. 토큰 초과 에러면 `/compact` 후 같은 태스크를 재주입해 재개한다(23.7).
 
@@ -91,7 +92,7 @@ Master Lead를 포함한 모든 에이전트는 다음을 독단적으로 하지
 
 ## 5. 팀 구조 — Master(Claude Code) + 온디맨드 OpenRouter 워커 (A/B/C 3분류)
 
-> 과거 실패 패턴 두 가지: ① "상시 핵심팀"이라는 예외를 두었더니, 왜 어떤 역할은 계속 켜 두고 어떤 역할은 정리하는지 기준이 모호해졌다. ② Master가 약한 무료 모델이던 시절엔 "누가 안 시키면 아무도 조사·설계를 안 한다"는 문제 때문에 상시팀을 만들었는데, **이제 Master는 Orca 위에서 Claude Code로 띄운 코디네이터(모델: Claude)**라 그 문제가 사라졌다. 그래서 상시/기능별이라는 이원 구조를 버리고, "역할이 얼마나 오래 살아있어야 하는가"라는 실질적 기준(cadence)으로 다시 나눈다.
+> 과거 실패 패턴 두 가지: ① "상시 핵심팀"이라는 예외를 두었더니, 왜 어떤 역할은 계속 켜 두고 어떤 역할은 정리하는지 기준이 모호해졌다. ② Master가 약한 무료 모델이던 시절엔 "누가 안 시키면 아무도 조사·설계를 안 한다"는 문제 때문에 상시팀을 만들었는데, \*\*이제 Master는 Orca 위에서 Claude Code로 띄운 코디네이터(모델: Claude)\*\*라 그 문제가 사라졌다. 그래서 상시/기능별이라는 이원 구조를 버리고, "역할이 얼마나 오래 살아있어야 하는가"라는 실질적 기준(cadence)으로 다시 나눈다.
 
 ### 5.0 기본 원칙
 
@@ -181,8 +182,8 @@ orca orchestration task-create --task-title "세부기능 2: 로그인 API 연�
 orca orchestration task-create --task-title "세부기능 3: 세션 유지" --spec "..." --parent <epic_task_id> --deps '["<세부기능2_task_id>"]' --json
 ```
 
-- 세부 기능이 3~7개를 넘어가면 Epic을 잘못 나눈 것일 수 있다. A그룹(Planning/Architecture) 워커에게 재검토를 요청한다.
-- 세부 기능 하나하나도 11~19장의 티켓/테스트우선/검증/커밋 규칙을 그대로 따른다. "작으니까 대충 해도 된다"는 예외는 없다.
+- 세부 기능이 3\~8개를 넘어가면 Epic을 잘못 나눈 것일 수 있다. A그룹(Planning/Architecture) 워커에게 재검토를 요청한다.
+- 세부 기능 하나하나도 11\~19장의 티켓/테스트우선/검증/커밋 규칙을 그대로 따른다. "작으니까 대충 해도 된다"는 예외는 없다.
 - `docs/breakdown/[epic-slug].md`가 없으면 B그룹(Implementation) 워커에게 배분하지 않는다.
 
 ---
@@ -198,6 +199,7 @@ orca orchestration task-create --task-title "세부기능 3: 세션 유지" --sp
 A그룹(Planning) 워커는 어떤 기능을 만들지 알게 되는 즉시, 구현보다 먼저 `docs/roadmap.md`를 작성한다.
 
 포함 내용:
+
 - 전체 기능 목록
 - 우선순위와 그 근거(의존성, 리스크, 사용자 가치)
 - 구현 순서 (1차, 2차, ...)
@@ -232,12 +234,15 @@ B그룹(구현) 생성 및 구현 시작
 ## 8. 역할별 상세 책임
 
 ### 8.1 Master Lead (코디네이터, Claude Code)
+
 요청된 결과 이해, 스코프 확정, 워커 조율(A/B/C 그룹 생성·해제 판단), handoff 해결, 누락 요구사항 감지, 구현 결과 검토, 최종 리뷰 준비 여부 결정, 스코프 확장 방지. 맹목적으로 승인하지 않는다.
 
 ### 8.2 Research (A그룹)
+
 기존 코드/라이브러리/외부 API/데이터 구조/기술 제약 조사. 원칙적으로 코드를 수정하지 않는다. 출력: `docs/research/[epic-slug].md`. 산출 후 즉시 해제.
 
-### 8.3 Planning & Architecture (A그룹)
+### 8.3 Planning &amp; Architecture (A그룹)
+
 요구사항→구체적 동작, 사용자 시나리오, Acceptance Criteria, 엣지케이스, 티켓 분해, 시스템 아키텍처, 데이터 흐름, API 경계, DB 변경, 의존성/리스크. 출력: `docs/spec/[epic-slug].md`, `docs/architecture/[epic-slug].md`, `docs/roadmap.md`. 산출 후 즉시 해제.
 
 ### 8.4 Git Manager (C그룹 — 신설, 과거 미흡 영역)
@@ -256,14 +261,16 @@ orca orchestration send --to <Git-Manager핸들> --from <핸들> --type status \
 
 - Git Manager는 이 메시지를 받는 즉시(비동기로 미루지 않고) 아래 표에 맞춰 실제 GitHub 명령을 실행한다.
 
-| 티켓 상태 | Git Manager가 할 일 | 명령 예시 |
-|---|---|---|
-| PLANNED | 이슈 생성, 라벨 부여 | `gh issue create --title "<제목>" --body "<spec 요약 + 상위 Epic 링크>" --label "status:planned"` |
-| IN_PROGRESS | 라벨 교체, 브랜치 링크 코멘트 | `gh issue edit <번호> --remove-label "status:planned" --add-label "status:in-progress"` |
-| READY_FOR_REVIEW | PR 생성 및 이슈 연결, 라벨 교체 | `gh pr create --title "..." --body "Closes #<이슈번호>" ...` 후 `gh issue edit <번호> --add-label "status:review" --remove-label "status:in-progress"` |
-| CHANGES_REQUIRED | 사유 코멘트, 라벨 교체 | `gh issue comment <번호> --body "<수정 요청 사유>"` + `gh issue edit <번호> --add-label "status:changes-requested" --remove-label "status:review"` |
-| APPROVED | 라벨 교체 | `gh issue edit <번호> --add-label "status:approved" --remove-label "status:changes-requested"` |
-| COMPLETED | merge 확인 후 close 확인 | `gh pr view <PR번호> --json state,mergedAt` 로 merge 확인 → `Closes #`로 자동 close됐는지 확인, 안 됐으면 `gh issue close <번호> --comment "PR #<PR번호> 머지 완료"` |
+
+| 티켓 상태              | Git Manager가 할 일     | 명령 예시                                                                                                                                           |
+| ------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| PLANNED            | 이슈 생성, 라벨 부여         | `gh issue create --title "<제목>" --body "<spec 요약 + 상위 Epic 링크>" --label "status:planned"`                                                       |
+| IN\_PROGRESS       | 라벨 교체, 브랜치 링크 코멘트    | `gh issue edit <번호> --remove-label "status:planned" --add-label "status:in-progress"`                                                           |
+| READY\_FOR\_REVIEW | PR 생성 및 이슈 연결, 라벨 교체 | `gh pr create --title "..." --body "Closes #<이슈번호>" ...` 후 `gh issue edit <번호> --add-label "status:review" --remove-label "status:in-progress"` |
+| CHANGES\_REQUIRED  | 사유 코멘트, 라벨 교체        | `gh issue comment <번호> --body "<수정 요청 사유>"` + `gh issue edit <번호> --add-label "status:changes-requested" --remove-label "status:review"`        |
+| APPROVED           | 라벨 교체                | `gh issue edit <번호> --add-label "status:approved" --remove-label "status:changes-requested"`                                                    |
+| COMPLETED          | merge 확인 후 close 확인  | `gh pr view <PR번호> --json state,mergedAt` 로 merge 확인 → `Closes #`로 자동 close됐는지 확인, 안 됐으면 `gh issue close <번호> --comment "PR #<PR번호> 머지 완료"`     |
+
 
 - Sub-ticket(세부 기능) 이슈 본문에는 반드시 상위 Epic 이슈 번호를 링크한다: `Part of #<epic-issue-number>`.
 - **Epic 이슈는 하위 Sub-ticket 이슈가 전부 close된 뒤에만 close한다.** 먼저 닫지 않는다.
@@ -271,18 +278,23 @@ orca orchestration send --to <Git-Manager핸들> --from <핸들> --type status \
 - 워크트리 생성·삭제 시점(언제 만들고 언제 지우는지)은 12.4를 그대로 실행 책임진다.
 
 ### 8.5 Test (B그룹)
+
 Acceptance Criteria → 실제 테스트 케이스. 구현보다 먼저 작성하고 실패를 확인한 뒤 Implementation에 넘긴다. 기존 테스트 패턴/도구 우선. 해당 Epic이 끝날 때까지 유지.
 
 ### 8.6 Implementation (B그룹)
+
 승인된 티켓/계획대로 최소 범위 구현. 실패 테스트를 통과시키는 것을 우선한다. 관련 없는 리팩터링 금지. 작업 로그 갱신. 해당 Epic이 끝날 때까지 유지.
 
 ### 8.7 QA (B그룹)
+
 단위/통합/E2E 테스트, 타입체크, lint, build 실행. 실패 시 명령/오류/영향 범위/기존 오류 여부 기록. 실제 실행 결과만 PASS로 기록. 해당 Epic이 끝날 때까지 유지.
 
 ### 8.8 Review / Security (C그룹)
+
 아키텍처 위반, 순환 참조, 부적절한 타입 처리, 하드코딩된 문구, 권한/보안 문제, 민감정보 로그, 불필요한 패키지, 기존 파일 훼손, 계획-구현 불일치, 스코프 밖 변경, 테스트 누락, Acceptance Criteria 미충족. 리뷰 게이트 이벤트마다 생성, 처리 후 즉시 해제.
 
 ### 8.9 UI Vision (B그룹)
+
 UI/E2E 작업에서만 사용. 화면 캡처, 레이아웃, 반응형, 실제 사용자 흐름 검증. 스크린샷은 의미 있는 마일스톤에서만.
 
 ---
@@ -324,14 +336,14 @@ docs/
 
 ### 9.1 문서 종류별 내용
 
-- **research/[epic-slug].md**: 질문 / 현재 동작 / 근거 / 발견 사항 / 제약 / 미해결 질문
-- **spec/[epic-slug].md**: 사용자 목표 / 시나리오 / 기능 요구사항 / 엣지케이스 / Acceptance Criteria
-- **architecture/[epic-slug].md**: 아키텍처 / 데이터 흐름 / API / DB / 모듈 소유권 / 의존성 / 리스크
-- **breakdown-research/[epic-slug].md**: Epic을 실제로 구현하려고 보니 발견한 세부 사항 / 재확인이 필요했던 가정 / 추가 제약
-- **breakdown/[epic-slug].md**: 세부 기능 목록 / 각 세부 기능의 범위 / 구현 순서와 근거(의존성) / 각 세부 기능의 Acceptance Criteria / 대응 Sub-ticket ID
-- **work-plan/[epic-slug].md**: 목표 / 범위 / 비범위 / 관련 파일 / 변경 안 할 파일 / 데이터 흐름 / API·DB 영향 / 실패·재시도 정책 / 테스트 계획 / 완료 조건 / 위험 요소 / 작업 순서
-- **work-log/[epic-slug].md**: 시간 / 티켓 ID / 완료 작업 / 확인 사항 / 변경 파일 / 실행한 검증 / 결과 / 문제와 해결 / 남은 작업 / 다음 단계 — 실제 실행한 것만 기록
-- **handoff/[epic-slug].md**: 목표 / 티켓 ID / 완료 작업 / 현재 동작 / 남은 작업 / 오류 재현법 / 수정 파일 / 주의사항 / 실행한 검증 / 다음 작업 순서
+- **research/\[epic-slug\].md**: 질문 / 현재 동작 / 근거 / 발견 사항 / 제약 / 미해결 질문
+- **spec/\[epic-slug\].md**: 사용자 목표 / 시나리오 / 기능 요구사항 / 엣지케이스 / Acceptance Criteria
+- **architecture/\[epic-slug\].md**: 아키텍처 / 데이터 흐름 / API / DB / 모듈 소유권 / 의존성 / 리스크
+- **breakdown-research/\[epic-slug\].md**: Epic을 실제로 구현하려고 보니 발견한 세부 사항 / 재확인이 필요했던 가정 / 추가 제약
+- **breakdown/\[epic-slug\].md**: 세부 기능 목록 / 각 세부 기능의 범위 / 구현 순서와 근거(의존성) / 각 세부 기능의 Acceptance Criteria / 대응 Sub-ticket ID
+- **work-plan/\[epic-slug\].md**: 목표 / 범위 / 비범위 / 관련 파일 / 변경 안 할 파일 / 데이터 흐름 / API·DB 영향 / 실패·재시도 정책 / 테스트 계획 / 완료 조건 / 위험 요소 / 작업 순서
+- **work-log/\[epic-slug\].md**: 시간 / 티켓 ID / 완료 작업 / 확인 사항 / 변경 파일 / 실행한 검증 / 결과 / 문제와 해결 / 남은 작업 / 다음 단계 — 실제 실행한 것만 기록. **append-only다: 파일이 이미 있으면 먼저 읽고, 기존 내용을 지우거나 통째로 덮어쓰지 말고 맨 아래에 새 날짜/티켓 섹션(`## YYYY-MM-DD — <티켓/작업명>`)을 추가한다.** (2026-09-20: 워커가 이 파일을 전체 덮어써서 Phase 0 기록이 유실될 뻔한 사고 발생, Master가 병합 복구함.)
+- **handoff/\[epic-slug\].md**: 목표 / 티켓 ID / 완료 작업 / 현재 동작 / 남은 작업 / 오류 재현법 / 수정 파일 / 주의사항 / 실행한 검증 / 다음 작업 순서
 
 ### 9.2 프로젝트 공통 문서 (Epic 무관, 항상 계속 기록) — 신설
 
@@ -342,11 +354,12 @@ docs/
 작업이 중간에 끊기더라도(컨텍스트 초과, 세션 종료, 다음 날 재개 등) 이 파일 하나만 읽으면 "지금 전체적으로 어디까지 왔고 무엇을 하고 있었는지" 바로 파악할 수 있어야 한다. **append하지 않고 매번 덮어써서(overwrite) 항상 최신 상태만 남긴다.**
 
 포함 내용:
+
 - 로드맵 상 각 Epic의 상태(대기/진행중/완료)
 - 지금 활성화된 Epic과 브랜치명, worktree 경로
 - 그 Epic 안 세부 기능(breakdown.md 기준) 중 몇 번까지 끝났는지
-- 현재 열려 있는 게이트/블로커(있다면 gate_id, 질문 내용)
-- 다음에 할 일 3~5줄
+- 현재 열려 있는 게이트/블로커(있다면 gate\_id, 질문 내용)
+- 다음에 할 일 3\~5줄
 
 갱신 시점: 세부 기능 하나가 끝날 때마다, Epic이 전환될 때, 그리고 **작업을 마치고 세션을 닫기 전에는 예외 없이** 갱신한다. Master Lead 소유이며, 컨텍스트 압축 감지 시 0장 요약 카드 다음으로 이 파일을 읽는다(10장과 연결).
 
@@ -440,6 +453,7 @@ git diff --stat
 ```
 
 **절대 사용 금지(승인 없이):**
+
 ```bash
 git reset --hard
 git clean -fd
@@ -461,9 +475,10 @@ git checkout -- <file>
 ### 브랜치 네이밍
 
 ```
-feature/[epic-slug]
-fix/[epic-slug]
+<git사용자명>/[epic-slug]
 ```
+
+> 2026-09-20 확인: `orca worktree create --name <epic-slug>`는 브랜치를 항상 `<git사용자명>/[epic-slug]`(예: `winter0123/account-authentication`)로 만들며, `feature/`·`fix/` 접두사를 CLI로 강제할 방법이 없다. 과거 버전 문서는 `feature/[epic-slug]`를 표준으로 적었으나 실제 Orca 동작과 달라 실전 표기로 수정한다. `--name`에 `epic-slug` 그대로(슬래시 없이)를 넘긴다.
 
 `[epic-slug]`는 9장 문서 종류별 폴더 안의 파일명(`docs/research/[epic-slug].md` 등)과 동일해야 한다.
 
@@ -486,17 +501,21 @@ main
 └── feature/worktree-c
 ```
 
-### 12.4 워크트리(하위 워크스페이스) 생성·삭제 시점 — 미리 다 만들지 않는다
+### 12.4 워크트리(하위 워크스페이스) 생성·삭제 시점 — 동시 최대 3개, 무분별하게 안 만든다
 
-> 과거 실패: 로드맵에 있는 모든 Epic에 대해 하위 워크스페이스(worktree)를 한꺼번에 미리 만들어 놓아서 세션이 난립했다. 이제는 **시점을 정확히 고정**한다.
+> 과거 실패: 로드맵에 있는 모든 Epic에 대해 하위 워크스페이스(worktree)를 한꺼번에 미리 만들어 놓아서 세션이 난립했다. 이제는 **시점과 동시 개수를 정확히 고정**한다.
+> 2026-09-20 수정(사용자 지시): 예전에는 "한 번에 Epic 하나만"이었지만, 서로 의존관계가 없는 독립적인 Epic/기능이라면 **동시에 최대 3개까지** 워크스페이스를 만들어 병렬로 진행해도 된다. 각 워크스페이스 안에서는 워커를 동시에 최대 5개까지만 돌린다.
 
-**생성 — 그 Epic 구현에 실제로 착수하는 시점, 딱 하나만**
+**생성 — 그 Epic/기능 구현에 실제로 착수하는 시점, 동시 최대 3개**
 
 ```bash
 orca worktree create --repo id:<repoId> --name <epic-slug> --agent opencode --json
 ```
 
-로드맵에 5개 Epic이 있어도 worktree는 지금 순서상 1번인 Epic 것 하나만 만든다. 2번 Epic의 worktree는 1번이 merge되어 정리된 뒤(또는 최소한 1번의 구현이 실제로 시작된 뒤) 필요할 때 만든다. 이 worktree 안에서 5.4의 브랜치 레벨 재분해(A그룹) → B그룹 배분 → 구현이 이어진다.
+- 로드맵에 5개 Epic이 있어도 서로 의존관계가 있으면(예: Epic 2가 Epic 1의 산출물을 전제로 함) 순서대로 하나씩만 진행한다.
+- 서로 완전히 독립적인 Epic/기능(같은 문서를 안 건드리고, 서로의 산출물에 의존하지 않는 경우)이 여러 개 동시에 `ready`라면 워크스페이스를 최대 3개까지 동시에 만들어 병렬 진행할 수 있다.
+- 이미 3개가 열려 있으면 그중 하나가 merge되어 정리될 때까지 4번째 워크스페이스를 만들지 않는다.
+- 각 워크스페이스 안에서 5.4의 브랜치 레벨 재분해(A그룹) → B그룹 배분 → 구현이 이어진다. 워크스페이스 하나당 동시 워커는 최대 5개.
 
 **삭제 — Git Manager가 main merge를 확인한 직후, 다음 순서로만**
 
@@ -505,7 +524,7 @@ orca worktree create --repo id:<repoId> --name <epic-slug> --agent opencode --js
 gh pr view <PR번호> --json state,mergedAt
 
 # 2. 해당 B그룹 워커 정리
-orca orchestration worker-release --dispatch <id> --json
+orca orchestration worker-release --dispatch <dispatch_id> --json
 
 # 3. 워크트리 제거
 orca worktree rm --worktree "path:<경로>" --json
@@ -518,6 +537,7 @@ orca worktree rm --worktree "path:<경로>" --json
 ### 충돌 처리
 
 두 에이전트가 겹치는 파일을 수정하면:
+
 1. 해당 작업 중단
 2. 충돌 소유권 확인
 3. `docs/agent-conflicts.md`에 기록 (충돌 파일 / 기존 변경 / 현재 변경 / 선택한 방향 / 사용자 확인 필요 여부)
@@ -535,6 +555,7 @@ Acceptance Criteria → 테스트 작성 → 실패 확인 → 최소 구현 →
 테스트는 구현 세부사항보다 실제 요구사항과 관찰 가능한 동작을 우선 검증한다.
 
 ### 프론트엔드
+
 1. Acceptance Criteria 작성
 2. 사용자 행동/기대 결과 정의
 3. 컴포넌트·통합·E2E 테스트 작성
@@ -548,6 +569,7 @@ Acceptance Criteria → 테스트 작성 → 실패 확인 → 최소 구현 →
 모든 단순 UI에 무조건 테스트를 넣는 것이 목적이 아니다. 의미 있는 동작·상태 변화·데이터 표시·핵심 흐름을 우선한다.
 
 ### 백엔드 (기본적으로 Test-First)
+
 1. Acceptance Criteria 작성
 2. API/업무 규칙 기대 동작 정의
 3. 실패/정상 경로 테스트 작성
@@ -567,24 +589,29 @@ Acceptance Criteria → 테스트 작성 → 실패 확인 → 최소 구현 →
 ## 14. 프론트엔드 규칙
 
 ### 스택
+
 React, TypeScript. 프로젝트에 설치된 버전의 공식 권장 방식을 우선한다. API를 지어내지 않는다.
 
 ### 아키텍처 (FSD)
+
 ```
 app → pages → widgets → features → entities → shared
 ```
+
 - 하위 레이어가 상위 레이어를 참조하지 않는다.
 - `shared`는 특정 도메인/상위 레이어에 의존하지 않는다.
 - 순환 참조 금지.
 - 아키텍처를 지키기 위한 목적이 아닌 과도한 폴더 분리는 피한다.
 
 ### React / 컴포넌트
+
 - 컴포넌트는 하나의 명확한 책임.
 - 화면 컴포넌트는 선언적 UI 표현에 집중, 비즈니스 로직 누적 금지.
 - 재사용 로직/복잡한 상태는 Custom Hook으로 분리하되 기계적 분리는 피한다.
 - `useEffect`를 단순 계산/파생 상태/이벤트 처리 대체 수단으로 남용하지 않는다.
 
 ### TanStack Query
+
 - 실제 설치된 버전의 공식 권장 API 우선(`useQuery`, `useMutation`, `useSuspenseQuery`, `useQueries`, `queryOptions` 등).
 - deprecated 패턴 사용 금지.
 - 서버 상태를 local state로 불필요하게 복제하지 않는다.
@@ -592,6 +619,7 @@ app → pages → widgets → features → entities → shared
 - 기존 공통 query client가 있으면 재사용한다.
 
 ### 상태 관리
+
 - 서버 상태(TanStack Query)와 클라이언트 UI 상태를 구분한다.
 - 전역 상태(Context/Zustand/Redux)는 필요성이 명확할 때만 사용.
 
@@ -600,15 +628,18 @@ app → pages → widgets → features → entities → shared
 ## 15. 백엔드 규칙
 
 ### 스택
+
 Java 21, Spring Boot, PostgreSQL. 실제 설치된 버전을 따른다.
 
 ### 레이어 책임
+
 - **Controller**: 요청 검증, 응답 매핑, 서비스 호출. 복잡한 업무 규칙 금지.
 - **Service**: 업무 규칙, 유스케이스 오케스트레이션, 트랜잭션 경계.
 - **Entity/Domain**: 상태와 불변식.
 - **DTO**: API 계약. 내부 엔티티를 불필요하게 노출하지 않는다.
 
 ### 기타
+
 - 개인정보/인증정보를 로그에 남기지 않는다.
 - 조회·변경 API에 테넌트/권한 범위 적용.
 - 상태 변경은 허용된 전이만 검증.
@@ -679,16 +710,18 @@ orca skills get <skill-name>
 
 ### 22.1 역할별 모델 배정표
 
-| 구분 | 역할 | agent | model |
-|---|---|---|---|
-| 코디네이터 | Master Lead | `claude` (Claude Code) | Claude — `--model` 지정 대상 아님 |
-| A. 조사·설계 | Research / Planning | `opencode` | Nemotron 3 Ultra (free) |
-| A. 조사·설계 | Architecture | `opencode` | Nemotron 3 Super (free) |
-| B. 구현 | Implementation | `opencode` | Nemotron 3 Ultra (free) |
-| B. 구현 | Test / QA | `opencode` | Laguna S 2.1 (free) |
-| B. 구현 | UI Vision | `opencode` | Ling 3.0 Flash VL (free) |
-| C. 운영 이벤트 | Review / Security | `opencode` | Nemotron 3.5 Content Safety (free) |
-| C. 운영 이벤트 | Git Manager | `opencode` | Nemotron 3 Ultra (free) |
+
+| 구분        | 역할                  | agent                  | model                              |
+| --------- | ------------------- | ---------------------- | ---------------------------------- |
+| 코디네이터     | Master Lead         | `claude` (Claude Code) | Claude — `--model` 지정 대상 아님        |
+| A. 조사·설계  | Research / Planning | `opencode`             | Nemotron 3 Ultra (free)            |
+| A. 조사·설계  | Architecture        | `opencode`             | Nemotron 3 Super (free)            |
+| B. 구현     | Implementation      | `opencode`             | Nemotron 3 Ultra (free)            |
+| B. 구현     | Test / QA           | `opencode`             | Laguna S 2.1 (free)                |
+| B. 구현     | UI Vision           | `opencode`             | Ling 3.0 Flash VL (free)           |
+| C. 운영 이벤트 | Review / Security   | `opencode`             | Nemotron 3.5 Content Safety (free) |
+| C. 운영 이벤트 | Git Manager         | `opencode`             | Nemotron 3 Ultra (free)            |
+
 
 ### 22.2 워커 생성 시 모델 지정 규칙 (필수)
 
@@ -722,16 +755,18 @@ orca orchestration worker-start --task <review-task> --worktree current --agent 
 
 1. 22.1 표의 모델명을 실제 OpenRouter 모델 ID로 변환한다: `opencode models openrouter`로 후보를 찾는다(예: Nemotron 3 Ultra → `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free`, Nemotron 3 Super → `openrouter/nvidia/nemotron-3-super-120b-a12b:free`, Laguna S 2.1 → `openrouter/poolside/laguna-s-2.1:free`, Ling 3.0 Flash VL → `openrouter/inclusionai/ling-3.0-flash-vl:free`, Nemotron 3.5 Content Safety → `openrouter/nvidia/nemotron-3.5-content-safety:free`, North Mini Code → `openrouter/cohere/north-mini-code:free`). 이름이 바뀌었을 수 있으니 실행 전마다 재확인한다.
 2. `orca terminal create --worktree <selector> --command "opencode --model <위 OpenRouter ID>" --title "<역할-작업명>" --json` 으로 직접 터미널을 띄운다.
-3. `orca terminal read --terminal <handle> --json`으로 idle 프롬프트(`Build · <모델명> ... `)가 뜰 때까지 확인한다.
+3. `orca terminal read --terminal <handle> --json`으로 idle 프롬프트(`Build · <모델명> ...` )가 뜰 때까지 확인한다.
 4. `orca orchestration worker-start --task <task_id> --worktree <selector> --terminal <handle> --json` 으로 그 터미널에 태스크를 묶어 배분한다(`--agent`/`--model`은 이 단계에서 쓰지 않는다).
 
-**알려진 부작용 — `/compact` 이후 worker_done 자동 보고가 막힌다:** 이 방식으로 띄운 터미널도 처음 배분 시점에는 dispatch-capability 토큰이 정상 주입되어 `worker_done`이 잘 전달된다. 문제는 **워커가 컨텍스트 초과로 `/compact`를 한 번이라도 거치면 이 토큰이 대화 컨텍스트에서 사라져** 이후 `orca orchestration send --type worker_done ...`이 `The Dispatch capability is missing` 에러로 거부된다는 점이다(2026-09-20, 세금/수수료 조사 워커 2건에서 확인). 컨텍스트 초과 없이 끝난 워커는 이 문제가 없다. `/compact`를 거친 워커에 한해:
+**알려진 부작용 — `/compact` 이후 worker\_done 자동 보고가 막힌다:** 이 방식으로 띄운 터미널도 처음 배분 시점에는 dispatch-capability 토큰이 정상 주입되어 `worker_done`이 잘 전달된다. 문제는 **워커가 컨텍스트 초과로 `/compact`를 한 번이라도 거치면 이 토큰이 대화 컨텍스트에서 사라져** 이후 `orca orchestration send --type worker_done ...`이 `The Dispatch capability is missing` 에러로 거부된다는 점이다(2026-09-20, 세금/수수료 조사 워커 2건에서 확인). 컨텍스트 초과 없이 끝난 워커는 이 문제가 없다. `/compact`를 거친 워커에 한해:
+
 - `orchestration check --wait --types worker_done`에 의존하지 말고, **`terminal read`로 직접 화면을 폴링**해서 완료 여부(산출 파일 존재 여부, 화면의 idle 프롬프트 복귀)를 판단한다.
 - 완료가 확인되면 `orca terminal close --terminal <handle> --tab`으로 터미널을 닫는다.
 - 그 다음 `orca orchestration worker-stop --dispatch <dispatch_id>`로 dispatch를 settle시키고, `orca orchestration task-update --id <task_id> --status completed --result '{"outcome":"succeeded","reportPath":"<파일경로>","note":"worker_done 자동보고 불가(dispatch-capability 누락)로 Master가 수동 completed 처리"}'`로 태스크를 수동으로 completed 처리한다.
 - work-log에는 이 수동 처리 사실을 그대로 남긴다(자동 보고인 것처럼 기록하지 않는다).
 
 운영 규칙:
+
 - 모델 ID/무료 플랜 가용 여부를 작업 시작 시 확인.
 - 429/일시 오류: 10초→20초→40초→80초 지수 백오프, 최대 4회. 총 3분 초과 시 `BLOCKED`.
 - fallback은 사전 승인된 무료 모델 목록에서만.
@@ -745,21 +780,26 @@ orca orchestration worker-start --task <review-task> --worktree current --agent 
 ## 23. Orca 오케스트레이션 실전 규칙
 
 ### 23.1 Run과 태스크
+
 모든 태스크는 Run에 속해야 한다(없으면 `run_required`로 거부됨).
+
 ```bash
 orca orchestration run-create --objective "<목표>" --from <핸들> --json
 orca orchestration task-create --task-title "<제목>" --spec "<지시>" --deps '["<선행task_id>"]' --json
 orca orchestration task-list --ready --brief
 ```
+
 `--spec`이 워커에게 그대로 전달되는 지시문이다. 완료 보고 명령은 spec에 직접 적지 않는다(태스크 id가 아직 없어 순환에 걸림). `dispatch --inject`가 자동으로 채워 준다.
 
 ### 23.2 배분
+
 ```bash
 orca orchestration dispatch --task <task_id> --to <핸들> --from <코디핸들> --dry-run --return-preamble --json   # 미리보기
 orca orchestration dispatch --task <task_id> --to <핸들> --from <코디핸들> --inject --json                        # 실제 배분
 ```
 
 ### 23.3 메시지 작성 관례 (워커 필수 준수)
+
 - `--body`는 3문장 요약(무엇을 했고 / 무엇을 발견했고 / 무엇이 남았는지). 본문을 비우지 않는다.
 - 긴 결과물은 `--report-path`로 경로만 전달.
 - 완료 보고(`worker_done`)는 **정확히 1회**. 실패해도 조용히 종료하지 않고 `Failed: <이유>` 제목으로 반드시 보고한다.
@@ -773,30 +813,39 @@ orca orchestration send --from <핸들> --type worker_done --subject "완료: sq
 ```
 
 ### 23.4 완료 수집
+
 ```bash
 orca orchestration check --terminal <코디핸들> --wait --types worker_done,escalation --timeout-ms 900000 --json
 ```
+
 - 구경/디버깅용 조회는 `inbox`(읽음 처리 안 함)를 쓴다. `check`는 기본적으로 읽음 처리하므로 무심코 실행하면 대기 중인 워커가 메시지를 못 받는다. 꼭 봐야 하면 `--peek`.
 - subject가 `Failed:`로 시작하면 실패로 처리하고 완료로 닫지 않는다.
 
 ### 23.5 게이트 — 사람 승인이 필요한 지점
+
 ```bash
 orca orchestration gate-create --task <task_id> --question "<질문>" --options '["옵션1","옵션2"]' --json
 orca orchestration gate-list --status pending --json
 orca orchestration gate-resolve --id <gate_id> --resolution "<선택>" --json   # 옵션 이름이 --id 임에 주의
 ```
+
 게이트가 생기면 해당 태스크만 `blocked`가 되고 다른 태스크는 계속 진행된다. 게이트 해결 후에는 해당 결정을 실행 워커에게 dispatch로 전달하고, 반영된 결과를 다시 리뷰에 태워야 한다(승인만 받고 끝내지 않는다).
 
 ### 23.6 세션/워커 정리 (과거 실패: 다 쓴 세션을 안 지워 세션이 난립)
+
 - 기능팀 작업이 끝나 태스크가 모두 `completed`가 되고 **PR이 main에 merge된 것이 확인되면** `worker-release`로 해당 기능팀의 에이전트 터미널을 정리하고, worktree도 함께 제거한다. 정확한 순서와 명령은 12.4 참고 — merge 확인 전에는 정리하지 않는다.
 - **Master(Claude Code) 코디네이터 자신은 release 대상이 아니다.** 프로젝트가 끝날 때까지 유지된다. 그 외 A/B/C 모든 워커는 5장의 생성/해제 규칙을 그대로 따른다.
-- 동시 실행 워커 수는 자동 상한이 없으므로 직접 센다. **최대 6개까지 동시 작업 허용**(2026-09-20 사용자 승인). 작업량이 적으면 그보다 적게 쓴다.
-- 워커를 만들 필요가 있는 작업(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부)은 **더 작은 단위로 쪼갤 수 있으면 쪼개서 여러 워커에게 병렬로 맡겨 빨리 끝낸다**(2026-09-20 사용자 지시). 단, 5.4의 "세부 기능은 한 번에 하나만 `ready`"처럼 순서 의존성이 있는 작업은 쪼개더라도 병렬로 굴리지 않는다.
+- 동시 실행 워커 수는 자동 상한이 없으므로 직접 센다. **워크스페이스(worktree)는 동시 최대 3개, 워크스페이스 하나당 워커는 동시 최대 5개**까지 허용한다(2026-09-20 사용자 지시, 12.4 참고). 작업량이 적으면 그보다 적게 쓴다.
+- 워커를 만들 필요가 있는 작업(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부)은 **더 작은 단위로 쪼갤 수 있으면 쪼개서 여러 워커에게 병렬로 맡겨 빨리 끝낸다**(2026-09-20 사용자 지시). 판단 기준:
+  - **병렬화 가능**: 서로 다른 문서를 조사/작성하는 작업, 또는 의존관계 없이 이미 쪼개진 세부 기능(예: 5.4에서 같은 선행 기능에만 의존하고 서로에게는 의존하지 않는 두 세부 기능).
+  - **병렬화 금지(순차 필수)**: 같은 문서를 여러 워커가 동시에 쓰는 경우(충돌), 5.4의 "세부 기능은 한 번에 하나만 `ready`"처럼 순서 의존성이 있는 작업, 최상위에서 하나의 결정이 먼저 내려져야 이후 작업 범위가 정해지는 경우.
+
 ```bash
 orca orchestration worker-list --json
 orca diagnostics memory --json
 orca orchestration worker-release --dispatch <id> --json
 ```
+
 - `orchestration reset`은 이 PC의 로컬 오케스트레이션 DB 전체를 지우므로 사용하지 않는다. 정리는 태스크를 하나씩 `completed`로 바꾸는 방식으로 한다.
 
 ### 23.7 토큰 초과(컨텍스트 초과) 대응 — 10분 무응답 시 상태 확인 후 `/compact`
@@ -804,26 +853,31 @@ orca orchestration worker-release --dispatch <id> --json
 > 워커가 오래 조용하다고 바로 멈춘 것으로 보고 재배분하지 않는다. **먼저 원인이 토큰 초과인지 확인**하고, 맞다면 `/compact`로 컨텍스트를 비운 뒤 같은 작업을 재개시킨다.
 
 **1) 완료 대기 — 10분 타임아웃**
+
 ```bash
 orca orchestration check --terminal <코디핸들> --wait --types worker_done,escalation --timeout-ms 600000 --json
 ```
 
 **2) 10분 동안 아무 메시지도 오지 않으면(타임아웃), 재배분하기 전에 그 워커 터미널의 실제 화면부터 확인한다.**
+
 ```bash
 orca terminal read --terminal <워커핸들> --limit 50 --json
 ```
 
 **3) 화면에 토큰/컨텍스트 초과 에러**(예: context length exceeded, token limit, conversation too long 등)**가 보이면 `/compact`를 입력해 압축시킨다.**
+
 ```bash
 orca terminal send --terminal <워커핸들> --text "/compact" --enter --json
 ```
 
 **4) 압축이 끝나 터미널이 idle 프롬프트로 돌아왔는지 다시 확인한다.**
+
 ```bash
 orca terminal read --terminal <워커핸들> --limit 20 --json
 ```
 
 **5) 압축으로 컨텍스트가 비워졌으므로, 같은 태스크를 다시 주입해 작업을 재개시킨다** (태스크는 아직 `completed`가 아니므로 그대로 재사용).
+
 ```bash
 orca orchestration dispatch --task <task_id> --to <워커핸들> --from <코디핸들> --inject --json
 ```
@@ -831,6 +885,7 @@ orca orchestration dispatch --task <task_id> --to <워커핸들> --from <코디�
 **6) 이 사건을 해당 Epic의 `work-log.md`에 기록한다:** 발생 시각 / 태스크 ID / 증상(토큰 초과) / `/compact` 실행 여부 / 재개 여부.
 
 **주의:**
+
 - 화면에 토큰 초과가 아닌 다른 증상(멈춤, 크래시, 무한 루프 등)이 보이면 `/compact`를 쓰지 않는다. 24장 BLOCKED 기준(멈춘 워커, 동일 실패 반복)에 따라 처리한다.
 - **같은 태스크에서 `/compact` 후 재개를 3회 이상 반복해도 다시 토큰 초과가 나면**, 그 태스크(또는 세부 기능) 범위가 너무 크다는 신호다. 무리하게 압축을 반복하지 말고 `BLOCKED`로 전환해 Planning/Architecture에게 더 작게 재분해하도록 요청한다(5.3 참고).
 
@@ -922,3 +977,4 @@ orca orchestration dispatch --task <task_id> --to <워커핸들> --from <코디�
 23. 완료된 티켓은 삭제하지 않고 Close로 이력을 보존한다.
 24. 사용자 질문에는 먼저 한글로 답하고 나서 작업을 진행한다.
 25. 모든 문서와 보고는 한글로 작성한다.
+
