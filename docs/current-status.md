@@ -10,16 +10,15 @@
 
 | 워크스페이스 | 경로 | 역할 | 현재 상태 |
 |---|---|---|---|
-| `backend` | `/Users/joy/orca/workspaces/vibe-ai-team/backend` | 백엔드 구현(B그룹) | 생성됨, 아직 미사용(Epic 1 이관 대기) |
+| `backend` | `/Users/joy/orca/workspaces/vibe-ai-team/backend` | 백엔드 구현(B그룹) | PR #41 머지 확인 후 `winter0123/investor-management` 브랜치 생성(origin/main 기준, Epic 1 코드 포함). Epic 2 SF 분해 착수 중 |
 | `frontend` | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` | 프론트 구현(B그룹) | 생성됨, 아직 미사용 |
 | `planning` | `/Users/joy/orca/workspaces/vibe-ai-team/planning` | 조사·기획·설계(A그룹) | 사용 중, main 기준 유지 |
-| `account-authentication` (전환기) | `/Users/joy/orca/workspaces/vibe-ai-team/account-authentication` | Epic 1 구현 (정책 도입 전 시작) | Epic 1 완료, PR #41 사람 승인 대기 중. 승인·머지 후 `backend`로 이관 예정 |
 
 ## Epic 진행 현황 (로드맵 16개 Epic 기준)
 
 | # | Epic | epic-slug | 상태 |
 |---|---|---|---|
-| 1 | 로그인 계정과 인증·인가 | account-authentication | **구현 완료**(SF-1~6, 34개 테스트 통과), PR #41 사람 승인 대기 |
+| 1 | 로그인 계정과 인증·인가 | account-authentication | **구현 완료 및 머지됨**(SF-1~6, 34개 테스트 통과, PR #41). `account-authentication` 워크스페이스는 `backend`로 이관 완료, worktree 정리됨 |
 | 2 | 투자자 관리 | investor-management | **Phase 0 전체 완료**(조사+spec+architecture, D-I-001~005 결정 포함), 머지됨. 다음: SF 분해 |
 | 3 | 증권사 기준정보 관리 | securities-firm-catalog | **Phase 0 전체 완료**(조사+spec+architecture), PR #50 병합됨. 다음: SF 분해 |
 | 4 | 증권계좌 관리 | securities-account-management | **Phase 0 전체 완료**(조사+spec+architecture), PR #51 병합됨. 다음: SF 분해 |
@@ -36,12 +35,12 @@
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W15-001~006 최신화 포함), PR #62 병합됨. 다음: SF 분해 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | **Phase 0 전체 완료**(조사+spec+architecture, D-W16-001~007 최신화 포함, 빈 결과 404→200 오류 수정), PR #63 병합됨. 다음: SF 분해 |
 
-**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2~16은 Phase 0 전체 완료, 모두 병합됨(PR #42~#63). 다음 단계는 각 Epic의 SF 분해 및 실제 구현 착수.**
+**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 완료·머지됨. Epic 2~16은 Phase 0 전체 완료, 모두 병합됨(PR #42~#63). 다음 단계는 Epic 2부터 순차적으로 SF 분해 및 실제 구현 착수.**
 
 ## 다음 단계 후보
-1. Epic 1 PR #41 사람 승인 및 머지 확인 → `account-authentication` 워크스페이스를 `backend`로 정식 이관
-2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 (backend 워크스페이스, Epic 1 PR 머지 확인 후)
-3. Epic 3~16도 순차적으로 SF 분해 및 구현 착수 (backend/frontend 워크스페이스, opencode zen 무료 모델 활용 지속). 프론트엔드 Epic(13~16)은 Epic 1(account-authentication) 및 백엔드 Epic들의 실제 구현이 먼저 완료되어야 API 연동 가능
+1. ~~Epic 1 PR #41 사람 승인 및 머지~~ — **완료(2026-09-20 23:10 UTC)**. `backend` 워크스페이스에 `winter0123/investor-management` 브랜치 생성(origin/main 기준, Epic 1 코드 포함), `account-authentication` worktree 정리 완료.
+2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 — 진행 중
+3. Epic 3~12는 backend 워크스페이스에서 Epic 2 완료 후 순차 진행, Epic 13~16은 frontend 워크스페이스에서 대응 백엔드 Epic 완료 후 순차 진행 (opencode zen 무료 모델 활용 지속)
 
 ## 알려진 이슈/결정 사항
 - Epic 1 구현 중 SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드 등 3건의 Spring Security 버그를 Master가 직접 진단하여 수정 지시함(자세한 내용은 `docs/work-log/account-authentication.md` 참고).
