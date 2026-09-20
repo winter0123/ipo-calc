@@ -538,6 +538,7 @@ main
 > **사고 기록 및 재발 방지 2(2026-09-20, 워커 터미널을 `--worktree` 없이 생성한 사고):** SF-2 워커용 터미널을 `orca terminal create --json`(워크스페이스 미지정)으로 만든 뒤, 셸 안에서 수동으로 `cd /Users/joy/orca/workspaces/vibe-ai-team/backend-3`만 하고 그 위에서 opencode를 띄웠다. 실제 파일 작업(git add/commit 대상 디렉토리)은 backend-3에 정확히 반영됐지만, **Orca 자체의 터미널 메타데이터는 계속 `worktreeId: .../IdeaProjects/vibe-ai-team`(메인 워크스페이스), `branch: refs/heads/main`으로 등록된 채로 남아있었다** — `orca terminal show`로 확인 전까지 발견 못함. 사용자가 "왜 main 워크스페이스에서 돌아가냐"고 물어서 발견.
 >   - **원인**: `orca terminal create`는 `--worktree` 플래그를 생략하면 호출한 컨텍스트(코디네이터 자신의 워크스페이스, 즉 메인 저장소)에 터미널을 등록한다. 그 안에서 `cd`로 디렉토리만 옮기는 것은 OS 셸 레벨에서는 유효하지만(그래서 git 작업 자체는 올바른 디렉토리에 반영됨), Orca의 워크트리 소속 정보는 갱신되지 않는다.
 >   - **재발 방지 규칙**: 워커용 터미널을 만들 때는 **반드시 `orca terminal create --worktree path:<워크스페이스 절대경로> --json`으로 워크스페이스를 생성 시점에 지정한다.** `cd`로 대신하지 않는다. 필요하면 `--command "opencode --model <id>"`까지 한 번에 넘겨서 별도의 `terminal send`도 줄인다. 터미널 생성 직후 `orca terminal show --terminal <handle> --json`으로 `worktreePath`가 의도한 워크스페이스와 일치하는지 확인한다.
+>   - **연관 주의사항**: 터미널을 `--worktree path:<경로>`로 올바르게 만든 뒤 `orca orchestration worker-start`를 호출할 때 `--worktree current`를 쓰면 안 된다 — `current`는 "이 터미널이 속한 워크트리"가 아니라 "코디네이터 자신의 현재 워크트리"(메인 저장소)로 해석되어 `terminal_worktree_mismatch` 에러가 난다. `worker-start`에도 터미널과 동일한 `--worktree path:<경로>`를 명시한다.
 
 **Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
