@@ -10,6 +10,7 @@
 - 2026-09-20 — `docs/setup-history.md` 신설 — 이유: 설치/환경 이력을 한 곳에 모아 서버 이전·복구를 빠르게 하기 위함(사용자 지시)
 - 2026-09-20 — Gradle 9.7.1 설치 (Homebrew, `brew install gradle`) — 이유: SF-1(프로젝트 초기 셋업)에서 `backend/`의 Gradle Wrapper(gradle-wrapper.jar)를 생성하려면 시스템 Gradle이 필요했음. 부수 설치: gradle-completion, openjdk@25(Gradle 자체 구동용, 프로젝트 빌드는 여전히 Java 21 사용), glib/harfbuzz/xz/little-cms2(의존성) — 명령: `brew install gradle`
 - 2026-09-20 — `backend/` Gradle Wrapper 생성 — 명령: `cd backend && gradle wrapper`(설치된 시스템 Gradle 9.7.1 버전 그대로 사용, JAVA_HOME을 Java 21로 지정) — 이후 `gradle` 시스템 설치 없이 `./gradlew`만으로 빌드 가능. `./gradlew build --dry-run`으로 설정 단계 통과 확인(BUILD SUCCESSFUL). Gradle 10 호환성 관련 deprecation 경고가 있어 추후 재확인 필요.
+- 2026-09-20 — **PostgreSQL 호스트 포트를 5432 → 5433으로 변경**(사용자 결정) — 이유: SF-2 테스트(`@SpringBootTest`) 실행 중 이 프로젝트와 무관한 다른 Postgres 컨테이너(`postgres-db`, postgis 이미지, 다른 프로젝트용으로 추정)가 이미 호스트 포트 5432를 점유하고 있어 `vibe-ai-team-postgres` 컨테이너가 한 번도 기동되지 못했음을 발견. 컨테이너 내부 포트는 5432 그대로, 호스트 노출 포트만 5433으로 변경(`docker-compose.yml`). 다른 컨테이너는 손대지 않음. `backend/src/main/resources/application.yml`의 datasource URL도 `localhost:5433`으로 함께 수정 필요(SF-2 구현 워커가 반영).
 
 ---
 
@@ -23,7 +24,7 @@
 3. `direnv allow` (direnv 미설치 시 `.envrc`의 `export`를 셸 프로파일에 직접 반영)
 
 ### 인프라 기동
-4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `vibe-ai-team-postgres`, DB명 `vibe_ai_team`, 사용자 `vibe`, 포트 `5432`, 볼륨 `postgres_data`)
+4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `vibe-ai-team-postgres`, DB명 `vibe_ai_team`, 사용자 `vibe`, **호스트 포트 `5433`**(컨테이너 내부는 5432, 다른 프로젝트의 컨테이너와 충돌 회피), 볼륨 `postgres_data`). 기동 전 `docker ps`로 5433 포트가 비어있는지 먼저 확인 권장.
 
 ### 백엔드
 5. Gradle 설치: `brew install gradle` (시스템에 Gradle이 없으면 `backend/`의 Gradle Wrapper가 이미 커밋되어 있으므로 보통 불필요 — wrapper가 없거나 재생성해야 할 때만 설치)
