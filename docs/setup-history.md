@@ -8,6 +8,8 @@
 
 - 2026-09-16 — PostgreSQL 17 설치 (Docker Compose) — 이유: 메인 DB — 명령: `docker compose up -d postgres` (커밋 `8886c41`)
 - 2026-09-20 — `docs/setup-history.md` 신설 — 이유: 설치/환경 이력을 한 곳에 모아 서버 이전·복구를 빠르게 하기 위함(사용자 지시)
+- 2026-09-20 — Gradle 9.7.1 설치 (Homebrew, `brew install gradle`) — 이유: SF-1(프로젝트 초기 셋업)에서 `backend/`의 Gradle Wrapper(gradle-wrapper.jar)를 생성하려면 시스템 Gradle이 필요했음. 부수 설치: gradle-completion, openjdk@25(Gradle 자체 구동용, 프로젝트 빌드는 여전히 Java 21 사용), glib/harfbuzz/xz/little-cms2(의존성) — 명령: `brew install gradle`
+- 2026-09-20 — `backend/` Gradle Wrapper 생성 — 명령: `cd backend && gradle wrapper`(설치된 시스템 Gradle 9.7.1 버전 그대로 사용, JAVA_HOME을 Java 21로 지정) — 이후 `gradle` 시스템 설치 없이 `./gradlew`만으로 빌드 가능. `./gradlew build --dry-run`으로 설정 단계 통과 확인(BUILD SUCCESSFUL). Gradle 10 호환성 관련 deprecation 경고가 있어 추후 재확인 필요.
 
 ---
 
@@ -23,8 +25,10 @@
 ### 인프라 기동
 4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `vibe-ai-team-postgres`, DB명 `vibe_ai_team`, 사용자 `vibe`, 포트 `5432`, 볼륨 `postgres_data`)
 
-### 백엔드 (아직 스캐폴딩 없음 — 2026-09-20 기준)
-5. 2026-09-20에 기존 Java/Spring Boot 스캐폴딩(`backend/`)을 삭제하고 처음부터 다시 시작하기로 결정함(과거 세션 산출물, 미승인 상태였음). Epic 1(account-authentication) 구현이 시작되면 이 절차에 실제 빌드/실행 명령을 추가한다.
+### 백엔드
+5. Gradle 설치: `brew install gradle` (시스템에 Gradle이 없으면 `backend/`의 Gradle Wrapper가 이미 커밋되어 있으므로 보통 불필요 — wrapper가 없거나 재생성해야 할 때만 설치)
+6. `cd backend && ./gradlew build` — Java 21, Spring Boot 3.3.4 기반 프로젝트 빌드(현재 `winter0123/account-authentication` 브랜치에서 진행 중, main에는 아직 merge 안 됨)
+7. 참고: 2026-09-20에 기존 `backend/` 스캐폴딩(과거 세션 산출물, 미승인 상태)을 한 번 삭제하고 Epic 1(account-authentication) SF-1에서 처음부터 재생성함.
 
 ### 프론트엔드
 6. 아직 프론트엔드 코드 없음. 생성되면 `npm install && npm run dev` 형태로 이 절차에 추가한다.
