@@ -2,7 +2,7 @@ spring:
   application:
     name: account-authentication
   datasource:
-    url: jdbc:postgresql://localhost:5432/vibe_ai_team
+    url: jdbc:postgresql://localhost:5433/vibe_ai_team
     username: vibe
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver

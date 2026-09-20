@@ -88,3 +88,48 @@ SF-2: Account 도메인 및 보안 기초 설정 (task_e3810229f545) 착수.
 
 ### 참고: 워커의 work-log 작성 방식 문제
 구현 워커가 이 파일을 이어쓰지 않고 전체를 자기 내용으로 덮어써서 Phase 0 기록이 유실될 뻔함(Master가 이 커밋 전에 병합·복구). AGENTS.md에 "work-log는 항상 append, 기존 내용 유지 후 새 섹션 추가"를 명시적으로 추가함.
+
+---
+
+## 2026-09-20 — SF-2: Account 도메인 및 보안 기초 설정 (task_e3810229f545)
+
+### 완료된 작업
+- Test 워커(Laguna S 2.1): 실패 테스트 4개 작성 — AccountTest, AccountRepositoryTest, SecurityConfigTest, CustomUserDetailsServiceTest (컴파일 실패로 red 단계 확인)
+- Implementation 워커(Nemotron 3 Ultra): 테스트를 통과시키는 프로덕션 코드 작성
+  - `domain/model/account/Account.java` — JPA 엔티티, Lombok 빌더
+  - `repository/account/AccountRepository.java` — findByEmail, existsByEmail
+  - `src/main/resources/db/migration/V1__init_account.sql` — accounts 테이블 + 인덱스
+  - `config/security/SecurityConfig.java` — SecurityFilterChain, PasswordEncoder(DelegatingPasswordEncoder 수동 구성)
+  - `service/auth/CustomUserDetailsService.java` — UserDetailsService 구현
+
+### 중간에 발생한 문제 3건 (모두 Master가 진단·해결)
+1. **DB 포트 충돌**: 이 프로젝트와 무관한 다른 postgres 컨테이너가 호스트 포트 5432를 이미 점유 중이라 `vibe-ai-team-postgres`가 한 번도 기동되지 못함. 사용자 확인 후 호스트 포트를 5433으로 변경(`docker-compose.yml`, `docs/setup-history.md` 기록). `application.yml`의 datasource URL도 5433으로 수정.
+2. **DB_PASSWORD 미전달**: Epic worktree에는 `.envrc`가 없어(gitignore 대상이라 worktree 생성 시 자동 복사 안 됨) 워커 터미널에 `DB_PASSWORD` 환경변수가 전달되지 않음. main 워크트리의 `.envrc`를 epic worktree에도 복사해 해결(둘 다 커밋 대상 아님).
+3. **Flyway가 PostgreSQL 17 미지원**: Spring Boot 3.3.4가 관리하는 flyway-core 10.10.0이 PostgreSQL 17을 인식하지 못함(`Unsupported Database: PostgreSQL 17.11`). `flyway-core:10.20.1`로 버전을 올리고, Flyway 10부터 별도 모듈로 분리된 `flyway-database-postgresql:10.20.1`을 추가 의존성으로 넣어 해결.
+4. (부수) `@DataJpaTest`가 기본적으로 임베디드 DB로 치환을 시도하다 실패 → `@AutoConfigureTestDatabase(replace = Replace.NONE)` + `@ActiveProfiles("test")` + `application-test.yml`로 실제 개발용 Postgres를 그대로 사용하도록 구성.
+
+### 알려진 이슈 (다음 리뷰 단계에서 확인 필요)
+- `backend/src/test/resources/application-test.yml`에 개발용 DB 비밀번호(`vibe_local_password`)가 평문으로 들어가 있음. `docker-compose.yml`에도 이미 같은 값이 평문으로 있어 신규 노출 위험 증가는 적지만, 보안 리뷰(C그룹) 단계에서 `${DB_PASSWORD}` 환경변수 참조로 통일할지 확인 필요.
+- 테스트가 Testcontainers(이미 테스트 의존성에는 포함됨)를 쓰지 않고 로컬에 떠 있는 실제 dev DB에 의존함 — CI 환경이나 여러 명이 동시에 테스트를 돌릴 때 격리가 안 될 수 있음. 후속 개선 후보.
+
+### 실행한 검증
+- `./gradlew test --tests "*AccountTest" --tests "*AccountRepositoryTest" --tests "*SecurityConfigTest" --tests "*CustomUserDetailsServiceTest"` → 4개 클래스, 14개 테스트 전부 통과 (Master가 XML 결과 직접 확인)
+- `./gradlew test` (전체) → BUILD SUCCESSFUL (Master 직접 재실행 재확인)
+
+### 결과
+PASS — SF-2 완료.
+
+### 변경된 파일
+- backend/build.gradle.kts (flyway 버전/모듈 추가)
+- backend/src/main/resources/application.yml (datasource URL 포트 수정)
+- backend/src/main/java/com/vibeaiteam/accountauthentication/domain/model/account/Account.java
+- backend/src/main/java/com/vibeaiteam/accountauthentication/repository/account/AccountRepository.java
+- backend/src/main/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfig.java
+- backend/src/main/java/com/vibeaiteam/accountauthentication/service/auth/CustomUserDetailsService.java
+- backend/src/main/resources/db/migration/V1__init_account.sql
+- backend/src/test/resources/application-test.yml (신규)
+- backend/src/test/java/.../AccountRepositoryTest.java (테스트 DB 설정 어노테이션 추가)
+- docker-compose.yml, docs/setup-history.md (포트 변경, main에 커밋)
+
+### 다음 단계
+SF-3: 회원가입 API (task_5fb89b0e8bc5) 착수.
