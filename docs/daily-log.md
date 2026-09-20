@@ -10,3 +10,9 @@
   - 조사 과정에서 무료 모델(Nemotron 3 Ultra/Super, Laguna S 2.1 등)의 반복적 stall(도구 호출 없이 "완료하겠다"고만 말하고 멈춤) 다수 발생 — Master가 매번 `git diff`/`terminal read`로 실제 진행 상황을 확인한 뒤에만 개입(interrupt → 모델 교체 재시도)함.
   - Epic 14(web-subscription-workflow), Epic 15(web-sale-profit-workflow) 조사 초안이 "실시간 결제/거래 처리"를 전제로 작성되는 오류 발견 — 이 서비스는 실제로는 이미 완료된 청약·매도 결과를 사후 기록하는 서비스라는 로드맵 범위에 맞게 Master가 직접 수정.
 - `docs/current-status.md`, `docs/daily-log.md` 신규 생성(9.2 요구사항 이행).
+
+## 2026-09-21
+
+- Epic 2(investor-management) Phase 0 전체(기획 spec + 설계 architecture) 완료 및 병합(PR #49). Master 결정 사항 D-I-001~005 기록(`docs/work-log/investor-management.md`) — 특히 D-I-001: 초안의 UUID 제안을 기존 Account 엔티티(Long IDENTITY)와의 일관성을 위해 Long ID로 최종 결정.
+- Epic 3(securities-firm-catalog) spec 작성 완료 및 병합. 초안의 논리 오류(DELETE 엔드포인트가 연결된 계좌 있으면 실패하도록 잘못 작성됨 — 실제로는 논리 삭제이므로 연결 여부와 무관하게 항상 성공해야 함)를 Master가 발견해 수정.
+- **OpenRouter 무료 모델 계정 전체에 일일 사용량 한도(`free-models-per-day-high-balance`) 도달** — Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1 등 서로 다른 프로바이더 3종 모두에서 동일한 오류 확인, 특정 모델이 아닌 계정 단위 일일 한도로 판단됨. Epic 3 architecture 작업이 이 시점에서 막힘 — 10분 간격으로 자동 재시도하는 루프를 가동해 한도가 풀리는 즉시 이어서 진행하도록 설정.
