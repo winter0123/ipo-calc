@@ -33,3 +33,5 @@
 - Epic 13(web-account-setup) Phase 0 완료(PR #60) — 첫 프론트엔드 Epic. 조사 문서가 투자자/증권계좌 등록 API 경로를 "미정"으로 남겼으나 Epic 2/4 spec 완성으로 확정되어 D-W13-001~006에 반영. 워커가 회원가입 비밀번호 검증 규칙을 실제 account-authentication spec과 다르게 단순화한 것을 Master가 수정. architecture는 FSD 레이어 구조로 설계, 미확인 프론트 라이브러리는 "package.json 확인 후 결정" 원칙 적용.
 - Epic 14(web-subscription-workflow) Phase 0 완료(PR #61) — D-W14-001~006으로 청약/배정 등록 화면 분리, 백엔드에 없는 "최소 청약 단위" 규칙 배제, 서버 검증 우선 원칙 확정. depositAmount "0 초과"→"0 이상" 수정(증거금 0원 허용). architecture는 Epic 13의 FSD entities/shared 재사용, 워커가 investment-query-api 필드명(quantity→subscriptionQuantity) 불일치를 스스로 지적해 Master가 확인 후 수정.
 - **마일스톤**: Epic 2~14 전체 Phase 0 완료. 로드맵 16개 Epic 중 14개 완료, 남은 것은 Epic 15(웹 매도·비용·수익)/16(웹 조회·대시보드)뿐.
+- Epic 15(web-sale-profit-workflow) Phase 0 완료(PR #62) — 조사 문서가 Epic 10에서 이미 폐기된 CalculationTrace/취득가액 선택옵션을 인용해 D-W15-001~006으로 정렬. quantity/price 검증 규칙이 반대로 작성된 것을 실제 sale-management spec 확인 후 수정. architecture는 D-W15-001(서버 미저장)과 TanStack Query 캐싱(프론트 표준 동작)을 명확히 구분 설명.
+- **마일스톤**: 로드맵 16개 Epic 중 15개 완료. 남은 것은 Epic 16(웹 조회·대시보드)뿐.
