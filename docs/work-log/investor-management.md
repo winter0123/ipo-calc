@@ -43,3 +43,29 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 4. **SF-4: 투자자 목록/상세 조회 API** (GET /investors, GET /investors/{id}) — SecurityUtils 기반 계정 소유권 검증(403) 포함
 5. **SF-5: 투자자 수정 API** (PATCH /investors/{id})
 6. **SF-6: 투자자 비활성화 API** (DELETE /investors/{id}, soft delete, 멱등)
+
+## 2026-09-21 — SF-2 (Investor 엔티티/Repository/마이그레이션) 구현 완료
+
+### 완료 작업 (Test-First: RED 확인 → GREEN 확인)
+- [x] `src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` 작성(신규, 4개 테스트). RED(컴파일 실패) 먼저 확인 후 구현.
+  - 기존 `AccountRepositoryTest` 패턴(`@DataJpaTest` + `@AutoConfigureTestDatabase(NONE)` + `@ActiveProfiles("test")`, 로컬 dev Postgres) 동일 적용.
+  - 형제 패키지(`com.vibeaiteam.investormanagement`)라 `@SpringBootConfiguration`을 못 찾는 문제가 있어 `@ContextConfiguration(classes = AccountAuthenticationApplication.class)` 추가로 해결.
+- [x] `src/main/java/com/vibeaiteam/investormanagement/domain/model/investor/Investor.java` 신설
+  - `id` Long `@GeneratedValue(strategy = GenerationType.IDENTITY)` (Account.java와 동일)
+  - `accountId` Long FK / `displayName` String NOT NULL(최대 50자) / `relationship` String nullable(20자) / `status` String NOT NULL `@Builder.Default "ACTIVE"` / `deletedAt` LocalDateTime nullable / `createdAt`·`updatedAt` LocalDateTime(애플리케이션 설정, `updatable=false`는 createdAt에만)
+- [x] `src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` 신설 — `extends JpaRepository<Investor, Long>`, `findByAccountIdAndStatus(Long, String)` 추가
+- [x] `src/main/resources/db/migration/V2__init_investor.sql` 신설 — PostgreSQL 문법만 사용(MySQL AUTO_INCREMENT/ENGINE/ON UPDATE 금지 준수). 유니크 제약 없음(D-I-004).
+
+### 확인 사항 (검증 결과)
+- `./gradlew test` 전체 GREEN. 총 41개 테스트, 0 실패 0 에러(기존 37개 + 신규 4개).
+- **주의**: `DB_PASSWORD` 환경변수가 없으면 기존 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)가 "password authentication failed"로 실패한다. `DB_PASSWORD=vibe_local_password`를 지정하고 실행해야 전체 GREEN이 나온다(SF-1 이전부터 있던 환경 이슈, 본 SF 변경과 무관).
+- docker exec로 실제 DB 확인: `investors` 테이블(BIGINT identity PK, FK accounts(id), VARCHAR(50)/20/10, status DEFAULT 'ACTIVE', 인덱스 2개, 유니크 제약 없음) 정상 생성, flyway_schema_history version=2 success=t.
+
+### 변경 파일
+- `backend/src/main/java/com/vibeaiteam/investormanagement/domain/model/investor/Investor.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` (신규)
+- `backend/src/main/resources/db/migration/V2__init_investor.sql` (신규)
+- `backend/src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` (신규)
+
+### 남은 작업
+- SF-3 투자자 등록 API (POST /investors)부터 Controller/Service 작성. 본 SF에서는 Controller/Service 미작성(지시 준수).
