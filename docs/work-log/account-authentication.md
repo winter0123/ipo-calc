@@ -133,3 +133,40 @@ PASS — SF-2 완료.
 
 ### 다음 단계
 SF-3: 회원가입 API (task_5fb89b0e8bc5) 착수.
+
+---
+
+## 2026-09-20 — SF-3: 회원가입 API (task_5fb89b0e8bc5)
+
+### 완료된 작업
+- Test 워커: `AccountControllerTest.java` 작성 (AC-001~003 + 세션 생성). 5개 테스트 모두 예상대로 실패(Controller 없음/404) 확인.
+- Implementation 워커: 테스트를 통과시키는 프로덕션 코드 작성
+  - `controller/AccountController.java` — POST /accounts
+  - `controller/dto/` — SignupRequest, SignupResponse, ErrorResponse
+  - `exception/` — DuplicateEmailException, ValidationFailedException, GlobalExceptionHandler(@RestControllerAdvice)
+  - `application/service/SignupService.java` — 중복 이메일 검증, 비밀번호 해시, 저장, 세션 생성
+  - `config/security/SecurityConfig.java` — `/accounts`에 CSRF 예외 추가
+
+### 중간에 발생한 문제 3건 (Implementation 워커가 스스로 진단·수정)
+1. **403 Forbidden**: `/accounts`가 CSRF 보호 대상이라 POST 요청이 차단됨 → SecurityConfig에 CSRF 예외 경로 추가로 해결.
+2. **세션 쿠키 미발급**: `HttpSession`을 직접 생성해도 Spring Security의 `SecurityContextRepository`에 컨텍스트를 저장하지 않으면 세션이 제대로 커밋되지 않음 → `securityContextRepository.saveContext(...)` 호출로 해결.
+3. **한글 에러 메시지 인코딩 깨짐**: 기본 응답 Content-Type에 UTF-8 charset이 명시되지 않아 MockMvc가 ISO-8859-1로 디코딩 → `GlobalExceptionHandler`에서 `MediaType("application","json",StandardCharsets.UTF_8)`을 명시적으로 지정해 해결.
+- 이번 SF에서는 세 문제 모두 워커가 스스로 원인을 정확히 진단하고 수정함(Master 개입 없음). Nvidia 쪽 일시 과부하(503)로 몇 차례 재시도가 있었으나 자동 복구됨.
+
+### 실행한 검증
+- `./gradlew test --tests "*AccountControllerTest"` → 5개 테스트 전부 통과
+- `./gradlew test` (전체) → BUILD SUCCESSFUL, 19개 테스트 전부 통과 (Master 직접 재실행 재확인)
+
+### 결과
+PASS — SF-3 완료.
+
+### 변경된 파일
+- backend/src/main/java/.../controller/AccountController.java (신규)
+- backend/src/main/java/.../controller/dto/{SignupRequest,SignupResponse,ErrorResponse}.java (신규)
+- backend/src/main/java/.../exception/{DuplicateEmailException,ValidationFailedException,GlobalExceptionHandler}.java (신규)
+- backend/src/main/java/.../application/service/SignupService.java (신규)
+- backend/src/main/java/.../config/security/SecurityConfig.java (CSRF 예외 추가)
+- backend/src/test/java/.../controller/AccountControllerTest.java (신규)
+
+### 다음 단계
+SF-4: 로그인/로그아웃 API (task_19a56f7ed4e8) 착수.

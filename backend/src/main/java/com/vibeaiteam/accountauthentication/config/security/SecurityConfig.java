@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .maxSessionsPreventsLogin(false)
             )
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**")
+                .ignoringRequestMatchers("/api/**", "/accounts")
             )
             .rememberMe(remember -> remember
                 .key("account-authentication-remember-me-key")
