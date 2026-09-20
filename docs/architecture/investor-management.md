@@ -1,0 +1,225 @@
+# 아키텍처 설계: 투자자 관리 (Epic 2 Phase 0)
+
+## 아키텍처 개요 (패키지 구조)
+
+Spring Boot 백엔드는 관심사 분리 원칙에 따라 다음과 같은 레이어 구조를 따른다:
+
+```
+controller
+application/service
+domain
+repository
+infrastructure
+```
+
+- **controller**: HTTP 요청 처리, 입력 검증, 응답 매핑. 복잡한 업무 규칙은 포함하지 않음.
+- **application/service**: 업무 규칙 유스케이스 오케스트레이션, 트랜잭션 경계. 계정 소유권 검증 로직 포함.
+- **domain**: 엔티티, 밸류오브젝트, 도메인 이벤트, 불변식. Investor 엔티티 정의.
+- **repository**: 데이터 접근 계층, Spring Data JPA 인터페이스 정의.
+- **infrastructure**: 외부 시스템 연동, 설정, 공통 인프라 컴포넌트.
+
+특히 투자자 관리 관련 컴포넌트는 다음과 같이 구성한다:
+- `controller.investor`: InvestorController
+- `service.investor`: InvestorService
+- `domain.model.investor`: Investor 엔티티
+- `repository.investor`: InvestorRepository
+- `util.security`: SecurityUtils (계정 소유권 검증 헬퍼)
+
+## 데이터 흐름 (투자자 등록/조회/수정/비활성화 각각을 간단히)
+
+### 투자자 등록 흐름
+1. 사용자가 투자자 등록 폼에 표시명, 관계 입력 후 제출
+2. Controller가 입력값 검증 (표시명 필수, 길이 제한)
+3. Service에서 현재 인증된 계정 ID 획득 (SecurityContextHolder)
+4. Service에서 중복 검사 (선택적) 및 Investor 엔티티 생성
+5. Investor 엔티티 저장 (InvestorRepository.save)
+6. 저장된 Investor 정보 반환
+
+### 투자자 목록 조회 흐름
+1. 사용자가 GET /investors 요청 (선택적 status 파라미터 포함)
+2. Controller가 요청 파라미터 검증
+3. Service에서 현재 인증된 계정 ID 획득
+4. Service에서 해당 계정의 투자자 목록 조회 (InvestorRepository.findByAccountIdAndStatus)
+5. 투자자 목록 반환
+
+### 투자자 상세 조회 흐름
+1. 사용자가 GET /investors/{id} 요청
+2. Controller가 경로 파라미터 UUID 형식 검증
+3. Service에서 현재 인증된 계정 ID 획득
+4. Service에서 투자자 조회 및 계정 소유권 검증 (InvestorRepository.findById + account_id 확인)
+5. 소유권 확인 실패 시 403 Forbidden 반환
+6. 성공 시 투자자 정보 반환
+
+### 투자자 수정 흐름
+1. 사용자가 PATCH /investors/{id} 요청에 표시명, 관계 입력
+2. Controller가 입력값 검증 (표시명 필수, 길이 제한)
+3. Service에서 현재 인증된 계정 ID 획득
+4. Service에서 투자자 조회 및 계정 소유권 검증
+5. 소유권 확인 성공 시 표시명, 관계 업데이트 및 저장
+6. 업데이트된 투자자 정보 반환
+
+### 투자자 비활성화 흐름 (Soft Delete)
+1. 사용자가 DELETE /investors/{id} 요청
+2. Service에서 현재 인증된 계정 ID 획득
+3. Service에서 투자자 조회 및 계정 소유권 검증
+4. 소유권 확인 성공 시 status를 INACTIVE로 변경 및 deleted_at 설정
+5. 저장 및 성공 메시지 반환
+
+## API 설계 (엔드포인트/요청/응답/에러)
+
+### 엔드포인트 목록
+1. POST /investors - 투자자 등록
+2. GET /investors - 계정 소유 투자자 목록 조회
+3. GET /investors/{id} - 투자자 상세 조회
+4. PATCH /investors/{id} - 투자자 수정
+5. DELETE /investors/{id} - 투자자 비활성화 (soft delete)
+
+### 요청/응답 DTO
+
+#### 투자자 등록 요청 (POST /investors)
+```json
+{
+  "display_name": "표시명",
+  "relationship": "SELF/SPOUSE/PARENT/CHILD/OTHER (선택)"
+}
+```
+
+#### 투자자 등록 응답 (성공)
+```json
+{
+  "id": "투자자 UUID",
+  "display_name": "표시명",
+  "account_id": "계정 ID (FK)",
+  "status": "ACTIVE",
+  "deleted_at": null,
+  "created_at": "ISO 8601 datetime",
+  "updated_at": "ISO 8601 datetime"
+}
+```
+
+#### 투자자 목록 조회 응답 (성공)
+```json
+[
+  {
+    "id": "투자자 UUID",
+    "display_name": "표시명",
+    "account_id": "계정 ID (FK)",
+    "status": "ACTIVE/INACTIVE",
+    "deleted_at": "null 또는 ISO 8601 datetime",
+    "created_at": "ISO 8601 datetime",
+    "updated_at": "ISO 8601 datetime"
+  }
+]
+```
+
+#### 투자자 상세 조회 응답 (성공)
+```json
+{
+  "id": "투자자 UUID",
+  "display_name": "표시명",
+  "account_id": "계정 ID (FK)",
+  "status": "ACTIVE/INACTIVE",
+  "deleted_at": "null 또는 ISO 8601 datetime",
+  "created_at": "ISO 8601 datetime",
+  "updated_at": "ISO 8601 datetime"
+}
+```
+
+#### 투자자 수정 요청 (PATCH /investors/{id})
+```json
+{
+  "display_name": "새 표시명 (선택)",
+  "relationship": "새 관계 (선택)"
+}
+```
+
+#### 투자자 수정 응답 (성공)
+```json
+{
+  "id": "투자자 UUID",
+  "display_name": "수정된 표시명",
+  "account_id": "계정 ID (FK)",
+  "status": "ACTIVE/INACTIVE",
+  "deleted_at": "null 또는 ISO 8601 datetime",
+  "created_at": "ISO 8601 datetime",
+  "updated_at": "수정된 시간 ISO 8601 datetime"
+}
+```
+
+#### 투자자 비활성화 응답 (성공)
+```json
+{
+  "message": "투자자가 비활성화되었습니다."
+}
+```
+
+### 에러 응답 형식 (공통)
+```json
+{
+  "error": "ERROR_CODE",
+  "message": "사용자에게 표시할 메시지"
+}
+```
+
+#### 주요 에러 코드
+- VALIDATION_ERROR: 입력값 검증 실패 (표시명 누락, 길이 초과 등)
+- FORBIDDEN: 계정 소유권 없음 (다른 계정의 투자자 접근 시도)
+- NOT_FOUND: 투자자를 찾을 수 없음
+
+## DB 설계 (테이블/컬럼/제약)
+
+### Investor 테이블
+| 컬럼명 | 타입 | 제약 | 설명 |
+|--------|------|------|------|
+| id | UUID | PK | 투자자 고유 식별자 |
+| account_id | UUID | NOT NULL, FK → accounts.id | 계정 소유 관계 |
+| display_name | VARCHAR(50) | NOT NULL | 투자자 표시명 (실명 또는 호칭) |
+| relationship | VARCHAR(20) | NULL 허용, enum: SELF/SPOUSE/PARENT/CHILD/OTHER | 가족 관계 구분 |
+| status | VARCHAR(10) | NOT NULL, DEFAULT 'ACTIVE' | 투자자 상태 (ACTIVE/INACTIVE) |
+| deleted_at | TIMESTAMP | NULL 허용 | 소프트 삭제 타임스탬프 |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | 수정 일시 |
+
+### 인덱스
+- PRIMARY KEY (id)
+- INDEX idx_investor_account_id (account_id) - 계정별 투자자 조회 성능 최적화
+- INDEX idx_investor_status (status) - 상태별 조회 최적화
+
+### 유니크 제약사항
+- 이름 중복 허용: (account_id, display_name) 유니크 제약 없음 (동명이인 가족 상황 반영)
+- 대안 고려: (account_id, display_name, relationship) 복합 유니크 인덱스 검토 중
+
+### Audit 필드
+- created_at, updated_at: 생성 및 수정 시간 추적
+- deleted_at: 소프트 삭제 시점 추적
+
+## 모듈 소유권
+
+- **Investor 엔티티**: domain.model.investor 패키지 소유
+- **InvestorRepository**: repository.investor 패키지 소유
+- **InvestorController**: controller.investor 패키지 소유
+- **InvestorService**: service.investor 패키지 소유
+- **보안 유틸리티 (SecurityUtils)**: util.security 패키지 소유 (계정 소유권 검증 헬퍼)
+
+## 의존성
+
+새로 추가해야 할 라이브러리:
+- `org.springframework.boot:spring-boot-starter-data-jpa` (Spring Data JPA)
+- `org.hibernate.orm:hibernate-core` (JPA 구현체)
+- 이미 build.gradle.kts에 존재할 가능성이 높으나, 없는 경우 추가 필요
+
+## 리스크
+
+1. **소프트 삭제 처리 복잡도**: 기존 Subscription/Allocation/Sale 등 금융 기록이 Investor FK를 참조하므로, 소프트 삭제 시 참조 무결성 유지 필요
+2. **계정 소유권 검증 누락 위험**: 모든 투자자 관련 엔드포인트에서 계정 소유권 검증을 누락하지 않도록 주의 필요
+3. **이름 중복 정책 혼란**: 동일 계정 내 투자자 이름 중복 허용으로 인한 UI/UX 혼란 가능성
+4. **관계 필드 enum 관리**: 관계 값 확장 시 기존 데이터와의 호환성 유지 필요
+5. **성능 문제**: 계정별 투자자 조회 시 적절한 인덱스 부족으로 인한 성능 저하 가능성
+
+## 결정 필요 사항
+
+1. **투자자 식별자 타입** (D-I-001): UUID 사용 여부 (권장) 또는 BIGINT Auto Increment 대안
+2. **관계 필드 필수 여부** (D-I-002): relationship 필드를 필수로 할지, NULL 허용 선택 필드로 할지
+3. **소프트 삭제 구현 방식** (D-I-003): status 컬럼만으로 할지, deleted_at 타임스탬프 추가할지 (권장: 둘 다 사용)
+4. **이름 중복 방지 전략** (D-I-004): 중복 완전 허용 vs (account_id, display_name) 유니크 제약 vs (account_id, display_name, relationship) 복합 유니크 제약
+5. **비활성화 투자자 이름 재사용 정책** (D-I-005): 비활성화된 투자자 이름 재사용 허용 여부 및 조건
