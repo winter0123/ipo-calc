@@ -531,11 +531,13 @@ main
 
 **Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
+> **주의(git 제약, 2026-09-20 확인):** 같은 저장소의 여러 워크트리에서 **동일한 브랜치를 동시에 체크아웃할 수 없다.** Master의 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)가 항상 `main`을 체크아웃하고 있으므로, backend/frontend/planning 워크스페이스에서 `git checkout main`을 실행하면 오류가 난다. **절대 로컬 `main`을 체크아웃하지 말고, 항상 `origin/main`을 기준으로 새 브랜치를 바로 딴다.**
+
 ```bash
 cd <워크스페이스 경로>
-git checkout main && git pull origin main
-git checkout -b <username>/<epic-slug>          # 구현(backend/frontend)
-git checkout -b <username>/<epic-slug>-research # 기획(planning) — 조사/기획/설계 전용 브랜치
+git fetch origin main
+git checkout -b <username>/<epic-slug> origin/main          # 구현(backend/frontend)
+git checkout -b <username>/<epic-slug>-research origin/main # 기획(planning) — 조사/기획/설계 전용 브랜치
 git push -u origin <username>/<epic-slug>[-research]
 ```
 
@@ -550,12 +552,9 @@ gh pr view <PR번호> --json state,mergedAt
 
 # 2. 해당 B/A그룹 워커 정리 (터미널만 종료, 워크스페이스는 유지)
 orca orchestration worker-release --dispatch <dispatch_id> --json
-
-# 3. 워크스페이스 안에서 main으로 복귀 + 병합된 브랜치 정리 (워크트리 자체는 지우지 않음)
-cd <워크스페이스 경로>
-git checkout main && git pull origin main
-git branch -d <username>/<epic-slug>
 ```
+
+- 병합된 브랜치를 워크스페이스에서 **즉시 정리하지 않아도 된다** — 로컬 `main`을 Master의 메인 저장소가 항상 점유하고 있어 다른 워크트리는 `main`을 체크아웃할 수 없으므로, 대신 **다음 Epic을 착수할 때** 위 "Epic 착수" 절차대로 `git checkout -b <새 브랜치> origin/main`을 실행한다 — 이 명령이 자동으로 이전 브랜치에서 벗어나게 해준다. 그 직후 이전 브랜치를 지운다: `git branch -d <이전 username>/<이전 epic-slug>`.
 
 - **병합이 확인되기 전에는 절대 브랜치를 지우거나 다음 Epic으로 넘어가지 않는다.** 지우면 검증되지 않은 채 사라진 작업이 생길 수 있다.
 - **`backend-2` 같은 임시 예외 워크스페이스만 `orca worktree rm`으로 삭제한다.** 기본 3개(backend/frontend/planning)는 절대 삭제하지 않는다.
