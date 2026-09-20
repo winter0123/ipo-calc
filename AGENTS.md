@@ -535,6 +535,10 @@ main
 >   - **덤으로 확인된 별개 버그**: `orca worktree rm`이 `{"removed": true}`를 반환해도 디렉토리와 레지스트리 항목이 실제로는 남아있던 사례가 있었다(`backend-2`). `rm` 이후에는 항상 `ls`와 `orca worktree list --json`으로 실제로 사라졌는지 재확인하고, 남아있으면 `--force`를 붙여 다시 `rm`한다.
 >   - **참고**: 고정 워크스페이스 경로 이름에 `-2`/`-3` 같은 숫자가 자동으로 붙는 것 자체는(Orca 내부 브랜치 네이밍 충돌 회피) 정상이며 문제가 아니다 — `displayName`이 "backend"로 올바르면 무해하다. 문제는 오직 `parentWorktreeId`가 다른 고정 워크스페이스와 일치하는지 여부다.
 
+> **사고 기록 및 재발 방지 2(2026-09-20, 워커 터미널을 `--worktree` 없이 생성한 사고):** SF-2 워커용 터미널을 `orca terminal create --json`(워크스페이스 미지정)으로 만든 뒤, 셸 안에서 수동으로 `cd /Users/joy/orca/workspaces/vibe-ai-team/backend-3`만 하고 그 위에서 opencode를 띄웠다. 실제 파일 작업(git add/commit 대상 디렉토리)은 backend-3에 정확히 반영됐지만, **Orca 자체의 터미널 메타데이터는 계속 `worktreeId: .../IdeaProjects/vibe-ai-team`(메인 워크스페이스), `branch: refs/heads/main`으로 등록된 채로 남아있었다** — `orca terminal show`로 확인 전까지 발견 못함. 사용자가 "왜 main 워크스페이스에서 돌아가냐"고 물어서 발견.
+>   - **원인**: `orca terminal create`는 `--worktree` 플래그를 생략하면 호출한 컨텍스트(코디네이터 자신의 워크스페이스, 즉 메인 저장소)에 터미널을 등록한다. 그 안에서 `cd`로 디렉토리만 옮기는 것은 OS 셸 레벨에서는 유효하지만(그래서 git 작업 자체는 올바른 디렉토리에 반영됨), Orca의 워크트리 소속 정보는 갱신되지 않는다.
+>   - **재발 방지 규칙**: 워커용 터미널을 만들 때는 **반드시 `orca terminal create --worktree path:<워크스페이스 절대경로> --json`으로 워크스페이스를 생성 시점에 지정한다.** `cd`로 대신하지 않는다. 필요하면 `--command "opencode --model <id>"`까지 한 번에 넘겨서 별도의 `terminal send`도 줄인다. 터미널 생성 직후 `orca terminal show --terminal <handle> --json`으로 `worktreePath`가 의도한 워크스페이스와 일치하는지 확인한다.
+
 **Epic 착수 — 워크스페이스 안에서 브랜치만 새로 판다(워크스페이스를 새로 만들지 않는다)**
 
 > **주의(git 제약, 2026-09-20 확인):** 같은 저장소의 여러 워크트리에서 **동일한 브랜치를 동시에 체크아웃할 수 없다.** Master의 메인 저장소(`/Users/joy/IdeaProjects/vibe-ai-team`)가 항상 `main`을 체크아웃하고 있으므로, backend/frontend/planning 워크스페이스에서 `git checkout main`을 실행하면 오류가 난다. **절대 로컬 `main`을 체크아웃하지 말고, 항상 `origin/main`을 기준으로 새 브랜치를 바로 딴다.**
