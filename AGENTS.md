@@ -756,6 +756,8 @@ orca skills get <skill-name>
 
 **모델 교체 유연성(2026-09-20 사용자 승인):** 22.1 표는 기본 배정이지 절대 고정이 아니다. 배정된 모델이 자주 멈추거나(컨텍스트 초과, upstream timeout 등) 성능이 안 나오면, **역할·작업 종류를 가리지 않고**(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부) 다른 OpenRouter 모델로 바꿔서 진행해도 된다. 단 **모델 ID에 반드시 `free`가 포함되어야 한다**(유료 모델 금지 원칙은 그대로 유지). 교체 시 `opencode models openrouter`로 후보를 확인하고, 어떤 모델에서 어떤 모델로/왜 바꿨는지 work-log에 남긴다.
 
+**OpenRouter 계정 일일 한도 도달 시 대체 경로(2026-09-21 확인, 사용자 지시):** `free-models-per-day-high-balance` 오류는 OpenRouter 계정 전체의 일일 무료 사용량 한도이며, 모델을 바꿔도(Nvidia/Poolside/Google 등 서로 다른 프로바이더 확인됨) 해결되지 않는다. 이 경우 **`opencode/` 프로바이더 자체의 무료 모델**(OpenCode Zen — OpenRouter와 별개의 quota pool)로 전환한다. `opencode models`로 `opencode/`로 시작하는 모델 목록을 확인(예: `opencode/big-pickle`, `opencode/mimo-v2.5-free`, `opencode/ling-3.0-flash-fin-free`, `opencode/nemotron-3-ultra-free` 등, 이름은 실행 전 재확인)하고, `opencode --model opencode/<모델명>`으로 워커를 띄운다. OpenRouter 한도가 풀릴 때까지 이 방식을 기본으로 쓰고, 풀리면 22.1 표의 원래 배정으로 되돌아간다.
+
 ### 22.1 역할별 모델 배정표
 
 
