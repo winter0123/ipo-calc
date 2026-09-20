@@ -1,5 +1,7 @@
 # 투자자 관리 사양서 (Investor Management Specification)
 
+> **수정 사항(2026-09-20, Master 결정 D-I-001)**: 아래 문서 전반의 "UUID" 표기는 초안 작성 시점의 제안이며, 기존 Account 엔티티와의 일관성을 위해 최종적으로 **Long(IDENTITY, 정수 자동증가)** ID를 사용하기로 결정됨. 구현 시 "id: string (UUID)"는 "id: number"로 대체한다. 자세한 근거는 `docs/work-log/investor-management.md` D-I-001 참고.
+
 ## API 엔드포인트 목록 (요청/응답 형식 포함)
 
 ### POST /investors (투자자 등록)

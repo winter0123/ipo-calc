@@ -1,5 +1,7 @@
 # 아키텍처 설계: 투자자 관리 (Epic 2 Phase 0)
 
+> **수정 사항(2026-09-20, Master 결정 D-I-001)**: 아래 문서에서 제안한 UUID 식별자는 채택되지 않았다. 기존 Account 엔티티가 `@GeneratedValue(strategy = GenerationType.IDENTITY)`의 `Long id`를 사용 중이므로, 코드베이스 일관성을 위해 Investor도 **Long(IDENTITY)** 을 사용한다. DB 설계 표의 `id`/`account_id` 컬럼 타입은 UUID가 아니라 **BIGINT**로 구현한다. 자세한 근거는 `docs/work-log/investor-management.md` D-I-001 참고.
+
 ## 아키텍처 개요 (패키지 구조)
 
 Spring Boot 백엔드는 관심사 분리 원칙에 따라 다음과 같은 레이어 구조를 따른다:
