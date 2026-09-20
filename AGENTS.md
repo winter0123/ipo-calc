@@ -675,6 +675,8 @@ orca skills get <skill-name>
 
 **Master Lead는 Orca 위에서 Claude Code로 띄운 코디네이터이며 모델은 Claude다.** OpenRouter를 쓰지 않고, `worker-start`의 대상도 아니다. Master 아래 모든 워커(A/B/C그룹)는 **OpenCode 에이전트 + OpenRouter 무료 모델**로만 만든다. 실행 전 OpenRouter/Orca에 실제 등록된 모델 ID와 가용성을 확인한다. Select variant가 있으면 가장 높은 버전을 선택한다.
 
+**모델 교체 유연성(2026-09-20 사용자 승인):** 22.1 표는 기본 배정이지 절대 고정이 아니다. 배정된 모델이 자주 멈추거나(컨텍스트 초과, upstream timeout 등) 성능이 안 나오면, **역할·작업 종류를 가리지 않고**(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부) 다른 OpenRouter 모델로 바꿔서 진행해도 된다. 단 **모델 ID에 반드시 `free`가 포함되어야 한다**(유료 모델 금지 원칙은 그대로 유지). 교체 시 `opencode models openrouter`로 후보를 확인하고, 어떤 모델에서 어떤 모델로/왜 바꿨는지 work-log에 남긴다.
+
 ### 22.1 역할별 모델 배정표
 
 | 구분 | 역할 | agent | model |
@@ -788,7 +790,8 @@ orca orchestration gate-resolve --id <gate_id> --resolution "<선택>" --json   
 ### 23.6 세션/워커 정리 (과거 실패: 다 쓴 세션을 안 지워 세션이 난립)
 - 기능팀 작업이 끝나 태스크가 모두 `completed`가 되고 **PR이 main에 merge된 것이 확인되면** `worker-release`로 해당 기능팀의 에이전트 터미널을 정리하고, worktree도 함께 제거한다. 정확한 순서와 명령은 12.4 참고 — merge 확인 전에는 정리하지 않는다.
 - **Master(Claude Code) 코디네이터 자신은 release 대상이 아니다.** 프로젝트가 끝날 때까지 유지된다. 그 외 A/B/C 모든 워커는 5장의 생성/해제 규칙을 그대로 따른다.
-- 동시 실행 워커 수는 자동 상한이 없으므로 직접 센다. 2~3개로 시작해서 메모리/성능 보고 늘린다.
+- 동시 실행 워커 수는 자동 상한이 없으므로 직접 센다. **최대 6개까지 동시 작업 허용**(2026-09-20 사용자 승인). 작업량이 적으면 그보다 적게 쓴다.
+- 워커를 만들 필요가 있는 작업(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부)은 **더 작은 단위로 쪼갤 수 있으면 쪼개서 여러 워커에게 병렬로 맡겨 빨리 끝낸다**(2026-09-20 사용자 지시). 단, 5.4의 "세부 기능은 한 번에 하나만 `ready`"처럼 순서 의존성이 있는 작업은 쪼개더라도 병렬로 굴리지 않는다.
 ```bash
 orca orchestration worker-list --json
 orca diagnostics memory --json
