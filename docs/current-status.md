@@ -28,7 +28,7 @@
 | 7 | 배정 결과 관리 | allocation-management | **Phase 0 전체 완료**(조사+spec+architecture, D-A-001~007 스코프 정정 포함), PR #54 병합됨. 다음: SF 분해 |
 | 8 | 분할 매도 기록 | sale-management | **Phase 0 전체 완료**(조사+spec+architecture, D-SL-001~007 스코프 정정 포함), PR #55 병합됨. 다음: SF 분해 |
 | 9 | 비용 기록 | cost-recording | **Phase 0 전체 완료**(조사+spec+architecture, D-C-001~006로 Sale과의 책임 경계 정정 포함), PR #56 병합됨. 다음: SF 분해 |
-| 10 | 수익·수익률 계산 | profit-calculation | 조사 완료, 머지됨 |
+| 10 | 수익·수익률 계산 | profit-calculation | **Phase 0 전체 완료**(조사+spec+architecture, D-P-001~006로 CalculationTrace 과설계 정정 포함), PR #57 병합됨. 읽기 전용 계산 API로 설계(Profit 엔티티 없음). 다음: SF 분해 |
 | 11 | 투자 내역 조회 API | investment-query-api | 조사 완료, 머지됨 |
 | 12 | 대시보드 집계 API | dashboard-aggregation-api | 조사 완료, 머지됨 |
 | 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | 조사 완료, 머지됨 |
@@ -36,12 +36,12 @@
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | 조사 완료, 머지됨 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | 조사 완료, 머지됨 |
 
-**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2~9는 Phase 0 전체(조사→기획→설계) 완료, 병합됨. Epic 10~16은 조사만 완료, 기획(spec)/설계(architecture)/구현은 아직 시작 전.**
+**요약: 로드맵 16개 Epic 전체의 Phase 0(조사) 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 대기 중. Epic 2~10은 Phase 0 전체(조사→기획→설계) 완료, 병합됨 — 핵심 금융 기록 체인(Account→Investor→SecuritiesAccount→IPO→Subscription→Allocation→Sale→Cost→Profit) 전체의 spec/architecture가 준비됨. Epic 11~16(조회 API/대시보드/웹 화면)은 조사만 완료, 기획(spec)/설계(architecture)/구현은 아직 시작 전.**
 
 ## 다음 단계 후보
 1. Epic 1 PR #41 사람 승인 및 머지 확인 → `account-authentication` 워크스페이스를 `backend`로 정식 이관
 2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 (backend 워크스페이스, Epic 1 PR 머지 확인 후)
-3. Epic 10(profit-calculation) 이후 기획(spec)·설계(architecture) 계속 진행 (planning 워크스페이스, opencode zen 무료 모델 사용) — Epic 9에서 Cost→Profit 확장 지점(수익 공식: 매도금액-취득비용(Cost)-매도수수료/세금/기타비용(Sale 필드))을 미리 설계해둠. Epic 10은 세금 계산이 관련되므로 profit-calculation-tax.md/profit-calculation-fees.md 조사 결과를 반드시 재확인하고 임의 세율/공식 확정 금지 원칙 준수 필요
+3. Epic 11(investment-query-api) 이후 기획(spec)·설계(architecture) 계속 진행 (planning 워크스페이스, opencode zen 무료 모델 사용) — Epic 11~16은 Epic 2~10에서 만들어진 도메인을 조회·집계·화면으로 노출하는 성격이라 상대적으로 스코프 오류 위험이 낮을 것으로 예상되나, 계속 같은 방식으로 검증 필요
 
 ## 알려진 이슈/결정 사항
 - Epic 1 구현 중 SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드 등 3건의 Spring Security 버그를 Master가 직접 진단하여 수정 지시함(자세한 내용은 `docs/work-log/account-authentication.md` 참고).
