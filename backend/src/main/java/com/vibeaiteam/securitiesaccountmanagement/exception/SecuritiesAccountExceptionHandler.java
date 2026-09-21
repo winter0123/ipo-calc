@@ -25,6 +25,17 @@ public class SecuritiesAccountExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(SecuritiesAccountNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSecuritiesAccountNotFound(SecuritiesAccountNotFoundException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("NOT_FOUND")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
+
     @ExceptionHandler(SecuritiesAccountForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleSecuritiesAccountForbidden(SecuritiesAccountForbiddenException ex) {
         ErrorResponse response = ErrorResponse.builder()

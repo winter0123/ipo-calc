@@ -100,3 +100,32 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-2 완료 → SF-3(목록/상세 조회 GET /securities-accounts, GET /securities-accounts/{id}): 마스킹, securitiesFirmName 조인, 2단계 소유권 검증
+
+## 2026-09-21 — SF-3 구현 완료 (Test-First RED→GREEN)
+
+### 완료 작업
+- **GET /securities-accounts (목록)** 및 **GET /securities-accounts/{id} (상세)** 구현 (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `SecuritiesAccountController`: `@GetMapping`(investorId 필수 + status 선택 파라미터), `@GetMapping("/{id}")`
+  - `SecuritiesAccountService`:
+    - `list(investorId, status)`: investorId null이면 400, 존재하지 않는 투자자면 400(VALIDATION_ERROR), investor.accountId != 현재 계정이면 403, status 정규화(기본 ACTIVE, BOTH면 findByInvestorId, 그 외 findByInvestorIdAndStatus), 각 항목은 복호화 후 마스킹 + securitiesFirmName 채워 반환
+    - `getById(id)`: findByIdAndDeletedAtIsNull 조회, 없으면 404(NOT_FOUND, `SecuritiesAccountNotFoundException` 신규), investor의 accountId != 현재 계정이면 403, 성공 시 마스킹 + securitiesFirmName 반환
+  - `SecuritiesAccountResponse`: `securitiesFirmName` 필드 추가 + 3-인자 `from(...)` 오버로드(register는 2-인자 사용, 기존 동작 유지)
+  - `SecuritiesAccountExceptionHandler`: NOT_FOUND 핸들러 추가
+  - 금지사항 준수: account-number 전체노출/PATCH/DELETE 엔드포인트는 작성하지 않음
+- 소유권 검증은 work-log에 기록된 2단계 패턴 그대로 사용 (SecuritiesAccount → investorId → Investor.accountId)
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 6건 추가 작성 → RED(엔드포인트 없어 404) 확인 → 구현 → GREEN)
+- AC-006(목록 2건, 마스킹+증권사명, 타 투자자 계좌 미포함) / AC-006 소유권 검증(타 계정 investorId → 403)
+- status 필터 3종(기본 ACTIVE 1건 / INACTIVE 1건 / BOTH 2건)
+- AC-007(상세 200, 마스킹된 accountNumber + securitiesFirmName 확인)
+- 상세 404(존재하지 않는 id) / 상세 403(타 계정 소유 계좌)
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test` → **BUILD SUCCESSFUL / 전체 122건(기존 116 + 신규 6) 전부 GREEN, failures 0, errors 0**
+- `git diff --check` 통과
+
+### 특이사항
+- build.gradle.kts에 checkstyle 플러그인이 아직 없어 checkstyle 검증은 실행 불가(AGENTS.md의 Google Java Style DoD는 추후 별도 SF에서 플러그인 추가 필요). 이 SF에서 플러그인 추가에 따른 스콥 확장은 하지 않음.
+
+### 다음 단계
+- SF-3 완료 → SF-4(계좌번호 전체 노출 GET /securities-accounts/{id}/account-number): 복호화 평문 반환 + SLF4J 감사 로그(D-SA-005)
