@@ -7,6 +7,7 @@ import com.vibeaiteam.securitiesfirmcatalog.service.securitiesfirm.SecuritiesFir
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,5 +45,11 @@ public class SecuritiesFirmController {
     public ResponseEntity<SecuritiesFirmResponse> update(@PathVariable Long id,
                                                          @RequestBody SecuritiesFirmUpdateRequest request) {
         return ResponseEntity.ok(securitiesFirmService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        securitiesFirmService.deactivate(id);
+        return ResponseEntity.noContent().build();
     }
 }
