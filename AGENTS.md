@@ -387,7 +387,7 @@ DB가 날아가거나 로컬/서버 환경이 망가졌을 때 **이 문서만 �
 1. `docker compose up -d` (PostgreSQL, Redis 기동)
 2. `./gradlew flywayMigrate` (스키마 적용)
 3. `./gradlew bootRun --args='--spring.profiles.active=seed'` (시드 데이터 투입)
-4. `npm install && npm run dev` (프론트엔드)
+4. `pnpm install && pnpm run dev` (프론트엔드)
 ```
 
 - 새 CLI/라이브러리/글로벌 패키지/인프라 서비스(DB, Redis, 오브젝트 스토리지 등)를 설치하거나 DB 마이그레이션을 실행할 때마다, **그 작업을 실제로 실행한 워커가 즉시** "1. 설치 이력"에 한 줄을 추가한다. 나중에 몰아서 적지 않는다.
@@ -664,12 +664,16 @@ Epic 13(web-account-setup) 구현 착수 시 첫 SF가 `ui/` 폴더 생성 및 �
 
 React, TypeScript. 프로젝트에 설치된 버전의 공식 권장 방식을 우선한다. API를 지어내지 않는다.
 
+### 패키지 매니저 (2026-09-21 사용자 지시 — 예외 없이 적용)
+
+**npm이 아닌 `pnpm`을 사용한다.** `pnpm install`, `pnpm run <script>`, `pnpm add <pkg>`, `pnpm exec <cmd>`를 쓴다. `ui/` 프로젝트는 `pnpm-lock.yaml`을 커밋하고 `package-lock.json`은 두지 않는다(2026-09-21에 기존 npm 산출물을 pnpm으로 전환 완료). 워커에게 태스크를 지시할 때도 명령어를 npm이 아닌 pnpm으로 명시한다.
+
 ### 코드 스타일 (2026-09-20 사용자 지시 — 예외 없이 적용)
 
 - **ESLint + Prettier + `tsc --strict`** 를 프로젝트에 설정하고, 모든 워커는 코드를 작성한 뒤 반드시 이 세 가지를 통과시킨다.
 - **들여쓰기 2칸.** 탭 금지.
-- Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. 완료 조건(Definition of Done)에 `npm run lint`, `npm run typecheck`(또는 `tsc --noEmit --strict`), `npx prettier --check .` 통과를 포함한다.
-- **`npm run typecheck`만 믿지 말고 `npm run build`도 반드시 함께 실행한다** (2026-09-21 확인): 이 프로젝트의 `typecheck` 스크립트(`tsc --noEmit`)는 프로젝트 참조(`tsconfig.json`의 `references`)를 안 타서, `tsconfig.app.json`에만 있는 타입 설정 오류(예: `vitest/globals`/jest-dom 타입 누락)를 못 잡는다. 반면 `npm run build`(`tsc -b`)는 참조를 실제로 빌드하므로 이런 오류를 잡는다. Epic 13 SF-2에서 이 gap 때문에 워커가 `typecheck` 통과만 보고 실제로는 `build`가 실패하는 상태를 "완료"로 보고한 사례 발생 — 매 SF 검증 시 `typecheck`와 `build` 둘 다 실행한다.
+- Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. 완료 조건(Definition of Done)에 `pnpm run lint`, `pnpm run typecheck`(또는 `tsc --noEmit --strict`), `pnpm exec prettier --check .` 통과를 포함한다.
+- **`pnpm run typecheck`만 믿지 말고 `pnpm run build`도 반드시 함께 실행한다** (2026-09-21 확인): 이 프로젝트의 `typecheck` 스크립트(`tsc --noEmit`)는 프로젝트 참조(`tsconfig.json`의 `references`)를 안 타서, `tsconfig.app.json`에만 있는 타입 설정 오류(예: `vitest/globals`/jest-dom 타입 누락)를 못 잡는다. 반면 `pnpm run build`(`tsc -b`)는 참조를 실제로 빌드하므로 이런 오류를 잡는다. Epic 13 SF-2에서 이 gap 때문에 워커가 `typecheck` 통과만 보고 실제로는 `build`가 실패하는 상태를 "완료"로 보고한 사례 발생 — 매 SF 검증 시 `typecheck`와 `build` 둘 다 실행한다.
 
 ### 반응형/모바일 웹 최적화 (2026-09-21 사용자 지시 — 예외 없이 적용)
 
@@ -760,7 +764,7 @@ Java 21, Spring Boot, PostgreSQL. 실제 설치된 버전을 따른다.
 
 ## 18. 검증 규칙
 
-프로젝트에 실제 존재하는 명령만 실행한다(추측 금지). 예: `./gradlew test`, `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`. 없으면 실제 설정 파일을 확인해 가능한 검증 방법을 쓴다.
+프로젝트에 실제 존재하는 명령만 실행한다(추측 금지). 예: `./gradlew test`, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build`, `git diff --check`. 없으면 실제 설정 파일을 확인해 가능한 검증 방법을 쓴다.
 
 결과는 `PASS` / `FAIL` / `NOT_RUN` / `BLOCKED` 중 하나로만 기록.
 
