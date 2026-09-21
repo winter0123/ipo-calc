@@ -52,3 +52,41 @@ MVP에서는 `allocationMethod` 자유 텍스트(선택 필드)로 기록한다.
 
 이 결정들은 `docs/spec/allocation-management.md` /
 `docs/architecture/allocation-management.md` 작성 태스크 지시에 반영되었다.
+
+## 2026-09-22 — SF-1 구현 완료 (Allocation 엔티티/Repository/마이그레이션)
+
+`docs/breakdown/allocation-management.md`의 SF-1을 구현했다. 브랜치
+`winter0123/allocation-management` (backend-3 워크스페이스).
+
+**산출물**:
+- `backend/src/main/java/com/vibeaiteam/allocationmanagement/domain/model/allocation/Allocation.java`
+  — subscriptionmanagement의 Subscription.java와 동일 스타일(Lombok
+  Builder/Getter/Setter, status 기본값 "ACTIVE")
+- `backend/src/main/java/com/vibeaiteam/allocationmanagement/repository/allocation/AllocationRepository.java`
+  — `findByIdAndDeletedAtIsNull`, `findAllByDeletedAtIsNullOrderByCreatedAtDesc`,
+  `findBySubscriptionIdAndStatusAndDeletedAtIsNull` (SF-2 중복 검사용)
+- `backend/src/main/resources/db/migration/V8__create_allocations_table.sql`
+  — 기존 최신이 V7(subscriptions)이므로 V8로 생성. architecture.md 제안 DDL을
+  그대로 반영: `fk_allocation_subscription` (ON DELETE RESTRICT),
+  부분 유니크 인덱스 `uk_allocation_active_subscription (subscription_id)
+  WHERE status = 'ACTIVE'`, 조회 최적화 인덱스 2개. 테이블/컬럼 전체에
+  한글 주석 추가(AGENTS.md 15장 규칙).
+- `backend/src/test/java/com/vibeaiteam/allocationmanagement/repository/allocation/AllocationRepositoryTest.java`
+  — 저장/조회, 부분 유니크 인덱스 동작(ACTIVE 중복 시
+  `DataIntegrityViolationException`, CANCELLED 후 재등록 허용) 검증. 총 6개
+  테스트.
+
+**주의사항 발견**: subscriptions 테이블과 달리 allocations는 architecture.md
+지시대로 `subscription_id`에 실제 FK 제약(`ON DELETE RESTRICT`)을 걸었다.
+따라서 Repository 테스트에서 Allocation을 저장하기 전에 반드시 실제
+Subscription 행을 먼저 저장해야 한다(FK 위반 방지). 또한 subscriptions
+테이블 자체에 `(investor_id, securities_account_id, ipo_id)` 조합의 부분
+유니크 제약이 있으므로, 테스트 헬퍼에서 Subscription을 여러 건 생성할 때는
+`ipoId`를 매번 다르게 줘야 한다(동일 조합으로 여러 건 만들면 테스트 데이터
+셋업 단계에서부터 유니크 위반 발생).
+
+**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun`
+→ BUILD SUCCESSFUL, 220 tests completed, 0 failed (기존 214개 + 신규 6개).
+
+**남은 작업**: SF-2(등록 API, Subscription 존재 검증 + ACTIVE 중복 검사)부터
+SF-5(취소)까지 순차 구현 필요. 커밋/PR/머지는 Master가 진행.
