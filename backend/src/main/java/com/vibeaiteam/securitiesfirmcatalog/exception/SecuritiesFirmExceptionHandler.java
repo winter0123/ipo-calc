@@ -35,4 +35,15 @@ public class SecuritiesFirmExceptionHandler {
                 .contentType(JSON_UTF8)
                 .body(response);
     }
+
+    @ExceptionHandler(SecuritiesFirmNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSecuritiesFirmNotFound(SecuritiesFirmNotFoundException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("NOT_FOUND")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
 }

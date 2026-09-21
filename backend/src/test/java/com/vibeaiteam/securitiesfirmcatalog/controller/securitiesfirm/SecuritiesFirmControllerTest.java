@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -39,6 +41,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *           증권사 레코드 미생성 (edge: 255자 초과도 400)
  * - AC-003: 증권사 등록 실패 (중복 이름) — 동일 name의 ACTIVE 증권사가 이미 존재하면
  *           409 Conflict + DUPLICATE_NAME
+ * - AC-004: 증권사 목록 조회 성공 — GET /securities-firms 요청 시 200 OK + 전체 증권사 목록 포함
+ * - AC-005: 증권사 상세 조회 성공 — 존재하는 id로 GET /securities-firms/{id} 요청 시 200 OK + 상세 정보 반환
+ * - AC-006: 증권사 상세 조회 실패 — 존재하지 않는 id로 GET /securities-firms/{id} 요청 시 404 + NOT_FOUND
+ * - D-SF-003: deletedAt IS NULL(=ACTIVE)만 목록/상세 조회에 노출 — 논리 삭제된 증권사는 둘 다에서 제외
  * - 글로벌 기준정보: 계정 소유권 검증 불필요(SecurityUtils 미사용)하나 인증은 필요 (anyRequest().authenticated())
  */
 @SpringBootTest
@@ -248,6 +254,138 @@ class SecuritiesFirmControllerTest {
                 .filter(f -> "미래에셋증권".equals(f.getName()) && STATUS_ACTIVE.equals(f.getStatus()))
                 .collect(Collectors.toList());
         assertThat(matches).as("중복 등록 실패 시 동일 활성 증권사 레코드는 1건뿐이어야 합니다 (AC-003)").hasSize(1);
+    }
+
+    @Test
+    void listFirmsReturnsAllActiveFirmsAsList() throws Exception {
+        // Given: 인증된 사용자가 존재하고 활성(ACTIVE) 증권사 2곳이 등록되어 있음 (AC-004)
+        signupAndLogin();
+        registerRequest(Map.of("name", "한국투자증권", "externalCode", "SC-0001")); // 201
+        registerRequest(Map.of("name", "미래에셋증권", "externalCode", "SC-0002")); // 201
+        List<SecuritiesFirm> active = securitiesFirmRepository.findByDeletedAtIsNull();
+        registeredFirms.addAll(active);
+
+        // When: GET /securities-firms 요청이 전송됨
+        MvcResult result = mockMvc.perform(get("/securities-firms")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답을 반환하고 모든 증권사 목록이 포함됨 (AC-004)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("목록 조회 시 200 OK여야 합니다 (AC-004)").isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("등록된 모든 활성 증권사가 목록에 포함되어야 합니다 (AC-004)").hasSize(2);
+        assertThat(body).extracting(inv -> inv.get("name"))
+                .as("등록된 활성 증권사 이름이 모두 포함되어야 합니다 (AC-004)")
+                .containsExactlyInAnyOrder("한국투자증권", "미래에셋증권");
+        for (Map<String, Object> firm : body) {
+            assertThat(firm.get("status")).as("목록 응답의 status는 ACTIVE여야 합니다 (AC-004)").isEqualTo(STATUS_ACTIVE);
+        }
+    }
+
+    @Test
+    void listFirmsExcludesSoftDeletedFirm() throws Exception {
+        // Given: 인증된 사용자가 존재하고 활성 증권사 1곳과 논리 삭제된 증권사 1곳이 존재함 (D-SF-003)
+        signupAndLogin();
+        registerRequest(Map.of("name", "한국투자증권")); // 201
+        SecuritiesFirm active = securitiesFirmRepository.findByNameAndStatus("한국투자증권", STATUS_ACTIVE).orElseThrow();
+        registeredFirms.add(active);
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesFirm deleted = securitiesFirmRepository.save(SecuritiesFirm.builder()
+                .name("폐지증권")
+                .status("INACTIVE")
+                .deletedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        registeredFirms.add(deleted);
+
+        // When: GET /securities-firms 요청이 전송됨
+        MvcResult result = mockMvc.perform(get("/securities-firms")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 논리 삭제된 증권사는 목록에서 제외됨 (D-SF-003)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("목록 조회 시 200 OK여야 합니다").isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("논리 삭제된 증권사는 목록에서 제외되어야 합니다 (D-SF-003)").hasSize(1);
+        assertThat(body.get(0).get("name")).as("활성 증권사만 목록에 포함되어야 합니다 (D-SF-003)").isEqualTo("한국투자증권");
+    }
+
+    @Test
+    void getFirmByIdReturns200WithDetails() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-005)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of(
+                "name", "삼성증권",
+                "externalCode", "SC-0003",
+                "businessRegistrationNumber", "111-22-33333"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+
+        // When: 존재하는 증권사 id로 GET /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(get("/securities-firms/" + firmId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답을 반환하고 해당 증권사의 상세 정보가 반환됨 (AC-005)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하는 증권사 상세 조회 시 200 OK여야 합니다 (AC-005)").isEqualTo(200);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) body.get("id")).longValue()).isEqualTo(firmId);
+        assertThat(body.get("name")).isEqualTo("삼성증권");
+        assertThat(body.get("externalCode")).isEqualTo("SC-0003");
+        assertThat(body.get("businessRegistrationNumber")).isEqualTo("111-22-33333");
+        assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
+        assertThat(body.get("createdAt")).isNotNull();
+        assertThat(body.get("updatedAt")).isNotNull();
+    }
+
+    @Test
+    void getFirmWithUnknownIdReturns404NotFound() throws Exception {
+        // Given: 인증된 사용자가 존재함 (AC-006)
+        signupAndLogin();
+
+        // When: 존재하지 않는 증권사 id로 GET /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(get("/securities-firms/99999999")
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found 응답을 반환함 (AC-006)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 증권사 상세 조회 시 404여야 합니다 (AC-006)").isEqualTo(404);
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-006)").isEqualTo("NOT_FOUND");
+        assertThat(responseMap.get("message")).isNotNull();
+    }
+
+    @Test
+    void getSoftDeletedFirmReturns404NotFound() throws Exception {
+        // Given: 인증된 사용자가 존재하고 논리 삭제된 증권사가 존재함 (D-SF-003)
+        signupAndLogin();
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesFirm deleted = securitiesFirmRepository.save(SecuritiesFirm.builder()
+                .name("OLD증권")
+                .status("INACTIVE")
+                .deletedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        registeredFirms.add(deleted);
+
+        // When: 논리 삭제된 증권사 id로 GET /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(get("/securities-firms/" + deleted.getId())
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found 응답을 반환함 (D-SF-003 — deletedAt 설정 레코드는 상세 조회에서도 제외)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("논리 삭제된 증권사 상세 조회 시 404여야 합니다 (D-SF-003)").isEqualTo(404);
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (D-SF-003)").isEqualTo("NOT_FOUND");
     }
 
     @Test

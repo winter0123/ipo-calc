@@ -4,12 +4,14 @@ import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.Securi
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmResponse;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmDuplicateException;
+import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmNotFoundException;
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmValidationException;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +41,19 @@ public class SecuritiesFirmService {
 
         SecuritiesFirm saved = securitiesFirmRepository.save(securitiesFirm);
         return SecuritiesFirmResponse.from(saved);
+    }
+
+    public List<SecuritiesFirmResponse> list() {
+        List<SecuritiesFirm> firms = securitiesFirmRepository.findByDeletedAtIsNull();
+        return firms.stream()
+                .map(SecuritiesFirmResponse::from)
+                .toList();
+    }
+
+    public SecuritiesFirmResponse getById(Long id) {
+        SecuritiesFirm firm = securitiesFirmRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
+        return SecuritiesFirmResponse.from(firm);
     }
 
     private String validateName(String name) {

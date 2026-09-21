@@ -69,3 +69,28 @@ Investor(SF-1 공용 인프라 포함 6개)와 달리, 이 Epic은 계정 소유
 
 ### 남은 작업
 - SF-3: 증권사 목록/상세 조회 API (GET /securities-firms, GET /securities-firms/{id}) — AC-004~006, D-SF-003 필터 적용
+
+## 2026-09-21 — SF-3: 증권사 목록/상세 조회 API (GET /securities-firms, GET /securities-firms/{id}) 구현 (B그룹, backend-3)
+
+### 완료 작업 (Test-First RED→GREEN)
+- **Test-First RED**: `SecuritiesFirmControllerTest`에 AC-004~006 + D-SF-003 논리삭제 제외 테스트 5건 먼저 추가 → GET 엔드포인트 미구현 상태로 5건 전부 실패(RED) 확인
+- **GREEN 구현**:
+  - `controller/securitiesfirm/SecuritiesFirmController.java` — `@GetMapping` list(), `@GetMapping("/{id}")` getById() 추가 (PATCH/DELETE 미작성, 금지사항 준수)
+  - `service/securitiesfirm/SecuritiesFirmService.java` — `list()`: `findByDeletedAtIsNull()`(D-SF-003)로 삭제 안 된 전체 목록 반환, `getById(id)`: `findByIdAndDeletedAtIsNull(id)`로 없거나 논리삭제면 404
+  - `exception/SecuritiesFirmNotFoundException.java`(신규) + `SecuritiesFirmExceptionHandler.java`에 404 NOT_FOUND 핸들러 추가 (Investor 패턴 동일)
+  - 계정 소유권 검증(SecurityUtils) 미사용 — 글로벌 기준정보 (architecture 29행), 인증은 SecurityConfig가 자동 커버
+
+### 테스트 5건 (AC 대응)
+- AC-004 목록 조회 성공: 활성 증권사 2곳 등록 → GET /securities-firms → 200 + 전체 포함
+- AC-005 상세 조회 성공: 존재하는 id → GET /securities-firms/{id} → 200 + 상세 정보
+- AC-006 상세 조회 실패: 존재하지 않는 id(99999999) → 404 + NOT_FOUND
+- D-SF-003 목록 제외: Repository로 deletedAt 설정한(INACTIVE) 증권사 저장 → 목록에서 제외
+- D-SF-003 상세 제외: 논리 삭제된 증권사 id → 404 + NOT_FOUND
+
+### 검증 결과
+- 신규 테스트 단독 실행: GREEN (5/5)
+- 전체 스위트: `DB_PASSWORD=vibe_local_password ./gradlew test` **84/84 GREEN (failures=0, errors=0, skipped=0)** — SF-2 79건 + 신규 5건
+- `git diff --check` 통과. (참고: 이 프로젝트 build.gradle.kts에 checkstyle 플러그인이 없어 checkstyleMain/checkstyleTest 태스크가 존재하지 않음 — SF-2와 동일)
+
+### 남은 작업
+- SF-4: 증권사 수정 API (PATCH /securities-firms/{id}) — AC-007~010
