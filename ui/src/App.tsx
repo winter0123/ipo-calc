@@ -1,9 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
-import LoginPage from './app/pages/LoginPage/LoginPage.tsx'
-import SignupPage from './app/pages/SignupPage/SignupPage.tsx'
-import InvestorRegisterPage from './app/pages/InvestorRegisterPage/InvestorRegisterPage.tsx'
-import DashboardPage from './app/pages/DashboardPage/DashboardPage.tsx'
-import SecuritiesAccountRegisterPage from './app/pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'
+import LoginPage from './pages/LoginPage/LoginPage.tsx'
+import SignupPage from './pages/SignupPage/SignupPage.tsx'
+import InvestorRegisterPage from './pages/InvestorRegisterPage/InvestorRegisterPage.tsx'
+import DashboardPage from './pages/DashboardPage/DashboardPage.tsx'
+import SecuritiesAccountRegisterPage from './pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'
 
 function App() {
   return (
