@@ -58,7 +58,15 @@
 | 프론트엔드 패키지 매니저 전환 | FE | `winter0123/web-account-setup` | PR #90 | 완료 | npm → pnpm, package-lock.json → pnpm-lock.yaml |
 | 웹 계정·투자자·계좌 설정(Epic 13): 회원가입 화면 | FE | `winter0123/web-account-setup` | PR #93(SF-3) | 완료 | noValidate/QueryClientProvider 등 SF-2 교훈 적용해 버그 없었음 |
 | 웹 계정설정 사용자 가이드(로그인/회원가입 스크린샷+HTML) | Planning | `winter0123/web-account-setup` | PR #95 | 완료 | Playwright로 데스크톱/모바일 캡처, Master가 Artifact로 재발행해 Hermes로 링크 발송 |
-| 웹 계정·투자자·계좌 설정(Epic 13): 투자자 등록 화면 | FE | `winter0123/web-account-setup` | (진행 중, SF-4) | 진행 중 | opencode/nemotron-3-ultra-free로 진행 중(OpenRouter 계정 한도로 2회 모델 교체 후 전환) |
+| 웹 계정·투자자·계좌 설정(Epic 13): 투자자 등록 화면 | FE | `winter0123/web-account-setup` | PR #100(SF-4) | 완료 | noValidate/QueryClientProvider 재발 없이 처음부터 정상 구현 |
+| Controller 클래스/메서드 한글 주석 백필(6개 파일) | BE | `winter0123/controller-comments`, `winter0123/controller-method-comments` | PR #99, #101, #102(정정) | 완료 | AGENTS.md 15장 규칙 소급 적용, 403/404 오류 Master가 직접 발견·정정 |
+| 청약 기록(Epic 6): 엔티티/Repo/마이그레이션 | BE | `winter0123/subscription-management` | PR #98(SF-1) | 완료 | 부분 유니크 인덱스로 ACTIVE 중복만 방지 |
+| 청약 기록(Epic 6): 등록 API | BE | `winter0123/subscription-register` | PR #104(SF-2) | 완료 | Investor/SecuritiesAccount 1·2단계 소유권 검증(404/403), IPO는 존재만 검증 |
+| 청약 기록(Epic 6): 목록/상세 조회 API | BE | `winter0123/subscription-query` | PR #105(SF-3) | 완료 | 조회 시 소유권 재검증 없음(spec에 명시 없어 등록 시만 강제) |
+| 청약 기록(Epic 6): 수정 API | BE | `winter0123/subscription-update` | PR #109(SF-4) | 완료 | 검증 로직을 private 헬퍼 3개로 추출해 등록/수정 공유, 네이티브 Sonnet 사용 |
+| Epic 7/8/9/11/14 세부기능(SF) 분해 선행 준비 | Planning | `winter0123/epic7-8-breakdown` 등 5개 브랜치 | PR #103, #106, #107, #108 | 완료 | Epic 7/8은 소유권 검증 불필요(글로벌), Epic 9/11은 필요(계정 소유 데이터) — 독립 판단으로 정확히 구분. Epic 11에서 ipoId 필터 단독 시 계정 스코프 누출 위험 사전 발견 |
+| 웹 계정·투자자·계좌 설정(Epic 13): 증권계좌 등록 화면 — Epic 13 전체 완료 | FE | `winter0123/web-account-setup-sf5` | PR #110(SF-5) | 완료 | 하이픈 자동삽입 JSX 속성순서 버그 발견·수정, spec-백엔드 계약 불일치(404 vs 400) 대응, 네이티브 Sonnet 사용 |
+| 프론트엔드 FSD 구조 리팩터링(`app/` 중첩 제거) | FE | `winter0123/fsd-structure-fix` | 진행 중 | 진행 중 | 사용자가 `src/App.tsx`와 `src/app/` 폴더명 중복으로 혼란 지적 — entities/features/pages/shared/widgets를 `app/` 밖으로 이동 |
 
 ### 이슈 및 트러블슈팅
 
@@ -88,3 +96,11 @@
 | 알림 파이프라인 | 알림 폴링 주기 30초가 과도하게 잦음 | 전체 프로젝트 공통 기본값을 10분(600초)으로 변경 |
 | 코드 스타일 | Controller/DB 마이그레이션에 무엇을 하는 코드인지 알기 어렵다는 사용자 피드백 | AGENTS.md 15장 "주석 규칙" 신설(Controller 클래스/Flyway 테이블·컬럼 한글 주석 필수), Epic 5 SF-6에 최초 적용 |
 | 워크스페이스 운영 | 사용자 지시로 workspace별 고정 작업순서 큐가 필요해짐 | AGENTS.md 6.4에 SF 순서 큐 원칙 명시, current-status.md "다음 단계 후보"로 반영 |
+| 코드 리뷰 정확도 | PR #101(Controller 메서드 주석)에서 소유권 검증이 있는 메서드를 "존재하지 않거나 소유가 아니면 404"로 잘못 적음(실제로는 403) | Master가 서비스 코드를 다시 대조해 발견·PR #102로 정정, 검증 시 상태코드까지 코드 대조하는 습관 강화 |
+| worktree 운영 | 같은 worktree 디렉토리에서 다른 세부기능용 브랜치를 연달아 `checkout -b`해서, 이미 배정된 워커가 엉뚱한 브랜치 위에서 돌게 됨 | AGENTS.md 12-1-1 신설(같은 worktree는 항상 브랜치 하나), 진짜 병렬이 필요하면 `<역할>-2` worktree로 분리 |
+| 병렬화 설계 | planning 문서 작업 병렬화를 위해 굳이 새 worktree(planning-2)를 만들었으나, 파일이 겹치지 않으면 기존 worktree에 워커만 추가하면 충분했음 | 사용자 지적으로 정정(AGENTS.md 12-1-1), planning-2는 작업 완료 후 즉시 정리 |
+| 모니터링 설계 | Monitor로 Orca 태스크 상태만 폴링해서는 워커가 모델 프로바이더 오류로 실제 멈춰 있어도 감지하지 못함(상태는 계속 dispatched) | 사용자가 "프론트 계속 멈춰있는데"로 직접 지적, AGENTS.md 23.4-1 신설(상태 폴링과 별개로 터미널 내용 주기적 직접 확인) |
+| git 조작 실수(2회 반복) | 이미 커밋한 뒤 `git reset origin/main`을 실행해 그 커밋이 브랜치에서 떨어져 나가 사라진 것처럼 보임 | `git reset --hard <커밋해시>`로 복구 후 `git rebase origin/main`으로 재처리, "커밋 후에는 reset 대신 rebase" 규칙을 메모리에 기록 |
+| 모델 가용성(2차 재도달) | 저녁에 OpenRouter와 OpenCode Zen(big-pickle) 무료 할당량이 동시에 초과 | 사용자 지시로 이번 세션 마지막 3개 태스크만 네이티브 Claude(Sonnet 5)로 예외 전환, `--model sonnet-5`가 아닌 `claude-sonnet-5`(전체 ID)가 정답임을 사용자가 직접 오류 화면으로 확인·정정 |
+| 문서 구조 | Claude/Master 전용 내용(네이티브 전환, `/compact`, `/low-priority` 등)이 AGENTS.md 여러 곳에 흩어져 있어, Master가 다른 LLM으로 바뀌면 무엇을 지워야 할지 알기 어려움 | 22장 하나로 통합(23.7을 22.8로 이동), 장 서두에 "Master 도구가 바뀌면 이 장 전체를 삭제/재작성" 안내 추가 |
+| 프론트엔드 구조 | `src/App.tsx`(루트 컴포넌트)와 `src/app/`(entities/features/pages/shared/widgets를 담은 폴더)의 이름이 겹쳐 보여 사용자가 구조를 오해 | 표준 FSD처럼 entities/features/pages/shared/widgets를 `app/` 밖으로 이동하는 리팩터링 착수(진행 중) |
