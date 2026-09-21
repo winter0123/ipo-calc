@@ -10,10 +10,10 @@
 
 ### 기능 구현 현황
 
-| Epic/Task | 분야 | PR/Test 수 | 상태 | 주요 내용 |
-|---|---|---|---|---|
-| 로그인 계정과 인증·인가(Epic 1) SF-5~6 | BE | PR #41 / 34 tests | 완료(사람 승인 대기) | 데이터 격리 방어, 비밀번호 변경 API |
-| 로드맵 16개 Epic 전체 조사(Epic 2~16 Phase 0) | BE/FE | - | 완료 | 조사·기획·설계 완료 및 병합 |
+| Epic/Task | 분야 | 브랜치 | PR(SF 범위) | 상태 | 주요 내용 |
+|---|---|---|---|---|---|
+| 로그인 계정과 인증·인가(Epic 1) | BE | `winter0123/account-authentication` | PR #41(SF-5~6) | 완료(사람 승인 대기) | 데이터 격리 방어, 비밀번호 변경 API |
+| 로드맵 16개 Epic 전체 조사(Epic 2~16 Phase 0) | BE/FE | 각 Epic별 조사 브랜치 | PR #42~#63 중 일부 | 완료 | 조사·기획·설계 완료 및 병합 |
 
 ### 이슈 및 트러블슈팅
 
@@ -40,18 +40,18 @@
 
 ### 기능 구현 현황
 
-| Epic/Task | 분야 | PR/Test 수 | 상태 | 주요 내용 |
-|---|---|---|---|---|
-| 로드맵 16개 Epic 전체 조사·기획·설계(Epic 2~16 Phase 0) | BE/FE | PR #49~#63 | 완료 | spec+architecture 100% 완료 |
-| 로그인 계정과 인증·인가(Epic 1) | BE | PR #41 | 완료(사람 승인) | `backend` 워크스페이스로 이관 |
-| 투자자 관리(Epic 2) SF-1~6 | BE | PR #65~#70 / 66 tests | 완료 | `SecurityUtils` 공용 인프라 신설(이후 모든 Epic 재사용), CSRF 전역 비활성화(D-I-006) |
-| 증권사 기준정보 관리(Epic 3) SF-1~5 | BE | PR #72~#76 / 94 tests | 완료 | 글로벌 기준정보라 SecurityUtils 불필요 |
-| 증권계좌 관리(Epic 4) SF-1~7 | BE | PR #78~#84 / 140 tests | 완료 | AES-256-GCM 암호화, 2단계 소유권검증, 네이티브 모델(Sonnet 5) 사용 |
-| 공모주 기준정보 관리(Epic 5) SF-1: 엔티티/Repo/마이그레이션 | BE | PR #87 / 147 tests | 완료 | Ipo 엔티티/Repository/V5 마이그레이션, D-IPO-001~004 확정 |
-| 공모주 기준정보 관리(Epic 5) SF-2: IPO 등록 API | BE | - | 진행중 | 중복검사 헬퍼(D-IPO-001) |
-| 웹 계정·투자자·계좌 설정(Epic 13) SF-1: 프로젝트 스캐폴딩 | FE | PR #88 | 완료 | `ui/` Vite+React+TS — 로드맵 최초 프론트엔드 구현, D-W13-007~015 확정 |
-| 웹 계정·투자자·계좌 설정(Epic 13) SF-2: 로그인 화면 | FE | PR #89 / 7 tests | 완료 | react-hook-form+TanStack Query |
-| 프론트엔드 패키지 매니저 전환 | FE | PR #90 | 완료 | npm → pnpm, package-lock.json → pnpm-lock.yaml |
+| Epic/Task | 분야 | 브랜치 | PR(SF 범위) | 상태 | 주요 내용 |
+|---|---|---|---|---|---|
+| 로드맵 16개 Epic 전체 조사·기획·설계(Epic 2~16 Phase 0) | BE/FE | `planning` 워크스페이스, Epic별 조사 브랜치 | PR #49~#63 | 완료 | spec+architecture 100% 완료 |
+| 로그인 계정과 인증·인가(Epic 1) | BE | `winter0123/account-authentication` | PR #41 | 완료(사람 승인) | `backend` 워크스페이스로 이관 |
+| 투자자 관리(Epic 2) | BE | `winter0123/investor-management` | PR #65~#70(SF-1~6) | 완료 | `SecurityUtils` 공용 인프라 신설(이후 모든 Epic 재사용), CSRF 전역 비활성화(D-I-006) |
+| 증권사 기준정보 관리(Epic 3) | BE | `winter0123/securities-firm-catalog` | PR #72~#76(SF-1~5) | 완료 | 글로벌 기준정보라 SecurityUtils 불필요 |
+| 증권계좌 관리(Epic 4) | BE | `winter0123/securities-account-management` | PR #78~#84(SF-1~7) | 완료 | AES-256-GCM 암호화, 2단계 소유권검증, 네이티브 모델(Sonnet 5) 사용 |
+| 공모주 기준정보 관리(Epic 5): 엔티티/Repo/마이그레이션 | BE | `winter0123/ipo-catalog` | PR #87(SF-1) | 완료 | Ipo 엔티티/Repository/V5 마이그레이션, D-IPO-001~004 확정 |
+| 공모주 기준정보 관리(Epic 5): IPO 등록 API | BE | `winter0123/ipo-catalog` | PR #91(SF-2) | 완료 | 중복검사 헬퍼(D-IPO-001), V6 마이그레이션으로 partial unique index 버그 수정 |
+| 웹 계정·투자자·계좌 설정(Epic 13): 프로젝트 스캐폴딩 | FE | `winter0123/web-account-setup` | PR #88(SF-1) | 완료 | `ui/` Vite+React+TS — 로드맵 최초 프론트엔드 구현, D-W13-007~015 확정 |
+| 웹 계정·투자자·계좌 설정(Epic 13): 로그인 화면 | FE | `winter0123/web-account-setup` | PR #89(SF-2) | 완료 | react-hook-form+TanStack Query |
+| 프론트엔드 패키지 매니저 전환 | FE | `winter0123/web-account-setup` | PR #90 | 완료 | npm → pnpm, package-lock.json → pnpm-lock.yaml |
 
 ### 이슈 및 트러블슈팅
 
