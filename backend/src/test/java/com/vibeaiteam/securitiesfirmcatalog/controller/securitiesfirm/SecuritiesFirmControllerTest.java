@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -583,6 +584,117 @@ class SecuritiesFirmControllerTest {
 
         Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-010)").isEqualTo("NOT_FOUND");
+        assertThat(responseMap.get("message")).isNotNull();
+    }
+
+    @Test
+    void deactivateFirmReturns204AndMarksInactiveInDb() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-011)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of(
+                "name", "NH투자증권",
+                "externalCode", "SC-0020",
+                "businessRegistrationNumber", "123-45-00000"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+        assertThat(saved.getStatus()).as("삭제 전 status는 ACTIVE여야 합니다").isEqualTo(STATUS_ACTIVE);
+        assertThat(saved.getDeletedAt()).as("삭제 전 deletedAt은 null이어야 합니다").isNull();
+        LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
+        saved.setUpdatedAt(oldUpdatedAt);
+        securitiesFirmRepository.save(saved);
+
+        // When: DELETE /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(delete("/securities-firms/" + firmId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 204 No Content, 본문 없음 (AC-011)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("비활성화 성공 시 204 No Content를 반환해야 합니다 (AC-011)").isEqualTo(204);
+        assertThat(result.getResponse().getContentAsByteArray()).as("204 응답의 본문은 비어 있어야 합니다 (AC-011)").isEmpty();
+
+        // And: DB에서 status=INACTIVE, deletedAt 설정, updatedAt 갱신 확인 (AC-011)
+        SecuritiesFirm inDb = securitiesFirmRepository.findById(firmId).orElseThrow();
+        assertThat(inDb.getStatus()).as("비활성화 후 status는 INACTIVE여야 합니다 (AC-011)").isEqualTo("INACTIVE");
+        assertThat(inDb.getDeletedAt()).as("비활성화 후 deletedAt이 설정되어야 합니다 (AC-011)").isNotNull();
+        assertThat(inDb.getUpdatedAt()).as("비활성화 후 updatedAt이 현재 시각으로 갱신되어야 합니다 (AC-011)").isAfter(oldUpdatedAt);
+    }
+
+    @Test
+    void deactivatedFirmIsExcludedFromList() throws Exception {
+        // Given: 인증된 사용자가 존재하고 활성 증권사 2곳이 등록되어 있음 (D-SF-003 필터 재사용 검증)
+        signupAndLogin();
+        registerRequest(Map.of("name", "한국투자증권"));
+        registerRequest(Map.of("name", "미래에셋증권"));
+        List<SecuritiesFirm> active = securitiesFirmRepository.findByDeletedAtIsNull();
+        registeredFirms.addAll(active);
+        SecuritiesFirm target = active.stream()
+                .filter(f -> "미래에셋증권".equals(f.getName()))
+                .findFirst()
+                .orElseThrow();
+
+        // When: 한 곳이 비활성화된 뒤 GET /securities-firms 요청이 전송됨
+        int deleteStatus = mockMvc.perform(delete("/securities-firms/" + target.getId())
+                        .session(session))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+        assertThat(deleteStatus).as("테스트 사전 준비: 비활성화는 204여야 합니다").isEqualTo(204);
+        MvcResult result = mockMvc.perform(get("/securities-firms")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 비활성화된 증권사는 목록에서 제외됨 (D-SF-003)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("목록 조회 시 200 OK여야 합니다").isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("비활성화된 증권사는 목록에서 제외되어야 합니다").hasSize(1);
+        assertThat(body.get(0).get("name")).as("활성 증권사만 목록에 포함되어야 합니다").isEqualTo("한국투자증권");
+    }
+
+    @Test
+    void deactivatedFirmDetailReturns404NotFound() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of("name", "KB증권"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+
+        // When: 비활성화된 뒤 GET /securities-firms/{id} 요청이 전송됨
+        int deleteStatus = mockMvc.perform(delete("/securities-firms/" + firmId)
+                        .session(session))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+        assertThat(deleteStatus).as("테스트 사전 준비: 비활성화는 204여야 합니다").isEqualTo(204);
+        MvcResult result = mockMvc.perform(get("/securities-firms/" + firmId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 비활성화된 증권사 상세 조회는 404 + NOT_FOUND (D-SF-003 삭제 필터가 상세 조회에서도 적용됨)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("비활성화된 증권사 상세 조회 시 404여야 합니다").isEqualTo(404);
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void deactivateFirmWithUnknownIdReturns404NotFound() throws Exception {
+        // Given: 인증된 사용자가 존재함 (AC-013)
+        signupAndLogin();
+
+        // When: 존재하지 않는 증권사 id로 DELETE /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(delete("/securities-firms/99999999")
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-013)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 증권사 비활성화 요청 시 404를 반환해야 합니다 (AC-013)").isEqualTo(404);
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-013)").isEqualTo("NOT_FOUND");
         assertThat(responseMap.get("message")).isNotNull();
     }
 

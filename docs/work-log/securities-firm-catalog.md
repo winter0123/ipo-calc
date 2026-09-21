@@ -94,3 +94,28 @@ Investor(SF-1 공용 인프라 포함 6개)와 달리, 이 Epic은 계정 소유
 
 ### 남은 작업
 - SF-4: 증권사 수정 API (PATCH /securities-firms/{id}) — AC-007~010
+
+## 2026-09-21 — SF-5: 증권사 비활성화 API (DELETE /securities-firms/{id}, 논리 삭제) 구현 (B그룹, backend-3)
+
+> 참고: git log 기준 SF-4(커밋 32f30a4, PR #75)는 이미 완료·머지되어 있으나 이 work-log에는 SF-4 섹션이 누락되어 있다(선행 워커가 기록하지 않음). 본 SF는 그 누락을 보정하되 규칙(append-only)에 따라 기존 내용은 수정하지 않고 이 섹션만 추가한다.
+
+### 완료 작업 (Test-First RED→GREEN)
+- **Test-First RED**: `SecuritiesFirmControllerTest`에 AC-011~013 + 비활성화 후 조회 필터(D-SF-003 재사용) 테스트 4건 먼저 추가 → DELETE 엔드포인트 미구현 상태로 실행, **21건 중 4건 실패(RED) 확인**
+- **GREEN 구현**:
+  - `controller/securitiesfirm/SecuritiesFirmController.java` — `@DeleteMapping("/{id}")` deactivate() 추가, 성공 시 `ResponseEntity.noContent()`(204, 본문 없음)
+  - `service/securitiesfirm/SecuritiesFirmService.java` — `deactivate(id)`: `findByIdAndDeletedAtIsNull(id)`로 없거나 논리 삭제된 레코드면 404(없으면 `SecuritiesFirmNotFoundException`), 존재하면 status=INACTIVE + deletedAt=now() + updatedAt=now() 설정 후 저장
+  - 엔티티/Repository는 SF-1에서 이미 준비돼 있어 변경 없음. **연관관계(SecuritiesAccount) 체크 코드는 작성하지 않음** — 이 Epic 시점엔 SecuritiesAccount 테이블이 없고, spec AC-012(연결 계좌가 있어도 논리 삭제는 항상 허용)는 물리 삭제만 금지하므로 논리 삭제만 수행하면 됨
+
+### 테스트 4건 (AC 대응)
+- AC-011 정상 비활성화: DELETE → 204 + 본문 없음 + DB status=INACTIVE, deletedAt 설정, updatedAt 갱신 검증
+- 비활성화 후 목록 제외: 2곳 중 1곳 비활성화 → GET /securities-firms에 활성 1곳만 노출 (D-SF-003 목록 필터 재사용)
+- 비활성화 후 상세 조회: 비활성화된 증권사 id로 GET /securities-firms/{id} → 404 + NOT_FOUND (D-SF-003 상세 필터 재사용)
+- AC-013 존재하지 않는 id: DELETE /securities-firms/99999999 → 404 + NOT_FOUND
+
+### 검증 결과
+- 신규 테스트 단독 실행: GREEN (4/4) — `DB_PASSWORD=vibe_local_password ./gradlew test --tests '*SecuritiesFirmControllerTest'`
+- 전체 스위트: `DB_PASSWORD=vibe_local_password ./gradlew test` — BUILD SUCCESSFUL, **13개 테스트 클래스 94/94 GREEN (failures=0, errors=0, skipped=0)** — Epic 1(account 37건)+Epic 2(investor 29건)+Epic 3(securities-firm 28건) 전체 포함
+- `git diff --check` 통과. checkstyle 플러그인은 이 프로젝트에 없음(기존 SF와 동일, checkstyleMain/checkstyleTest 태스크 존재하지 않음)
+
+### 남은 작업
+- **Epic 3(securities-firm-catalog) 5개 SF(SF-1~5) 전체 구현 완료.** PR 생성 및 main 머지 후 이 Epic의 B그룹 워커 정리. 다음: Epic 4(securities-account-management) SF 분해

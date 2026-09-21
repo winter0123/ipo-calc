@@ -20,6 +20,7 @@ public class SecuritiesFirmService {
 
     private static final int NAME_MAX_LENGTH = 255;
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_INACTIVE = "INACTIVE";
 
     private final SecuritiesFirmRepository securitiesFirmRepository;
 
@@ -82,6 +83,17 @@ public class SecuritiesFirmService {
         firm.setUpdatedAt(LocalDateTime.now());
         SecuritiesFirm saved = securitiesFirmRepository.save(firm);
         return SecuritiesFirmResponse.from(saved);
+    }
+
+    public void deactivate(Long id) {
+        SecuritiesFirm firm = securitiesFirmRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
+
+        LocalDateTime now = LocalDateTime.now();
+        firm.setStatus(STATUS_INACTIVE);
+        firm.setDeletedAt(now);
+        firm.setUpdatedAt(now);
+        securitiesFirmRepository.save(firm);
     }
 
     private String validateName(String name) {
