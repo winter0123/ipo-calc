@@ -182,7 +182,7 @@ infrastructure
 
 | 컬럼명 | 타입 | 제약 | 설명 |
 |--------|------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 내부 식별자 (Long IDENTITY) |
+| id | BIGINT | PK, GENERATED ALWAYS AS IDENTITY | 내부 식별자 (Long IDENTITY) |
 | investor_id | BIGINT | NOT NULL, FK → investors.id, ON DELETE RESTRICT | 투자자 외부키 |
 | securities_firm_id | BIGINT | NOT NULL, FK → securities_firms.id, ON DELETE RESTRICT | 증권사 외부키 |
 | account_number | VARCHAR(255) | NOT NULL | 계좌번호 (암호화 저장) |
@@ -191,7 +191,7 @@ infrastructure
 | status | VARCHAR(10) | NOT NULL, DEFAULT 'ACTIVE' | 계좌 상태 (ACTIVE/INACTIVE) |
 | deleted_at | TIMESTAMP | NULL 허용 | 논리 삭제 시각 |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | 수정 일시 |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 수정 일시 (애플리케이션 코드에서 갱신, DB 트리거 없음) |
 
 ### 인덱스
 - PRIMARY KEY (id)

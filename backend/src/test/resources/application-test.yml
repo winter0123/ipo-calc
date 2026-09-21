@@ -16,6 +16,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+app:
+  encryption:
+    key: pQSZosg8xShWKKLtxE0Yk/fF4GOaG7DPB2fizcRDHnc=
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
