@@ -13,44 +13,58 @@
 
 ## 2026-09-21
 
-- Epic 2(investor-management) Phase 0 전체(기획 spec + 설계 architecture) 완료 및 병합(PR #49). Master 결정 사항 D-I-001~005 기록(`docs/work-log/investor-management.md`) — 특히 D-I-001: 초안의 UUID 제안을 기존 Account 엔티티(Long IDENTITY)와의 일관성을 위해 Long ID로 최종 결정.
-- Epic 3(securities-firm-catalog) spec 작성 완료 및 병합. 초안의 논리 오류(DELETE 엔드포인트가 연결된 계좌 있으면 실패하도록 잘못 작성됨 — 실제로는 논리 삭제이므로 연결 여부와 무관하게 항상 성공해야 함)를 Master가 발견해 수정.
-- **OpenRouter 무료 모델 계정 전체에 일일 사용량 한도(`free-models-per-day-high-balance`) 도달** — Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1, Google Gemma 4종 서로 다른 프로바이더 모두에서 동일한 오류 확인, 특정 모델이 아닌 계정 단위 일일 한도로 최종 판단됨. Epic 3 architecture 작업이 이 시점에서 막힘 — 10분 간격 자동 재시도 루프를 12회(약 1시간 52분) 가동했으나 모두 실패.
-- **우회 경로 발견 및 해결**: `opencode/` 프로바이더 자체의 무료 모델(OpenCode Zen)이 OpenRouter와 별개의 quota pool임을 확인 — `opencode/big-pickle`로 즉시 Epic 3 architecture 작성 성공(문서 품질 양호, UUID/DELETE 로직 오류 없음, 다만 Flyway SQL의 `ON UPDATE` 문법 오류를 Master가 직접 수정). PR #50으로 병합 완료. AGENTS.md 22장에 대체 경로 문서화. 사용자 지시("오픈라우터 한도풀릴때 까지는 오픈코드무료모델 이것저것 써보면서 해")에 따라 OpenRouter 한도가 풀릴 때까지는 opencode zen 모델을 우선 사용하기로 함.
-- **DB 문법 버그 재발 방지**: Epic 3/4 architecture 문서의 Flyway SQL이 MySQL 문법(AUTO_INCREMENT, ENGINE=InnoDB)과 PostgreSQL 전용 partial index를 한 CREATE TABLE에 섞어 실행 불가능했음을 Master가 발견·수정(이 프로젝트 DB는 PostgreSQL). 이미 병합된 Epic 3 문서도 함께 수정. AGENTS.md에 "PK는 GENERATED ALWAYS AS IDENTITY, 조건부 유니크는 별도 CREATE UNIQUE INDEX" 규칙 추가해 이후 Epic(4~6)부터는 재발하지 않음.
-- Epic 4(securities-account-management) Phase 0 완료(PR #51) — spec의 계좌번호 마스킹 자리수가 조사 결론(뒷 4자리)과 다르게 6자리로 작성된 것과 오타 2건을 Master가 수정.
-- Epic 5(ipo-catalog) Phase 0 완료(PR #52) — spec/architecture 모두 별도 수정 없이 병합. Architecture 작성 중 무료 모델 2종이 연속으로 "Thinking" 단계에서 멈춰(진행 없이 컨텍스트 크기 고정) 인터럽트 후 재시도, 3번째 모델(Big Pickle)이 첫 시도에서 파일이 중간에 잘렸으나 스스로 감지해 재작성 완료.
-- Epic 6(subscription-management) Phase 0 완료(PR #53) — **조사 문서 스코프 오류 발견**: 이 서비스는 사후 기록 서비스인데 조사가 실시간 청약 접수/배정 처리(상태 전이 머신, 낙관적/비관적 락)를 전제로 되어 있었음(Epic 14/15와 동일 패턴). Master가 D-S-001~006 결정을 먼저 내려 `docs/work-log/subscription-management.md`에 기록(배정/환불은 Epic 7로 분리, 단순 ACTIVE/CANCELLED만 사용, 락 메커니즘 불필요)한 뒤 spec/architecture 작업에 반영해 스코프 정정.
-- Epic 7(allocation-management) Phase 0 완료(PR #54) — Epic 6과 동일 패턴의 스코프 오류를 조사 문서에서 확인, D-A-001~007 결정(Subscription:Allocation=1:1, ACTIVE 기준 부분 유니크로 CANCELLED 재등록 허용, 잔여수량 계산은 Epic 8/11 분리)을 기록. Worker가 "CANCELLED 후 영구 재등록 불가"로 설계한 부분을 Subscription과의 일관성을 위해 Master가 수정.
-- Epic 8(sale-management) Phase 0 완료(PR #55) — 동일 패턴 3회째 반복 확인. D-SL-001~007 결정(상태 머신 없음, 매도수량/일시 포함 전체 필드 자유 수정+재검증, 락 불필요, 수익 계산은 Epic 9/10 분리, Allocation:Sale=1:N)을 기록해 spec/architecture에 반영. 이 과정에서 한 무료 모델이 절대경로(~/orca/...) 접근으로 예기치 못한 권한 다이얼로그를 유발해 인터럽트 후 재시도.
-- **반복 패턴 확인**: Epic 6/7/8 세 개 연속으로 조사 문서가 "이미 완료된 거래를 사후 기록"이라는 프로젝트 핵심 전제를 놓치고 실시간 처리(상태 전이, 동시성 락, 엄격한 불변 필드)를 가정함. Epic 9(비용 기록)/10(수익 계산)도 조사 문서 검토 시 동일 패턴 여부를 우선 확인하기로 함.
-- Epic 9(cost-recording) Phase 0 완료(PR #56) — 실시간 처리 오류는 없었으나, Epic 8(Sale)이 이미 fee/tax/otherCost 필드로 매도 비용을 기록하도록 설계돼 있어 Epic 9와 책임이 겹치는 문제를 발견. D-C-001~006 결정(Cost는 청약/취득 단계 비용만 담당, 매도 비용과 중복 설계 금지)으로 경계를 정리.
-- Epic 10(profit-calculation) Phase 0 완료(PR #57) — 조사 문서가 제안한 CalculationTrace(출처/근거/정책버전/수정이력) 엔티티 설계가 Epic 8/9에서 확립한 "별도 이력 테이블 불필요" 원칙과 배치되어 D-P-001~006으로 대폭 단순화: Profit은 저장하지 않는 파생값(on-demand 계산), 세금은 Sale.tax 그대로 사용(자동계산 절대 금지), 취득가액은 배정금액 단일 기준. 워커가 필드명을 실제 spec에서 grep으로 직접 검증해 작성하는 등 품질이 우수했음.
-- **마일스톤**: Epic 2~10 전체 Phase 0(조사→기획→설계) 완료로 핵심 금융 기록 체인(Account→Investor→SecuritiesAccount→IPO→Subscription→Allocation→Sale→Cost→Profit) 전체의 spec/architecture가 준비됨. 남은 Epic 11~16은 이 도메인을 조회·집계·화면으로 노출하는 API/웹 Epic들.
-- Epic 11(investment-query-api) Phase 0 완료(PR #58) — 조사 문서가 Sale(매도) 기준 조회를 제안했으나 이러면 미배정/미매도 청약이 결과에서 누락되는 설계 결함을 Master가 발견, D-Q-001~006으로 Subscription 기준(anchor) 조회로 정정. 워커가 Allocation.status에 없는 "CONFIRMED" 값을 예시로 쓴 것도 수정. 이 작업에서 4개 무료 모델이 연속으로 stall/JSON 파싱 오류를 겪어 매번 재시도.
-- Epic 12(dashboard-aggregation-api) Phase 0 완료(PR #59) — 조사 문서가 Epic 10/11에서 이미 폐기된 초기 결론을 인용해 D-D-001~007로 정렬. **중대 보안 결함 발견·수정**: architecture 초안이 "단일 사용자 가정이라 소유권 검증 불필요"라고 명시했으나 이 프로젝트는 Epic 1부터 멀티 계정 서비스이므로 그대로면 계정 간 재무 데이터가 섞이거나 노출되는 결함이었음. Master가 SecurityUtils 기반 계정 소유권 필터링을 spec/architecture 양쪽에 추가. 이 작업에서 3개 무료 모델이 연속 stall해 4번째(Big Pickle)가 완료.
-- **마일스톤**: Epic 2~12 전체 Phase 0 완료로 백엔드 API 관련 로드맵 전체(계정 인증, 투자자/증권사/계좌/공모주 기준정보, 청약~수익 계산 체인, 조회/집계 API)의 spec/architecture가 준비됨. 남은 Epic 13~16은 이 API들을 사용하는 웹 프론트엔드 화면 Epic들.
-- Epic 13(web-account-setup) Phase 0 완료(PR #60) — 첫 프론트엔드 Epic. 조사 문서가 투자자/증권계좌 등록 API 경로를 "미정"으로 남겼으나 Epic 2/4 spec 완성으로 확정되어 D-W13-001~006에 반영. 워커가 회원가입 비밀번호 검증 규칙을 실제 account-authentication spec과 다르게 단순화한 것을 Master가 수정. architecture는 FSD 레이어 구조로 설계, 미확인 프론트 라이브러리는 "package.json 확인 후 결정" 원칙 적용.
-- Epic 14(web-subscription-workflow) Phase 0 완료(PR #61) — D-W14-001~006으로 청약/배정 등록 화면 분리, 백엔드에 없는 "최소 청약 단위" 규칙 배제, 서버 검증 우선 원칙 확정. depositAmount "0 초과"→"0 이상" 수정(증거금 0원 허용). architecture는 Epic 13의 FSD entities/shared 재사용, 워커가 investment-query-api 필드명(quantity→subscriptionQuantity) 불일치를 스스로 지적해 Master가 확인 후 수정.
-- **마일스톤**: Epic 2~14 전체 Phase 0 완료. 로드맵 16개 Epic 중 14개 완료, 남은 것은 Epic 15(웹 매도·비용·수익)/16(웹 조회·대시보드)뿐.
-- Epic 15(web-sale-profit-workflow) Phase 0 완료(PR #62) — 조사 문서가 Epic 10에서 이미 폐기된 CalculationTrace/취득가액 선택옵션을 인용해 D-W15-001~006으로 정렬. quantity/price 검증 규칙이 반대로 작성된 것을 실제 sale-management spec 확인 후 수정. architecture는 D-W15-001(서버 미저장)과 TanStack Query 캐싱(프론트 표준 동작)을 명확히 구분 설명.
-- **마일스톤**: 로드맵 16개 Epic 중 15개 완료. 남은 것은 Epic 16(웹 조회·대시보드)뿐.
-- Epic 16(web-inquiry-dashboard) Phase 0 완료(PR #63) — 로드맵의 마지막 Epic. D-W16-001~007로 조사 문서의 구식 가정(총투자금 선택 옵션, 다른 반응형 브레이크포인트) 정정: 투자 내역 화면(Epic 11 API 재사용) + 대시보드 화면(Epic 12 API 재사용, 차트 라이브러리 없이 카드/테이블로만 지표 표시) 2개 화면으로 확정. spec 작성 중 목록 조회 API의 빈 결과를 404로 잘못 모델링한 결함(실제로는 200 OK + 빈 배열/0값 객체이며, 404는 상세 구독 미존재에만 해당 — investment-query-api/dashboard-aggregation-api 실제 계약과 대조해 발견)을 Master가 수정. architecture에서는 읽기 전용 Epic에 맞지 않는 "락 충돌 UI" 리스크 항목(다른 쓰기 워크플로우 Epic의 보일러플레이트가 잘못 재사용된 흔적)을 제거. 이 작업에서도 `opencode/big-pickle` 2회 연속 stall 후 `opencode/ling-3.0-flash-fin-free`로 spec/architecture 모두 완료.
-- **🎉 마일스톤: 로드맵 16개 Epic 전체 Phase 0(조사→기획→설계) 100% 완료.** Epic 1은 구현까지 완료(PR #41 사람 승인 대기), Epic 2~16은 spec+architecture 모두 병합(PR #42~#63). 다음 단계는 각 Epic의 세부기능(SF) 분해 및 실제 구현 착수 — Epic 1 PR #41 승인 후 backend 워크스페이스에서 순차 진행 예정.
-- 사용자가 Epic 1 PR #41을 승인·머지함(23:10 UTC). `account-authentication` 워크스페이스를 정책대로 `backend`로 이관(origin/main 기준 `winter0123/investor-management` 브랜치 생성, 이관 완료된 `account-authentication` worktree는 정리).
-- **워크스페이스 사고 2건 발생 및 재발 방지 규칙화**: (1) 사용자가 로컬 `backend` 디렉토리를 삭제해 재생성하는 과정에서 `--no-parent` 플래그를 잘못 사용해 `backend`가 `planning`/`frontend`와 달리 부모 워크트리 없는 "별도 프로젝트"처럼 Orca에 등록되는 사고 발생 — `orca worktree set --parent-worktree`로 수정. (2) 워커 터미널을 `orca terminal create --worktree` 지정 없이 만들고 셸에서 `cd`만 한 탓에, 실제 파일 작업은 올바른 위치에 반영됐지만 Orca 자체의 터미널 소속 정보는 계속 메인 워크스페이스로 등록된 채 남아있던 사고 발견 — 이후 터미널은 생성 시점에 `--worktree path:<경로>`를 지정하는 방식으로 전환. 두 사고 모두 AGENTS.md 12.4에 기록.
-- 사용자 지시로 GitHub의 오래된 미사용 브랜치 22개(이미 병합된 PR #41~#63의 head 브랜치) 일괄 정리. 프론트엔드 프로젝트 폴더를 `ui/`로 명명하기로 결정(AGENTS.md 14장에 기록) — `frontend`가 이미 Orca 워크스페이스 이름으로 쓰이고 있어 혼동 방지.
-- **Epic 2(investor-management) 세부기능(SF) 분해 및 구현 완료 — 로드맵 최초의 B그룹(구현) 두 번째 Epic.** SF-1(공통 인프라: 컴포넌트 스캔 범위를 `com.vibeaiteam` 전체로 확대 + `SecurityUtils.getCurrentAccountId()` 신설, 이후 모든 Epic이 재사용할 공용 인프라), SF-2(Investor 엔티티/Repository/PostgreSQL 마이그레이션), SF-3(투자자 등록 API — 구현 중 CSRF가 활성화된 상태로는 스펙이 요구하는 401이 절대 나올 수 없는 구조적 문제를 워커가 발견해 Master에게 질의, CSRF 전역 비활성화 + 401 AuthenticationEntryPoint로 근본 해결하기로 결정하고 사용자 승인 받아 병합 — D-I-006), SF-4(목록/상세 조회 API, 계정 소유권 검증), SF-5(수정 API), SF-6(비활성화 API, 멱등)까지 총 6개 세부기능 모두 Test-First로 구현, PR #65~#70 병합. Epic 1(34) + Epic 2(32) 합계 66개 테스트 전체 GREEN을 Master가 매 SF마다 직접 재실행해 검증함. architecture 문서 재검증 과정에서 DB 타입 오류(UUID→BIGINT 누락)와 MySQL 문법 잔존도 함께 수정.
-- **마일스톤**: 로드맵 16개 Epic 중 구현 완료 2개(Epic 1, 2), 나머지 14개는 Phase 0만 완료 상태. Epic 2에서 확보한 공용 인프라(SecurityUtils, 스캔 범위 확대, CSRF/401 설정)는 Epic 3~12 구현 시 그대로 재사용 가능.
-- **Epic 3(securities-firm-catalog) 세부기능(SF) 분해 및 구현 완료 — B그룹 구현 세 번째 Epic.** architecture 문서 재검증 중 DB 설계 표에 남아있던 MySQL 문법(AUTO_INCREMENT, ON UPDATE) 잔존을 발견해 수정하고, D-SF-001~003(활성 레코드끼리만 유니크 확정, 외부코드/사업자등록번호 중복검사 제외, 논리삭제 레코드는 조회에서 완전 제외)을 work-log에 확정. SF-1(엔티티/Repository/마이그레이션, (name,status) 복합 유니크), SF-2(등록 API, 409 중복), SF-3(목록/상세 조회 API, 논리삭제 필터), SF-4(수정 API, 자기 자신 제외 중복검사 — 이 SF에서 `opencode/big-pickle`이 GREEN 구현 직전 진짜로 멈춰서 인터럽트 후 `opencode/mimo-v2.5-free`로 재시도해 완료), SF-5(비활성화 API, 논리 삭제) 총 5개 세부기능 모두 Test-First로 구현, PR #72~#76 병합. Epic 1(37)+Epic 2(29)+Epic 3(28) 합계 94개 테스트 전체 GREEN을 Master가 매 SF마다 직접 재실행해 검증함. 이 Epic은 계정 소유 데이터가 아닌 글로벌 기준정보라 SecurityUtils를 쓰지 않는 점이 Epic 2와 다름. 곁가지로 "cd backend/backend"라는 잘못된 작업 디렉토리 지시(Master의 태스크 스펙 오류, 실제로는 "backend" 한 단계만 필요)를 발견 — 워커들이 매번 스스로 정정해 실제 진행에는 지장 없었으나 기록해둠. 또한 SF 사이클 중 로컬 커밋 2개가 스쿼시 머지되면서 이후 rebase 시 "both added" 가짜 충돌이 발생하는 git 특성을 확인해 AGENTS.md에 대응 절차(rebase --abort → diff 확인 → reset --hard origin/main) 기록.
-- **마일스톤**: 로드맵 16개 Epic 중 구현 완료 3개(Epic 1, 2, 3), 나머지 13개는 Phase 0만 완료 상태.
-- **Claude Code + OpenRouter 무료 모델을 워커로 쓰는 새 경로 발견**: 사용자가 Claude Code에 OpenRouter 게이트웨이(`ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`을 OpenRouter로 우회)를 연결해둔 것을 계기로, `claude --model "<openrouter 무료 모델 ID>"`로 OpenRouter 무료 모델을 Claude Code 에이전트로 직접 띄울 수 있음을 확인 — Read/Write/Bash 등 모든 도구를 그대로 쓰고 `orca orchestration worker-start`로도 정상 배분됨(opencode와 달리 `turnStart: observed`로 확인 가능). OpenRouter 공식 API로 확인한 무료 모델 21개를 파일-쓰기 방식으로 전수 테스트해 15개 작동/6개 실패를 확인, AGENTS.md 22.4에 기록하고 워커 우선순위를 "1순위 claude --model(OpenRouter 무료) → 2순위 opencode"로 변경. 검증 과정에서 헤더 표시와 `--print` 비대화형 모드 모두 신뢰할 수 없다는 것도 확인(실제 파일 생성 여부만 신뢰 가능).
-- **네이티브 계정 모델 ↔ 게이트웨이 모델 전환 방법 정리 및 정정**: 처음에는 `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 `unset`하면 네이티브로 전환된다고 문서화했으나(Method B), 실제 워커 터미널 헤더가 `API Usage Billing`(OpenRouter 과금)으로 표시되는 것을 발견해 오류였음을 확인 — `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`까지 3개 변수를 모두 `unset`해야 진짜 네이티브(`Claude Pro` 표시)가 된다고 AGENTS.md 22.5를 정정. 사용자 지시("네이티브 모델로 워커 만들어서 코딩하자")에 따라 사용자가 명시적으로 지시할 때만 예외적으로 워커를 네이티브 모델로 띄울 수 있다는 규칙(22.6)도 신설.
-- **Epic 4(securities-account-management) 세부기능(SF) 분해 및 구현 완료 — B그룹 구현 네 번째 Epic, 사용자 지시로 워커를 네이티브 Claude 모델(Sonnet 5, Claude Pro)로 운영.** SF-1(엔티티/Repository/마이그레이션, AES-256-GCM 계좌번호 암호화), SF-2(등록 API, 첫 계좌는 무조건 기본 계좌), SF-3(목록/상세 조회 API — 이 SF에서 Master가 직접 버그 수정: 증권사가 비활성화돼도 기존 연결 계좌는 이름을 계속 표시해야 하는데 워커가 `findByIdAndDeletedAtIsNull`을 써서 비활성화 시 이름이 사라지는 결함을 발견, `findById`로 수정하고 회귀 테스트 추가), SF-4(계좌번호 전체 노출 API, SLF4J 감사 로그), SF-5(수정 API, accountNumber 불변), SF-6(비활성화 API, 기본 계좌였으면 함께 clear — D-SA-004), SF-7(기본 계좌 지정 API, `saveAndFlush` 순서 보장 + partial unique index 기반 동시성 제어 — D-SA-006) 총 7개 세부기능 모두 Test-First로 구현, PR #78~#84 병합. 140개 테스트 전체 GREEN을 Master가 매 SF마다 `./gradlew test --rerun`으로 직접 재실행해 검증함.
-- **마일스톤**: 로드맵 16개 Epic 중 구현 완료 4개(Epic 1, 2, 3, 4), 나머지 12개는 Phase 0만 완료 상태. 다음은 Epic 5(ipo-catalog)부터 순차 SF 분해 및 구현.
-- **로드맵 의존관계 재확인 — 프론트엔드 병렬 착수 기회를 놓치고 있었음을 사용자가 지적**("프론트 개발은 왜 안해?"). `docs/roadmap.md`를 다시 확인한 결과 Epic 13(web-account-setup)의 선행조건은 Epic 1~4뿐(Epic 5~12 불필요) — Epic 4 완료 시점부터 이미 착수 가능했으나 "Epic 1→2→...→16 순차 진행"이라는 암묵적 가정 때문에 놓침. 이후 매 Epic 완료 시 로드맵 의존관계를 다시 확인해 병렬 착수 기회를 찾기로 함(`docs/current-status.md`에도 방침 기록).
-- **Epic 5(ipo-catalog) SF-1 완료**(backend 워크스페이스, OpenRouter 무료 모델 `nvidia/nemotron-3-ultra-550b-a55b:free`): Ipo 엔티티/Repository/V5 마이그레이션. D-IPO-001~004(Service+DB 이중 중복검사, CSV 5MB 상한, commons-csv 신규 도입, deletedAt 기준 조회 필터) Master 확정. 147개 테스트 통과, PR #87 병합.
-- **Epic 13(web-account-setup) SF-1 완료 — 로드맵 최초의 프론트엔드 구현**(frontend 워크스페이스): 저장소 루트에 `ui/` 폴더 신설, Vite(React+TS) 스캐폴딩, FSD 폴더 뼈대, ESLint+Prettier+tsc strict, TanStack Query, react-router-dom, Vitest+RTL. D-W13-007~015(빌드도구/라우팅/폼/스타일링/테스트 도구 등 신규 프로젝트라 "확인 후 결정" 항목 전부를 Master가 확정) 기록. 워커가 `docs/current-status.md`(Master 전용 문서)를 임의로 수정한 것을 발견해 되돌리고, Master가 직접 정확한 내용으로 갱신 — 이후 태스크 스펙에 "current-status.md는 절대 건드리지 않는다" 명시. lint/typecheck/format/test/build 5개 항목 모두 독립 재검증 통과, PR #88 병합.
-- **터미널 정리 재발 사고**: AGENTS.md 23.6에 이미 "다 쓴 세션을 안 지워 세션이 난립"하는 과거 실패가 기록돼 있었음에도, Epic 2~4 전체(SF 15개 가까이)의 워커 터미널을 하나도 정리하지 않고 방치 — 사용자가 backend 워크스페이스에 남은 터미널을 직접 보고 지적함. 즉시 18개(완료된 워커 16개 + 유휴 셸 2개) 정리. 원인은 "PR merge 완료"와 "터미널 정리"를 별개의 심리적 단계로 취급해 후자를 계속 미룬 것 — AGENTS.md 12.4-1/23.6/25장(DoD) 세 곳 모두에 "merge 커맨드 직후 같은 턴에서 바로 터미널 close"를 명시해 재발 방지. 사용자 요청으로 "앞으로 질문에는 한국어로 답변" 규칙도 이 시점에 확정.
-- **네이티브 모델 예외 규칙 확정**: 22.6 신설 — 기본은 OpenRouter 무료 모델이지만, 사용자가 명시적으로 지시한 범위/기간에 한해 Master가 워커를 Claude 네이티브 구독 모델로 띄울 수 있다는 예외 규칙. 사용자 지시로 이후 다시 OpenRouter 무료 모델 우선으로 복귀.
-- **헤르메스(Hermes, Telegram 알림 봇, Gemini 3.5 Flash Lite 연결) 리포팅 파이프라인 설계 논의** — 아직 구현 전, 설계만 확정: (1) 트리거는 Orca 태스크 raw 상태가 아니라 Master가 검증 후 PR을 생성/병합하는 시점 기준으로 하되, 이 프로젝트는 PR 생성과 병합이 거의 동시에 일어나므로 `gh pr list --state open`이 아닌 `--state all`로 "새 PR 번호 등장"을 감지해야 함(open 상태 감시는 타이밍상 놓치기 쉬움). (2) 사용자가 "내가 직접 merge하는데 merge 알림은 의미 없다"고 지적 — 알림 가치는 merge가 아니라 "워커가 작업을 끝냈다"/"PR이 생성됐다"는 진행 상황 자체에 있음을 확인. (3) 알림 전송(`hermes send`)은 Hermes의 LLM(Gemini, RPD 500 제한)을 거치지 않는 순수 CLI 호출로 설계해 Claude 토큰과 Gemini RPD 둘 다 소비하지 않도록 함 — 감지/추출은 Claude 세션과 무관한 독립 폴링 스크립트로 분리. 실제 스크립트 작성은 사용자 확인 대기 중.
+### ✅ Epic 2~16 Phase 0(조사·기획·설계) 전체 완료 — 로드맵 100%
+- PR #49~#63. Epic 6/7/8은 "실시간 처리" 가정 오류를 반복 발견해 D-S/D-A/D-SL 결정으로 정정, Epic 12는 계정 격리 보안 결함을 발견·수정, Epic 13은 첫 프론트엔드 Epic.
+- 상세 결정 내역은 각 Epic `docs/work-log/*.md` 참고.
+
+### ⚠️ OpenRouter 무료 모델 계정 일일 한도 도달 → 우회 경로 발견
+- Nemotron/Laguna/Gemma 4개 프로바이더 동일 오류로 계정 단위 한도 확인. `opencode/` 자체 무료 모델(OpenCode Zen)이 별개 quota임을 발견해 우회, AGENTS.md 22장에 기록.
+
+### 🔧 DB 문법 버그 재발 방지
+- Flyway SQL에 MySQL 문법이 섞여 있던 걸 발견·수정. "PK는 GENERATED ALWAYS AS IDENTITY, 조건부 유니크는 별도 CREATE UNIQUE INDEX" 규칙 추가.
+
+### ✅ Epic 1 사람 승인·병합 (23:10 UTC)
+- `account-authentication` 워크스페이스를 `backend`로 이관.
+
+### ⚠️ 워크스페이스 사고 2건 → 재발 방지 규칙화
+- `--no-parent` 플래그 오용, 터미널 생성 시 `--worktree` 미지정 사고. 둘 다 AGENTS.md 12.4에 기록.
+
+### ✅ Epic 2(investor-management) 구현 완료 — B그룹 두 번째 Epic
+- SF-1~6, PR #65~#70, 66개 테스트 GREEN. `SecurityUtils` 등 공용 인프라 신설(이후 모든 Epic이 재사용).
+- CSRF 활성 상태로는 스펙이 요구하는 401이 불가능한 구조적 문제 발견 → CSRF 전역 비활성화 결정(D-I-006, 사용자 승인).
+
+### ✅ Epic 3(securities-firm-catalog) 구현 완료 — B그룹 세 번째 Epic
+- SF-1~5, PR #72~#76, 94개 테스트 GREEN. 글로벌 기준정보라 SecurityUtils 불필요(Epic 2와 차이).
+- 스쿼시 머지 후 rebase 시 "both added" 가짜 충돌 패턴 확인, 대응 절차 AGENTS.md에 기록.
+
+### 🔍 Claude Code + OpenRouter 무료 모델 워커 경로 신규 발견
+- `claude --model "<openrouter 무료 모델>"`로 완전한 도구 사용 가능한 워커를 띄울 수 있음을 확인. 15개 작동/6개 실패 전수 테스트, AGENTS.md 22.4에 기록. 워커 우선순위를 "1순위 claude --model → 2순위 opencode"로 변경.
+
+### 🔧 네이티브 ↔ 게이트웨이 모델 전환 방법 정리·정정
+- `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 unset하면 충분하다고 처음 문서화했으나 오류로 판명(여전히 OpenRouter 과금). `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`까지 3개 모두 unset해야 진짜 네이티브. AGENTS.md 22.5 정정.
+
+### ✅ Epic 4(securities-account-management) 구현 완료 — B그룹 네 번째 Epic
+- SF-1~7, PR #78~#84, 140개 테스트 GREEN. 사용자 지시로 네이티브 Claude 모델(Sonnet 5) 워커 사용.
+- AES-256-GCM 계좌번호 암호화, 2단계 소유권 검증, `saveAndFlush` + partial unique index 기반 기본계좌 동시성 제어.
+- Master가 직접 발견한 버그: 증권사 비활성화 시 연결계좌 이름이 사라지던 결함 → `findById`로 수정 + 회귀 테스트 추가.
+
+### 🔍 로드맵 의존관계 재확인 → 프론트엔드 병렬 착수
+- 사용자 지적("프론트 개발은 왜 안해?")으로 발견: Epic 13은 Epic 1~4만 있으면 착수 가능했는데 순차 진행 가정 때문에 늦게 시작. 이후 매 Epic 완료 시 의존관계 재확인하기로 함.
+
+### ✅ Epic 5(ipo-catalog) SF-1 완료 — backend
+- Ipo 엔티티/Repository/V5 마이그레이션, 147개 테스트, PR #87. D-IPO-001~004 확정(이중 중복검사/CSV 5MB/commons-csv/deletedAt 필터).
+
+### ✅ Epic 13(web-account-setup) SF-1 완료 — 로드맵 최초 프론트엔드 구현
+- `ui/` Vite+React+TS 스캐폴딩, FSD 뼈대, PR #88. D-W13-007~015 확정(신규 프로젝트라 "확인 후 결정" 항목 전부).
+- 워커가 Master 전용 문서(`current-status.md`)를 임의로 건드린 것을 되돌림 → 태스크 스펙에 금지 명시.
+
+### ⚠️ 터미널 정리 재발 사고
+- AGENTS.md에 이미 기록된 실패("다 쓴 세션 방치")가 Epic 2~4 전체에서 재발 — 사용자가 직접 지적. 18개 즉시 정리, "merge 직후 같은 턴에서 터미널 close"를 12.4-1/23.6/25장 세 곳에 명시.
+- 사용자 요청으로 "질문엔 한국어로 답변" 규칙 확정.
+
+### 🔧 네이티브 모델 예외 규칙 신설 (22.6)
+- 기본은 OpenRouter 무료 모델, 사용자가 명시적으로 지시한 범위에 한해 네이티브 모델 예외 허용. 이후 다시 OpenRouter 우선으로 복귀.
+
+### 🔧 헤르메스(Telegram 알림 봇) 리포팅 파이프라인 설계 논의 — 구현 전
+- 감지 트리거를 Orca 태스크 완료 / PR 생성(`gh pr list --state all`로 신규 번호 감지, `--state open`은 이 프로젝트에선 즉시 merge돼 놓치기 쉬움) 기준으로 설계.
+- 알림 전송은 Hermes LLM(Gemini RPD 500)을 거치지 않는 순수 CLI 호출로, 감지는 Claude 세션과 무관한 독립 폴링 스크립트로 분리해 양쪽 토큰/쿼터 모두 안 씀. 실제 스크립트 작성은 사용자 확인 대기 중.
