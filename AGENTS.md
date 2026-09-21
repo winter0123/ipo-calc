@@ -779,7 +779,7 @@ orca skills get <skill-name>
 
 ## 22. Master(Claude Code) / OpenRouter 모델 운영 규칙
 
-**Master Lead는 Orca 위에서 Claude Code로 띄운 코디네이터이며 모델은 Claude다.** OpenRouter를 쓰지 않고, `worker-start`의 대상도 아니다. Master 아래 모든 워커(A/B/C그룹)는 **OpenCode 에이전트 + OpenRouter 무료 모델**로만 만든다. 실행 전 OpenRouter/Orca에 실제 등록된 모델 ID와 가용성을 확인한다. Select variant가 있으면 가장 높은 버전을 선택한다.
+**Master Lead는 Orca 위에서 Claude Code로 띄운 코디네이터이며 모델은 Claude다.** OpenRouter를 쓰지 않고, `worker-start`의 대상도 아니다. Master 아래 모든 워커(A/B/C그룹)는 **무료 모델(반드시 `free`)**로만 만든다. **에이전트 종류는 22.4의 `claude --model <openrouter 무료 모델>`을 1순위로 시도하고, 그 모델이 막히거나 응답이 없으면 22.3의 `opencode --model openrouter/<id>`로 전환한다** (2026-09-21 사용자 지시로 우선순위 변경 — 과거에는 opencode만 썼음). 실행 전 OpenRouter/Orca에 실제 등록된 모델 ID와 가용성을 확인한다. Select variant가 있으면 가장 높은 버전을 선택한다.
 
 **모델 교체 유연성(2026-09-20 사용자 승인):** 22.1 표는 기본 배정이지 절대 고정이 아니다. 배정된 모델이 자주 멈추거나(컨텍스트 초과, upstream timeout 등) 성능이 안 나오면, **역할·작업 종류를 가리지 않고**(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부) 다른 OpenRouter 모델로 바꿔서 진행해도 된다. 단 **모델 ID에 반드시 `free`가 포함되어야 한다**(유료 모델 금지 원칙은 그대로 유지). 교체 시 `opencode models openrouter`로 후보를 확인하고, 어떤 모델에서 어떤 모델로/왜 바꿨는지 work-log에 남긴다.
 
@@ -851,6 +851,68 @@ orca orchestration worker-start --task <review-task> --worktree current --agent 
 - 모델 변경 시 모델명/사유/영향 작업을 work-log에 기록.
 - 컨텍스트 한계를 고려해 관련 파일·호출 경로·작업 문서만 전달. 저장소 전체를 매번 넣지 않는다.
 - 웹 검색/외부 도구는 현재 정보가 필요할 때만 읽기 전용으로 사용.
+
+### 22.4 Claude Code + OpenRouter 무료 모델 워커 (2026-09-21 신규 발견 — 이제부터 1순위 경로)
+
+> **배경**: 사용자가 Claude Code에 OpenRouter 게이트웨이를 연결해두면서, `claude --model "<openrouter 모델 ID>"`로 OpenRouter의 무료 모델을 Claude Code 에이전트로 직접 띄울 수 있음을 발견했다. 22.1~22.3의 opencode 경로와 달리 **Claude Code 자체가 에이전트로 동작**하므로 Read/Write/Bash 등 모든 도구를 그대로 쓸 수 있고, `orca orchestration worker-start`로도 정상 배분된다(`turnStart: observed`로 확인 — opencode는 이 값을 보고 못 함).
+
+**우선순위 변경(2026-09-21 사용자 지시): 이제 워커를 띄울 때 아래 순서를 따른다.**
+1. **1순위**: 이 절에서 검증된 OpenRouter 무료 모델을 `claude --model "<id>"`로 띄운다.
+2. **2순위(그 모델이 막히거나 응답이 없을 때만)**: 22.3의 `opencode --model openrouter/<id>` 경로로 전환한다.
+3. OpenRouter 계정 전체 일일 한도(`free-models-per-day-high-balance`)에 걸리면 22 본문의 안내대로 `opencode/` 프로바이더 자체 무료 모델(OpenCode Zen)로 전환한다.
+
+**검증 방법(중요 — 반드시 이 순서로 확인한다):**
+- `claude --model "<id>"`로 터미널을 띄우면 헤더에 모델명이 그대로 표시되지만, **이건 문자열을 검증 없이 echo한 것뿐이라 신뢰할 수 없다.**
+- `claude --model "<id>" --print "<프롬프트>"`(비대화형) 모드도 신뢰할 수 없다 — 실제로는 정상 동작하는 모델도 `--print`에서는 `[claude-code:unrecognized_model]` 오류를 내는 경우가 있었다(nvidia nemotron 계열에서 확인).
+- **유일하게 신뢰 가능한 검증은 실제 오케스트레이션 태스크를 배분해서 파일을 쓰게 시킨 뒤, 그 파일이 디스크에 정확한 내용으로 생성됐는지 확인하는 것이다.** 화면 렌더링(`terminal read`/`terminal show`)도 이 agent 타입에서는 가끔 내용을 못 읽어오므로(빈 화면, `preview: "B"` 한 글자만 나오는 등) 파일 존재 여부로만 판단한다.
+
+**띄우는 명령어(정확한 절차):**
+```bash
+# 1. 터미널 생성 시점에 --command로 모델을 바로 지정한다 (나중에 셸에 타이핑하면 안 됨 — 처음부터 지정해야 한다)
+orca terminal create --worktree path:<워크스페이스 절대경로> --title "<제목>" \
+  --command 'claude --model <openrouter-모델-ID>' --json
+
+# 2. 몇 초 기다린 뒤 idle 프롬프트(헤더에 모델명 표시)가 뜨는지 확인
+orca terminal read --terminal <handle> --json
+
+# 3. 태스크 생성 + 배분 (opencode와 동일 패턴, --agent/--model 플래그는 이 단계에서 쓰지 않음)
+orca orchestration task-create --task-title "<제목>" --spec "<지시문>" --json
+orca orchestration worker-start --task <task_id> --terminal <handle> --worktree path:<워크스페이스 절대경로> --json
+```
+
+**2026-09-21 테스트 결과 (OpenRouter 무료 모델 21개 전수 테스트, 파일-쓰기 방식으로 검증):**
+
+*작동 확인(15개) — 1순위로 바로 시도 가능:*
+```
+dots-studio/dots-3-note-preview:free
+nvidia/nemotron-3.5-lightning:free
+nvidia/nemotron-3-super-120b-a12b:free
+nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nemotron-3-ultra-550b-a55b:free
+inclusionai/ling-3.0-flash-vl:free
+inclusionai/ling-3.0-flash-sante:free
+inclusionai/ling-3.0-flash-fin:free
+nex-agi/nex-n2.5-mini:free
+nex-agi/nex-n2.5-pro:free
+thinkingmachines/inkling-small:free
+thinkingmachines/inkling:free
+poolside/laguna-s-2.1:free
+poolside/laguna-xs-2.1:free
+qwen/qwen3.8-27b:free
+```
+
+*실패 확인(6개) — 이 경로로 쓰지 말고 바로 opencode로 전환:*
+| 모델 | 원인 |
+|---|---|
+| `z-ai/glm-5.2:free` | `API Error: 400 No endpoints found that support tool use` — 이 모델은 도구 호출 자체를 지원하지 않아 Claude Code 에이전트로 쓸 수 없음 |
+| `google/gemma-4-26b-a4b-it:free` | 응답 없이 멈춤(무한 대기) |
+| `google/gemma-4-31b-it:free` | 응답 없이 멈춤(무한 대기) — gemma-4 계열 전체가 이 경로에서 막히는 것으로 보임 |
+| `liquid/lfm-2.5-2.6b:free` | "완료" 표시(`Crunched for Ns · done`)는 뜨지만 실제로는 도구를 호출하지 않아 파일이 생성되지 않음 |
+| `cohere/north-mini-code:free` | 응답 없이 멈춤 |
+| `nvidia/nemotron-3.5-content-safety:free` | 응답 없이 멈춤(콘텐츠 검열 전용 모델이라 애초에 범용 에이전트 용도가 아니었을 가능성 높음) |
+
+- 21개 무료 모델 전체 목록은 OpenRouter 공식 API(`https://openrouter.ai/api/v1/models`, `id`가 `:free`로 끝나는 항목)로 확인했다. **모델명을 기억이나 추측으로 적지 말고, 매번 이 API로 최신 목록을 재확인한 뒤 위 15개 중에서 고른다** — OpenRouter가 무료 모델 라인업을 수시로 교체하므로 이 목록도 주기적으로 재검증이 필요하다.
+- 새 모델을 이 경로로 처음 써볼 때는 반드시 위의 "파일-쓰기 검증" 절차를 거친 뒤 이 표에 결과를 추가한다.
 
 ---
 
