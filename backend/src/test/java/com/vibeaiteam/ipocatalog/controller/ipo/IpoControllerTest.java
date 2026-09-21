@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.controller.ipo;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -290,6 +292,128 @@ class IpoControllerTest {
         assertThat(roundLabelResult.getResponse().getStatus()).isEqualTo(201);
 
         assertThat(ipoRepository.count()).isEqualTo(3);
+    }
+
+    @Test
+    void listIposWithExistingIposReturns200AndListInDescendingOrder() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        request.put("ipoName", "공모주A");
+        request.put("subscriptionStartDate", "2026-10-01");
+        request.put("subscriptionEndDate", "2026-10-02");
+        request.put("stockCode", "111111");
+        MvcResult first = registerIpo(request);
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long firstId = ((Number) readBody(first).get("id")).longValue();
+
+        request.put("ipoName", "공모주B");
+        request.put("subscriptionStartDate", "2026-11-01");
+        request.put("subscriptionEndDate", "2026-11-02");
+        request.put("stockCode", "222222");
+        MvcResult second = registerIpo(request);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long secondId = ((Number) readBody(second).get("id")).longValue();
+
+        MvcResult listResult = mockMvc.perform(get("/ipos")
+                        .session(session))
+                .andReturn();
+
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> list = objectMapper.readValue(utf8Body(listResult), new TypeReference<>() {});
+        assertThat(list).hasSize(2);
+        assertThat(((Number) list.get(0).get("id")).longValue()).isEqualTo(secondId);
+        assertThat(((Number) list.get(1).get("id")).longValue()).isEqualTo(firstId);
+    }
+
+    @Test
+    void listIposExcludesDeletedIpos() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        request.put("ipoName", "공모주A");
+        request.put("subscriptionStartDate", "2026-10-01");
+        request.put("subscriptionEndDate", "2026-10-02");
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Ipo existing = ipoRepository.findById(id).orElseThrow();
+        existing.setDeletedAt(LocalDateTime.now());
+        ipoRepository.save(existing);
+
+        MvcResult listResult = mockMvc.perform(get("/ipos")
+                        .session(session))
+                .andReturn();
+
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> list = objectMapper.readValue(utf8Body(listResult), new TypeReference<>() {});
+        assertThat(list).isEmpty();
+    }
+
+    @Test
+    void listIposWithNoIposReturns200AndEmptyArray() throws Exception {
+        signupAndLogin();
+
+        MvcResult listResult = mockMvc.perform(get("/ipos")
+                        .session(session))
+                .andReturn();
+
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> list = objectMapper.readValue(utf8Body(listResult), new TypeReference<>() {});
+        assertThat(list).isEmpty();
+    }
+
+    @Test
+    void getIpoByIdExistingReturns200AndIpo() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        request.put("ipoName", "공모주A");
+        request.put("subscriptionStartDate", "2026-10-01");
+        request.put("subscriptionEndDate", "2026-10-02");
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        MvcResult result = mockMvc.perform(get("/ipos/{id}", id)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(id);
+        assertThat(response.get("ipoName")).isEqualTo("공모주A");
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void getIpoByIdNotFoundReturns404() throws Exception {
+        signupAndLogin();
+
+        MvcResult result = mockMvc.perform(get("/ipos/{id}", 9999L)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void getIpoByIdDeletedReturns404() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        request.put("ipoName", "공모주A");
+        request.put("subscriptionStartDate", "2026-10-01");
+        request.put("subscriptionEndDate", "2026-10-02");
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Ipo existing = ipoRepository.findById(id).orElseThrow();
+        existing.setDeletedAt(LocalDateTime.now());
+        ipoRepository.save(existing);
+
+        MvcResult result = mockMvc.perform(get("/ipos/{id}", id)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
     }
 
     private Map<String, Object> validRequest() {

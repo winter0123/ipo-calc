@@ -24,6 +24,11 @@ public class IpoExceptionHandler {
         return response(HttpStatus.CONFLICT, "DUPLICATE_IPO", ex.getMessage());
     }
 
+    @ExceptionHandler(IpoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(IpoNotFoundException ex) {
+        return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+    }
+
     private ResponseEntity<ErrorResponse> response(HttpStatus status, String errorCode, String message) {
         ErrorResponse response = ErrorResponse.builder()
                 .error(errorCode)

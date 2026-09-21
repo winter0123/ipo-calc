@@ -73,3 +73,26 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **160개 통과** (신규 13개 포함, 실패/에러 0)
+
+## 2026-09-21 — SF-3 완료 (IPO 목록/상세 조회 API)
+
+### 구현 내용
+- `controller/ipo/IpoController.java` — `GET /ipos`, `GET /ipos/{id}`
+- `service/ipo/IpoService.java` — `list()`, `getById()` 메서드
+- `exception/IpoNotFoundException.java` — REST 컨트롤러용 NotFoundException
+- `exception/IpoExceptionHandler.java` — `IpoNotFoundException` 핸들러 추가 (404 + NOT_FOUND)
+
+### 테스트 (Test-First: RED → GREEN)
+`IpoControllerTest`에 6개 신규 테스트 추가 (전체 19개):
+1. `listIposWithExistingIposReturns200AndListInDescendingOrder` — 목록 조회 정상, createdAt 내림차순 확인
+2. `listIposExcludesDeletedIpos` — 삭제된 IPO 제외 확인
+3. `listIposWithNoIposReturns200AndEmptyArray` — 빈 목록 200 + 빈 배열
+4. `getIpoByIdExistingReturns200AndIpo` — 상세 조회 정상
+5. `getIpoByIdNotFoundReturns404` — 존재하지 않는 ID → 404
+6. `getIpoByIdDeletedReturns404` — 논리 삭제된 ID → 404
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 **166개 통과** (신규 6개 포함, 기존 테스트 영향 없음, 실패/에러 0)
