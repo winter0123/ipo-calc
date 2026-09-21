@@ -661,6 +661,17 @@ React, TypeScript. 프로젝트에 설치된 버전의 공식 권장 방식을 �
 - **들여쓰기 2칸.** 탭 금지.
 - Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. 완료 조건(Definition of Done)에 `npm run lint`, `npm run typecheck`(또는 `tsc --noEmit --strict`), `npx prettier --check .` 통과를 포함한다.
 
+### 반응형/모바일 웹 최적화 (2026-09-21 사용자 지시 — 예외 없이 적용)
+
+**모든 화면은 예외 없이 모바일 웹에서 정상적으로 쓸 수 있어야 한다.** 데스크톱 전용으로 만들고 나중에 모바일을 "추가"하는 방식은 금지 — 처음 구현할 때부터 반응형으로 만든다.
+
+- 브레이크포인트는 각 Epic의 spec/architecture에 이미 확정된 값을 쓴다(예: Epic 13은 D-W13-004 — 640px/768px/1024px). 새 Epic에서 아직 확정된 값이 없으면 이 값을 기본값으로 채택한다.
+- 터치 타겟(버튼, 링크, 입력 필드)은 최소 44x44px 이상을 확보한다.
+- 뷰포트 메타 태그(`<meta name="viewport" content="width=device-width, initial-scale=1">`)를 `index.html`에 반드시 포함한다.
+- 레이아웃은 모바일에서 가로 스크롤이 생기지 않아야 한다(`overflow-x` 발생 여부를 컴포넌트 작업 시 확인).
+- 완료 조건(Definition of Done)에 "640px/768px/1024px 각 너비에서 레이아웃 확인"을 포함한다 — 각 SF의 화면 구현 태스크 스펙에 명시한다.
+- 이미 구현된 화면에서 이 기준이 누락된 것을 발견하면, 새 기능 추가와 별개로 즉시 수정 대상으로 work-log에 기록한다.
+
 ### 아키텍처 (FSD)
 
 ```
