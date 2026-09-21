@@ -28,23 +28,27 @@ public class InvestorController {
 
     private final InvestorService investorService;
 
+    // 투자자 등록 요청을 받아 현재 계정에 투자자를 생성하고, 201 Created와 함께 생성된 투자자 정보를 반환한다.
     @PostMapping
     public ResponseEntity<InvestorResponse> register(@RequestBody InvestorRegisterRequest request) {
         InvestorResponse response = investorService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // 현재 계정이 소유한 투자자 목록을 조회한다. status 파라미터(ACTIVE/INACTIVE/BOTH)로 필터링한다.
     @GetMapping
     public ResponseEntity<List<InvestorResponse>> list(
             @RequestParam(value = "status", required = false) String status) {
         return ResponseEntity.ok(investorService.list(status));
     }
 
+    // 투자자 ID로 단건 투자자 정보를 조회한다. 존재하지 않거나 현재 계정 소유가 아니면 404를 반환한다.
     @GetMapping("/{id}")
     public ResponseEntity<InvestorResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(investorService.getById(id));
     }
 
+    // 투자자 ID로 해당 투자자의 이름/관계 등을 수정하고, 수정된 투자자 정보를 반환한다. 존재하지 않으면 404를 반환한다.
     @PatchMapping("/{id}")
     public ResponseEntity<InvestorResponse> update(
             @PathVariable Long id,
@@ -52,6 +56,7 @@ public class InvestorController {
         return ResponseEntity.ok(investorService.update(id, request));
     }
 
+    // 투자자 ID로 해당 투자자를 비활성화 상태로 전환하고, 비활성화 완료 메시지를 반환한다. 존재하지 않으면 404를 반환한다.
     @DeleteMapping("/{id}")
     public ResponseEntity<SuccessResponse> delete(@PathVariable Long id) {
         return ResponseEntity.ok(investorService.deactivate(id));
