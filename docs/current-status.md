@@ -1,6 +1,6 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-21 (Epic 5 SF-1, Epic 13 SF-1 완료 — 백엔드/프론트엔드 병렬 진행 시작)
+> 마지막 갱신: 2026-09-21 (Epic 5 SF-3, Epic 13 SF-3 완료 — 백엔드/프론트엔드 병렬 진행 중)
 
 ## 📌 로드맵 의존관계 재확인: Epic 13(프론트엔드)은 Epic 1~4만 있으면 시작 가능
 docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-account-setup)의 선행조건은 Epic 1·2·3·4뿐이다(Epic 5~12 불필요). Epic 4가 완료된 시점(2026-09-21)부터 Epic 13은 이미 착수 가능한 상태였으나, "Epic 1→2→...→16 순차 진행"이라는 암묵적 가정 때문에 뒤늦게 시작함(사용자가 "프론트 개발은 왜 안해?"로 직접 지적). **이후로는 매 Epic 완료 시 로드맵의 실제 의존관계 그래프를 다시 확인해, 새로 선행조건이 충족된 Epic이 있으면 즉시 병렬 착수한다** — 백엔드/프론트엔드를 각자의 워크스페이스에서 동시에 진행 가능.
@@ -25,7 +25,7 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 2 | 투자자 관리 | investor-management | **구현 완료**(SF-1~6, 66개 테스트 통과, PR #65~#70 병합됨). SF-3에서 CSRF 전역 비활성화 등 공용 보안설정 정리(D-I-006) 포함 |
 | 3 | 증권사 기준정보 관리 | securities-firm-catalog | **구현 완료**(SF-1~5, 94개 테스트 통과, PR #72~#76 병합됨). 계정 소유권 검증 불필요한 글로벌 기준정보(D-SF-001~003) |
 | 4 | 증권계좌 관리 | securities-account-management | **구현 완료**(SF-1~7, 140개 테스트 통과, PR #78~#84 병합됨). AES-256-GCM 계좌번호 암호화(D-SA-002), 2단계 소유권 검증(SecuritiesAccount→Investor→계정), partial unique index 기반 기본 계좌 동시성 제어(D-SA-006) 포함 |
-| 5 | 공모주 기준정보 관리 | ipo-catalog | **SF-1 완료**(Ipo 엔티티/Repository/V5 마이그레이션, 147개 테스트 통과, PR #87). D-IPO-001~004(중복검사 이중화/CSV 5MB/commons-csv/deletedAt 필터) 확정. 다음: SF-2(등록 API), 진행 중(task_94715c667338) |
+| 5 | 공모주 기준정보 관리 | ipo-catalog | **SF-1~3 완료**(엔티티/Repo/마이그레이션 PR #87, 등록 API PR #91, 목록/상세 조회 API PR #92 — 166개 테스트 통과). D-IPO-001~004 확정. SF-2 검증 중 V5 마이그레이션의 partial unique index 버그 발견·V6로 수정(stock_code 유무 무시하고 name+date 유니크 강제하던 결함). 다음: SF-4(수정 API) |
 | 6 | 청약 기록 | subscription-management | **Phase 0 전체 완료**(조사+spec+architecture, D-S-001~006 스코프 정정 포함), PR #53 병합됨. 다음: SF 분해 |
 | 7 | 배정 결과 관리 | allocation-management | **Phase 0 전체 완료**(조사+spec+architecture, D-A-001~007 스코프 정정 포함), PR #54 병합됨. 다음: SF 분해 |
 | 8 | 분할 매도 기록 | sale-management | **Phase 0 전체 완료**(조사+spec+architecture, D-SL-001~007 스코프 정정 포함), PR #55 병합됨. 다음: SF 분해 |
@@ -33,7 +33,7 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 10 | 수익·수익률 계산 | profit-calculation | **Phase 0 전체 완료**(조사+spec+architecture, D-P-001~006로 CalculationTrace 과설계 정정 포함), PR #57 병합됨. 읽기 전용 계산 API로 설계(Profit 엔티티 없음). 다음: SF 분해 |
 | 11 | 투자 내역 조회 API | investment-query-api | **Phase 0 전체 완료**(조사+spec+architecture, D-Q-001~006로 Subscription 기준 조회 정정 포함), PR #58 병합됨. 다음: SF 분해 |
 | 12 | 대시보드 집계 API | dashboard-aggregation-api | **Phase 0 전체 완료**(조사+spec+architecture, D-D-001~007 정렬 + 계정 격리 보안 결함 수정 포함), PR #59 병합됨. 다음: SF 분해 |
-| 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | **SF-1 완료**(ui/ 프로젝트 스캐폴딩 — Vite+React+TS, FSD 뼈대, ESLint+Prettier+tsc strict, TanStack Query, react-router-dom, Vitest+RTL, PR #88) — **첫 프론트엔드 구현 착수**. D-W13-007~015(빌드도구/라우팅/폼/스타일링/테스트 도구) 확정. 다음: SF-2(로그인 화면) |
+| 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | **SF-1~3 완료**(스캐폴딩 PR #88, 로그인 화면 PR #89, 회원가입 화면 PR #93 — 13개 테스트 통과) — **첫 프론트엔드 구현 착수**. D-W13-007~015 확정. SF-2 검증 중 noValidate 누락/QueryClientProvider 누락 등 실제 버그 발견·수정, tsconfig jest-dom 타입 gap 발견(AGENTS.md에 build 검증 필수화로 기록). 다음: SF-4(투자자 등록 화면) |
 | 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W14-001~006 최신화 포함), PR #61 병합됨. 다음: SF 분해 |
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W15-001~006 최신화 포함), PR #62 병합됨. 다음: SF 분해 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | **Phase 0 전체 완료**(조사+spec+architecture, D-W16-001~007 최신화 포함, 빈 결과 404→200 오류 수정), PR #63 병합됨. 다음: SF 분해 |
@@ -45,9 +45,10 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 2. ~~Epic 2(investor-management) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 00:23 UTC)**. SF-1~6, PR #65~#70 병합, 66개 테스트 GREEN.
 3. ~~Epic 3(securities-firm-catalog) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 01:02 UTC)**. SF-1~5, PR #72~#76 병합, 94개 테스트 GREEN.
 4. ~~Epic 4(securities-account-management) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 03:36 UTC)**. SF-1~7, PR #78~#84 병합, 140개 테스트 GREEN.
-5. **Epic 5(ipo-catalog, backend 워크스페이스)**: SF-1 완료(PR #87). SF-2(등록 API) 진행 중.
-6. **Epic 13(web-account-setup, frontend 워크스페이스)**: SF-1 완료(PR #88). 다음 SF-2(로그인 화면)부터 착수 예정.
+5. **Epic 5(ipo-catalog, backend 워크스페이스)**: SF-1~3 완료(PR #87, #91, #92). 다음 SF-4(수정 API).
+6. **Epic 13(web-account-setup, frontend 워크스페이스)**: SF-1~3 완료(PR #88, #89, #93). 다음 SF-4(투자자 등록 화면).
 7. Epic 5/13이 진행되는 동안, 매 Epic 완료 시점마다 로드맵 의존관계를 재확인해 새로 선행조건이 충족되는 Epic이 있으면 즉시 병렬 착수한다(위 "로드맵 의존관계 재확인" 참고).
+8. 헤르메스(Hermes, Telegram) 알림 파이프라인 가동 중 — PR 생성 시 자동으로 "기능 구현 완료" 메시지 발송(AGENTS.md 28장). 공용 스크립트(`~/.hermes/scripts/feature-notify.py`)라 다른 프로젝트에도 재사용 가능.
 
 ## 재사용 가능한 공용 인프라 (Epic 2에서 확보, Epic 3~12가 활용 가능)
 - `SecurityUtils.getCurrentAccountId()` (`com.vibeaiteam.accountauthentication.util.security`) — 계정 소유권 검증 헬퍼 (Epic 4처럼 계정 소유 데이터가 있는 Epic만 사용, Epic 3처럼 글로벌 기준정보는 불필요)
