@@ -143,3 +143,40 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 - `SubscriptionService.update(id, request)` + `SubscriptionController`에 `@PatchMapping("/{id}")` 추가 예정
 - 엣지케이스 참고: "이미 CANCELLED된 기록을 다시 수정하는 요청은 404로 처리" — `findByIdAndDeletedAtIsNull`로 CANCELLED(삭제) 기록은 자연 배제됨
 - 이후 SF-5: 청약 취소(DELETE, 논리 삭제)
+
+---
+
+## 2026-09-21 — SF-4 완료 (청약 수정 API — PATCH /subscriptions/{id})
+
+> 워크스페이스: backend-3, 브랜치: `winter0123/subscription-update`
+
+### 구현 내용 (Test-First: RED → GREEN)
+- **RED**: `SubscriptionControllerTest`에 SF-4 테스트 6개를 먼저 추가해 실행 — PATCH 엔드포인트와 `SubscriptionUpdateRequest`가 아직 없어 컴파일 실패로 RED 확인.
+- **`SubscriptionUpdateRequest`** (`controller/subscription/dto`) 신규 — 모든 필드 nullable(investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt/memo). `SubscriptionRegisterRequest`와 동일한 Lombok 어노테이션 구성.
+- **`SubscriptionService.update(Long id, SubscriptionUpdateRequest request)`** 신규 (`IpoService.update`의 부분수정 패턴 그대로 적용):
+  1. `findByIdAndDeletedAtIsNull(id)` 없으면 404 — CANCELLED(논리삭제)된 기록은 이 조회에서 자연히 배제되어 엣지케이스("취소된 기록 재수정 → 404")를 만족.
+  2. quantity(제공 시 0 초과), depositAmount(제공 시 0 이상) 검증 400 (AC-013).
+  3. investorId/securitiesAccountId/ipoId는 **새로 제공된 경우에만** `register()`가 쓰던 존재/소유권 검증을 재수행. 이 검증 로직을 `register()`에서 `validateInvestorOwnership`/`validateSecuritiesAccountOwnership`/`validateIpoExists` 3개의 private 메서드로 추출해 `update()`와 공유(기존 register 동작은 그대로, 중복 코드 제거).
+  4. 최종 (investorId, securitiesAccountId, ipoId) 조합으로 `checkDuplicate` 호출 — 기존 `checkDuplicate(investorId, securitiesAccountId, ipoId)`에 `excludeId` 파라미터를 추가(`IpoService.checkDuplicate`와 동일하게 `.filter(existing -> !existing.getId().equals(excludeId))`)해 자기 자신은 중복 대상에서 제외(AC-014). `register()` 호출부는 `excludeId=null`로 갱신.
+  5. 제공된 필드만 엔티티에 `set`하고 `updatedAt` 갱신 후 저장, 200 응답.
+- **`SubscriptionController`**: `@PatchMapping("/{id}")` 추가, 메서드 위 한글 주석 작성(AGENTS 15장).
+- **배정(Allocation) 연결 시 수량 축소 제한(D-S-005, spec 4절 마지막 줄)은 이번 SF에서 구현하지 않음** — spec에 "세부 검증 로직은 Epic 7 구현 시 함께 확정"이라 명시되어 있고 Allocation 엔티티(Epic 7)가 아직 존재하지 않아 참조할 대상이 없음. **Epic 7 구현 시 함께 추가 예정.**
+
+### 테스트 케이스 (신규 6개, `SubscriptionControllerTest`에 추가)
+1. `updateSubscriptionWithPartialFieldsReturns200AndUpdatedFields` — memo/quantity만 제공 → 해당 필드만 갱신, 나머지는 기존값 유지, updatedAt 갱신 (AC-012)
+2. `updateSubscriptionWithInvalidQuantityOrDepositReturns400` — quantity=0/음수, depositAmount 음수 각각 400, 기존 값 불변 (AC-013)
+3. `updateSubscriptionWithUnknownIdReturns404` — 존재하지 않는 ID → 404 NOT_FOUND (AC-015)
+4. `updateSubscriptionForCancelledRecordReturns404` — CANCELLED+deletedAt 처리된 기록 수정 시도 → 404 (엣지케이스)
+5. `updateSubscriptionWithInvestorOrAccountOwnedByOtherAccountReturns403` — investorId/securitiesAccountId를 다른 계정 소유로 변경 시도 각각 403 (신규 소유권 재검증)
+6. `updateSubscriptionWithDuplicateComboReturns409ButSelfReupdateAllowed` — 다른 기록과 조합 중복 시 409(값 불변 확인), 자기 자신과 동일 조합으로 재수정(메모만 변경)은 200 (AC-014)
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- **전체 테스트 스위트 210개 통과** (기존 204개 + 신규 6개, failures 0 / errors 0 / skipped 0)
+- `SubscriptionControllerTest`: 18개 통과 (SF-2 등록 7 + SF-3 조회 5 + SF-4 수정 6)
+
+### 다음 SF 예고 — SF-5: 청약 취소 API (DELETE /subscriptions/{id}, 논리 삭제)
+- `findByIdAndDeletedAtIsNull` → 없으면 404, status를 CANCELLED로 변경 + deletedAt/updatedAt 갱신
+- Epic 7(배정) 구현 시 이번 SF에서 남긴 "수량 축소 제한" 검증을 `update()`에 추가해야 함

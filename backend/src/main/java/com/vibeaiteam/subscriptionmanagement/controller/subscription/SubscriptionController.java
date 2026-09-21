@@ -2,11 +2,13 @@ package com.vibeaiteam.subscriptionmanagement.controller.subscription;
 
 import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionRegisterRequest;
 import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionResponse;
+import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionUpdateRequest;
 import com.vibeaiteam.subscriptionmanagement.service.subscription.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +50,16 @@ public class SubscriptionController {
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> getById(@PathVariable Long id) {
         SubscriptionResponse response = subscriptionService.getById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    // 청약 ID로 기록을 부분 수정한다. 요청에 담긴 필드만 갱신하고(미제공 필드는 기존값 유지), 200 OK와 함께
+    // 수정된 청약 정보를 반환한다. 존재하지 않거나 이미 취소된 기록이면 404, 새로 제공된 투자자/증권계좌가
+    // 현재 계정 소유가 아니면 403, 최종 조합이 자기 자신을 제외한 다른 ACTIVE 기록과 중복되면 409를 반환한다.
+    @PatchMapping("/{id}")
+    public ResponseEntity<SubscriptionResponse> update(
+            @PathVariable Long id, @RequestBody SubscriptionUpdateRequest request) {
+        SubscriptionResponse response = subscriptionService.update(id, request);
         return ResponseEntity.ok(response);
     }
 }

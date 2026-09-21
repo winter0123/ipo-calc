@@ -8,6 +8,7 @@ import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionRegisterRequest;
 import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionResponse;
+import com.vibeaiteam.subscriptionmanagement.controller.subscription.dto.SubscriptionUpdateRequest;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionConflictException;
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionForbiddenException;
@@ -41,29 +42,17 @@ public class SubscriptionService {
         Long investorId = request.getInvestorId();
         Long securitiesAccountId = request.getSecuritiesAccountId();
         Long ipoId = request.getIpoId();
-        Long currentAccountId = securityUtils.getCurrentAccountId();
 
         // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)
-        Investor investor = investorRepository.findById(investorId)
-                .orElseThrow(() -> new SubscriptionNotFoundException("투자자를 찾을 수 없습니다."));
-        if (!currentAccountId.equals(investor.getAccountId())) {
-            throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
-        }
+        validateInvestorOwnership(investorId);
 
         // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)
-        SecuritiesAccount account = securitiesAccountRepository.findByIdAndDeletedAtIsNull(securitiesAccountId)
-                .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
-        Investor accountInvestor = investorRepository.findById(account.getInvestorId())
-                .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
-        if (!currentAccountId.equals(accountInvestor.getAccountId())) {
-            throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
-        }
+        validateSecuritiesAccountOwnership(securitiesAccountId);
 
         // IPO 존재 검증만 수행(전역 기준정보 — 계정과 무관, 삭제되지 않은 IPO만 허용)
-        ipoRepository.findByIdAndDeletedAtIsNull(ipoId)
-                .orElseThrow(() -> new SubscriptionNotFoundException("IPO를 찾을 수 없습니다."));
+        validateIpoExists(ipoId);
 
-        checkDuplicate(investorId, securitiesAccountId, ipoId);
+        checkDuplicate(investorId, securitiesAccountId, ipoId, null);
 
         LocalDateTime now = LocalDateTime.now();
         Subscription subscription = Subscription.builder()
@@ -127,6 +116,105 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscription);
     }
 
+    // SF-4: 청약 기록의 일부 필드만 부분 수정한다(IpoService.update와 동일한 패턴 — 제공된 필드만 갱신).
+    // 이미 취소(CANCELLED)되었거나 존재하지 않는 기록은 404(엣지케이스). investorId/securitiesAccountId/ipoId가
+    // 새로 제공된 경우에만 존재/소유권을 재검증하고, 최종 조합은 자기 자신을 제외하고 중복 검사한다.
+    // 배정(Allocation) 연결 시 수량 축소 제한은 Epic 7 구현 시 함께 추가할 예정으로 이번 SF에서는 다루지 않는다.
+    @Transactional
+    public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
+        Subscription subscription = subscriptionRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
+
+        Long updatedInvestorId = request.getInvestorId();
+        Long updatedSecuritiesAccountId = request.getSecuritiesAccountId();
+        Long updatedIpoId = request.getIpoId();
+        Long updatedQuantity = request.getQuantity();
+        Long updatedDepositAmount = request.getDepositAmount();
+
+        if (updatedQuantity != null && updatedQuantity <= 0) {
+            throw new SubscriptionValidationException("quantity는 0보다 커야 합니다.");
+        }
+        if (updatedDepositAmount != null && updatedDepositAmount < 0) {
+            throw new SubscriptionValidationException("depositAmount는 음수일 수 없습니다.");
+        }
+
+        // 새로 제공된 경우에만 존재/소유권을 재검증한다 (미제공 시 기존값 유지, 재검증하지 않음)
+        if (updatedInvestorId != null) {
+            validateInvestorOwnership(updatedInvestorId);
+        }
+        if (updatedSecuritiesAccountId != null) {
+            validateSecuritiesAccountOwnership(updatedSecuritiesAccountId);
+        }
+        if (updatedIpoId != null) {
+            validateIpoExists(updatedIpoId);
+        }
+
+        Long finalInvestorId = updatedInvestorId != null ? updatedInvestorId : subscription.getInvestorId();
+        Long finalSecuritiesAccountId = updatedSecuritiesAccountId != null
+                ? updatedSecuritiesAccountId : subscription.getSecuritiesAccountId();
+        Long finalIpoId = updatedIpoId != null ? updatedIpoId : subscription.getIpoId();
+
+        checkDuplicate(finalInvestorId, finalSecuritiesAccountId, finalIpoId, id);
+
+        if (updatedInvestorId != null) {
+            subscription.setInvestorId(updatedInvestorId);
+        }
+        if (updatedSecuritiesAccountId != null) {
+            subscription.setSecuritiesAccountId(updatedSecuritiesAccountId);
+        }
+        if (updatedIpoId != null) {
+            subscription.setIpoId(updatedIpoId);
+        }
+        if (updatedQuantity != null) {
+            subscription.setQuantity(updatedQuantity);
+        }
+        if (updatedDepositAmount != null) {
+            subscription.setDepositAmount(updatedDepositAmount);
+        }
+        if (request.getSubscribedAt() != null) {
+            subscription.setSubscribedAt(request.getSubscribedAt());
+        }
+        if (request.getMemo() != null) {
+            subscription.setMemo(request.getMemo());
+        }
+
+        subscription.setUpdatedAt(LocalDateTime.now());
+        try {
+            Subscription saved = subscriptionRepository.save(subscription);
+            return SubscriptionResponse.from(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new SubscriptionConflictException("이미 등록된 청약입니다.");
+        }
+    }
+
+    // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)
+    private void validateInvestorOwnership(Long investorId) {
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        Investor investor = investorRepository.findById(investorId)
+                .orElseThrow(() -> new SubscriptionNotFoundException("투자자를 찾을 수 없습니다."));
+        if (!currentAccountId.equals(investor.getAccountId())) {
+            throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
+        }
+    }
+
+    // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)
+    private void validateSecuritiesAccountOwnership(Long securitiesAccountId) {
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        SecuritiesAccount account = securitiesAccountRepository.findByIdAndDeletedAtIsNull(securitiesAccountId)
+                .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
+        Investor accountInvestor = investorRepository.findById(account.getInvestorId())
+                .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
+        if (!currentAccountId.equals(accountInvestor.getAccountId())) {
+            throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
+        }
+    }
+
+    // IPO 존재 검증만 수행(전역 기준정보 — 계정과 무관, 삭제되지 않은 IPO만 허용)
+    private void validateIpoExists(Long ipoId) {
+        ipoRepository.findByIdAndDeletedAtIsNull(ipoId)
+                .orElseThrow(() -> new SubscriptionNotFoundException("IPO를 찾을 수 없습니다."));
+    }
+
     private void validateRequest(SubscriptionRegisterRequest request) {
         if (request == null) {
             throw new SubscriptionValidationException("청약 등록 정보는 필수입니다.");
@@ -150,11 +238,13 @@ public class SubscriptionService {
         }
     }
 
-    private void checkDuplicate(Long investorId, Long securitiesAccountId, Long ipoId) {
+    private void checkDuplicate(Long investorId, Long securitiesAccountId, Long ipoId, Long excludeId) {
         // AC-005: (investorId, securitiesAccountId, ipoId) 조합의 ACTIVE 기록이 이미 있으면 409 (AC-006: CANCELLED는 무관)
+        // AC-014: 수정 시에는 자기 자신(excludeId)을 제외하고 검사한다 (IpoService.checkDuplicate와 동일 패턴)
         subscriptionRepository
                 .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
                         investorId, securitiesAccountId, ipoId, STATUS_ACTIVE)
+                .filter(existing -> !existing.getId().equals(excludeId))
                 .ifPresent(existing -> {
                     throw new SubscriptionConflictException("이미 등록된 청약입니다.");
                 });
