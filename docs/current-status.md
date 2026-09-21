@@ -1,6 +1,6 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-21 (Epic 5 SF-3, Epic 13 SF-3 완료 — 백엔드/프론트엔드 병렬 진행 중)
+> 마지막 갱신: 2026-09-21 (Epic 5 전체 완료(SF-1~6), Epic 13 SF-4 진행 중 — 백엔드/프론트엔드 병렬 진행 중)
 
 ## 📌 로드맵 의존관계 재확인: Epic 13(프론트엔드)은 Epic 1~4만 있으면 시작 가능
 docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-account-setup)의 선행조건은 Epic 1·2·3·4뿐이다(Epic 5~12 불필요). Epic 4가 완료된 시점(2026-09-21)부터 Epic 13은 이미 착수 가능한 상태였으나, "Epic 1→2→...→16 순차 진행"이라는 암묵적 가정 때문에 뒤늦게 시작함(사용자가 "프론트 개발은 왜 안해?"로 직접 지적). **이후로는 매 Epic 완료 시 로드맵의 실제 의존관계 그래프를 다시 확인해, 새로 선행조건이 충족된 Epic이 있으면 즉시 병렬 착수한다** — 백엔드/프론트엔드를 각자의 워크스페이스에서 동시에 진행 가능.
@@ -27,7 +27,7 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 2 | 투자자 관리 | investor-management | **구현 완료**(SF-1~6, 66개 테스트 통과, PR #65~#70 병합됨). SF-3에서 CSRF 전역 비활성화 등 공용 보안설정 정리(D-I-006) 포함 |
 | 3 | 증권사 기준정보 관리 | securities-firm-catalog | **구현 완료**(SF-1~5, 94개 테스트 통과, PR #72~#76 병합됨). 계정 소유권 검증 불필요한 글로벌 기준정보(D-SF-001~003) |
 | 4 | 증권계좌 관리 | securities-account-management | **구현 완료**(SF-1~7, 140개 테스트 통과, PR #78~#84 병합됨). AES-256-GCM 계좌번호 암호화(D-SA-002), 2단계 소유권 검증(SecuritiesAccount→Investor→계정), partial unique index 기반 기본 계좌 동시성 제어(D-SA-006) 포함 |
-| 5 | 공모주 기준정보 관리 | ipo-catalog | **SF-1~3 완료**(엔티티/Repo/마이그레이션 PR #87, 등록 API PR #91, 목록/상세 조회 API PR #92 — 166개 테스트 통과). D-IPO-001~004 확정. SF-2 검증 중 V5 마이그레이션의 partial unique index 버그 발견·V6로 수정(stock_code 유무 무시하고 name+date 유니크 강제하던 결함). 다음: SF-4(수정 API) |
+| 5 | 공모주 기준정보 관리 | ipo-catalog | **구현 완료 및 머지됨**(SF-1~6, 184개 테스트 통과, PR #87/#91/#92/#94/#96/#97). D-IPO-001~004 확정. SF-2 검증 중 V5 마이그레이션의 partial unique index 버그 발견·V6로 수정(stock_code 유무 무시하고 name+date 유니크 강제하던 결함). SF-6(CSV 일괄 등록)에서 IpoController에 AGENTS.md 15장 신규 규칙에 따른 한글 클래스 주석 최초 적용 |
 | 6 | 청약 기록 | subscription-management | **Phase 0 전체 완료**(조사+spec+architecture, D-S-001~006 스코프 정정 포함), PR #53 병합됨. 다음: SF 분해 |
 | 7 | 배정 결과 관리 | allocation-management | **Phase 0 전체 완료**(조사+spec+architecture, D-A-001~007 스코프 정정 포함), PR #54 병합됨. 다음: SF 분해 |
 | 8 | 분할 매도 기록 | sale-management | **Phase 0 전체 완료**(조사+spec+architecture, D-SL-001~007 스코프 정정 포함), PR #55 병합됨. 다음: SF 분해 |
@@ -40,16 +40,17 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W15-001~006 최신화 포함), PR #62 병합됨. 다음: SF 분해 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | **Phase 0 전체 완료**(조사+spec+architecture, D-W16-001~007 최신화 포함, 빈 결과 404→200 오류 수정), PR #63 병합됨. 다음: SF 분해 |
 
-**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1~4는 구현까지 완료. Epic 5(백엔드)와 Epic 13(프론트엔드)이 각자 워크스페이스에서 병렬로 SF 구현 진행 중.**
+**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1~5는 구현까지 완료. Epic 6(백엔드)과 Epic 13(프론트엔드)이 각자 워크스페이스에서 병렬로 SF 구현 진행 중.**
 
 ## 다음 단계 후보
 1. ~~Epic 1 PR #41 사람 승인 및 머지~~ — **완료(2026-09-20 23:10 UTC)**.
 2. ~~Epic 2(investor-management) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 00:23 UTC)**. SF-1~6, PR #65~#70 병합, 66개 테스트 GREEN.
 3. ~~Epic 3(securities-firm-catalog) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 01:02 UTC)**. SF-1~5, PR #72~#76 병합, 94개 테스트 GREEN.
 4. ~~Epic 4(securities-account-management) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 03:36 UTC)**. SF-1~7, PR #78~#84 병합, 140개 테스트 GREEN.
-5. **Epic 5(ipo-catalog, backend 워크스페이스)**: SF-1~3 완료(PR #87, #91, #92). 다음 SF-4(수정 API).
-6. **Epic 13(web-account-setup, frontend 워크스페이스)**: SF-1~3 완료(PR #88, #89, #93). 다음 SF-4(투자자 등록 화면).
-7. Epic 5/13이 진행되는 동안, 매 Epic 완료 시점마다 로드맵 의존관계를 재확인해 새로 선행조건이 충족되는 Epic이 있으면 즉시 병렬 착수한다(위 "로드맵 의존관계 재확인" 참고).
+5. ~~Epic 5(ipo-catalog) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21)**. SF-1~6, PR #87/#91/#92/#94/#96/#97 병합, 184개 테스트 GREEN.
+6. **Epic 13(web-account-setup, frontend 워크스페이스)**: SF-1~3 완료(PR #88, #89, #93). SF-4(투자자 등록 화면) 진행 중.
+7. **Epic 6(subscription-management, backend 워크스페이스)**: 선행조건(Epic 2·4·5) 모두 완료되어 착수 가능. Phase 0(조사/spec/architecture)은 이미 완료(PR #53) — 다음은 SF 분해 및 구현. Epic 5가 방금 끝난 backend 워크스페이스에 바로 이어서 배정한다(6.4장 워크스페이스 풀가동 원칙).
+8. 매 Epic 완료 시점마다 로드맵 의존관계를 재확인해 새로 선행조건이 충족되는 Epic이 있으면 즉시 병렬 착수한다(위 "로드맵 의존관계 재확인" 참고).
 8. 헤르메스(Hermes, Telegram) 알림 파이프라인 가동 중 — PR 생성 시 자동으로 "기능 구현 완료" 메시지 발송(AGENTS.md 28장). 공용 스크립트(`~/.hermes/scripts/feature-notify.py`)라 다른 프로젝트에도 재사용 가능.
 
 ## 재사용 가능한 공용 인프라 (Epic 2에서 확보, Epic 3~12가 활용 가능)

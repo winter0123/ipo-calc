@@ -49,9 +49,16 @@
 | 증권계좌 관리(Epic 4) | BE | `winter0123/securities-account-management` | PR #78~#84(SF-1~7) | 완료 | AES-256-GCM 암호화, 2단계 소유권검증, 네이티브 모델(Sonnet 5) 사용 |
 | 공모주 기준정보 관리(Epic 5): 엔티티/Repo/마이그레이션 | BE | `winter0123/ipo-catalog` | PR #87(SF-1) | 완료 | Ipo 엔티티/Repository/V5 마이그레이션, D-IPO-001~004 확정 |
 | 공모주 기준정보 관리(Epic 5): IPO 등록 API | BE | `winter0123/ipo-catalog` | PR #91(SF-2) | 완료 | 중복검사 헬퍼(D-IPO-001), V6 마이그레이션으로 partial unique index 버그 수정 |
+| 공모주 기준정보 관리(Epic 5): 목록/상세 조회 API | BE | `winter0123/ipo-catalog` | PR #92(SF-3) | 완료 | 166개 테스트 통과 |
+| 공모주 기준정보 관리(Epic 5): 수정 API | BE | `winter0123/ipo-catalog` | PR #94(SF-4) | 완료 | 174개 테스트 통과, import 정렬/불필요 FQCN 등 스타일 수정 |
+| 공모주 기준정보 관리(Epic 5): 비활성화 API | BE | `winter0123/ipo-catalog` | PR #96(SF-5) | 완료 | 177개 테스트 통과 |
+| 공모주 기준정보 관리(Epic 5): CSV 일괄 등록 API — Epic 5 전체 완료 | BE | `winter0123/ipo-catalog` | PR #97(SF-6) | 완료 | commons-csv 파싱, 행별 개별 트랜잭션 처리(부분 실패 허용), 184개 테스트 통과, IpoController에 한글 클래스 주석 최초 적용(AGENTS.md 15장) |
 | 웹 계정·투자자·계좌 설정(Epic 13): 프로젝트 스캐폴딩 | FE | `winter0123/web-account-setup` | PR #88(SF-1) | 완료 | `ui/` Vite+React+TS — 로드맵 최초 프론트엔드 구현, D-W13-007~015 확정 |
 | 웹 계정·투자자·계좌 설정(Epic 13): 로그인 화면 | FE | `winter0123/web-account-setup` | PR #89(SF-2) | 완료 | react-hook-form+TanStack Query |
 | 프론트엔드 패키지 매니저 전환 | FE | `winter0123/web-account-setup` | PR #90 | 완료 | npm → pnpm, package-lock.json → pnpm-lock.yaml |
+| 웹 계정·투자자·계좌 설정(Epic 13): 회원가입 화면 | FE | `winter0123/web-account-setup` | PR #93(SF-3) | 완료 | noValidate/QueryClientProvider 등 SF-2 교훈 적용해 버그 없었음 |
+| 웹 계정설정 사용자 가이드(로그인/회원가입 스크린샷+HTML) | Planning | `winter0123/web-account-setup` | PR #95 | 완료 | Playwright로 데스크톱/모바일 캡처, Master가 Artifact로 재발행해 Hermes로 링크 발송 |
+| 웹 계정·투자자·계좌 설정(Epic 13): 투자자 등록 화면 | FE | `winter0123/web-account-setup` | (진행 중, SF-4) | 진행 중 | opencode/nemotron-3-ultra-free로 진행 중(OpenRouter 계정 한도로 2회 모델 교체 후 전환) |
 
 ### 이슈 및 트러블슈팅
 
@@ -72,3 +79,12 @@
 | 알림 설계 | Hermes 알림 트리거를 "merge" 기준으로 설계했으나 본인이 직접 merge하므로 무의미 | "PR 생성"/"Orca 태스크 완료" 기준으로 재설계(구현 전, `--state open`은 즉시 merge돼 놓치므로 `--state all`로 신규 PR 번호 감지) |
 | 테스트 품질 | 웹 계정설정(Epic 13) SF-2 로그인 화면: 워커가 `QueryClientProvider` 없이 테스트 작성해 4개 전부 실패했는데 "완료"로 보고 | Master가 독립 검증 중 발견, 직접 수정하여 병합 |
 | 문서 형식 | daily-log.md가 문단형이라 가독성이 떨어진다는 사용자 피드백 | 표 기반 템플릿(기능 구현 현황/이슈 및 트러블슈팅)으로 전환, AGENTS.md 9.2③에 새 템플릿 반영 |
+| 인프라 누락 | 웹 계정설정(Epic 13) SF-3: `.prettierignore` 부재로 자동생성된 `pnpm-lock.yaml`이 format:check 실패 | `ui/.prettierignore` 신설 |
+| 문서 드리프트 | web-account-setup spec/work-log 3장의 투자자 API 필드가 snake_case로 남아있어 Epic 2의 실제 camelCase API와 불일치 | SF-4 착수 전 문서 수정 |
+| 모델 가용성(재도달) | OpenRouter 계정 일일 한도가 오후에 재도달, backend/frontend 워커 동시에 막힘. `claude --model`도 계정 단위 한도 영향 확인 | 두 워커 모두 opencode 무료 모델로 즉시 전환, current-status.md에 "⚠️ 현재 상태"로 갱신 |
+| 모델 운영 | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`가 Implementation 역할 배정 즉시 무응답(파일 변경 0건) — OpenRouter API로 무료 유지 확인, 역할 부적합으로 결론 | AGENTS.md 22.4-1 "모델별 역할 적합도 관찰 기록" 표 신설, 즉시 같은 역할 재배정 금지 규칙 추가 |
+| 알림 파이프라인 | 사용자가 원하는 알림 타이밍(기능완료/토큰만료/토큰복구/Master 중단/사람 결정 필요)이 기존 설계와 불일치 | 5종 트리거로 재설계(AGENTS.md 28장), 토큰만료 감지는 사용자 요청으로 보류 |
+| 알림 파이프라인 | 프로젝트 전용으로 짠 알림 스크립트를 다른 프로젝트에도 재사용하고 싶다는 요청 | `~/.hermes/scripts/feature-notify.py`/`-loop.sh`로 범용화(레포별 상태 자동 분리), 프로젝트 전용 스크립트 삭제 |
+| 알림 파이프라인 | 알림 폴링 주기 30초가 과도하게 잦음 | 전체 프로젝트 공통 기본값을 10분(600초)으로 변경 |
+| 코드 스타일 | Controller/DB 마이그레이션에 무엇을 하는 코드인지 알기 어렵다는 사용자 피드백 | AGENTS.md 15장 "주석 규칙" 신설(Controller 클래스/Flyway 테이블·컬럼 한글 주석 필수), Epic 5 SF-6에 최초 적용 |
+| 워크스페이스 운영 | 사용자 지시로 workspace별 고정 작업순서 큐가 필요해짐 | AGENTS.md 6.4에 SF 순서 큐 원칙 명시, current-status.md "다음 단계 후보"로 반영 |
