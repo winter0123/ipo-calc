@@ -923,6 +923,29 @@ qwen/qwen3.8-27b:free
 - 무엇을 무엇으로 왜 바꿨는지(관찰된 근거 — 예: 특정 SF 작업에서 반복적으로 stall/오류를 낸 반면 새 모델은 안정적으로 완료함) work-log 또는 daily-log에 남긴다.
 - 22.1 표 자체를 갱신한다(옛 모델명을 지우고 새 모델명으로 교체) — 표가 실제 운영 현황과 어긋난 채로 방치하지 않는다.
 
+### 22.5 Claude Code ↔ OpenRouter 게이트웨이 연결 구조 및 네이티브 모델 전환 (2026-09-21 확인)
+
+**연결 구조 (사용자 `~/.zshrc`에 이미 설정되어 있음, 절대 값 자체를 이 문서에 적지 않는다 — 시크릿):**
+```bash
+export OPENROUTER_API_KEY="..."                          # OpenRouter API 키
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"     # Claude Code가 호출할 API를 OpenRouter로 우회
+export ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY"          # 위 BASE_URL에 보낼 인증 토큰
+export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1         # `/model` 선택지에 게이트웨이 모델을 노출
+```
+즉, Claude Code는 원래 Anthropic API를 직접 호출하는데, `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`을 OpenRouter로 바꿔치기하면 모든 요청이 OpenRouter를 경유하게 된다. 이 상태에서 `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`이 켜져 있으면 `/model` 인터랙티브 선택지에도 OpenRouter의 게이트웨이 모델(유료 목록, 예: `anthropic/claude-opus-5` 등)이 뜬다. 22.4의 `claude --model "<openrouter 무료 모델 ID>"`가 동작하는 이유가 바로 이 `ANTHROPIC_BASE_URL` 우회 때문이다 — Claude Code가 그 모델 ID를 그대로 OpenRouter에 넘기고, OpenRouter가 실제 추론을 처리한다.
+
+**주의**: 이 4개 환경변수는 `~/.zshrc`에 있는 사용자의 개인 셸 설정이며 이 저장소의 일부가 아니다. 새 환경(다른 머신 등)에서 재현하려면 사용자에게 직접 물어봐야 하고, API 키 값을 어떤 문서·커밋·로그에도 절대 적지 않는다.
+
+**네이티브 계정 모델(Opus/Sonnet/Haiku, 정액 구독 한도 내)로 전환하고 싶을 때 (2026-09-21 사용자 결정 — Method B 채택):**
+`~/.zshrc`의 위 설정은 그대로 두고(기본값 = 게이트웨이 모델 노출), 네이티브 모델이 필요한 세션에서만 그 세션 한정으로 게이트웨이 탐색을 끈다.
+```bash
+unset CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+claude
+```
+- `unset`은 현재 셸 세션에만 적용되고 `~/.zshrc` 파일 자체는 건드리지 않으므로, 새 터미널을 열면 다시 게이트웨이 모델이 기본으로 보인다.
+- 네이티브 모델로 띄운 세션에서 `/model`을 열면 OpenRouter 게이트웨이 목록 대신 Claude 계정 자체의 구독 모델(Opus/Sonnet/Haiku)만 뜬다.
+- 반대로 게이트웨이 모델이 필요하면 그냥 새 터미널을 열거나(`~/.zshrc` 기본값이 이미 켜져 있음), `export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`로 다시 켠다.
+
 ---
 
 ## 23. Orca 오케스트레이션 실전 규칙
