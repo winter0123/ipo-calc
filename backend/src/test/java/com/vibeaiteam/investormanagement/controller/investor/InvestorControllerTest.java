@@ -21,12 +21,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -38,6 +40,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *           400 Bad Request + VALIDATION_ERROR, 투자자 레코드 미생성
  * - AC-003: 투자자 등록 실패 (계정 미인증) — 인증되지 않은 요청이면
  *           401 Unauthorized, 투자자 레코드 미생성
+ * - AC-004: 투자자 목록 조회 (본인 계정 소유만) — GET /investors 요청 시
+ *           본인 계정 소유 투자자만 반환, 다른 계정의 투자자는 포함되지 않음
+ * - AC-005: 다른 계정 투자자 상세 조회 — 계정 A가 계정 B 소유 투자자의 ID로
+ *           GET /investors/{id} 요청 시 403 Forbidden, 계정 B의 투자자 정보를 반환하지 않음
+ * - AC-006: 투자자 상세 조회 성공 — 본인 소유 투자자의 GET /investors/{id} 요청 시
+ *           200 OK + 상세 정보 반환
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -63,6 +71,8 @@ class InvestorControllerTest {
     private String testName;
     private MockHttpSession session;
     private Long accountId;
+    private String otherEmail;
+    private Long otherAccountId;
 
     @BeforeEach
     void setUp() {
@@ -76,7 +86,12 @@ class InvestorControllerTest {
     @AfterEach
     void tearDown() {
         // 테스트에서 생성한 투자자/계정 정리 - email 중복 충돌 방지 (FK: investors.account_id → accounts.id)
-        Account account = accountRepository.findByEmail(testEmail);
+        cleanupAccount(testEmail);
+        cleanupAccount(otherEmail);
+    }
+
+    private void cleanupAccount(String email) {
+        Account account = accountRepository.findByEmail(email);
         if (account != null) {
             Long acctId = account.getId();
             List<Investor> investors = investorRepository.findAll().stream()
@@ -114,6 +129,46 @@ class InvestorControllerTest {
         return investorRepository.findAll().stream()
                 .filter(i -> accountId != null && accountId.equals(i.getAccountId()))
                 .collect(Collectors.toList());
+    }
+
+    private void registerInvestor(String displayName, String relationship) throws Exception {
+        // POST /investors를 통해 본인 계정(세션) 소유 투자자를 등록한다 (AC-001 성공 경로 활용).
+        var request = Map.of(
+                "displayName", displayName,
+                "relationship", relationship
+        );
+        MvcResult result = mockMvc.perform(post("/investors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+        assertThat(result.getResponse().getStatus()).as("테스트 사전 준비: 투자자 등록은 201이어야 합니다").isEqualTo(201);
+    }
+
+    private Long createOtherAccountInvestor() {
+        // 다른 계정(계정 B)을 직접 생성하고 그 계정 소유 투자자 1명을 저장한다.
+        long nonce = ThreadLocalRandom.current().nextLong();
+        otherEmail = "other-investor-owner-" + nonce + "@example.com";
+        LocalDateTime now = LocalDateTime.now();
+        Account other = accountRepository.save(Account.builder()
+                .email(otherEmail)
+                .passwordHash("encodedPasswordHash")
+                .name("다른계정주")
+                .failedLoginAttempts(0)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        otherAccountId = other.getId();
+        Investor saved = investorRepository.save(Investor.builder()
+                .accountId(otherAccountId)
+                .displayName("다른계정투자자")
+                .relationship("OTHER")
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        return saved.getId();
     }
 
     private String utf8Body(MvcResult result) {
@@ -235,5 +290,178 @@ class InvestorControllerTest {
         // Then: 401 Unauthorized 응답을 반환함 (AC-003)
         int status = result.getResponse().getStatus();
         assertThat(status).as("인증되지 않은 요청은 401 Unauthorized를 반환해야 합니다 (AC-003)").isEqualTo(401);
+    }
+
+    @Test
+    void listReturnsOnlyOwnedInvestorsExcludingOtherAccount() throws Exception {
+        // Given: 인증된 계정(본인)이 투자자 2명을 소유하고, 다른 계정(B)도 투자자 1명을 소유함 (AC-004)
+        signupAndLogin();
+        registerInvestor("홍길동", "SELF");
+        registerInvestor("김영희", "SPOUSE");
+        Long otherInvestorId = createOtherAccountInvestor();
+
+        // When: GET /investors 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 본인 계정 소유 투자자 2명만 반환되고 다른 계정의 투자자는 포함되지 않음
+        assertThat(result.getResponse().getStatus()).as("목록 조회 시 200 OK여야 합니다 (AC-004)").isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("본인 계정 소유 투자자 2명만 반환되어야 합니다 (AC-004)").hasSize(2);
+        for (Map<String, Object> investor : body) {
+            long accountIdInResponse = ((Number) investor.get("accountId")).longValue();
+            assertThat(accountIdInResponse).as("응답에 포함된 모든 투자자는 본인 계정 소유여야 합니다 (AC-004)").isEqualTo(accountId);
+            assertThat(((Number) investor.get("id")).longValue())
+                    .as("다른 계정의 투자자는 목록에 포함되지 않아야 합니다 (AC-004)")
+                    .isNotEqualTo(otherInvestorId);
+        }
+    }
+
+    @Test
+    void getInvestorOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 계정 B의 투자자 ID가 알려져 있음 (AC-005)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+
+        // When: 계정 A가 GET /investors/{accountB_investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors/" + otherInvestorId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden 응답을 반환하고 계정 B의 투자자 정보를 반환하지 않음 (AC-005)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("다른 계정 투자자 상세 조회 시 403 Forbidden이어야 합니다 (AC-005)").isEqualTo(403);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다 (AC-005)").isEqualTo("FORBIDDEN");
+        assertThat(responseMap.get("message")).isNotNull();
+        assertThat(responseMap.get("displayName")).as("계정 B의 투자자 정보가 응답에 포함되면 안 됩니다 (AC-005)").isNull();
+        assertThat(responseMap.get("accountId")).as("계정 B의 accountId가 응답에 포함되면 안 됩니다 (AC-005)").isNull();
+    }
+
+    @Test
+    void getOwnInvestorReturns200WithDetails() throws Exception {
+        // Given: 인증된 계정이 특정 투자자를 소유하고 있음 (AC-006)
+        signupAndLogin();
+        MvcResult created = mockMvc.perform(post("/investors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "displayName", "홍길동",
+                                "relationship", "SELF")))
+                        .session(session))
+                .andReturn();
+        Long investorId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+
+        // When: GET /investors/{valid_investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors/" + investorId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답을 반환하고 해당 투자자의 상세 정보를 반환함 (AC-006)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("본인 소유 투자자 상세 조회 시 200 OK여야 합니다 (AC-006)").isEqualTo(200);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) body.get("id")).longValue()).isEqualTo(investorId);
+        assertThat(body.get("displayName")).isEqualTo("홍길동");
+        assertThat(((Number) body.get("accountId")).longValue()).isEqualTo(accountId);
+        assertThat(body.get("status")).isEqualTo("ACTIVE");
+        assertThat(body.get("deletedAt")).isNull();
+        assertThat(body.get("createdAt")).isNotNull();
+        assertThat(body.get("updatedAt")).isNotNull();
+    }
+
+    @Test
+    void getInvestorWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 계정이 존재함 (spec: 존재하지 않는 투자자는 404 NOT_FOUND)
+        signupAndLogin();
+
+        // When: 존재하지 않는 투자자 ID로 GET /investors/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors/99999999")
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND 오류
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 투자자 상세 조회 시 404여야 합니다").isEqualTo(404);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void listWithStatusBothReturnsActiveAndInactive() throws Exception {
+        // Given: 본인 계정이 ACTIVE 투자자 1명(등록)과 INACTIVE 투자자 1명(직접 저장)을 소유함
+        signupAndLogin();
+        registerInvestor("홍길동", "SELF");
+        LocalDateTime now = LocalDateTime.now();
+        investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("김영희")
+                .relationship("SPOUSE")
+                .status("INACTIVE")
+                .deletedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+        // When: GET /investors?status=BOTH 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors")
+                        .param("status", "BOTH")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + ACTIVE/INACTIVE 투자자 모두 반환 (status=BOTH)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("status=BOTH 시 ACTIVE와 INACTIVE 모두 반환되어야 합니다").hasSize(2);
+        assertThat(body).extracting(inv -> inv.get("status"))
+                .as("ACTIVE와 INACTIVE가 모두 포함되어야 합니다")
+                .containsExactlyInAnyOrder("ACTIVE", "INACTIVE");
+    }
+
+    @Test
+    void listWithDefaultStatusReturnsOnlyActive() throws Exception {
+        // Given: 본인 계정이 ACTIVE 투자자 1명과 INACTIVE 투자자 1명을 소유함
+        signupAndLogin();
+        registerInvestor("홍길동", "SELF");
+        LocalDateTime now = LocalDateTime.now();
+        investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("김영희")
+                .relationship("SPOUSE")
+                .status("INACTIVE")
+                .deletedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+        // When: status 파라미터 없이 GET /investors 요청을 보냄 (기본값 ACTIVE)
+        MvcResult result = mockMvc.perform(get("/investors")
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + ACTIVE 투자자만 반환됨
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(body).as("기본 status(ACTIVE) 시 ACTIVE 투자자만 반환되어야 합니다").hasSize(1);
+        assertThat(body.get(0).get("status")).isEqualTo("ACTIVE");
+        assertThat(body.get(0).get("displayName")).isEqualTo("홍길동");
+    }
+
+    @Test
+    void listWithInvalidStatusReturns400ValidationError() throws Exception {
+        // Given: 인증된 계정이 존재함
+        signupAndLogin();
+
+        // When: 유효하지 않은 status 값으로 GET /investors 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/investors")
+                        .param("status", "INVALID")
+                        .session(session))
+                .andReturn();
+
+        // Then: 400 Bad Request + VALIDATION_ERROR
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("유효하지 않은 status는 400 Bad Request여야 합니다").isEqualTo(400);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다").isEqualTo("VALIDATION_ERROR");
     }
 }

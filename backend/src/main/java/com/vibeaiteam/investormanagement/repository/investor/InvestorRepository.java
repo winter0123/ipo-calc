@@ -10,4 +10,6 @@ import java.util.List;
 public interface InvestorRepository extends JpaRepository<Investor, Long> {
 
     List<Investor> findByAccountIdAndStatus(Long accountId, String status);
+
+    List<Investor> findByAccountId(Long accountId);
 }
