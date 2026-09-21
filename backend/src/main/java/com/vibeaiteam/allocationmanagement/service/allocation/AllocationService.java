@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -89,5 +90,27 @@ public class AllocationService {
                 .ifPresent(existing -> {
                     throw new AllocationConflictException("이미 등록된 배정 기록입니다.");
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public List<AllocationResponse> list(Long subscriptionId, Long investorId) {
+        List<Allocation> allocations;
+        if (subscriptionId != null) {
+            allocations = allocationRepository.findBySubscriptionIdAndDeletedAtIsNullOrderByCreatedAtDesc(subscriptionId);
+        } else if (investorId != null) {
+            allocations = allocationRepository.findByInvestorId(investorId);
+        } else {
+            allocations = allocationRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+        }
+        return allocations.stream()
+                .map(AllocationResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AllocationResponse getById(Long id) {
+        Allocation allocation = allocationRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
+        return AllocationResponse.from(allocation);
     }
 }
