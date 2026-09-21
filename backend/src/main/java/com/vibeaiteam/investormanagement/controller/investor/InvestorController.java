@@ -42,13 +42,13 @@ public class InvestorController {
         return ResponseEntity.ok(investorService.list(status));
     }
 
-    // 투자자 ID로 단건 투자자 정보를 조회한다. 존재하지 않거나 현재 계정 소유가 아니면 404를 반환한다.
+    // 투자자 ID로 단건 투자자 정보를 조회한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @GetMapping("/{id}")
     public ResponseEntity<InvestorResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(investorService.getById(id));
     }
 
-    // 투자자 ID로 해당 투자자의 이름/관계 등을 수정하고, 수정된 투자자 정보를 반환한다. 존재하지 않으면 404를 반환한다.
+    // 투자자 ID로 해당 투자자의 이름/관계 등을 수정하고, 수정된 투자자 정보를 반환한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @PatchMapping("/{id}")
     public ResponseEntity<InvestorResponse> update(
             @PathVariable Long id,
@@ -56,7 +56,7 @@ public class InvestorController {
         return ResponseEntity.ok(investorService.update(id, request));
     }
 
-    // 투자자 ID로 해당 투자자를 비활성화 상태로 전환하고, 비활성화 완료 메시지를 반환한다. 존재하지 않으면 404를 반환한다.
+    // 투자자 ID로 해당 투자자를 비활성화 상태로 전환하고, 비활성화 완료 메시지를 반환한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @DeleteMapping("/{id}")
     public ResponseEntity<SuccessResponse> delete(@PathVariable Long id) {
         return ResponseEntity.ok(investorService.deactivate(id));
