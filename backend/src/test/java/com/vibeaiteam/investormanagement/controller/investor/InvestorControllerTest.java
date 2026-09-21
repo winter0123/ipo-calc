@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -46,6 +47,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *           GET /investors/{id} 요청 시 403 Forbidden, 계정 B의 투자자 정보를 반환하지 않음
  * - AC-006: 투자자 상세 조회 성공 — 본인 소유 투자자의 GET /investors/{id} 요청 시
  *           200 OK + 상세 정보 반환
+ * - AC-007: 투자자 수정 성공 — PATCH /investors/{id} 요청 시 200 OK +
+ *           수정된 표시 이름과 updatedAt 반영
+ * - AC-008: 투자자 수정 실패 (빈 이름) — displayName이 빈 문자열이면
+ *           400 Bad Request + VALIDATION_ERROR, 투자자 정보 변경되지 않음
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -463,5 +468,208 @@ class InvestorControllerTest {
         assertThat(status).as("유효하지 않은 status는 400 Bad Request여야 합니다").isEqualTo(400);
         var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(responseMap.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다").isEqualTo("VALIDATION_ERROR");
+    }
+
+    private Long registerAndGetId(String displayName) throws Exception {
+        MvcResult created = mockMvc.perform(post("/investors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "displayName", displayName,
+                                "relationship", "SELF")))
+                        .session(session))
+                .andReturn();
+        assertThat(created.getResponse().getStatus()).as("테스트 사전 준비: 투자자 등록은 201이어야 합니다").isEqualTo(201);
+        return ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    }
+
+    private Long createInvestorWithStatus(String status) {
+        LocalDateTime now = LocalDateTime.now();
+        Investor saved = investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("상태투자자")
+                .relationship("OTHER")
+                .status(status)
+                .deletedAt("INACTIVE".equals(status) ? now : null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        return saved.getId();
+    }
+
+    @Test
+    void updateInvestorWithValidRequestReturns200AndUpdatedFields() throws Exception {
+        // Given: 인증된 계정이 특정 투자자를 소유하고 있고, 새로운 표시 이름이 제공됨 (AC-007)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+        LocalDateTime beforeUpdate = investorRepository.findById(investorId).orElseThrow().getUpdatedAt();
+
+        var request = Map.of(
+                "displayName", "수정된표시명",
+                "relationship", "SPOUSE"
+        );
+
+        // When: PATCH /investors/{investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(patch("/investors/" + investorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답을 반환하고, 투자자 정보가 업데이트됨 (AC-007)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("유효한 수정 요청 시 200 OK를 반환해야 합니다 (AC-007)").isEqualTo(200);
+
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("displayName")).as("응답에 수정된 표시 이름이 반영되어야 합니다 (AC-007)").isEqualTo("수정된표시명");
+
+        // And: 관계 및 updatedAt이 수정되어 저장되고, 응답에 수정된 updatedAt이 반영됨 (AC-007)
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getRelationship()).as("수정된 관계가 저장되어야 합니다").isEqualTo("SPOUSE");
+        LocalDateTime responseUpdatedAt = LocalDateTime.parse((String) body.get("updatedAt"));
+        assertThat(responseUpdatedAt).as("응답 updatedAt이 수정 시각으로 갱신되어야 합니다 (AC-007)").isAfter(beforeUpdate);
+    }
+
+    @Test
+    void updateDisplayNameOnlyKeepsRelationshipUnchanged() throws Exception {
+        // Given: 본인 계정 소유 투자자 등록됨 (relationship=SELF), displayName만 수정 요청 (PATCH 부분 수정)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+
+        var request = Map.of("displayName", "새표시명");
+
+        // When: PATCH /investors/{id} 요청에 displayName만 전달
+        MvcResult result = mockMvc.perform(patch("/investors/" + investorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + displayName만 변경되고 relationship은 유지됨 (부분 수정)
+        assertThat(result.getResponse().getStatus()).as("정상 수정 요청 시 200 OK여야 합니다").isEqualTo(200);
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getDisplayName()).as("displayName이 변경되어야 합니다").isEqualTo("새표시명");
+        assertThat(saved.getRelationship()).as("미전달된 relationship은 유지되어야 합니다").isEqualTo("SELF");
+    }
+
+    @Test
+    void updateInvestorWithEmptyDisplayNameReturns400AndDataUnchanged() throws Exception {
+        // Given: 인증된 계정이 특정 투자자를 소유하고 있음 (AC-008)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+        Investor before = investorRepository.findById(investorId).orElseThrow();
+
+        var request = Map.of(
+                "displayName", "   ",
+                "relationship", "SPOUSE"
+        );
+
+        // When: PATCH /investors/{investor_id} 요청에 displayName이 빈 문자열(공백만)인 경우
+        MvcResult result = mockMvc.perform(patch("/investors/" + investorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+
+        // Then: 400 Bad Request + VALIDATION_ERROR (AC-008)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("빈 표시 이름 수정 요청 시 400 Bad Request를 반환해야 합니다 (AC-008)").isEqualTo(400);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다 (AC-008)").isEqualTo("VALIDATION_ERROR");
+
+        // And: 투자자 정보가 변경되지 않음 (AC-008)
+        Investor after = investorRepository.findById(investorId).orElseThrow();
+        assertThat(after.getDisplayName()).as("표시 이름이 변경되지 않아야 합니다 (AC-008)").isEqualTo("홍길동");
+        assertThat(after.getRelationship()).as("관계가 변경되지 않아야 합니다 (AC-008)").isEqualTo("SELF");
+        assertThat(after.getUpdatedAt()).as("updatedAt이 변경되지 않아야 합니다 (AC-008)").isEqualTo(before.getUpdatedAt());
+    }
+
+    @Test
+    void updateInactiveInvestorReturns200WithUpdatedFields() throws Exception {
+        // Given: INACTIVE 상태(비활성화된) 투자자를 본인 계정이 소유하고 있음 (엣지케이스 7)
+        signupAndLogin();
+        Long investorId = createInvestorWithStatus("INACTIVE");
+
+        var request = Map.of(
+                "displayName", "비활성투자자수정",
+                "relationship", "SPOUSE"
+        );
+
+        // When: INACTIVE 투자자에게 PATCH /investors/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(patch("/investors/" + investorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 표시 이름/관계 수정이 정상 반영됨 (엣지케이스 7)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("INACTIVE 투자자 수정 시 200 OK여야 합니다 (엣지케이스 7)").isEqualTo(200);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("displayName")).isEqualTo("비활성투자자수정");
+        assertThat(body.get("status")).as("status는 INACTIVE가 유지되어야 합니다 (엣지케이스 7)").isEqualTo("INACTIVE");
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getRelationship()).as("INACTIVE 투자자의 관계 수정이 저장되어야 합니다 (엣지케이스 7)").isEqualTo("SPOUSE");
+    }
+
+    @Test
+    void updateInvestorWithEmptyRelationshipStoresNull() throws Exception {
+        // Given: 본인 계정 소유 투자자가 relationship=SELF를 가짐 (엣지케이스 3: 빈 관계 필드는 NULL로 저장)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+
+        var request = Map.of("relationship", "");
+
+        // When: PATCH /investors/{id} 요청에 relationship이 빈 문자열로 전달됨
+        MvcResult result = mockMvc.perform(patch("/investors/" + investorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + relationship이 NULL로 저장됨 (엣지케이스 3)
+        assertThat(result.getResponse().getStatus()).as("빈 관계 필드 수정 요청 시 200 OK여야 합니다").isEqualTo(200);
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getRelationship()).as("빈 relationship은 NULL로 저장되어야 합니다 (엣지케이스 3)").isNull();
+    }
+
+    @Test
+    void updateInvestorWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 계정이 존재함 (spec: 존재하지 않는 투자자는 404 NOT_FOUND)
+        signupAndLogin();
+
+        // When: 존재하지 않는 투자자 ID로 PATCH /investors/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(patch("/investors/99999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("displayName", "수정")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND 오류
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 투자자 수정 시 404여야 합니다").isEqualTo(404);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void updateInvestorOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 계정 B의 투자자 ID가 알려져 있음 (AC-005와 동일한 소유권 로직)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+
+        // When: 계정 A가 PATCH /investors/{accountB_investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(patch("/investors/" + otherInvestorId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("displayName", "수정")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN, 계정 B 투자자 정보 미변경
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("다른 계정 투자자 수정 시 403 Forbidden이어야 합니다").isEqualTo(403);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
+        Investor other = investorRepository.findById(otherInvestorId).orElseThrow();
+        assertThat(other.getDisplayName()).as("계정 B의 투자자 정보가 변경되면 안 됩니다").isEqualTo("다른계정투자자");
     }
 }
