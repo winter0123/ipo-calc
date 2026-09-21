@@ -572,6 +572,8 @@ orca orchestration worker-release --dispatch <dispatch_id> --json
 - Master(Claude Code) 코디네이터 자신은 이 규칙과 무관하다 — 워크트리를 갖지 않으며 프로젝트 종료까지 계속 존재한다.
 - 워크스페이스/브랜치를 정리해도 종류별 폴더의 `[epic-slug].md` 문서들과 GitHub 이슈 이력은 삭제하지 않는다.
 
+> **주의(git 제약, 2026-09-21 확인)**: 같은 SF 사이클에서 로컬 커밋을 2개 이상 만든 뒤(예: 문서 수정 커밋 + 구현 커밋) PR을 스쿼시 머지하면, GitHub에는 그 둘이 합쳐진 커밋 1개만 남는다. 이후 `git fetch && git rebase origin/main`을 하면 로컬의 개별 커밋 diff가 스쿼시된 커밋 diff와 patch-id 기준으로 일치하지 않아 **"both added" 같은 가짜 충돌**이 날 수 있다. 이때는 절대 수동으로 충돌을 병합하지 말고, 먼저 `git rebase --abort` 한 뒤 `git diff origin/main <내 브랜치>`로 실제 차이가 없는지(보통 없음) 확인하고, 차이가 없으면 `git reset --hard origin/main`으로 정리한다. 차이가 있다면(즉 아직 병합 안 된 로컬 전용 변경이 있다면) 그 변경만 별도로 커밋해서 살린 뒤 reset한다.
+
 ### 12.4-1 main 병합은 기능(SF) 단위로 계속 진행 — Epic 끝까지 기다리지 않는다 (2026-09-20 사용자 지시)
 
 > 사용자 지시(원문 취지): main 병합 작업은 기능별로 개발될 때마다 중간중간 계속 진행해야 한다. 충돌이 나면 문제를 확인해서 워커에게 다시 시킨다.
