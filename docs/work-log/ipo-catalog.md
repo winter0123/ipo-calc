@@ -135,3 +135,38 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **177개 통과** (신규 3개 포함, 실패/에러 0)
+
+## 2026-09-21 — SF-6 완료 (POST /ipos/import CSV 일괄 등록) + Epic 5 전체 완료
+
+### 구현 내용 (Test-First: RED → GREEN)
+- **build.gradle.kts** — `org.apache.commons:commons-csv:1.14.1` 의존성 추가 (D-IPO-003: Maven Central 최신 안정 버전 확인 후 지정, 일부러 직접 split(",") 구현하지 않음)
+- **DTO 신규** — `controller/ipo/dto/IpoImportResponse.java` (successCount/failureCount/failures), `IpoImportFailure.java` (rowNumber/reason)
+- **예외 신규** — `IpoInvalidCsvException`(→400 INVALID_CSV), `IpoFileTooLargeException`(→400 FILE_TOO_LARGE), `IpoExceptionHandler`에 핸들러 추가, 컨테이너 레벨 `MaxUploadSizeExceededException`(5MB 초과)도 FILE_TOO_LARGE로 매핑
+- **`service/ipo/IpoCsvImportService.java` 신규** (이 메서드 자체는 비트랜잭션)
+  - commons-csv(RFC 4180 — 콤마/큰따옴표 특수문자 안전 파싱)로 UTF-8 읽기, 헤더 레코드에서 컬럼 인덱스 맵 구성
+  - 필수 헤더(companyName, ipoName, subscriptionStartDate, subscriptionEndDate) 누락 시 400 INVALID_CSV
+  - 빈 파일 400 INVALID_CSV, 5MB 초과 400 FILE_TOO_LARGE (서비스 가드 + `spring.servlet.multipart.max-file-size: 5MB` 이중 방어)
+  - 행별로 `IpoService.register()` 호출 — **SF-2 기존 검증/중복검사 로직(private 헬퍼 포함)을 그대로 재사용**, 신규 검증 로직 없음
+  - 각 행이 개별 트랜잭션으로 저장(파일 전체 롤백 없음): 행 실패 시 `IpoValidationException`/`IpoConflictException`/파싱 오류를 catch해 failures에 (rowNumber, reason) 추가 후 다음 행 계속
+  - 날짜 비-ISO8601 또는 숫자 필드 비숫자 값 → 해당 행만 실패
+- **`controller/ipo/IpoController.java`** — `@PostMapping(value="/import", consumes=MULTIPART_FORM_DATA_VALUE)`, `@RequestParam("file")` 추가, **한글 클래스 주석 신설**(AGENTS 15장): "IPO(공모주) 기준정보에 대한 등록/조회/수정/비활성화/CSV 일괄등록 API를 제공한다."
+
+### 테스트 (Test-First: RED → GREEN)
+`IpoCsvImportTest` 신규 7개 (전체 184개):
+1. `importCsvWithAllValidRowsReturns200AndSuccessCount` — 전체 성공 (AC-018)
+2. `importCsvWithSomeInvalidRowsReturns200AndFailureDetailsWithoutRollback` — 부분 성공: 날짜형식 오류(행3)/중복(행5)/필수값 누락(행6) 각각 실패, 유효행은 저장 (AC-019)
+3. `importCsvWithNonNumericPriceMarksOnlyThatRowFailed` — 숫자 필드에 비숫자 값 행만 실패
+4. `importCsvWithSpecialCharactersParsesSafely` — 큰따옴표 안 콤마/이스케이프 따옴표 → 정확히 저장 (D-IPO-003 검증)
+5. `importCsvWithEmptyFileReturns400InvalidCsv` — 빈 파일 400 INVALID_CSV (AC-020)
+6. `importCsvWithMissingRequiredHeaderReturns400InvalidCsv` — 필수 헤더 누락 400 INVALID_CSV (AC-020)
+7. `importCsvWithTooLargeFileReturns400FileTooLarge` — 5MB 초과 400 FILE_TOO_LARGE (D-IPO-002)
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 **184개 통과** (신규 7개 포함, 실패/에러 0)
+- RED 단계에서 신규 7개 전원 실패 확인 후 GREEN 전환
+
+### Epic 5 (ipo-catalog) 전체 완료
+SF-1~SF-6이 모두 GREEN으로 마무리되어 Epic 5 전체 완료. 커밋/푸시/PR은 Master가 직접 검증 후 처리.

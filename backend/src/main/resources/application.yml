@@ -1,6 +1,9 @@
 spring:
   application:
     name: account-authentication
+  servlet:
+    multipart:
+      max-file-size: 5MB
   datasource:
     url: jdbc:postgresql://localhost:5433/vibe_ai_team
     username: vibe

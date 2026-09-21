@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.nio.charset.StandardCharsets;
 
@@ -17,6 +18,21 @@ public class IpoExceptionHandler {
     @ExceptionHandler(IpoValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(IpoValidationException ex) {
         return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+    }
+
+    @ExceptionHandler(IpoInvalidCsvException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCsv(IpoInvalidCsvException ex) {
+        return response(HttpStatus.BAD_REQUEST, "INVALID_CSV", ex.getMessage());
+    }
+
+    @ExceptionHandler(IpoFileTooLargeException.class)
+    public ResponseEntity<ErrorResponse> handleFileTooLarge(IpoFileTooLargeException ex) {
+        return response(HttpStatus.BAD_REQUEST, "FILE_TOO_LARGE", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        return response(HttpStatus.BAD_REQUEST, "FILE_TOO_LARGE", "CSV 파일은 최대 5MB까지 업로드할 수 있습니다.");
     }
 
     @ExceptionHandler(IpoConflictException.class)
