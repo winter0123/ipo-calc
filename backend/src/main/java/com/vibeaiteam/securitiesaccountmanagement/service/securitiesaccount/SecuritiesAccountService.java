@@ -3,6 +3,7 @@ package com.vibeaiteam.securitiesaccountmanagement.service.securitiesaccount;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
@@ -15,15 +16,18 @@ import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.S
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SecuritiesAccountService {
 
     private static final String STATUS_ACTIVE = "ACTIVE";
@@ -118,6 +122,29 @@ public class SecuritiesAccountService {
         }
 
         return toMaskedResponse(account);
+    }
+
+    @Transactional(readOnly = true)
+    public SecuritiesAccountAccountNumberResponse getAccountNumber(Long id) {
+        SecuritiesAccount account = securitiesAccountRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Investor investor = investorRepository.findById(account.getInvestorId())
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        if (!currentAccountId.equals(investor.getAccountId())) {
+            throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
+        }
+
+        String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
+        Instant exposedAt = Instant.now();
+
+        // D-SA-005: 감사 로그는 SLF4J 애플리케이션 로그로만 기록 (별도 DB 테이블 없음)
+        log.info("계좌번호 노출: accountId={}, requestedByAccountId={}, exposedAt={}",
+                id, currentAccountId, exposedAt);
+
+        return SecuritiesAccountAccountNumberResponse.of(id, plainAccountNumber, exposedAt);
     }
 
     private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {

@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -709,6 +710,102 @@ class SecuritiesAccountControllerTest {
                 .as("다른 계정 소유 계좌 조회 시 403 Forbidden을 반환해야 합니다").isEqualTo(403);
         Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void getAccountNumberReturnsPlaintextForOwnedAccount() throws Exception {
+        // Given: 인증된 계정이 해당 증권계좌의 소유 투자자를 보유하고 있음 (AC-008)
+        signupAndLogin();
+        Long securitiesFirmId = registerFirm();
+        Long investorId = registerInvestorAndGetId();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+        // When: GET /securities-accounts/{id}/account-number 요청을 보냄 (AC-008)
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}/account-number", accountId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 계좌번호 전체가 평문으로 반환됨 (마스킹되지 않음) (AC-008)
+        assertThat(result.getResponse().getStatus())
+                .as("본인 소유 계좌의 계좌번호 노출 조회는 200 OK여야 합니다 (AC-008)").isEqualTo(200);
+        Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(accountId);
+        assertThat(response.get("accountNumber"))
+                .as("계좌번호 전체가 평문(마스킹 안 됨)으로 반환되어야 합니다 (AC-008)").isEqualTo(ACCOUNT_NUMBER);
+        assertThat(response.get("accountNumber"))
+                .as("평문은 마스킹된 형태와 달라야 합니다 (AC-008)")
+                .isNotEqualTo(AccountNumberMasker.mask(ACCOUNT_NUMBER));
+
+        // And: 노출 시각(exposedAt, ISO 8601)이 포함됨 (AC-008)
+        String exposedAt = (String) response.get("exposedAt");
+        assertThat(exposedAt).as("응답에 exposedAt이 포함되어야 합니다 (AC-008)").isNotNull();
+        assertThat(Instant.parse(exposedAt)).as("exposedAt은 ISO 8601 형식이어야 합니다 (AC-008)").isNotNull();
+    }
+
+    @Test
+    void getAccountNumberOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B의 증권계좌 ID가 알려져 있음 (AC-009)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+        Long securitiesFirmId = registerFirm();
+        String otherPlainNumber = "777-666-555444";
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesAccount otherAccount = securitiesAccountRepository.save(SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt(otherPlainNumber))
+                .accountName("다른계정계좌")
+                .isDefault(true)
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        createdAccounts.add(otherAccount);
+
+        // When: 계정 A가 계정 B의 증권계좌 ID로 GET /securities-accounts/{id}/account-number 요청을 보냄 (AC-009)
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}/account-number", otherAccount.getId())
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN (AC-009)
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 계좌의 계좌번호 노출 요청 시 403 Forbidden을 반환해야 합니다 (AC-009)").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다 (AC-009)").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+
+        // And: 계좌번호 전체(평문)가 응답에 포함되지 않음 (AC-009)
+        assertThat(utf8Body(result))
+                .as("소유권 없는 요청 응답에 계좌번호 평문이 포함되면 안 됩니다 (AC-009)")
+                .doesNotContain(otherPlainNumber);
+    }
+
+    @Test
+    void getAccountNumberWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 계정이 존재하고, 존재하지 않는 증권계좌 ID가 제공됨
+        signupAndLogin();
+
+        // When: GET /securities-accounts/{unknown_id}/account-number 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}/account-number", 99999999L)
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 계좌의 계좌번호 노출 요청 시 404 Not Found를 반환해야 합니다").isEqualTo(404);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
         assertThat(body.get("message")).isNotNull();
     }
 

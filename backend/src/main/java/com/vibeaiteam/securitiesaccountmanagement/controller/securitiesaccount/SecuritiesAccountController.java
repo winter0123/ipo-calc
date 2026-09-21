@@ -1,5 +1,6 @@
 package com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount;
 
+import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.vibeaiteam.securitiesaccountmanagement.service.securitiesaccount.SecuritiesAccountService;
@@ -39,5 +40,10 @@ public class SecuritiesAccountController {
     @GetMapping("/{id}")
     public ResponseEntity<SecuritiesAccountResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(securitiesAccountService.getById(id));
+    }
+
+    @GetMapping("/{id}/account-number")
+    public ResponseEntity<SecuritiesAccountAccountNumberResponse> getAccountNumber(@PathVariable Long id) {
+        return ResponseEntity.ok(securitiesAccountService.getAccountNumber(id));
     }
 }

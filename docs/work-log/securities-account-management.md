@@ -129,3 +129,29 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-3 완료 → SF-4(계좌번호 전체 노출 GET /securities-accounts/{id}/account-number): 복호화 평문 반환 + SLF4J 감사 로그(D-SA-005)
+
+## 2026-09-21 — SF-4 구현 완료 (Test-First RED→GREEN)
+
+### 완료 작업
+- **GET /securities-accounts/{id}/account-number (계좌번호 전체 노출)** 구현 (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `SecuritiesAccountController`: `@GetMapping("/{id}/account-number")` 추가 (금지사항 준수 — PATCH/DELETE 엔드포인트는 작성하지 않음)
+  - `controller/securitiesaccount/dto/SecuritiesAccountAccountNumberResponse.java` 신규 — id(Long), accountNumber(평문), exposedAt(Instant) + 정적 `of(...)` 팩토리
+  - `SecuritiesAccountService.getAccountNumber(id)`: `findByIdAndDeletedAtIsNull(id)` 조회 → 없으면 404(NOT_FOUND), SF-3과 동일한 **2단계 소유권 검증**(SecuritiesAccount → investorId → Investor.accountId, 다르면 403 FORBIDDEN), `accountNumberEncryptor.decrypt()`로 복호화한 평문 반환, `Instant.now()`를 exposedAt으로 응답에 포함
+  - **감사 로그(D-SA-005)**: 별도 DB 테이블 없이 SLF4J 로그만 사용. 클래스에 `@Slf4j` 추가하고 `log.info("계좌번호 노출: accountId={}, requestedByAccountId={}, exposedAt={}", id, currentAccountId, exposedAt)` 형태로 기록
+- 기존 예외/핸들러(NotFoundException→404, ForbiddenException→403) 그대로 재사용해 별도 예외 추가 없음
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 3건 추가 작성 → RED(엔드포인트 없어 실패) 확인 → 구현 → GREEN)
+- AC-008(본인 소유 계좌 → 200) — `accountNumber`가 원본 평문과 동일(마스킹 값과 다름)한지 확인, `exposedAt`이 ISO 8601(`Instant.parse` 가능)로 포함되는지 확인
+- AC-009(타 계정 소유 계좌 → 403) — FORBIDDEN + 응답 본문에 타 계좌 평문(`777-666-555444`)이 포함되지 않는지 확인
+- 존재하지 않는 id → 404 NOT_FOUND
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test` → **BUILD SUCCESSFUL / 전체 126건 전부 GREEN, failures 0, errors 0** (SF-3 122건 + 신규 3건)
+- `git diff --check` 통과
+
+### 특이사항
+- exposedAt은 `java.time.Instant`로 응답하며 Spring Boot Jackson(jsr310)이 ISO 8601 문자열로 직렬화함(예: `2026-09-21T01:43:00Z`)
+- checkstyle 플러그인은 여전히 프로젝트에 없어 checkstyle 검증은 미실행(SF-3 특이사항과 동일)
+
+### 다음 단계
+- SF-4 완료 → SF-5(수정 PATCH /securities-accounts/{id}): accountName/securitiesFirmId만 수정, accountNumber 불변, INACTIVE 증권사로 변경 금지
