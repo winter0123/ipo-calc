@@ -850,6 +850,10 @@ orca skills get <skill-name>
 
 ## 22. Master(Claude Code) / OpenRouter 모델 운영 규칙
 
+> **이 장(22장 전체, 22.1~22.8) + 23.4-1의 opencode 관련 예시 + 23.7은 "Master가 Claude Code일 때"만 유효한 내용을 한곳에 모은 것이다.** 워커 모델 운영 규칙(어떤 CLI로 워커를 띄우는지, 무료 모델 우선순위)뿐 아니라 **Master 자신**이 Claude Code로 동작하기 때문에만 필요한 내용(네이티브/게이트웨이 전환, `/compact`, `/low-priority`, `/limit-reset`, Claude 모델 ID)도 전부 여기 있다. **만약 미래에 Master가 Claude Code가 아닌 다른 LLM/CLI로 바뀌면, 이 문서에서 22장 전체와 23.4-1의 opencode 예시·23.7을 통째로 삭제하거나 그 도구에 맞게 다시 쓴다** — 나머지 장(팀 구조/방법론/Git/테스트/백엔드·프론트엔드 규칙 등)은 Master가 어떤 도구든 그대로 유효하다.
+>
+> 이 장에 포함된 항목: 22.1(역할별 모델 배정표) · 22.2(오케스트레이션 실행 예시) · 22.3(opencode `--model` 우회 실행법) · 22.4(Claude Code + OpenRouter 무료 모델, 검증된 모델 목록) · 22.5(Claude Code ↔ OpenRouter 게이트웨이 구조, 네이티브 전환) · 22.6(네이티브 모델 예외 운영, **Claude 모델 ID 정확한 값**) · 22.7(Master 세션 사용량 한도 대응: `/low-priority`, `/limit-reset`) · 22.8(토큰/컨텍스트 초과 시 `/compact` 대응, 구 23.7).
+
 **Master Lead는 Orca 위에서 Claude Code로 띄운 코디네이터이며 모델은 Claude다.** OpenRouter를 쓰지 않고, `worker-start`의 대상도 아니다. Master 아래 모든 워커(A/B/C그룹)는 **무료 모델(반드시 `free`)**로만 만든다. **에이전트 종류는 22.4의 `claude --model <openrouter 무료 모델>`을 1순위로 시도하고, 그 모델이 막히거나 응답이 없으면 22.3의 `opencode --model openrouter/<id>`로 전환한다** (2026-09-21 사용자 지시로 우선순위 변경 — 과거에는 opencode만 썼음). 실행 전 OpenRouter/Orca에 실제 등록된 모델 ID와 가용성을 확인한다. Select variant가 있으면 가장 높은 버전을 선택한다.
 
 **모델 교체 유연성(2026-09-20 사용자 승인):** 22.1 표는 기본 배정이지 절대 고정이 아니다. 배정된 모델이 자주 멈추거나(컨텍스트 초과, upstream timeout 등) 성능이 안 나오면, **역할·작업 종류를 가리지 않고**(조사뿐 아니라 기획/설계/구현/테스트/QA/리뷰/Git 관리 전부) 다른 OpenRouter 모델로 바꿔서 진행해도 된다. 단 **모델 ID에 반드시 `free`가 포함되어야 한다**(유료 모델 금지 원칙은 그대로 유지). 교체 시 `opencode models openrouter`로 후보를 확인하고, 어떤 모델에서 어떤 모델로/왜 바꿨는지 work-log에 남긴다.
@@ -1044,7 +1048,7 @@ orca terminal create --worktree path:<워크스페이스 절대경로> --title "
   --command 'unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY && claude' --json
 ```
 - 이 3개를 모두 `unset`하지 않으면(예: `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 끄면) 여전히 `ANTHROPIC_BASE_URL`이 OpenRouter를 가리키고 있어서 겉보기엔 Claude 모델(예: Opus 5)인데 실제로는 OpenRouter를 경유해 과금되는 상태가 된다 — 22.5의 정정 사항과 동일한 함정이니 반드시 3개 다 끈다.
-- 특정 모델을 강제로 고정하고 싶으면 `claude --model <opus-5|sonnet-5|haiku-4.5 등 네이티브 모델명>`을 덧붙인다. 지정하지 않으면 계정 기본 모델로 뜬다.
+- 특정 모델을 강제로 고정하고 싶으면 `claude --model <정확한 모델 ID>`를 덧붙인다. **`sonnet-5`처럼 축약형을 쓰면 "may not exist or you may not have access to it" 오류가 난다 — 반드시 전체 ID를 쓴다: Sonnet 5는 `claude-sonnet-5`, Opus 5는 `claude-opus-5`, Haiku 4.5는 `claude-haiku-4-5-20251001`, Fable 5.1은 `claude-fable-5-1`**(2026-09-21 사용자가 직접 오류 화면을 보고 정정 — `/model` 메뉴에 뜨는 표시명과 CLI `--model` 값이 다르다). 지정하지 않으면 계정 기본 모델(보통 Sonnet)로 뜬다.
 - 검증: `orca terminal read --terminal <handle> --json`으로 헤더를 확인해 `<모델명> · Claude Pro`(또는 사용자의 실제 구독 플랜명) 문구가 보이면 네이티브다. `API Usage Billing` 문구가 보이면 여전히 OpenRouter이므로 잘못된 것이다.
 - 이후 태스크 생성/배분은 22.4와 동일한 패턴(`task-create` → `worker-start --task <id> --terminal <handle> --worktree path:<...>`)을 그대로 쓴다 — 네이티브냐 게이트웨이냐는 터미널을 띄우는 시점의 환경변수 차이일 뿐, 오케스트레이션 절차 자체는 동일하다.
 
@@ -1060,6 +1064,47 @@ orca terminal create --worktree path:<워크스페이스 절대경로> --title "
   - 장점: 속도 감속 없이 긴급한 작업을 바로 끝낼 수 있다.
   - 단점: 주 1회만 쓸 수 있다. 공식 문서에 노출되지 않은 실험적/조건부 기능일 수 있어 계정 상태(가입 기간, 플랜, 테스트 그룹 등)에 따라 명령어가 보이지 않거나 작동하지 않을 수 있다.
 - 두 명령 모두 사용자가 터미널에서 직접 입력하는 슬래시 명령이며, Master가 스스로 호출할 수 있는 도구가 아니다(사람이 실행).
+
+### 22.8 Master 자신의 토큰 초과(컨텍스트 초과) 대응 — 10분 무응답 시 상태 확인 후 `/compact`
+
+> 이 절은 **워커**가 아니라 Claude Code인 **Master 자신**이 컨텍스트를 초과했을 때의 대응이다(워커의 토큰 초과 대응은 12-2/22.4-1과 별개로 각 워커 CLI 자체의 문제이며, 이 절은 순수히 Master 세션용). 워커가 오래 조용하다고 바로 멈춘 것으로 보고 재배분하지 않는다. **먼저 원인이 토큰 초과인지 확인**하고, 맞다면 `/compact`로 컨텍스트를 비운 뒤 같은 작업을 재개시킨다.
+
+**1) 완료 대기 — 10분 타임아웃**
+
+```bash
+orca orchestration check --terminal <코디핸들> --wait --types worker_done,escalation --timeout-ms 600000 --json
+```
+
+**2) 10분 동안 아무 메시지도 오지 않으면(타임아웃), 재배분하기 전에 그 워커 터미널의 실제 화면부터 확인한다.**
+
+```bash
+orca terminal read --terminal <워커핸들> --limit 50 --json
+```
+
+**3) 화면에 토큰/컨텍스트 초과 에러**(예: context length exceeded, token limit, conversation too long 등)**가 보이면 `/compact`를 입력해 압축시킨다.**
+
+```bash
+orca terminal send --terminal <워커핸들> --text "/compact" --enter --json
+```
+
+**4) 압축이 끝나 터미널이 idle 프롬프트로 돌아왔는지 다시 확인한다.**
+
+```bash
+orca terminal read --terminal <워커핸들> --limit 20 --json
+```
+
+**5) 압축으로 컨텍스트가 비워졌으므로, 같은 태스크를 다시 주입해 작업을 재개시킨다** (태스크는 아직 `completed`가 아니므로 그대로 재사용).
+
+```bash
+orca orchestration dispatch --task <task_id> --to <워커핸들> --from <코디핸들> --inject --json
+```
+
+**6) 이 사건을 해당 Epic의 `work-log.md`에 기록한다:** 발생 시각 / 태스크 ID / 증상(토큰 초과) / `/compact` 실행 여부 / 재개 여부.
+
+**주의:**
+
+- 화면에 토큰 초과가 아닌 다른 증상(멈춤, 크래시, 무한 루프 등)이 보이면 `/compact`를 쓰지 않는다. 24장 BLOCKED 기준(멈춘 워커, 동일 실패 반복)에 따라 처리한다.
+- **같은 태스크에서 `/compact` 후 재개를 3회 이상 반복해도 다시 토큰 초과가 나면**, 그 태스크(또는 세부 기능) 범위가 너무 크다는 신호다. 무리하게 압축을 반복하지 말고 `BLOCKED`로 전환해 Planning/Architecture에게 더 작게 재분해하도록 요청한다(5.3 참고).
 
 ---
 
@@ -1143,46 +1188,7 @@ orca orchestration worker-release --dispatch <id> --json
 
 - `orchestration reset`은 이 PC의 로컬 오케스트레이션 DB 전체를 지우므로 사용하지 않는다. 정리는 태스크를 하나씩 `completed`로 바꾸는 방식으로 한다.
 
-### 23.7 토큰 초과(컨텍스트 초과) 대응 — 10분 무응답 시 상태 확인 후 `/compact`
-
-> 워커가 오래 조용하다고 바로 멈춘 것으로 보고 재배분하지 않는다. **먼저 원인이 토큰 초과인지 확인**하고, 맞다면 `/compact`로 컨텍스트를 비운 뒤 같은 작업을 재개시킨다.
-
-**1) 완료 대기 — 10분 타임아웃**
-
-```bash
-orca orchestration check --terminal <코디핸들> --wait --types worker_done,escalation --timeout-ms 600000 --json
-```
-
-**2) 10분 동안 아무 메시지도 오지 않으면(타임아웃), 재배분하기 전에 그 워커 터미널의 실제 화면부터 확인한다.**
-
-```bash
-orca terminal read --terminal <워커핸들> --limit 50 --json
-```
-
-**3) 화면에 토큰/컨텍스트 초과 에러**(예: context length exceeded, token limit, conversation too long 등)**가 보이면 `/compact`를 입력해 압축시킨다.**
-
-```bash
-orca terminal send --terminal <워커핸들> --text "/compact" --enter --json
-```
-
-**4) 압축이 끝나 터미널이 idle 프롬프트로 돌아왔는지 다시 확인한다.**
-
-```bash
-orca terminal read --terminal <워커핸들> --limit 20 --json
-```
-
-**5) 압축으로 컨텍스트가 비워졌으므로, 같은 태스크를 다시 주입해 작업을 재개시킨다** (태스크는 아직 `completed`가 아니므로 그대로 재사용).
-
-```bash
-orca orchestration dispatch --task <task_id> --to <워커핸들> --from <코디핸들> --inject --json
-```
-
-**6) 이 사건을 해당 Epic의 `work-log.md`에 기록한다:** 발생 시각 / 태스크 ID / 증상(토큰 초과) / `/compact` 실행 여부 / 재개 여부.
-
-**주의:**
-
-- 화면에 토큰 초과가 아닌 다른 증상(멈춤, 크래시, 무한 루프 등)이 보이면 `/compact`를 쓰지 않는다. 24장 BLOCKED 기준(멈춘 워커, 동일 실패 반복)에 따라 처리한다.
-- **같은 태스크에서 `/compact` 후 재개를 3회 이상 반복해도 다시 토큰 초과가 나면**, 그 태스크(또는 세부 기능) 범위가 너무 크다는 신호다. 무리하게 압축을 반복하지 말고 `BLOCKED`로 전환해 Planning/Architecture에게 더 작게 재분해하도록 요청한다(5.3 참고).
+> Master 자신의 토큰/컨텍스트 초과 대응(`/compact`)은 22.8로 옮겼다 — 22장이 "Master=Claude Code 전용" 내용을 모아두는 곳이기 때문(22장 서두 참고).
 
 ---
 
