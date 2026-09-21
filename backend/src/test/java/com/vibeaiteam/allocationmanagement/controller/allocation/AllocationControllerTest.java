@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -196,10 +197,11 @@ class AllocationControllerTest {
 
     private Long createIpo() {
         LocalDateTime now = LocalDateTime.now();
+        String uniqueCode = "123456" + ThreadLocalRandom.current().nextLong(100000, 999999);
         Ipo ipo = ipoRepository.save(Ipo.builder()
                 .companyName("기업A")
                 .ipoName("공모주A")
-                .stockCode("123456")
+                .stockCode(uniqueCode)
                 .lowerBandPrice(10000L)
                 .upperBandPrice(12000L)
                 .fixedPrice(11000L)
@@ -260,6 +262,11 @@ class AllocationControllerTest {
 
     private Map<String, Object> readBody(MvcResult result) throws Exception {
         return objectMapper.readValue(utf8Body(result), Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> readListBody(MvcResult result) throws Exception {
+        return objectMapper.readValue(utf8Body(result), List.class);
     }
 
     private void assertValidationError(MvcResult result) throws Exception {
@@ -403,5 +410,142 @@ class AllocationControllerTest {
         Map<String, Object> response = readBody(result);
         assertThat(response.get("status")).isEqualTo("ACTIVE");
         assertThat(allocationRepository.findAll()).hasSize(2);
+    }
+
+    // 배정 목록 조회 테스트 (SF-3, AC-007~011)
+
+    @Test
+    void listAllocationsReturnsAllActiveAllocations() throws Exception {
+        // Given: 여러 ACTIVE 배정과 취소된 배정이 혼재함 (AC-007, AC-018)
+        signupAndLogin();
+        Long subId1 = createSubscription(100L);
+        Long subId2 = createSubscription(200L);
+        Long subId3 = createSubscription(300L);
+
+        registerAllocation(validRequest(subId1));
+        registerAllocation(validRequest(subId2));
+        MvcResult third = registerAllocation(validRequest(subId3));
+        Long cancelledId = ((Number) readBody(third).get("id")).longValue();
+        Allocation cancelled = allocationRepository.findById(cancelledId).orElseThrow();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(LocalDateTime.now());
+        allocationRepository.saveAndFlush(cancelled);
+
+        // When: GET /allocations 요청 (필터 없음)
+        MvcResult result = mockMvc.perform(get("/allocations").session(session))
+                .andReturn();
+
+        // Then: 200 OK, 취소된 배정 제외하고 2건만 반환, createdAt 내림차순 (AC-007, AC-018)
+        // subId3의 배정은 취소됐으므로 제외, 남은 subId2(나중 생성)와 subId1(먼저 생성) 순으로 반환
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> allocations = readListBody(result);
+        assertThat(allocations).hasSize(2);
+        assertThat(((Number) allocations.get(0).get("subscriptionId")).longValue()).isEqualTo(subId2);
+        assertThat(((Number) allocations.get(1).get("subscriptionId")).longValue()).isEqualTo(subId1);
+    }
+
+    @Test
+    void listAllocationsWithSubscriptionIdFilterReturnsFilteredList() throws Exception {
+        // Given: 서로 다른 subscriptionId로 배정 2건 생성 (AC-008)
+        signupAndLogin();
+        Long subId1 = createSubscription(100L);
+        Long subId2 = createSubscription(200L);
+        registerAllocation(validRequest(subId1));
+        registerAllocation(validRequest(subId2));
+
+        // When: GET /allocations?subscriptionId=subId1 요청
+        MvcResult result = mockMvc.perform(get("/allocations")
+                        .param("subscriptionId", subId1.toString())
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK, 해당 subscriptionId의 배정만 1건 반환 (AC-008)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> allocations = readListBody(result);
+        assertThat(allocations).hasSize(1);
+        assertThat(((Number) allocations.get(0).get("subscriptionId")).longValue()).isEqualTo(subId1);
+    }
+
+    @Test
+    void listAllocationsWithInvestorIdFilterReturnsFilteredList() throws Exception {
+        // Given: 서로 다른 투자자의 배정 2건 생성 (AC-009)
+        signupAndLogin();
+        Long investorId1 = registerInvestorAndGetId();
+        Long firmId1 = registerFirm();
+        Long saId1 = registerSecuritiesAccount(investorId1, firmId1);
+        Long ipoId1 = createIpo();
+        Long subId1 = createSubscriptionForInvestor(investorId1, saId1, ipoId1, 100L);
+
+        Long investorId2 = registerInvestorAndGetId();
+        Long firmId2 = registerFirm();
+        Long saId2 = registerSecuritiesAccount(investorId2, firmId2);
+        Long ipoId2 = createIpo();
+        Long subId2 = createSubscriptionForInvestor(investorId2, saId2, ipoId2, 200L);
+
+        registerAllocation(validRequest(subId1));
+        registerAllocation(validRequest(subId2));
+
+        // When: GET /allocations?investorId=investorId1 요청
+        MvcResult result = mockMvc.perform(get("/allocations")
+                        .param("investorId", investorId1.toString())
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK, 해당 투자자의 배정만 1건 반환 (AC-009, 3단계 JOIN 검증)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> allocations = readListBody(result);
+        assertThat(allocations).hasSize(1);
+        assertThat(((Number) allocations.get(0).get("subscriptionId")).longValue()).isEqualTo(subId1);
+    }
+
+    @Test
+    void getAllocationByIdReturnsAllocation() throws Exception {
+        // Given: 존재하는 배정 ID (AC-010)
+        signupAndLogin();
+        Long subId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When: GET /allocations/{id} 요청
+        MvcResult result = mockMvc.perform(get("/allocations/{id}", allocationId).session(session))
+                .andReturn();
+
+        // Then: 200 OK, 배정 상세 정보 반환 (AC-010)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(allocationId);
+        assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subId);
+    }
+
+    @Test
+    void getAllocationByIdNotFoundReturns404() throws Exception {
+        // Given: 존재하지 않는 배정 ID (AC-011)
+        signupAndLogin();
+
+        // When: GET /allocations/99999999 요청
+        MvcResult result = mockMvc.perform(get("/allocations/99999999").session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-011)
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    // 특정 투자자의 청약 생성을 위한 헬퍼 메서드
+    private Long createSubscriptionForInvestor(Long investorId, Long securitiesAccountId, Long ipoId, Long quantity) throws Exception {
+        MvcResult result = mockMvc.perform(post("/subscriptions")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "investorId", investorId,
+                                "securitiesAccountId", securitiesAccountId,
+                                "ipoId", ipoId,
+                                "quantity", quantity,
+                                "depositAmount", 1000000,
+                                "subscribedAt", "2026-10-01T09:00:00"))))
+                .andReturn();
+        assertThat(result.getResponse().getStatus())
+                .as("테스트 사전 준비: 청약 등록은 201이어야 합니다").isEqualTo(201);
+        return ((Number) objectMapper.readValue(utf8Body(result), Map.class).get("id")).longValue();
     }
 }

@@ -135,3 +135,53 @@ subscriptionId미존재404/AC-004, ACTIVE중복409/AC-005, CANCELLED후재등록
 
 **남은 작업**: SF-3(목록/상세 조회)부터 SF-5(취소)까지 순차 구현 필요.
 커밋/PR/머지는 Master가 진행.
+
+## 2026-09-22 — SF-3 구현 완료 (배정 목록/상세 조회 API, GET /allocations, GET /allocations/{id})
+
+`docs/breakdown/allocation-management.md`의 SF-3을 구현했다. 브랜치
+`winter0123/allocation-query` (backend-3 워크스페이스, origin/main 기준
+생성, SF-1~2 포함). AC-007~011 커버.
+
+**산출물**:
+- `controller/allocation/AllocationController.java` — `GET /allocations`,
+  `GET /allocations/{id}` 추가. 두 메서드 모두 한글 주석으로 동작 명시
+  (AGENTS.md 15장 규칙: 클래스 주석은 리소스 전체 요약, 메서드 주석은
+  해당 엔드포인트 하나의 동작).
+- `service/allocation/AllocationService.java` — `list(Long subscriptionId,
+  Long investorId)`, `getById(Long id)` 추가. `list()`는 파라미터에 따라
+  전체/청약별/투자자별 분기, `getById()`는 `findByIdAndDeletedAtIsNull`로
+  조회 후 없으면 `AllocationNotFoundException`(404).
+- `repository/allocation/AllocationRepository.java` —
+  `findBySubscriptionIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long)` (Spring
+  Data 메서드명), `findByInvestorId(Long)` (JPQL 3단계 JOIN:
+  Allocation → Subscription → Investor, `deletedAt IS NULL` 필터 적용).
+
+**핵심 구현 포인트**:
+- 투자자별 조회(`investorId` 필터)는 breakdown 문서에 명시된 대로
+  Allocation→Subscription→Investor 3단계 JOIN이 필요했다. JPQL에서
+  `JOIN Subscription s ON a.subscriptionId = s.id JOIN Investor i ON
+  s.investorId = i.id`로 구현. 엔티티 간 관계는 FK로만 맺어져 있고
+  JPA 연관관계(@ManyToOne 등)는 정의하지 않았으므로 직접 ID로 JOIN.
+- `deletedAt IS NULL` 조건을 WHERE 절에 포함해 CANCELLED 기록이
+  목록/상세에서 제외되도록 보장(AC-011, AC-018 일관성).
+- Controller의 `list()`는 `ResponseEntity<List<AllocationResponse>>`를
+  직접 반환(래퍼 객체 없이 배열 JSON), `getById()`는 단일 객체 반환.
+
+**테스트**: `AllocationControllerTest.java`에 5개 신규
+- `listAllocationsReturnsAllActiveAllocations()` — 전체 조회 + CANCELLED
+  제외 + createdAt 내림차순 정렬 (AC-007, AC-018)
+- `listAllocationsWithSubscriptionIdFilterReturnsFilteredList()` —
+  `subscriptionId` 필터 동작 (AC-008)
+- `listAllocationsWithInvestorIdFilterReturnsFilteredList()` —
+  `investorId` 필터 동작, 3단계 JOIN 검증 (AC-009)
+- `getAllocationByIdReturnsAllocation()` — 상세 조회 성공 (AC-010)
+- `getAllocationByIdNotFoundReturns404()` — 미존재 ID 404 (AC-011)
+테스트 헬퍼 `createSubscriptionForInvestor`, `readListBody` 추가.
+
+**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+--rerun` → BUILD SUCCESSFUL, 231 tests completed, 0 failed (기존 226개 +
+신규 5개).
+
+**남은 작업**: SF-4(수정 API, PATCH /allocations/{id}) → SF-5(취소/논리
+삭제, DELETE /allocations/{id}) 순차 구현 필요. 커밋/PR/머지는 Master가
+진행.
