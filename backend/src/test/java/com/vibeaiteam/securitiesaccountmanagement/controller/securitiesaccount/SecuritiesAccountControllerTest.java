@@ -1152,4 +1152,181 @@ class SecuritiesAccountControllerTest {
         assertThat(unchanged.getStatus())
                 .as("소유권 없는 요청은 계좌를 비활성화하면 안 됩니다 (SF-6)").isEqualTo("ACTIVE");
     }
+
+    private MvcResult setDefaultSecuritiesAccount(Long id) throws Exception {
+        return mockMvc.perform(patch("/securities-accounts/{id}/set-default", id)
+                        .session(session))
+                .andReturn();
+    }
+
+    @Test
+    void setDefaultSecuritiesAccountReturns200AndSwapsDefaultAtomically() throws Exception {
+        // Given: 투자자에게 2개의 활성 계좌가 있고, A가 현재 기본 계좌임 (SF-7, AC-014)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult firstResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(firstResult.getResponse().getStatus()).isEqualTo(201);
+        long accountAId = ((Number) objectMapper.readValue(utf8Body(firstResult), Map.class).get("id")).longValue();
+        SecuritiesAccount accountA = securitiesAccountRepository.findById(accountAId).orElseThrow();
+        assertThat(accountA.getIsDefault()).as("테스트 사전 준비: 첫 계좌는 기본 계좌여야 합니다").isTrue();
+        createdAccounts.add(accountA);
+
+        MvcResult secondResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", "999-888-777666",
+                "isDefault", false));
+        assertThat(secondResult.getResponse().getStatus()).isEqualTo(201);
+        long accountBId = ((Number) objectMapper.readValue(utf8Body(secondResult), Map.class).get("id")).longValue();
+        SecuritiesAccount accountB = securitiesAccountRepository.findById(accountBId).orElseThrow();
+        assertThat(accountB.getIsDefault()).as("테스트 사전 준비: 두 번째 계좌는 기본 계좌가 아니어야 합니다").isFalse();
+        createdAccounts.add(accountB);
+
+        // When: B 계좌에 대해 PATCH /securities-accounts/{B_id}/set-default 요청을 보냄 (AC-014)
+        MvcResult result = setDefaultSecuritiesAccount(accountBId);
+
+        // Then: 200 OK + B의 isDefault가 true로 변경됨 (AC-014)
+        assertThat(result.getResponse().getStatus())
+                .as("기본 계좌 지정 성공 시 200 OK를 반환해야 합니다 (AC-014)").isEqualTo(200);
+        Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(accountBId);
+        assertThat(response.get("isDefault")).as("응답의 isDefault가 true여야 합니다 (AC-014)").isEqualTo(true);
+
+        // And: A의 isDefault가 false로 변경됨 (원자적 처리, AC-014)
+        SecuritiesAccount updatedA = securitiesAccountRepository.findById(accountAId).orElseThrow();
+        SecuritiesAccount updatedB = securitiesAccountRepository.findById(accountBId).orElseThrow();
+        assertThat(updatedA.getIsDefault()).as("기존 기본 계좌 A는 false로 해제되어야 합니다 (AC-014)").isFalse();
+        assertThat(updatedB.getIsDefault()).as("신규 기본 계좌 B는 true여야 합니다 (AC-014)").isTrue();
+    }
+
+    @Test
+    void setDefaultSecuritiesAccountAlreadyDefaultReturns409() throws Exception {
+        // Given: 투자자에게 이미 기본 계좌로 지정된 A 계좌가 있음 (SF-7, AC-015)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        SecuritiesAccount account = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(account.getIsDefault()).as("테스트 사전 준비: 첫 계좌는 기본 계좌여야 합니다").isTrue();
+        createdAccounts.add(account);
+
+        // When: 이미 기본 계좌인 A에 대해 다시 PATCH set-default 요청을 보냄 (AC-015)
+        MvcResult result = setDefaultSecuritiesAccount(accountId);
+
+        // Then: 409 Conflict + CONFLICT (AC-015)
+        assertThat(result.getResponse().getStatus())
+                .as("이미 기본 계좌인 경우 409 Conflict를 반환해야 합니다 (AC-015)").isEqualTo(409);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 CONFLICT여야 합니다 (AC-015)").isEqualTo("CONFLICT");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void setDefaultSecuritiesAccountWithInactiveAccountReturns400() throws Exception {
+        // Given: 투자자에게 활성 기본 계좌 A와 INACTIVE 상태인 B 계좌가 있음 (SF-7, AC-016)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult firstResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(firstResult.getResponse().getStatus()).isEqualTo(201);
+        long accountAId = ((Number) objectMapper.readValue(utf8Body(firstResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountAId).orElseThrow());
+
+        MvcResult secondResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", "999-888-777666",
+                "isDefault", false));
+        assertThat(secondResult.getResponse().getStatus()).isEqualTo(201);
+        long accountBId = ((Number) objectMapper.readValue(utf8Body(secondResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountBId).orElseThrow());
+
+        int deactivateStatus = mockMvc.perform(delete("/securities-accounts/{id}", accountBId)
+                        .session(session))
+                        .andReturn()
+                        .getResponse()
+                        .getStatus();
+        assertThat(deactivateStatus).as("테스트 사전 준비: B 계좌 비활성화는 204여야 합니다").isEqualTo(204);
+
+        // When: INACTIVE 상태인 B 계좌에 대해 PATCH set-default 요청을 보냄 (AC-016)
+        MvcResult result = setDefaultSecuritiesAccount(accountBId);
+
+        // Then: 400 Bad Request + VALIDATION_ERROR (AC-016)
+        assertThat(result.getResponse().getStatus())
+                .as("비활성화된 계좌를 기본 계좌로 지정 시도 시 400 Bad Request를 반환해야 합니다 (AC-016)").isEqualTo(400);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다 (AC-016)").isEqualTo("VALIDATION_ERROR");
+        assertThat(body.get("message")).isNotNull();
+
+        // And: A는 여전히 기본 계좌로 유지됨
+        SecuritiesAccount unchangedA = securitiesAccountRepository.findById(accountAId).orElseThrow();
+        assertThat(unchangedA.getIsDefault()).as("실패한 요청은 기존 기본 계좌에 영향을 주면 안 됩니다").isTrue();
+    }
+
+    @Test
+    void setDefaultSecuritiesAccountWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 증권계좌 ID가 제공됨 (SF-7)
+        signupAndLogin();
+
+        // When: PATCH /securities-accounts/{unknown_id}/set-default 요청을 보냄 (SF-7)
+        MvcResult result = setDefaultSecuritiesAccount(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (SF-7)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 계좌 기본 지정 시도 시 404 Not Found를 반환해야 합니다 (SF-7)").isEqualTo(404);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (SF-7)").isEqualTo("NOT_FOUND");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void setDefaultSecuritiesAccountOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B가 소유한 증권계좌가 등록되어 있음 (SF-7)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+        Long securitiesFirmId = registerFirm();
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesAccount otherAccount = securitiesAccountRepository.save(SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
+                .accountName("다른계정계좌")
+                .isDefault(false)
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        createdAccounts.add(otherAccount);
+
+        // When: 계정 A가 계정 B의 증권계좌 ID로 PATCH set-default 요청을 보냄 (SF-7)
+        MvcResult result = setDefaultSecuritiesAccount(otherAccount.getId());
+
+        // Then: 403 Forbidden + FORBIDDEN, 레코드는 변경되지 않음 (SF-7)
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 계좌의 기본 지정 시도 시 403 Forbidden을 반환해야 합니다 (SF-7)").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다 (SF-7)").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+
+        SecuritiesAccount unchanged = securitiesAccountRepository.findById(otherAccount.getId()).orElseThrow();
+        assertThat(unchanged.getIsDefault())
+                .as("소유권 없는 요청은 계좌를 변경하면 안 됩니다 (SF-7)").isFalse();
+    }
 }

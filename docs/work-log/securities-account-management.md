@@ -203,3 +203,34 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-6 완료 → SF-7(기본 계좌 지정 PATCH /securities-accounts/{id}/set-default): 기존 기본 계좌 해제 + 신규 지정 원자적 처리, 단순 @Transactional(D-SA-006), 이미 기본이면 409, 비활성 계좌면 400
+
+## 2026-09-21 — SF-7 구현 완료 (Test-First RED→GREEN) — Epic 4 전체 완료
+
+### 완료 작업
+- **PATCH /securities-accounts/{id}/set-default (기본 계좌 지정)** 구현 (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `SecuritiesAccountController`: `@PatchMapping("/{id}/set-default")` 추가
+  - `SecuritiesAccountService.setDefault(id)`:
+    1. **`findById`(deletedAt 필터 없음)로 조회** — 이 모듈의 다른 메서드들과 달리 의도적으로 `findByIdAndDeletedAtIsNull`을 쓰지 않음. AC-016은 INACTIVE(soft-deleted) 계좌를 "존재하지 않음(404)"이 아니라 "존재하지만 비활성(400)"으로 구분해야 하기 때문
+    2. 2단계 소유권 검증(403, 기존 패턴 재사용)
+    3. `status != ACTIVE`면 `SecuritiesAccountValidationException`(400, AC-016)
+    4. `isDefault`가 이미 `true`면 트랜잭션 시작 전에 즉시 `SecuritiesAccountConflictException`(409, AC-015) — architecture.md의 "이 경우 트랜잭션을 시작하지 않고 즉시 응답한다" 그대로 따름
+    5. `findByInvestorIdAndIsDefaultTrue`로 기존 기본 계좌를 찾아 `isDefault=false`로 **먼저 `saveAndFlush`**, 이어서 대상 계좌를 `isDefault=true`로 `saveAndFlush` — 원자적 처리(D-SA-006)
+    6. DB 유니크 위반(`DataIntegrityViolationException`) 발생 시 방어적으로 409 CONFLICT로 변환(D-SA-006, 명시적 락/@Version 없음)
+  - 신규 예외 `SecuritiesAccountConflictException` + `SecuritiesAccountExceptionHandler`에 CONFLICT(409) 핸들러 추가
+
+### 구현 중 발견한 이슈와 해결 (원자적 스왑의 flush 순서)
+- 처음 구현 시 `save()`만 사용(flush 없이 두 건 모두 커밋 시점에 flush)했더니 `setDefaultSecuritiesAccountReturns200AndSwapsDefaultAtomically` 테스트가 **간헐적으로 `DataIntegrityViolationException`으로 500** 발생. 원인: Hibernate의 dirty-checking 플러시 순서는 `save()` 호출 순서를 보장하지 않으며(보통 엔티티 로드/ID 순으로 배치), 신규 기본 계좌의 `is_default=true` UPDATE가 기존 기본 계좌의 `is_default=false` UPDATE보다 먼저 실행되면 partial unique index(`uk_securities_account_default`)가 순간적으로 위반됨
+- **해결**: 기존 기본 계좌 해제를 `saveAndFlush()`로 즉시 DB에 반영한 뒤에만 신규 계좌를 `isDefault=true`로 설정 → flush 순서를 명시적으로 보장. D-SA-006이 요구한 "명시적 락 없이 단순 @Transactional"이라는 원칙은 유지하되(별도 락/버전 컬럼 추가 없음), flush 순서만 명시적으로 제어
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 5건 먼저 작성 → RED(매핑 없어 실패) 확인 → 구현 → GREEN)
+- AC-014(정상 지정) — B를 기본으로 지정 시 A는 false로, B는 true로 원자적 변경 확인
+- AC-015(이미 기본 계좌) — 409 CONFLICT
+- AC-016(INACTIVE 계좌) — DELETE로 비활성화한 계좌를 대상으로 set-default 시도 시 400 VALIDATION_ERROR (404 아님을 확인하는 것이 핵심 검증 포인트)
+- 존재하지 않는 id → 404 NOT_FOUND
+- 소유권 없는 계좌 → 403 FORBIDDEN, DB 미반영
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` → **BUILD SUCCESSFUL / 전체 140건(기존 135 + 신규 5) 전부 GREEN, failures 0, errors 0**
+
+### Epic 4 (증권계좌 관리) 전체 완료
+SF-1(엔티티/암호화/마스킹) → SF-2(등록) → SF-3(목록/상세) → SF-4(계좌번호 노출) → SF-5(수정) → SF-6(비활성화) → SF-7(기본 계좌 지정)까지 7개 세부기능 모두 Test-First(RED→GREEN)로 구현 완료. 최종 140개 테스트 전부 GREEN. spec.md의 AC-001~AC-018 전부 커버됨. 커밋/푸시/PR은 진행하지 않음(Master 직접 검증 예정).
