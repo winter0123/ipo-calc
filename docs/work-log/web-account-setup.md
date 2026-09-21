@@ -155,3 +155,32 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 | `pnpm run format:check` | PASS (my files; only pre-existing pnpm-lock.yaml warning) |
 | `pnpm run test` | PASS (6 tests) |
 | `pnpm run build` | PASS (dist/ 생성) |
+
+## 2026-09-21 — 사용자 가이드 HTML 및 스크린샷 산출물 완료
+
+### 완료 내용
+- `ui/`에서 `pnpm install`을 실행하고 Vite 개발 서버를 실제 브라우저에서 사용할 수 있도록 기동했다.
+- 기본 포트 5173이 이미 사용 중이어서 Vite가 선정한 실제 포트 5174를 먼저 확인했고, 이후 재현 가능한 캡처용으로 4173 포트를 사용해 `/login`과 `/signup`을 확인했다.
+- `tools/screenshot-guide/`에 Playwright만 devDependency로 가진 독립 도구를 추가하고 `capture.mjs`로 데스크톱 1280×720, 모바일 390×844 전체 페이지 스크린샷 4장을 생성했다.
+- `docs/user-guides/web-account-setup/index.html`을 순수 HTML+인라인 CSS로 작성했다. 로그인과 회원가입의 목적, 입력 필드, 검증 규칙, 성공 후 이동 경로를 설명하고 스크린샷을 상대 경로로 연결했다.
+- 작업 완료 후 기동한 Vite 프로세스를 모두 종료했다.
+
+### 확인한 산출물
+- `docs/user-guides/web-account-setup/screenshots/login-desktop.png` — 10,170 bytes, 1280×720
+- `docs/user-guides/web-account-setup/screenshots/login-mobile.png` — 7,945 bytes, 390×844
+- `docs/user-guides/web-account-setup/screenshots/signup-desktop.png` — 11,910 bytes, 1280×720
+- `docs/user-guides/web-account-setup/screenshots/signup-mobile.png` — 10,050 bytes, 390×844
+- `docs/user-guides/web-account-setup/index.html` — 생성 완료
+- `tools/screenshot-guide/package.json`, `pnpm-lock.yaml`, `capture.mjs` — 생성 완료
+
+### 실행한 검증
+- `pnpm --dir ui run build` — PASS
+- Playwright Chromium 설치 및 `pnpm --dir tools/screenshot-guide run capture` — PASS
+- PNG 4개 파일 크기 및 dimensions 확인 — PASS(모두 0 bytes 아님)
+- HTML의 `screenshots/*.png` 상대 경로 존재 여부 확인 — PASS
+- 개발 서버 종료 확인 — PASS
+
+### 변경 범위
+- `ui/` 앱 소스 코드는 수정하지 않았다.
+- `docs/current-status.md`는 수정하지 않았다.
+- 커밋, 푸시, PR은 생성하지 않았다.

@@ -1,0 +1,12 @@
+{
+  "name": "screenshot-guide",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}
