@@ -110,3 +110,28 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 통과 (기존 + 8개 추가, 실패 0)
+
+## 2026-09-21 — SF-5 완료 (DELETE /ipos/{id} 비활성화)
+
+### 구현 내용
+- `controller/ipo/IpoController.java` — `@DeleteMapping("/{id}")` 추가, `deactivate(Long id)` 메서드 호출 후 204 No Content 반환
+- `service/ipo/IpoService.java` — `deactivate(Long id)` 메서드 구현
+  - `findByIdAndDeletedAtIsNull(id)`로 조회, 없으면 `IpoNotFoundException(404)`
+  - `status`를 `INACTIVE`, `deletedAt`과 `updatedAt`을 현재 시각으로 설정
+  - `IpoRepository.save()`로 저장
+- `IpoControllerTest.java` — 3개 신규 DELETE 테스트 추가
+  1. `deactivateIpoReturns204AndStatusInactiveAndDeletedAtSet` — 정상 비활성화(204, DB에서 status=INACTIVE + deletedAt 설정 확인)
+  2. `deactivateIpoWithNotFoundIdReturns404` — 존재하지 않는 ID(404)
+  3. `deactivateAlreadyDeletedIpoReturns404` — 이미 비활성화된 ID 재시도(404, 기존 프로젝트 패턴 따름)
+
+### 설계 결정
+- 물리 삭제가 아닌 논리 삭제: `status=INACTIVE` + `deletedAt` 설정만 수행
+- 연결된 Subscription이 있어도 항상 성공: FK `ON DELETE RESTRICT`는 물리 삭제만 제한하며, UPDATE로 status 변경은 무관
+- 소유권 검증 불필요: Ipo는 글로벌 기준정보
+- 이미 삭제된 ID 재시도 → 404: `findByIdAndDeletedAtIsNull` 사용 시 이미 삭제된 건 자연히 조회되지 않으므로 404
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 **177개 통과** (신규 3개 포함, 실패/에러 0)

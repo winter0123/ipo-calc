@@ -7,6 +7,7 @@ import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,6 +42,12 @@ public class IpoController {
                                               @RequestBody IpoUpdateRequest request) {
         IpoResponse response = ipoService.update(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        ipoService.deactivate(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -563,6 +564,54 @@ class IpoControllerTest {
 
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         assertThat(readBody(result).get("companyName")).isEqualTo("기업A");
+    }
+
+    @Test
+    void deactivateIpoReturns204AndStatusInactiveAndDeletedAtSet() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        MvcResult result = mockMvc.perform(delete("/ipos/{id}", id)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(204);
+        Ipo deleted = ipoRepository.findById(id).orElseThrow();
+        assertThat(deleted.getStatus()).isEqualTo("INACTIVE");
+        assertThat(deleted.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void deactivateIpoWithNotFoundIdReturns404() throws Exception {
+        signupAndLogin();
+
+        MvcResult result = mockMvc.perform(delete("/ipos/{id}", 9999L)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void deactivateAlreadyDeletedIpoReturns404() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Ipo existing = ipoRepository.findById(id).orElseThrow();
+        existing.setDeletedAt(LocalDateTime.now());
+        ipoRepository.save(existing);
+
+        MvcResult result = mockMvc.perform(delete("/ipos/{id}", id)
+                        .session(session))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
     }
 
     @Test
