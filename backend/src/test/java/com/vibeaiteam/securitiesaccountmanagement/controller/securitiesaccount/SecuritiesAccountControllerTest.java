@@ -7,6 +7,7 @@ import com.vibeaiteam.accountauthentication.repository.account.AccountRepository
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
@@ -34,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -76,6 +78,9 @@ class SecuritiesAccountControllerTest {
 
     @Autowired
     private SecuritiesAccountRepository securitiesAccountRepository;
+
+    @Autowired
+    private AccountNumberEncryptor accountNumberEncryptor;
 
     private String testEmail;
     private String testPassword;
@@ -463,5 +468,292 @@ class SecuritiesAccountControllerTest {
         // And: 레코드가 생성되지 않음 (AC-005)
         assertThat(securitiesAccountRepository.findByInvestorId(otherInvestorId))
                 .as("소유권 없는 요청은 증권계좌를 생성하면 안 됩니다 (AC-005)").isEmpty();
+    }
+
+    @Test
+    void listSecuritiesAccountsReturnsOnlyGivenInvestorsAccounts() throws Exception {
+        // Given: 특정 투자자에게 2개의 증권계좌가 연결되어 있고, 같은 계정의 다른 투자자에게도 1개가 있음 (AC-006)
+        signupAndLogin();
+        Long securitiesFirmId = registerFirm();
+        String firmName = securitiesFirmRepository.findById(securitiesFirmId).orElseThrow().getName();
+        Long investorId = registerInvestorAndGetId();
+        Long secondInvestorId = registerInvestorAndGetId();
+
+        MvcResult first = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", ACCOUNT_NUMBER,
+                "accountName", "기본 계좌"));
+        assertThat(first.getResponse().getStatus())
+                .as("테스트 사전 준비: 첫 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        createdAccounts.add(securitiesAccountRepository.findById(
+                ((Number) objectMapper.readValue(utf8Body(first), Map.class).get("id")).longValue()).orElseThrow());
+
+        MvcResult second = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", "999-888-777666",
+                "accountName", "일반 계좌",
+                "isDefault", false));
+        assertThat(second.getResponse().getStatus())
+                .as("테스트 사전 준비: 두 번째 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        createdAccounts.add(securitiesAccountRepository.findById(
+                ((Number) objectMapper.readValue(utf8Body(second), Map.class).get("id")).longValue()).orElseThrow());
+
+        MvcResult otherInvestor = registerSecuritiesAccount(Map.of(
+                "investorId", secondInvestorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", "555-444-333222",
+                "accountName", "다른 투자자 계좌",
+                "isDefault", false));
+        assertThat(otherInvestor.getResponse().getStatus())
+                .as("테스트 사전 준비: 다른 투자자의 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        createdAccounts.add(securitiesAccountRepository.findById(
+                ((Number) objectMapper.readValue(utf8Body(otherInvestor), Map.class).get("id")).longValue()).orElseThrow());
+
+        // When: GET /securities-accounts?investorId={id} 요청을 보냄 (AC-006)
+        MvcResult result = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(investorId))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 해당 투자자의 2개 계좌만 마스킹된 계좌번호와 함께 반환됨 (AC-006)
+        assertThat(result.getResponse().getStatus())
+                .as("목록 조회는 200 OK를 반환해야 합니다 (AC-006)").isEqualTo(200);
+        List<Map<String, Object>> accounts = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(accounts).as("해당 투자자의 계좌 2개가 반환되어야 합니다 (AC-006)").hasSize(2);
+
+        for (Map<String, Object> account : accounts) {
+            String maskedNumber = (String) account.get("accountNumber");
+            assertThat(maskedNumber)
+                    .as("계좌번호는 원본 평문이 아닌 마스킹된 값이어야 합니다 (AC-006)").isNotEqualTo(ACCOUNT_NUMBER);
+            assertThat(maskedNumber).as("계좌번호는 마스킹 형태여야 합니다 (AC-006)").contains("*");
+            assertThat(account.get("securitiesFirmName"))
+                    .as("각 계좌에 증권사명이 포함되어야 합니다 (SF-3)").isEqualTo(firmName);
+        }
+        // And: target 투자자의 두 계좌(뒷 4자리 9012/7666)가 반환되고, 다른 투자자의 계좌(3222)는 포함되지 않음 (AC-006)
+        List<String> maskedNumbers = accounts.stream().map(a -> (String) a.get("accountNumber")).toList();
+        assertThat(maskedNumbers)
+                .as("해당 투자자의 두 계좌가 마스킹된 계좌번호와 함께 반환되어야 합니다 (AC-006)")
+                .anyMatch(n -> n.endsWith("9012"))
+                .anyMatch(n -> n.endsWith("7666"));
+        assertThat(maskedNumbers)
+                .as("다른 투자자의 계좌는 목록에 포함되면 안 됩니다 (AC-006)")
+                .noneMatch(n -> n != null && n.endsWith("3222"));
+    }
+
+    @Test
+    void listSecuritiesAccountsWithInvestorOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B의 투자자 ID가 알려져 있음 (목록 소유권 검증)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+
+        // When: 계정 A가 계정 B의 투자자 ID로 GET /securities-accounts 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(otherInvestorId))
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN (목록 소유권 검증)
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 투자자의 계좌 목록 조회 시 403 Forbidden을 반환해야 합니다").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void listSecuritiesAccountsFiltersByStatusWithActiveDefault() throws Exception {
+        // Given: 한 투자자에게 ACTIVE 계좌 1개와 INACTIVE 계좌 1개가 연결되어 있음
+        signupAndLogin();
+        Long securitiesFirmId = registerFirm();
+        Long investorId = registerInvestorAndGetId();
+
+        MvcResult active = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(active.getResponse().getStatus())
+                .as("테스트 사전 준비: 첫 계좌 등록은 201이어야 합니다").isEqualTo(201);
+
+        MvcResult inactive = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", "999-888-777666",
+                "isDefault", false));
+        assertThat(inactive.getResponse().getStatus())
+                .as("테스트 사전 준비: 두 번째 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        SecuritiesAccount inactiveAccount = securitiesAccountRepository.findById(
+                ((Number) objectMapper.readValue(utf8Body(inactive), Map.class).get("id")).longValue()).orElseThrow();
+        inactiveAccount.setStatus("INACTIVE");
+        inactiveAccount.setUpdatedAt(LocalDateTime.now());
+        securitiesAccountRepository.save(inactiveAccount);
+        createdAccounts.add(inactiveAccount);
+
+        // When: status 미지정(기본 ACTIVE) 조회 시 ACTIVE 계좌만 반환됨
+        MvcResult defaultResult = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(investorId))
+                        .session(session))
+                .andReturn();
+        assertThat(defaultResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> defaultAccounts = objectMapper.readValue(utf8Body(defaultResult), List.class);
+        assertThat(defaultAccounts).as("status 기본값(ACTIVE)은 ACTIVE 계좌만 반환해야 합니다").hasSize(1);
+
+        // When: status=INACTIVE 조회 시 INACTIVE 계좌만 반환됨
+        MvcResult inactiveResult = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(investorId))
+                        .param("status", "INACTIVE")
+                        .session(session))
+                .andReturn();
+        assertThat(inactiveResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> inactiveAccounts = objectMapper.readValue(utf8Body(inactiveResult), List.class);
+        assertThat(inactiveAccounts).as("status=INACTIVE는 INACTIVE 계좌만 반환해야 합니다").hasSize(1);
+        assertThat(((String) inactiveAccounts.get(0).get("accountNumber")))
+                .as("status=INACTIVE는 INACTIVE 계좌를 반환해야 합니다").endsWith("7666");
+
+        // And: status=BOTH 조회 시 두 계좌 모두 반환됨
+        MvcResult bothResult = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(investorId))
+                        .param("status", "BOTH")
+                        .session(session))
+                .andReturn();
+        assertThat(bothResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> bothAccounts = objectMapper.readValue(utf8Body(bothResult), List.class);
+        assertThat(bothAccounts).as("status=BOTH는 ACTIVE와 INACTIVE 계좌를 모두 반환해야 합니다").hasSize(2);
+    }
+
+    @Test
+    void getSecuritiesAccountReturnsOwnedAccountWithMaskedNumberAndFirmName() throws Exception {
+        // Given: 인증된 계정이 특정 증권계좌를 소유하고 있음 (AC-007)
+        signupAndLogin();
+        Long securitiesFirmId = registerFirm();
+        String firmName = securitiesFirmRepository.findById(securitiesFirmId).orElseThrow().getName();
+        Long investorId = registerInvestorAndGetId();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", ACCOUNT_NUMBER,
+                "accountName", "개인 MTS 계좌"));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+        // When: GET /securities-accounts/{id} 요청을 보냄 (AC-007)
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}", accountId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + 마스킹된 계좌번호와 증권사명 포함 (AC-007)
+        assertThat(result.getResponse().getStatus())
+                .as("본인 소유 계좌 상세 조회는 200 OK여야 합니다 (AC-007)").isEqualTo(200);
+        Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(accountId);
+        assertThat(((Number) response.get("investorId")).longValue()).isEqualTo(investorId);
+        String masked = (String) response.get("accountNumber");
+        assertThat(masked).as("계좌번호는 마스킹된 값이어야 합니다 (AC-007)")
+                .isEqualTo(AccountNumberMasker.mask(ACCOUNT_NUMBER));
+        assertThat(masked).as("계좌번호는 원본 평문을 노출하면 안 됩니다 (AC-007)").isNotEqualTo(ACCOUNT_NUMBER);
+        assertThat(response.get("securitiesFirmName"))
+                .as("응답에 증권사명이 포함되어야 합니다 (SF-3)").isEqualTo(firmName);
+        assertThat(response.get("accountName")).isEqualTo("개인 MTS 계좌");
+    }
+
+    @Test
+    void getSecuritiesAccountWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 증권계좌 ID가 제공됨
+        signupAndLogin();
+
+        // When: GET /securities-accounts/{unknown_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}", 99999999L)
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 계좌 ID 조회 시 404 Not Found를 반환해야 합니다").isEqualTo(404);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void getSecuritiesAccountOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B가 소유한 증권계좌가 등록되어 있음
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+        Long securitiesFirmId = registerFirm();
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesAccount otherAccount = securitiesAccountRepository.save(SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
+                .accountName("다른계정계좌")
+                .isDefault(true)
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        createdAccounts.add(otherAccount);
+
+        // When: 계정 A가 계정 B의 증권계좌 ID로 GET /securities-accounts/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/securities-accounts/{id}", otherAccount.getId())
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 계좌 조회 시 403 Forbidden을 반환해야 합니다").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void detailAndListStillShowSecuritiesFirmNameAfterFirmIsDeactivated() throws Exception {
+        // Given: 계좌가 등록된 증권사가 이후 비활성화됨 (Master 수정 검증 - 표시용 조회는
+        // deletedAt 필터를 쓰면 안 된다. architecture.md: "증권사 비활성화 시 기존 계좌는 유지")
+        signupAndLogin();
+        Long securitiesFirmId = registerFirm();
+        Long investorId = registerInvestorAndGetId();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", securitiesFirmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+
+        SecuritiesFirm firm = securitiesFirmRepository.findById(securitiesFirmId).orElseThrow();
+        firm.setStatus("INACTIVE");
+        firm.setDeletedAt(LocalDateTime.now());
+        securitiesFirmRepository.save(firm);
+
+        // When: 상세 조회
+        MvcResult detailResult = mockMvc.perform(get("/securities-accounts/" + accountId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK이며 securitiesFirmName이 null이 아니라 비활성화 전 이름 그대로 표시됨
+        assertThat(detailResult.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> detailBody = objectMapper.readValue(utf8Body(detailResult), Map.class);
+        assertThat(detailBody.get("securitiesFirmName"))
+                .as("증권사가 비활성화돼도 기존 연결 계좌의 securitiesFirmName은 null이 되면 안 됩니다")
+                .isEqualTo(firm.getName());
+
+        // And: 목록 조회에서도 동일하게 이름이 유지됨
+        MvcResult listResult = mockMvc.perform(get("/securities-accounts")
+                        .param("investorId", String.valueOf(investorId))
+                        .session(session))
+                .andReturn();
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> listBody = objectMapper.readValue(utf8Body(listResult), List.class);
+        assertThat(listBody).hasSize(1);
+        assertThat(listBody.get(0).get("securitiesFirmName"))
+                .as("목록 조회에서도 증권사 비활성화 후 이름이 유지되어야 합니다")
+                .isEqualTo(firm.getName());
     }
 }

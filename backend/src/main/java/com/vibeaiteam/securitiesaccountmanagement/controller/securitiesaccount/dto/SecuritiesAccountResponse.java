@@ -19,6 +19,7 @@ public class SecuritiesAccountResponse {
     private Long id;
     private Long investorId;
     private Long securitiesFirmId;
+    private String securitiesFirmName;
     private String accountNumber;
     private String accountName;
     private Boolean isDefault;
@@ -28,10 +29,16 @@ public class SecuritiesAccountResponse {
     private LocalDateTime updatedAt;
 
     public static SecuritiesAccountResponse from(SecuritiesAccount account, String maskedAccountNumber) {
+        return from(account, maskedAccountNumber, null);
+    }
+
+    public static SecuritiesAccountResponse from(
+            SecuritiesAccount account, String maskedAccountNumber, String securitiesFirmName) {
         return SecuritiesAccountResponse.builder()
                 .id(account.getId())
                 .investorId(account.getInvestorId())
                 .securitiesFirmId(account.getSecuritiesFirmId())
+                .securitiesFirmName(securitiesFirmName)
                 .accountNumber(maskedAccountNumber)
                 .accountName(account.getAccountName())
                 .isDefault(account.getIsDefault())
