@@ -180,6 +180,30 @@ public class SecuritiesAccountService {
         return toMaskedResponse(saved);
     }
 
+    @Transactional
+    public void deactivate(Long id) {
+        SecuritiesAccount account = securitiesAccountRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Investor investor = investorRepository.findById(account.getInvestorId())
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        if (!currentAccountId.equals(investor.getAccountId())) {
+            throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        account.setStatus("INACTIVE");
+        account.setDeletedAt(now);
+        // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
+        if (Boolean.TRUE.equals(account.getIsDefault())) {
+            account.setIsDefault(false);
+        }
+        account.setUpdatedAt(now);
+        securitiesAccountRepository.save(account);
+    }
+
     private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {
         String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
         String maskedAccountNumber = AccountNumberMasker.mask(plainAccountNumber);

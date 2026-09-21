@@ -177,3 +177,29 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-5 완료 → SF-6(비활성화 DELETE /securities-accounts/{id}): 논리 삭제, is_default였다면 함께 clear(D-SA-004), 참조 차단 없음(D-SA-007)
+
+## 2026-09-21 — SF-6 구현 완료 (Test-First RED→GREEN)
+
+### 완료 작업
+- **DELETE /securities-accounts/{id} (비활성화, 논리 삭제)** 구현 (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `SecuritiesAccountController`: `@DeleteMapping("/{id}")` 추가, 성공 시 204 No Content 반환 — SecuritiesFirm의 `deactivate` 컨벤션(SuccessResponse 래핑 없이 204)을 그대로 따름
+  - `SecuritiesAccountService.deactivate(id)`: `findByIdAndDeletedAtIsNull`로 조회(없거나 이미 비활성화된 경우 404 — 이 모듈의 기존 조회 메서드들과 동일한 컨벤션) → 2단계 소유권 검증(403) → `status=INACTIVE`, `deletedAt=now` 설정, **`isDefault=true`였다면 함께 `false`로 clear(D-SA-004)**, `updatedAt` 갱신 후 저장
+  - D-SA-007에 따라 다른 테이블(청약 기록 등)과의 참조 여부는 확인하지 않음 — 항상 허용
+  - 신규 예외 없음(기존 NotFound→404, Forbidden→403 재사용)
+
+### 컨벤션 조사 (기존 Epic 비교)
+- `SecuritiesFirmService.deactivate`는 `findByIdAndDeletedAtIsNull`을 사용해 이미 비활성화된 대상을 다시 DELETE하면 404가 됨(멱등 200이 아님), 응답은 204 No Content
+- `InvestorService.deactivate`는 `findById`(deletedAt 필터 없음)를 사용해 이미 INACTIVE여도 200 + SuccessResponse를 멱등하게 반환
+- 이 Epic(`SecuritiesAccountService`)은 SF-1부터 모든 조회/수정 메서드(`getById`, `getAccountNumber`, `update`)가 이미 `findByIdAndDeletedAtIsNull` 컨벤션을 일관되게 써왔으므로, `deactivate`도 동일하게 맞춤 — 즉 재삭제 시 404(SecuritiesFirm과 동일 컨벤션, 이 모듈 내부 일관성 우선)
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 4건 먼저 작성 → RED(DELETE 매핑 없어 실패) 확인 → 구현 → GREEN)
+- 정상 비활성화 → 204 + 빈 본문, DB status=INACTIVE/deletedAt 설정/updatedAt 갱신 확인
+- 기본 계좌(isDefault=true)였던 계좌 비활성화 → DB에서 isDefault=false로 함께 clear됨 확인 (D-SA-004)
+- 존재하지 않는 id → 404 NOT_FOUND
+- 소유권 없는 계좌 비활성화 시도 → 403 FORBIDDEN, DB 미반영
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` → **BUILD SUCCESSFUL / 전체 135건(기존 131 + 신규 4) 전부 GREEN, failures 0, errors 0**
+
+### 다음 단계
+- SF-6 완료 → SF-7(기본 계좌 지정 PATCH /securities-accounts/{id}/set-default): 기존 기본 계좌 해제 + 신규 지정 원자적 처리, 단순 @Transactional(D-SA-006), 이미 기본이면 409, 비활성 계좌면 400
