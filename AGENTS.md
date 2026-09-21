@@ -936,15 +936,16 @@ export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1         # `/model` 선택지
 
 **주의**: 이 4개 환경변수는 `~/.zshrc`에 있는 사용자의 개인 셸 설정이며 이 저장소의 일부가 아니다. 새 환경(다른 머신 등)에서 재현하려면 사용자에게 직접 물어봐야 하고, API 키 값을 어떤 문서·커밋·로그에도 절대 적지 않는다.
 
-**네이티브 계정 모델(Opus/Sonnet/Haiku, 정액 구독 한도 내)로 전환하고 싶을 때 (2026-09-21 사용자 결정 — Method B 채택):**
-`~/.zshrc`의 위 설정은 그대로 두고(기본값 = 게이트웨이 모델 노출), 네이티브 모델이 필요한 세션에서만 그 세션 한정으로 게이트웨이 탐색을 끈다.
+**네이티브 계정 모델(Opus/Sonnet/Haiku, 정액 구독 한도 내)로 전환하고 싶을 때 (2026-09-21 사용자 결정 — Method B 채택, 2026-09-21 정정):**
+`~/.zshrc`의 위 설정은 그대로 두고(기본값 = 게이트웨이 모델 노출), 네이티브 모델이 필요한 세션에서만 그 세션 한정으로 게이트웨이 관련 환경변수 3개를 **전부** 끈다.
 ```bash
-unset CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
 claude
 ```
-- `unset`은 현재 셸 세션에만 적용되고 `~/.zshrc` 파일 자체는 건드리지 않으므로, 새 터미널을 열면 다시 게이트웨이 모델이 기본으로 보인다.
-- 네이티브 모델로 띄운 세션에서 `/model`을 열면 OpenRouter 게이트웨이 목록 대신 Claude 계정 자체의 구독 모델(Opus/Sonnet/Haiku)만 뜬다.
-- 반대로 게이트웨이 모델이 필요하면 그냥 새 터미널을 열거나(`~/.zshrc` 기본값이 이미 켜져 있음), `export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`로 다시 켠다.
+- **정정(중요)**: `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 `unset`하는 것으로는 부족하다 — 실제로 테스트해보니 이 변수는 `/model` 선택지 노출 여부만 바꿀 뿐, `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`이 여전히 OpenRouter를 가리키고 있으면 API 요청 자체는 계속 OpenRouter를 경유한다(헤더에 `API Usage Billing`으로 표시됨 — OpenRouter 과금이라는 뜻이고 네이티브 구독 사용이 아니다). **반드시 3개 변수를 모두 `unset`해야** 헤더가 `Claude Pro`(또는 해당 구독 플랜명)로 바뀌며 진짜 네이티브 요청이 된다.
+- `unset`은 현재 셸 세션에만 적용되고 `~/.zshrc` 파일 자체는 건드리지 않으므로, 새 터미널을 열면 다시 게이트웨이 설정이 기본으로 적용된다.
+- 네이티브로 정상 전환됐는지는 헤더 문구로 확인한다: `<모델명> · Claude Pro`(또는 구독 플랜명)면 네이티브, `<모델명> ... API Usage Billing`이면 여전히 OpenRouter 경유다.
+- 반대로 게이트웨이 모델이 필요하면 그냥 새 터미널을 열거나(`~/.zshrc` 기본값이 이미 켜져 있음), `export ANTHROPIC_BASE_URL=... ANTHROPIC_AUTH_TOKEN=... CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`로 셋 다 다시 켠다.
 
 ---
 
