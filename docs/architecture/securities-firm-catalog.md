@@ -142,14 +142,14 @@ infrastructure
 ### SecuritiesFirm 테이블
 | 컬럼명 | 타입 | 제약 | 설명 |
 |--------|------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 증권사 고유 식별자 (Long IDENTITY) |
+| id | BIGINT | PK, GENERATED ALWAYS AS IDENTITY | 증권사 고유 식별자 (Long IDENTITY) |
 | name | VARCHAR(255) | NOT NULL | 증권사명 |
 | external_code | VARCHAR | NULL 허용 | 외부 표준코드 (금융투자협회 표준코드 등) |
 | business_registration_number | VARCHAR | NULL 허용 | 사업자등록번호 |
 | status | VARCHAR(10) | NOT NULL, DEFAULT 'ACTIVE' | 증권사 상태 (ACTIVE/INACTIVE) |
 | deleted_at | TIMESTAMP | NULL 허용 | 논리 삭제 시각 |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE | 수정 일시 |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | 수정 일시 (애플리케이션 코드에서 갱신, DB 트리거 없음) |
 
 ### 인덱스
 - PRIMARY KEY (id)
