@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// 계정(사용자) 회원가입 등 계정 관리 API를 제공한다.
 @RestController
 @RequestMapping("/accounts")
 @RequiredArgsConstructor

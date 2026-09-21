@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// 증권사 기준정보에 대한 등록/조회/수정/비활성화 API를 제공한다.
 @RestController
 @RequestMapping("/securities-firms")
 @RequiredArgsConstructor
