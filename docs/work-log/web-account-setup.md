@@ -244,3 +244,29 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 | `pnpm run format:check` | PASS (All matched files use Prettier code style!) |
 | `pnpm run test` | PASS (8 tests 추가, 총 28 tests) |
 | `pnpm run build` | PASS (dist/ 생성, 97 modules transformed) |
+
+## 2026-09-21 — FSD 구조 수정: `app/` 하위였던 레이어를 `src/` 형제로 이동
+
+### 배경
+SF-1에서 `entities/features/pages/shared/widgets`를 `src/app/` 폴더 **안에 자식**으로 만들었으나, 표준 FSD는 이 레이어들이 `app/`과 **형제(sibling)**여야 한다(`app/`은 앱 전역 설정/프로바이더만 담당하는 레이어 중 하나일 뿐). 또한 `src/App.tsx`(라우팅 루트, 대문자)와 `src/app/`(소문자 폴더)가 이름이 겹쳐 혼란스럽다는 지적을 받았다.
+
+### 완료 내용
+- `git mv`로 `ui/src/app/{entities,features,pages,shared,widgets}` → `ui/src/{entities,features,pages,shared,widgets}` 이동 (git 히스토리 보존). 이동 후 비어버린 `ui/src/app/` 디렉토리는 git이 추적하지 않으므로 자동 소멸.
+- `ui/src/App.tsx`의 `./app/pages/...` import 5개를 `./pages/...`로 수정.
+- `ui/src/main.tsx`는 `./App.tsx`만 참조해 수정 불필요, `vite.config.ts`/`vitest.config.ts`/`tsconfig.app.json`에도 `src/app` 관련 alias/경로가 없어 수정 불필요.
+
+### 상대경로 import 관련 확인 사항 (지시받은 예상과 다름)
+지시에는 "이동 후 깊이가 하나 얕아지므로 `../`도 하나 줄어든다"는 예시가 있었으나, 실제로 `entities/features/pages/shared/widgets` **내부 상호 참조**(예: `features/login/LoginForm.tsx`의 `../../shared/api/client.ts`)는 **수정이 필요 없었다** — import하는 파일과 대상 파일이 둘 다 `app/` 제거로 동일하게 한 단계씩 얕아졌기 때문에 둘 사이의 상대 거리(`../../` 개수)는 변하지 않는다. `python3 -c "os.path.normpath(...)"`로 이동 후 실제 경로 해석 결과를 개별 검증해 확인했다. 수정이 실제로 필요했던 곳은 이동 대상 밖에 있는 `App.tsx`뿐이었다(대상은 한 단계 얕아졌지만 `App.tsx` 자신은 안 움직였으므로 거리가 줄어듦).
+
+### 실행한 명령어 및 결과 (DoD)
+| 명령어 | 결과 |
+|---|---|
+| `pnpm run lint` | PASS (0 errors, 기존 watch() 관련 warning 1건만 존재) |
+| `pnpm run typecheck` | PASS (0 errors) |
+| `pnpm run format:check` | PASS (All matched files use Prettier code style!) |
+| `pnpm run test` | PASS (28 tests, 개수/내용 변경 없음) |
+| `pnpm run build` | PASS (`tsc -b && vite build`, dist/ 생성, 97 modules transformed) |
+
+### 변경 범위
+- 순수 구조 이동만 수행, 로직/동작 변경 없음.
+- 커밋/푸시/PR은 생성하지 않았다(Master 처리).
