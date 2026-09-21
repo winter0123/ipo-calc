@@ -4,6 +4,7 @@ import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.exception.IpoConflictException;
+import com.vibeaiteam.ipocatalog.exception.IpoNotFoundException;
 import com.vibeaiteam.ipocatalog.exception.IpoValidationException;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,20 @@ public class IpoService {
     private static final String STATUS_ACTIVE = "ACTIVE";
 
     private final IpoRepository ipoRepository;
+
+    @Transactional(readOnly = true)
+    public List<IpoResponse> list() {
+        return ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+                .map(IpoResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public IpoResponse getById(Long id) {
+        Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+        return IpoResponse.from(ipo);
+    }
 
     @Transactional
     public IpoResponse register(IpoRegisterRequest request) {
