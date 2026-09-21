@@ -39,6 +39,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -55,8 +56,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * - AC-009: 계좌별 목록 조회 성공 — securitiesAccountId 필터로 해당 계좌 기록만
  * - AC-010: 청약 상세 조회 성공 — 200 OK + 상세 정보
  * - AC-011: 청약 상세 조회 실패 (존재하지 않는 ID) — 404 NOT_FOUND
+ * - AC-012: 청약 수정 성공 — 제공된 필드만 부분 수정, 미제공 필드는 기존값 유지, updatedAt 갱신
+ * - AC-013: 청약 수정 실패 (유효성 오류) — quantity <= 0 또는 depositAmount < 0 제공 시 400 VALIDATION_ERROR
+ * - AC-014: 청약 수정 실패 (중복) — 다른 ACTIVE 기록과 (investorId, securitiesAccountId, ipoId) 조합 중복 시 409,
+ *           자기 자신과 동일 조합으로는 충돌하지 않음
+ * - AC-015: 청약 수정 실패 (존재하지 않는 ID) — 404 NOT_FOUND
  * - AC-018: 취소된 청약은 목록 조회에서 제외
  * - 소유권 검증: 다른 계정 소유의 investorId/securitiesAccountId로 등록 시도 → 403 FORBIDDEN
+ * - 수정 시 새로 제공된 investorId/securitiesAccountId는 소유권 재검증(403), ipoId는 존재 재검증(404)
+ * - 엣지케이스: 이미 CANCELLED된 기록 수정 시도 → 404
  * - 조회(목록/상세)는 소유권 필터를 적용하지 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않음
  */
 @SpringBootTest
@@ -282,6 +290,14 @@ class SubscriptionControllerTest {
 
     private MvcResult registerSubscription(Map<String, Object> request) throws Exception {
         return mockMvc.perform(post("/subscriptions")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn();
+    }
+
+    private MvcResult updateSubscription(Long id, Map<String, Object> request) throws Exception {
+        return mockMvc.perform(patch("/subscriptions/" + id)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -657,5 +673,213 @@ class SubscriptionControllerTest {
         assertThat(result.getResponse().getStatus())
                 .as("존재하지 않는 ID의 상세 조회는 404를 반환해야 합니다 (AC-011)").isEqualTo(404);
         assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateSubscriptionWithPartialFieldsReturns200AndUpdatedFields() throws Exception {
+        // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-012)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: memo와 quantity만 담긴 수정 요청을 보냄 (나머지 필드는 미제공)
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "수정된 메모");
+        updateRequest.put("quantity", 50);
+        MvcResult result = updateSubscription(subscriptionId, updateRequest);
+
+        // Then: 200 OK + 제공된 필드는 갱신, 미제공 필드는 기존값 유지, updatedAt 갱신 (AC-012)
+        assertThat(result.getResponse().getStatus())
+                .as("유효한 부분 수정은 200 OK를 반환해야 합니다 (AC-012)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(response.get("memo")).isEqualTo("수정된 메모");
+        assertThat(((Number) response.get("quantity")).longValue()).isEqualTo(50L);
+        assertThat(((Number) response.get("investorId")).longValue()).isEqualTo(investorId);
+        assertThat(((Number) response.get("securitiesAccountId")).longValue()).isEqualTo(securitiesAccountId);
+        assertThat(((Number) response.get("ipoId")).longValue()).isEqualTo(ipoId);
+        assertThat(((Number) response.get("depositAmount")).longValue()).isEqualTo(1000000L);
+        assertThat(response.get("subscribedAt")).isEqualTo("2026-10-01T09:00:00");
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get("updatedAt")).isNotNull();
+
+        Subscription updated = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        assertThat(updated.getMemo()).isEqualTo("수정된 메모");
+        assertThat(updated.getQuantity()).isEqualTo(50L);
+        assertThat(updated.getDepositAmount()).isEqualTo(1000000L);
+        assertThat(updated.getStatus()).isEqualTo("ACTIVE");
+        assertThat(updated.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void updateSubscriptionWithInvalidQuantityOrDepositReturns400() throws Exception {
+        // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-013)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When/Then: quantity=0, quantity<0, depositAmount<0 각각 400 VALIDATION_ERROR (AC-013)
+        Map<String, Object> zeroQuantity = new LinkedHashMap<>();
+        zeroQuantity.put("quantity", 0);
+        assertValidationError(updateSubscription(subscriptionId, zeroQuantity));
+
+        Map<String, Object> negativeQuantity = new LinkedHashMap<>();
+        negativeQuantity.put("quantity", -1);
+        assertValidationError(updateSubscription(subscriptionId, negativeQuantity));
+
+        Map<String, Object> negativeDeposit = new LinkedHashMap<>();
+        negativeDeposit.put("depositAmount", -1);
+        assertValidationError(updateSubscription(subscriptionId, negativeDeposit));
+
+        // And: 기존 값이 변경되지 않음 (AC-013)
+        Subscription unchanged = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        assertThat(unchanged.getQuantity()).isEqualTo(100L);
+        assertThat(unchanged.getDepositAmount()).isEqualTo(1000000L);
+    }
+
+    @Test
+    void updateSubscriptionWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-015)
+        signupAndLogin();
+
+        // When: PATCH /subscriptions/{존재하지 않는 id} 요청을 보냄
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "수정된 메모");
+        MvcResult result = updateSubscription(99999999L, updateRequest);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-015)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 수정은 404를 반환해야 합니다 (AC-015)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateSubscriptionForCancelledRecordReturns404() throws Exception {
+        // Given: 청약이 등록 후 취소(CANCELLED + deletedAt)됨 (엣지케이스: 취소된 기록 재수정 금지)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        subscriptionRepository.saveAndFlush(cancelled);
+
+        // When: 취소된 기록에 PATCH 수정 요청을 보냄
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "수정된 메모");
+        MvcResult result = updateSubscription(subscriptionId, updateRequest);
+
+        // Then: 404 Not Found + NOT_FOUND (엣지케이스 — 조회 API에서 노출되지 않는 기록이므로)
+        assertThat(result.getResponse().getStatus())
+                .as("CANCELLED 기록의 수정은 404를 반환해야 합니다 (엣지케이스)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateSubscriptionWithInvestorOrAccountOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A와 다른 계정 B가 있고, B 소유의 투자자/계좌 ID가 알려져 있음
+        signupAndLogin();
+        Long ownInvestorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long ownAccountId = registerSecuritiesAccount(ownInvestorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(ownInvestorId, ownAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        Long otherInvestorId = createOtherAccountInvestorAndAccount();
+        java.util.List<SecuritiesAccount> otherAccounts = securitiesAccountRepository.findByInvestorId(otherInvestorId);
+        assertThat(otherAccounts).hasSize(1);
+        Long otherAccountId = otherAccounts.get(0).getId();
+
+        // When/Then: investorId를 다른 계정 소유 투자자로 변경 시도 시 403 FORBIDDEN (신규 소유권 재검증)
+        Map<String, Object> otherInvestorRequest = new LinkedHashMap<>();
+        otherInvestorRequest.put("investorId", otherInvestorId);
+        MvcResult otherInvestorResult = updateSubscription(subscriptionId, otherInvestorRequest);
+        assertThat(otherInvestorResult.getResponse().getStatus())
+                .as("다른 계정 소유 투자자로 investorId 변경 시 403을 반환해야 합니다 (소유권 재검증)").isEqualTo(403);
+        assertError(otherInvestorResult, "FORBIDDEN");
+
+        // When/Then: securitiesAccountId를 다른 계정 소유 계좌로 변경 시도 시 403 FORBIDDEN (신규 소유권 재검증)
+        Map<String, Object> otherAccountRequest = new LinkedHashMap<>();
+        otherAccountRequest.put("securitiesAccountId", otherAccountId);
+        MvcResult otherAccountResult = updateSubscription(subscriptionId, otherAccountRequest);
+        assertThat(otherAccountResult.getResponse().getStatus())
+                .as("다른 계정 소유 증권계좌로 securitiesAccountId 변경 시 403을 반환해야 합니다 (소유권 재검증)").isEqualTo(403);
+        assertError(otherAccountResult, "FORBIDDEN");
+    }
+
+    @Test
+    void updateSubscriptionWithDuplicateComboReturns409ButSelfReupdateAllowed() throws Exception {
+        // Given: 서로 다른 조합의 ACTIVE 청약 기록 2건이 존재함 (AC-014)
+        signupAndLogin();
+        Long investor1 = registerInvestorAndGetId();
+        Long firm1 = registerFirm();
+        Long account1 = registerSecuritiesAccount(investor1, firm1);
+        Long ipo1 = createIpo();
+
+        Long investor2 = registerInvestorAndGetId();
+        Long firm2 = registerFirm();
+        Long account2 = registerSecuritiesAccount(investor2, firm2);
+        Long ipo2 = createIpo("기업B", "공모주B", "654321");
+
+        MvcResult first = registerSubscription(validRequest(investor1, account1, ipo1));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionAId = ((Number) readBody(first).get("id")).longValue();
+
+        MvcResult second = registerSubscription(validRequest(investor2, account2, ipo2));
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionBId = ((Number) readBody(second).get("id")).longValue();
+
+        // When: 기록 B를 기록 A와 동일한 (investorId, securitiesAccountId, ipoId) 조합으로 변경 시도
+        Map<String, Object> duplicateRequest = new LinkedHashMap<>();
+        duplicateRequest.put("investorId", investor1);
+        duplicateRequest.put("securitiesAccountId", account1);
+        duplicateRequest.put("ipoId", ipo1);
+        duplicateRequest.put("memo", "중복 시도");
+        MvcResult conflict = updateSubscription(subscriptionBId, duplicateRequest);
+
+        // Then: 409 Conflict + DUPLICATE_SUBSCRIPTION, 기존 값은 그대로 유지됨 (AC-014)
+        assertThat(conflict.getResponse().getStatus())
+                .as("다른 ACTIVE 기록과 조합이 중복되는 수정은 409를 반환해야 합니다 (AC-014)").isEqualTo(409);
+        assertError(conflict, "DUPLICATE_SUBSCRIPTION");
+        Subscription unchanged = subscriptionRepository.findById(subscriptionBId).orElseThrow();
+        assertThat(unchanged.getInvestorId()).isEqualTo(investor2);
+        assertThat(unchanged.getSecuritiesAccountId()).isEqualTo(account2);
+        assertThat(unchanged.getIpoId()).isEqualTo(ipo2);
+        assertThat(unchanged.getMemo()).isEqualTo("비대면 청약");
+
+        // When: 기록 A를 자기 자신과 동일한 조합으로 재수정(메모만 변경, 조합은 그대로)
+        Map<String, Object> selfRequest = new LinkedHashMap<>();
+        selfRequest.put("memo", "자기 자신 재수정");
+        MvcResult selfUpdate = updateSubscription(subscriptionAId, selfRequest);
+
+        // Then: 200 OK — 자기 자신과는 중복으로 간주하지 않음 (AC-014)
+        assertThat(selfUpdate.getResponse().getStatus())
+                .as("자기 자신과 동일 조합 재수정은 409가 아니라 200을 반환해야 합니다 (AC-014)").isEqualTo(200);
+        Map<String, Object> selfResponse = readBody(selfUpdate);
+        assertThat(selfResponse.get("memo")).isEqualTo("자기 자신 재수정");
+        assertThat(((Number) selfResponse.get("investorId")).longValue()).isEqualTo(investor1);
     }
 }
