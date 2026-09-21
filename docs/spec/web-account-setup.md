@@ -109,26 +109,26 @@
 ## 3. 투자자 등록 화면
 
 ### 화면 목적
-회원가입을 완료한 사용자가 최초 1회 또는 설정에서 추가로 투자자 정보를 등록한다. display_name과 relationship(선택)을 입력하여 투자자 레코드를 생성한다.
+회원가입을 완료한 사용자가 최초 1회 또는 설정에서 추가로 투자자 정보를 등록한다. displayName과 relationship(선택)을 입력하여 투자자 레코드를 생성한다.
 
 ### 사용하는 API
 - `POST /investors` (D-W13-001, investor-management.md 참고)
-  - 요청: `{ display_name: string, relationship?: string (enum: SELF, SPOUSE, PARENT, CHILD, OTHER) }`
-  - 응답 201: `{ id, display_name, account_id, status, deleted_at, created_at, updated_at }`
+  - 요청: `{ displayName: string, relationship?: string (enum: SELF, SPOUSE, PARENT, CHILD, OTHER) }`
+  - 응답 201: `{ id, displayName, accountId, status, deletedAt, createdAt, updatedAt }`
   - 응답 400: 유효성 오류
 
 ### 폼 필드
 
 | 필드명 | 타입 | 필수 | 프론트엔드 유효성 검사 규칙 |
 |--------|------|------|---------------------------|
-| display_name | text | 예 | 필수 입력, 1-50자, 특수문자 허용(한글, 영문, 특수문자) |
+| displayName | text | 예 | 필수 입력, 1-50자, 특수문자 허용(한글, 영문, 특수문자) |
 | relationship | select | 아니오 | 선택값: SELF, SPOUSE, PARENT, CHILD, OTHER — 미선택 시 빈 값 |
 
 ### 화면 상태
 
 | 상태 | 설명 | UI 동작 |
 |------|------|---------|
-| 초기 (idle) | 폼이 비어 있고 입력을 대기하는 상태 | display_name 빈 값, relationship 미선택 |
+| 초기 (idle) | 폼이 비어 있고 입력을 대기하는 상태 | displayName 빈 값, relationship 미선택 |
 | 로딩 (loading) | API 호출 중 | 제출 버튼 비활성화, 스피너 표시 |
 | 성공 (success) | 201 응답 수신 | 성공 메시지 표시 후 대시보드(`/dashboard`)로 이동 |
 | 에러 (error) | 400 응답 또는 네트워크 오류 | 필드 아래 인라인 에러 메시지 표시 |
@@ -137,8 +137,8 @@
 
 | 에러 유형 | 필드 | 인라인 에러 메시지 |
 |-----------|------|-------------------|
-| 400 Bad Request (빈 이름) | display_name | "표시 이름은 필수입니다." |
-| 400 Bad Request (50자 초과) | display_name | "표시 이름은 50자 이하여야 합니다." |
+| 400 Bad Request (빈 이름) | displayName | "표시 이름은 필수입니다." |
+| 400 Bad Request (50자 초과) | displayName | "표시 이름은 50자 이하여야 합니다." |
 | 400 Bad Request (유효하지 않은 relationship) | relationship | "유효한 관계를 선택해 주세요." |
 | 네트워크 오류 | 전체 폼 | "네트워크 연결을 확인해 주세요." |
 
@@ -292,19 +292,19 @@
 **And** 해당 필드 아래에 유효성 에러 메시지가 표시됨  
 
 ### AC-007: 투자자 등록 성공
-**Given** 인증된 상태에서 유효한 display_name이 입력됨  
+**Given** 인증된 상태에서 유효한 displayName이 입력됨  
 **When** `POST /investors` 요청을 보냄  
 **Then** 201 응답을 받고 투자자 정보 수신함  
 **And** 대시보드(`/dashboard`)로 이동함  
 
 ### AC-008: 투자자 등록 실패 (빈 표시 이름)
-**Given** display_name이 빈 문자열인 상태  
+**Given** displayName이 빈 문자열인 상태  
 **When** `POST /investors` 요청을 보냄  
 **Then** 400 응답을 받음  
 **And** "표시 이름은 필수입니다." 에러 메시지가 표시됨  
 
 ### AC-009: 투자자 등록 실패 (50자 초과)
-**Given** display_name이 50자를 초과함  
+**Given** displayName이 50자를 초과함  
 **When** `POST /investors` 요청을 보냄  
 **Then** 400 응답을 받음  
 **And** "표시 이름은 50자 이하여야 합니다." 에러 메시지가 표시됨  
@@ -383,7 +383,7 @@
 
 #### 시나리오 1: 회원가입 → 투자자 등록 → 증권계좌 등록 완료 흐름
 1. **회원가입**: 유효한 이메일/비밀번호/이름으로 `POST /accounts` → 201 응답 확인
-2. **투자자 등록**: `POST /investors`에 display_name 입력 → 201 응답 확인
+2. **투자자 등록**: `POST /investors`에 displayName 입력 → 201 응답 확인
 3. **증권계좌 등록**: `GET /securities-firms`로 증권사 목록 로드 → `POST /securities-accounts`에 계좌 정보 입력 → 201 응답 확인, 마스킹된 계좌번호 표시 확인
 4. **최종 확인**: 대시보드(`/dashboard`)에 정상적으로 이동했는지 검증
 
@@ -403,7 +403,7 @@
 2. "이미 사용 중인 이메일입니다." 메시지 표시 검증
 
 #### 시나리오 5: 투자자 등록 실패 (빈 이름)
-1. display_name을 빈 문자열로 `POST /investors` → 400 응답 확인
+1. displayName을 빈 문자열로 `POST /investors` → 400 응답 확인
 2. 인라인 에러 메시지 표시 검증
 
 #### 시나리오 6: 증권계좌 등록 404 에러
