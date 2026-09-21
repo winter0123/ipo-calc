@@ -25,6 +25,7 @@ public class PasswordChangeController {
     private final PasswordChangeService passwordChangeService;
     private static final MediaType JSON_UTF8 = new MediaType("application", "json", StandardCharsets.UTF_8);
 
+    // 현재 로그인한 사용자의 비밀번호를 기존 비밀번호 검증과 함께 변경하고, 성공 메시지를 담은 200 OK 응답을 반환한다.
     @PostMapping(value = "/password-change", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<SuccessResponse> changePassword(
             @Valid @RequestBody PasswordChangeRequest request,
