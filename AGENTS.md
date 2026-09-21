@@ -947,6 +947,23 @@ claude
 - 네이티브로 정상 전환됐는지는 헤더 문구로 확인한다: `<모델명> · Claude Pro`(또는 구독 플랜명)면 네이티브, `<모델명> ... API Usage Billing`이면 여전히 OpenRouter 경유다.
 - 반대로 게이트웨이 모델이 필요하면 그냥 새 터미널을 열거나(`~/.zshrc` 기본값이 이미 켜져 있음), `export ANTHROPIC_BASE_URL=... ANTHROPIC_AUTH_TOKEN=... CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`로 셋 다 다시 켠다.
 
+### 22.6 예외: 사용자 지시 시 워커를 네이티브 Claude 모델로 운영 (2026-09-21 사용자 지시)
+
+**기본 원칙(22 본문)은 그대로 유지된다 — 워커는 원칙적으로 OpenRouter 무료 모델(`free` 포함, 22.4 우선)만 쓴다.** 단, **사용자가 특정 시점에 "네이티브 모델로 워커 돌려" 같은 명시적 지시를 내리면, 그 지시가 적용되는 동안(예: 사용자가 지정한 시간 동안, 또는 별도 종료 지시가 있을 때까지)에 한해** Master는 워커를 OpenRouter 무료 모델이 아닌 **Claude 계정 자체의 네이티브 구독 모델(Opus/Sonnet/Haiku)**로 띄울 수 있다. 이 예외는:
+- 사용자의 명시적 지시가 있을 때만 발동한다(Master가 스스로 판단해서 전환하지 않는다).
+- 지시된 범위/기간에만 적용하고, 끝나면 22 본문의 기본 우선순위(OpenRouter 무료 모델 1순위)로 되돌아간다.
+- 유료 API 사용량(구독 한도)을 소모하므로, 사용자가 먼저 명시적으로 요청한 경우에만 쓴다.
+
+**네이티브 모델로 워커 터미널을 띄우는 정확한 명령어 (22.5에서 검증된 3-변수 unset 필요):**
+```bash
+orca terminal create --worktree path:<워크스페이스 절대경로> --title "<제목>" \
+  --command 'unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY && claude' --json
+```
+- 이 3개를 모두 `unset`하지 않으면(예: `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 끄면) 여전히 `ANTHROPIC_BASE_URL`이 OpenRouter를 가리키고 있어서 겉보기엔 Claude 모델(예: Opus 5)인데 실제로는 OpenRouter를 경유해 과금되는 상태가 된다 — 22.5의 정정 사항과 동일한 함정이니 반드시 3개 다 끈다.
+- 특정 모델을 강제로 고정하고 싶으면 `claude --model <opus-5|sonnet-5|haiku-4.5 등 네이티브 모델명>`을 덧붙인다. 지정하지 않으면 계정 기본 모델로 뜬다.
+- 검증: `orca terminal read --terminal <handle> --json`으로 헤더를 확인해 `<모델명> · Claude Pro`(또는 사용자의 실제 구독 플랜명) 문구가 보이면 네이티브다. `API Usage Billing` 문구가 보이면 여전히 OpenRouter이므로 잘못된 것이다.
+- 이후 태스크 생성/배분은 22.4와 동일한 패턴(`task-create` → `worker-start --task <id> --terminal <handle> --worktree path:<...>`)을 그대로 쓴다 — 네이티브냐 게이트웨이냐는 터미널을 띄우는 시점의 환경변수 차이일 뿐, 오케스트레이션 절차 자체는 동일하다.
+
 ---
 
 ## 23. Orca 오케스트레이션 실전 규칙
