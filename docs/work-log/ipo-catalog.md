@@ -32,3 +32,25 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록, 중복 검사 �
 4. **SF-4**: PATCH /ipos/{id} — 제공된 필드만 수정, 자기 자신 제외 중복 검사(SF-2 헬퍼 재사용), 404/400/409
 5. **SF-5**: DELETE /ipos/{id} — 논리 삭제(status=INACTIVE + deletedAt), 연결된 Subscription 여부와 무관하게 항상 허용(spec AC-014/AC-015)
 6. **SF-6**: POST /ipos/import — commons-csv 신규 의존성(D-IPO-003), 헤더 검증(400), 행 단위 개별 저장(한 행 실패가 나머지에 영향 없음, AC-019), SF-2 중복 검사 헬퍼 재사용, successCount/failureCount/failures[] 집계
+
+---
+
+## 2026-09-21 — SF-1 완료 (Ipo 엔티티/Repository/마이그레이션)
+
+### 구현 내용
+- **패키지 구조**: `com.vibeaiteam.ipocatalog` 루트 패키지 사용
+  - `domain/model/ipo/Ipo.java` — JPA 엔티티 (id Long IDENTITY, companyName/ipoName 필수, stockCode/roundLabel/lowerBandPrice/upperBandPrice/fixedPrice/listingDate/offeringShareCount 선택, subscriptionStartDate/subscriptionEndDate 필수, status 기본값 ACTIVE, deletedAt/createdAt/updatedAt)
+  - `repository/ipo/IpoRepository.java` — `findByIdAndDeletedAtIsNull`, `findAllByDeletedAtIsNullOrderByCreatedAtDesc` 메서드 포함
+- **Flyway 마이그레이션**: `V5__create_ipos_table.sql` (기존 V4 다음 버전)
+  - PostgreSQL 전용 문법 (`GENERATED ALWAYS AS IDENTITY`)
+  - partial unique index 2개: `uk_ipo_stock_code_active` (stock_code IS NOT NULL AND status='ACTIVE'), `uk_ipo_name_start_date_active` (status='ACTIVE')
+  - 조회 최적화 인덱스: `idx_ipo_status`
+- **테스트**: `IpoRepositoryTest.java` 7개 테스트 모두 통과
+  - 기본 저장/조회, deletedAt 필터링, partial unique index 제약 검증 (stock_code 중복, ipo_name+start_date 중복, stock_code NULL 허용, 논리 삭제 후 재등록 허용)
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 **147개 통과** (신규 7개 포함, 기존 테스트 영향 없음)
+- 마이그레이션 적용 및 엔티티 매핑 정상 확인
