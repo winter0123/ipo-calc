@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -44,6 +45,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * - AC-004: 증권사 목록 조회 성공 — GET /securities-firms 요청 시 200 OK + 전체 증권사 목록 포함
  * - AC-005: 증권사 상세 조회 성공 — 존재하는 id로 GET /securities-firms/{id} 요청 시 200 OK + 상세 정보 반환
  * - AC-006: 증권사 상세 조회 실패 — 존재하지 않는 id로 GET /securities-firms/{id} 요청 시 404 + NOT_FOUND
+ * - AC-007: 증권사 수정 성공 — 존재하는 id + 유효한 수정 데이터로 PATCH /securities-firms/{id} 요청 시
+ *           200 OK + 필드/updatedAt 반영 (부분 수정: 요청에 포함된 필드만 갱신)
+ * - AC-008: 증권사 수정 실패 (빈 이름) — name이 빈 문자열/공백만이면 400 + VALIDATION_ERROR, 기존 데이터 미변경
+ * - AC-009: 증권사 수정 실패 (중복 이름) — 다른 활성(ACTIVE) 증권사와 동일한 이름으로 수정 시 409 + DUPLICATE_NAME
+ *           (자기 자신과 동일한 현재 이름은 중복 아님 — 변경 없는 수정 허용)
+ * - AC-010: 증권사 수정 실패 (존재하지 않는 ID) — 존재하지 않는 id로 PATCH 시 404 + NOT_FOUND
  * - D-SF-003: deletedAt IS NULL(=ACTIVE)만 목록/상세 조회에 노출 — 논리 삭제된 증권사는 둘 다에서 제외
  * - 글로벌 기준정보: 계정 소유권 검증 불필요(SecurityUtils 미사용)하나 인증은 필요 (anyRequest().authenticated())
  */
@@ -386,6 +393,197 @@ class SecuritiesFirmControllerTest {
         assertThat(status).as("논리 삭제된 증권사 상세 조회 시 404여야 합니다 (D-SF-003)").isEqualTo(404);
         Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (D-SF-003)").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void updateFirmWithValidRequestReturns200AndReflectsFields() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-007)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of(
+                "name", "한국투자증권",
+                "externalCode", "SC-0001",
+                "businessRegistrationNumber", "123-45-67890"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+        LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
+        saved.setUpdatedAt(oldUpdatedAt);
+        securitiesFirmRepository.save(saved);
+
+        // When: PATCH /securities-firms/{id} 요청이 유효한 수정 데이터와 함께 전송됨
+        MvcResult result = mockMvc.perform(patch("/securities-firms/" + firmId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "미래에셋증권",
+                                "externalCode", "SC-0099",
+                                "businessRegistrationNumber", "999-88-77777")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답과 함께 증권사 정보가 업데이트됨 (AC-007)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("유효한 수정 요청 시 200 OK를 반환해야 합니다 (AC-007)").isEqualTo(200);
+
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(((Number) body.get("id")).longValue()).isEqualTo(firmId);
+        assertThat(body.get("name")).isEqualTo("미래에셋증권");
+        assertThat(body.get("externalCode")).isEqualTo("SC-0099");
+        assertThat(body.get("businessRegistrationNumber")).isEqualTo("999-88-77777");
+        assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
+        assertThat(body.get("updatedAt")).as("수정 응답에 갱신된 updatedAt이 포함되어야 합니다 (AC-007)").isNotNull();
+
+        // And: DB에 수정된 필드와 갱신된 updatedAt이 반영됨 (AC-007)
+        SecuritiesFirm updated = securitiesFirmRepository.findById(firmId).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("미래에셋증권");
+        assertThat(updated.getExternalCode()).isEqualTo("SC-0099");
+        assertThat(updated.getBusinessRegistrationNumber()).isEqualTo("999-88-77777");
+        assertThat(updated.getStatus()).isEqualTo(STATUS_ACTIVE);
+        assertThat(updated.getUpdatedAt()).as("updatedAt이 수정 시각으로 갱신되어야 합니다 (AC-007)").isAfter(oldUpdatedAt);
+    }
+
+    @Test
+    void updateFirmWithOnlyNameReflectsPartialUpdate() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (요청에 포함된 필드만 갱신)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of(
+                "name", "키움증권",
+                "externalCode", "SC-0010",
+                "businessRegistrationNumber", "123-45-11111"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+
+        // When: name만 포함한 PATCH /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(patch("/securities-firms/" + firmId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "키움증권(변경)")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK + name만 변경되고 나머지 필드는 그대로 유지됨 (부분 수정)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("부분 수정 요청 시 200 OK를 반환해야 합니다").isEqualTo(200);
+
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("name")).isEqualTo("키움증권(변경)");
+        assertThat(body.get("externalCode")).isEqualTo("SC-0010");
+        assertThat(body.get("businessRegistrationNumber")).isEqualTo("123-45-11111");
+
+        SecuritiesFirm updated = securitiesFirmRepository.findById(firmId).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("키움증권(변경)");
+        assertThat(updated.getExternalCode()).isEqualTo("SC-0010");
+        assertThat(updated.getBusinessRegistrationNumber()).isEqualTo("123-45-11111");
+    }
+
+    @Test
+    void updateFirmWithEmptyNameReturns400ValidationError() throws Exception {
+        // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-008)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of("name", "키움증권"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+
+        // When: 빈(공백만) 증권사명으로 PATCH /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(patch("/securities-firms/" + firmId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "   ")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 400 Bad Request + VALIDATION_ERROR (AC-008)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("빈 증권사명 수정 요청 시 400 Bad Request를 반환해야 합니다 (AC-008)").isEqualTo(400);
+
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다 (AC-008)").isEqualTo("VALIDATION_ERROR");
+        assertThat(responseMap.get("message")).isNotNull();
+
+        // And: 기존 데이터가 변경되지 않음 (AC-008)
+        SecuritiesFirm still = securitiesFirmRepository.findById(firmId).orElseThrow();
+        assertThat(still.getName()).isEqualTo("키움증권");
+    }
+
+    @Test
+    void updateFirmWithDuplicateActiveNameReturns409DuplicateName() throws Exception {
+        // Given: 기존에 동일한 이름의 활성(ACTIVE) 증권사가 존재하고, 수정 대상 증권사가 존재함 (AC-009)
+        signupAndLogin();
+        MvcResult first = registerRequest(Map.of("name", "미래에셋증권"));
+        assertThat(first.getResponse().getStatus()).as("테스트 사전 준비: 최초 등록은 201이어야 합니다").isEqualTo(201);
+        SecuritiesFirm existing = securitiesFirmRepository
+                .findByNameAndStatus("미래에셋증권", STATUS_ACTIVE).orElseThrow();
+        registeredFirms.add(existing);
+
+        MvcResult second = registerRequest(Map.of("name", "한국투자증권"));
+        Long targetId = ((Number) objectMapper.readValue(utf8Body(second), Map.class).get("id")).longValue();
+        SecuritiesFirm target = securitiesFirmRepository.findById(targetId).orElseThrow();
+        registeredFirms.add(target);
+
+        // When: 다른 활성 증권사와 동일한 이름으로 PATCH /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(patch("/securities-firms/" + targetId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "미래에셋증권")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 409 Conflict + DUPLICATE_NAME (AC-009)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("중복 이름 수정 요청 시 409 Conflict를 반환해야 합니다 (AC-009)").isEqualTo(409);
+
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 DUPLICATE_NAME이어야 합니다 (AC-009)").isEqualTo("DUPLICATE_NAME");
+        assertThat(responseMap.get("message")).isNotNull();
+
+        // And: 기존 데이터가 변경되지 않음 (AC-009)
+        SecuritiesFirm still = securitiesFirmRepository.findById(targetId).orElseThrow();
+        assertThat(still.getName()).isEqualTo("한국투자증권");
+    }
+
+    @Test
+    void updateFirmWithSameCurrentNameReturns200AllowsNoChange() throws Exception {
+        // Given: 인증된 사용자가 존재하고 "삼성증권" 증권사가 존재함 (자기 자신과 동일 이름 → 중복 아님)
+        signupAndLogin();
+        MvcResult created = registerRequest(Map.of("name", "삼성증권"));
+        Long firmId = ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+        SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
+        registeredFirms.add(saved);
+
+        // When: 현재와 동일한 이름으로 PATCH /securities-firms/{id} 요청이 전송됨 (변경 없는 수정)
+        MvcResult result = mockMvc.perform(patch("/securities-firms/" + firmId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "삼성증권")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK (자기 자신은 중복 대상에서 제외 — 변경 없는 경우 허용)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("현재와 동일한 이름으로 수정 시 200 OK를 반환해야 합니다 (자기 자신 제외)").isEqualTo(200);
+
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("name")).isEqualTo("삼성증권");
+        SecuritiesFirm still = securitiesFirmRepository.findById(firmId).orElseThrow();
+        assertThat(still.getName()).isEqualTo("삼성증권");
+    }
+
+    @Test
+    void updateFirmWithUnknownIdReturns404NotFound() throws Exception {
+        // Given: 인증된 사용자가 존재함 (AC-010)
+        signupAndLogin();
+
+        // When: 존재하지 않는 증권사 id로 PATCH /securities-firms/{id} 요청이 전송됨
+        MvcResult result = mockMvc.perform(patch("/securities-firms/99999999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "아무개증권")))
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found 응답을 반환함 (AC-010)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 증권사 수정 요청 시 404를 반환해야 합니다 (AC-010)").isEqualTo(404);
+
+        Map<String, Object> responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-010)").isEqualTo("NOT_FOUND");
+        assertThat(responseMap.get("message")).isNotNull();
     }
 
     @Test
