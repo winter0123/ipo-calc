@@ -112,3 +112,22 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 | `npm run test` (vitest run) | PASS (1 file, 3 tests passed) |
 | `npm run build` (tsc -b && vite build) | PASS (dist/index.html, dist/assets/) |
 
+
+---
+
+## 2026-09-21 — SF-2: 로그인 화면 완료
+
+### 완료 내용
+- `features/login/LoginForm.tsx` — `react-hook-form` 기반 폼, 이메일/비밀번호 유효성 검사, 로딩 상태(버튼 비활성화), 성공 시 `/dashboard` 리디렉션 (`useNavigate`), 401/네트워크 오류 인라인 메시지 표시(`aria-live="polite"`)
+- `features/login/useLogin.ts` — TanStack Query `useMutation` 래핑, `POST /auth/login` 호출, `shared/api/client.ts` 재사용 (`credentials: 'include'`)
+- `pages/LoginPage/LoginPage.tsx` — `/login` 페이지, `LoginForm` 포함
+- `entities/auth/types.ts` — `LoginRequest` 타입
+- `shared/lib/validators.ts` — `isValidEmail`, `isMinLength`
+- `App.tsx`에 `/login` 라우트 추가
+- CSS Modules (`LoginForm.module.css`, `LoginPage.module.css`) 사용
+- RED→GREEN 테스트: `LoginForm.test.tsx`
+
+### Master 독립 검증에서 발견·수정한 결함 (워커가 "완료"로 보고했으나 실제로는 4/4 테스트 실패 상태였음)
+- **테스트가 `QueryClientProvider` 없이 작성돼 전부 실패**: `useLogin`이 TanStack Query `useMutation`을 쓰는데 테스트가 provider로 감싸지 않아 렌더링 자체가 예외로 죽었음. 또한 개별 테스트 바디가 실제 상호작용(입력/제출) 없이 초기 렌더링 상태에서 나타날 이유가 없는 텍스트를 찾는 식으로 작성돼 있어, 통과하더라도 각 시나리오(401/이메일오류/필수값) 를 실제로 검증하지 못하는 상태였음. `QueryClientProvider`로 감싸고 `apiFetch`를 모킹해 각 시나리오를 실제 입력→제출→결과 확인 흐름으로 재작성.
+- **실제 컴포넌트 버그 발견**: `<form>`에 `noValidate`가 없어, `type="email"` 필드에 형식이 잘못된 값을 넣고 제출하면 브라우저 네이티브 검증이 submit 이벤트 자체를 막아버려 react-hook-form의 커스텀 한글 에러 메시지("올바른 이메일 형식을 입력해 주세요.")가 절대 뜨지 않는 결함이 있었음(재작성한 테스트가 이를 실제로 잡아냄). `noValidate` 추가로 수정.
+- **SF-1부터 있던 tsconfig 설정 결함 발견**: `tsconfig.app.json`의 `types`에 `vitest/globals`/jest-dom 타입이 없어서, `npm run typecheck`(`tsc --noEmit`, 프로젝트 참조 없이 동작해 사실상 아무것도 검사하지 않음)는 통과하지만 `npm run build`(`tsc -b`, 프로젝트 참조를 실제로 빌드)는 `toBeInTheDocument` 등 jest-dom 매처를 인식 못 해 실패하는 상태였음. `@testing-library/jest-dom/vitest`(Vitest용 export, Jest용과 다름) 사용으로 수정하고 `types`에 추가. **주의**: 이후 SF부터는 `npm run typecheck`만 믿지 말고 `npm run build`까지 반드시 함께 실행해 검증한다 — 현재 `typecheck` 스크립트는 프로젝트 참조를 안 타서 이런 타입 오류를 못 잡는다.
