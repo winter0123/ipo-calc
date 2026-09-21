@@ -6,6 +6,7 @@ import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
+import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountForbiddenException;
 import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountNotFoundException;
@@ -145,6 +146,38 @@ public class SecuritiesAccountService {
                 id, currentAccountId, exposedAt);
 
         return SecuritiesAccountAccountNumberResponse.of(id, plainAccountNumber, exposedAt);
+    }
+
+    @Transactional
+    public SecuritiesAccountResponse update(Long id, SecuritiesAccountUpdateRequest request) {
+        SecuritiesAccount account = securitiesAccountRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Investor investor = investorRepository.findById(account.getInvestorId())
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        if (!currentAccountId.equals(investor.getAccountId())) {
+            throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
+        }
+
+        if (request.getSecuritiesFirmId() != null) {
+            SecuritiesFirm firm = securitiesFirmRepository.findById(request.getSecuritiesFirmId())
+                    .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 증권사입니다"));
+            if (!STATUS_ACTIVE.equals(firm.getStatus())) {
+                throw new SecuritiesAccountValidationException("비활성화된 증권사로는 변경할 수 없습니다.");
+            }
+            account.setSecuritiesFirmId(request.getSecuritiesFirmId());
+        }
+
+        if (request.getAccountName() != null) {
+            account.setAccountName(request.getAccountName());
+        }
+
+        account.setUpdatedAt(LocalDateTime.now());
+        SecuritiesAccount saved = securitiesAccountRepository.save(account);
+
+        return toMaskedResponse(saved);
     }
 
     private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {

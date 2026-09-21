@@ -3,11 +3,13 @@ package com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
+import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.vibeaiteam.securitiesaccountmanagement.service.securitiesaccount.SecuritiesAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,5 +47,11 @@ public class SecuritiesAccountController {
     @GetMapping("/{id}/account-number")
     public ResponseEntity<SecuritiesAccountAccountNumberResponse> getAccountNumber(@PathVariable Long id) {
         return ResponseEntity.ok(securitiesAccountService.getAccountNumber(id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<SecuritiesAccountResponse> update(
+            @PathVariable Long id, @RequestBody SecuritiesAccountUpdateRequest request) {
+        return ResponseEntity.ok(securitiesAccountService.update(id, request));
     }
 }
