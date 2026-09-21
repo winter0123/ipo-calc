@@ -25,6 +25,7 @@ dependencies {
     implementation("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core:10.20.1")
     implementation("org.flywaydb:flyway-database-postgresql:10.20.1")
+    implementation("org.apache.commons:commons-csv:1.14.1")
     
     // Lombok for reducing boilerplate (optional but recommended)
     implementation("org.projectlombok:lombok")
