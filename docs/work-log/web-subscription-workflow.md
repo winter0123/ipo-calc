@@ -95,3 +95,41 @@ Subscription(Epic 6)과 Allocation(Epic 7)은 별도의 백엔드 리소스이�
 
 ### 남은 작업
 SF-2(청약 목록 화면)는 Epic 11(`GET /investment-history`) 백엔드 완료 후 착수. 커밋/PR/머지는 Master가 진행.
+
+---
+
+## 2026-09-22 — SF-2: 청약 목록 화면 구현 (task_e959f6b04bd5)
+
+`docs/breakdown/web-subscription-workflow.md` SF-2를 산출물 파일 경로/필터 3종/카드 UI 그대로 구현했다.
+**`GET /investment-history`는 이 시점 기준 백엔드(Epic 11)에 아직 구현되어 있지 않다** — `docs/breakdown/investment-query-api.md`가 SF 분해만 된 상태이며, 구현 착수 게이트(Epic 7·8 backend 머지)가 아직 열리지 않았다. 따라서 이 SF는 화면·타입만 먼저 구현하고, 실제 API 연동 검증은 기존 SF들과 동일하게 `apiFetch`를 모킹한 단위 테스트로 대체했다(실제 백엔드 호출 불가 — 정상).
+
+### 완료된 작업
+- `entities/subscription/types.ts` — `InvestmentHistoryItem`/`AllocationSummary`/`SaleSummary`/`InvestmentHistoryFilters`/`InvestmentHistoryResponse` 타입 추가. 필드는 `docs/breakdown/investment-query-api.md` SF-1이 정의한 `InvestmentHistoryDto`(id, subscribedAt, ipoId, ipoName, ipoFixedPrice, subscriptionQuantity, subscriptionStatus, allocation, sales, remainingQuantity) 그대로 반영
+- `entities/subscription/api-client.ts` — `getInvestmentHistory(filters)` 추가. investorId/securitiesAccountId/ipoId/page/size 중 지정된 값만 쿼리스트링에 포함
+- `features/subscription-list/useInvestmentHistory.ts` — `useQuery`, `queryKey: ['investmentHistory', filters]`
+- `features/subscription-list/SubscriptionFilter.tsx`(+`.module.css`) — `useState<'all'|'unallocated'|'allocated'>` 로컬 필터 버튼 그룹(URL 파라미터 미사용), 선택값을 `onChange`로 상위에 전달
+- `features/subscription-list/SubscriptionList/SubscriptionList.tsx`, `SubscriptionCard.tsx`(+`.module.css`) — 필터값 기준 클라이언트 사이드 필터링(백엔드 API에 배정여부 필터 파라미터가 없으므로, AC-009/010의 Given "전체 목록이 표시됨"과 일치하게 이미 로드된 목록을 필터링) + 카드(공모명·청약수량·청약일시·배정 여부 배지). 미배정(`allocation: null`) 카드에만 "배정 입력" 링크(`/allocations/register?subscriptionId={id}`) 표시
+- `pages/SubscriptionListPage/SubscriptionListPage.tsx`(+`.module.css`) — 필터+목록 조합, 로딩/에러(404·네트워크·기타) 상태 처리
+- `App.tsx` — `/subscriptions` 라우트 추가
+- `pages/SubscriptionListPage/SubscriptionListPage.test.tsx` — `apiFetch` 모킹 + `QueryClientProvider`+`MemoryRouter`+`fireEvent` 패턴(Epic 13/SF-1과 동일)으로 11개 테스트 작성: 로딩(AC-008), 필터 3종(AC-009/010/전체), 필터 전환 시나리오(E2E 3), 배정 입력 버튼 표시/href(AC-011/012), 빈 목록, 404/네트워크/기타 에러
+
+### 발견사항 — spec-DTO 불일치
+`docs/spec/web-subscription-workflow.md` 2절(화면 구성)은 청약 카드에 "증권계좌"를 표시하라고 명시하지만, `docs/breakdown/investment-query-api.md`가 정의한 `InvestmentHistoryDto`에는 증권계좌 관련 필드(securitiesAccountId 등)가 없다. DTO를 추측으로 확장하지 않고 확정 문서(investment-query-api.md) 기준으로 타입을 만들었으므로, 이번 구현의 카드에서는 증권계좌를 표시하지 않는다. Epic 11 SF-1 구현 시 DTO에 필드 추가가 필요한지, 아니면 spec을 정정할지 Master/Planning 확인이 필요하다.
+
+### 특이사항 반영
+- 필터 상태는 로컬 state(뒤로/앞으로가기로 안 바뀜), `SubscriptionFilter`가 내부 `useState`로 관리하고 `onChange`로 부모에 전달
+- 배정여부 필터는 백엔드 쿼리 파라미터가 아니라 프론트에서 이미 조회된 `content` 배열을 클라이언트 사이드로 필터링(investment-query-api.md SF-2가 정의한 필터는 investorId/securitiesAccountId/ipoId뿐이며 배정여부 필터가 없음을 확인)
+- "배정 입력"은 Dashboard의 기존 관례(`Link`를 버튼처럼 스타일링)를 따라 `<Link>`로 구현 — `subscriptionId`를 URL 파라미터로 전달
+
+### 실행한 검증
+- `pnpm run lint` — 통과(기존 파일의 사전 존재 warning 1건 외 무관)
+- `pnpm run typecheck` — 통과
+- `pnpm run format:check` — 통과
+- `pnpm run test` — 55개 테스트 전체 통과 (기존 44개 + 신규 11개)
+- `pnpm run build` — 통과
+
+### 남은 작업
+- 실데이터 연동·E2E 시나리오 1 검증은 Epic 11(`GET /investment-history`) 백엔드 머지 후 진행
+- 카드의 "증권계좌" 표시 여부는 위 발견사항 확인 후 반영
+- SF-3(배정 등록 화면)는 Epic 7(`POST /allocations`) + Epic 11 상세 조회 백엔드 완료 후 착수
+- 커밋/PR/머지는 Master가 진행

@@ -1,0 +1,116 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ipoName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.badgeUnallocated,
+.badgeAllocated {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeUnallocated {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badgeAllocated {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.cardRow dt {
+  color: #6b7280;
+}
+
+.cardRow dd {
+  margin: 0;
+  color: #1f2937;
+}
+
+.allocateButton {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.allocateButton:hover {
+  background-color: #2563eb;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+@media (min-width: 640px) {
+  .list {
+    max-width: 560px;
+  }
+}
+
+@media (min-width: 768px) {
+  .list {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .list {
+    max-width: 720px;
+  }
+}
