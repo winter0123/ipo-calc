@@ -42,3 +42,30 @@ Investor(SF-1 공용 인프라 포함 6개)와 달리, 이 Epic은 계정 소유
 
 ### 남은 작업
 - SF-2: 증권사 등록 API (POST /securities-firms), SF-3: 목록/상세 조회 API, SF-4: 수정 API, SF-5: 비활성화 API
+
+## 2026-09-21 — SF-2: 증권사 등록 API (POST /securities-firms) 구현 (B그룹, backend-3)
+
+### 완료 작업 (Test-First RED→GREEN)
+- **Test-First RED**: `SecuritiesFirmControllerTest` 6건 먼저 작성 → 컨트롤러/서비스 미존재로 5건 런타임 실패(RED) 확인
+- **GREEN 구현** (패키지 루트: `com.vibeaiteam.securitiesfirmcatalog`, Investor 패턴 동일):
+  - `controller/securitiesfirm/SecuritiesFirmController.java` — `@PostMapping("/securities-firms")`, 201 Created 반환
+  - `controller/securitiesfirm/dto/SecuritiesFirmRegisterRequest.java` — name/externalCode/businessRegistrationNumber
+  - `controller/securitiesfirm/dto/SecuritiesFirmResponse.java` — id/name/externalCode/businessRegistrationNumber/status/createdAt/updatedAt
+  - `service/securitiesfirm/SecuritiesFirmService.java` — register: name 검증(공백/null/255자 초과 → VALIDATION_ERROR 400), findByNameAndStatus(name,"ACTIVE") 중복 → DUPLICATE_NAME 409, status=ACTIVE + createdAt/updatedAt=now()
+  - `exception/SecuritiesFirmValidationException.java`(400), `exception/SecuritiesFirmDuplicateException.java`(409), `exception/SecuritiesFirmExceptionHandler.java`(@RestControllerAdvice, ErrorResponse 형식 그대로)
+- 계정 소유권 검증(SecurityUtils) 미사용 — 글로벌 기준정보(architecture 29행). 인증은 SecurityConfig의 `anyRequest().authenticated()`로 자동 커버
+- GET/PATCH/DELETE 엔드포인트는 SF 범위 밖이라 작성하지 않음 (금지사항 준수)
+
+### 테스트 6건 (AC 대응)
+- AC-001 성공: 201 + id/name/externalCode/businessRegistrationNumber/status=ACTIVE/createdAt/updatedAt 검증 + DB 레코드 생성 확인
+- AC-002 실패(빈 이름): 공백만 name → 400 VALIDATION_ERROR, 레코드 미생성
+- AC-002 변형: name null(누락) → 400 VALIDATION_ERROR / 255자 초과 → 400 VALIDATION_ERROR
+- AC-003 실패(중복): 동일 name ACTIVE가 존재하면 409 DUPLICATE_NAME, 추가 레코드 미생성
+- 회귀 보호: 미인증 요청 → 401 Unauthorized
+
+### 검증 결과
+- 신규 테스트 단독 실행: GREEN (6/6)
+- 전체 스위트: `DB_PASSWORD=vibe_local_password ./gradlew test` **79/79 GREEN (failures=0, errors=0, skipped=0)** — SF-1 73건 + 신규 6건
+
+### 남은 작업
+- SF-3: 증권사 목록/상세 조회 API (GET /securities-firms, GET /securities-firms/{id}) — AC-004~006, D-SF-003 필터 적용
