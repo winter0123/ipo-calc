@@ -11,7 +11,7 @@ Epic 4([[securities-account-management]])의 spec이 완성되어 실제 계약�
 ### D-W13-001: 확정된 API 계약 (추측 금지, 실제 spec 인용)
 - **로그인**: `POST /auth/login` — `{email, password}` → 200(세션 쿠키) / 401
 - **회원가입**: `POST /accounts` — `{email, password, name}` → 201(`{accountId, email}`) / 409(중복) / 400
-- **투자자 등록**: `POST /investors` — `{display_name, relationship?}` → 201(`{id, display_name, account_id, status, ...}`) / 400
+- **투자자 등록**: `POST /investors` — `{displayName, relationship?}` → 201(`{id, displayName, accountId, status, ...}`) / 400 (**2026-09-21 정정**: 초안은 snake_case였으나 Epic 2 SF-3 구현 중 camelCase로 확정됨 — investor-management.md 실제 API 기준)
 - **증권계좌 등록**: `POST /securities-accounts` — `{investorId, securitiesFirmId, accountNumber, accountName?, isDefault?}` → 201(마스킹된 `accountNumber` 포함 응답) / 400 / 404
 - **증권사 목록**(계좌 등록 폼의 드롭다운용): `GET /securities-firms` — Epic 3([[securities-firm-catalog]])에서 이미 확정됨
 
@@ -184,3 +184,32 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 - `ui/` 앱 소스 코드는 수정하지 않았다.
 - `docs/current-status.md`는 수정하지 않았다.
 - 커밋, 푸시, PR은 생성하지 않았다.
+
+---
+
+## 2026-09-21 — SF-4: 투자자 등록 화면 완료
+
+### 완료 내용
+- `features/investor-register/InvestorRegisterForm.tsx` — `react-hook-form` 기반 폼, displayName(필수, 1-50자)/relationship(선택, select) 유효성 검사, 로딩 상태(버튼 비활성화+스피너 텍스트), 성공 시 `/dashboard` 리디렉션 (`useNavigate`), 400/네트워크 오류 인라인 메시지 표시(`aria-live="polite"`), `<form noValidate>` 적용
+- `features/investor-register/useRegisterInvestor.ts` — TanStack Query `useMutation` 래핑, `POST /investors` 호출(camelCase: `displayName`, `relationship`), `shared/api/client.ts` 재사용 (`credentials: 'include'`)
+- `features/investor-register/InvestorRegisterForm.test.tsx` — RED→GREEN: 정상 등록, 빈 displayName 클라이언트 검증, 50자 초과 클라이언트 검증, 유효하지 않은 relationship API 400 응답, 네트워크 오류, relationship 미선택(빈 값 전송), 로딩 상태 버튼 비활성화 — 7개 시나리오 실제 검증 (QueryClientProvider 감싸기 + fireEvent 입력/제출)
+- `pages/InvestorRegisterPage/InvestorRegisterPage.tsx` + `.module.css` — 기존 플레이스홀더 페이지에 폼 연동
+- `App.tsx`에 `/investors/register` 라우트 이미 존재 확인
+- `shared/lib/validators.ts`에 `isValidDisplayName` 추가 (1-50자 검증)
+- CSS Modules 사용, 2칸 들여쓰기, ESLint/Prettier/tsc strict 준수
+- 반응형 브레이크포인트(640px/768px/1024px) CSS 미디어 쿼리 적용
+
+### Master 독립 검증에서 확인한 사항(이전 사고 방지)
+- `<form>`에 `noValidate` 필수 — 브라우저 네이티브 검증이 커스텀 한글 에러 메시지를 막는 버그 재발 방지
+- 테스트는 초기 렌더링 텍스트만 확인하지 않고 `fireEvent`로 실제 입력/제출 시뮬레이션하여 각 시나리오 검증
+- `npm run typecheck`만 통과해도 `npm run build`(`tsc -b`)에서 타입 오류가 잡힐 수 있으므로 둘 다 필수 실행
+- select 필드의 유효하지 않은 값 클라이언트 검증은 UI상 불가능(옵션만 선택 가능)하므로 API 400 응답 매핑 테스트로 대체
+
+### 실행한 명령어 및 결과
+| 명령어 | 결과 |
+|---|---|
+| `pnpm run lint` | PASS (0 errors) |
+| `pnpm run typecheck` | PASS (0 errors) |
+| `pnpm run format:check` | PASS (All matched files use Prettier code style!) |
+| `pnpm run test` | PASS (7 tests, 총 20 tests) |
+| `pnpm run build` | PASS (dist/ 생성, 88 modules transformed) |
