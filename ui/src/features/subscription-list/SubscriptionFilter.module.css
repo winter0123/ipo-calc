@@ -1,0 +1,30 @@
+.group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background-color: #fff;
+  color: #374151;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.button:hover {
+  border-color: #93c5fd;
+}
+
+.button[aria-pressed='true'] {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}

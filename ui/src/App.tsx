@@ -5,6 +5,7 @@ import InvestorRegisterPage from './pages/InvestorRegisterPage/InvestorRegisterP
 import DashboardPage from './pages/DashboardPage/DashboardPage.tsx'
 import SecuritiesAccountRegisterPage from './pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'
 import SubscriptionRegisterPage from './pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'
+import SubscriptionListPage from './pages/SubscriptionListPage/SubscriptionListPage.tsx'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         element={<SecuritiesAccountRegisterPage />}
       />
       <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
+      <Route path="/subscriptions" element={<SubscriptionListPage />} />
     </Routes>
   )
 }
