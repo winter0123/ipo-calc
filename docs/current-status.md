@@ -5,9 +5,11 @@
 ## 📌 로드맵 의존관계 재확인: Epic 13(프론트엔드)은 Epic 1~4만 있으면 시작 가능
 docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-account-setup)의 선행조건은 Epic 1·2·3·4뿐이다(Epic 5~12 불필요). Epic 4가 완료된 시점(2026-09-21)부터 Epic 13은 이미 착수 가능한 상태였으나, "Epic 1→2→...→16 순차 진행"이라는 암묵적 가정 때문에 뒤늦게 시작함(사용자가 "프론트 개발은 왜 안해?"로 직접 지적). **이후로는 매 Epic 완료 시 로드맵의 실제 의존관계 그래프를 다시 확인해, 새로 선행조건이 충족된 Epic이 있으면 즉시 병렬 착수한다** — 백엔드/프론트엔드를 각자의 워크스페이스에서 동시에 진행 가능.
 
-## ✅ 해결됨: OpenRouter 무료 모델 계정 일일 한도 블로커 (2026-09-21, 우회 경로 확보)
+## ⚠️ 현재 상태: OpenRouter 무료 모델 계정 일일 한도 재도달 (2026-09-21 오후, opencode로 우회 중)
 
-`free-models-per-day-high-balance` 오류가 서로 다른 프로바이더 3종(Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1) 및 Google Gemma까지 총 4종에서 동일하게 발생 — 계정 전체의 일일 무료 모델 사용량 한도로 최종 확인됨. 12회 재시도(15:03~16:55 UTC)까지 모두 실패한 뒤, **`opencode/` 프로바이더 자체의 무료 모델(OpenCode Zen)** 이 OpenRouter와 별개의 quota pool임을 발견 — `opencode/big-pickle`로 즉시 Epic 3 architecture 작업 성공. AGENTS.md 22장에 대체 경로로 문서화함. OpenRouter 재시도 루프(`bbqngsqy6`)는 중복 방지를 위해 정지시켰고, 앞으로 OpenRouter 한도가 풀릴 때까지는 `opencode/` 모델(big-pickle, mimo-v2.5-free, ling-3.0-flash-fin-free 등)을 우선 사용(2026-09-21 사용자 지시: "오픈라우터 한도풀릴때 까지는 오픈코드무료모델 이것저것 써보면서 해").
+`free-models-per-day-high-balance` 오류가 서로 다른 프로바이더 3종(Nvidia Nemotron 3 Ultra/Super, Poolside Laguna S 2.1) 및 Google Gemma까지 총 4종에서 동일하게 발생 — 계정 전체의 일일 무료 모델 사용량 한도로 최종 확인됨. 12회 재시도(15:03~16:55 UTC)까지 모두 실패한 뒤, **`opencode/` 프로바이더 자체의 무료 모델(OpenCode Zen)** 이 OpenRouter와 별개의 quota pool임을 발견 — `opencode/big-pickle`로 즉시 Epic 3 architecture 작업 성공. AGENTS.md 22장에 대체 경로로 문서화함.
+
+**2026-09-21 오후 재도달**: Epic 5 SF-6, Epic 13 SF-4 워커 둘 다 같은 `free-models-per-day-high-balance` 오류로 동시에 막힘(약 14:55경) — `claude --model <openrouter 무료 모델>` 경로도 이 계정 한도의 영향을 받음(claude/opencode 무관하게 계정 단위). 두 워커 모두 `opencode --model opencode/<모델명>`(big-pickle, nemotron-3-ultra-free)으로 즉시 전환해 재개함. **지금은 opencode/ 무료 모델을 기본으로 쓰는 중이며, 다음 세션에서 이 문서를 읽는 사람은 OpenRouter 한도가 풀렸는지 먼저 확인(`curl -s "https://openrouter.ai/api/v1/models"`로 계정 자체 한도는 확인 불가하므로, 그냥 `claude --model <openrouter 무료 모델>`로 시험 삼아 하나 띄워보고 같은 오류가 나는지로 판단)한 뒤 22.4 우선순위(1순위 claude --model)로 되돌릴지 결정한다.**
 
 ## 워크스페이스 구조 (2026-09-20부터 역할별 고정 3개, 절대 삭제하지 않음)
 
