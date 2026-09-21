@@ -43,33 +43,33 @@ public class SecuritiesAccountController {
         return ResponseEntity.ok(securitiesAccountService.list(investorId, status));
     }
 
-    // 증권계좌 ID로 단건 계좌 정보를 조회한다. 존재하지 않거나 현재 계정 소유가 아니면 404를 반환한다.
+    // 증권계좌 ID로 단건 계좌 정보를 조회한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @GetMapping("/{id}")
     public ResponseEntity<SecuritiesAccountResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(securitiesAccountService.getById(id));
     }
 
-    // 증권계좌 ID로 원본 계좌번호를 복호화해 반환한다. 계좌번호 노출 시점을 감사 로그에 기록한다. 계좌가 없으면 404를 반환한다.
+    // 증권계좌 ID로 원본 계좌번호를 복호화해 반환한다. 계좌번호 노출 시점을 감사 로그에 기록한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @GetMapping("/{id}/account-number")
     public ResponseEntity<SecuritiesAccountAccountNumberResponse> getAccountNumber(@PathVariable Long id) {
         return ResponseEntity.ok(securitiesAccountService.getAccountNumber(id));
     }
 
-    // 증권계좌 ID로 해당 계좌의 계좌명/증권사 등을 수정하고, 수정된 계좌 정보를 반환한다. 계좌가 없으면 404를 반환한다.
+    // 증권계좌 ID로 해당 계좌의 계좌명/증권사 등을 수정하고, 수정된 계좌 정보를 반환한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403, 존재하지 않거나 비활성화된 증권사로 변경 시도하면 400을 반환한다.
     @PatchMapping("/{id}")
     public ResponseEntity<SecuritiesAccountResponse> update(
             @PathVariable Long id, @RequestBody SecuritiesAccountUpdateRequest request) {
         return ResponseEntity.ok(securitiesAccountService.update(id, request));
     }
 
-    // 증권계좌 ID로 해당 계좌를 비활성화 상태로 전환하고, 204 No Content를 반환한다. 계좌가 없으면 404를 반환한다.
+    // 증권계좌 ID로 해당 계좌를 비활성화 상태로 전환하고, 204 No Content를 반환한다. 기본 계좌였다면 기본 계좌 지정도 함께 해제한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivate(@PathVariable Long id) {
         securitiesAccountService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
 
-    // 증권계좌 ID로 해당 계좌를 기본 계좌로 지정하고, 갱신된 계좌 정보를 반환한다. 계좌가 없으면 404를 반환한다.
+    // 증권계좌 ID로 해당 계좌를 기본 계좌로 지정하고, 갱신된 계좌 정보를 반환한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403, 비활성화된 계좌면 400, 이미 기본 계좌면 409를 반환한다.
     @PatchMapping("/{id}/set-default")
     public ResponseEntity<SecuritiesAccountResponse> setDefault(@PathVariable Long id) {
         return ResponseEntity.ok(securitiesAccountService.setDefault(id));
