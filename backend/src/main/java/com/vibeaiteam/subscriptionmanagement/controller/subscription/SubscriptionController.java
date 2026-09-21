@@ -6,10 +6,15 @@ import com.vibeaiteam.subscriptionmanagement.service.subscription.SubscriptionSe
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 // 청약(Subscription) 기록에 대한 등록/목록조회/상세조회/수정/취소 API를 제공한다. 실시간 청약 접수가 아니라
 // 이미 증권사를 통해 완료된 청약 결과를 사용자가 사후에 입력·기록·조회하는 기능이다.
@@ -27,5 +32,22 @@ public class SubscriptionController {
     public ResponseEntity<SubscriptionResponse> register(@RequestBody SubscriptionRegisterRequest request) {
         SubscriptionResponse response = subscriptionService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // 삭제되지 않은 청약 목록을 조회한다. investorId/securitiesAccountId 쿼리 파라미터로 필터링할 수 있고
+    // (둘 다 비면 전체), 200 OK와 함께 ACTIVE 청약 목록을 반환한다. 취소된 기록은 포함하지 않는다.
+    @GetMapping
+    public ResponseEntity<List<SubscriptionResponse>> list(
+            @RequestParam(required = false) Long investorId,
+            @RequestParam(required = false) Long securitiesAccountId) {
+        List<SubscriptionResponse> responses = subscriptionService.list(investorId, securitiesAccountId);
+        return ResponseEntity.ok(responses);
+    }
+
+    // 청약 ID로 단건 청약 정보를 조회한다. 존재하지 않거나 취소된 기록이면 404를 반환한다.
+    @GetMapping("/{id}")
+    public ResponseEntity<SubscriptionResponse> getById(@PathVariable Long id) {
+        SubscriptionResponse response = subscriptionService.getById(id);
+        return ResponseEntity.ok(response);
     }
 }

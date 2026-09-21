@@ -103,37 +103,43 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ---
 
-## 2026-09-21 — SF-2 완료 (청약 등록 API: POST /subscriptions)
+## 2026-09-21 — SF-3 완료 (청약 목록/상세 조회 API — GET /subscriptions, GET /subscriptions/{id})
 
-> 워크스페이스: backend-3, 브랜치: `winter0123/subscription-register`
+> 워크스페이스: backend-3, 브랜치: `winter0123/subscription-query`
+
+### 사전 확인 (중요 — 브랜치 구성 이슈)
+- 분배 시점에 **SF-2(등록 API) 코드가 `subscription-query` 브랜치에 없었다.** SF-2는 `winter0123/subscription-register` 브랜치(커밋 c29ec76)에만 존재하고 별도 PR로 아직 main에 머지되지 않은 상태다.
+- SF-3는 SF-2의 `SubscriptionService`/`SubscriptionController`에 메서드를 추가하는 구조이므로, **register 브랜치에서 SF-2 소스 파일 10개(서비스/컨트롤러/DTO 2종/예외 5종/컨트롤러 테스트)를 `git show`로 바이트 단위 동일하게 작업 트리에 복제**한 뒤 그 위에 SF-3를 구현했다. git commit/push는 하지 않았다.
+- **Master 참고(머지 시)**: 이 브랜치에는 SF-2 파일들이(테스트 포함) 다시 포함되어 있으므로, register 브랜치 머지와 충돌(add/add)할 수 있다. SF-2가 먼저 main에 머지된 뒤 이 브랜치의 변경분을 복제분(동일 내용) 제외 SF-3 추가분만 반영하도록 정리하는 것을 권장한다.
 
 ### 구현 내용 (Test-First: RED → GREEN)
-- **RED**: `SubscriptionControllerTest`(새 파일)를 먼저 작성하고 실행 — 엔드포인트 미구현 상태라 7개 테스트 전부 실패로 RED 확인(엔드포인트 없음 → 404/no handler).
-- **패키지 구조** (architecture.md의 controller/service/exception 패키지 소유):
-  - `controller/subscription/dto/SubscriptionRegisterRequest.java` — 요청 DTO (investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt 필수 + memo 선택)
-  - `controller/subscription/dto/SubscriptionResponse.java` — 응답 DTO (`from(Subscription)` 정적 팩토리, IpoResponse 패턴 동일)
-  - `exception/{SubscriptionValidationException,SubscriptionConflictException,SubscriptionNotFoundException,SubscriptionForbiddenException}.java` — RuntimeException 파생 4종
-  - `exception/SubscriptionExceptionHandler.java` — `@RestControllerAdvice`: 400 VALIDATION_ERROR / 409 `DUPLICATE_SUBSCRIPTION` / 404 NOT_FOUND / 403 FORBIDDEN (IpoExceptionHandler 패턴 동일, JSON_UTF8 공통 응답)
-  - `service/subscription/SubscriptionService.java` — `register(SubscriptionRegisterRequest)`:
-    1. 필수값 검증(investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt null → 400), quantity ≤ 0 / depositAmount < 0 → 400 (AC-002/003)
-    2. **investorId 존재+소유권 검증**: `InvestorRepository.findById` → 없으면 404, `investor.getAccountId() != 현재 계정` → 403 (InvestorService.findOwnedInvestor 패턴)
-    3. **securitiesAccountId 존재+2단계 소유권 검증**: `SecuritiesAccountRepository.findByIdAndDeletedAtIsNull`(존재+미삭제) → 404, 그 계좌의 investorId로 Investor 재조회 → 그 accountId가 현재 계정과 다르면 403 (SecuritiesAccountService.getById 2단계 패턴)
-    4. **ipoId 존재 검증만**: `IpoRepository.findByIdAndDeletedAtIsNull` → 404 (IPO는 전역 기준정보, 소유권 없음)
-    5. 중복 검사: `findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(..., "ACTIVE")` → 존재 시 409 (AC-005). CANCELLED는 무관(AC-006). DB 부분 유니크 `uk_subscription_active_combo`가 최종 방어선 — `save` 시 `DataIntegrityViolationException` catch → 409 변환.
-    6. 저장 후 201 (AC-001)
-  - `controller/subscription/SubscriptionController.java` — `@PostMapping("/subscriptions")` 1개. **다른 Epic의 Repository는 Service 계층에서만 직접 참조**(InvestorRepository/SecuritiesAccountRepository/IpoRepository)하고 Controller는 SubscriptionService만 호출(모듈 간 의존 차단). 클래스 한글 주석 + 엔드포인트 메서드별 개별 한글 주석 모두 적용(AGENTS 15장).
-- **완료 조건 검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` → **전체 199개 테스트 통과** (기존 192개 + 신규 7개, failures 0 / errors 0)
-- `git diff --check` 이상 없음, 신규 파일 모두 100자 초과 라인 없음(4칸 인덴트 Google Java Style 수동 준수 — checkstyle 플러그인은 여전히 미도입)
+- **RED**: `SubscriptionControllerTest`에 SF-3 테스트 5개를 먼저 추가해 실행 — GET 엔드포인트가 아직 없어 404/파싱 실패로 5개 전부 RED(12개 중 7개는 SF-2 등록 테스트로 GREEN).
+- **`SubscriptionService`** (SF-2 register 이어서 동일 클래스에 메서드 추가):
+  - `list(Long investorId, Long securitiesAccountId)` — investorId만 있으면 투자자 필터, securitiesAccountId만 있으면 계좌 필터, 둘 다 null이면 전체 조회. 둘 다 주어진 경우 investorId 우선 조회 후 그 결과 안에서 securitiesAccountId로 스트림 재필터링(신규 쿼리 메서드 추가 없음 — SF-1이 만들어 둔 `findAllByInvestorIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findAllByDeletedAtIsNullOrderByCreatedAtDesc` 재사용). `@Transactional(readOnly = true)` + `List<SubscriptionResponse>` 변환 (`IpoService.list` 패턴).
+  - `getById(Long id)` — `findByIdAndDeletedAtIsNull` → 없으면 `SubscriptionNotFoundException`(404, `IpoService.getById` 패턴).
+  - **조회 시 계좌 소유권 검증은 수행하지 않음**: spec(`docs/spec/subscription-management.md` 2/3절, AC-007~011)과 architecture(목록/상세 흐름, 42~52행) 어디에도 조회 시 소유권 필터가 명시되어 있지 않고, 등록(SF-2) 시에만 소유권을 이미 강제하므로 중복 검증하지 않는다. 아키텍처 29행 "SecuritiesAccount를 통해 간접 적용"도 등록 흐름 전제다.
+- **`SubscriptionController`**:
+  - `@GetMapping list(...)` — `@RequestParam(required = false) Long investorId, securitiesAccountId`, 200 OK + 목록.
+  - `@GetMapping("/{id}") getById(...)` — 200 OK, 없으면 404.
+  - 두 엔드포인트 모두 AGENTS 15장 규칙대로 **메서드별 한글 주석** 작성(클래스 주석과 별개로 각 메서드 위에).
 
-### 테스트 케이스 (7개 — SubscriptionControllerTest, @SpringBootTest + MockMvc, IpoControllerTest/SecuritiesAccountControllerTest 패턴)
-1. `registerSubscriptionWithValidRequestReturns201AndSavedSubscription` — 정상 등록 201 + 응답/DB 필드, status=ACTIVE, deletedAt=null (AC-001)
-2. `registerSubscriptionWithMissingRequiredFieldsReturns400` — 필수값 6종 각각 누락 → 400 VALIDATION_ERROR, 레코드 미생성 (AC-002)
-3. `registerSubscriptionWithQuantityZeroOrNegativeOrNegativeDepositReturns400` — quantity=0/-1, depositAmount=-1 → 400 (AC-003)
-4. `registerSubscriptionWithUnknownReferenceReturns404` — 존재하지 않는 investorId/securitiesAccountId/ipoId 각각 404 NOT_FOUND (AC-004)
-5. `registerSubscriptionWithInvestorOrAccountOwnedByOtherAccountReturns403` — 타 계정 소유 investorId / securitiesAccountId → 403 FORBIDDEN (신규 소유권 검증)
-6. `registerSubscriptionWithDuplicateActiveComboReturns409` — 동일 조합 ACTIVE 중복 → 409 DUPLICATE_SUBSCRIPTION (AC-005)
-7. `registerSubscriptionAfterCancelAllowsReregisterReturns201` — CANCELLED + deletedAt 기록 존재 시 동일 조합 재등록 201 (AC-006)
+### 테스트 케이스 (신규 5개, `SubscriptionControllerTest`에 추가)
+1. `listSubscriptionsReturnsOnlyActiveExcludingCancelled` — 등록 후 취소 → 같은 조합 재등록 → 목록에 ACTIVE 1건만 포함, CANCELLED 제외 (AC-007, AC-018)
+2. `listSubscriptionsFiltersByInvestorId` — 두 투자자 기록 중 investorId 필터로 해당 투자자 것만 (AC-008)
+3. `listSubscriptionsFiltersBySecuritiesAccountId` — 같은 투자자의 두 계좌 기록 중 securitiesAccountId 필터로 해당 계좌 것만 (AC-009)
+4. `getSubscriptionByIdReturnsDetail` — 등록 후 GET /subscriptions/{id} → 200 + 전체 필드 확인 (AC-010)
+5. `getSubscriptionByIdWithUnknownIdReturns404` — 존재하지 않는 ID → 404 NOT_FOUND (AC-011)
+- 테스트 헬퍼: 두 개의 서로 다른 IPO가 필요해 `createIpo()`를 `createIpo(companyName, ipoName, stockCode)` 오버로드로 분리(기존 호출부는 그대로 위임), 응답 배열 파싱용 `readList()` 추가.
 
-### 다음 SF 예고
-- SF-3: 청약 목록 조회(GET /subscriptions, investorId/securitiesAccountId 필터) + 상세 조회(GET /subscriptions/{id}) — SF-1에서 만든 `findAllByDeletedAtIsNullOrderByCreatedAtDesc`/`findAllByInvestorIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findByIdAndDeletedAtIsNull` 재사용
-- 이후 SF-4(수정 PATCH), SF-5(취소 DELETE) 순차 진행
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- **전체 테스트 스위트 204개 통과** (기존 199개 + 신규 5개, failures 0 / errors 0 / skipped 0)
+- `SubscriptionControllerTest`: 12개 통과 (SF-2 등록 7 + SF-3 조회 5)
+
+### 남긴 것 / 다음 SF 예고 — SF-4: 청약 수정 API (PATCH /subscriptions/{id})
+- spec 4절 (AC-012~015): 제공된 필드만 수정, 유효성 오류 400, ACTIVE 중복 409(자기 자신 제외), 존재하지 않는 ID/이미 CANCELLED → 404
+- `SubscriptionService.update(id, request)` + `SubscriptionController`에 `@PatchMapping("/{id}")` 추가 예정
+- 엣지케이스 참고: "이미 CANCELLED된 기록을 다시 수정하는 요청은 404로 처리" — `findByIdAndDeletedAtIsNull`로 CANCELLED(삭제) 기록은 자연 배제됨
+- 이후 SF-5: 청약 취소(DELETE, 논리 삭제)

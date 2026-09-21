@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -49,7 +50,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * - AC-004: 청약 등록 실패 (기준정보 존재하지 않음) — 존재하지 않는 investorId/securitiesAccountId/ipoId → 404 NOT_FOUND
  * - AC-005: 청약 등록 실패 (중복) — 동일 (investorId, securitiesAccountId, ipoId) 조합의 ACTIVE 기록 존재 시 409
  * - AC-006: 동일 조합의 CANCELLED 기록이 있어도 재등록 성공 — 201 + 새 ACTIVE 기록
+ * - AC-007: 청약 목록 조회 성공 — 200 OK + ACTIVE 청약 목록
+ * - AC-008: 투자자별 목록 조회 성공 — investorId 필터로 해당 투자자 기록만
+ * - AC-009: 계좌별 목록 조회 성공 — securitiesAccountId 필터로 해당 계좌 기록만
+ * - AC-010: 청약 상세 조회 성공 — 200 OK + 상세 정보
+ * - AC-011: 청약 상세 조회 실패 (존재하지 않는 ID) — 404 NOT_FOUND
+ * - AC-018: 취소된 청약은 목록 조회에서 제외
  * - 소유권 검증: 다른 계정 소유의 investorId/securitiesAccountId로 등록 시도 → 403 FORBIDDEN
+ * - 조회(목록/상세)는 소유권 필터를 적용하지 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않음
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -199,11 +207,15 @@ class SubscriptionControllerTest {
     }
 
     private Long createIpo() {
+        return createIpo("기업A", "공모주A", "123456");
+    }
+
+    private Long createIpo(String companyName, String ipoName, String stockCode) {
         LocalDateTime now = LocalDateTime.now();
         Ipo ipo = ipoRepository.save(Ipo.builder()
-                .companyName("기업A")
-                .ipoName("공모주A")
-                .stockCode("123456")
+                .companyName(companyName)
+                .ipoName(ipoName)
+                .stockCode(stockCode)
                 .lowerBandPrice(10000L)
                 .upperBandPrice(12000L)
                 .fixedPrice(11000L)
@@ -489,5 +501,161 @@ class SubscriptionControllerTest {
         Map<String, Object> response = readBody(result);
         assertThat(response.get("status")).isEqualTo("ACTIVE");
         assertThat(subscriptionRepository.findAll()).hasSize(2);
+    }
+
+    private List<Map<String, Object>> readList(MvcResult result) throws Exception {
+        return objectMapper.readValue(utf8Body(result),
+                new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+    }
+
+    @Test
+    void listSubscriptionsReturnsOnlyActiveExcludingCancelled() throws Exception {
+        // Given: 동일 조합의 청약이 등록 후 취소되고, 같은 조합으로 새 ACTIVE 청약이 다시 등록됨 (AC-007, AC-018)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult first = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long cancelledId = ((Number) readBody(first).get("id")).longValue();
+
+        Subscription cancelled = subscriptionRepository.findById(cancelledId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        subscriptionRepository.saveAndFlush(cancelled);
+
+        MvcResult reregister = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(reregister.getResponse().getStatus()).isEqualTo(201);
+        Long activeId = ((Number) readBody(reregister).get("id")).longValue();
+        assertThat(subscriptionRepository.findAll()).hasSize(2);
+
+        // When: GET /subscriptions 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/subscriptions").session(session)).andReturn();
+
+        // Then: 200 OK와 함께 ACTIVE 청약만 반환되고 CANCELLED 기록은 제외됨 (AC-007, AC-018)
+        assertThat(result.getResponse().getStatus())
+                .as("목록 조회는 200 OK를 반환해야 합니다 (AC-007)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue())
+                .as("취소된 기록은 목록에서 제외되어야 합니다 (AC-018)").isEqualTo(activeId);
+        assertThat(((Number) body.get(0).get("investorId")).longValue()).isEqualTo(investorId);
+        assertThat(body.get(0).get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void listSubscriptionsFiltersByInvestorId() throws Exception {
+        // Given: 서로 다른 두 투자자가 각각 하나의 청약 기록을 가짐 (AC-008)
+        signupAndLogin();
+        Long investor1 = registerInvestorAndGetId();
+        Long firm1 = registerFirm();
+        Long account1 = registerSecuritiesAccount(investor1, firm1);
+        Long ipo1 = createIpo();
+
+        Long investor2 = registerInvestorAndGetId();
+        Long firm2 = registerFirm();
+        Long account2 = registerSecuritiesAccount(investor2, firm2);
+        Long ipo2 = createIpo("기업B", "공모주B", "654321");
+
+        assertThat(registerSubscription(validRequest(investor1, account1, ipo1)).getResponse().getStatus())
+                .isEqualTo(201);
+        assertThat(registerSubscription(validRequest(investor2, account2, ipo2)).getResponse().getStatus())
+                .isEqualTo(201);
+
+        // When: GET /subscriptions?investorId={investor1} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/subscriptions")
+                        .param("investorId", String.valueOf(investor1))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK와 함께 해당 투자자의 청약만 반환됨 (AC-008)
+        assertThat(result.getResponse().getStatus())
+                .as("투자자 필터 조회는 200 OK를 반환해야 합니다 (AC-008)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("investorId")).longValue())
+                .as("investorId 필터에 해당하는 기록만 반환되어야 합니다 (AC-008)").isEqualTo(investor1);
+    }
+
+    @Test
+    void listSubscriptionsFiltersBySecuritiesAccountId() throws Exception {
+        // Given: 같은 투자자에게 두 증권계좌가 있고 각 계좌마다 청약 기록이 존재함 (AC-009)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firm1 = registerFirm();
+        Long account1 = registerSecuritiesAccount(investorId, firm1);
+        Long ipo1 = createIpo();
+
+        Long firm2 = registerFirm();
+        Long account2 = registerSecuritiesAccount(investorId, firm2);
+        Long ipo2 = createIpo("기업B", "공모주B", "654321");
+
+        assertThat(registerSubscription(validRequest(investorId, account1, ipo1)).getResponse().getStatus())
+                .isEqualTo(201);
+        assertThat(registerSubscription(validRequest(investorId, account2, ipo2)).getResponse().getStatus())
+                .isEqualTo(201);
+
+        // When: GET /subscriptions?securitiesAccountId={account2} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/subscriptions")
+                        .param("securitiesAccountId", String.valueOf(account2))
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK와 함께 해당 계좌의 청약만 반환됨 (AC-009)
+        assertThat(result.getResponse().getStatus())
+                .as("계좌 필터 조회는 200 OK를 반환해야 합니다 (AC-009)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("securitiesAccountId")).longValue())
+                .as("securitiesAccountId 필터에 해당하는 기록만 반환되어야 합니다 (AC-009)").isEqualTo(account2);
+    }
+
+    @Test
+    void getSubscriptionByIdReturnsDetail() throws Exception {
+        // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-010)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: GET /subscriptions/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/subscriptions/" + subscriptionId).session(session)).andReturn();
+
+        // Then: 200 OK와 함께 해당 청약의 상세 정보가 반환됨 (AC-010)
+        assertThat(result.getResponse().getStatus())
+                .as("상세 조회는 200 OK를 반환해야 합니다 (AC-010)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(subscriptionId);
+        assertThat(((Number) response.get("investorId")).longValue()).isEqualTo(investorId);
+        assertThat(((Number) response.get("securitiesAccountId")).longValue()).isEqualTo(securitiesAccountId);
+        assertThat(((Number) response.get("ipoId")).longValue()).isEqualTo(ipoId);
+        assertThat(((Number) response.get("quantity")).longValue()).isEqualTo(100L);
+        assertThat(((Number) response.get("depositAmount")).longValue()).isEqualTo(1000000L);
+        assertThat(response.get("subscribedAt")).isEqualTo("2026-10-01T09:00:00");
+        assertThat(response.get("memo")).isEqualTo("비대면 청약");
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void getSubscriptionByIdWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-011)
+        signupAndLogin();
+
+        // When: GET /subscriptions/{존재하지 않는 id} 요청을 보냄
+        MvcResult result = mockMvc.perform(get("/subscriptions/99999999").session(session)).andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-011)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 상세 조회는 404를 반환해야 합니다 (AC-011)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
     }
 }
