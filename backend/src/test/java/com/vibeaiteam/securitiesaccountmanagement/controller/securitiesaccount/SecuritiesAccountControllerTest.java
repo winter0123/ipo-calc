@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -1022,5 +1023,133 @@ class SecuritiesAccountControllerTest {
         Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (SF-5)").isEqualTo("NOT_FOUND");
         assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void deactivateSecuritiesAccountReturns204AndMarksInactiveInDb() throws Exception {
+        // Given: 인증된 계정이 소유한 증권계좌가 있음 (SF-6)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        SecuritiesAccount before = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(before.getStatus()).as("비활성화 전 status는 ACTIVE여야 합니다").isEqualTo("ACTIVE");
+        assertThat(before.getDeletedAt()).as("비활성화 전 deletedAt은 null이어야 합니다").isNull();
+        LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
+        before.setUpdatedAt(oldUpdatedAt);
+        securitiesAccountRepository.save(before);
+        createdAccounts.add(before);
+
+        // When: DELETE /securities-accounts/{id} 요청을 보냄 (SF-6)
+        MvcResult result = mockMvc.perform(delete("/securities-accounts/{id}", accountId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 204 No Content, 본문 없음 (SF-6)
+        assertThat(result.getResponse().getStatus())
+                .as("비활성화 성공 시 204 No Content를 반환해야 합니다 (SF-6)").isEqualTo(204);
+        assertThat(result.getResponse().getContentAsByteArray())
+                .as("204 응답의 본문은 비어 있어야 합니다 (SF-6)").isEmpty();
+
+        // And: DB에서 status=INACTIVE, deletedAt 설정, updatedAt 갱신 확인 (SF-6)
+        SecuritiesAccount inDb = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(inDb.getStatus()).as("비활성화 후 status는 INACTIVE여야 합니다 (SF-6)").isEqualTo("INACTIVE");
+        assertThat(inDb.getDeletedAt()).as("비활성화 후 deletedAt이 설정되어야 합니다 (SF-6)").isNotNull();
+        assertThat(inDb.getUpdatedAt()).as("비활성화 후 updatedAt이 갱신되어야 합니다 (SF-6)").isAfter(oldUpdatedAt);
+    }
+
+    @Test
+    void deactivateSecuritiesAccountClearsIsDefaultWhenItWasDefault() throws Exception {
+        // Given: 인증된 계정이 소유한 기본 계좌(isDefault=true)가 있음 (SF-6, D-SA-004)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER,
+                "isDefault", true));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        SecuritiesAccount before = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(before.getIsDefault()).as("테스트 사전 준비: 첫 계좌는 기본 계좌여야 합니다").isTrue();
+        createdAccounts.add(before);
+
+        // When: DELETE /securities-accounts/{id} 요청을 보냄 (SF-6, D-SA-004)
+        MvcResult result = mockMvc.perform(delete("/securities-accounts/{id}", accountId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 204 No Content + DB에서 isDefault가 false로 함께 clear됨 (D-SA-004)
+        assertThat(result.getResponse().getStatus()).isEqualTo(204);
+        SecuritiesAccount inDb = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(inDb.getIsDefault())
+                .as("비활성화된 계좌가 기본 계좌였다면 isDefault는 false로 clear되어야 합니다 (D-SA-004)").isFalse();
+        assertThat(inDb.getStatus()).isEqualTo("INACTIVE");
+    }
+
+    @Test
+    void deactivateSecuritiesAccountWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 증권계좌 ID가 제공됨 (SF-6)
+        signupAndLogin();
+
+        // When: DELETE /securities-accounts/{unknown_id} 요청을 보냄 (SF-6)
+        MvcResult result = mockMvc.perform(delete("/securities-accounts/{id}", 99999999L)
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (SF-6)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 계좌 비활성화 시도 시 404 Not Found를 반환해야 합니다 (SF-6)").isEqualTo(404);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (SF-6)").isEqualTo("NOT_FOUND");
+        assertThat(body.get("message")).isNotNull();
+    }
+
+    @Test
+    void deactivateSecuritiesAccountOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B가 소유한 증권계좌가 등록되어 있음 (SF-6)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+        Long securitiesFirmId = registerFirm();
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesAccount otherAccount = securitiesAccountRepository.save(SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
+                .accountName("다른계정계좌")
+                .isDefault(true)
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        createdAccounts.add(otherAccount);
+
+        // When: 계정 A가 계정 B의 증권계좌 ID로 DELETE /securities-accounts/{id} 요청을 보냄 (SF-6)
+        MvcResult result = mockMvc.perform(delete("/securities-accounts/{id}", otherAccount.getId())
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN, 레코드는 변경되지 않음 (SF-6)
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 계좌 비활성화 시도 시 403 Forbidden을 반환해야 합니다 (SF-6)").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다 (SF-6)").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+
+        SecuritiesAccount unchanged = securitiesAccountRepository.findById(otherAccount.getId()).orElseThrow();
+        assertThat(unchanged.getStatus())
+                .as("소유권 없는 요청은 계좌를 비활성화하면 안 됩니다 (SF-6)").isEqualTo("ACTIVE");
     }
 }
