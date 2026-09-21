@@ -8,6 +8,7 @@ import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.d
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountConflictException;
 import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountForbiddenException;
 import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountNotFoundException;
 import com.vibeaiteam.securitiesaccountmanagement.exception.SecuritiesAccountValidationException;
@@ -18,6 +19,7 @@ import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.Securiti
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -202,6 +204,53 @@ public class SecuritiesAccountService {
         }
         account.setUpdatedAt(now);
         securitiesAccountRepository.save(account);
+    }
+
+    @Transactional
+    public SecuritiesAccountResponse setDefault(Long id) {
+        // D-SA-006: findByIdAndDeletedAtIsNull이 아닌 findById를 사용한다 — INACTIVE(soft-deleted) 계좌도
+        // "존재는 하지만 비활성"으로 취급해 404가 아닌 400(AC-016)을 반환해야 하기 때문
+        SecuritiesAccount account = securitiesAccountRepository.findById(id)
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Investor investor = investorRepository.findById(account.getInvestorId())
+                .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+
+        Long currentAccountId = securityUtils.getCurrentAccountId();
+        if (!currentAccountId.equals(investor.getAccountId())) {
+            throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
+        }
+
+        if (!STATUS_ACTIVE.equals(account.getStatus())) {
+            throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
+        }
+
+        // AC-015: 이미 기본 계좌면 트랜잭션을 시작하지 않고 즉시 409
+        if (Boolean.TRUE.equals(account.getIsDefault())) {
+            throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        try {
+            // 기존 기본 계좌 해제를 먼저 flush해 신규 지정 UPDATE와 동시에 커밋되지 않게 한다.
+            // (Hibernate의 dirty-checking 플러시 순서는 호출 순서를 보장하지 않아, flush 없이는
+            // 두 UPDATE가 뒤바뀌어 순간적으로 is_default=true가 2건이 되며 partial unique index 위반 발생)
+            securitiesAccountRepository.findByInvestorIdAndIsDefaultTrue(account.getInvestorId())
+                    .ifPresent(previousDefault -> {
+                        previousDefault.setIsDefault(false);
+                        previousDefault.setUpdatedAt(now);
+                        securitiesAccountRepository.saveAndFlush(previousDefault);
+                    });
+
+            account.setIsDefault(true);
+            account.setUpdatedAt(now);
+            SecuritiesAccount saved = securitiesAccountRepository.saveAndFlush(account);
+            return toMaskedResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            // D-SA-006: 명시적 락 대신 partial unique index(uk_securities_account_default)에 의존한다.
+            // 동시 요청으로 유니크 위반이 실제 발생하면 409로 변환하는 방어 코드
+            throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
+        }
     }
 
     private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {

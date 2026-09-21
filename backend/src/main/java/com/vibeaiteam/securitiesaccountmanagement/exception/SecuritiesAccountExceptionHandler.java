@@ -46,4 +46,15 @@ public class SecuritiesAccountExceptionHandler {
                 .contentType(JSON_UTF8)
                 .body(response);
     }
+
+    @ExceptionHandler(SecuritiesAccountConflictException.class)
+    public ResponseEntity<ErrorResponse> handleSecuritiesAccountConflict(SecuritiesAccountConflictException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("CONFLICT")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
 }

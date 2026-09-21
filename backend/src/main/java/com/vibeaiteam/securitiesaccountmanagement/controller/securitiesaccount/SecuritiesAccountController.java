@@ -61,4 +61,9 @@ public class SecuritiesAccountController {
         securitiesAccountService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/set-default")
+    public ResponseEntity<SecuritiesAccountResponse> setDefault(@PathVariable Long id) {
+        return ResponseEntity.ok(securitiesAccountService.setDefault(id));
+    }
 }
