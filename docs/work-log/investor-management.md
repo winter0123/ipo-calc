@@ -118,3 +118,43 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 ### 남은 작업
 - SF-4 투자자 목록/상세 조회 API (GET /investors, GET /investors/{id}, SecurityUtils 계정 소유권 403 검증)
 - 참고: JSON 응답 키는 기존 코드베이스 관례(camelCase: displayName/accountId 등)로 구현 — spec 초안의 snake_case 표기는 사용하지 않음. 스펙·아키텍처 문서의 snake_case 표기는 필요 시 별도 문서 수정 대상.
+
+## 2026-09-21 — SF-4 (투자자 목록/상세 조회 API: GET /investors, GET /investors/{id}) 구현 완료
+
+### 완료 작업 (Test-First: RED 확인 → GREEN 확인)
+- [x] **RED 확인**: 신규 테스트 작성 후 `./gradlew test --tests "*Investor*"` 실행 → `InvestorRepository.findByAccountId` 미존재로 컴파일 실패 확인 (RED)
+- [x] `InvestorRepository.findAll` 계열 추가: `findByAccountId(Long)` (status=BOTH 경로용)
+- [x] 신규 예외 2종: `InvestorNotFoundException`(404, NOT_FOUND), `InvestorForbiddenException`(403, FORBIDDEN)
+- [x] `InvestorExceptionHandler`에 404/403 핸들러 추가 (기존 VALIDATION_ERROR/400 패턴과 동일한 ErrorResponse JSON)
+- [x] `InvestorService.list(String status)` 구현
+  - `SecurityUtils.getCurrentAccountId()`로 현재 계정 ID 획득 (AC-004: 타 계정 데이터 절대 섞이지 않도록 accountId 필터 필수)
+  - status 파라미터: 선택, 기본값 ACTIVE, ACTIVE/INACTIVE/BOTH 검증(대소문자 정규화). BOTH → `findByAccountId`, 그 외 → `findByAccountIdAndStatus`. 유효하지 않은 값 → VALIDATION_ERROR/400
+- [x] `InvestorService.getById(Long id)` 구현
+  - `findById` 실패 → 404 NOT_FOUND("투자자를 찾을 수 없습니다.")
+  - 조회 성공했으나 `accountId != getCurrentAccountId()` → 403 FORBIDDEN("계정 소유권이 없습니다.") (AC-005 — 404가 아니라 403이어야 함, spec 명시)
+  - 본인 소유면 200 + InvestorResponse 반환 (AC-006)
+- [x] `InvestorController`에 `GET /investors`(@RequestParam status 선택) / `GET /investors/{id}`(@PathVariable Long) 추가. **PATCH/DELETE 미작성 (금지사항 준수)**
+- [x] 컨트롤러 테스트 신규 7개 (RED→GREEN):
+  - **AC-004**: 본인 계정 투자자 2명 + 다른 계정(B) 투자자 1명 존재 → `GET /investors` 시 200, 본인 것 2개만 반환, 응답 accountId 전부 본인, B의 투자자 id 미포함
+  - **AC-005**: 계정 A가 계정 B 소유 투자자 id로 `GET /investors/{id}` → 403 + `error=FORBIDDEN` + 응답에 B의 displayName/accountId 미포함
+  - **AC-006**: 본인 소유 투자자 `GET /investors/{id}` → 200 + id/displayName/accountId/status=ACTIVE/deletedAt=null/createdAt/updatedAt
+  - spec 대비 추가: 존재하지 않는 id → 404 + NOT_FOUND / `?status=BOTH` → ACTIVE+INACTIVE 2건 반환 / status 생략(기본 ACTIVE) → ACTIVE만 1건 반환 / 잘못된 status → 400 VALIDATION_ERROR
+- [x] 리포지토리 테스트 신규 2개: `findByAccountId` ACTIVE+INACTIVE 모두 반환 / 빈 결과 시 empty
+
+### 확인 사항 (검증 결과)
+- `DB_PASSWORD=vibe_local_password ./gradlew test` 전체 **GREEN: 54개 테스트, 0 실패 0 에러** (기존 45 + 신규 9)
+- `DB_PASSWORD` 미설정 시 기존 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용) 5건이 "password authentication failed"로 실패 — stash(변경 전 HEAD 기준) 재실행으로 **사전 존재 실패임을 재확인**. SF-4 변경과 무관한 환경 이슈. env var 지정 시 전체 GREEN.
+
+### 변경 파일
+- `backend/src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` (수정: findByAccountId 추가)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/service/investor/InvestorService.java` (수정: list/getById 추가)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/InvestorController.java` (수정: GET 2종 추가)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorExceptionHandler.java` (수정: 404/403 핸들러 추가)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorNotFoundException.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorForbiddenException.java` (신규)
+- `backend/src/test/java/com/vibeaiteam/investormanagement/controller/investor/InvestorControllerTest.java` (수정: GET 테스트 7개 추가)
+- `backend/src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` (수정: findByAccountId 테스트 2개 추가)
+
+### 남은 작업
+- SF-5 투자자 수정 API (PATCH /investors/{id})
+- SF-6 투자자 비활성화 API (DELETE /investors/{id}, soft delete, 멱등)

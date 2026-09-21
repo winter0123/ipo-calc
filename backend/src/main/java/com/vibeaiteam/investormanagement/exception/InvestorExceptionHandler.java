@@ -24,4 +24,26 @@ public class InvestorExceptionHandler {
                 .contentType(JSON_UTF8)
                 .body(response);
     }
+
+    @ExceptionHandler(InvestorNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInvestorNotFound(InvestorNotFoundException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("NOT_FOUND")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvestorForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleInvestorForbidden(InvestorForbiddenException ex) {
+        ErrorResponse response = ErrorResponse.builder()
+                .error("FORBIDDEN")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .contentType(JSON_UTF8)
+                .body(response);
+    }
 }

@@ -129,6 +129,48 @@ class InvestorRepositoryTest {
     }
 
     @Test
+    void findByAccountIdReturnsAllStatuses() {
+        // Given: 같은 계정 소유의 ACTIVE 투자자 1명과 INACTIVE 투자자 1명이 저장되어 있음
+        // - GET /investors?status=BOTH 시 ACTIVE+INACTIVE 모두 조회해야 한다 (findByAccountId)
+
+        LocalDateTime now = LocalDateTime.now();
+        investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("김철수")
+                .relationship("SELF")
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("김영희")
+                .relationship("SPOUSE")
+                .status("INACTIVE")
+                .deletedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+        // When: 해당 계정으로 findByAccountId 호출
+        List<Investor> result = investorRepository.findByAccountId(accountId);
+
+        // Then: ACTIVE/INACTIVE 투자자 모두 반환된다
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(Investor::getStatus)
+                .containsExactlyInAnyOrder("ACTIVE", "INACTIVE");
+    }
+
+    @Test
+    void findByAccountIdReturnsEmptyWhenNoMatch() {
+        // When: 투자자가 저장되어 있지 않은 계정 ID로 findByAccountId 호출
+        List<Investor> result = investorRepository.findByAccountId(888888L);
+
+        // Then: 빈 목록이 반환된다
+        assertThat(result).isEmpty();
+    }
+
+    @Test
     void saveTwoInvestorsWithSameDisplayNameAllowed() {
         // Given: 같은 계정에서 동일한 표시 이름의 투자자를 두 명 등록
         // - spec AC-011: 이름 중복 허용 (동명이인 가족 상황 반영)
