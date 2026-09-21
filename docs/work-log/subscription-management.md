@@ -100,3 +100,40 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 - 참조 무결성(Investor/SecuritiesAccount/IPO 존재 여부) 애플리케이션 레벨 검증, 필수값/수량/증거금 검증(400), 중복 시 409(AC-004/005), 성공 시 201(AC-001)
 - 이후 SF-3(목록/상세), SF-4(수정), SF-5(취소) 순차 진행
 - 참고: build.gradle.kts에 checkstyle 플러그인이 아직 없음(AGENTS 15장 지시) — 기존 코드 스타일(4칸 인덴트 등)을 수동 준수했으며, checkstyle 도입 여부는 Master 판단 사항으로 남겨 둠
+
+---
+
+## 2026-09-21 — SF-2 완료 (청약 등록 API: POST /subscriptions)
+
+> 워크스페이스: backend-3, 브랜치: `winter0123/subscription-register`
+
+### 구현 내용 (Test-First: RED → GREEN)
+- **RED**: `SubscriptionControllerTest`(새 파일)를 먼저 작성하고 실행 — 엔드포인트 미구현 상태라 7개 테스트 전부 실패로 RED 확인(엔드포인트 없음 → 404/no handler).
+- **패키지 구조** (architecture.md의 controller/service/exception 패키지 소유):
+  - `controller/subscription/dto/SubscriptionRegisterRequest.java` — 요청 DTO (investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt 필수 + memo 선택)
+  - `controller/subscription/dto/SubscriptionResponse.java` — 응답 DTO (`from(Subscription)` 정적 팩토리, IpoResponse 패턴 동일)
+  - `exception/{SubscriptionValidationException,SubscriptionConflictException,SubscriptionNotFoundException,SubscriptionForbiddenException}.java` — RuntimeException 파생 4종
+  - `exception/SubscriptionExceptionHandler.java` — `@RestControllerAdvice`: 400 VALIDATION_ERROR / 409 `DUPLICATE_SUBSCRIPTION` / 404 NOT_FOUND / 403 FORBIDDEN (IpoExceptionHandler 패턴 동일, JSON_UTF8 공통 응답)
+  - `service/subscription/SubscriptionService.java` — `register(SubscriptionRegisterRequest)`:
+    1. 필수값 검증(investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt null → 400), quantity ≤ 0 / depositAmount < 0 → 400 (AC-002/003)
+    2. **investorId 존재+소유권 검증**: `InvestorRepository.findById` → 없으면 404, `investor.getAccountId() != 현재 계정` → 403 (InvestorService.findOwnedInvestor 패턴)
+    3. **securitiesAccountId 존재+2단계 소유권 검증**: `SecuritiesAccountRepository.findByIdAndDeletedAtIsNull`(존재+미삭제) → 404, 그 계좌의 investorId로 Investor 재조회 → 그 accountId가 현재 계정과 다르면 403 (SecuritiesAccountService.getById 2단계 패턴)
+    4. **ipoId 존재 검증만**: `IpoRepository.findByIdAndDeletedAtIsNull` → 404 (IPO는 전역 기준정보, 소유권 없음)
+    5. 중복 검사: `findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(..., "ACTIVE")` → 존재 시 409 (AC-005). CANCELLED는 무관(AC-006). DB 부분 유니크 `uk_subscription_active_combo`가 최종 방어선 — `save` 시 `DataIntegrityViolationException` catch → 409 변환.
+    6. 저장 후 201 (AC-001)
+  - `controller/subscription/SubscriptionController.java` — `@PostMapping("/subscriptions")` 1개. **다른 Epic의 Repository는 Service 계층에서만 직접 참조**(InvestorRepository/SecuritiesAccountRepository/IpoRepository)하고 Controller는 SubscriptionService만 호출(모듈 간 의존 차단). 클래스 한글 주석 + 엔드포인트 메서드별 개별 한글 주석 모두 적용(AGENTS 15장).
+- **완료 조건 검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` → **전체 199개 테스트 통과** (기존 192개 + 신규 7개, failures 0 / errors 0)
+- `git diff --check` 이상 없음, 신규 파일 모두 100자 초과 라인 없음(4칸 인덴트 Google Java Style 수동 준수 — checkstyle 플러그인은 여전히 미도입)
+
+### 테스트 케이스 (7개 — SubscriptionControllerTest, @SpringBootTest + MockMvc, IpoControllerTest/SecuritiesAccountControllerTest 패턴)
+1. `registerSubscriptionWithValidRequestReturns201AndSavedSubscription` — 정상 등록 201 + 응답/DB 필드, status=ACTIVE, deletedAt=null (AC-001)
+2. `registerSubscriptionWithMissingRequiredFieldsReturns400` — 필수값 6종 각각 누락 → 400 VALIDATION_ERROR, 레코드 미생성 (AC-002)
+3. `registerSubscriptionWithQuantityZeroOrNegativeOrNegativeDepositReturns400` — quantity=0/-1, depositAmount=-1 → 400 (AC-003)
+4. `registerSubscriptionWithUnknownReferenceReturns404` — 존재하지 않는 investorId/securitiesAccountId/ipoId 각각 404 NOT_FOUND (AC-004)
+5. `registerSubscriptionWithInvestorOrAccountOwnedByOtherAccountReturns403` — 타 계정 소유 investorId / securitiesAccountId → 403 FORBIDDEN (신규 소유권 검증)
+6. `registerSubscriptionWithDuplicateActiveComboReturns409` — 동일 조합 ACTIVE 중복 → 409 DUPLICATE_SUBSCRIPTION (AC-005)
+7. `registerSubscriptionAfterCancelAllowsReregisterReturns201` — CANCELLED + deletedAt 기록 존재 시 동일 조합 재등록 201 (AC-006)
+
+### 다음 SF 예고
+- SF-3: 청약 목록 조회(GET /subscriptions, investorId/securitiesAccountId 필터) + 상세 조회(GET /subscriptions/{id}) — SF-1에서 만든 `findAllByDeletedAtIsNullOrderByCreatedAtDesc`/`findAllByInvestorIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc`/`findByIdAndDeletedAtIsNull` 재사용
+- 이후 SF-4(수정 PATCH), SF-5(취소 DELETE) 순차 진행
