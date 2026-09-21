@@ -67,3 +67,36 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-1 완료 → SF-2(등록 POST /securities-accounts): investorId 소유권 검증(AC-005), 첫 계좌 자동 isDefault=true(D-SA-003), 암호화 저장, 마스킹 응답
+
+## 2026-09-21 — SF-2 구현 완료 (Test-First RED→GREEN)
+
+### 완료 작업
+- **POST /securities-accounts 등록 API 신규 구현** (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `controller/securitiesaccount/SecuritiesAccountController.java` — `@PostMapping("/securities-accounts")`, 성공 시 201 Created 반환
+  - `controller/securitiesaccount/dto/SecuritiesAccountRegisterRequest.java` — investorId/securitiesFirmId/accountNumber(필수), accountName(선택), isDefault(선택)
+  - `controller/securitiesaccount/dto/SecuritiesAccountResponse.java` — id/investorId/securitiesFirmId/accountNumber(마스킹)/accountName/isDefault/status/deletedAt/createdAt/updatedAt
+  - `service/securitiesaccount/SecuritiesAccountService.java` — register 메서드:
+    1. investorId/securitiesFirmId/accountNumber null 검증 → 400 VALIDATION_ERROR
+    2. investorRepository.findById → 없으면 400 VALIDATION_ERROR("존재하지 않는 투자자입니다")
+    3. investor.accountId != SecurityUtils.getCurrentAccountId() → 403 FORBIDDEN (2단계 소유권 검증, AC-005)
+    4. securitiesFirmRepository.findByIdAndDeletedAtIsNull → 없으면 400 VALIDATION_ERROR("존재하지 않는 증권사입니다") — Epic 3의 SecuritiesFirmRepository 재사용
+    5. findByInvestorId가 0건이면 isDefault 강제 true (**D-SA-003**)
+    6. accountNumberEncryptor.encrypt 후 저장 (DB에는 암호문 저장)
+    7. 응답은 accountNumberMasker.mask(원본 평문)으로 마스킹 반환 (재복호화 없음)
+  - 예외 신규 2종: `SecuritiesAccountValidationException`(400 VALIDATION_ERROR), `SecuritiesAccountForbiddenException`(403 FORBIDDEN) + `SecuritiesAccountExceptionHandler`(@RestControllerAdvice)
+  - GET/PATCH/DELETE 엔드포인트는 이 SF에서 작성하지 않음 (금지사항 준수)
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 7건 먼저 작성 → RED(엔드포인트 없어 404) 확인 → 구현 → GREEN)
+- AC-001(유효 요청 201) — 응답 accountNumber가 마스킹된 형태(원문 평문 미노출, 뒷 4자리 `9012` 유지) + DB에 암호화 저장 검증
+- D-SA-003(첫 계좌 자동 기본) — 첫 계좌를 isDefault=false로 요청해도 응답/DB 모두 isDefault=true
+- D-SA-003 경계(두 번째 계좌는 요청값 유지) — 첫 계좌(기본) 등록 후 두 번째 계좌 isDefault=false 유지
+- AC-002(필수값 누락) — investorId/securitiesFirmId/accountNumber 각각 누락 → 400 VALIDATION_ERROR, 레코드 미생성
+- AC-003(존재하지 않는 투자자) → 400 VALIDATION_ERROR
+- AC-004(존재하지 않는 증권사) → 400 VALIDATION_ERROR
+- AC-005(타 계정 소유 투자자) → 403 FORBIDDEN, 레코드 미생성
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test` → **BUILD SUCCESSFUL / 전체 116건(기존 109 + 신규 7) 전부 GREEN, failures 0, errors 0**
+
+### 다음 단계
+- SF-2 완료 → SF-3(목록/상세 조회 GET /securities-accounts, GET /securities-accounts/{id}): 마스킹, securitiesFirmName 조인, 2단계 소유권 검증
