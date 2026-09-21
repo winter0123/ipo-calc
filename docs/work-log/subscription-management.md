@@ -180,3 +180,33 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ### 다음 SF 예고 — SF-5: 청약 취소 API (DELETE /subscriptions/{id}, 논리 삭제)
 - `findByIdAndDeletedAtIsNull` → 없으면 404, status를 CANCELLED로 변경 + deletedAt/updatedAt 갱신
 - Epic 7(배정) 구현 시 이번 SF에서 남긴 "수량 축소 제한" 검증을 `update()`에 추가해야 함
+
+---
+
+## 2026-09-21 — SF-5 완료 (청약 취소 API — DELETE /subscriptions/{id}, 논리 삭제) — **Epic 6 전체 완료**
+
+> 워크스페이스: backend-3, 브랜치: `winter0123/subscription-cancel`
+
+### 구현 내용 (Test-First: RED → GREEN)
+- **RED**: `SubscriptionControllerTest`에 SF-5 테스트 4개를 먼저 추가해 실행 — DELETE 엔드포인트가 아직 없어 컴파일/404 실패로 RED 확인.
+- **`SubscriptionService.cancel(Long id)`** 신규 (`IpoService.deactivate`와 동일 패턴):
+  1. `findByIdAndDeletedAtIsNull(id)` 없으면 404 — 이미 취소(CANCELLED+deletedAt)된 기록도 이 조회에서 자연 배제되어 재취소 시도가 자동으로 404 처리됨(AC-017, 별도 상태 체크 불필요).
+  2. `status`를 `CANCELLED`로 변경, `deletedAt`/`updatedAt`을 `LocalDateTime.now()`로 설정 후 저장(물리 삭제 없음, AC-016).
+  3. `STATUS_CANCELLED` 상수 추가(기존 `STATUS_ACTIVE`와 대칭).
+- **`SubscriptionController`**: `@DeleteMapping("/{id}") cancel(...)` 추가 — 204 No Content 반환, 메서드 위 한글 주석 작성(AGENTS 15장).
+
+### 테스트 케이스 (신규 4개, `SubscriptionControllerTest`에 추가)
+1. `cancelSubscriptionWithValidIdReturns204AndCancelsRecord` — 204 반환 + DB에서 status=CANCELLED, deletedAt/updatedAt 설정 확인 (AC-016)
+2. `cancelSubscriptionWithUnknownIdReturns404` — 존재하지 않는 ID → 404 NOT_FOUND (AC-017)
+3. `cancelSubscriptionAlreadyCancelledReturns404` — 이미 취소된 기록 재취소 시도 → 404 (엣지케이스, `findByIdAndDeletedAtIsNull`이 자연 배제)
+4. `cancelSubscriptionExcludesFromListAndDetailView` — 취소 후 목록 조회에서 제외(AC-018) + 상세 조회 404 확인
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- **전체 테스트 스위트 214개 통과** (기존 210개 + 신규 4개, failures 0 / errors 0 / skipped 0)
+- `SubscriptionControllerTest`: 22개 통과 (SF-2 등록 7 + SF-3 조회 5 + SF-4 수정 6 + SF-5 취소 4)
+
+### Epic 6 (청약 기록 관리, subscription-management) 완료 요약
+SF-1(엔티티/Repository/마이그레이션) → SF-2(등록) → SF-3(목록/상세 조회) → SF-4(수정) → SF-5(취소, 논리 삭제)까지 5개 SF 전부 완료. AC-001~AC-018 전체 충족(AC-019/020은 Epic 7 Allocation 도입 시 `update()`에 수량 축소 제한 검증으로 함께 반영 예정, D-S-005/SF-4 로그에 이미 남김). 커밋/PR/머지는 Master 진행.

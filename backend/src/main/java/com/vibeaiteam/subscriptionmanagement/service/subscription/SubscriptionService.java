@@ -28,6 +28,7 @@ import java.util.List;
 public class SubscriptionService {
 
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final SubscriptionRepository subscriptionRepository;
     private final InvestorRepository investorRepository;
@@ -185,6 +186,20 @@ public class SubscriptionService {
         } catch (DataIntegrityViolationException ex) {
             throw new SubscriptionConflictException("이미 등록된 청약입니다.");
         }
+    }
+
+    // SF-5: 청약 기록을 논리 취소한다(IpoService.deactivate와 동일 패턴). status를 CANCELLED로 변경하고
+    // deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된
+    // 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+    @Transactional
+    public void cancel(Long id) {
+        Subscription subscription = subscriptionRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
+        LocalDateTime now = LocalDateTime.now();
+        subscription.setStatus(STATUS_CANCELLED);
+        subscription.setDeletedAt(now);
+        subscription.setUpdatedAt(now);
+        subscriptionRepository.save(subscription);
     }
 
     // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)
