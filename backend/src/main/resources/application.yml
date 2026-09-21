@@ -29,6 +29,10 @@ spring:
     init:
       mode: never
 
+app:
+  encryption:
+    key: ${APP_ENCRYPTION_KEY:}
+
 server:
   port: 8080
   servlet:
