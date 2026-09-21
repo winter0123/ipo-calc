@@ -96,3 +96,17 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **166개 통과** (신규 6개 포함, 기존 테스트 영향 없음, 실패/에러 0)
+
+## 2026-09-21 — SF-4 완료 (PATCH /ipos/{id} 수정)
+
+### 구현 내용
+- `controller/ipo/dto/IpoUpdateRequest.java` — 모든 필드 nullable
+- `controller/ipo/IpoController.java` — `@PatchMapping("/{id}")`
+- `service/ipo/IpoService.java` — `update(Long id, IpoUpdateRequest)` (부분 수정, 유효성/중복 검사, 자기 자신 제외, updatedAt 갱신)
+- `IpoControllerTest.java` — 8개 신규 PATCH 테스트 추가 (정상 수정, 404, 400 날짜/가격/255자, 409 중복, 자기 값 재수정 허용)
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 통과 (기존 + 8개 추가, 실패 0)

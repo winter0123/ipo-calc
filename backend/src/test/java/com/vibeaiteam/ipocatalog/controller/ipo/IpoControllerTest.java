@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -414,6 +415,173 @@ class IpoControllerTest {
 
         assertThat(result.getResponse().getStatus()).isEqualTo(404);
         assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateIpoWithPartialFieldsReturns200AndUpdatedFields() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("companyName", "변경된기업명");
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(response.get("companyName")).isEqualTo("변경된기업명");
+        assertThat(response.get("ipoName")).isEqualTo("공모주A");
+        assertThat(response.get("updatedAt")).isNotNull();
+    }
+
+    @Test
+    void updateIpoWithUnknownIdReturns404() throws Exception {
+        signupAndLogin();
+        Map<String, Object> updateRequest = validRequest();
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", 9999L)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateIpoWithInvalidDateOrderReturns400() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("subscriptionStartDate", "2026-10-03");
+        updateRequest.put("subscriptionEndDate", "2026-10-01");
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertValidationError(result);
+    }
+
+    @Test
+    void updateIpoWithInvalidPriceRangeReturns400() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("lowerBandPrice", 15000);
+        updateRequest.put("upperBandPrice", 10000);
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertValidationError(result);
+    }
+
+    @Test
+    void updateIpoWithNegativePriceReturns400() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("lowerBandPrice", -100);
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertValidationError(result);
+    }
+
+    @Test
+    void updateIpoWithDuplicateStockCodeReturns409() throws Exception {
+        signupAndLogin();
+        Map<String, Object> first = validRequest();
+        MvcResult firstReg = registerIpo(first);
+        Long firstId = ((Number) readBody(firstReg).get("id")).longValue();
+
+        Map<String, Object> secondRequest = validRequest();
+        secondRequest.put("companyName", "기업B");
+        secondRequest.put("ipoName", "공모주B");
+        secondRequest.put("stockCode", "654321");
+        secondRequest.put("subscriptionStartDate", "2026-11-01");
+        secondRequest.put("subscriptionEndDate", "2026-11-02");
+        MvcResult secondReg = registerIpo(secondRequest);
+        Long secondId = ((Number) readBody(secondReg).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("stockCode", "123456");
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", secondId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        assertError(result, "DUPLICATE_IPO");
+    }
+
+    @Test
+    void updateIpoToSameExistingValueAllowsNoChange() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("companyName", "기업A");
+        updateRequest.put("ipoName", "공모주A");
+        updateRequest.put("stockCode", "123456");
+        updateRequest.put("subscriptionStartDate", "2026-10-01");
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(readBody(result).get("companyName")).isEqualTo("기업A");
+    }
+
+    @Test
+    void updateIpoOver255CharactersReturns400() throws Exception {
+        signupAndLogin();
+        Map<String, Object> request = validRequest();
+        MvcResult registered = registerIpo(request);
+        Long id = ((Number) readBody(registered).get("id")).longValue();
+
+        Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+        updateRequest.put("companyName", "가".repeat(256));
+
+        MvcResult result = mockMvc.perform(patch("/ipos/{id}", id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        assertValidationError(result);
     }
 
     private Map<String, Object> validRequest() {

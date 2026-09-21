@@ -2,6 +2,7 @@ package com.vibeaiteam.ipocatalog.service.ipo;
 
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
+import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.exception.IpoConflictException;
 import com.vibeaiteam.ipocatalog.exception.IpoNotFoundException;
@@ -37,6 +38,109 @@ public class IpoService {
         Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
         return IpoResponse.from(ipo);
+    }
+
+    @Transactional
+    public IpoResponse update(Long id, IpoUpdateRequest request) {
+        Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+
+        String updatedCompanyName = request.getCompanyName();
+        String updatedIpoName = request.getIpoName();
+        String updatedStockCodeRaw = request.getStockCode();
+        String updatedRoundLabel = request.getRoundLabel();
+        Long updatedLowerBandPrice = request.getLowerBandPrice();
+        Long updatedUpperBandPrice = request.getUpperBandPrice();
+        Long updatedFixedPrice = request.getFixedPrice();
+        LocalDate updatedSubscriptionStartDate = request.getSubscriptionStartDate();
+        LocalDate updatedSubscriptionEndDate = request.getSubscriptionEndDate();
+        LocalDate updatedListingDate = request.getListingDate();
+        Long updatedOfferingShareCount = request.getOfferingShareCount();
+
+        String computedCompanyName = updatedCompanyName != null ? updatedCompanyName.trim() : ipo.getCompanyName();
+        String computedIpoName = updatedIpoName != null ? updatedIpoName.trim() : ipo.getIpoName();
+        String computedStockCode = updatedStockCodeRaw != null ? normalizeOptional(updatedStockCodeRaw) : ipo.getStockCode();
+        String computedRoundLabel = updatedRoundLabel != null ? normalizeOptional(updatedRoundLabel) : ipo.getRoundLabel();
+        LocalDate computedSubscriptionStartDate = updatedSubscriptionStartDate != null ? updatedSubscriptionStartDate : ipo.getSubscriptionStartDate();
+        LocalDate computedSubscriptionEndDate = updatedSubscriptionEndDate != null ? updatedSubscriptionEndDate : ipo.getSubscriptionEndDate();
+        Long computedLowerBandPrice = updatedLowerBandPrice != null ? updatedLowerBandPrice : ipo.getLowerBandPrice();
+        Long computedUpperBandPrice = updatedUpperBandPrice != null ? updatedUpperBandPrice : ipo.getUpperBandPrice();
+        Long computedFixedPrice = updatedFixedPrice != null ? updatedFixedPrice : ipo.getFixedPrice();
+        Long computedOfferingShareCount = updatedOfferingShareCount != null ? updatedOfferingShareCount : ipo.getOfferingShareCount();
+
+        if (updatedCompanyName != null) {
+            validateRequiredName("companyName", updatedCompanyName);
+        }
+        if (updatedIpoName != null) {
+            validateRequiredName("ipoName", updatedIpoName);
+        }
+        if (updatedSubscriptionStartDate != null || updatedSubscriptionEndDate != null) {
+            if (computedSubscriptionStartDate == null || computedSubscriptionEndDate == null) {
+                throw new IpoValidationException("subscriptionStartDate와 subscriptionEndDate는 필수입니다.");
+            }
+            if (computedSubscriptionEndDate.isBefore(computedSubscriptionStartDate)) {
+                throw new IpoValidationException("subscriptionEndDate는 subscriptionStartDate보다 빠를 수 없습니다.");
+            }
+        }
+        if (updatedLowerBandPrice != null) {
+            validatePrice("lowerBandPrice", updatedLowerBandPrice);
+        }
+        if (updatedUpperBandPrice != null) {
+            validatePrice("upperBandPrice", updatedUpperBandPrice);
+        }
+        if (updatedFixedPrice != null) {
+            validatePrice("fixedPrice", updatedFixedPrice);
+        }
+        if (computedLowerBandPrice != null && computedUpperBandPrice != null && computedLowerBandPrice > computedUpperBandPrice) {
+            throw new IpoValidationException("lowerBandPrice는 upperBandPrice보다 클 수 없습니다.");
+        }
+        if (updatedOfferingShareCount != null) {
+            if (updatedOfferingShareCount <= 0) {
+                throw new IpoValidationException("offeringShareCount는 0보다 커야 합니다.");
+            }
+        }
+
+        checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
+
+        if (updatedCompanyName != null) {
+            ipo.setCompanyName(computedCompanyName);
+        }
+        if (updatedIpoName != null) {
+            ipo.setIpoName(computedIpoName);
+        }
+        if (updatedStockCodeRaw != null) {
+            ipo.setStockCode(computedStockCode);
+        }
+        if (updatedRoundLabel != null) {
+            ipo.setRoundLabel(computedRoundLabel);
+        }
+        if (updatedSubscriptionStartDate != null || updatedSubscriptionEndDate != null) {
+            ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
+            ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
+        }
+        if (updatedLowerBandPrice != null) {
+            ipo.setLowerBandPrice(computedLowerBandPrice);
+        }
+        if (updatedUpperBandPrice != null) {
+            ipo.setUpperBandPrice(computedUpperBandPrice);
+        }
+        if (updatedFixedPrice != null) {
+            ipo.setFixedPrice(computedFixedPrice);
+        }
+        if (updatedListingDate != null) {
+            ipo.setListingDate(updatedListingDate);
+        }
+        if (updatedOfferingShareCount != null) {
+            ipo.setOfferingShareCount(computedOfferingShareCount);
+        }
+
+        ipo.setUpdatedAt(LocalDateTime.now());
+        try {
+            Ipo saved = ipoRepository.save(ipo);
+            return IpoResponse.from(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw new IpoConflictException("이미 등록된 IPO입니다.");
+        }
     }
 
     @Transactional
