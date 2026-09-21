@@ -1144,13 +1144,38 @@ orca orchestration send --from <핸들> --type worker_done --subject "완료: sq
   --body "<3문장 요약>" --task-id <task_id> --dispatch-id <dispatch_id> --outcome succeeded
 ```
 
-### 23.4 완료 수집
+### 23.4 완료 수집 — `check`는 상태 조회가 아니라 메시지 큐 소비다 (2026-09-22 정정)
 
+`orca orchestration check`는 단순 상태 조회가 아니라 **FIFO 메시지 큐를 소비(consume)하는 동작**이다. `--wait`를 붙여도 **큐에서 꺼낸 배치를 `--ack <deliveryId>`로 명시적으로 확인 처리하기 전까지는 새 이벤트를 기다리지 않고, 가장 오래된 미확인 배치를 계속 재전송(replay)한다.** 이 사실을 모르고 쓰면 "대기"가 실제로는 옛날 메시지 재생으로 끝없이 반복된다(2026-09-22, 실제로 겪음 — 아래 절차 정리 계기).
+
+**핵심 전제(이래서 오래된 메시지를 안심하고 버려도 된다): 이 메시지함은 참고용 알림일 뿐, "작업이 완료됐다"는 유일한 증거는 실제 Git/PR 병합 상태(테스트 재실행 + diff 확인 후 병합, 12.4-1)다.** 이 메시지함을 신뢰 소스로 검증을 대체한 적이 없다면, 큐에 쌓인 옛 알림을 내용 확인 없이 버려도 이미 끝난 작업을 놓칠 위험이 없다.
+
+**① 평소 — 처리 즉시 ACK(근본 예방, 12.4-1/23.6과 동일 원칙):** `check`로 `worker_done`을 읽고 실제 Git 상태 검증·병합까지 끝냈다면, **같은 턴 안에서** `orca orchestration check --terminal <handle> --ack <deliveryId> --json`까지 실행한다. 미루면 다음에 또 백로그가 쌓인다.
+**단순히 큐에 뭐가 있는지만 보고 싶을 때**(확인 처리할 의도 없이)는 `--peek`을 쓴다 — `check`를 그냥 실행하면 읽음 처리 대상이 되어 대기 중이던 워커가 메시지를 못 받을 수 있다.
+
+**② `--wait` 호출 직전 — `--peek` 사전 점검(이중 방어):** 새 워커의 완료를 기다리려고 `--wait`를 걸기 전에, 먼저 `--peek`으로 이전 작업의 미확인 잔여 메시지가 있는지 가볍게 확인한다.
+
+**③ 잔여 메시지가 있으면 — 내용 확인 없이 일괄 ACK(위 "핵심 전제" 근거):** 지금 기다리는 작업과 무관한 과거 배치라면 의심하지 말고 바로 버린다. `deliveryId`만 뽑아 반복 ack하는 검증된 루프:
 ```bash
-orca orchestration check --terminal <코디핸들> --wait --types worker_done,escalation --timeout-ms 900000 --json
+ORCA_CMD="${ORCA_CLI_COMMAND:-orca}"
+last_ack=""  # 첫 라운드는 --ack 없이 호출해 현재 배치의 deliveryId부터 얻는다
+for i in $(seq 1 30); do
+  if [ -z "$last_ack" ]; then
+    out=$($ORCA_CMD orchestration check --terminal <코디핸들> --json 2>&1)
+  else
+    out=$($ORCA_CMD orchestration check --terminal <코디핸들> --ack "$last_ack" --json 2>&1)
+  fi
+  did=$(printf '%s' "$out" | python3 -c "import json,sys;print(json.load(sys.stdin).get('result',{}).get('deliveryId'))")
+  cnt=$(printf '%s' "$out" | python3 -c "import json,sys;print(json.load(sys.stdin).get('result',{}).get('count'))")
+  echo "round $i: deliveryId=$did count=$cnt"
+  if [ "$did" = "None" ] || [ -z "$did" ] || [ "$cnt" = "0" ]; then echo "CAUGHT_UP"; break; fi
+  last_ack="$did"
+done
 ```
+`CAUGHT_UP`이 뜨면 그제서야 `--wait`를 건다 — 그 전에 걸면 계속 옛 배치만 돌려받는다.
 
-- 구경/디버깅용 조회는 `inbox`(읽음 처리 안 함)를 쓴다. `check`는 기본적으로 읽음 처리하므로 무심코 실행하면 대기 중인 워커가 메시지를 못 받는다. 꼭 봐야 하면 `--peek`.
+**④ `--wait` 타임아웃 시 — `task-list`로 폴백:** 무작정 `--wait`를 재시도하지 않는다. 타임아웃이 나면 즉시 `orca orchestration task-list`로 그 태스크의 실제 상태를 직접 교차 확인한다. 그래도 갱신이 없거나 이상하면 24장 BLOCKED 기준에 따라 사람 개입을 요청한다.
+
 - subject가 `Failed:`로 시작하면 실패로 처리하고 완료로 닫지 않는다.
 
 ### 23.4-1 Monitor로 태스크 상태만 폴링하는 것으로는 워커 정지를 못 잡는다 (2026-09-21, 사용자가 직접 지적한 재발 사고)
