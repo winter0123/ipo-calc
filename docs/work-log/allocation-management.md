@@ -185,3 +185,56 @@ subscriptionId미존재404/AC-004, ACTIVE중복409/AC-005, CANCELLED후재등록
 **남은 작업**: SF-4(수정 API, PATCH /allocations/{id}) → SF-5(취소/논리
 삭제, DELETE /allocations/{id}) 순차 구현 필요. 커밋/PR/머지는 Master가
 진행.
+
+## 2026-09-22 — SF-4 구현 완료 (배정 수정 API, PATCH /allocations/{id})
+
+`docs/breakdown/allocation-management.md`의 SF-4를 구현했다. 브랜치
+`winter0123/allocation-update` (backend-3 워크스페이스, origin/main 기준
+생성, SF-1~3 포함). AC-012~015 커버.
+
+**산출물**:
+- `controller/allocation/dto/AllocationUpdateRequest.java` — 부분 수정을 위한
+  DTO (모든 필드 Optional, SubscriptionUpdateRequest 패턴과 동일).
+- `service/allocation/AllocationService.java` — `update(Long id,
+  AllocationUpdateRequest request)` 추가. SubscriptionService.update() /
+  IpoService.update()와 동일한 부분 수정 패턴:
+  1) `findByIdAndDeletedAtIsNull`로 기존 기록 조회(없으면 404)
+  2) 제공된 필드만 검증(`allocatedQuantity < 0` 시 400)
+  3) `subscriptionId`가 새로 제공된 경우에만 Subscription 존재 재검증(404)
+  4) `subscriptionId` 변경 시와 변경 없으나 `allocatedQuantity` 변경 시
+     모두 기존/새 Subscription의 `quantity`와 비교해 초과 시 400
+  4) 제공된 필드만 setter 호출해 갱신, `updatedAt` 갱신
+  5) 저장 후 `AllocationResponse` 반환, `DataIntegrityViolationException`
+     catch 시 409 변환
+- `controller/allocation/AllocationController.java` — `PATCH
+  /allocations/{id}` 추가. 한글 클래스/메서드 주석 포함(AGENTS.md 15장
+  규칙: 클래스 주석은 리소스 전체 요약, 메서드 주석은 해당 엔드포인트
+  하나의 동작).
+
+**특이사항 — 매도(Sale) 연결 시 수량 축소 제한 (AC-015)**:
+breakdown 문서 명시대로 Epic 7 구현 시점에는 Sale 테이블이 없으므로,
+이 검증 로직은 현재 구현하지 않고 **확장 지점(주석 + TODO)**으로만 남겨
+둔다. `work-log`에 "Epic 8 구현 시 추가 예정"을 명시했고, Service
+시그니처를 나중에 `SaleService`를 주입받아 확장할 수 있도록 설계했다.
+현재 단계에서는 allocationId 기반 Subscription의 `quantity` 비교 검증만
+수행한다.
+
+**테스트**: `AllocationControllerTest.java`에 6개 신규
+- `updateAllocationWithPartialFieldsReturns200AndUpdatedAllocation()` —
+  제공된 필드만 갱신, 미제공 필드는 기존값 유지 (AC-012)
+- `updateAllocationWithNewSubscriptionIdReturns200AndValidatesQuantity()` —
+  subscriptionId 변경 시 존재 검증 + 수량 검증 (AC-012, AC-013)
+- `updateAllocationWithUnknownSubscriptionReturns404()` — 미존재
+  subscriptionId 404 (AC-014)
+- `updateAllocationWithInvalidQuantityReturns400()` — allocatedQuantity
+  < 0 또는 청약수량 초과 시 400, subscriptionId 변경 시에도 검증 (AC-013)
+- `updateAllocationNotFoundReturns404()` — 미존재 배정 ID 404 (AC-014)
+- `updateCancelledAllocationReturns404()` — CANCELLED(deletedAt set)
+  기록은 `findByIdAndDeletedAtIsNull`로 조회 안 되어 404 (일관성 검증)
+
+**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+--rerun` → BUILD SUCCESSFUL, 237 tests completed, 0 failed (기존 231개 +
+신규 6개).
+
+**남은 작업**: SF-5(취소/논리 삭제, DELETE /allocations/{id}) 구현 필요.
+커밋/PR/머지는 Master가 진행.
