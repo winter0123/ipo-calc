@@ -213,3 +213,34 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 | `pnpm run format:check` | PASS (All matched files use Prettier code style!) |
 | `pnpm run test` | PASS (7 tests, 총 20 tests) |
 | `pnpm run build` | PASS (dist/ 생성, 88 modules transformed) |
+
+## 2026-09-21 — SF-5: 증권계좌 등록 화면 완료
+
+### 완료 내용
+- `entities/securities-firm/api-client.ts` + `types.ts` — `GET /securities-firms` 클라이언트 (`entities/investor/` 폴더 구조 동일 패턴)
+- `entities/investor/api-client.ts`에 `fetchInvestors()` 추가 — `GET /investors` (대시보드 투자자 목록 조회용)
+- `features/securities-account-register/SecuritiesAccountRegisterForm.tsx` — `react-hook-form` 기반 폼(securitiesFirmId select 필수, accountNumber 필수+하이픈 자동삽입, accountName 선택, isDefault 체크박스), `useParams`로 `:investorId` 읽어 제출 시 포함, 성공(201) 시 `alert()`로 마스킹된 accountNumber 표시 후 `/dashboard` 이동, `<form noValidate>` 적용
+- `features/securities-account-register/useSecuritiesFirms.ts` — TanStack Query `useQuery`로 `GET /securities-firms` 호출(드롭다운용)
+- `features/securities-account-register/useRegisterSecuritiesAccount.ts` — TanStack Query `useMutation`으로 `POST /securities-accounts` 호출
+- `features/securities-account-register/SecuritiesAccountRegisterForm.test.tsx` — RED→GREEN: 증권사 목록 로딩→옵션 채움, 정상 등록 성공+마스킹 표시+이동, 하이픈 자동 삽입(9자리/16자리), 투자자 미존재 에러, 증권사 미존재 에러, 400 오류, 네트워크 오류, 필수값 미입력 클라이언트 검증 — 8개 시나리오 (QueryClientProvider + fireEvent)
+- `pages/DashboardPage/DashboardPage.tsx` — 플레이스홀더 → `GET /investors`(`useQuery`)로 투자자 목록 표시, 각 투자자 옆 "증권계좌 등록" 링크(`/securities-accounts/register/:investorId`)로 investorId를 route param으로 전달 (전역 상태 스토어 없어 가장 단순한 방식으로 D-W13 "이후 증권계좌 등록 시 investorId 활용" 요구사항 충족) + `.module.css`
+- `pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx` + `.module.css` — `InvestorRegisterPage`와 동일 패턴으로 폼 래핑
+- `App.tsx`에 `/securities-accounts/register/:investorId` 라우트 추가
+
+### accountNumber 포맷을 백엔드와 맞춘 방식
+- `backend/.../SecuritiesAccountRegisterRequest.accountNumber`는 `String`이며 서비스 레이어(`SecuritiesAccountService.register`)가 별도 포맷 파싱/정규화 없이 받은 문자열을 그대로 암호화·저장하고, `AccountNumberMasker.mask()`도 "하이픈 포함 전체 길이 기준"으로 뒤 4자리만 노출한다. 기존 백엔드 컨트롤러 테스트 픽스처(`ACCOUNT_NUMBER = "123-456-789012"`)도 하이픈 포함 문자열을 그대로 사용하고 있어, 프론트도 **화면에 표시되는 하이픈 포함 문자열(예: `1234-5678-9012-3456`)을 그대로 전송**하도록 구현했다(숫자만 벗겨서 보내지 않음).
+- 응답의 마스킹된 `accountNumber`는 spec 5.2절 원칙대로 서버 값을 그대로 렌더링하며 프론트에서 별도 마스킹 로직을 구현하지 않았다.
+
+### 구현 중 발견/수정한 결함
+- **하이픈 자동 삽입 미동작 버그**: `<input>`에 커스텀 `onChange`를 먼저 적고 그 뒤에 `{...register('accountNumber', {...})}`를 스프레드하면 JSX 속성 순서상 `register()`가 반환하는 `onChange`가 커스텀 핸들러를 덮어써 하이픈 삽입 로직이 전혀 실행되지 않는 상태였다. `register()` 스프레드를 커스텀 `onChange`보다 앞에 두도록 순서를 바꿔서 커스텀 핸들러가 항상 마지막에 적용되도록 수정했고, 매 변경마다 원본 입력값에서 숫자만 추출해 처음부터 재포맷(최대 16자리)하도록 하여 연속 타이핑/붙여넣기(단일 change 이벤트) 모두에서 항상 정확한 하이픈 포맷이 제출되도록 했다.
+- **RHF 미지원 옵션 사용 버그**: `register('isDefault', { valueAsBoolean: true })`는 `react-hook-form`에 존재하지 않는 옵션(`valueAsNumber`/`valueAsDate`/`setValueAs`만 지원)이라 `pnpm run typecheck`에서 실패했다. 체크박스는 `type="checkbox"` 속성만으로 RHF가 자동으로 boolean을 반환하므로 옵션을 제거했다.
+- **spec vs 실제 백엔드 계약 불일치 확인**: spec AC-011은 투자자/증권사 미존재 시 404를 명시하지만, 실제 백엔드(`SecuritiesAccountControllerTest`)는 두 경우 모두 400 `VALIDATION_ERROR`를 반환한다(`SecuritiesAccountValidationException`이 400에 매핑됨, 404는 조회/수정/삭제 전용). 프론트 에러 매핑은 SF-4 패턴(메시지 문자열에 상태코드+엔티티명 포함 여부로 분기)을 그대로 따르되, 404/400 문자열 패턴을 모두 인식하도록 하여 두 계약 어느 쪽이든(현재의 400, spec상 404) 올바른 한글 메시지가 표시되게 했다. 백엔드 자체 수정은 이번 작업 범위(frontend workspace) 밖이라 진행하지 않았다.
+
+### 실행한 명령어 및 결과
+| 명령어 | 결과 |
+|---|---|
+| `pnpm run lint` | PASS (0 errors, watch() 관련 warning 1건만 존재) |
+| `pnpm run typecheck` | PASS (0 errors) |
+| `pnpm run format:check` | PASS (All matched files use Prettier code style!) |
+| `pnpm run test` | PASS (8 tests 추가, 총 28 tests) |
+| `pnpm run build` | PASS (dist/ 생성, 97 modules transformed) |
