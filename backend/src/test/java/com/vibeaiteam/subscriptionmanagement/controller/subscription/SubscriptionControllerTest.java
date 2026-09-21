@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,6 +62,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * - AC-014: 청약 수정 실패 (중복) — 다른 ACTIVE 기록과 (investorId, securitiesAccountId, ipoId) 조합 중복 시 409,
  *           자기 자신과 동일 조합으로는 충돌하지 않음
  * - AC-015: 청약 수정 실패 (존재하지 않는 ID) — 404 NOT_FOUND
+ * - AC-016: 청약 취소 성공 — DELETE /subscriptions/{id} 시 204 No Content, status가 CANCELLED로 변경되고
+ *           deletedAt이 설정됨 (물리 삭제하지 않음)
+ * - AC-017: 청약 취소 실패 (존재하지 않는 ID) — 404 NOT_FOUND
  * - AC-018: 취소된 청약은 목록 조회에서 제외
  * - 소유권 검증: 다른 계정 소유의 investorId/securitiesAccountId로 등록 시도 → 403 FORBIDDEN
  * - 수정 시 새로 제공된 investorId/securitiesAccountId는 소유권 재검증(403), ipoId는 존재 재검증(404)
@@ -302,6 +306,10 @@ class SubscriptionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andReturn();
+    }
+
+    private MvcResult cancelSubscription(Long id) throws Exception {
+        return mockMvc.perform(delete("/subscriptions/" + id).session(session)).andReturn();
     }
 
     private Map<String, Object> readBody(MvcResult result) throws Exception {
@@ -881,5 +889,99 @@ class SubscriptionControllerTest {
         Map<String, Object> selfResponse = readBody(selfUpdate);
         assertThat(selfResponse.get("memo")).isEqualTo("자기 자신 재수정");
         assertThat(((Number) selfResponse.get("investorId")).longValue()).isEqualTo(investor1);
+    }
+
+    @Test
+    void cancelSubscriptionWithValidIdReturns204AndCancelsRecord() throws Exception {
+        // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-016)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: DELETE /subscriptions/{id} 요청을 보냄
+        MvcResult result = cancelSubscription(subscriptionId);
+
+        // Then: 204 No Content가 반환되고, status가 CANCELLED로 변경되며 deletedAt이 설정됨 (물리 삭제하지 않음) (AC-016)
+        assertThat(result.getResponse().getStatus())
+                .as("유효한 청약 취소 요청 시 204 No Content를 반환해야 합니다 (AC-016)").isEqualTo(204);
+        Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+        assertThat(cancelled.getDeletedAt()).isNotNull();
+        assertThat(cancelled.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void cancelSubscriptionWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-017)
+        signupAndLogin();
+
+        // When: DELETE /subscriptions/{존재하지 않는 id} 요청을 보냄
+        MvcResult result = cancelSubscription(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-017)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 취소는 404를 반환해야 합니다 (AC-017)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void cancelSubscriptionAlreadyCancelledReturns404() throws Exception {
+        // Given: 등록된 청약이 이미 한 번 취소됨 (엣지케이스: 재취소는 자연 배제)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        MvcResult firstCancel = cancelSubscription(subscriptionId);
+        assertThat(firstCancel.getResponse().getStatus()).isEqualTo(204);
+
+        // When: 이미 취소된 기록을 다시 취소 시도함
+        MvcResult result = cancelSubscription(subscriptionId);
+
+        // Then: 404 Not Found + NOT_FOUND — 이미 삭제된(deletedAt 설정) 기록은 조회되지 않음 (엣지케이스)
+        assertThat(result.getResponse().getStatus())
+                .as("이미 취소된 기록의 재취소는 404를 반환해야 합니다 (엣지케이스)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void cancelSubscriptionExcludesFromListAndDetailView() throws Exception {
+        // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-018)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        MvcResult registerResult = registerSubscription(validRequest(investorId, securitiesAccountId, ipoId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: 청약을 취소한 뒤 목록/상세 조회를 수행함
+        MvcResult cancelResult = cancelSubscription(subscriptionId);
+        assertThat(cancelResult.getResponse().getStatus()).isEqualTo(204);
+
+        MvcResult listResult = mockMvc.perform(get("/subscriptions").session(session)).andReturn();
+        MvcResult detailResult = mockMvc.perform(get("/subscriptions/" + subscriptionId).session(session)).andReturn();
+
+        // Then: 목록 조회에서는 제외되고(AC-018), 상세 조회는 404를 반환함
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(listResult);
+        assertThat(body).as("취소된 청약은 목록 조회에서 제외되어야 합니다 (AC-018)").isEmpty();
+
+        assertThat(detailResult.getResponse().getStatus())
+                .as("취소된 청약의 상세 조회는 404를 반환해야 합니다").isEqualTo(404);
+        assertError(detailResult, "NOT_FOUND");
     }
 }

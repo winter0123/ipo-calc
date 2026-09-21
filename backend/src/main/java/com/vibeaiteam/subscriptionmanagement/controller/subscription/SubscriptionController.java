@@ -7,6 +7,7 @@ import com.vibeaiteam.subscriptionmanagement.service.subscription.SubscriptionSe
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,5 +62,13 @@ public class SubscriptionController {
             @PathVariable Long id, @RequestBody SubscriptionUpdateRequest request) {
         SubscriptionResponse response = subscriptionService.update(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    // 청약 ID로 해당 청약을 취소(CANCELLED) 상태로 논리 삭제하고, 204 No Content를 반환한다. 물리 삭제는
+    // 수행하지 않는다. 존재하지 않거나 이미 취소된 기록이면 404를 반환한다.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancel(@PathVariable Long id) {
+        subscriptionService.cancel(id);
+        return ResponseEntity.noContent().build();
     }
 }
