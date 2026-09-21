@@ -91,18 +91,16 @@ class DataIsolationTest {
         MvcResult result = mockMvc.perform(get("/api/test-protected"))
                 .andReturn();
 
-        // Then: 401 Unauthorized 또는 302 Found(로그인 페이지 리다이렉트) 응답
+        // Then: 401 Unauthorized 응답
         int status = result.getResponse().getStatus();
 
         assertThat(status)
-                .as("인증되지 않은 요청은 401 Unauthorized 또는 302 리다이렉트를 반환해야 합니다 (AC-010)")
-                .isIn(401, 302);
+                .as("인증되지 않은 요청은 401 Unauthorized를 반환해야 합니다 (AC-010)")
+                .isEqualTo(401);
 
-        // Note: Spring Security 기본 설정에 따라 form login이 활성화되어 있으면
-        // API 요청이라도 302 리다이렉트(/login)가 올 수 있음.
-        // spec.md AC-010에서는 API 전용이므로 401을 기대하지만,
-        // 현재 SecurityConfig가 formLogin을 사용 중이므로 302도 허용함.
-        // 향후 API 전용 인증 진입점(AuthenticationEntryPoint) 커스텀 시 401로 통일 예정.
+        // Note: D-I-006 (2026-09-21): AuthenticationEntryPoint를 HttpStatusEntryPoint(401)로 변경.
+        // 이전에는 formLogin 기본 동작으로 302 리다이렉트(/login)가 올 수 있어 401/302를 허용했지만,
+        // 이제 JSON API 계약(AC-010, AC-003)에 맞춰 항상 401을 반환한다.
     }
 
     @Test
