@@ -1246,33 +1246,39 @@ Master(Claude Code) 세션이 매번 붙어있지 않아도, 진행 상황을 �
 - **감지 스크립트는 Claude 세션과 완전히 독립된 프로세스로 돌린다**(cron 또는 무한루프+sleep 백그라운드 프로세스). Claude 세션이 끝나거나 컨텍스트가 압축돼도 계속 감시할 수 있어야 한다.
 - **Master 자신만 아는 이벤트(표의 4, 5번)는 폴링 스크립트가 아니라 Master가 그 순간 직접 `hermes send`를 호출한다.** 외부 스크립트가 Orca/GitHub 상태만 보고는 알 수 없는 이벤트이기 때문이다.
 
-### 28.1 설치 (Hermes 예시 — 다른 메시징 CLI로 대체 가능)
+### 28.1 설치 — 프로젝트 공용 스크립트 (한 번만 만들면 모든 프로젝트가 재사용)
+
+**이 스크립트는 특정 프로젝트 전용이 아니다.** `~/.hermes/scripts/`(저장소 밖, git 추적 안 함)에 한 벌만 만들어 두면 `--repo` 인자만 바꿔서 어떤 프로젝트에서도 그대로 재사용한다.
 
 전제: 이미 설정된 메시징 CLI가 있고(예: Hermes가 Telegram/Discord/Slack 봇과 연결돼 있음), 그 CLI가 "LLM 없이 순수 텍스트만 보내는" 하위 명령을 제공해야 한다(Hermes는 `hermes send`).
 
 ```bash
-# 1. 홈 채널이 필요하면 한 번만 설정 (Hermes 예시)
+# 1. 홈 채널이 필요하면 한 번만 설정 (Hermes 예시, 계정당 1회)
 hermes send --list telegram              # 사용 가능한 타겟(채널/chat_id) 확인
 hermes config set TELEGRAM_HOME_CHANNEL <chat_id>   # --to telegram만으로 보낼 수 있게
 
-# 2. 감지 스크립트와 상태 파일은 이 저장소 밖(예: ~/.hermes/scripts/, ~/.hermes/state/<project>/)에 둔다
-#    — 절대 경로/개인 채널 정보가 들어가므로 git 커밋 대상이 아니다.
+# 2. 공용 스크립트 2개를 ~/.hermes/scripts/에 둔다 (한 번만 작성, 모든 프로젝트가 공유)
+#    - feature-notify.py       : --repo <owner>/<repo> 인자를 받는 1회성 폴링 스크립트
+#    - feature-notify-loop.sh  : 같은 인자로 feature-notify.py를 무한 반복 실행하는 래퍼
+#    상태 파일은 저장소별로 자동 분리된다: ~/.hermes/state/<owner>__<repo>/
 ```
 
-감지 스크립트(`<project>-notify.py`, 의사코드 아님 — 실제 작동 검증됨)의 트리거(28.0의 "1. 기능 구현 완료"에 대응):
+트리거(28.0의 "1. 기능 구현 완료"에 대응, `feature-notify.py` 실제 동작):
 
 - `gh pr list --repo <owner>/<repo> --state all --json number,title,body --limit 50`을 폴링해, 마지막으로 본 PR 번호보다 큰 번호가 나타나면 그 PR의 title과 body 중 `## Summary` 섹션(없으면 body 전체 앞부분)을 뽑아 `🎉 기능 구현 완료: <PR 제목> (PR #<번호>)\n\n<Summary 내용>` 형태로 보낸다. "검증 완료"처럼 무엇을 어떻게 만들었는지 안 보이는 문구는 쓰지 않는다.
-- **이미 알림을 보낸 PR 번호를 로컬 상태 파일에 남겨** 같은 이벤트를 중복 발송하지 않는다.
-- **최초 설치 시 반드시 기존 이력을 시딩한다**: 이미 존재하는 PR 최대 번호를 "이미 알림 보냄" 상태로 미리 기록해두지 않으면, 처음 실행하는 순간 그동안 쌓인 이력이 한꺼번에 알림으로 쏟아진다.
+- **이미 알림을 보낸 PR 번호를 `<owner>__<repo>/last-pr-number.txt`에 남겨** 같은 이벤트를 중복 발송하지 않는다.
+- **최초로 새 프로젝트에 붙일 때 반드시 기존 이력을 시딩한다**: `gh pr list --repo <owner>/<repo> --state all --json number --jq 'max_by(.number).number'`로 현재 최대 PR 번호를 확인해 `last-pr-number.txt`에 미리 써 둔다 — 안 하면 처음 실행하는 순간 그동안 쌓인 PR 이력이 한꺼번에 알림으로 쏟아진다.
 - 28.0의 "4. Master 정지"/"5. 사람 결정 필요"는 이 폴링 스크립트가 아니라 **Master가 그 순간 직접** `hermes send`를 호출한다(24장 참고). "2/3. 사용량 한도"는 아직 미구현이다.
 
 ```bash
-# 3. 백그라운드로 무한 반복 실행 (Claude 세션과 무관하게 계속 생존)
-nohup <loop-script> >> <log-path> 2>&1 &
+# 3. 프로젝트마다 --repo만 바꿔서 백그라운드로 무한 반복 실행 (Claude 세션과 무관하게 계속 생존)
+STATE_DIR=~/.hermes/state/<owner>__<repo>; mkdir -p "$STATE_DIR"
+nohup ~/.hermes/scripts/feature-notify-loop.sh <owner>/<repo> >> "$STATE_DIR/loop.log" 2>&1 &
 disown
-# 종료: pkill -f <loop-script-name>
+# 종료: pkill -f "feature-notify-loop.sh <owner>/<repo>"
+# 여러 프로젝트를 동시에 감시하려면 이 3번 명령을 프로젝트 수만큼 반복하면 된다(서로 상태가 안 섞임).
 ```
 
-- 폴링 주기는 30초~1분이면 충분하다(이벤트 빈도가 이보다 훨씬 낮음).
+- 폴링 주기는 기본 30초(스크립트 2번째 인자로 조절 가능)면 충분하다(이벤트 빈도가 이보다 훨씬 낮음).
 - 배포 후 반드시 **통제된 실제 발송 테스트**를 한다 — 상태 파일의 마지막 값을 하나 앞으로 되돌려 "새 이벤트"로 인식시킨 뒤 실행하고, 실제로 메시지가 도착하는지 확인한다. 문서만 보고 "될 것이다"로 넘기지 않는다.
 
