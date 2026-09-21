@@ -1,0 +1,197 @@
+import { useForm } from 'react-hook-form'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useSecuritiesFirms } from './useSecuritiesFirms.ts'
+import {
+  useRegisterSecuritiesAccount,
+  type RegisterSecuritiesAccountRequest,
+  type RegisterSecuritiesAccountResponse,
+} from './useRegisterSecuritiesAccount.ts'
+import styles from './SecuritiesAccountRegisterForm.module.css'
+
+export default function SecuritiesAccountRegisterForm() {
+  const navigate = useNavigate()
+  const params = useParams<{ investorId: string }>()
+  const { data: firms, isLoading: firmsLoading, error: firmsError } = useSecuritiesFirms()
+  const { mutate, isPending, error } = useRegisterSecuritiesAccount()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<RegisterSecuritiesAccountRequest>({ mode: 'onSubmit' })
+
+  const investorId = params.investorId ? Number(params.investorId) : 0
+
+  const accountNumberInput = watch('accountNumber')
+  const formattedAccountNumber = accountNumberInput
+    ?.replace(/\D/g, '')
+    .replace(/(.{4})/g, '$1-')
+    .replace(/-$/, '')
+
+  const onSubmit = (data: RegisterSecuritiesAccountRequest) => {
+    mutate(
+      { ...data, investorId },
+      {
+        onSuccess: (response: RegisterSecuritiesAccountResponse) => {
+          alert(`등록 완료: ${response.accountNumber}`)
+          navigate('/dashboard')
+        },
+        onError: () => {
+          // 에러 메시지는 error 상태로 처리
+        },
+      },
+    )
+  }
+
+  const getFormErrorMessage = () => {
+    if (!error) return null
+    const msg = error instanceof Error ? error.message : String(error)
+    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
+      if (msg.includes('투자자') || msg.includes('investor')) {
+        return '투자자 정보를 찾을 수 없습니다.'
+      }
+      if (msg.includes('증권사') || msg.includes('securities')) {
+        return '선택한 증권사를 찾을 수 없습니다.'
+      }
+      return '투자자 정보를 찾을 수 없습니다.'
+    }
+    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
+      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
+    }
+    if (
+      msg.includes('Failed to fetch') ||
+      msg.includes('Network error') ||
+      msg.includes('Network request failed')
+    ) {
+      return '네트워크 연결을 확인해 주세요.'
+    }
+    if (msg) return msg
+    return '네트워크 연결을 확인해 주세요.'
+  }
+
+  if (firmsLoading) {
+    return <div className={styles.loading}>증권사 목록을 불러오는 중...</div>
+  }
+
+  if (firmsError) {
+    return (
+      <div className={styles.error}>
+        증권사 목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
+      </div>
+    )
+  }
+
+  return (
+    <form
+      className={styles.form}
+      onSubmit={handleSubmit(onSubmit)}
+      aria-label="증권계좌 등록 폼"
+      noValidate
+    >
+      <div className={styles.field}>
+        <label htmlFor="securitiesFirmId">증권사</label>
+        <select
+          id="securitiesFirmId"
+          aria-invalid={!!errors.securitiesFirmId || !!error}
+          aria-describedby="securitiesFirmId-error"
+          {...register('securitiesFirmId', {
+            required: '증권사를 선택해 주세요.',
+            valueAsNumber: true,
+          })}
+          disabled={isPending}
+        >
+          <option value="">증권사 선택</option>
+          {firms?.map((firm) => (
+            <option key={firm.id} value={firm.id}>
+              {firm.name}
+            </option>
+          ))}
+        </select>
+        {errors.securitiesFirmId && (
+          <span id="securitiesFirmId-error" className={styles.error} aria-live="polite">
+            {String(errors.securitiesFirmId.message)}
+          </span>
+        )}
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="accountNumber">계좌번호</label>
+        <input
+          id="accountNumber"
+          type="text"
+          placeholder="0000-0000-0000-0000"
+          aria-invalid={!!errors.accountNumber || !!error}
+          aria-describedby="accountNumber-error"
+          {...register('accountNumber', {
+            required: '계좌번호를 입력해 주세요.',
+            validate: (v) => {
+              const digits = v?.replace(/\D/g, '') ?? ''
+              return digits.length === 16 || '계좌번호는 16자리 숫자여야 합니다.'
+            },
+          })}
+          value={formattedAccountNumber ?? ''}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 16)
+            const formatted = digits.replace(/(.{4})/g, '$1-').replace(/-$/, '')
+            setValue('accountNumber', formatted, { shouldValidate: true })
+          }}
+          disabled={isPending}
+        />
+        {errors.accountNumber && (
+          <span id="accountNumber-error" className={styles.error} aria-live="polite">
+            {String(errors.accountNumber.message)}
+          </span>
+        )}
+        <p className={styles.hint}>숫자만 입력하면 자동으로 하이픈이 삽입됩니다.</p>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="accountName">계좌명 (선택)</label>
+        <input
+          id="accountName"
+          type="text"
+          placeholder="예: 주력 계좌"
+          aria-invalid={!!errors.accountName}
+          aria-describedby="accountName-error"
+          {...register('accountName')}
+          disabled={isPending}
+        />
+        {errors.accountName && (
+          <span id="accountName-error" className={styles.error} aria-live="polite">
+            {String(errors.accountName.message)}
+          </span>
+        )}
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            aria-invalid={!!errors.isDefault}
+            aria-describedby="isDefault-error"
+            {...register('isDefault')}
+            disabled={isPending}
+          />
+          기본 계좌로 설정
+        </label>
+        {errors.isDefault && (
+          <span id="isDefault-error" className={styles.error} aria-live="polite">
+            {String(errors.isDefault.message)}
+          </span>
+        )}
+      </div>
+
+      {getFormErrorMessage() && (
+        <div className={styles.formError} aria-live="polite">
+          {getFormErrorMessage()}
+        </div>
+      )}
+
+      <button type="submit" disabled={isPending} className={styles.submitButton}>
+        {isPending ? '등록 중...' : '등록'}
+      </button>
+    </form>
+  )
+}

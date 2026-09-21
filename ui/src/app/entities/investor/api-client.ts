@@ -7,3 +7,9 @@ export async function registerInvestor(data: InvestorRegisterRequest): Promise<I
     body: JSON.stringify(data),
   })
 }
+
+export async function fetchInvestors(): Promise<InvestorResponse[]> {
+  return apiFetch<InvestorResponse[]>('/investors', {
+    method: 'GET',
+  })
+}
