@@ -63,3 +63,35 @@ Subscription(Epic 6)과 Allocation(Epic 7)은 별도의 백엔드 리소스이�
 검증: 백엔드 워크트리(backend-3)에서 컨트롤러 존재 여부(GET /investors, /securities-accounts, /ipos, POST /subscriptions + main log)와 Epic 11/7 미구현을 실제 파일로 확인. 프론트 FSD(entities/features/pages) 및 Epic 13 SF-4 패턴(react-hook-form + TanStack Query + 셀렉트 드롭다운)도 읽고 반영함.
 
 커밋/PR은 Master 담당(워커는 git 작업 안 함).
+
+---
+
+## 2026-09-21 — SF-1: 청약 등록 화면 구현 (task_8838c31ae3f9)
+
+`docs/breakdown/web-subscription-workflow.md` SF-1을 산출물 파일 경로/API/특이사항 그대로 구현 완료.
+
+### 완료된 작업
+- `entities/ipo/{types,api-client}.ts` — 신규. `Ipo` 타입, `fetchIpos()` (`GET /ipos`)
+- `entities/securities-account/{types,api-client}.ts` — 신규. `SecuritiesAccount` 타입, `fetchSecuritiesAccounts()` (`GET /securities-accounts`)
+- `entities/subscription/{types,api-client}.ts` — 신규. `SubscriptionRegisterRequest`/`Subscription` 타입, `createSubscription()` (`POST /subscriptions`)
+- `entities/investor/api-client.ts`의 `fetchInvestors()`는 Epic 13에서 이미 추가되어 있어 변경 없음
+- `features/subscription-register/SubscriptionRegisterForm/SubscriptionRegisterForm.{tsx,module.css,test.tsx}` — 투자자/증권계좌/공모주 드롭다운(각각 `useQuery`) + 수량/증거금/청약일시/메모, react-hook-form + `noValidate`
+- `features/subscription-register/useSubscriptionRegister.ts` — `POST /subscriptions` `useMutation`, `onSuccess`에서 `invalidateQueries(['investmentHistory'])` 후 `/subscriptions`로 이동
+- `pages/SubscriptionRegisterPage/SubscriptionRegisterPage.{tsx,module.css}`
+- `App.tsx`에 `/subscriptions/register` 라우트 추가
+- `shared/components/ConfirmDialog/ConfirmDialog.{tsx,module.css,test.tsx}` — 신규 공통 컴포넌트만 생성(사용처 없음). `aria-modal`, Escape 닫기, 포커스 트랩, 열릴 때 확인 버튼 자동 포커스 구현
+
+### 특이사항 반영
+- quantity는 0 초과 정수, depositAmount는 0 이상 정수(0원 허용)만 검증 — 최소 청약 단위 등 신규 규칙 없음
+- 404 에러는 응답 메시지에 포함된 엔티티 키워드(투자자/증권계좌/공모주)로 필드 매핑 — `securities-account-register`(Epic 13) 참고 패턴과 동일하게 폼 하단 공통 에러 영역에 표시(필드별 개별 배치 대신 기존 코드베이스 관례를 그대로 따름)
+- 409는 "이미 동일한 조건의 청약이 존재합니다.", 네트워크 오류는 "네트워크 연결을 확인해 주세요."로 매핑
+
+### 실행한 검증
+- `pnpm run lint` — 통과(기존 파일의 사전 존재 warning 1건 외 무관)
+- `pnpm run typecheck` — 통과
+- `pnpm run format:check` — 통과
+- `pnpm run test` — 44개 테스트 전체 통과 (기존 28개 + 신규 16개: SubscriptionRegisterForm 10개, ConfirmDialog 6개)
+- `pnpm run build` — 통과
+
+### 남은 작업
+SF-2(청약 목록 화면)는 Epic 11(`GET /investment-history`) 백엔드 완료 후 착수. 커밋/PR/머지는 Master가 진행.
