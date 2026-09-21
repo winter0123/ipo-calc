@@ -40,6 +40,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -547,5 +548,176 @@ class AllocationControllerTest {
         assertThat(result.getResponse().getStatus())
                 .as("테스트 사전 준비: 청약 등록은 201이어야 합니다").isEqualTo(201);
         return ((Number) objectMapper.readValue(utf8Body(result), Map.class).get("id")).longValue();
+    }
+
+    // 배정 수정 테스트 (SF-4, AC-012~015)
+
+    @Test
+    void updateAllocationWithPartialFieldsReturns200AndUpdatedAllocation() throws Exception {
+        // Given: 존재하는 배정 기록 (AC-012)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When: PATCH /allocations/{id} 요청 — allocatedQuantity와 note만 제공 (부분 수정)
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("allocatedQuantity", 80);
+        updateRequest.put("note", "수정된 비고");
+        MvcResult result = mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        // Then: 200 OK, 제공된 필드만 갱신되고 나머지는 기존값 유지 (AC-012)
+        assertThat(result.getResponse().getStatus())
+                .as("부분 수정 요청 시 200 OK를 반환해야 합니다 (AC-012)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(allocationId);
+        assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(80L);
+        assertThat(response.get("note")).isEqualTo("수정된 비고");
+        // subscriptionId, allocatedAt, allocationMethod, allocationPrice는 기존값 유지
+        assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId);
+        assertThat(response.get("allocatedAt")).isEqualTo("2026-10-05T18:00:00");
+        assertThat(response.get("allocationMethod")).isEqualTo("균등배정");
+        assertThat(((Number) response.get("allocationPrice")).longValue()).isEqualTo(10000L);
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void updateAllocationWithNewSubscriptionIdReturns200AndValidatesQuantity() throws Exception {
+        // Given: 존재하는 배정 기록과 다른 Subscription (AC-012, subscriptionId 변경 시 재검증)
+        signupAndLogin();
+        Long subscriptionId1 = createSubscription(100L);
+        Long subscriptionId2 = createSubscription(200L); // 청약수량 200
+        MvcResult created = registerAllocation(validRequest(subscriptionId1));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When: PATCH /allocations/{id} 요청 — subscriptionId 변경 (존재하는 Subscription, 수량 150 ≤ 200)
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("subscriptionId", subscriptionId2);
+        updateRequest.put("allocatedQuantity", 150);
+        MvcResult result = mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        // Then: 200 OK, subscriptionId와 allocatedQuantity가 갱신됨
+        assertThat(result.getResponse().getStatus())
+                .as("subscriptionId 변경 시 존재 검증 후 200 OK를 반환해야 합니다 (AC-012)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId2);
+        assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(150L);
+    }
+
+    @Test
+    void updateAllocationWithUnknownSubscriptionReturns404() throws Exception {
+        // Given: 존재하는 배정 기록 (AC-014)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When: PATCH /allocations/{id} 요청 — 존재하지 않는 subscriptionId 제공
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("subscriptionId", 99999999L);
+        MvcResult result = mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-014)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 subscriptionId는 404를 반환해야 합니다 (AC-014)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateAllocationWithInvalidQuantityReturns400() throws Exception {
+        // Given: 청약수량 100인 Subscription으로 생성된 배정 기록 (AC-013)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When/Then: allocatedQuantity < 0, allocatedQuantity > 청약수량 각각 400 (AC-013)
+        Map<String, Object> negativeQuantity = new LinkedHashMap<>();
+        negativeQuantity.put("allocatedQuantity", -1);
+        assertValidationError(mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(negativeQuantity)))
+                .andReturn());
+
+        Map<String, Object> overQuantity = new LinkedHashMap<>();
+        overQuantity.put("allocatedQuantity", 101);
+        assertValidationError(mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(overQuantity)))
+                .andReturn());
+
+        // subscriptionId 변경 시에도 청약수량 초과 검증 (AC-013)
+        Long subscriptionId2 = createSubscription(50L); // 청약수량 50
+        Map<String, Object> overQuantityWithSubChange = new LinkedHashMap<>();
+        overQuantityWithSubChange.put("subscriptionId", subscriptionId2);
+        overQuantityWithSubChange.put("allocatedQuantity", 60);
+        assertValidationError(mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(overQuantityWithSubChange)))
+                .andReturn());
+    }
+
+    @Test
+    void updateAllocationNotFoundReturns404() throws Exception {
+        // Given: 존재하지 않는 배정 ID (AC-014)
+        signupAndLogin();
+
+        // When: PATCH /allocations/99999999 요청
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("allocatedQuantity", 50);
+        MvcResult result = mockMvc.perform(patch("/allocations/99999999")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-014)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 배정 ID는 404를 반환해야 합니다 (AC-014)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateCancelledAllocationReturns404() throws Exception {
+        // Given: CANCELLED 상태의 배정 기록 (SF-3 findByIdAndDeletedAtIsNull이 NULL filtered)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+        Allocation cancelled = allocationRepository.findById(allocationId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        allocationRepository.saveAndFlush(cancelled);
+
+        // When: PATCH /allocations/{id} 요청
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("allocatedQuantity", 50);
+        MvcResult result = mockMvc.perform(patch("/allocations/{id}", allocationId)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andReturn();
+
+        // Then: 404 Not Found (deletedAt IS NULL 필터로 조회 안 됨)
+        assertThat(result.getResponse().getStatus())
+                .as("취소된 배정은 404를 반환해야 합니다").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
     }
 }

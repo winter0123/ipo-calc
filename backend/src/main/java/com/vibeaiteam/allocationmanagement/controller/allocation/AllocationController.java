@@ -2,11 +2,13 @@ package com.vibeaiteam.allocationmanagement.controller.allocation;
 
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationResponse;
+import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationUpdateRequest;
 import com.vibeaiteam.allocationmanagement.service.allocation.AllocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,6 +53,15 @@ public class AllocationController {
     @GetMapping("/{id}")
     public ResponseEntity<AllocationResponse> getById(@PathVariable Long id) {
         AllocationResponse response = allocationService.getById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    // 배정 기록을 부분 수정한다. 제공된 필드만 갱신하며(SubscriptionService.update/IpoService.update 동일 패턴),
+    // subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다. 시점 제약은 없음(D-A-007).
+    // 매도(Sale) 연결 시 수량 축소 제한은 Epic 8 구현 시 확장 지점에서 추가 예정.
+    @PatchMapping("/{id}")
+    public ResponseEntity<AllocationResponse> update(@PathVariable Long id, @RequestBody AllocationUpdateRequest request) {
+        AllocationResponse response = allocationService.update(id, request);
         return ResponseEntity.ok(response);
     }
 }
