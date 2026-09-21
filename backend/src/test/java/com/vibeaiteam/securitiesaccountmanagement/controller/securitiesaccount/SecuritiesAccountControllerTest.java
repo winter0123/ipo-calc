@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -211,6 +212,14 @@ class SecuritiesAccountControllerTest {
 
     private MvcResult registerSecuritiesAccount(Map<String, ?> request) throws Exception {
         return mockMvc.perform(post("/securities-accounts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .session(session))
+                .andReturn();
+    }
+
+    private MvcResult updateSecuritiesAccount(Long id, Map<String, ?> request) throws Exception {
+        return mockMvc.perform(patch("/securities-accounts/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .session(session))
@@ -852,5 +861,166 @@ class SecuritiesAccountControllerTest {
         assertThat(listBody.get(0).get("securitiesFirmName"))
                 .as("목록 조회에서도 증권사 비활성화 후 이름이 유지되어야 합니다")
                 .isEqualTo(firm.getName());
+    }
+
+    @Test
+    void updateSecuritiesAccountWithValidRequestReturns200AndUpdatesAccountNameAndFirm() throws Exception {
+        // Given: 인증된 계정이 소유한 증권계좌가 있고, 변경 대상 증권사는 ACTIVE 상태임 (SF-5)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long originalFirmId = registerFirm();
+        Long newFirmId = registerFirm();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", originalFirmId,
+                "accountNumber", ACCOUNT_NUMBER,
+                "accountName", "개인 MTS 계좌"));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+        // When: PATCH /securities-accounts/{id}로 accountName과 securitiesFirmId를 변경함 (SF-5)
+        MvcResult result = updateSecuritiesAccount(accountId, Map.of(
+                "accountName", "변경된 계좌명",
+                "securitiesFirmId", newFirmId));
+
+        // Then: 200 OK + 변경된 accountName/securitiesFirmId가 응답에 반영됨 (SF-5)
+        assertThat(result.getResponse().getStatus())
+                .as("정상 수정 요청은 200 OK를 반환해야 합니다 (SF-5)").isEqualTo(200);
+        Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(response.get("accountName")).as("accountName이 변경되어야 합니다 (SF-5)").isEqualTo("변경된 계좌명");
+        assertThat(((Number) response.get("securitiesFirmId")).longValue())
+                .as("securitiesFirmId가 변경되어야 합니다 (SF-5)").isEqualTo(newFirmId);
+        String masked = (String) response.get("accountNumber");
+        assertThat(masked).as("계좌번호는 여전히 마스킹된 값이어야 합니다 (SF-5)")
+                .isEqualTo(AccountNumberMasker.mask(ACCOUNT_NUMBER));
+
+        // And: DB에도 변경 사항이 반영됨 (SF-5)
+        SecuritiesAccount updated = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(updated.getAccountName()).isEqualTo("변경된 계좌명");
+        assertThat(updated.getSecuritiesFirmId()).isEqualTo(newFirmId);
+    }
+
+    @Test
+    void updateSecuritiesAccountIgnoresAccountNumberChangeInRequest() throws Exception {
+        // Given: 인증된 계정이 소유한 증권계좌가 있음 (SF-5: accountNumber는 불변)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+        // When: 요청 본문에 accountNumber 변경값을 포함해 PATCH 요청을 보냄 (SF-5)
+        MvcResult result = updateSecuritiesAccount(accountId, Map.of(
+                "accountName", "새 이름",
+                "accountNumber", "000-000-000000"));
+
+        // Then: 200 OK + accountNumber는 요청값과 무관하게 원래 값(마스킹) 그대로 유지됨 (SF-5)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(response.get("accountNumber"))
+                .as("accountNumber는 요청에 있어도 무시되고 기존 값이 유지되어야 합니다 (SF-5)")
+                .isEqualTo(AccountNumberMasker.mask(ACCOUNT_NUMBER));
+
+        // And: DB에 저장된 실제 계좌번호도 변경되지 않음 (SF-5)
+        SecuritiesAccount updated = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(accountNumberEncryptor.decrypt(updated.getAccountNumber()))
+                .as("DB의 계좌번호도 변경되면 안 됩니다 (SF-5)").isEqualTo(ACCOUNT_NUMBER);
+    }
+
+    @Test
+    void updateSecuritiesAccountWithInactiveSecuritiesFirmReturns400() throws Exception {
+        // Given: 인증된 계정이 소유한 증권계좌가 있고, 변경하려는 증권사가 INACTIVE 상태임 (SF-5)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long originalFirmId = registerFirm();
+        Long inactiveFirmId = registerFirm();
+        SecuritiesFirm inactiveFirm = securitiesFirmRepository.findById(inactiveFirmId).orElseThrow();
+        inactiveFirm.setStatus("INACTIVE");
+        securitiesFirmRepository.save(inactiveFirm);
+
+        MvcResult registerResult = registerSecuritiesAccount(Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", originalFirmId,
+                "accountNumber", ACCOUNT_NUMBER));
+        assertThat(registerResult.getResponse().getStatus())
+                .as("테스트 사전 준비: 계좌 등록은 201이어야 합니다").isEqualTo(201);
+        long accountId = ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id")).longValue();
+        createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+        // When: PATCH로 INACTIVE 증권사로 변경을 시도함 (SF-5)
+        MvcResult result = updateSecuritiesAccount(accountId, Map.of("securitiesFirmId", inactiveFirmId));
+
+        // Then: 400 Bad Request + VALIDATION_ERROR, 레코드는 변경되지 않음 (SF-5)
+        assertThat(result.getResponse().getStatus())
+                .as("INACTIVE 증권사로 변경 시도 시 400 Bad Request를 반환해야 합니다 (SF-5)").isEqualTo(400);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 VALIDATION_ERROR여야 합니다 (SF-5)").isEqualTo("VALIDATION_ERROR");
+        assertThat(body.get("message")).isNotNull();
+
+        SecuritiesAccount unchanged = securitiesAccountRepository.findById(accountId).orElseThrow();
+        assertThat(unchanged.getSecuritiesFirmId())
+                .as("INACTIVE 증권사 변경 시도는 반영되면 안 됩니다 (SF-5)").isEqualTo(originalFirmId);
+    }
+
+    @Test
+    void updateSecuritiesAccountOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 다른 계정 B가 소유한 증권계좌가 등록되어 있음 (SF-5)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+        Long securitiesFirmId = registerFirm();
+
+        LocalDateTime now = LocalDateTime.now();
+        SecuritiesAccount otherAccount = securitiesAccountRepository.save(SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
+                .accountName("다른계정계좌")
+                .isDefault(true)
+                .status("ACTIVE")
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        createdAccounts.add(otherAccount);
+
+        // When: 계정 A가 계정 B의 증권계좌 ID로 PATCH /securities-accounts/{id} 요청을 보냄 (SF-5)
+        MvcResult result = updateSecuritiesAccount(otherAccount.getId(), Map.of("accountName", "탈취 시도"));
+
+        // Then: 403 Forbidden + FORBIDDEN, 레코드는 변경되지 않음 (SF-5)
+        assertThat(result.getResponse().getStatus())
+                .as("다른 계정 소유 계좌 수정 시도 시 403 Forbidden을 반환해야 합니다 (SF-5)").isEqualTo(403);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다 (SF-5)").isEqualTo("FORBIDDEN");
+        assertThat(body.get("message")).isNotNull();
+
+        SecuritiesAccount unchanged = securitiesAccountRepository.findById(otherAccount.getId()).orElseThrow();
+        assertThat(unchanged.getAccountName())
+                .as("소유권 없는 요청은 계좌를 변경하면 안 됩니다 (SF-5)").isEqualTo("다른계정계좌");
+    }
+
+    @Test
+    void updateSecuritiesAccountWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 증권계좌 ID가 제공됨 (SF-5)
+        signupAndLogin();
+
+        // When: PATCH /securities-accounts/{unknown_id} 요청을 보냄 (SF-5)
+        MvcResult result = updateSecuritiesAccount(99999999L, Map.of("accountName", "새 이름"));
+
+        // Then: 404 Not Found + NOT_FOUND (SF-5)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 계좌 수정 시도 시 404 Not Found를 반환해야 합니다 (SF-5)").isEqualTo(404);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (SF-5)").isEqualTo("NOT_FOUND");
+        assertThat(body.get("message")).isNotNull();
     }
 }

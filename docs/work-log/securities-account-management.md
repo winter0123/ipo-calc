@@ -155,3 +155,25 @@ SF-1 (엔티티/Repository/마이그레이션/암호화 유틸) → SF-2 (등록
 
 ### 다음 단계
 - SF-4 완료 → SF-5(수정 PATCH /securities-accounts/{id}): accountName/securitiesFirmId만 수정, accountNumber 불변, INACTIVE 증권사로 변경 금지
+
+## 2026-09-21 — SF-5 구현 완료 (Test-First RED→GREEN)
+
+### 완료 작업
+- **PATCH /securities-accounts/{id} (수정)** 구현 (`com.vibeaiteam.securitiesaccountmanagement`)
+  - `controller/securitiesaccount/dto/SecuritiesAccountUpdateRequest.java` 신규 — accountName/securitiesFirmId 두 필드만 존재(accountNumber 필드 자체가 없어 요청에 포함돼도 파싱 시 무시됨)
+  - `SecuritiesAccountController`: `@PatchMapping("/{id}")` 추가
+  - `SecuritiesAccountService.update(id, request)`: `findByIdAndDeletedAtIsNull` 조회(없으면 404) → SF-3/SF-4와 동일한 2단계 소유권 검증(403) → `securitiesFirmId`가 요청에 있으면 `findById`로 조회 후 `status != ACTIVE`면 `SecuritiesAccountValidationException`(400)으로 거부, 통과 시에만 필드 반영 → `accountName`이 요청에 있으면 반영 → `updatedAt` 갱신 후 저장, 마스킹 응답 재사용
+  - 기존 예외/핸들러(NotFound→404, Forbidden→403, Validation→400) 그대로 재사용, 신규 예외 없음
+
+### 테스트 (Test-First: `SecuritiesAccountControllerTest` 5건 먼저 작성 → RED(PATCH 매핑 없어 실패) 확인 → 구현 → GREEN)
+- 정상 수정(accountName + securitiesFirmId 변경) → 200, 응답/DB 모두 반영 확인
+- accountNumber를 요청에 포함해도 무시됨 → 응답/DB의 계좌번호 불변 확인
+- INACTIVE 증권사로 변경 시도 → 400 VALIDATION_ERROR, DB 미반영
+- 소유권 없는 계좌 수정 시도 → 403 FORBIDDEN, DB 미반영
+- 존재하지 않는 id → 404 NOT_FOUND
+
+### 검증 결과 (PASS)
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` → **BUILD SUCCESSFUL / 전체 131건(기존 126 + 신규 5) 전부 GREEN, failures 0, errors 0**
+
+### 다음 단계
+- SF-5 완료 → SF-6(비활성화 DELETE /securities-accounts/{id}): 논리 삭제, is_default였다면 함께 clear(D-SA-004), 참조 차단 없음(D-SA-007)
