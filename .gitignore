@@ -45,3 +45,6 @@ docker-compose.override.yml
 # Test / coverage
 coverage/
 .envrc
+
+# Local-only Claude Code guidance (kept as a personal file, not tracked)
+CLAUDE.md
