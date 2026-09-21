@@ -90,3 +90,48 @@ Subscription 행을 먼저 저장해야 한다(FK 위반 방지). 또한 subscri
 
 **남은 작업**: SF-2(등록 API, Subscription 존재 검증 + ACTIVE 중복 검사)부터
 SF-5(취소)까지 순차 구현 필요. 커밋/PR/머지는 Master가 진행.
+
+## 2026-09-22 — SF-2 구현 완료 (배정 등록 API, POST /allocations)
+
+`docs/breakdown/allocation-management.md`의 SF-2를 구현했다. 브랜치
+`winter0123/allocation-register` (backend-3 워크스페이스, origin/main 기준
+생성, SF-1 포함). AC-001~006 커버.
+
+**산출물**:
+- `controller/allocation/AllocationController.java` — `POST /allocations`,
+  한글 클래스/메서드 주석 포함(subscriptionmanagement SF-2 스타일)
+- `service/allocation/AllocationService.java` — `register()`.
+  SubscriptionService.register()와 동일한 순서(필수값 검증 → Subscription
+  존재 확인 → 값 검증 → 중복 검사 → 저장, `DataIntegrityViolationException`
+  catch)를 따르되 **소유권 검증(SecurityUtils) 단계는 제외**했다 — breakdown
+  문서의 결정표대로 Allocation은 SecuritiesFirm/Ipo와 동일한 글로벌
+  기준정보라 계정 소유 필터를 적용하지 않는다.
+- `controller/allocation/dto/AllocationRegisterRequest.java`,
+  `AllocationResponse.java` (spec 응답 필드 그대로: id, subscriptionId,
+  allocatedQuantity, allocatedAt, allocationMethod, allocationPrice, note,
+  status, deletedAt, createdAt, updatedAt)
+- `controller/allocation/exception/AllocationValidationException.java`,
+  `AllocationConflictException.java`, `AllocationNotFoundException.java`,
+  `AllocationExceptionHandler.java` (400/409/404 매핑,
+  SubscriptionExceptionHandler와 동일 패턴이나 `FORBIDDEN` 핸들러는 없음 —
+  소유권 검증을 하지 않으므로 403 자체가 발생하지 않음)
+
+**검증 순서 설계 노트**: AC-002(필수값 누락)는 Subscription 조회 이전에
+판별 가능하지만, AC-003(배정수량이 청약수량 초과)은 `subscription.quantity`
+값이 필요하므로 Subscription 존재 확인(AC-004, 404) **이후**에 수행하도록
+`register()`를 구성했다. 순서: 필수값 검증(400) → Subscription 조회(404) →
+수량 범위 검증(400, 0 이상 & 청약수량 이하) → ACTIVE 중복 검사(409) → 저장.
+
+**테스트**: `AllocationControllerTest.java` 신규 6개
+(등록성공201/AC-001, 필수값누락400/AC-002, 배정수량값오류400/AC-003,
+subscriptionId미존재404/AC-004, ACTIVE중복409/AC-005, CANCELLED후재등록
+허용201/AC-006). SubscriptionControllerTest 패턴을 따르되, 소유권 검증이
+없으므로 "다른 계정 소유" 시나리오(403) 테스트는 작성하지 않았다 — 투자자/
+증권계좌/IPO/청약 등록은 모두 테스트 사전 준비 헬퍼로만 사용.
+
+**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+--rerun` → BUILD SUCCESSFUL, 226 tests completed, 0 failed (기존 220개 +
+신규 6개).
+
+**남은 작업**: SF-3(목록/상세 조회)부터 SF-5(취소)까지 순차 구현 필요.
+커밋/PR/머지는 Master가 진행.
