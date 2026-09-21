@@ -54,3 +54,22 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **147개 통과** (신규 7개 포함, 기존 테스트 영향 없음)
 - 마이그레이션 적용 및 엔티티 매핑 정상 확인
+
+## 2026-09-21 — SF-2 완료 (IPO 등록 API)
+
+### 구현 내용
+- `controller/ipo/IpoController.java` — `POST /ipos`
+- `service/ipo/IpoService.java` — 필수값/날짜순서/가격범위/255자/offeringShareCount 검증, `checkDuplicate()` 중복검사 헬퍼(D-IPO-001, stockCode 유무 분기, 다음 SF에서 재사용 예정)
+- `controller/ipo/dto/{IpoRegisterRequest, IpoResponse}.java`, `exception/{IpoValidationException, IpoConflictException, IpoExceptionHandler}.java`
+- 워커(OpenRouter 무료 모델)가 구현/테스트 작성까지는 진행했으나, 마지막 테스트 실패를 스스로 해결하지 못하고 도구 호출 없이 멈춤(stall) — Master가 직접 진단·수정
+
+### Master가 발견·수정한 버그: V5 마이그레이션의 partial unique index 결함
+- **증상**: spec AC-006(동일 종목명, 다른 stockCode/roundLabel이면 여러 회차 등록 성공) 테스트가 409로 실패.
+- **원인**: `V5__create_ipos_table.sql`의 `uk_ipo_name_start_date_active` 인덱스가 `WHERE status = 'ACTIVE'`만 걸려 있어 stockCode 유무와 무관하게 (ipo_name, subscription_start_date) 조합 전체에 유니크를 강제함. Service 계층의 `checkDuplicate()`는 stockCode가 있으면 stockCode만 검사하고 name+date는 안 보는데, DB 제약은 이를 반영하지 못해 stockCode가 다른 정당한 회차 등록까지 `DataIntegrityViolationException`으로 막아버림. 이는 architecture.md 자체가 미리 경고했던 리스크("부분 유니크 인덱스와 Service 계층 검증의 동작이 어긋나는 경우 구현 단계 TC로 검증")가 실제로 발생한 사례.
+- **수정**: `V6__fix_ipo_name_start_date_unique_index.sql` 추가 — 인덱스 조건에 `AND stock_code IS NULL`을 더해 Service 계층 규칙과 정확히 일치시킴.
+
+### 테스트 실행 결과
+```bash
+DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+```
+- 전체 테스트 스위트 **160개 통과** (신규 13개 포함, 실패/에러 0)
