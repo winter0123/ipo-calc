@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// 로그인/로그아웃 인증 API를 제공한다.
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor

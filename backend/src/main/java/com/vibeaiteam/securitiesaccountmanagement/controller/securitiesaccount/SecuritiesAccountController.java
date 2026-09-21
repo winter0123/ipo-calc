@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// 증권계좌에 대한 등록/조회/계좌번호조회/수정/비활성화/기본계좌설정 API를 제공한다.
 @RestController
 @RequestMapping("/securities-accounts")
 @RequiredArgsConstructor

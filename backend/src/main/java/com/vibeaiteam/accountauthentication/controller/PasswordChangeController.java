@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 
+// 비밀번호 변경 API를 제공한다.
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
