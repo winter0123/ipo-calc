@@ -1,5 +1,6 @@
 package com.vibeaiteam.investormanagement.service.investor;
 
+import com.vibeaiteam.accountauthentication.controller.dto.SuccessResponse;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorRegisterRequest;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorResponse;
@@ -75,6 +76,18 @@ public class InvestorService {
 
         Investor saved = investorRepository.save(investor);
         return InvestorResponse.from(saved);
+    }
+
+    public SuccessResponse deactivate(Long id) {
+        Investor investor = findOwnedInvestor(id);
+        if (!"INACTIVE".equals(investor.getStatus())) {
+            LocalDateTime now = LocalDateTime.now();
+            investor.setStatus("INACTIVE");
+            investor.setDeletedAt(now);
+            investor.setUpdatedAt(now);
+            investorRepository.save(investor);
+        }
+        return SuccessResponse.of("투자자가 비활성화되었습니다.");
     }
 
     private Investor findOwnedInvestor(Long id) {
