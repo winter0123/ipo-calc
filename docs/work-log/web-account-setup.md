@@ -76,3 +76,39 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 5. **SF-5**: SecuritiesAccountRegisterPage — `GET /securities-firms` 드롭다운 + `POST /securities-accounts` 등록, 계좌번호 하이픈 자동 삽입, 마스킹된 응답 그대로 표시(D-W13-002), AC-010~012, AC-018, AC-020
 
 각 SF는 컴포넌트/훅 단위 테스트(Vitest+RTL)를 Test-First로 작성한다. `npm run lint`, `npm run typecheck`, `npx prettier --check .` 통과가 각 SF의 완료 조건이다(AGENTS.md 14장).
+
+---
+
+## 2026-09-21 — SF-1: 프로젝트 스캐폴딩 완료
+
+### 완료 내용
+- 저장소 루트에 `ui/` 폴더 생성 (Vite React+TS 스캐폴딩)
+- ESLint + Prettier + `tsc --strict` 설정
+- FSD 폴더 뼈대 생성 (`app/{pages,widgets,features,entities,shared}`)
+- `shared/api/client.ts` fetch 래퍼 작성 (`credentials: 'include'`)
+- `main.tsx`에 QueryClientProvider + BrowserRouter 설정
+- Vitest + React Testing Library 설정, 샘플 테스트 1개 작성
+
+### 설치된 패키지 버전
+| 패키지 | 버전 | 용도 |
+|---|---|---|
+| react-router-dom | ^7.18.4 | 라우팅 (D-W13-008) |
+| react-hook-form | ^7.88.0 | 폼 상태 관리 (D-W13-009) |
+| @tanstack/react-query | ^5.103.1 | 서버 상태 관리 |
+| axe-core | ^4.13.0 | 접근성 검증 (D-W13-013) |
+| vitest | ^5.0.1 | 테스트 러너 (D-W13-015) |
+| @testing-library/react | ^16.3.3 | 컴포넌트 테스트 |
+| @testing-library/jest-dom | ^7.0.1 | DOM 매처 |
+| jsdom | ^30.1.0 | 테스트 환경 |
+| eslint | ^9.39.5 | 린팅 |
+| prettier | ^3.9.8 | 코드 포맷팅 |
+
+### 실행한 명령어 및 결과
+| 명령어 | 결과 |
+|---|---|
+| `npm run lint` (eslint .) | PASS (0 errors) |
+| `npm run typecheck` (tsc --noEmit) | PASS (0 errors) |
+| `npm run format:check` (prettier --check .) | PASS (All matched files use Prettier code style!) |
+| `npm run test` (vitest run) | PASS (1 file, 3 tests passed) |
+| `npm run build` (tsc -b && vite build) | PASS (dist/index.html, dist/assets/) |
+
