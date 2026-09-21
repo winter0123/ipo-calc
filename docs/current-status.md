@@ -1,6 +1,6 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-21 (로드맵 16개 Epic 전체 Phase 0 100% 완료)
+> 마지막 갱신: 2026-09-21 (Epic 2 구현 완료 — 로드맵 최초의 B그룹 구현 Epic 2개째)
 
 ## ✅ 해결됨: OpenRouter 무료 모델 계정 일일 한도 블로커 (2026-09-21, 우회 경로 확보)
 
@@ -19,7 +19,7 @@
 | # | Epic | epic-slug | 상태 |
 |---|---|---|---|
 | 1 | 로그인 계정과 인증·인가 | account-authentication | **구현 완료 및 머지됨**(SF-1~6, 34개 테스트 통과, PR #41). `account-authentication` 워크스페이스는 `backend`로 이관 완료, worktree 정리됨 |
-| 2 | 투자자 관리 | investor-management | **Phase 0 전체 완료**(조사+spec+architecture, D-I-001~005 결정 포함), 머지됨. 다음: SF 분해 |
+| 2 | 투자자 관리 | investor-management | **구현 완료**(SF-1~6, 66개 테스트 통과, PR #65~#70 병합됨). SF-3에서 CSRF 전역 비활성화 등 공용 보안설정 정리(D-I-006) 포함 |
 | 3 | 증권사 기준정보 관리 | securities-firm-catalog | **Phase 0 전체 완료**(조사+spec+architecture), PR #50 병합됨. 다음: SF 분해 |
 | 4 | 증권계좌 관리 | securities-account-management | **Phase 0 전체 완료**(조사+spec+architecture), PR #51 병합됨. 다음: SF 분해 |
 | 5 | 공모주 기준정보 관리 | ipo-catalog | **Phase 0 전체 완료**(조사+spec+architecture), PR #52 병합됨. 다음: SF 분해 |
@@ -35,12 +35,18 @@
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | **Phase 0 전체 완료**(조사+spec+architecture, D-W15-001~006 최신화 포함), PR #62 병합됨. 다음: SF 분해 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | **Phase 0 전체 완료**(조사+spec+architecture, D-W16-001~007 최신화 포함, 빈 결과 404→200 오류 수정), PR #63 병합됨. 다음: SF 분해 |
 
-**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1은 구현(기획→설계→구현→테스트)까지 완료, PR #41 사람 승인 완료·머지됨. Epic 2~16은 Phase 0 전체 완료, 모두 병합됨(PR #42~#63). 다음 단계는 Epic 2부터 순차적으로 SF 분해 및 실제 구현 착수.**
+**요약: 🎉 로드맵 16개 Epic 전체의 Phase 0(조사→기획→설계) 100% 완료. Epic 1, 2는 구현(기획→설계→구현→테스트)까지 완료, 모두 병합됨. Epic 3~16은 Phase 0 전체 완료, 모두 병합됨(PR #42~#63, Epic 2 제외). 다음 단계는 Epic 3부터 순차적으로 SF 분해 및 실제 구현 착수.**
 
 ## 다음 단계 후보
 1. ~~Epic 1 PR #41 사람 승인 및 머지~~ — **완료(2026-09-20 23:10 UTC)**. `backend` 워크스페이스에 `winter0123/investor-management` 브랜치 생성(origin/main 기준, Epic 1 코드 포함), `account-authentication` worktree 정리 완료.
-2. Epic 2(investor-management) 세부기능(SF) 분해(5.4) 및 구현 착수 — 진행 중
-3. Epic 3~12는 backend 워크스페이스에서 Epic 2 완료 후 순차 진행, Epic 13~16은 frontend 워크스페이스에서 대응 백엔드 Epic 완료 후 순차 진행 (opencode zen 무료 모델 활용 지속)
+2. ~~Epic 2(investor-management) 세부기능(SF) 분해 및 구현~~ — **완료(2026-09-21 00:23 UTC)**. SF-1~6 전체 구현, PR #65~#70 병합, 66개 테스트 GREEN.
+3. Epic 3(securities-firm-catalog)부터 순차적으로 SF 분해 및 구현 착수 (backend 워크스페이스, opencode zen 무료 모델 활용 지속). Epic 13~16은 frontend 워크스페이스에서 대응 백엔드 Epic 완료 후 순차 진행
+
+## 재사용 가능한 공용 인프라 (Epic 2에서 확보, Epic 3~12가 활용 가능)
+- `SecurityUtils.getCurrentAccountId()` (`com.vibeaiteam.accountauthentication.util.security`) — 계정 소유권 검증 헬퍼
+- 컴포넌트/엔티티/JPA 스캔 범위가 `com.vibeaiteam` 전체로 확대됨 — 새 Epic 패키지(`com.vibeaiteam.<epic>`)는 별도 스캔 설정 없이 바로 인식됨
+- CSRF 전역 비활성화 + `AuthenticationEntryPoint`(401) 설정 완료(D-I-006) — 새 쓰기 API마다 CSRF 예외 추가할 필요 없음
+- `SuccessResponse`/`ErrorResponse` 등 공용 DTO(`com.vibeaiteam.accountauthentication.controller.dto`) 재사용 가능
 
 ## 알려진 이슈/결정 사항
 - Epic 1 구현 중 SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드 등 3건의 Spring Security 버그를 Master가 직접 진단하여 수정 지시함(자세한 내용은 `docs/work-log/account-authentication.md` 참고).
