@@ -2,18 +2,41 @@
 
 ## 2026-09-20
 
-- Epic 1(account-authentication) SF-5(데이터 격리 방어), SF-6(비밀번호 변경 API) 완료. Epic 1 전체 34개 테스트 통과, PR #41 생성(사람 승인 대기).
-  - SF-6 진행 중 Spring Security 세션 관리 버그 3건을 Master가 직접 진단·수정 지시하여 해결(SessionRegistry 인스턴스 불일치, AuthService의 SessionAuthenticationStrategy 미호출, 만료 세션 기본 응답 코드).
-- 워크스페이스 운영 방식을 Epic별 생성/삭제에서 **역할별 고정 3개(backend/frontend/planning)로 절대 삭제하지 않는 방식**으로 전환(사용자 지시). 관련 git 제약(같은 저장소 여러 워크트리는 동일 브랜치 동시 체크아웃 불가) 발견 및 절차 수정.
-- main 병합 정책을 "Epic 전체 완료 후 한 번에"에서 "기능(SF)/문서 단위로 계속 진행"으로 전환(사용자 지시). 코드는 테스트 통과 확인 후에만, 조사 문서는 완성 즉시 병합.
-- Epic 2~16(투자자 관리, 증권사 기준정보, 증권계좌, 공모주 기준정보, 청약, 배정, 매도, 비용, 수익 계산, 조회 API, 대시보드 집계 API, 웹 계정 설정, 웹 청약·배정 입력, 웹 매도·수익 확인, 웹 조회·대시보드) 전체 Phase 0 조사 완료 및 병합. **로드맵 16개 Epic 전체 조사 완료.**
-  - 조사 과정에서 무료 모델(Nemotron 3 Ultra/Super, Laguna S 2.1 등)의 반복적 stall(도구 호출 없이 "완료하겠다"고만 말하고 멈춤) 다수 발생 — Master가 매번 `git diff`/`terminal read`로 실제 진행 상황을 확인한 뒤에만 개입(interrupt → 모델 교체 재시도)함.
-  - Epic 14(web-subscription-workflow), Epic 15(web-sale-profit-workflow) 조사 초안이 "실시간 결제/거래 처리"를 전제로 작성되는 오류 발견 — 이 서비스는 실제로는 이미 완료된 청약·매도 결과를 사후 기록하는 서비스라는 로드맵 범위에 맞게 Master가 직접 수정.
-- `docs/current-status.md`, `docs/daily-log.md` 신규 생성(9.2 요구사항 이행).
+1. Epic1 SF-5~6 완료, PR #41 생성
+2. 워크스페이스 운영방식 3개 고정으로 전환
+3. main 병합정책을 SF 단위로 전환
+4. 로드맵 16개 Epic 전체 조사 완료
+5. current-status/daily-log 문서 신규생성
+
+### 기능 구현 현황
+
+| Epic/Task | 분야 | PR/Test 수 | 상태 | 주요 내용 |
+|---|---|---|---|---|
+| Epic 1(account-authentication) SF-5~6 | BE | PR #41 / 34 tests | 완료(사람 승인 대기) | 데이터 격리 방어, 비밀번호 변경 API |
+| Epic 2~16 Phase 0(조사) | BE/FE | - | 완료 | 로드맵 16개 Epic 전체 조사 완료 및 병합 |
+
+### 이슈 및 트러블슈팅
+
+| 카테고리 | 발생 이슈 | 해결 및 조치 사항 |
+|---|---|---|
+| 코드 버그 | Spring Security 세션관리 버그 3건(SessionRegistry 인스턴스 불일치, SessionAuthenticationStrategy 미호출, 만료세션 응답코드) | Master가 직접 진단 후 수정 지시하여 해결 |
+| 워크스페이스 운영 | Epic별 워크스페이스 생성/삭제 방식이 비효율적, 동일 브랜치 다중 체크아웃 git 제약 발견 | 역할별 고정 3개(backend/frontend/planning) 절대 삭제 안 하는 방식으로 전환 |
+| 병합 정책 | "Epic 전체 완료 후 한 번에 병합"하던 방식 | "기능(SF)/문서 단위로 계속 병합"하는 방식으로 전환 |
+| 모델 안정성 | 무료 모델(Nemotron, Laguna 등) 반복적 stall(도구 호출 없이 완료 선언만) | `git diff`/`terminal read`로 실제 진행 확인 후에만 개입(interrupt→재시도) |
+| 조사 문서 오류 | Epic 14/15 초안이 "실시간 결제/거래 처리" 전제로 잘못 작성 | 사후기록 서비스라는 실제 범위에 맞게 Master가 직접 수정 |
 
 ## 2026-09-21
 
-**오늘의 핵심 성과**: 로드맵 16개 Epic 전체 Phase 0 완료 + Epic 1~4 구현 완료(총 340개 테스트) + 로드맵 의존관계 재확인으로 Epic 13 프론트엔드 병렬 착수(로드맵 최초 프론트엔드 구현, SF-1~2).
+1. 로드맵 16개 Epic Phase0 전체완료
+2. Epic1~4 백엔드 구현 완료(340개 테스트)
+3. Epic13 프론트엔드 병렬 착수 결정
+4. Epic5 SF1~2, Epic13 SF1~2 진행
+5. OpenRouter 무료모델 워커 경로 발견
+6. 네이티브 모델 전환방법 정정
+7. 워커 터미널 정리 재발사고 수정
+8. daily-log 표 형식으로 전환
+9. 모바일 반응형 최적화 필수화
+10. 패키지매니저 npm에서 pnpm 전환
 
 ### 기능 구현 현황
 
@@ -27,7 +50,8 @@
 | Epic 5(ipo-catalog) SF-1 | BE | PR #87 / 147 tests | 완료 | Ipo 엔티티/Repository/V5 마이그레이션, D-IPO-001~004 확정 |
 | Epic 5(ipo-catalog) SF-2 | BE | - | 진행중 | IPO 등록 API, 중복검사 헬퍼(D-IPO-001) |
 | Epic 13(web-account-setup) SF-1 | FE | PR #88 | 완료 | `ui/` Vite+React+TS 스캐폴딩 — 로드맵 최초 프론트엔드 구현, D-W13-007~015 확정 |
-| Epic 13(web-account-setup) SF-2 | FE | - | 진행중(검증 중 결함 발견, 수정 중) | 로그인 화면, react-hook-form+TanStack Query |
+| Epic 13(web-account-setup) SF-2 | FE | PR #89 / 7 tests | 완료 | 로그인 화면, react-hook-form+TanStack Query |
+| 패키지 매니저 전환 | FE | PR #90 | 완료 | npm → pnpm, package-lock.json → pnpm-lock.yaml |
 
 ### 이슈 및 트러블슈팅
 
