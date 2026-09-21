@@ -158,3 +158,39 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 ### 남은 작업
 - SF-5 투자자 수정 API (PATCH /investors/{id})
 - SF-6 투자자 비활성화 API (DELETE /investors/{id}, soft delete, 멱등)
+
+## 2026-09-21 — SF-5 (투자자 수정 API: PATCH /investors/{id}) 구현 완료
+
+### 역할 / 모델
+- Implementation (B그룹), Test-First(RED→GREEN)
+
+### 배경
+- SF-4에서 "남은 작업"으로 명시됐던 SF-5를 이번에 구현
+- 읽은 문서: `docs/spec/investor-management.md`(PATCH 섹션, AC-007/AC-008), `docs/architecture/investor-management.md`("투자자 수정 흐름")
+- 선행 조건 확인: `git log`로 SF-1~SF-4 커밋(196d6ef 등) 존재 확인
+
+### 수행한 작업
+- [x] RED — `InvestorControllerTest`에 PATCH 테스트 7개 신규 추가 (기존 11개 + 신규 7개 = 18개)
+  - **AC-007**: 정상 수정(displayName+relationship 동시) → 200 + 응답에 displayName/updatedAt 반영, DB에 relationship 반영
+  - **부분 수정**: displayName만 전달 → 200 + displayName만 변경, relationship 유지
+  - **AC-008**: 빈 displayName(공백만) → 400 + `error=VALIDATION_ERROR`, displayName/relationship/updatedAt 모두 불변
+  - **엣지 7**: INACTIVE 투자자 수정 → 200 + displayName/relationship 반영, status=INACTIVE 유지
+  - **엣지 3**: relationship="" 전송 → 200 + relationship NULL로 저장
+  - spec 대비 추가: 존재하지 않는 id → 404 + NOT_FOUND / 다른 계정 소유 투자자 → 403 + FORBIDDEN, 상대 계정 데이터 미변경
+  - RED 확인: 엔드포인트 미존재로 신규 7개 전체 실패(405), 기존 테스트 11개는 통과 유지
+- [x] GREEN — 구현
+  - `InvestorUpdateRequest` DTO 신규 (displayName, relationship — 부분 수정이므로 요청 키가 없으면 null)
+  - `InvestorService.update(Long id, InvestorUpdateRequest request)` 추가
+  - `findOwnedInvestor(Long id)` 헬퍼로 소유권 검증 로직 재사용(SF-4의 getById와 동일한 404/403 처리): `findById` 실패 → 404 `투자자를 찾을 수 없습니다.` / accountId 불일치 → 403 `계정 소유권이 없습니다.`
+  - displayName이 null이 아닐 때만 검증·갱신(`validateDisplayName` 재사용), relationship이 null이 아닐 때만 갱신(빈 문자열은 `normalizeRelationship`으로 NULL 변환), 성공 시 `updatedAt`을 `LocalDateTime.now()`로 갱신 후 저장 (엣지 3/7 반영)
+  - `InvestorController.update` (@PatchMapping("/{id}")) 추가, 200 OK + InvestorResponse 반환
+  - 참고: spec의 PATCH 응답에 relationship 필드가 없어 InvestorResponse에는 추가하지 않음 (스펙 유지)
+- [x] 전체 검증: `DB_PASSWORD=vibe_local_password ./gradlew test` **GREEN: 61개 테스트, 0 실패 0 에러** (InvestorControllerTest 18건 포함)
+
+### 확인 사항 (검증 결과)
+- `DB_PASSWORD` 미설정 시 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)이 "password authentication failed"로 실패 — SF-4 때 이미 확인된 **사전 존재 환경 이슈** (이번 변경과 무관). env var 지정 시 전체 GREEN. `DB_PASSWORD=vibe_local_password` 값은 docker-compose.yml/application-test.yml에 이미 공개된 로컬 dev 값 사용.
+- 변경 파일: `InvestorController.java`, `InvestorService.java`, `InvestorControllerTest.java` (수정), `InvestorUpdateRequest.java` (신규)
+- `git diff --check` 통과
+
+### 남은 작업 (금지사항 준수: DELETE 미작성)
+- SF-6 투자자 비활성화 API (DELETE /investors/{id}, soft delete, 멱등) — 이번 SF에서 작성하지 않음

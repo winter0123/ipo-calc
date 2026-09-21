@@ -3,6 +3,7 @@ package com.vibeaiteam.investormanagement.service.investor;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorRegisterRequest;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorResponse;
+import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorUpdateRequest;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.exception.InvestorForbiddenException;
 import com.vibeaiteam.investormanagement.exception.InvestorNotFoundException;
@@ -57,13 +58,33 @@ public class InvestorService {
     }
 
     public InvestorResponse getById(Long id) {
+        Investor investor = findOwnedInvestor(id);
+        return InvestorResponse.from(investor);
+    }
+
+    public InvestorResponse update(Long id, InvestorUpdateRequest request) {
+        Investor investor = findOwnedInvestor(id);
+
+        if (request.getDisplayName() != null) {
+            investor.setDisplayName(validateDisplayName(request.getDisplayName()));
+        }
+        if (request.getRelationship() != null) {
+            investor.setRelationship(normalizeRelationship(request.getRelationship()));
+        }
+        investor.setUpdatedAt(LocalDateTime.now());
+
+        Investor saved = investorRepository.save(investor);
+        return InvestorResponse.from(saved);
+    }
+
+    private Investor findOwnedInvestor(Long id) {
         Long accountId = securityUtils.getCurrentAccountId();
         Investor investor = investorRepository.findById(id)
                 .orElseThrow(() -> new InvestorNotFoundException("투자자를 찾을 수 없습니다."));
         if (!accountId.equals(investor.getAccountId())) {
             throw new InvestorForbiddenException("계정 소유권이 없습니다.");
         }
-        return InvestorResponse.from(investor);
+        return investor;
     }
 
     private String normalizeStatus(String status) {
@@ -85,5 +106,12 @@ public class InvestorService {
             throw new InvestorValidationException("표시 이름은 최대 50자까지 가능합니다.");
         }
         return displayName.trim();
+    }
+
+    private String normalizeRelationship(String relationship) {
+        if (relationship == null || relationship.isEmpty()) {
+            return null;
+        }
+        return relationship;
     }
 }
