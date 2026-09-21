@@ -669,6 +669,7 @@ React, TypeScript. 프로젝트에 설치된 버전의 공식 권장 방식을 �
 - **ESLint + Prettier + `tsc --strict`** 를 프로젝트에 설정하고, 모든 워커는 코드를 작성한 뒤 반드시 이 세 가지를 통과시킨다.
 - **들여쓰기 2칸.** 탭 금지.
 - Test/Implementation 워커에게 작업을 지시할 때 이 규칙을 스펙에 명시한다. 완료 조건(Definition of Done)에 `npm run lint`, `npm run typecheck`(또는 `tsc --noEmit --strict`), `npx prettier --check .` 통과를 포함한다.
+- **`npm run typecheck`만 믿지 말고 `npm run build`도 반드시 함께 실행한다** (2026-09-21 확인): 이 프로젝트의 `typecheck` 스크립트(`tsc --noEmit`)는 프로젝트 참조(`tsconfig.json`의 `references`)를 안 타서, `tsconfig.app.json`에만 있는 타입 설정 오류(예: `vitest/globals`/jest-dom 타입 누락)를 못 잡는다. 반면 `npm run build`(`tsc -b`)는 참조를 실제로 빌드하므로 이런 오류를 잡는다. Epic 13 SF-2에서 이 gap 때문에 워커가 `typecheck` 통과만 보고 실제로는 `build`가 실패하는 상태를 "완료"로 보고한 사례 발생 — 매 SF 검증 시 `typecheck`와 `build` 둘 다 실행한다.
 
 ### 반응형/모바일 웹 최적화 (2026-09-21 사용자 지시 — 예외 없이 적용)
 
