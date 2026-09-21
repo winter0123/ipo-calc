@@ -66,7 +66,7 @@
 | 청약 기록(Epic 6): 수정 API | BE | `winter0123/subscription-update` | PR #109(SF-4) | 완료 | 검증 로직을 private 헬퍼 3개로 추출해 등록/수정 공유, 네이티브 Sonnet 사용 |
 | Epic 7/8/9/11/14 세부기능(SF) 분해 선행 준비 | Planning | `winter0123/epic7-8-breakdown` 등 5개 브랜치 | PR #103, #106, #107, #108 | 완료 | Epic 7/8은 소유권 검증 불필요(글로벌), Epic 9/11은 필요(계정 소유 데이터) — 독립 판단으로 정확히 구분. Epic 11에서 ipoId 필터 단독 시 계정 스코프 누출 위험 사전 발견 |
 | 웹 계정·투자자·계좌 설정(Epic 13): 증권계좌 등록 화면 — Epic 13 전체 완료 | FE | `winter0123/web-account-setup-sf5` | PR #110(SF-5) | 완료 | 하이픈 자동삽입 JSX 속성순서 버그 발견·수정, spec-백엔드 계약 불일치(404 vs 400) 대응, 네이티브 Sonnet 사용 |
-| 프론트엔드 FSD 구조 리팩터링(`app/` 중첩 제거) | FE | `winter0123/fsd-structure-fix` | 진행 중 | 진행 중 | 사용자가 `src/App.tsx`와 `src/app/` 폴더명 중복으로 혼란 지적 — entities/features/pages/shared/widgets를 `app/` 밖으로 이동 |
+| 프론트엔드 FSD 구조 리팩터링(`app/` 중첩 제거) | FE | `winter0123/fsd-structure-fix` | PR #111 | 완료 | 사용자가 `src/App.tsx`와 `src/app/` 폴더명 중복으로 혼란 지적 — entities/features/pages/shared/widgets를 `app/` 밖으로 이동, git mv로 히스토리 보존, 로직 변경 없이 순수 구조 이동 |
 
 ### 이슈 및 트러블슈팅
 
