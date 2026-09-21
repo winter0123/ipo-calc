@@ -131,3 +131,27 @@ SF-1 (프로젝트 스캐폴딩) → SF-2 (로그인 화면) → SF-3 (회원가
 - **테스트가 `QueryClientProvider` 없이 작성돼 전부 실패**: `useLogin`이 TanStack Query `useMutation`을 쓰는데 테스트가 provider로 감싸지 않아 렌더링 자체가 예외로 죽었음. 또한 개별 테스트 바디가 실제 상호작용(입력/제출) 없이 초기 렌더링 상태에서 나타날 이유가 없는 텍스트를 찾는 식으로 작성돼 있어, 통과하더라도 각 시나리오(401/이메일오류/필수값) 를 실제로 검증하지 못하는 상태였음. `QueryClientProvider`로 감싸고 `apiFetch`를 모킹해 각 시나리오를 실제 입력→제출→결과 확인 흐름으로 재작성.
 - **실제 컴포넌트 버그 발견**: `<form>`에 `noValidate`가 없어, `type="email"` 필드에 형식이 잘못된 값을 넣고 제출하면 브라우저 네이티브 검증이 submit 이벤트 자체를 막아버려 react-hook-form의 커스텀 한글 에러 메시지("올바른 이메일 형식을 입력해 주세요.")가 절대 뜨지 않는 결함이 있었음(재작성한 테스트가 이를 실제로 잡아냄). `noValidate` 추가로 수정.
 - **SF-1부터 있던 tsconfig 설정 결함 발견**: `tsconfig.app.json`의 `types`에 `vitest/globals`/jest-dom 타입이 없어서, `npm run typecheck`(`tsc --noEmit`, 프로젝트 참조 없이 동작해 사실상 아무것도 검사하지 않음)는 통과하지만 `npm run build`(`tsc -b`, 프로젝트 참조를 실제로 빌드)는 `toBeInTheDocument` 등 jest-dom 매처를 인식 못 해 실패하는 상태였음. `@testing-library/jest-dom/vitest`(Vitest용 export, Jest용과 다름) 사용으로 수정하고 `types`에 추가. **주의**: 이후 SF부터는 `npm run typecheck`만 믿지 말고 `npm run build`까지 반드시 함께 실행해 검증한다 — 현재 `typecheck` 스크립트는 프로젝트 참조를 안 타서 이런 타입 오류를 못 잡는다.
+
+---
+
+## 2026-09-21 — SF-3: 회원가입 화면 완료
+
+### 완료 내용
+- `features/signup/SignupForm.tsx` + `useSignup.ts` — `POST /accounts`, react-hook-form (`noValidate` 포함), TanStack Query 사용, 201 성공 시 `navigate('/investors/register', { state: { accountId } })` (D-W13-014 router state)
+- `features/signup/SignupForm.test.tsx` — RED→GREEN: 정상 가입, 409 중복, 400 오류, 이메일 형식 오류, 비밀번호 조건 미충족, 필수값 누락 시나리오 실제 검증 (QueryClientProvider 감싸기 + fireEvent 입력/제출)
+- `pages/SignupPage/SignupPage.tsx` + `.module.css`
+- `App.tsx`에 `/signup` 라우트 추가
+- CSS Modules 사용, 2칸 들여쓰기, ESLint/Prettier/tsc strict 준수
+
+### Master 독립 검증에서 확인한 결함(이전 사고 방지)
+- `<form>`에 `noValidate` 누락 시 브라우저 네이티브 검증이 커스텀 한글 에러 메시지를 막는 버그 → 추가 완료
+- 테스트가 초기 렌더링 상태 텍스트 검색만으로 작성되어 실제 시나리오 미검증 → fireEvent 실제 입력/제출로 재작성
+
+### 실행 결과
+| 명령어 | 결과 |
+|---|---|
+| `pnpm run lint` | PASS |
+| `pnpm run typecheck` | PASS |
+| `pnpm run format:check` | PASS (my files; only pre-existing pnpm-lock.yaml warning) |
+| `pnpm run test` | PASS (6 tests) |
+| `pnpm run build` | PASS (dist/ 생성) |
