@@ -1,5 +1,6 @@
 package com.vibeaiteam.investormanagement.controller.investor;
 
+import com.vibeaiteam.accountauthentication.controller.dto.SuccessResponse;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorRegisterRequest;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorResponse;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorUpdateRequest;
@@ -7,6 +8,7 @@ import com.vibeaiteam.investormanagement.service.investor.InvestorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,5 +49,10 @@ public class InvestorController {
             @PathVariable Long id,
             @RequestBody InvestorUpdateRequest request) {
         return ResponseEntity.ok(investorService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<SuccessResponse> delete(@PathVariable Long id) {
+        return ResponseEntity.ok(investorService.deactivate(id));
     }
 }

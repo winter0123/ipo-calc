@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -669,7 +670,118 @@ class InvestorControllerTest {
         assertThat(status).as("다른 계정 투자자 수정 시 403 Forbidden이어야 합니다").isEqualTo(403);
         var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
         assertThat(responseMap.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
+        Investor saved = investorRepository.findById(otherInvestorId).orElseThrow();
+        assertThat(saved.getDisplayName()).as("계정 B의 투자자 정보가 변경되면 안 됩니다").isEqualTo("다른계정투자자");
+    }
+
+    @Test
+    void deleteInvestorReturns200AndSetsInactiveAndDeletedAt() throws Exception {
+        // Given: 인증된 계정이 특정 투자자를 소유하고 있음 (AC-009)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+        assertThat(investorRepository.findById(investorId).orElseThrow().getStatus())
+                .as("사전 조건: 삭제 전 status는 ACTIVE여야 합니다").isEqualTo("ACTIVE");
+
+        // When: DELETE /investors/{investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(delete("/investors/" + investorId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 200 OK 응답을 반환하고 성공 메시지를 포함함 (AC-009)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("정상 비활성화 요청 시 200 OK를 반환해야 합니다 (AC-009)").isEqualTo(200);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("message")).as("성공 메시지를 반환해야 합니다 (AC-009)").isEqualTo("투자자가 비활성화되었습니다.");
+
+        // And: 투자자의 status가 INACTIVE로 변경되고 deletedAt에 현재 타임스탬프가 설정됨 (AC-009)
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getStatus()).as("status가 INACTIVE로 변경되어야 합니다 (AC-009)").isEqualTo("INACTIVE");
+        assertThat(saved.getDeletedAt()).as("deletedAt에 현재 타임스탬프가 설정되어야 합니다 (AC-009)").isNotNull();
+    }
+
+    @Test
+    void deleteAlreadyInactiveInvestorReturns200AndKeepsDeletedAt() throws Exception {
+        // Given: 본인 계정 소유 투자자가 이미 비활성화(INACTIVE) 상태이고 deletedAt이 설정되어 있음 (엣지케이스 6)
+        signupAndLogin();
+        LocalDateTime originalDeletedAt = LocalDateTime.of(2026, 1, 1, 12, 0, 0);
+        Long investorId = investorRepository.save(Investor.builder()
+                .accountId(accountId)
+                .displayName("비활성투자자")
+                .relationship("OTHER")
+                .status("INACTIVE")
+                .deletedAt(originalDeletedAt)
+                .createdAt(originalDeletedAt)
+                .updatedAt(originalDeletedAt)
+                .build()).getId();
+
+        // When: 이미 INACTIVE 상태인 투자자에게 DELETE /investors/{id} 요청을 다시 보냄 (멱등)
+        MvcResult result = mockMvc.perform(delete("/investors/" + investorId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 에러 없이 200 OK 응답을 반환함 (엣지케이스 6 - 멱등성)
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("이미 INACTIVE인 투자자 재비활성화 시 에러가 아니라 200 OK여야 합니다 (엣지케이스 6)").isEqualTo(200);
+        Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(body.get("message")).isEqualTo("투자자가 비활성화되었습니다.");
+
+        // And: 기존 deletedAt 값이 그대로 유지되고 status도 INACTIVE가 유지됨 (멱등성)
+        Investor saved = investorRepository.findById(investorId).orElseThrow();
+        assertThat(saved.getStatus()).as("status는 INACTIVE가 유지되어야 합니다 (엣지케이스 6)").isEqualTo("INACTIVE");
+        assertThat(saved.getDeletedAt()).as("기존 deletedAt이 그대로 유지되어야 합니다 (엣지케이스 6)").isEqualTo(originalDeletedAt);
+    }
+
+    @Test
+    void deleteInvestorWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 계정이 존재함 (spec: 존재하지 않는 투자자는 404 NOT_FOUND)
+        signupAndLogin();
+
+        // When: 존재하지 않는 투자자 ID로 DELETE /investors/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(delete("/investors/99999999")
+                        .session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND 오류
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("존재하지 않는 투자자 비활성화 시 404여야 합니다").isEqualTo(404);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 NOT_FOUND여야 합니다").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void deleteInvestorOwnedByOtherAccountReturns403() throws Exception {
+        // Given: 인증된 계정 A가 존재하고, 계정 B의 투자자 ID가 알려져 있음 (소유권 검증 재사용)
+        signupAndLogin();
+        Long otherInvestorId = createOtherAccountInvestor();
+
+        // When: 계정 A가 DELETE /investors/{accountB_investor_id} 요청을 보냄
+        MvcResult result = mockMvc.perform(delete("/investors/" + otherInvestorId)
+                        .session(session))
+                .andReturn();
+
+        // Then: 403 Forbidden + FORBIDDEN, 계정 B의 투자자 상태는 변경되지 않음
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("다른 계정 투자자 비활성화 시 403 Forbidden이어야 합니다").isEqualTo(403);
+        var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
+        assertThat(responseMap.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
         Investor other = investorRepository.findById(otherInvestorId).orElseThrow();
-        assertThat(other.getDisplayName()).as("계정 B의 투자자 정보가 변경되면 안 됩니다").isEqualTo("다른계정투자자");
+        assertThat(other.getStatus()).as("계정 B의 투자자 상태가 변경되면 안 됩니다").isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void deleteInvestorWithoutAuthenticationReturns401() throws Exception {
+        // Given: 인증되지 않은 요청이 들어옴 (AC-003과 동일한 미인증 규칙)
+        signupAndLogin();
+        Long investorId = registerAndGetId("홍길동");
+        MockHttpSession noSession = new MockHttpSession();
+
+        // When: 세션 없이 DELETE /investors/{id} 요청을 보냄
+        MvcResult result = mockMvc.perform(delete("/investors/" + investorId)
+                        .session(noSession))
+                .andReturn();
+
+        // Then: 401 Unauthorized 응답을 반환함
+        int status = result.getResponse().getStatus();
+        assertThat(status).as("미인증 삭제 요청은 401 Unauthorized를 반환해야 합니다").isEqualTo(401);
     }
 }

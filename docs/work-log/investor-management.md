@@ -194,3 +194,34 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 
 ### 남은 작업 (금지사항 준수: DELETE 미작성)
 - SF-6 투자자 비활성화 API (DELETE /investors/{id}, soft delete, 멱등) — 이번 SF에서 작성하지 않음
+
+## 2026-09-21 — SF-6 (투자자 비활성화 API: DELETE /investors/{id}, soft delete, 멱등) 구현 완료 — Epic 2 마지막 SF
+
+### 역할 / 모델
+- Implementation (B그룹), Test-First(RED→GREEN)
+
+### 배경
+- SF-5에서 "남은 작업"으로 명시됐던 SF-6를 이번에 구현. Epic 2(투자자 관리)의 마지막 세부 기능.
+- 읽은 문서: `docs/spec/investor-management.md`(DELETE 섹션, AC-009, 엣지케이스 6), `docs/architecture/investor-management.md`("투자자 비활성화 흐름(Soft Delete)")
+- 선행 조건 확인: `git log`로 SF-1~SF-5 커밋(754c161 등) 존재 확인. 기존 61개 테스트 GREEN 베이스라인 확인.
+
+### 수행한 작업
+- [x] RED — `InvestorControllerTest`에 DELETE 테스트 5개 신규 추가 (기존 18개 + 신규 5개 = 23개)
+  - **AC-009**: 정상 비활성화 → 200 + `{"message":"투자자가 비활성화되었습니다."}` + DB status=INACTIVE + deletedAt 설정 확인
+  - **엣지케이스 6(멱등성)**: 이미 INACTIVE(과거 deletedAt 설정)인 투자자에 재요청 → 에러 없이 200 + 기존 deletedAt 그대로 유지, status INACTIVE 유지
+  - spec 대비 추가: 존재하지 않는 id → 404 NOT_FOUND / 다른 계정 소유 투자자 → 403 FORBIDDEN, 상대 계정 상태 미변경 / 미인증 → 401
+  - RED 확인: 4개 DELETE 테스트 405 실패(엔드포인트 미존재) — 401 테스트는 필터가 라우팅 전에 차단해 이미 통과
+- [x] GREEN — 구현
+  - `InvestorService.deactivate(Long id)` 추가: `findOwnedInvestor(id)`로 소유권 검증 재사용(SF-4/SF-5와 동일한 404 "투자자를 찾을 수 없습니다."/403 "계정 소유권이 없습니다.") → status가 INACTIVE가 아닐 때만(status 전이 시에만) status=INACTIVE + deletedAt=now + updatedAt=now 설정 후 저장 → 이미 INACTIVE면 아무것도 변경하지 않고 그대로 반환(멱등성)
+  - 응답: `SuccessResponse`(기존 PasswordChangeController가 쓰는 message-only DTO) `SuccessResponse.of("투자자가 비활성화되었습니다.")`, 200 OK
+  - `InvestorController`에 `@DeleteMapping("/{id}")` 추가
+- [x] 전체 검증: `DB_PASSWORD=vibe_local_password ./gradlew test` **GREEN: 66개 테스트(11 suites), 0 실패 0 에러** (기존 61 + 신규 5)
+
+### 확인 사항 (검증 결과)
+- `DB_PASSWORD` 미설정 시 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)이 "password authentication failed"로 실패 — SF-4 때부터 확인된 **사전 존재 환경 이슈** (이번 변경과 무관). env var 지정 시 전체 GREEN.
+- checkstyle: `./gradlew checkstyleMain checkstyleTest` 시도 → **checkstyle 플러그인이 build.gradle.kts에 없어 태스크가 존재하지 않음**(Task not found). AGENTS.md 15의 "없으면 추가"는 이번 SF 지시("있다면") 범위 밖으로 간주, 플러그인 추가는 하지 않음. 해당 사실은 이렇게 work-log에 기록.
+- 변경 파일: `InvestorController.java`, `InvestorService.java` (수정), `InvestorControllerTest.java` (수정)
+- `git diff --check` 통과
+
+### 남은 작업
+- Epic 2(투자자 관리) 전 세부기능(SF-1~SF-6) 구현 완료. Epic 2 전체 GREEN 확인됨. 이후 Master가 커밋/PR(Git Manager) 및 에픽 마무리 절차 진행 예정.
