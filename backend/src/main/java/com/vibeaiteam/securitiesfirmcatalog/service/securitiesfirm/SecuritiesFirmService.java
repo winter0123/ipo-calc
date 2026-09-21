@@ -2,6 +2,7 @@ package com.vibeaiteam.securitiesfirmcatalog.service.securitiesfirm;
 
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmRegisterRequest;
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmResponse;
+import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmUpdateRequest;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmDuplicateException;
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmNotFoundException;
@@ -54,6 +55,33 @@ public class SecuritiesFirmService {
         SecuritiesFirm firm = securitiesFirmRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
         return SecuritiesFirmResponse.from(firm);
+    }
+
+    public SecuritiesFirmResponse update(Long id, SecuritiesFirmUpdateRequest request) {
+        SecuritiesFirm firm = securitiesFirmRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
+
+        if (request.getName() != null) {
+            String newName = validateName(request.getName());
+            if (!newName.equals(firm.getName())) {
+                securitiesFirmRepository.findByNameAndStatus(newName, STATUS_ACTIVE).ifPresent(existing -> {
+                    throw new SecuritiesFirmDuplicateException("이미 등록된 증권사명입니다.");
+                });
+            }
+            firm.setName(newName);
+        }
+
+        if (request.getExternalCode() != null) {
+            firm.setExternalCode(request.getExternalCode());
+        }
+
+        if (request.getBusinessRegistrationNumber() != null) {
+            firm.setBusinessRegistrationNumber(request.getBusinessRegistrationNumber());
+        }
+
+        firm.setUpdatedAt(LocalDateTime.now());
+        SecuritiesFirm saved = securitiesFirmRepository.save(firm);
+        return SecuritiesFirmResponse.from(saved);
     }
 
     private String validateName(String name) {
