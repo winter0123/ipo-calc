@@ -51,3 +51,15 @@ Subscription(Epic 6)과 Allocation(Epic 7)은 별도의 백엔드 리소스이�
 이 결정들은 `docs/spec/web-subscription-workflow.md` /
 `docs/architecture/web-subscription-workflow.md` 작성 태스크 지시에
 반영되었다.
+
+## 2026-09-21 — SF 분해 (breakdown) (티켓: task_ca43430dea7a)
+
+`docs/breakdown/web-subscription-workflow.md` 작성 완료. 총 **3개 SF**로 분해한다.
+
+- **SF-1 청약 등록 화면** — 즉시 착수 가능. 필요한 백엔드 4개 API(GET /investors, GET /securities-accounts, GET /ipos, POST /subscriptions)가 전부 main 머지 확인됨(POST /subscriptions은 PR #104, commit 0c4dd04). 이 SF에서 `entities/ipo`, `entities/subscription`, `entities/securities-account`(프론트에 아직 없음)와 `shared ConfirmDialog`를 신규 생성.
+- **SF-2 청약 목록 화면** — 화면 구현은 가능하나 **Epic 11(`GET /investment-history`)이 미구현**이어서 실연동·E2E 검증은 Epic 11 백엔드 머지 후. (아키텍처 문서가 "Epic 11에서 이미 구현된 API를 재사용"이라 전제했으나 실제로는 Phase 0만 완료됨 — 발견사항으로 문서에 기록)
+- **SF-3 배정 등록 화면** — **선행 조건: Epic 7(`POST /allocations`) 백엔드 구현 완료 + Epic 11 상세(`GET /investment-history/{id}`) 구현**. 둘 다 미구현.
+
+검증: 백엔드 워크트리(backend-3)에서 컨트롤러 존재 여부(GET /investors, /securities-accounts, /ipos, POST /subscriptions + main log)와 Epic 11/7 미구현을 실제 파일로 확인. 프론트 FSD(entities/features/pages) 및 Epic 13 SF-4 패턴(react-hook-form + TanStack Query + 셀렉트 드롭다운)도 읽고 반영함.
+
+커밋/PR은 Master 담당(워커는 git 작업 안 함).
