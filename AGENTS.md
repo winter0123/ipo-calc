@@ -732,6 +732,7 @@ app → pages → widgets → features → entities → shared
 - `shared`는 특정 도메인/상위 레이어에 의존하지 않는다.
 - 순환 참조 금지.
 - 아키텍처를 지키기 위한 목적이 아닌 과도한 폴더 분리는 피한다.
+- **폴더 경로는 반드시 `src/` 바로 밑에 6개 레이어(`app/pages/widgets/features/entities/shared`)가 형제(sibling)로 나란히 있어야 한다** — `app`은 그 중 하나의 레이어일 뿐(앱 전역 프로바이더/라우팅 설정만 담당)이며, 나머지 레이어를 `app/` **안에 자식으로 넣지 않는다**. (2026-09-21 사고: SF-1 작업 지시에서 "`app/{pages,widgets,features,entities,shared}`"라고 잘못 표기해 실제로 `entities`/`features`/`pages`/`shared`/`widgets`가 `app/` 폴더 안에 중첩 생성됐다. `src/App.tsx`(라우팅 루트 컴포넌트)와 `src/app/`(레이어를 담아버린 폴더)의 이름이 겹쳐 보여 사용자가 직접 혼란을 지적, 리팩터링으로 정정함. 이후 프론트엔드 SF 작업 지시를 쓸 때 폴더 구조 예시를 `src/{app,pages,widgets,features,entities,shared}/`처럼 전부 `src/` 직속 형제로 명시한다 — `app/{...}`처럼 중첩된 형태로 쓰지 않는다.)
 
 ### React / 컴포넌트
 
