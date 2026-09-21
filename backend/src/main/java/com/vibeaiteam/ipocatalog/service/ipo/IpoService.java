@@ -23,6 +23,7 @@ public class IpoService {
 
     private static final int NAME_MAX_LENGTH = 255;
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_INACTIVE = "INACTIVE";
 
     private final IpoRepository ipoRepository;
 
@@ -38,6 +39,16 @@ public class IpoService {
         Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
         return IpoResponse.from(ipo);
+    }
+
+    @Transactional
+    public void deactivate(Long id) {
+        Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+        ipo.setStatus(STATUS_INACTIVE);
+        ipo.setDeletedAt(LocalDateTime.now());
+        ipo.setUpdatedAt(LocalDateTime.now());
+        ipoRepository.save(ipo);
     }
 
     @Transactional
