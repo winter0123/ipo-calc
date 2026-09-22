@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage/DashboardPage.tsx'
 import SecuritiesAccountRegisterPage from './pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'
 import SubscriptionRegisterPage from './pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'
 import SubscriptionListPage from './pages/SubscriptionListPage/SubscriptionListPage.tsx'
+import AllocationRegisterPage from './pages/AllocationRegisterPage/AllocationRegisterPage.tsx'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       />
       <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
       <Route path="/subscriptions" element={<SubscriptionListPage />} />
+      <Route path="/allocations/register" element={<AllocationRegisterPage />} />
     </Routes>
   )
 }
