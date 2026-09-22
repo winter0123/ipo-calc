@@ -1161,4 +1161,148 @@ class SaleControllerTest {
         assertThat(updateResult.getResponse().getStatus()).isEqualTo(404);
         assertNotFoundError(updateResult);
     }
+
+    // ==================== SF-5: 매도 취소 테스트 (AC-016~019) ====================
+
+    private MvcResult cancelSale(Long id) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/sales/" + id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+    }
+
+    @Test
+    void cancelSaleWithValidIdReturns204AndMarksCancelled() throws Exception {
+        // Given: 존재하는 ACTIVE 매도 기록 (AC-016)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When: DELETE /sales/{id} 요청
+        MvcResult cancelResult = cancelSale(saleId);
+
+        // Then: 204 No Content 반환 (AC-016)
+        assertThat(cancelResult.getResponse().getStatus())
+                .as("매도 취소 성공 시 204 No Content를 반환해야 합니다 (AC-016)").isEqualTo(204);
+
+        // And: status가 CANCELLED로 변경되고 deletedAt이 설정됨 (물리 삭제하지 않음 — D-SL-005)
+        Sale cancelled = saleRepository.findById(saleId).orElseThrow();
+        assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+        assertThat(cancelled.getDeletedAt()).isNotNull();
+        assertThat(cancelled.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void cancelSaleWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 매도 ID (AC-017)
+        signupAndLogin();
+
+        // When: DELETE /sales/{id} 요청 (존재하지 않는 ID)
+        MvcResult result = cancelSale(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-017)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 매도 ID 취소 시 404를 반환해야 합니다 (AC-017)").isEqualTo(404);
+        assertNotFoundError(result);
+    }
+
+    @Test
+    void cancelCancelledSaleReturns404() throws Exception {
+        // Given: 이미 CANCELLED 상태인 매도 기록 (AC-019: 재취소 시도도 404)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // 매도를 CANCELLED 상태로 변경
+        saleRepository.findById(saleId).ifPresent(sale -> {
+            sale.setStatus("CANCELLED");
+            sale.setDeletedAt(LocalDateTime.now());
+            saleRepository.saveAndFlush(sale);
+        });
+
+        // When: DELETE /sales/{id} 요청 (이미 취소된 매도 재취소 시도)
+        MvcResult cancelResult = cancelSale(saleId);
+
+        // Then: 404 Not Found (AC-019: 취소된 매도는 재활성화 불가, 재취소도 404)
+        assertThat(cancelResult.getResponse().getStatus())
+                .as("이미 취소된 매도 재취소 시 404를 반환해야 합니다 (AC-019)").isEqualTo(404);
+        assertNotFoundError(cancelResult);
+
+        // And: 상태는 여전히 CANCELLED 유지 (ACTIVE로 되돌아가지 않음)
+        Sale stillCancelled = saleRepository.findById(saleId).orElseThrow();
+        assertThat(stillCancelled.getStatus()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void cancelledSaleIsExcludedFromList() throws Exception {
+        // Given: ACTIVE 매도 1건과 CANCELLED 매도 1건이 존재함 (AC-018 회귀 테스트)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        // ACTIVE 매도 등록
+        Map<String, Object> activeReq = validSaleRequest(allocationId);
+        activeReq.put("quantity", 30L);
+        activeReq.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult activeResult = registerSale(activeReq);
+        assertThat(activeResult.getResponse().getStatus()).isEqualTo(201);
+
+        // CANCELLED 매도 등록 후 취소
+        Map<String, Object> cancelledReq = validSaleRequest(allocationId);
+        cancelledReq.put("quantity", 40L);
+        cancelledReq.put("saleDate", "2026-10-12T10:00:00");
+        MvcResult cancelledResult = registerSale(cancelledReq);
+        assertThat(cancelledResult.getResponse().getStatus()).isEqualTo(201);
+        Long cancelledId = ((Number) readBody(cancelledResult).get("id")).longValue();
+
+        // DELETE로 취소
+        MvcResult cancelResult = cancelSale(cancelledId);
+        assertThat(cancelResult.getResponse().getStatus()).isEqualTo(204);
+
+        // When: GET /sales 요청
+        MvcResult listResult = listSales(new LinkedHashMap<>());
+
+        // Then: 200 OK, ACTIVE 매도만 반환, CANCELLED 제외 (AC-018)
+        assertSaleListResponse(listResult, 1);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(listResult), List.class);
+        assertThat(((Number) response.get(0).get("quantity")).longValue()).isEqualTo(30L);
+        assertThat(response.get(0).get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get(0).get("deletedAt")).isNull();
+    }
+
+    @Test
+    void cancelledSaleIsExcludedFromDetail() throws Exception {
+        // Given: CANCELLED 상태의 매도 기록 (AC-018: 취소된 매도는 상세 조회에서도 제외)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // DELETE로 취소
+        MvcResult cancelResult = cancelSale(saleId);
+        assertThat(cancelResult.getResponse().getStatus()).isEqualTo(204);
+
+        // When: GET /sales/{id} 요청 (취소된 매도)
+        MvcResult getResult = getSaleById(saleId);
+
+        // Then: 404 Not Found (AC-018: 취소된 매도는 상세 조회에서도 노출하지 않음)
+        assertThat(getResult.getResponse().getStatus()).isEqualTo(404);
+        assertNotFoundError(getResult);
+    }
 }
