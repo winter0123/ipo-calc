@@ -2,11 +2,13 @@ package com.vibeaiteam.salemanagement.controller.sale;
 
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleRegisterRequest;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleResponse;
+import com.vibeaiteam.salemanagement.controller.sale.dto.SaleUpdateRequest;
 import com.vibeaiteam.salemanagement.service.sale.SaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,6 +53,14 @@ public class SaleController {
     @GetMapping("/{id}")
     public ResponseEntity<SaleResponse> getById(@PathVariable Long id) {
         SaleResponse response = saleService.getById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    // 매도 기록을 부분 수정한다. 제공된 필드만 갱신하며(시점/필드 제약 없음 — D-SL-003),
+    // 누적 매도수량 재검증을 수행한다(자기 자신 제외). 존재하지 않거나 취소된 매도는 404를 반환한다.
+    @PatchMapping("/{id}")
+    public ResponseEntity<SaleResponse> update(@PathVariable Long id, @RequestBody SaleUpdateRequest request) {
+        SaleResponse response = saleService.update(id, request);
         return ResponseEntity.ok(response);
     }
 }
