@@ -14,7 +14,7 @@
 4. **문서 폴더 구조를 만든다**(9장): `docs/research/`, `docs/spec/`, `docs/architecture/`, `docs/breakdown-research/`, `docs/breakdown/`, `docs/work-plan/`, `docs/work-log/`, `docs/handoff/`, `docs/screenshots/` + 프로젝트 공통 3종 파일(`docs/current-status.md`, `docs/setup-history.md`, `docs/daily-log.md`, 9.2 참고, 각각 빈 템플릿으로 생성).
 5. **워커 실행 방식과 무료 모델을 정한다**(22장): 어떤 CLI(`opencode`, `claude --model` 등)로 워커를 띄울지, 어떤 무료 모델을 역할별로 배정할지(22.1 표)를 이 프로젝트 기준으로 다시 검증해서 채운다 — 22.4의 OpenRouter 무료 모델 목록은 **이 프로젝트에서 특정 시점에 검증한 결과**이므로, 새 프로젝트에서는 반드시 OpenRouter 공식 API로 그 시점 최신 무료 모델 목록을 다시 확인한다(무료 라인업은 수시로 바뀐다).
 6. **프론트/백엔드 스택과 코드 스타일을 정한다**(14장/15장): 언어·프레임워크·패키지 매니저·린터·포매터·모바일 반응형 기준 등. 이 프로젝트의 선택(React+TS, pnpm, ESLint+Prettier+tsc strict, Java+Spring+PostgreSQL, checkstyle 등)은 예시일 뿐, 새 프로젝트의 실제 스택에 맞게 다시 정한다.
-7. **Git/PR 운영 정책을 정한다**(4장/12장): 기능 단위(SF)마다 바로 main에 병합할지, 매번 사람 승인을 받을지, 브랜치 네이밍 규칙 등을 사용자와 확정한다.
+7. **Git/PR 운영 정책을 정한다**(4장/12장): 기능 단위(SF)마다 바로 main에 병합할지, 매번 사람 승인을 받을지, 브랜치 네이밍 규칙 등을 사용자와 확정한다. **GitHub Issue를 Orca 태스크와 별도로 운영할지도 이때 함께 정한다**(8.4장) — 쓰기로 했다면 그 순간부터 상태 동기화가 필수가 된다.
 8. **(선택) 리포팅/알림 파이프라인을 설정한다**(28장): 진행 상황을 실시간으로 받고 싶으면 Hermes 등 메시징 도구로 Orca 태스크 완료/PR 생성을 감시하는 독립 스크립트를 둔다.
 9. 위가 끝나면 6장대로 **`docs/roadmap.md`부터 작성**하고, 그 다음 Epic 단위 Phase 0(7장) → 세부 기능 분해(5.4) → 구현 순서로 들어간다.
 
@@ -286,13 +286,15 @@ B그룹(구현) 생성 및 구현 시작
 
 요구사항→구체적 동작, 사용자 시나리오, Acceptance Criteria, 엣지케이스, 티켓 분해, 시스템 아키텍처, 데이터 흐름, API 경계, DB 변경, 의존성/리스크. 출력: `docs/spec/[epic-slug].md`, `docs/architecture/[epic-slug].md`, `docs/roadmap.md`. 산출 후 즉시 해제.
 
-### 8.4 Git Manager (C그룹 — 신설, 과거 미흡 영역)
+### 8.4 Git Manager (C그룹) — GitHub Issue 연동은 프로젝트 선택사항
 
-> 과거 실패: "Git Manager가 이슈/상태 관리를 담당한다"고만 적어 두니 실제로는 아무도 이슈 상태를 갱신하지 않았다. Orca의 태스크 상태(`task-update`)와 GitHub Issue 상태는 서로 다른 시스템이라 **자동 동기화되지 않는다.** 아래를 예외 없이 지킨다.
+> 과거 실패: "Git Manager가 이슈/상태 관리를 담당한다"고만 적어 두니 실제로는 아무도 이슈 상태를 갱신하지 않았다. Orca의 태스크 상태(`task-update`)와 GitHub Issue 상태는 서로 다른 시스템이라 **자동 동기화되지 않는다.**
 
-> **실제 운영 기록과의 차이(문서화된 이상 vs 실제 실행)**: 이 프로젝트에서는 GitHub Issue 자체를 쓰지 않고(=Orca 태스크만으로 티켓 관리) Master가 별도 Git Manager 워커를 만들지 않고 `git`/`gh` 명령을 **본인이 직접** 실행해 커밋·PR 생성·머지까지 처리해왔다 — 개발자가 사용자 한 명뿐이고 Master 자신이 이미 매 SF 완료 시 독립 검증까지 하므로, 별도 워커에게 위임할 이점이 없었기 때문이다. **새 프로젝트에서 GitHub Issue로 실제 티켓 이력을 남기고 싶다면** 아래 Git Manager 위임 절차를 그대로 쓰고, **Orca 태스크만으로 충분하다면** Master가 직접 `gh` 명령을 실행해도 무방하다 — 다만 어느 쪽을 택하든 8.4의 상태-동기화 원칙(Orca 상태와 GitHub 상태가 어긋나지 않게 유지)은 그대로 지킨다.
+**GitHub Issue를 쓸지 말지는 프로젝트마다 사용자와 함께 정한다.** Orca 태스크는 에이전트가 일을 처리하는 실행 단위이고, GitHub Issue는 사람이 진행 상황을 한눈에 보기 위한 창구로 역할이 다르다. 개발자가 사용자 한 명뿐이고 Orca 태스크·`docs/current-status.md`만으로 진행 상황 파악에 충분하다면 GitHub Issue를 아예 만들지 않아도 된다. 반대로 **사용자가 GitHub에서 진행 현황을 보고 싶어 한다면, Orca 태스크와 별개로 GitHub Issue도 함께 운영한다.** 부트스트랩 체크리스트(문서 상단 7번)에서 이 선택을 먼저 확정하고, 프로젝트 진행 중 사용자가 요청하면 언제든 켜거나 끌 수 있다 — 무엇을 택했는지는 `docs/setup-history.md`에 한 줄로 기록한다.
 
-- **다른 워커는 절대 직접 `gh issue`/`gh pr` 명령을 실행하지 않는다.** 이슈/PR을 만들거나 상태를 바꾸고 싶으면 반드시 Git Manager에게 메시지로 요청한다.
+**GitHub Issue를 함께 쓰기로 했다면, 상태 관리는 선택이 아니라 필수다.** "이슈는 만들어 두고 상태는 안 갱신한다"가 과거 실패 패턴이었으므로, 이슈를 만들기로 한 이상 아래 규칙을 예외 없이 지킨다:
+
+- **다른 워커는 절대 직접 `gh issue`/`gh pr` 명령을 실행하지 않는다.** 이슈/PR을 만들거나 상태를 바꾸고 싶으면 반드시 Git Manager(또는 Git Manager 역할을 겸하는 Master)에게 메시지로 요청한다.
 - **티켓 상태를 바꾼 에이전트(보통 Master 또는 QA/Review)는 `task-update` 직후 반드시 Git Manager에게 알린다.** 알리지 않고 Orca 상태만 바꾸는 것을 금지한다.
 
 ```bash

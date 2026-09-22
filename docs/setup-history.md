@@ -11,6 +11,7 @@
 - 2026-09-20 — Gradle 9.7.1 설치 (Homebrew, `brew install gradle`) — 이유: SF-1(프로젝트 초기 셋업)에서 `backend/`의 Gradle Wrapper(gradle-wrapper.jar)를 생성하려면 시스템 Gradle이 필요했음. 부수 설치: gradle-completion, openjdk@25(Gradle 자체 구동용, 프로젝트 빌드는 여전히 Java 21 사용), glib/harfbuzz/xz/little-cms2(의존성) — 명령: `brew install gradle`
 - 2026-09-20 — `backend/` Gradle Wrapper 생성 — 명령: `cd backend && gradle wrapper`(설치된 시스템 Gradle 9.7.1 버전 그대로 사용, JAVA_HOME을 Java 21로 지정) — 이후 `gradle` 시스템 설치 없이 `./gradlew`만으로 빌드 가능. `./gradlew build --dry-run`으로 설정 단계 통과 확인(BUILD SUCCESSFUL). Gradle 10 호환성 관련 deprecation 경고가 있어 추후 재확인 필요.
 - 2026-09-20 — **PostgreSQL 호스트 포트를 5432 → 5433으로 변경**(사용자 결정) — 이유: SF-2 테스트(`@SpringBootTest`) 실행 중 이 프로젝트와 무관한 다른 Postgres 컨테이너(`postgres-db`, postgis 이미지, 다른 프로젝트용으로 추정)가 이미 호스트 포트 5432를 점유하고 있어 `vibe-ai-team-postgres` 컨테이너가 한 번도 기동되지 못했음을 발견. 컨테이너 내부 포트는 5432 그대로, 호스트 노출 포트만 5433으로 변경(`docker-compose.yml`). 다른 컨테이너는 손대지 않음. `backend/src/main/resources/application.yml`의 datasource URL도 `localhost:5433`으로 함께 수정 필요(SF-2 구현 워커가 반영).
+- 2026-09-22 — **GitHub Issue를 Orca 태스크와 병행 운영하기로 결정**(사용자 지시, AGENTS.md 8.4장) — 이유: Orca 태스크는 실행 단위일 뿐 사람이 보기 편한 진행 현황 창구가 아니므로, 사용자가 GitHub에서 Epic 단위 진행 상황을 볼 수 있게 함. `status:planned/in-progress/review/changes-requested/approved` 라벨 신설. 기존에 방치돼 있던 Epic 2~4 이슈(#64/#71/#77)를 실제 완료 상태에 맞춰 정리하고, Epic 5~16에 대한 이슈(#122~#133)를 각 Epic의 실제 진행 상태(완료/진행중/계획됨)에 맞춰 신규 생성·정리함. 이후로는 Epic/SF 상태가 바뀔 때마다 그 즉시 이슈 상태도 함께 갱신한다.
 
 ---
 
