@@ -2,6 +2,7 @@ import { apiFetch } from '../../shared/api/client.ts'
 import type {
   InvestmentHistoryFilters,
   InvestmentHistoryResponse,
+  InvestmentHistoryItem,
   Subscription,
   SubscriptionRegisterRequest,
 } from './types.ts'
@@ -31,6 +32,17 @@ export async function getInvestmentHistory(
 
   const query = params.toString()
   return apiFetch<InvestmentHistoryResponse>(`/investment-history${query ? `?${query}` : ''}`, {
+    method: 'GET',
+  })
+}
+
+/**
+ * GET /investment-history/{subscriptionId} — Epic 11(investment-query-api) 백엔드 미구현.
+ * 배정 등록 화면 진입 시 청약 상세 조회용으로 사용된다(참고 표시용 청약수량 추출).
+ * 응답에서 subscriptionQuantity(청약수량) 필드를 추출한다.
+ */
+export async function getSubscriptionDetail(subscriptionId: number): Promise<InvestmentHistoryItem> {
+  return apiFetch<InvestmentHistoryItem>(`/investment-history/${subscriptionId}`, {
     method: 'GET',
   })
 }
