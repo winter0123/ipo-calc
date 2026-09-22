@@ -1,6 +1,11 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-22 낮 (Epic 8 SF-3 완료, Epic 10 breakdown 완료, GitHub Issue 병행 관리 시작 이후 갱신)
+> 마지막 갱신: 2026-09-22 낮 (Epic 8 SF-4, Epic 14 SF-3, Epic 12 breakdown 완료·병합 후 세션 종료. 토큰 한도로 세션 마무리 — 3개 워크스페이스 전부 main과 동기화된 idle 브랜치 상태로 정리함)
+
+## 세션 종료 시점 요약 (2026-09-22)
+이번 세션에서 병합된 것: PR #135(Epic8 SF-3), #136(Epic10 breakdown), #137(Epic14 SF-3, Epic14 전체 완료), #138(Epic12 breakdown), #139(Epic8 SF-4). Epic 14는 이슈 #127까지 정상 close됨.
+**알아둘 것**: 3건(Epic10 breakdown, Epic12 breakdown, Epic8 SF-4) 모두 워커가 실제 작업은 끝냈지만 `worker_done`을 정상 전송하지 못했다(디스패치 capability 오류 1건, tool-call 오용 1건, 명령 미실행 1건) — Master가 diff/테스트/문서 내용을 직접 재검증한 뒤 수동으로 completed 처리하고 병합했다. 자동 보고를 못 받는 사례가 이번 세션에서 3번 반복됐으니, 다음 세션에서도 `check --wait` 타임아웃 시 `worker-read --dispatch <id> --json`으로 트랜스크립트를 직접 확인하는 습관을 유지한다.
+**다음 세션 시작 시 바로 할 일**: backend-3에 Epic 8 SF-5(취소 API) 배정, frontend는 다음 대상 결정 필요(Epic 11 대기 중이라 당장 없음 — Epic 15 breakdown 여부 검토), planning은 Epic 15 또는 16 breakdown 착수.
 
 ## 📌 GitHub Issue를 Orca 태스크와 병행 운영 중 (2026-09-22부터)
 AGENTS.md 8.4장 개정에 따라 이 프로젝트는 Orca 태스크(실행 단위)와 별개로 GitHub Issue(사람이 보는 진행 현황판)를 함께 쓰기로 했다. Epic마다 이슈 1개, 라벨은 `status:planned/in-progress/review/changes-requested/approved`, 완료되면 close(라벨 제거). 이슈 #35~#133 정리 완료, 이후 Epic 상태가 바뀔 때마다 그 즉시 이슈도 갱신한다.
@@ -34,13 +39,13 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 5 | 공모주 기준정보 관리 | ipo-catalog | **구현 완료**(SF-1~6, PR #87/#91/#92/#94/#96/#97) |
 | 6 | 청약 기록 | subscription-management | **구현 완료**(SF-1~5, PR #98/#104/#105/#109/#112 — SF-5 청약 취소 API로 Epic 6 완료, 2026-09-21) |
 | 7 | 배정 결과 관리 | allocation-management | **구현 완료**(SF-1~5, PR #115~#119, 2026-09-22 새벽 완료) |
-| 8 | 분할 매도 기록 | sale-management | breakdown 완료(PR #103, 총 5개 SF). **SF-1~3 완료**(PR #120/#121/#135). **SF-4(수정) 진행 중**(backend-3), **SF-5(취소) 남음**. GitHub 이슈 #126 |
+| 8 | 분할 매도 기록 | sale-management | breakdown 완료(PR #103, 총 5개 SF). **SF-1~4 완료**(PR #120/#121/#135/#139). **SF-5(취소) 남음** — 다음 세션 backend-3에 바로 배정. GitHub 이슈 #126 |
 | 9 | 비용 기록 | cost-recording | Phase 0 완료(PR #56) + breakdown 완료(PR #106) — 구현 미착수. Epic 8 완료 후 착수. GitHub 이슈 #128 |
 | 10 | 수익·수익률 계산 | profit-calculation | Phase 0 완료(조사 PR #42, 기획 PR #57) + **breakdown 완료**(PR #136, 총 3개 SF: 기반계층→단일계산API→투자자별집계API). 구현 착수는 Epic 8·9 backend 머지가 선행 조건. GitHub 이슈 #129 |
 | 11 | 투자 내역 조회 API | investment-query-api | Phase 0 완료(조사 PR #43, 기획 PR #58) + breakdown 완료(PR #108) — 구현 미착수. 로드맵상 선행조건은 Epic 1~10 전체이므로 Epic 8·9·10 완료 후 착수 가능. GitHub 이슈 #130 |
-| 12 | 대시보드 집계 API | dashboard-aggregation-api | Phase 0 완료(조사 PR #44, 기획 PR #59) — **breakdown 진행 중**(planning). GitHub 이슈 #131 |
+| 12 | 대시보드 집계 API | dashboard-aggregation-api | Phase 0 완료(조사 PR #44, 기획 PR #59) + **breakdown 완료**(PR #138, 총 4개 SF). 구현 착수는 Epic 10 머지가 선행 조건. GitHub 이슈 #131 |
 | 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | **구현 완료**(SF-1~5, PR #88/#89/#93/#100/#110) + FSD 구조 정정(PR #111) + 사용자 가이드(PR #95) |
-| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | breakdown 완료(PR #107, 총 3개 SF). **SF-1·SF-2 완료**(PR #113/#114). **SF-3(배정 등록 화면) 진행 중**(frontend, 프로덕션 코드 검증 완료·테스트 보완만 남음). GitHub 이슈 #127 |
+| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | **구현 완료**(SF-1~3, PR #113/#114/#137). GitHub 이슈 #127 close됨 |
 | 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | Phase 0 완료(조사 PR #47, 기획 PR #62) — breakdown 미완료. GitHub 이슈 #132 |
 | 16 | 웹 조회·대시보드 | web-inquiry-dashboard | Phase 0 완료(조사 PR #48, 기획 PR #63) — breakdown 미완료. GitHub 이슈 #133 |
 
