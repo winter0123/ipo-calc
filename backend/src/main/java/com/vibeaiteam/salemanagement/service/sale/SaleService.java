@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +65,21 @@ public class SaleService {
 
         Sale saved = saleRepository.save(sale);
         return SaleResponse.from(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SaleResponse> list(Long allocationId, Long investorId, String investorName) {
+        List<Sale> sales = saleRepository.findActiveWithFilters(allocationId, investorId, investorName);
+        return sales.stream()
+                .map(SaleResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SaleResponse getById(Long id) {
+        Sale sale = saleRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
+        return SaleResponse.from(sale);
     }
 
     private void validateRequest(SaleRegisterRequest request) {

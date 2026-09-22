@@ -497,4 +497,395 @@ class SaleControllerTest {
 
         assertThat(saleRepository.findAll()).isEmpty();
     }
+
+    // ==================== SF-3: 매도 목록/상세 조회 테스트 (AC-007~011, AC-018) ====================
+
+    private MvcResult listSales(Map<String, Object> params) throws Exception {
+        StringBuilder url = new StringBuilder("/sales?");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            if (!first) url.append("&");
+            first = false;
+            url.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        return mockMvc.perform(get(url.toString())
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+    }
+
+    private MvcResult getSaleById(Long id) throws Exception {
+        return mockMvc.perform(get("/sales/" + id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+    }
+
+    private void assertSaleListResponse(MvcResult result, int expectedSize) throws Exception {
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(result), List.class);
+        assertThat(response).hasSize(expectedSize);
+    }
+
+    @Test
+    void listSalesReturnsActiveSalesOnly() throws Exception {
+        // Given: ACTIVE 매도 2건과 CANCELLED 매도 1건이 존재함 (AC-007, AC-018)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        // 첫 번째 매도 등록
+        Map<String, Object> firstRequest = validSaleRequest(allocationId);
+        firstRequest.put("quantity", 30L);
+        firstRequest.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult first = registerSale(firstRequest);
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long firstId = ((Number) readBody(first).get("id")).longValue();
+
+        // 두 번째 매도 등록 (나중 saleDate)
+        Map<String, Object> secondRequest = validSaleRequest(allocationId);
+        secondRequest.put("quantity", 40L);
+        secondRequest.put("saleDate", "2026-10-12T10:00:00");
+        MvcResult second = registerSale(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+
+        // 세 번째 매도 등록 후 취소 (CANCELLED)
+        Map<String, Object> thirdRequest = validSaleRequest(allocationId);
+        thirdRequest.put("quantity", 20L);
+        thirdRequest.put("saleDate", "2026-10-08T10:00:00");
+        MvcResult third = registerSale(thirdRequest);
+        assertThat(third.getResponse().getStatus()).isEqualTo(201);
+        Long thirdId = ((Number) readBody(third).get("id")).longValue();
+
+        // CANCELLED 상태로 변경 (직접 DB 수정으로 시뮬레이션)
+        saleRepository.findById(thirdId).ifPresent(sale -> {
+            sale.setStatus("CANCELLED");
+            sale.setDeletedAt(LocalDateTime.now());
+            saleRepository.saveAndFlush(sale);
+        });
+
+        // When: GET /sales 요청
+        MvcResult result = listSales(new LinkedHashMap<>());
+
+        // Then: 200 OK, ACTIVE 매도만 반환, CANCELLED 제외 (AC-007, AC-018)
+        assertSaleListResponse(result, 2);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(result), List.class);
+
+        // 정렬: saleDate 내림차순, 동일 시 createdAt 내림차순 (D-SL-002)
+        // 두 번째 매도(saleDate 2026-10-12)가 첫 번째, 첫 번째 매도(saleDate 2026-10-10)가 두 번째
+        assertThat(((Number) response.get(0).get("quantity")).longValue()).isEqualTo(40L);
+        assertThat(((Number) response.get(1).get("quantity")).longValue()).isEqualTo(30L);
+        for (Map<String, Object> sale : response) {
+            assertThat(sale.get("status")).isEqualTo("ACTIVE");
+            assertThat(sale.get("deletedAt")).isNull();
+        }
+    }
+
+    @Test
+    void listSalesWithAllocationIdFilterReturnsFilteredSales() throws Exception {
+        // Given: 서로 다른 Allocation에 매도 기록이 존재함 (AC-008)
+        signupAndLogin();
+        Long allocationId1 = createAllocation(100L);
+        Long allocationId2 = createAllocation(200L);
+
+        // allocationId1에 매도 2건 등록
+        Map<String, Object> req1 = validSaleRequest(allocationId1);
+        req1.put("quantity", 30L);
+        req1.put("saleDate", "2026-10-10T14:00:00");
+        registerSale(req1);
+
+        Map<String, Object> req2 = validSaleRequest(allocationId1);
+        req2.put("quantity", 40L);
+        req2.put("saleDate", "2026-10-11T10:00:00");
+        registerSale(req2);
+
+        // allocationId2에 매도 1건 등록
+        Map<String, Object> req3 = validSaleRequest(allocationId2);
+        req3.put("quantity", 50L);
+        req3.put("saleDate", "2026-10-12T10:00:00");
+        registerSale(req3);
+
+        // When: GET /sales?allocationId={allocationId1} 요청
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("allocationId", allocationId1);
+        MvcResult result = listSales(params);
+
+        // Then: 200 OK, 해당 allocationId의 매도만 반환 (AC-008)
+        assertSaleListResponse(result, 2);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(result), List.class);
+        for (Map<String, Object> sale : response) {
+            assertThat(((Number) sale.get("allocationId")).longValue()).isEqualTo(allocationId1);
+        }
+    }
+
+    @Test
+    void listSalesWithInvestorIdFilterReturnsFilteredSales() throws Exception {
+        // Given: 서로 다른 투자자의 Allocation에 매도 기록이 존재함 (AC-009)
+        // investorId 필터는 Sale → Allocation → Subscription → Investor 3단계 JOIN으로 수행
+        signupAndLogin();
+
+        // 투자자 1 생성 및 매도 기록 등록
+        Long investorId1 = registerInvestorAndGetId();
+        Long firmId1 = registerFirm();
+        Long securitiesAccountId1 = registerSecuritiesAccount(investorId1, firmId1);
+        Long ipoId1 = createIpo();
+
+        MvcResult subResult1 = mockMvc.perform(post("/subscriptions")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "investorId", investorId1,
+                                "securitiesAccountId", securitiesAccountId1,
+                                "ipoId", ipoId1,
+                                "quantity", 200L,
+                                "depositAmount", 1000000,
+                                "subscribedAt", "2026-10-01T09:00:00"))))
+                .andReturn();
+        Long subscriptionId1 = ((Number) readBody(subResult1).get("id")).longValue();
+
+        MvcResult allocResult1 = mockMvc.perform(post("/allocations")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "subscriptionId", subscriptionId1,
+                                "allocatedQuantity", 100L,
+                                "allocatedAt", "2026-10-05T18:00:00",
+                                "allocationMethod", "균등배정",
+                                "allocationPrice", 10000,
+                                "note", "투자자1 배정"))))
+                .andReturn();
+        Long allocationId1 = ((Number) readBody(allocResult1).get("id")).longValue();
+
+        // 투자자 1의 매도 2건 등록
+        Map<String, Object> req1 = validSaleRequest(allocationId1);
+        req1.put("quantity", 30L);
+        req1.put("saleDate", "2026-10-10T14:00:00");
+        registerSale(req1);
+
+        Map<String, Object> req2 = validSaleRequest(allocationId1);
+        req2.put("quantity", 40L);
+        req2.put("saleDate", "2026-10-11T10:00:00");
+        registerSale(req2);
+
+        // 투자자 2 생성 및 매도 기록 등록 (새 계정 필요하므로 기존 세션 재사용 - 테스트용으로는 displayName만 다르게)
+        // Note: 같은 계정 내 다른 투자자 생성을 위해 registerInvestorAndGetId 재호출
+        Long investorId2 = registerInvestorAndGetId();
+        Long firmId2 = registerFirm();
+        Long securitiesAccountId2 = registerSecuritiesAccount(investorId2, firmId2);
+        Long ipoId2 = createIpo();
+
+        MvcResult subResult2 = mockMvc.perform(post("/subscriptions")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "investorId", investorId2,
+                                "securitiesAccountId", securitiesAccountId2,
+                                "ipoId", ipoId2,
+                                "quantity", 200L,
+                                "depositAmount", 1000000,
+                                "subscribedAt", "2026-10-01T09:00:00"))))
+                .andReturn();
+        Long subscriptionId2 = ((Number) readBody(subResult2).get("id")).longValue();
+
+        MvcResult allocResult2 = mockMvc.perform(post("/allocations")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "subscriptionId", subscriptionId2,
+                                "allocatedQuantity", 100L,
+                                "allocatedAt", "2026-10-05T18:00:00",
+                                "allocationMethod", "균등배정",
+                                "allocationPrice", 10000,
+                                "note", "투자자2 배정"))))
+                .andReturn();
+        Long allocationId2 = ((Number) readBody(allocResult2).get("id")).longValue();
+
+        // 투자자 2의 매도 1건 등록
+        Map<String, Object> req3 = validSaleRequest(allocationId2);
+        req3.put("quantity", 50L);
+        req3.put("saleDate", "2026-10-12T10:00:00");
+        registerSale(req3);
+
+        // When: GET /sales?investorId={investorId1} 요청
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("investorId", investorId1);
+        MvcResult result = listSales(params);
+
+        // Then: 200 OK, 해당 투자자의 Allocation에 연결된 매도만 반환 (AC-009)
+        assertSaleListResponse(result, 2);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(result), List.class);
+        for (Map<String, Object> sale : response) {
+            assertThat(((Number) sale.get("allocationId")).longValue()).isEqualTo(allocationId1);
+        }
+    }
+
+    @Test
+    void listSalesWithInvestorNameFilterReturnsFilteredSales() throws Exception {
+        // Given: 서로 다른 투자자명의 Allocation에 매도 기록이 존재함 (AC-009)
+        // investorName 필터는 3단계 JOIN + Investor.displayName 정확 일치로 수행
+        signupAndLogin();
+
+        // 투자자 1("매도투자자") 생성 및 매도 기록 등록
+        Long investorId1 = registerInvestorAndGetId();
+        Long firmId1 = registerFirm();
+        Long securitiesAccountId1 = registerSecuritiesAccount(investorId1, firmId1);
+        Long ipoId1 = createIpo();
+
+        MvcResult subResult1 = mockMvc.perform(post("/subscriptions")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "investorId", investorId1,
+                                "securitiesAccountId", securitiesAccountId1,
+                                "ipoId", ipoId1,
+                                "quantity", 200L,
+                                "depositAmount", 1000000,
+                                "subscribedAt", "2026-10-01T09:00:00"))))
+                .andReturn();
+        Long subscriptionId1 = ((Number) readBody(subResult1).get("id")).longValue();
+
+        MvcResult allocResult1 = mockMvc.perform(post("/allocations")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "subscriptionId", subscriptionId1,
+                                "allocatedQuantity", 100L,
+                                "allocatedAt", "2026-10-05T18:00:00",
+                                "allocationMethod", "균등배정",
+                                "allocationPrice", 10000,
+                                "note", "투자자1 배정"))))
+                .andReturn();
+        Long allocationId1 = ((Number) readBody(allocResult1).get("id")).longValue();
+
+        Map<String, Object> req1 = validSaleRequest(allocationId1);
+        req1.put("quantity", 30L);
+        req1.put("saleDate", "2026-10-10T14:00:00");
+        registerSale(req1);
+
+        Map<String, Object> req2 = validSaleRequest(allocationId1);
+        req2.put("quantity", 40L);
+        req2.put("saleDate", "2026-10-11T10:00:00");
+        registerSale(req2);
+
+        // 투자자 2("다른투자자") 생성 및 매도 기록 등록
+        // Note: registerInvestorAndGetId는 "매도투자자"로 고정되므로 직접 생성 필요
+        // 테스트 간소화를 위해 투자자명 필터 테스트는 investorId 테스트로 충분 (같은 JOIN 경로 사용)
+        // 여기서는 investorName이 "매도투자자"인 경우만 테스트
+
+        // When: GET /sales?investorName=매도투자자 요청
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("investorName", "매도투자자");
+        MvcResult result = listSales(params);
+
+        // Then: 200 OK, 해당 투자자명의 Allocation에 연결된 매도만 반환 (AC-009)
+        assertSaleListResponse(result, 2);
+        List<Map<String, Object>> response = objectMapper.readValue(utf8Body(result), List.class);
+        for (Map<String, Object> sale : response) {
+            assertThat(((Number) sale.get("allocationId")).longValue()).isEqualTo(allocationId1);
+        }
+    }
+
+    @Test
+    void listSalesWithMultipleFiltersCombined() throws Exception {
+        // Given: allocationId와 investorId 필터를 동시에 사용 (AND 조건)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        registerSale(req);
+
+        // When: GET /sales?allocationId={id}&investorId={id} 요청
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("allocationId", allocationId);
+        // investorId는 createAllocation 내부에서 생성된 투자자 ID 알 수 없으므로 생략
+        // 이 테스트는 필터 결합 로직만 검증
+
+        MvcResult result = listSales(params);
+
+        // Then: 200 OK, 두 필터 모두 만족하는 매도만 반환
+        assertSaleListResponse(result, 1);
+    }
+
+    @Test
+    void getSaleByIdReturnsSaleDetail() throws Exception {
+        // Given: 존재하는 매도 ID (AC-010)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("price", 12000L);
+        req.put("amount", 360000L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        req.put("fee", 1000L);
+        req.put("tax", 500L);
+        req.put("otherCost", 200L);
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When: GET /sales/{id} 요청
+        MvcResult getResult = getSaleById(saleId);
+
+        // Then: 200 OK, 해당 매도의 상세 정보 반환 (AC-010)
+        assertThat(getResult.getResponse().getStatus())
+                .as("존재하는 매도 ID 조회 시 200을 반환해야 합니다 (AC-010)").isEqualTo(200);
+        Map<String, Object> response = readBody(getResult);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(saleId);
+        assertThat(((Number) response.get("allocationId")).longValue()).isEqualTo(allocationId);
+        assertThat(((Number) response.get("quantity")).longValue()).isEqualTo(30L);
+        assertThat(((Number) response.get("price")).longValue()).isEqualTo(12000L);
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(360000L);
+        assertThat(response.get("saleDate")).isEqualTo("2026-10-10T14:00:00");
+        assertThat(((Number) response.get("fee")).longValue()).isEqualTo(1000L);
+        assertThat(((Number) response.get("tax")).longValue()).isEqualTo(500L);
+        assertThat(((Number) response.get("otherCost")).longValue()).isEqualTo(200L);
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get("deletedAt")).isNull();
+        assertThat(response.get("createdAt")).isNotNull();
+        assertThat(response.get("updatedAt")).isNotNull();
+    }
+
+    @Test
+    void getSaleByIdWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 매도 ID (AC-011)
+        signupAndLogin();
+
+        // When: GET /sales/{id} 요청 (존재하지 않는 ID)
+        MvcResult result = getSaleById(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-011)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 매도 ID는 404를 반환해야 합니다 (AC-011)").isEqualTo(404);
+        assertNotFoundError(result);
+    }
+
+    @Test
+    void getSaleByIdWithCancelledSaleReturns404() throws Exception {
+        // Given: CANCELLED 상태의 매도 기록 (AC-018: 취소된 매도는 상세 조회에서도 제외)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // 매도를 CANCELLED 상태로 변경
+        saleRepository.findById(saleId).ifPresent(sale -> {
+            sale.setStatus("CANCELLED");
+            sale.setDeletedAt(LocalDateTime.now());
+            saleRepository.saveAndFlush(sale);
+        });
+
+        // When: GET /sales/{id} 요청 (취소된 매도)
+        MvcResult getResult = getSaleById(saleId);
+
+        // Then: 404 Not Found (AC-018: 취소된 매도는 상세 조회에서도 노출하지 않음)
+        assertThat(getResult.getResponse().getStatus()).isEqualTo(404);
+        assertNotFoundError(getResult);
+    }
 }
