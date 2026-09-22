@@ -1,6 +1,10 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-22 (실제 GitHub PR 병합 이력 전수 재확인 후 갱신 — 이전 버전은 2026-09-21 밤 세션 이후 진행된 Epic 6 SF-5, Epic 7 전체, Epic 8 SF-1~2, Epic 14 SF-1~2가 반영되지 않은 채로 방치되어 있었음)
+> 마지막 갱신: 2026-09-22 낮 (Epic 8 SF-3 완료, Epic 10 breakdown 완료, GitHub Issue 병행 관리 시작 이후 갱신)
+
+## 📌 GitHub Issue를 Orca 태스크와 병행 운영 중 (2026-09-22부터)
+AGENTS.md 8.4장 개정에 따라 이 프로젝트는 Orca 태스크(실행 단위)와 별개로 GitHub Issue(사람이 보는 진행 현황판)를 함께 쓰기로 했다. Epic마다 이슈 1개, 라벨은 `status:planned/in-progress/review/changes-requested/approved`, 완료되면 close(라벨 제거). 이슈 #35~#133 정리 완료, 이후 Epic 상태가 바뀔 때마다 그 즉시 이슈도 갱신한다.
+**주의**: PR 본문에 부분 완료(SF 일부만 끝난 상태)인데 `Closes #`를 쓰면 GitHub가 Epic 이슈를 오토클로즈해버린다(2026-09-22, PR #135에서 실제로 발생해 Epic 8 이슈 #126이 잘못 닫힘 → 바로 reopen). **Epic이 완전히 끝나지 않았으면 PR 본문에 `Part of #<이슈번호>`만 쓰고 `Closes #`는 Epic의 마지막 SF PR에서만 쓴다.**
 
 ## 📌 로드맵 의존관계 재확인: 매 Epic 완료 시 재확인
 docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-account-setup)의 선행조건은 Epic 1·2·3·4뿐이었다(Epic 5~12 불필요). **매 Epic 완료 시 로드맵의 실제 의존관계 그래프를 다시 확인해, 새로 선행조건이 충족된 Epic이 있으면 즉시 병렬 착수한다** — 백엔드/프론트엔드/기획을 각자의 워크스페이스에서 동시에 진행.
@@ -10,14 +14,14 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 
 ## 워크스페이스 구조 (2026-09-20부터 역할별 고정 3개, 절대 삭제하지 않음)
 
-| 워크스페이스 | 경로 | 역할 | 현재 브랜치 (2026-09-22 정리 후) |
+| 워크스페이스 | 경로 | 역할 | 현재 진행 중인 작업 (2026-09-22 낮) |
 |---|---|---|---|
 | `backend` | `/Users/joy/orca/workspaces/vibe-ai-team/backend` | 백엔드 구현(B그룹) | Epic 1 머지 이후 미사용 — 실질적으로 `backend-3`가 현재 backend 작업 브랜치 역할 수행 중 |
-| `backend-3` | `/Users/joy/orca/workspaces/vibe-ai-team/backend-3` | 백엔드 구현(B그룹), 추가 워크트리 | `winter0123/sale-query` — Epic 8 SF-3(매도 목록/상세 조회) 착수 준비 완료, main과 완전 동기화 |
-| `frontend` | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` | 프론트 구현(B그룹) | `winter0123/web-subscription-workflow-sf3` — Epic 14 SF-3(배정 등록 화면) 착수 준비 완료, main과 완전 동기화 |
-| `planning` | `/Users/joy/orca/workspaces/vibe-ai-team/planning` | 조사·기획·설계(A그룹) | `winter0123/profit-calculation-breakdown` — Epic 10 SF 분해 착수 준비 완료, main과 완전 동기화 |
+| `backend-3` | `/Users/joy/orca/workspaces/vibe-ai-team/backend-3` | 백엔드 구현(B그룹), 추가 워크트리 | `winter0123/sale-update` 브랜치에서 **Epic 8 SF-4(매도 수정 API) 진행 중**(워커 배정 완료, 결과 대기) |
+| `frontend` | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` | 프론트 구현(B그룹) | `winter0123/web-subscription-workflow-sf3` 브랜치에서 **Epic 14 SF-3 테스트 보완 진행 중**(프로덕션 코드는 완료·검증됨, 테스트 파일 2개 추가 작업 중) |
+| `planning` | `/Users/joy/orca/workspaces/vibe-ai-team/planning` | 조사·기획·설계(A그룹) | `winter0123/dashboard-aggregation-api-breakdown` 브랜치에서 **Epic 12 breakdown 진행 중**(워커 배정 완료, 결과 대기) |
 
-각 워크트리는 직전 SF/문서 PR이 머지된 뒤 로컬 브랜치가 그 머지된(이제는 쓸모없는) 브랜치명 위에 그대로 남아있던 상태였다(2026-09-22 발견). 실제 유실된 작업은 없었고(모두 main과 commit 단위로 동일, working tree clean 확인함) 단순 브랜치명 정리 문제였다 — 옛 브랜치는 삭제하고 다음 작업 이름의 새 브랜치로 교체했다. **앞으로 SF/문서 하나가 머지되면, 같은 워크트리에서 다음 작업을 시작하기 전에 다음 작업명으로 새 브랜치를 만들고 머지된 옛 브랜치는 삭제하는 것을 표준 절차로 한다.**
+**표준 절차(2026-09-22 확립)**: SF/문서 PR이 머지되면, 같은 워크트리에서 다음 작업을 시작하기 전에 ① `git fetch origin main && git checkout -b <다음작업명> origin/main`으로 새 브랜치를 만들고 ② 머지된 옛 브랜치는 `git branch -D`로 지운다. 브랜치명을 재사용하거나 머지된 브랜치 위에 그대로 남아있지 않는다.
 
 ## Epic 진행 현황 (로드맵 16개 Epic 기준, 2026-09-22 `gh pr list --state merged` 전수 대조로 재확인)
 
@@ -30,24 +34,25 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 5 | 공모주 기준정보 관리 | ipo-catalog | **구현 완료**(SF-1~6, PR #87/#91/#92/#94/#96/#97) |
 | 6 | 청약 기록 | subscription-management | **구현 완료**(SF-1~5, PR #98/#104/#105/#109/#112 — SF-5 청약 취소 API로 Epic 6 완료, 2026-09-21) |
 | 7 | 배정 결과 관리 | allocation-management | **구현 완료**(SF-1~5, PR #115~#119, 2026-09-22 새벽 완료) |
-| 8 | 분할 매도 기록 | sale-management | breakdown 완료(PR #103, docs/breakdown/sale-management.md, 총 5개 SF). **SF-1·SF-2 완료**(PR #120/#121). **SF-3(목록/상세 조회)·SF-4(수정)·SF-5(취소) 남음** — `backend-3`가 SF-3용 브랜치(`winter0123/sale-query`)로 착수 준비됨 |
-| 9 | 비용 기록 | cost-recording | Phase 0 완료(PR #56) + breakdown 완료(PR #106) — 구현 미착수. Epic 8 완료 후 착수 |
-| 10 | 수익·수익률 계산 | profit-calculation | Phase 0 완료(조사 PR #42, 기획 PR #57) — **breakdown(SF 분해) 미완료.** `planning`이 `winter0123/profit-calculation-breakdown` 브랜치로 착수 준비됨 |
-| 11 | 투자 내역 조회 API | investment-query-api | Phase 0 완료(조사 PR #43, 기획 PR #58) + breakdown 완료(PR #108) — 구현 미착수. 로드맵상 선행조건은 Epic 1~10 전체이므로 Epic 8·9·10 완료 후 착수 가능 |
-| 12 | 대시보드 집계 API | dashboard-aggregation-api | Phase 0 완료(조사 PR #44, 기획 PR #59) — breakdown 미완료 |
+| 8 | 분할 매도 기록 | sale-management | breakdown 완료(PR #103, 총 5개 SF). **SF-1~3 완료**(PR #120/#121/#135). **SF-4(수정) 진행 중**(backend-3), **SF-5(취소) 남음**. GitHub 이슈 #126 |
+| 9 | 비용 기록 | cost-recording | Phase 0 완료(PR #56) + breakdown 완료(PR #106) — 구현 미착수. Epic 8 완료 후 착수. GitHub 이슈 #128 |
+| 10 | 수익·수익률 계산 | profit-calculation | Phase 0 완료(조사 PR #42, 기획 PR #57) + **breakdown 완료**(PR #136, 총 3개 SF: 기반계층→단일계산API→투자자별집계API). 구현 착수는 Epic 8·9 backend 머지가 선행 조건. GitHub 이슈 #129 |
+| 11 | 투자 내역 조회 API | investment-query-api | Phase 0 완료(조사 PR #43, 기획 PR #58) + breakdown 완료(PR #108) — 구현 미착수. 로드맵상 선행조건은 Epic 1~10 전체이므로 Epic 8·9·10 완료 후 착수 가능. GitHub 이슈 #130 |
+| 12 | 대시보드 집계 API | dashboard-aggregation-api | Phase 0 완료(조사 PR #44, 기획 PR #59) — **breakdown 진행 중**(planning). GitHub 이슈 #131 |
 | 13 | 웹 계정·투자자·계좌 설정 | web-account-setup | **구현 완료**(SF-1~5, PR #88/#89/#93/#100/#110) + FSD 구조 정정(PR #111) + 사용자 가이드(PR #95) |
-| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | breakdown 완료(PR #107, 총 3개 SF). **SF-1(청약 등록 화면)·SF-2(청약 목록 화면) 완료**(PR #113/#114). **SF-3(배정 등록 화면) 남음** — Epic 7(완료) + Epic 11(미구현) 둘 다 필요하나, SF-2와 마찬가지로 API 계약 기준으로 화면 자체는 구현 가능(실데이터 연동/E2E는 Epic 11 머지 후). `frontend`가 SF-3용 브랜치(`winter0123/web-subscription-workflow-sf3`)로 착수 준비됨 |
-| 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | Phase 0 완료(조사 PR #47, 기획 PR #62) — breakdown 미완료 |
-| 16 | 웹 조회·대시보드 | web-inquiry-dashboard | Phase 0 완료(조사 PR #48, 기획 PR #63) — breakdown 미완료 |
+| 14 | 웹 IPO·청약·배정 입력 | web-subscription-workflow | breakdown 완료(PR #107, 총 3개 SF). **SF-1·SF-2 완료**(PR #113/#114). **SF-3(배정 등록 화면) 진행 중**(frontend, 프로덕션 코드 검증 완료·테스트 보완만 남음). GitHub 이슈 #127 |
+| 15 | 웹 매도·비용·수익 확인 | web-sale-profit-workflow | Phase 0 완료(조사 PR #47, 기획 PR #62) — breakdown 미완료. GitHub 이슈 #132 |
+| 16 | 웹 조회·대시보드 | web-inquiry-dashboard | Phase 0 완료(조사 PR #48, 기획 PR #63) — breakdown 미완료. GitHub 이슈 #133 |
 
-**요약: 로드맵 16개 Epic 전체 Phase 0(조사+기획) 100% 완료. 구현 완료: Epic 1~7, 13. 구현 진행 중: Epic 8(SF-1~2/5), Epic 14(SF-1~2/3). breakdown까지 준비된 대기: Epic 9, 11. breakdown 필요: Epic 10, 12, 15, 16.**
+**요약: 로드맵 16개 Epic 전체 Phase 0(조사+기획) 100% 완료. 구현 완료: Epic 1~7, 13. 구현 진행 중: Epic 8(SF-4), Epic 14(SF-3 테스트 보완). breakdown 완료 대기: Epic 9, 10, 11. breakdown 진행 중: Epic 12. breakdown 필요: Epic 15, 16.**
 
-## 다음 단계 후보 (2026-09-22 기준, 3개 워크스페이스 모두 착수 가능 상태로 정리 완료)
-1. **backend (`backend-3`)**: Epic 8 SF-3(매도 목록/상세 조회 API, `GET /sales`, `GET /sales/{id}`) 착수 — `winter0123/sale-query` 브랜치 준비됨. docs/breakdown/sale-management.md 참고, 3단계 JOIN(Sale→Allocation→Subscription→Investor) 성능 검증 필요.
-2. **frontend**: Epic 14 SF-3(배정 등록 화면) 착수 — `winter0123/web-subscription-workflow-sf3` 브랜치 준비됨. `POST /allocations`(Epic 7, 실제 구현됨)는 실연동 가능, `GET /investment-history/{subscriptionId}`(Epic 11, 미구현)는 계약 기준 mock으로 구현하고 실연동은 Epic 11 머지 후로 미룬다.
-3. **planning**: Epic 10(profit-calculation) SF 분해 착수 — `winter0123/profit-calculation-breakdown` 브랜치 준비됨. Epic 9(breakdown 완료)·Epic 11(breakdown 완료)보다 뒤처진 유일한 "Phase 0만 끝난 Epic"이므로 순서상 이것부터 메운다. 끝나면 Epic 12 → Epic 15 → Epic 16 breakdown 순으로 이어간다(6.4장 "planning은 최소 1~2 Epic 앞서 작업" 원칙).
-4. Epic 8·14 모두 끝나면: 로드맵 의존관계 재확인 → Epic 9 backend 착수, Epic 15(web-sale-profit-workflow, breakdown 필요) frontend 착수 검토.
-5. 매 Epic/SF 완료 시점마다 이 문서를 그 즉시 갱신한다(더 이상 갱신 누락 없이).
+## 다음 단계 후보 (2026-09-22 낮 기준)
+1. **backend (`backend-3`)**: Epic 8 SF-4(매도 수정 API, 누적 매도수량 재검증) 결과 대기 중. 끝나면 SF-5(취소 API)로 이어서 Epic 8 완료.
+2. **frontend**: Epic 14 SF-3 테스트 보완(`AllocationRegisterForm.test.tsx`, `AllocationRegisterPage.test.tsx`) 결과 대기 중. 끝나면 병합하고 Epic 14는 남은 SF 없음(Epic 11 대기 상태로 보류).
+3. **planning**: Epic 12(dashboard-aggregation-api) breakdown 결과 대기 중. 끝나면 Epic 15 → Epic 16 breakdown 순으로 이어간다(6.4장 "planning은 최소 1~2 Epic 앞서 작업" 원칙).
+4. Epic 8 완료되면: Epic 9(cost-recording, breakdown 이미 있음) backend 착수 검토.
+5. 매 Epic/SF 완료 시점마다 이 문서를 그 즉시 갱신한다.
+6. **알려진 블로커**: GitHub 이슈 #134(`apiFetch`가 서버 400 에러 메시지를 버리는 구조적 버그, Epic 2/4/14 SF-1/SF-3 폼 4곳에 영향) — 별도 SF로 다룰지 사용자 결정 필요.
 
 ## 재사용 가능한 공용 인프라 (Epic 2에서 확보, Epic 3~12가 활용 가능)
 - `SecurityUtils.getCurrentAccountId()` (`com.vibeaiteam.accountauthentication.util.security`) — 계정 소유권 검증 헬퍼 (Epic 4처럼 계정 소유 데이터가 있는 Epic만 사용, Epic 3처럼 글로벌 기준정보는 불필요)
