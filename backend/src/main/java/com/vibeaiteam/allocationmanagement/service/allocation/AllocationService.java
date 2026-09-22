@@ -184,4 +184,18 @@ public class AllocationService {
             throw new AllocationConflictException("이미 등록된 배정 기록입니다.");
         }
     }
+
+    // SF-5: 배정 기록을 논리 취소한다(SubscriptionService.cancel / IpoService.deactivate와 동일 패턴).
+    // status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016).
+    // 존재하지 않거나 이미 취소된 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+    @Transactional
+    public void cancel(Long id) {
+        Allocation allocation = allocationRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
+        LocalDateTime now = LocalDateTime.now();
+        allocation.setStatus("CANCELLED");
+        allocation.setDeletedAt(now);
+        allocation.setUpdatedAt(now);
+        allocationRepository.save(allocation);
+    }
 }

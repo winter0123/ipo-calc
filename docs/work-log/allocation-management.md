@@ -238,3 +238,42 @@ breakdown 문서 명시대로 Epic 7 구현 시점에는 Sale 테이블이 없�
 
 **남은 작업**: SF-5(취소/논리 삭제, DELETE /allocations/{id}) 구현 필요.
 커밋/PR/머지는 Master가 진행.
+
+## 2026-09-22 — SF-5 구현 완료 (배정 취소 API, DELETE /allocations/{id})
+
+`docs/breakdown/allocation-management.md`의 SF-5를 구현했다. 브랜치
+`winter0123/allocation-cancel` (backend-3 워크스페이스, origin/main 기준
+생성, SF-1~4 포함). AC-016~018 커버.
+
+**산출물**:
+- `service/allocation/AllocationService.java` — `cancel(Long id)` 추가.
+  SubscriptionService.cancel() / IpoService.deactivate()와 동일한 패턴:
+  1) `findByIdAndDeletedAtIsNull`로 기존 기록 조회(없거나 이미 CANCELLED면
+     404 반환, 재취소 자연 배제)
+  2) `status = "CANCELLED"`, `deletedAt = now`, `updatedAt = now` 설정 후 저장
+  3) 반환값 없음(void) — Controller에서 204 No Content로 매핑
+- `controller/allocation/AllocationController.java` — `DELETE /allocations/{id}`
+  추가. 한글 클래스/메서드 주석 포함(AGENTS.md 15장 규칙).
+
+**핵심 구현 포인트**:
+- SubscriptionService.cancel()과 로직을 동일하게 유지: 물리 삭제는
+  수행하지 않으며 논리 삭제(CANCELLED + deletedAt)만 수행.
+- 이미 CANCELLED된 기록에 대한 재요청은 `findByIdAndDeletedAtIsNull` 필터로
+  조회되지 않아 자연스럽게 404 반환(AC-017, AC-018 일관성).
+- `deletedAt IS NULL` 필터가 모든 조회 쿼리에 포함되어 있어
+  CANCELLED 기록은 목록/상세에서 자동 제외(AC-018 보장).
+
+**테스트**: `AllocationControllerTest.java`에 4개 신규
+- `cancelAllocationReturns204AndMarksCancelled()` — 취소 성공 204,
+  status=CANCELLED+deletedAt 설정 확인 (AC-016)
+- `cancelAllocationNotFoundReturns404()` — 미존재 배정 ID 404 (AC-017)
+- `cancelledAllocationExcludedFromList()` — CANCELLED 기록이
+  GET /allocations 목록에서 제외됨 (AC-018)
+- `cancelAlreadyCancelledAllocationReturns404()` — 이미 취소된 배정
+  재취소 시 404 (일관성/자연 배제 검증)
+
+**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+--rerun` → BUILD SUCCESSFUL, 241 tests completed, 0 failed (기존 237개 +
+신규 4개). **Epic 7(배정 결과 관리) 전체 SF-1~5 완료.**
+
+커밋/PR/머지는 Master가 진행.
