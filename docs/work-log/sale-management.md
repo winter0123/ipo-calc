@@ -105,3 +105,72 @@ Sale 도메인에는 계산 로직을 두지 않는다.
 - SF-5: 매도 취소 API (논리 삭제)
 
 ---
+
+## 2026-09-22 — SF-2 구현 완료 (매도 등록 API, POST /sales, 누적 매도수량 검증)
+
+**티켓/작업**: SF-2 (Epic 8 분할 매도 기록)
+
+### 완료 작업
+1. **SaleRegisterRequest DTO 생성** (`controller/sale/dto/SaleRegisterRequest.java`)
+   - 필수 필드: allocationId, quantity, saleDate
+   - 선택 필드: price, amount, fee, tax, otherCost
+   - Lombok: @Getter, @Setter, @Builder, @NoArgsConstructor, @AllArgsConstructor
+
+2. **SaleResponse DTO 생성** (`controller/sale/dto/SaleResponse.java`)
+   - Sale 엔티티의 모든 필드 매핑 + 정적 팩토리 메서드 `from(Sale sale)`
+
+3. **예외 클래스 3종 생성** (`controller/sale/exception/`)
+   - `SaleValidationException` — 필수값 누락, 값 검증 실패 (400, VALIDATION_ERROR)
+   - `SaleAllocationExceededException` — 누적 매도수량 초과 (400, ALLOCATION_EXCEEDED)
+   - `SaleNotFoundException` — Allocation 미존재/취소된 Sale (404, NOT_FOUND)
+
+4. **SaleExceptionHandler 생성** (`controller/sale/exception/SaleExceptionHandler.java`)
+   - 3개 예외 타입 각각 적절한 HTTP 상태 코드와 에러 코드로 매핑
+   - ErrorResponse(JSON UTF-8) 반환 패턴 준수 (AllocationExceptionHandler와 동일)
+
+5. **SaleService.register() 구현** (`service/sale/SaleService.java`)
+   - `@Transactional` 경계 안에서 **누적 매도수량 검증과 저장을 동일 트랜잭션**으로 수행
+   - 검증 순서 (breakdown.md 52-55행 준수):
+     1. Allocation 조회 (`findByIdAndDeletedAtIsNull`) → 미존재 시 404
+     2. 기존 ACTIVE Sale들의 quantity 합계 조회 (`sumActiveQuantityByAllocationId`)
+     3. `(기존 합계 + 신규 quantity) ≤ allocatedQuantity` 검증 → 초과 시 400 (ALLOCATION_EXCEEDED)
+   - quantity > 0 검증, 선택 필드(price/amount/fee/tax/otherCost) 0 이상 검증
+   - 분할 매도 지원: 하나의 Allocation에 여러 건의 Sale 등록 가능, 각 등록 시 기존 합계 재계산
+
+6. **SaleController 생성** (`controller/sale/SaleController.java`)
+   - `POST /sales` 엔드포인트, 201 Created + SaleResponse 반환
+   - 한글 클래스/메서드 주석 필수 (Controller 클래스 요약 + 각 엔드포인트별 상세)
+
+7. **SaleControllerTest 작성** (`controller/sale/SaleControllerTest.java`, 7개 테스트)
+   - `registerSaleWithValidRequestReturns201AndSavedSale` — AC-001 등록 성공 (201)
+   - `registerSaleWithMissingRequiredFieldsReturns400` — AC-002 필수값 누락 (400)
+   - `registerSaleWithInvalidQuantityReturns400` — AC-003 quantity ≤ 0 (400)
+   - `registerSaleWithUnknownAllocationReturns404` — AC-004 Allocation 미존재 (404)
+   - `registerSaleWithExceedingCumulativeQuantityReturns400` — AC-005 누적 초과 (400, ALLOCATION_EXCEEDED)
+   - `registerMultipleSalesForSameAllocationSucceedsIfWithinLimit` — AC-006 분할 매도 성공 (누적 ≤ 배정수량)
+   - `registerSaleWithInvalidPriceReturns400` — 선택 필드 음수값 검증 (400)
+
+### 확인 사항
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
+- 전체 테스트 **254개 통과** (기존 247개 + 신규 7개)
+- 누적 매도수량 검증 로직이 `@Transactional` 안에서 검증→저장 순서로 안전하게 수행됨
+- 분할 매도(동일 Allocation에 여러 Sale 등록) 정상 동작 확인: 30+40+30=100 (배정수량 100)까지 등록 성공
+- 초과 시 400 반환 및 롤백 확인: 기존 60 + 신규 50 = 110 > 100 시 400, 기존 1건만 유지
+
+### 변경 파일
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/dto/SaleRegisterRequest.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/dto/SaleResponse.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleValidationException.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleAllocationExceededException.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleNotFoundException.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleExceptionHandler.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/service/sale/SaleService.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/SaleController.java` (신규)
+- `backend/src/test/java/com/vibeaiteam/salemanagement/controller/sale/SaleControllerTest.java` (신규)
+
+### 남은 작업
+- SF-3: 매도 목록/상세 조회 API
+- SF-4: 매도 수정 API (누적 매도수량 재검증)
+- SF-5: 매도 취소 API (논리 삭제)
+
+---
