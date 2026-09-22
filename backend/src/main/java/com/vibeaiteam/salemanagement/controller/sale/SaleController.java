@@ -6,12 +6,17 @@ import com.vibeaiteam.salemanagement.service.sale.SaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// 분할 매도 기록(Sale)에 대한 등록 API를 제공한다. Sale은 Allocation을 FK로 참조하며,
+import java.util.List;
+
+// 분할 매도 기록(Sale)에 대한 등록/조회 API를 제공한다. Sale은 Allocation을 FK로 참조하며,
 // Allocation과 동일한 글로벌 기준정보로 취급되어 계정 소유권 검증을 적용하지 않는다(architecture.md 명시).
 @RestController
 @RequestMapping("/sales")
@@ -27,5 +32,25 @@ public class SaleController {
     public ResponseEntity<SaleResponse> register(@RequestBody SaleRegisterRequest request) {
         SaleResponse response = saleService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // 매도 목록을 조회한다. deletedAt이 NULL인 ACTIVE 기록만 반환하며, allocationId, investorId, investorName
+    // 쿼리 파라미터로 필터링 가능하다. investorId/investorName 필터는 Sale→Allocation→Subscription→Investor
+    // 3단계 JOIN으로 수행한다. 필터 미지정 시 전체 목록을 saleDate 내림차순, createdAt 내림차순으로 반환한다.
+    @GetMapping
+    public ResponseEntity<List<SaleResponse>> list(
+            @RequestParam(required = false) Long allocationId,
+            @RequestParam(required = false) Long investorId,
+            @RequestParam(required = false) String investorName) {
+        List<SaleResponse> response = saleService.list(allocationId, investorId, investorName);
+        return ResponseEntity.ok(response);
+    }
+
+    // 지정한 ID의 매도 상세 정보를 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
+    // 존재하지 않거나 취소된 매도는 404를 반환한다.
+    @GetMapping("/{id}")
+    public ResponseEntity<SaleResponse> getById(@PathVariable Long id) {
+        SaleResponse response = saleService.getById(id);
+        return ResponseEntity.ok(response);
     }
 }
