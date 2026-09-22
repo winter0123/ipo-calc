@@ -964,6 +964,7 @@ orca orchestration worker-start --task <review-task> --worktree current --agent 
 - `claude --model "<id>"`로 터미널을 띄우면 헤더에 모델명이 그대로 표시되지만, **이건 문자열을 검증 없이 echo한 것뿐이라 신뢰할 수 없다.**
 - `claude --model "<id>" --print "<프롬프트>"`(비대화형) 모드도 신뢰할 수 없다 — 실제로는 정상 동작하는 모델도 `--print`에서는 `[claude-code:unrecognized_model]` 오류를 내는 경우가 있었다(nvidia nemotron 계열에서 확인).
 - **유일하게 신뢰 가능한 검증은 실제 오케스트레이션 태스크를 배분해서 파일을 쓰게 시킨 뒤, 그 파일이 디스크에 정확한 내용으로 생성됐는지 확인하는 것이다.** 화면 렌더링(`terminal read`/`terminal show`)도 이 agent 타입에서는 가끔 내용을 못 읽어오므로(빈 화면, `preview: "B"` 한 글자만 나오는 등) 파일 존재 여부로만 판단한다.
+- **화면이 깨져도 실제 진행 상황을 읽는 방법(2026-09-22 확인)**: `terminal read`가 깨진 화면(`"BBBBB"` 등)만 보여줄 때는 `orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json`을 대신 쓴다. 이건 PTY 화면 렌더링이 아니라 **Claude Code가 실제로 남기는 세션 트랜스크립트**(`source: "transcript"`)를 직접 읽어오므로 렌더링 깨짐과 무관하게 실제 메시지/도구 호출/결과가 그대로 보인다. 워커가 진짜 멈췄는지(예: `API Error: Upstream idle timeout exceeded` 같은 에러로 턴이 끊겼는지) 판단할 때 화면 대신 이 명령으로 마지막 메시지를 확인하는 것이 1순위다 — 화면이 깨져서 `terminal read`/`worker-show`의 liveness가 여전히 `live`로 나와도, 트랜스크립트의 마지막 턴이 에러로 끊겼으면 실제로는 멈춘 것이다(사용자가 직접 화면을 보고 알려준 사례로 확인됨, 이 경우 `worker-stop`이 "external terminal이라 못 닫음" 오류를 내면 `worker-abandon` + `terminal close --tab`으로 정리하고 새 터미널로 `--retry-of` 재시도한다).
 
 **띄우는 명령어(정확한 절차):**
 ```bash
