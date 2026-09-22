@@ -43,6 +43,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 /**
  * AC 인용: docs/spec/sale-management.md, docs/breakdown/sale-management.md SF-2
@@ -887,5 +888,277 @@ class SaleControllerTest {
         // Then: 404 Not Found (AC-018: 취소된 매도는 상세 조회에서도 노출하지 않음)
         assertThat(getResult.getResponse().getStatus()).isEqualTo(404);
         assertNotFoundError(getResult);
+    }
+
+    // ==================== SF-4: 매도 수정 테스트 (AC-012~016) ====================
+
+    private MvcResult updateSale(Long id, Map<String, Object> request) throws Exception {
+        return mockMvc.perform(patch("/sales/" + id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn();
+    }
+
+    private Map<String, Object> validUpdateRequest() {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("quantity", 25L);
+        request.put("price", 26000L);
+        request.put("amount", 650000L);
+        request.put("saleDate", "2026-10-15T15:00:00");
+        request.put("fee", 1300L);
+        request.put("tax", 0L);
+        // otherCost 미포함 (부분 수정 시 null 미포함 = 변경 안 함)
+        return request;
+    }
+
+    @Test
+    void updateSaleWithValidRequestReturns200AndUpdatedSale() throws Exception {
+        // Given: 존재하는 매도 기록 (AC-012)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When: PATCH /sales/{id} 요청 (유효한 수정 데이터)
+        Map<String, Object> updateReq = validUpdateRequest();
+        MvcResult updateResult = updateSale(saleId, updateReq);
+
+        // Then: 200 OK, 매도 정보가 업데이트되고 updatedAt이 갱신됨 (AC-012)
+        assertThat(updateResult.getResponse().getStatus())
+                .as("유효한 수정 요청 시 200을 반환해야 합니다 (AC-012)").isEqualTo(200);
+        Map<String, Object> response = readBody(updateResult);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(saleId);
+        assertThat(((Number) response.get("quantity")).longValue()).isEqualTo(25L);
+        assertThat(((Number) response.get("price")).longValue()).isEqualTo(26000L);
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(650000L);
+        assertThat(response.get("saleDate")).isEqualTo("2026-10-15T15:00:00");
+        assertThat(((Number) response.get("fee")).longValue()).isEqualTo(1300L);
+        assertThat(((Number) response.get("tax")).longValue()).isEqualTo(0L);
+        // otherCost는 수정 요청에 포함되지 않아 기존값(200) 유지
+        assertThat(((Number) response.get("otherCost")).longValue()).isEqualTo(200L);
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get("deletedAt")).isNull();
+        assertThat(response.get("updatedAt")).isNotNull();
+
+        // DB에서도 확인
+        Sale updated = saleRepository.findById(saleId).orElseThrow();
+        assertThat(updated.getQuantity()).isEqualTo(25L);
+        assertThat(updated.getPrice()).isEqualTo(26000L);
+        assertThat(updated.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void updateSaleWithPartialFieldsUpdatesOnlyProvidedFields() throws Exception {
+        // Given: 존재하는 매도 기록 (부분 수정 테스트)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("price", 12000L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When: quantity만 수정 (다른 필드는 미제공)
+        Map<String, Object> partialUpdate = new LinkedHashMap<>();
+        partialUpdate.put("quantity", 40L);
+        MvcResult updateResult = updateSale(saleId, partialUpdate);
+
+        // Then: 200 OK, quantity만 변경되고 나머지는 유지됨
+        assertThat(updateResult.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(updateResult);
+        assertThat(((Number) response.get("quantity")).longValue()).isEqualTo(40L);
+        assertThat(((Number) response.get("price")).longValue()).isEqualTo(12000L); // 기존값 유지
+    }
+
+    @Test
+    void updateSaleWithInvalidQuantityReturns400() throws Exception {
+        // Given: 유효한 매도 기록 (AC-013)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When/Then: quantity = 0, quantity < 0 각각 400 (AC-013)
+        Map<String, Object> zeroQuantity = validUpdateRequest();
+        zeroQuantity.put("quantity", 0);
+        assertValidationError(updateSale(saleId, zeroQuantity));
+
+        Map<String, Object> negativeQuantity = validUpdateRequest();
+        negativeQuantity.put("quantity", -1);
+        assertValidationError(updateSale(saleId, negativeQuantity));
+
+        // And: 원본 레코드는 변경되지 않음
+        Sale unchanged = saleRepository.findById(saleId).orElseThrow();
+        assertThat(unchanged.getQuantity()).isEqualTo(30L);
+    }
+
+    @Test
+    void updateSaleWithInvalidPriceReturns400() throws Exception {
+        // Given: 유효한 매도 기록 (가격/금액/수수료 등 선택 필드 0 이상 검증)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // When/Then: price < 0, amount < 0, fee < 0, tax < 0, otherCost < 0 각각 400
+        Map<String, Object> negativePrice = validUpdateRequest();
+        negativePrice.put("price", -100L);
+        assertValidationError(updateSale(saleId, negativePrice));
+
+        Map<String, Object> negativeAmount = validUpdateRequest();
+        negativeAmount.put("amount", -100L);
+        assertValidationError(updateSale(saleId, negativeAmount));
+
+        Map<String, Object> negativeFee = validUpdateRequest();
+        negativeFee.put("fee", -100L);
+        assertValidationError(updateSale(saleId, negativeFee));
+
+        Map<String, Object> negativeTax = validUpdateRequest();
+        negativeTax.put("tax", -100L);
+        assertValidationError(updateSale(saleId, negativeTax));
+
+        Map<String, Object> negativeOtherCost = validUpdateRequest();
+        negativeOtherCost.put("otherCost", -100L);
+        assertValidationError(updateSale(saleId, negativeOtherCost));
+
+        // And: 원본 레코드는 변경되지 않음
+        assertThat(saleRepository.findById(saleId).orElseThrow().getQuantity()).isEqualTo(30L);
+    }
+
+    @Test
+    void updateSaleWithUnknownIdReturns404() throws Exception {
+        // Given: 존재하지 않는 매도 ID (AC-014)
+        signupAndLogin();
+
+        // When: PATCH /sales/{id} 요청 (존재하지 않는 ID)
+        MvcResult result = updateSale(99999999L, validUpdateRequest());
+
+        // Then: 404 Not Found + NOT_FOUND (AC-014)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 매도 ID 수정 시 404를 반환해야 합니다 (AC-014)").isEqualTo(404);
+        assertNotFoundError(result);
+    }
+
+    @Test
+    void updateSaleWithExceedingCumulativeQuantityReturns400() throws Exception {
+        // Given: 배정수량 100인 Allocation에 이미 매도A(60주), 매도B(30주)가 존재함 (AC-015)
+        // 누적 합계 = 90주
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        // 매도A: 60주
+        Map<String, Object> reqA = validSaleRequest(allocationId);
+        reqA.put("quantity", 60L);
+        reqA.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult resultA = registerSale(reqA);
+        assertThat(resultA.getResponse().getStatus()).isEqualTo(201);
+        Long saleIdA = ((Number) readBody(resultA).get("id")).longValue();
+
+        // 매도B: 30주
+        Map<String, Object> reqB = validSaleRequest(allocationId);
+        reqB.put("quantity", 30L);
+        reqB.put("saleDate", "2026-10-11T10:00:00");
+        MvcResult resultB = registerSale(reqB);
+        assertThat(resultB.getResponse().getStatus()).isEqualTo(201);
+        Long saleIdB = ((Number) readBody(resultB).get("id")).longValue();
+
+        // When: 매도A를 70주로 수정 시도 (자기 자신 60 제외, 기존합계 30 + 수정 70 = 100 ≤ 100 성공해야 함)
+        Map<String, Object> updateA = validUpdateRequest();
+        updateA.put("quantity", 70L);
+        MvcResult updateResultA = updateSale(saleIdA, updateA);
+        assertThat(updateResultA.getResponse().getStatus())
+                .as("자기 자신 제외 후 기존합계(30) + 수정수량(70) = 100 ≤ 배정수량(100)이면 성공해야 함").isEqualTo(200);
+
+        // When: 매도B를 50주로 수정 시도 (자기 자신 30 제외, 기존합계 70 + 수정 50 = 120 > 100 실패해야 함)
+        Map<String, Object> updateB = validUpdateRequest();
+        updateB.put("quantity", 50L);
+        MvcResult updateResultB = updateSale(saleIdB, updateB);
+        assertThat(updateResultB.getResponse().getStatus())
+                .as("자기 자신 제외 후 기존합계(70) + 수정수량(50) = 120 > 배정수량(100)이면 400 (AC-015)").isEqualTo(400);
+        assertAllocationExceededError(updateResultB);
+
+        // And: 매도B는 원래 수량(30) 유지
+        Sale saleB = saleRepository.findById(saleIdB).orElseThrow();
+        assertThat(saleB.getQuantity()).isEqualTo(30L);
+    }
+
+    @Test
+    void updateSaleWithExactLimitSucceeds() throws Exception {
+        // Given: 배정수량 10, 매도A=5, 매도B=5 (누적 10 = 배정수량)
+        signupAndLogin();
+        Long allocationId = createAllocation(10L);
+
+        Map<String, Object> reqA = validSaleRequest(allocationId);
+        reqA.put("quantity", 5L);
+        reqA.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult resultA = registerSale(reqA);
+        assertThat(resultA.getResponse().getStatus()).isEqualTo(201);
+        Long saleIdA = ((Number) readBody(resultA).get("id")).longValue();
+
+        Map<String, Object> reqB = validSaleRequest(allocationId);
+        reqB.put("quantity", 5L);
+        reqB.put("saleDate", "2026-10-11T10:00:00");
+        MvcResult resultB = registerSale(reqB);
+        assertThat(resultB.getResponse().getStatus()).isEqualTo(201);
+        Long saleIdB = ((Number) readBody(resultB).get("id")).longValue();
+
+        // When: 매도A를 6으로 수정 (자기자신 5 제외, 기존합계 5 + 수정 6 = 11 > 10 → 400)
+        Map<String, Object> updateA = validUpdateRequest();
+        updateA.put("quantity", 6L);
+        MvcResult result = updateSale(saleIdA, updateA);
+
+        // Then: 400 Bad Request + ALLOCATION_EXCEEDED (경계 케이스 검증)
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertAllocationExceededError(result);
+
+        // And: 매도A는 원래 수량(5) 유지
+        assertThat(saleRepository.findById(saleIdA).orElseThrow().getQuantity()).isEqualTo(5L);
+    }
+
+    @Test
+    void updateCancelledSaleReturns404() throws Exception {
+        // Given: CANCELLED 상태의 매도 기록 (AC-016)
+        signupAndLogin();
+        Long allocationId = createAllocation(100L);
+
+        Map<String, Object> req = validSaleRequest(allocationId);
+        req.put("quantity", 30L);
+        req.put("saleDate", "2026-10-10T14:00:00");
+        MvcResult result = registerSale(req);
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        Long saleId = ((Number) readBody(result).get("id")).longValue();
+
+        // 매도를 CANCELLED 상태로 변경
+        saleRepository.findById(saleId).ifPresent(sale -> {
+            sale.setStatus("CANCELLED");
+            sale.setDeletedAt(LocalDateTime.now());
+            saleRepository.saveAndFlush(sale);
+        });
+
+        // When: PATCH /sales/{id} 요청 (취소된 매도 수정 시도)
+        MvcResult updateResult = updateSale(saleId, validUpdateRequest());
+
+        // Then: 404 Not Found (AC-016: 취소된 매도는 수정 불가)
+        assertThat(updateResult.getResponse().getStatus()).isEqualTo(404);
+        assertNotFoundError(updateResult);
     }
 }

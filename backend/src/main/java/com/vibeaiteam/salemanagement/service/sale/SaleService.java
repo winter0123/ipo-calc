@@ -4,6 +4,7 @@ import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleRegisterRequest;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleResponse;
+import com.vibeaiteam.salemanagement.controller.sale.dto.SaleUpdateRequest;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleAllocationExceededException;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleNotFoundException;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleValidationException;
@@ -80,6 +81,92 @@ public class SaleService {
         Sale sale = saleRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
         return SaleResponse.from(sale);
+    }
+
+    // SF-4: 매도 기록을 부분 수정한다. 시점/필드 제약 없이 전체 허용(D-SL-003).
+    // 제공된 필드만 갱신하며, 누적 매도수량 재검증을 수행한다.
+    // (1) 대상 Sale 조회 (CANCELLED면 404)
+    // (2) 참조하는 Allocation의 allocatedQuantity 확인
+    // (3) 기존 ACTIVE Sale들의 quantity 합계 조회 (자기 자신은 제외)
+    // (4) (기존 합계 - 자기자신 quantity + 수정 quantity) ≤ allocatedQuantity 검증
+    @Transactional
+    public SaleResponse update(Long id, SaleUpdateRequest request) {
+        validateUpdateRequest(request);
+
+        // (1) 대상 Sale 조회 — 없거나 CANCELLED이면 404
+        Sale sale = saleRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
+
+        // (2) Allocation 조회
+        Allocation allocation = allocationRepository.findByIdAndDeletedAtIsNull(sale.getAllocationId())
+                .orElseThrow(() -> new SaleNotFoundException("배정 기록을 찾을 수 없습니다."));
+
+        // (3) 기존 ACTIVE Sale들의 quantity 합계 조회 (자기 자신 제외)
+        Long existingQuantitySum = saleRepository.sumActiveQuantityByAllocationIdExcludingId(allocation.getId(), id);
+        if (existingQuantitySum == null) {
+            existingQuantitySum = 0L;
+        }
+
+        // (4) 누적 매도수량 재검증: (기존 합계(자기자신 제외) + 수정 quantity) ≤ allocatedQuantity
+        Long newQuantity = request.getQuantity() != null ? request.getQuantity() : sale.getQuantity();
+        if (existingQuantitySum + newQuantity > allocation.getAllocatedQuantity()) {
+            throw new SaleAllocationExceededException(
+                    "누적 매도수량이 배정수량을 초과합니다. 기존 합계(자기자신 제외): " + existingQuantitySum +
+                            ", 수정 수량: " + newQuantity + ", 배정수량: " + allocation.getAllocatedQuantity());
+        }
+
+        // 필드 업데이트 (제공된 필드만)
+        if (request.getQuantity() != null) {
+            sale.setQuantity(request.getQuantity());
+        }
+        if (request.getPrice() != null) {
+            sale.setPrice(request.getPrice());
+        }
+        if (request.getAmount() != null) {
+            sale.setAmount(request.getAmount());
+        }
+        if (request.getSaleDate() != null) {
+            sale.setSaleDate(request.getSaleDate());
+        }
+        if (request.getFee() != null) {
+            sale.setFee(request.getFee());
+        }
+        if (request.getTax() != null) {
+            sale.setTax(request.getTax());
+        }
+        if (request.getOtherCost() != null) {
+            sale.setOtherCost(request.getOtherCost());
+        }
+
+        sale.setUpdatedAt(LocalDateTime.now());
+        Sale saved = saleRepository.save(sale);
+        return SaleResponse.from(saved);
+    }
+
+    private void validateUpdateRequest(SaleUpdateRequest request) {
+        if (request == null) {
+            throw new SaleValidationException("매도 수정 정보는 필수입니다.");
+        }
+        // quantity가 제공된 경우 0 초과 검증
+        if (request.getQuantity() != null && request.getQuantity() <= 0) {
+            throw new SaleValidationException("quantity는 0 초과여야 합니다.");
+        }
+        // price, amount, fee, tax, otherCost가 제공된 경우 0 이상 검증
+        if (request.getPrice() != null && request.getPrice() < 0) {
+            throw new SaleValidationException("price는 0 이상이어야 합니다.");
+        }
+        if (request.getAmount() != null && request.getAmount() < 0) {
+            throw new SaleValidationException("amount는 0 이상이어야 합니다.");
+        }
+        if (request.getFee() != null && request.getFee() < 0) {
+            throw new SaleValidationException("fee는 0 이상이어야 합니다.");
+        }
+        if (request.getTax() != null && request.getTax() < 0) {
+            throw new SaleValidationException("tax는 0 이상이어야 합니다.");
+        }
+        if (request.getOtherCost() != null && request.getOtherCost() < 0) {
+            throw new SaleValidationException("otherCost는 0 이상이어야 합니다.");
+        }
     }
 
     private void validateRequest(SaleRegisterRequest request) {
