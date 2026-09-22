@@ -27,7 +27,7 @@ docs/roadmap.md의 실제 의존관계를 재확인한 결과, Epic 13(web-accou
 | 4 | 증권계좌 관리 | securities-account-management | **구현 완료**(SF-1~7, 140개 테스트 통과, PR #78~#84 병합됨). AES-256-GCM 계좌번호 암호화(D-SA-002), 2단계 소유권 검증(SecuritiesAccount→Investor→계정), partial unique index 기반 기본 계좌 동시성 제어(D-SA-006) 포함 |
 | 5 | 공모주 기준정보 관리 | ipo-catalog | **구현 완료 및 머지됨**(SF-1~6, 184개 테스트 통과, PR #87/#91/#92/#94/#96/#97). D-IPO-001~004 확정. SF-2 검증 중 V5 마이그레이션의 partial unique index 버그 발견·V6로 수정(stock_code 유무 무시하고 name+date 유니크 강제하던 결함). SF-6(CSV 일괄 등록)에서 IpoController에 AGENTS.md 15장 신규 규칙에 따른 한글 클래스 주석 최초 적용 |
 | 6 | 청약 기록 | subscription-management | **SF-1~4 완료**(엔티티/마이그레이션 PR #98, 등록 API PR #104, 목록/상세 조회 PR #105, 수정 API PR #109 — 210개 테스트 통과). Investor/SecuritiesAccount는 1·2단계 소유권 검증(404/403), IPO는 존재 검증만(글로벌 기준정보). 다음: SF-5(취소 API) |
-| 7 | 배정 결과 관리 | allocation-management | Phase 0 완료(PR #54) + **SF 분해(breakdown) 완료**(PR #103, docs/breakdown/allocation-management.md) — Subscription 존재 검증만 필요(소유권 검증 불필요, 글로벌 기준정보). 다음: Epic 6 완료 후 backend에서 구현 착수 |
+| 7 | 배정 결과 관리 | allocation-management | **구현 완료 및 머지됨**(SF-1~5, 241개 테스트 통과, PR #115~#119). Subscription 존재 검증만 필요(소유권 검증 불필요, 글로벌 기준정보). 매도 연결 시 수량 축소 제한은 Epic 8 구현 시 함께 추가 예정 |
 | 8 | 분할 매도 기록 | sale-management | Phase 0 완료(PR #55) + **SF 분해(breakdown) 완료**(PR #103, docs/breakdown/sale-management.md) — 핵심은 누적 매도수량 검증(Σ ACTIVE quantity ≤ allocatedQuantity). 다음: Epic 7 완료 후 구현 착수 |
 | 9 | 비용 기록 | cost-recording | Phase 0 완료(PR #56) + **SF 분해(breakdown) 완료**(PR #106, docs/breakdown/cost-recording.md) — Epic 7/8과 달리 계정 소유 데이터로 판단해 등록 시 소유권 검증(403) 필요. 다음: Epic 8 완료 후 구현 착수 |
 | 10 | 수익·수익률 계산 | profit-calculation | **Phase 0 전체 완료**(조사+spec+architecture, D-P-001~006로 CalculationTrace 과설계 정정 포함), PR #57 병합됨. 읽기 전용 계산 API로 설계(Profit 엔티티 없음). 다음: SF 분해 |
