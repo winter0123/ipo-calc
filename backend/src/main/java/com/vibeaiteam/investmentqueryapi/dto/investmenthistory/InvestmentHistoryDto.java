@@ -1,0 +1,28 @@
+package com.vibeaiteam.investmentqueryapi.dto.investmenthistory;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvestmentHistoryDto {
+
+    private Long id;
+    private String subscribedAt;
+    private Long ipoId;
+    private String ipoName;
+    private Long ipoFixedPrice;
+    private Integer subscriptionQuantity;
+    private String subscriptionStatus;
+    private AllocationSummaryDto allocation;
+    private List<SaleSummaryDto> sales;
+    private Long remainingQuantity;
+}
