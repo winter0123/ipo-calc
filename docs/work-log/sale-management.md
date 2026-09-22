@@ -52,3 +52,56 @@ Sale 도메인에는 계산 로직을 두지 않는다.
 
 이 결정들은 `docs/spec/sale-management.md` / `docs/architecture/sale-management.md`
 작성 태스크 지시에 반영되었다.
+
+---
+
+## 2026-09-22 — SF-1 구현 완료 (Sale 엔티티, Repository, V9 마이그레이션)
+
+**티켓/작업**: SF-1 (Epic 8 분할 매도 기록)
+
+### 완료 작업
+1. **Sale 엔티티 생성** (`domain/model/sale/Sale.java`)
+   - 필드: id (BIGINT GENERATED ALWAYS AS IDENTITY PK), allocationId (FK, NOT NULL), quantity (NOT NULL), price/amount/fee/tax/otherCost (NULL 허용), saleDate (NOT NULL), status (DEFAULT 'ACTIVE'), deletedAt, createdAt, updatedAt
+   - Lombok 어노테이션: @Entity, @Table(name="sales"), @Getter, @Setter, @Builder, @NoArgsConstructor, @AllArgsConstructor
+
+2. **SaleRepository 생성** (`repository/sale/SaleRepository.java`)
+   - `findByIdAndDeletedAtIsNull(Long id)` — 논리 삭제되지 않은 단건 조회
+   - `findAllByDeletedAtIsNullOrderBySaleDateDescCreatedAtDesc()` — 전체 ACTIVE 목록 (saleDate DESC, createdAt DESC)
+   - `findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(Long allocationId, String status)` — 배정별 필터링
+   - `sumActiveQuantityByAllocationId(Long allocationId)` — 누적 매도수량 합계 (ACTIVE만, FK 검증용)
+   - `findActiveWithFilters(Long allocationId, Long investorId, String investorName)` — 3단계 JOIN (Sale→Allocation→Subscription→Investor) 필터링 쿼리
+
+3. **Flyway 마이그레이션 V9 생성** (`V9__create_sales_table.sql`)
+   - sales 테이블 생성 (모든 컬럼에 한글 COMMENT 포함)
+   - FK 제약: `fk_sale_allocation` (ON DELETE RESTRICT) — allocations.id 참조
+   - 인덱스: idx_sale_allocation_id, idx_sale_status, idx_sale_sale_date
+   - allocation_id에 유니크 제약 없음 (D-SL-006, 하나의 배정에 여러 매도 가능)
+
+4. **SaleRepositoryTest 작성** (6개 테스트, 모두 통과)
+   - `saveSaleFindByIdReturnsSaleWithActiveStatus` — 저장/조회, status=ACTIVE, deletedAt=null 확인
+   - `findAllByDeletedAtIsNullOrderBySaleDateDescCreatedAtDescReturnsOnlyNonDeletedSales` — CANCELLED 제외, 정렬 확인
+   - `findByIdAndDeletedAtIsNullExcludesCancelledSale` — 취소된 기록 상세 조회 시 제외
+   - `saveMultipleSalesWithSameAllocationIdAllowed` — 동일 allocationId로 여러 건 저장 가능 확인 (D-SL-006), 누적 합계 90 확인
+   - `findByAllocationIdAndDeletedAtIsNullAndStatusReturnsActiveSalesOnly` — 배정별 ACTIVE만 조회
+   - `sumActiveQuantityByAllocationIdReturnsCorrectSum` — ACTIVE 수량 합계만 반환 (CANCELLED 제외)
+
+### 확인 사항
+- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
+- 전체 테스트 **247개 통과** (기존 241개 + 신규 6개)
+- Flyway 마이그레이션 V9 정상 적용 (V8 allocations 다음 순서)
+- FK 제약 `fk_sale_allocation` ON DELETE RESTRICT 정상 생성
+- allocation_id 유니크 제약 없음 확인 (분할 매도 지원)
+
+### 변경 파일
+- `backend/src/main/java/com/vibeaiteam/salemanagement/domain/model/sale/Sale.java` (신규)
+- `backend/src/main/java/com/vibeaiteam/salemanagement/repository/sale/SaleRepository.java` (신규)
+- `backend/src/main/resources/db/migration/V9__create_sales_table.sql` (신규)
+- `backend/src/test/java/com/vibeaiteam/salemanagement/repository/sale/SaleRepositoryTest.java` (신규)
+
+### 남은 작업
+- SF-2: 매도 등록 API (Controller, Service, DTO, 누적 매도수량 검증)
+- SF-3: 매도 목록/상세 조회 API
+- SF-4: 매도 수정 API (누적 매도수량 재검증)
+- SF-5: 매도 취소 API (논리 삭제)
+
+---
