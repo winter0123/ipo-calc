@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -718,6 +719,103 @@ class AllocationControllerTest {
         // Then: 404 Not Found (deletedAt IS NULL 필터로 조회 안 됨)
         assertThat(result.getResponse().getStatus())
                 .as("취소된 배정은 404를 반환해야 합니다").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    // 배정 취소 테스트 (SF-5, AC-016~018)
+
+    @Test
+    void cancelAllocationReturns204AndMarksCancelled() throws Exception {
+        // Given: 존재하는 ACTIVE 배정 기록 (AC-016)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+
+        // When: DELETE /allocations/{id} 요청
+        MvcResult result = mockMvc.perform(delete("/allocations/{id}", allocationId).session(session))
+                .andReturn();
+
+        // Then: 204 No Content 반환 (AC-016)
+        assertThat(result.getResponse().getStatus())
+                .as("배정 취소 요청 시 204 No Content를 반환해야 합니다 (AC-016)").isEqualTo(204);
+
+        // And: status가 CANCELLED로 변경되고 deletedAt이 설정됨
+        Allocation cancelled = allocationRepository.findById(allocationId).orElseThrow();
+        assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+        assertThat(cancelled.getDeletedAt()).isNotNull();
+        assertThat(cancelled.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void cancelAllocationNotFoundReturns404() throws Exception {
+        // Given: 존재하지 않는 배정 ID (AC-017)
+        signupAndLogin();
+
+        // When: DELETE /allocations/99999999 요청
+        MvcResult result = mockMvc.perform(delete("/allocations/99999999").session(session))
+                .andReturn();
+
+        // Then: 404 Not Found + NOT_FOUND (AC-017)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 배정 ID 취소 시 404를 반환해야 합니다 (AC-017)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void cancelledAllocationExcludedFromList() throws Exception {
+        // Given: ACTIVE 배정 2건, CANCELLED 배정 1건 (AC-018)
+        signupAndLogin();
+        Long subId1 = createSubscription(100L);
+        Long subId2 = createSubscription(200L);
+        Long subId3 = createSubscription(300L);
+
+        MvcResult a1 = registerAllocation(validRequest(subId1));
+        MvcResult a2 = registerAllocation(validRequest(subId2));
+        MvcResult a3 = registerAllocation(validRequest(subId3));
+
+        Long cancelledId = ((Number) readBody(a3).get("id")).longValue();
+        Allocation cancelled = allocationRepository.findById(cancelledId).orElseThrow();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(LocalDateTime.now());
+        allocationRepository.saveAndFlush(cancelled);
+
+        // When: GET /allocations 요청
+        MvcResult result = mockMvc.perform(get("/allocations").session(session))
+                .andReturn();
+
+        // Then: 200 OK, 취소된 배정 제외하고 2건만 반환 (AC-018)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> allocations = readListBody(result);
+        assertThat(allocations).hasSize(2);
+        // 반환된 배정들이 모두 ACTIVE 상태인지 확인
+        for (Map<String, Object> allocation : allocations) {
+            assertThat(allocation.get("status")).isEqualTo("ACTIVE");
+            assertThat(allocation.get("deletedAt")).isNull();
+        }
+    }
+
+    @Test
+    void cancelAlreadyCancelledAllocationReturns404() throws Exception {
+        // Given: 이미 취소된 배정 기록 (재취소는 자연 배제 — AC-017)
+        signupAndLogin();
+        Long subscriptionId = createSubscription(100L);
+        MvcResult created = registerAllocation(validRequest(subscriptionId));
+        Long allocationId = ((Number) readBody(created).get("id")).longValue();
+        Allocation cancelled = allocationRepository.findById(allocationId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        allocationRepository.saveAndFlush(cancelled);
+
+        // When: DELETE /allocations/{id} 재요청
+        MvcResult result = mockMvc.perform(delete("/allocations/{id}", allocationId).session(session))
+                .andReturn();
+
+        // Then: 404 Not Found (findByIdAndDeletedAtIsNull이 NULL filtered)
+        assertThat(result.getResponse().getStatus())
+                .as("이미 취소된 배정 재취소 시 404를 반환해야 합니다").isEqualTo(404);
         assertError(result, "NOT_FOUND");
     }
 }
