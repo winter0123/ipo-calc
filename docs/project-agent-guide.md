@@ -1,0 +1,338 @@
+# vibe-ai-team 프로젝트 에이전트 운영 안내서
+
+> 이 문서는 이 저장소에만 적용된다. 공통 규칙은 루트 [AGENTS.md](../AGENTS.md)에 있고, 이 문서는 그 규칙을 공모주 투자 수익 관리 서비스의 실제 스택·Orca 환경·무료 모델 운영 방식으로 구체화한다. 새 세션은 `AGENTS.md` → 이 문서 → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 읽는다.
+
+## 1. 문서 경계와 진실 소스
+
+| 문서 | 책임 |
+|---|---|
+| `AGENTS.md` | 모든 프로젝트에 재사용할 개발·Orca·병렬화·검증 원칙 |
+| 이 문서 | 현재 프로젝트의 기술 스택, 작업공간, Claude/OpenRouter/OpenCode 실행법, GitHub·알림 운영 |
+| `docs/work-plan.md` | 제품 도메인, MVP 요구사항, 금융 규칙과 미결정 사항 |
+| `docs/roadmap.md` | 현재 구현 순서, Epic 의존성, SF 게이트, 실행 큐 |
+| `docs/current-status.md` | 세션 종료 시점의 실제 진행 상황과 다음 작업 |
+| `docs/ai-free-model.md` | 무료 모델의 검증 결과와 PR별 사용 관찰 기록 |
+| `docs/daily-log/YYYY_MM_DD.md` | 날짜별 append-only 이력 |
+
+과거 운영 중 발생한 사건의 시간순 서사는 `docs/daily-log/YYYY_MM_DD.md`와 각 Epic의 work-log에 유지한다. 이 문서에는 앞으로도 행동을 바꾸는 규칙과 재현 가능한 명령만 남긴다.
+
+## 2. 제품과 저장소 구조
+
+이 프로젝트는 한 로그인 계정이 여러 투자자와 증권계좌의 공모주 청약, 배정, 매도, 비용, 실현수익을 기록·조회하는 서비스다. 도메인·MVP·제외 범위는 `docs/work-plan.md`를 따르며, 세금·수수료·외부 데이터·개인정보는 조사와 사용자 승인 없이 추측 구현하지 않는다.
+
+```text
+<repo>/
+├── backend/                  # Java 21 / Spring Boot / Gradle
+├── ui/                       # React / TypeScript / pnpm
+├── docs/
+│   ├── work-plan.md
+│   ├── roadmap.md
+│   ├── project-agent-guide.md
+│   ├── ai-free-model.md
+│   └── daily-log/
+└── docker-compose.yml
+```
+
+`frontend/`는 소스 폴더가 아니라 Orca 작업공간 이름이므로, 프론트엔드 앱 소스는 반드시 `ui/`에 둔다.
+
+## 3. 현재 기술 기준과 검증 명령
+
+| 영역 | 기준 |
+|---|---|
+| Backend | Java 21, Spring Boot 3.3.4, Spring Data JPA, Spring Security, Flyway, PostgreSQL |
+| Frontend | React 19, TypeScript, Vite, TanStack Query, React Hook Form, FSD 유사 구조 |
+| 인프라 | Docker Compose, PostgreSQL 17 컨테이너, 호스트 포트 5433 |
+| 패키지 관리 | Backend Gradle Wrapper, Frontend pnpm |
+
+실제 설정 파일을 먼저 읽고 다음 명령을 쓴다.
+
+```bash
+# backend/
+./gradlew test
+./gradlew build
+
+# ui/
+pnpm run test
+pnpm run lint
+pnpm run typecheck
+pnpm run format:check
+pnpm run build
+```
+
+`ui`에서는 `typecheck`만으로 끝내지 않는다. `tsc -b`를 실행하는 `pnpm run build`도 필수다. `typecheck`가 프로젝트 참조 하위의 타입 오류를 놓친 사례가 있었기 때문이다.
+
+로컬 환경·Docker·DB 복구 절차와 실제 환경 변수 이름은 `docs/setup-history.md`를 진실 소스로 사용한다. 시크릿 값은 이 문서, 커밋, work-log 어디에도 쓰지 않는다.
+
+## 4. 역할별 프로젝트 구현 규칙
+
+### 4.1 백엔드
+
+- 들여쓰기는 4칸, 탭 금지다.
+- Google Java Style Checkstyle을 엄격하게 적용하며, 실제 플러그인 구성 뒤 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
+- Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
+- 모든 조회·변경 API는 계정 소유권 또는 글로벌 기준정보 여부를 명확히 구분한다. 개인정보·인증정보·계좌번호 평문을 로그에 남기지 않는다.
+- PostgreSQL 문법만 쓴다. `AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`를 쓰지 않는다. PK는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 작성한다.
+- Flyway에서 테이블을 만들 때는 테이블 목적, 각 컬럼의 의미, 인덱스·제약조건의 이유를 한글 SQL 주석으로 남긴다.
+- Controller 클래스에는 리소스와 제공 API를 설명하는 한글 주석을, 각 매핑 메서드에는 그 엔드포인트의 동작·주요 오류 조건을 설명하는 한글 한 줄 주석을 둔다.
+
+### 4.2 프론트엔드
+
+- `pnpm`만 사용한다. `pnpm-lock.yaml`을 커밋하며 `package-lock.json`을 만들지 않는다.
+- ESLint, Prettier, TypeScript strict를 유지한다. 들여쓰기는 2칸, 탭 금지다.
+- FSD 레이어는 반드시 `src/{app,pages,widgets,features,entities,shared}/`처럼 `src` 바로 아래 형제로 둔다. `entities`, `features`, `pages`, `shared`, `widgets`를 `src/app/` 아래에 중첩하지 않는다.
+- 의존 방향은 `app → pages → widgets → features → entities → shared`다. 하위 레이어가 상위 레이어를 참조하거나 순환 참조하지 않는다.
+- 서버 상태는 TanStack Query, UI 상태는 지역 상태 또는 꼭 필요한 전역 상태로 구분한다. `useEffect`를 파생 상태·단순 계산·이벤트 처리 대체 수단으로 남용하지 않는다.
+- 모든 화면은 처음부터 모바일 웹을 지원한다. 터치 대상은 최소 44×44px, `<meta name="viewport" content="width=device-width, initial-scale=1">` 유지, 가로 스크롤 금지, 640px/768px/1024px에서 레이아웃을 확인한다.
+- 화면 작업은 로딩·오류·빈 상태, 키보드 접근성, 의미 있는 컴포넌트·통합·E2E 테스트를 함께 다룬다.
+
+### 4.3 조사·기획·테스트·QA
+
+- Phase 0 문서는 `research` → `spec` → `architecture` 순서로 작성한다. 모두 실제 근거·링크·미결정 사항을 포함해야 한다.
+- 이미 Phase 0가 끝난 Epic이라도 구현 직전에는 `breakdown-research`와 `breakdown`으로 SF 범위와 API 계약 드리프트를 재확인한다.
+- Test는 AC별 정상·실패·권한·경계 조건을 테스트 케이스로 만든다. QA는 프로젝트에 존재하는 실제 명령과 브라우저 증적으로만 PASS를 기록한다.
+
+## 5. GitHub·브랜치·작업공간 운영
+
+### 5.1 GitHub Issue 병행 운영
+
+이 프로젝트는 Orca 태스크(실행 단위)와 GitHub Issue(사람이 보는 현황)를 함께 운영한다. Git Manager 또는 Master만 `gh issue`·`gh pr`을 실행한다.
+
+| Orca 상태 | GitHub 상태 |
+|---|---|
+| PLANNED | `status:planned` 이슈 생성 |
+| IN_PROGRESS | `status:in-progress` |
+| READY_FOR_REVIEW | PR 생성, `status:review` |
+| CHANGES_REQUIRED | 사유 코멘트, `status:changes-requested` |
+| APPROVED | `status:approved` |
+| COMPLETED | 실제 병합 확인 후 이슈 close |
+
+Epic이 끝나지 않은 SF PR에는 `Part of #<epic-issue>`만 쓴다. `Closes #<epic-issue>`는 마지막 SF PR에서만 사용한다. 그렇지 않으면 GitHub가 Epic Issue를 조기에 자동 close한다.
+
+의미 있는 Run은 Git Manager가 GitHub Issue를 만든 뒤에 시작한다. 문서 또는 코드 산출물을 내는 Task는 해당 Issue를 연결한 단일 목적 커밋을 남기며, 여러 Task 결과를 한 커밋으로 몰아넣지 않는다. Run의 모든 Task가 검증·병합까지 끝난 뒤에만 실제 병합 상태를 확인하고 Issue를 close한다.
+
+```bash
+gh issue create --title "<제목>" --body "<spec 요약 + 상위 Epic 링크>" --label "status:planned"
+gh issue edit <번호> --remove-label "status:planned" --add-label "status:in-progress"
+gh issue edit <번호> --add-label "status:review" --remove-label "status:in-progress"
+gh pr view <PR번호> --json state,mergedAt
+```
+
+일상적인 SF 완료 PR은 테스트·리뷰·보안·병합 확인을 거친 뒤 사용자 사전 승인 범위에서 main에 병합할 수 있다. 보안 설정, 데이터 마이그레이션, 큰 범위·애매한 변경은 항상 사용자 게이트를 연다.
+
+### 5.2 작업공간
+
+기본 작업공간은 아래 셋이며 프로젝트 종료까지 유지한다.
+
+| 작업공간 | 역할 | 기본 경로 |
+|---|---|---|
+| `backend` | 백엔드 B그룹 | `/Users/joy/orca/workspaces/vibe-ai-team/backend` |
+| `frontend` | 프론트엔드 B그룹 | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` |
+| `planning` | 조사·기획·설계 A그룹 | `/Users/joy/orca/workspaces/vibe-ai-team/planning` |
+
+독립 브랜치가 동시에 필요하면 `backend-2`, `backend-3`처럼 추가 작업공간을 만든다. 역할별 모든 `<역할>-N`을 합쳐 활성 워커는 최대 5개다. 새 워커를 만들기 직전에 `worker-list`로 실제 수를 세고, 독립 대기 작업 수와 여유 수만큼 한 번에 병렬 배정한다.
+
+`planning`은 backend/frontend의 완료를 기다리지 않는다. backend 또는 frontend가 Epic N을 구현 중이면 planning은 의존성을 확인한 뒤 최소 Epic N+1, 가능하면 N+2의 `breakdown`·spec 보강·엣지 케이스 검토를 진행해 다음 구현 작업을 준비한다. 신규 계획 문서가 바닥나면 기존 문서의 드리프트 검토, 사용자 가이드, QA 증적처럼 충돌 없는 산출물로 큐를 채운다. 비워 둘 수밖에 없다면 사유와 재평가 조건을 work-log에 남긴다.
+
+```bash
+orca orchestration worker-list --json
+orca worktree create --repo id:<repoId> --name <역할>-2 --base-branch origin/main --json
+orca worktree list --json
+orca terminal create --worktree path:<새-작업공간-절대경로> --title "<제목>" --json
+orca terminal show --terminal <handle> --json
+```
+
+고정 작업공간과 그 하위 작업공간은 메인 작업공간의 자식 관계로 관리한다. 이 경우 `--no-parent`를 쓰지 않는다. 생성 뒤 `orca worktree list --json`으로 `parentWorktreeId`를 확인한다. 임시 `<역할>-N` 작업공간만 병합·터미널 종료를 확인한 뒤 제거한다.
+
+한 작업공간에는 한 브랜치만 둔다. 다른 작업이 같은 브랜치에서 서로 다른 파일만 작성하는 A그룹 문서 작업이면 워커만 추가할 수 있지만, 다른 PR·브랜치가 필요하면 별도 작업공간을 만든다. 공유 작업공간의 병렬 워커는 배정 파일만 수정·검증하고 Git 명령으로 인덱스나 브랜치를 바꾸지 않는다. Master 또는 Git Manager 한 명이 결과를 검증한 뒤 순차로 commit하며, 워커별 독립 커밋이 필요하면 별도 worktree를 만든다.
+
+```bash
+cd <작업공간-경로>
+git fetch origin main
+git checkout -b <git사용자명>/<epic-slug> origin/main
+git push -u origin <git사용자명>/<epic-slug>
+```
+
+메인 저장소가 `main`을 점유하므로 하위 worktree에서 `git checkout main`을 하지 않는다. 항상 `origin/main`에서 새 브랜치를 만든다. 병합 뒤 다음 작업 시작 시 새 브랜치를 만든 후에만 이전 브랜치를 정리한다.
+
+## 6. Claude Code·OpenRouter·OpenCode 무료 모델 운영
+
+### 6.1 기본 원칙
+
+- Master Lead는 Orca 위의 Claude Code 코디네이터다. `worker-start`로 만들지 않는다.
+- 워커는 기본적으로 무료 모델만 사용하며, OpenRouter 모델은 ID의 `:free` 접미사와 가격 정보를 모두 확인한다. OpenCode Zen 모델은 해당 서비스의 현재 무료 카탈로그에서 확인한다. 유료 API·서비스와 네이티브 Claude 전환은 사용자 명시 승인 없이는 금지다.
+- 1순위는 OpenRouter 무료 모델을 `claude --model <id>`로 실행하는 Claude Code 워커다.
+- 2순위는 `opencode --model openrouter/<id>` 워커다.
+- OpenRouter 계정 일일 한도에 도달하면 별도 할당량인 `opencode/<모델>`(OpenCode Zen)을 사용한다.
+- 모델 배정은 기본값일 뿐이다. 역할과 맞지 않거나 반복 오류가 나면 다른 무료 모델로 바꾸고, 모델·사유·영향을 work-log와 `docs/ai-free-model.md`에 남긴다.
+
+모델 카탈로그와 실제 성공/실패/역할 적합도 기록은 [ai-free-model.md](ai-free-model.md)에 모아 두었다. 이 문서의 **역할 적합도 매트릭스와 판정 등급을 워커 모델 선정의 우선 근거**로 사용하고, 목록은 고정 사실이 아니므로 매 실행 전에 최신 무료 여부를 확인한다.
+
+```bash
+opencode models
+opencode models openrouter
+curl -s "https://openrouter.ai/api/v1/models"
+```
+
+현재 권장 기본 배정은 다음과 같다. 실제 ID·도구 호환성은 카탈로그와 현재 API를 함께 확인한다.
+
+| 역할 | 1차 후보 | 보완 규칙 |
+|---|---|---|
+| Research / Planning | `nvidia/nemotron-3-ultra-550b-a55b:free` | 첫 응답·파일 증적으로 확인 |
+| Architecture | `nvidia/nemotron-3-super-120b-a12b:free` | API/DB 설계 근거를 재검토 |
+| Implementation / Git Manager | `nvidia/nemotron-3-ultra-550b-a55b:free` | 멈춤 시 다른 작동 확인 모델로 교체 |
+| Test / QA | `poolside/laguna-s-2.1:free` | 실제 테스트 실행 결과가 필수 |
+| UI Vision | `inclusionai/ling-3.0-flash-vl:free` | 화면·파일 증적을 남김 |
+| Review / Security | 호환되는 작동 확인 무료 모델 | `nemotron-3.5-content-safety`는 Claude 직접 경로에서 무응답 사례가 있어 그대로 재사용하지 않음 |
+
+`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`는 Research/Planning 가능성은 남아 있으나, Implementation/Test처럼 도구 호출이 잦은 역할에는 재배정하지 않는다. 관찰 근거는 `ai-free-model.md`에 유지한다.
+
+### 6.2 Claude Code + OpenRouter 직접 경로 — 1순위
+
+터미널 헤더의 모델명이나 `claude --print` 성공만으로 모델 작동을 인정하지 않는다. 실제 Orca 태스크를 배분해 파일이 정확하게 작성됐는지 확인하는 것이 유일한 신뢰 가능한 검증이다.
+
+```bash
+# 1. 생성 시점에 모델을 고정한다.
+orca terminal create --worktree path:<작업공간-절대경로> --title "<역할-작업명>" \
+  --command 'claude --model <openrouter-무료-모델-ID>' --json
+
+# 2. 터미널과 작업공간을 확인한다.
+orca terminal read --terminal <handle> --json
+orca terminal show --terminal <handle> --json
+
+# 3. 태스크를 만들고 기존 터미널에 배정한다.
+orca orchestration task-create --task-title "<제목>" --spec "<구체 지시>" --json
+orca orchestration worker-start --task <task_id> --terminal <handle> \
+  --worktree path:<작업공간-절대경로> --json
+```
+
+이 경로에서 `worker-start`에는 `--agent`나 `--model`을 다시 넣지 않는다. 모델은 `terminal create --command` 시점에 정해졌다. 파일·diff·테스트로 실제 작업 결과를 확인한 뒤에만 완료 처리한다.
+
+`terminal read`가 빈 화면이나 `BBBBB` 같은 깨진 화면을 보이면 PTY만으로 판단하지 않는다. 아래처럼 Claude Code 트랜스크립트를 우선 읽는다.
+
+```bash
+orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
+```
+
+마지막 트랜스크립트가 `API Error: Upstream idle timeout exceeded` 등으로 끝나면 liveness가 `live`여도 실제로 멈춘 것이다. 이미 만든 파일을 확인하고 다른 무료 모델의 새 터미널로 재시도한다. `worker-stop`이 외부 terminal 오류로 실패하면 `worker-abandon`과 `terminal close --tab`을 사용해 정리한 뒤 `--retry-of`로 재배정한다.
+
+### 6.3 OpenCode 경로 — 2순위 및 OpenRouter 한도 대체
+
+현재 Orca에서는 `worker-start --agent opencode --model ...`가 launch-time 모델 선택을 지원하지 않아 실패할 수 있다. 이 경우 모델을 터미널 생성 때 직접 지정하고, 이후에는 해당 터미널을 worker에 묶는다.
+
+```bash
+# OpenRouter 모델을 OpenCode로 실행
+orca terminal create --worktree path:<작업공간-절대경로> --title "<역할-작업명>" \
+  --command 'opencode --model openrouter/<provider>/<model>:free' --json
+orca terminal read --terminal <handle> --json
+orca orchestration worker-start --task <task_id> --terminal <handle> \
+  --worktree path:<작업공간-절대경로> --json
+
+# OpenRouter 계정 일일 한도 도달 시 OpenCode Zen 무료 모델을 사용
+orca terminal create --worktree path:<작업공간-절대경로> --title "<역할-작업명>" \
+  --command 'opencode --model opencode/<현재-무료-모델>' --json
+```
+
+`free-models-per-day-high-balance`는 모델 하나의 오류가 아니라 OpenRouter 계정 전체의 일일 한도다. 이 오류가 확인되면 OpenRouter 모델을 바꿔 반복하지 말고 OpenCode Zen 경로로 전환한다. 단순 429/5xx는 10초 → 20초 → 40초 → 80초의 지수 백오프을 최대 4회 적용하고, 총 3분을 넘기면 `BLOCKED`로 기록한다.
+
+OpenCode 워커가 `/compact`를 거치면 dispatch capability가 사라져 `worker_done` 전송이 거부될 수 있다. 이 경우 자동 완료 메시지를 기다리지 않고 산출 파일·터미널·테스트를 Master가 확인한다.
+
+```bash
+orca terminal close --terminal <handle> --tab --json
+orca orchestration worker-stop --dispatch <dispatch_id> --json
+orca orchestration task-update --id <task_id> --status completed \
+  --result '{"outcome":"succeeded","reportPath":"<파일경로>","note":"worker_done 자동보고 불가로 Master가 증적 확인 후 수동 완료 처리"}' --json
+```
+
+수동 완료는 자동 보고처럼 기록하지 않으며, 원인·증적·처리 방식을 work-log에 남긴다.
+
+### 6.4 무료 여부와 호환성 확인
+
+새 OpenRouter 모델의 첫 오류가 나면 곧바로 실패 목록에 넣지 않는다. 먼저 OpenRouter에서 여전히 무료인지 확인한다.
+
+```bash
+curl -s "https://openrouter.ai/api/v1/models" | python3 -c "import json,sys; d=json.load(sys.stdin); m=[x for x in d['data'] if x['id']=='<모델ID>']; print(m)"
+```
+
+OpenRouter 목록에 없거나 `:free`가 사라졌거나 `pricing.prompt`/`pricing.completion`이 0이 아니면 OpenRouter 무료 모델이 아니다. OpenCode Zen 모델은 `opencode models`와 현재 무료 카탈로그로 별도 확인한다. 일시 장애와 무료 목록 제외를 구분한다. 새 모델은 작은 파일 쓰기 태스크로 검증하고 결과를 `docs/ai-free-model.md`에 추가한다.
+
+### 6.5 Claude 게이트웨이와 네이티브 예외
+
+이 개발 환경의 셸은 Claude Code가 OpenRouter를 경유하도록 설정될 수 있다. 관련 환경 변수의 실제 값과 API 키는 개인 설정이며 어떤 문서에도 적지 않는다.
+
+```bash
+# 게이트웨이를 끄고 현재 셸에서만 네이티브 Claude로 전환
+unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+claude
+```
+
+`CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`만 끄는 것은 충분하지 않다. 세 변수를 모두 unset해야 네이티브 구독 경로다. 헤더에 `Claude Pro` 또는 실제 구독 플랜명이 보이는지 확인한다. `API Usage Billing`이면 OpenRouter 경유가 남아 있는 것이다.
+
+네이티브 Claude 워커는 사용자가 명시적으로 지시한 기간·범위에서만 사용한다. 필요 시 정확한 전체 모델 ID를 쓴다.
+
+```bash
+orca terminal create --worktree path:<작업공간-절대경로> --title "<제목>" \
+  --command 'unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY && claude --model <정확한-모델-ID>' --json
+```
+
+`sonnet-5` 같은 축약형 대신 설치 환경에서 실제 인식되는 전체 ID를 사용한다. 이 예외가 끝나면 기본 무료 모델 경로로 돌아간다.
+
+### 6.6 Master 사용량과 컨텍스트 대응
+
+Master 자신의 Claude Code 사용량 제한은 사람 또는 현재 CLI가 제공하는 기능 범위에서만 다룬다. `/low-priority`, `/limit-reset`은 환경에 따라 보이지 않거나 동작하지 않을 수 있으므로 존재를 확인하고 사람이 실행한다.
+
+워커가 10분 동안 완료·escalation을 보내지 않으면 먼저 `terminal read`와 `worker-read`로 실제 상태를 확인한다. 토큰 초과가 명확할 때만 `/compact`하고 같은 태스크를 다시 주입한다. 동일 태스크에서 세 번 반복되면 더 작은 SF로 재분해한다.
+
+## 7. 모니터링·알림·사용자 가이드
+
+### 7.1 모니터링
+
+`task-list` 상태 폴링만으로는 모델 오류로 멈춘 워커를 발견할 수 없다. Monitor 알림을 받았을 때, `dispatched`가 여러 번 지속될 때, 사용자가 상태를 물을 때, 진행 상황을 보고할 때마다 실제 터미널 또는 트랜스크립트를 확인한다. 이때 backend/frontend만 보지 말고 세 기본 작업공간을 모두 확인한다.
+
+```bash
+orca terminal read --terminal <handle> --json
+orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
+orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/backend --json
+orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/frontend --json
+orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/planning --json
+```
+
+에러 이후 새 진행이 없거나, 같은 생각 문구가 반복되거나, 파일·커밋이 늘지 않으면 중지로 판단한다. 파일을 삭제하지 않고 새 무료 모델로 같은 태스크를 재배정한다. 비어 있는 작업공간은 `current-status.md`의 다음 큐와 1~2 Epic 앞선 planning 준비 상태를 대조해 같은 점검 주기 안에 다음 작업을 배정하거나, 예외 사유를 기록한다.
+
+### 7.2 선택형 Hermes 알림
+
+Hermes 알림은 필수가 아니다. 설정되어 있다면 기능 구현 완료 PR, 사람 결정 필요 BLOCKED, 화면 사용자 가이드 발행을 알려준다. 감지 스크립트는 Claude 세션과 독립되어야 하며, PR 감시는 `--state all`을 쓴다.
+
+```bash
+gh pr list --repo <owner>/<repo> --state all --json number,title,body --limit 50
+hermes send --to telegram "🚨 사람 결정 필요: <한 줄 요약> — <선택지>"
+```
+
+공용 알림 스크립트·상태 파일은 저장소 밖 `~/.hermes/`에 둔다. 초기 연결 시에는 기존 최대 PR 번호를 상태 파일에 시딩해 과거 PR 알림이 쏟아지지 않게 한다. 기본 폴링 주기는 600초다.
+
+### 7.3 프론트엔드 사용자 가이드
+
+프론트엔드 SF가 병합되면 planning 작업공간에서 실제 화면을 띄워 데스크톱 1280px·모바일 390px 스크린샷을 만든다. `docs/user-guides/[epic-slug]/`에 스크린샷과 외부 CDN 없는 순수 HTML 안내서를 추가하고 일반 PR로 병합한다.
+
+휴대폰에서 볼 공유 링크가 필요하면 Master가 별도 Artifact를 발행하고 링크를 Hermes로 보낸다. Artifact 발행은 외부 공개 행위이므로 사용자 또는 설정된 권한 범위 안에서만 수행한다.
+
+### 7.4 일일 로그
+
+일일 로그는 이 프로젝트 전용 문서다. `docs/daily-log/` 폴더에 `YYYY_MM_DD.md` 파일을 날짜별로 하나씩 만든다. 기존 날짜 파일은 수정하지 않고 append-only로 보존하며, 같은 날짜에 세션이 여러 번이면 해당 날짜 파일의 표에 행을 추가한다. 새 날짜가 시작되면 새 파일을 만든다.
+
+줄글과 문단형 불릿은 금지하고, 각 날짜 파일은 숫자 요약과 표만 사용한다. 파일 맨 위에는 그날 한 일을 1~10개 숫자 목록으로 쓰고 각 줄은 15~40자 내외로 요약한다. Epic은 `docs/roadmap.md`의 `<한글 기능명>(Epic N)` 형식을 사용하고, 숫자 요약에서 SF를 설명할 때만 `SF-N: <한 줄 작업명>`을 사용한다.
+
+`기능 구현 현황` 표의 컬럼은 반드시 `Epic/Task | 분야 | 브랜치 | PR(SF 범위) | 상태 | 주요 내용`으로 유지한다. 분야와 실제 브랜치를 기록하고, 테스트 개수는 쓰지 않는다. SF 번호는 `PR(SF 범위)` 컬럼에만 `PR #90(SF-2)`처럼 쓴다. 상태는 `완료`, `진행`, `블로킹`만 사용한다. 문제와 대응은 `이슈 및 트러블슈팅` 표에 기록한다.
+
+```text
+docs/daily-log/
+└── YYYY_MM_DD.md
+```
+
+## 8. 세션 종료 체크리스트
+
+1. diff·테스트·빌드·PR 병합 상태를 실제로 확인한다.
+2. 완료 SF의 워커·터미널을 바로 정리한다.
+3. `docs/current-status.md`를 최신 Epic/SF·작업공간·블로커·다음 큐로 덮어쓴다.
+4. `docs/daily-log/YYYY_MM_DD.md`에 당일 내용을 append한다. 파일명·숫자 요약·표·Epic/SF/PR 표기는 이 문서 7.4의 형식을 따른다.
+5. 새 설치·마이그레이션이 있으면 `docs/setup-history.md`를 갱신한다.
+6. 모델 교체·오류·적합도 관찰이 있으면 `docs/ai-free-model.md`와 해당 work-log에 남긴다.

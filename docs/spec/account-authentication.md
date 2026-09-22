@@ -11,7 +11,7 @@
 
 ## 2. 시나리오 및 Acceptance Criteria
 
-> 형식: **Given / When / Then** (work-plan-ipo-investment.md 33장 예시 준용)
+> 형식: **Given / When / Then** (work-plan.md 33장 예시 준용)
 
 ### 시나리오 1: 회원가입 (성공)
 
@@ -247,4 +247,4 @@
 *작성자: Planning Worker (A그룹)*  
 *관련 Epic: account-authentication (Epic 1 Phase 0)*  
 *기반 조사: docs/research/account-authentication.md*  
-*참조 계획: docs/work-plan-ipo-investment.md (7~8장, 28~29장, 33장, 37장), docs/roadmap.md (Epic 1 상세)*
+*참조 계획: docs/work-plan.md (7~8장, 28~29장, 33장, 37장), docs/roadmap.md (Epic 1 상세)*

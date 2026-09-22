@@ -12,13 +12,13 @@ Epic 7 `allocation-management` 구현에 앞서, 배정 방식 표현 범위, �
 
 ## 출처
 - `docs/roadmap.md` - Epic 7 "배정 결과 관리" 상세 (진행 전 필요한 조사 항목 4개 명시)
-- `docs/work-plan-ipo-investment.md` - 12장(Allocation 도메인), 45장(동시성)
+- `docs/work-plan.md` - 12장(Allocation 도메인), 45장(동시성)
 - `docs/research/subscription-management.md` - 청약 기록 조사 결과 (선행 Epic)
 
 ## 확인한 내용
 
 ### 1. 균등·비례 등 배정 방식의 표현 범위
-**work-plan-ipo-investment.md 12장(Allocation 도메인)**:
+**work-plan.md 12장(Allocation 도메인)**:
 - 청약 후 실제 배정 결과를 관리한다.
 - 예시: 청약 수량: 100, 배정 수량: 3
 - 또한 균등/비례 배정 등의 세부 정보가 실제 서비스 요구사항에 필요한지 조사한다.
@@ -36,7 +36,7 @@ Epic 7 `allocation-management` 구현에 앞서, 배정 방식 표현 범위, �
 - **사람 결정 필요**: 배정 방식 표현 방법(Enum vs String vs 별도 테이블)과 배정 관련 메모 필드의 필요성은 비즈니스 요구사항에 따라 결정되어야 함
 
 ### 2. 청약에서 배정으로 가는 상태 전이 규칙
-**work-plan-ipo-investment.md 21장(상태값 설계)**:
+**work-plan.md 21장(상태값 설계)**:
 - 각 도메인의 상태값은 문자열을 무분별하게 사용하지 않는다.
 - 예시 상태: 청약 예정, 청약 진행 중, 청약 완료, 배정 완료, 일부 매도, 전량 매도, 보유 중
 - 실제 상태 목록은 사용 시나리오와 데이터 모델링을 바탕으로 정의한다.
@@ -58,7 +58,7 @@ Epic 7 `allocation-management` 구현에 앞서, 배정 방식 표현 범위, �
 - **사람 결정 필요**: 최종 상태 목록과 전이 규칙은 금융 규정 및 비즈니스 로직에 따라 결정되어야 하며, 배정 취소 가능 여부와 조건은 별도 확인이 필요함
 
 ### 3. 배정 기록에 필수로 남겨야 할 정보
-**work-plan-ipo-investment.md 12장(Allocation 도메인)**:
+**work-plan.md 12장(Allocation 도메인)**:
 - 배정 수량·배정 일시·배정 관련 정보
 - 청약 수량과 배정 수량 검증
 - 배정 상태와 잔여 수량
@@ -82,7 +82,7 @@ Epic 7 `allocation-management` 구현에 앞서, 배정 방식 표현 범위, �
 - **사람 결정 필요**: 배정 방식 메모의 형식(Enum vs 자유 텍스트)과 배정 단가 기록 필요성은 비즈니스 요구사항에 따라 결정되어야 함
 
 ### 4. 배정 수량과 잔여 수량의 동시성 처리 원칙
-**work-plan-ipo-investment.md 45장(동시성)**:
+**work-plan.md 45장(동시성)**:
 - 향후 여러 요청이 동시에 발생할 가능성을 고려한다.
 - 특히 다음은 데이터 정합성이 중요하다:
   - 잔여 배정 수량 계산

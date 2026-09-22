@@ -30,7 +30,7 @@ AI 개발팀은 이 문서를 기준으로 요구사항 분석, 외부 정보 �
 
 ```text
 docs/
-├── work-plan-ipo-investment.md
+├── work-plan.md
 ├── research-[topic].md
 ├── spec-[feature].md
 ├── architecture-[feature].md
@@ -1505,7 +1505,7 @@ security review 결과
 ```text
 AGENTS.md
 README.md
-docs/work-plan-ipo-investment.md
+docs/work-plan.md
 ```
 
 프로젝트의 현재 Git 상태도 확인한다.

@@ -11,7 +11,7 @@
 
 ## 출처
 - docs/roadmap.md (Epic 3: 증권사 기준정보 관리 상세)
-- docs/work-plan-ipo-investment.md (9장 증권사와 계좌 구조, 22~23장 데이터 무결성/삭제 정책)
+- docs/work-plan.md (9장 증권사와 계좌 구조, 22~23장 데이터 무결성/삭제 정책)
 
 ## 확인한 내용
 

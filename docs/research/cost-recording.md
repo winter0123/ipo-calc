@@ -14,7 +14,7 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
 
 ## 출처
 - `docs/roadmap.md` - Epic 9 "비용 기록" 상세 (진행 전 필요한 조사 항목 4개 명시)
-- `docs/work-plan-ipo-investment.md` - 13장(Sale 도메인), 15장(수익 계산의 기본 개념), 26장(증권사 수수료), 27장(세금)
+- `docs/work-plan.md` - 13장(Sale 도메인), 15장(수익 계산의 기본 개념), 26장(증권사 수수료), 27장(세금)
 - `docs/research/sale-management.md` - 분할 매도 기록 조사 결과 (선행 Epic)
 - `docs/research/profit-calculation-fees.md` - 증권사 수수료 조사 결과
 - `docs/research/profit-calculation-tax.md` - 국내 개인 투자자 공모주 관련 세금 조사 결과
@@ -25,7 +25,7 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
 **roadmap.md Epic 9 상세 (진행 전 필요한 조사)**:
 - 증권사별 청약·매도 수수료 정책과 유효기간은 어떻게 다루는가 (자동 결정 대상 아님, 사용자 입력 근거로만 사용)?
 
-**work-plan-ipo-investment.md 26장(증권사 수수료)**:
+**work-plan.md 26장(증권사 수수료)**:
 - 증권사별 청약/매도 수수료가 다를 수 있으므로 하드코딩하지 않는다.
 - 예를 들어: 증권사 A = 2,000원, 증권사 B = 0원 같은 값이 있더라도 실제 정책을 조사하고 유효기간을 고려해야 한다.
 - 계좌 조건, 이벤트, 고객 등급, 수수료 정책 변경, 거래 채널별 차이도 고려한다.
@@ -45,7 +45,7 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
 **roadmap.md Epic 9 상세 (진행 전 필요한 조사)**:
 - 세금과 기타 비용의 범위는 어디까지인가?
 
-**work-plan-ipo-investment.md 15장(수익 계산의 기본 개념)**:
+**work-plan.md 15장(수익 계산의 기본 개념)**:
 - 실제 계산에는 다음 요소가 영향을 줄 수 있다:
   ```
   매도금액
@@ -56,7 +56,7 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
   = 순수익
   ```
 
-**work-plan-ipo-investment.md 27장(세금)**:
+**work-plan.md 27장(세금)**:
 - 세금은 매우 중요한 영역이다.
 - 세금 관련 내용은 AI가 기억에 의존하여 구현하지 않는다.
 - 반드시 최신 공식 자료를 조사한다.
@@ -85,7 +85,7 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
 **roadmap.md Epic 9 상세 (진행 전 필요한 조사)**:
 - 계좌 조건·이벤트·고객 등급·거래 채널 차이가 비용에 미치는 영향을 어떻게 기록 구조에 반영하는가?
 
-**work-plan-ipo-investment.md 26장(증권사 수수료)**:
+**work-plan.md 26장(증권사 수수료)**:
 - 계좌 조건, 이벤트, 고객 등급, 수수료 정책 변경, 거래 채널별 차이도 고려한다.
 
 **확인한 내용**:
@@ -100,10 +100,10 @@ Epic 9 `cost-recording` 구현에 앞서, 매도와 취득 과정에 발생한 �
 **roadmap.md Epic 9 상세 (진행 전 필요한 조사)**:
 - 비용을 사용자 입력으로 받을지, 정책 데이터로 받을지 - MVP 관점에서 어느 쪽이 적절한가?
 
-**work-plan-ipo-investment.md 26장(증권사 수수료)**:
+**work-plan.md 26장(증권사 수수료)**:
 - MVP에서는 사용자가 직접 비용을 기록하는 방식도 검토할 수 있다.
 
-**work-plan-ipo-investment.md 15장(수익 계산의 기본 개념)**:
+**work-plan.md 15장(수익 계산의 기본 개념)**:
 - 정확한 공식은 금융/세금 정책 조사 후 확정한다.
 - AI Agent는 근거 없이 임의의 수익 계산식을 확정하지 않는다.
 
