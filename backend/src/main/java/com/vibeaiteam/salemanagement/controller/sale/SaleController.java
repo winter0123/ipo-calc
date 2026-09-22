@@ -7,6 +7,7 @@ import com.vibeaiteam.salemanagement.service.sale.SaleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,5 +63,14 @@ public class SaleController {
     public ResponseEntity<SaleResponse> update(@PathVariable Long id, @RequestBody SaleUpdateRequest request) {
         SaleResponse response = saleService.update(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    // 매도 기록을 논리 취소한다 (AllocationController.cancel과 동일 패턴).
+    // status를 CANCELLED로 변경하고 deletedAt을 설정하며, 204 No Content를 반환한다(AC-016).
+    // 존재하지 않는 ID는 404를 반환한다(AC-017). 물리 삭제는 수행하지 않는다.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancel(@PathVariable Long id) {
+        saleService.cancel(id);
+        return ResponseEntity.noContent().build();
     }
 }
