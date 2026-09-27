@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -1230,5 +1231,108 @@ class CostControllerTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         Map<String, Object> response = readBody(result);
         assertThat(response.get("memo")).isEqualTo("");
+    }
+
+    // ==================== SF-5: 비용 취소(논리 삭제) 테스트 (AC-014, AC-015) ====================
+
+    private MvcResult cancelCost(Long id) throws Exception {
+        return mockMvc.perform(delete("/costs/" + id).session(session)).andReturn();
+    }
+
+    @Test
+    void cancelCostWithValidIdReturns204AndCancelsRecord() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-014)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: DELETE /costs/{id} 요청을 보냄
+        MvcResult result = cancelCost(costId);
+
+        // Then: 204 No Content가 반환되고, status가 CANCELLED로 변경되며 deletedAt이 설정됨 (물리 삭제하지 않음) (AC-014)
+        assertThat(result.getResponse().getStatus())
+                .as("유효한 비용 취소 요청 시 204 No Content를 반환해야 합니다 (AC-014)").isEqualTo(204);
+        Cost cancelled = costRepository.findById(costId).orElseThrow();
+        assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+        assertThat(cancelled.getDeletedAt()).isNotNull();
+        assertThat(cancelled.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void cancelCostWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-015)
+        signupAndLogin();
+
+        // When: DELETE /costs/{존재하지 않는 id} 요청을 보냄
+        MvcResult result = cancelCost(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-015)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 취소는 404를 반환해야 합니다 (AC-015)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void cancelCostAlreadyCancelledReturns404() throws Exception {
+        // Given: 등록된 비용이 이미 한 번 취소됨 (엣지케이스: 재취소는 자연 배제)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        MvcResult firstCancel = cancelCost(costId);
+        assertThat(firstCancel.getResponse().getStatus()).isEqualTo(204);
+
+        // When: 이미 취소된 기록을 다시 취소 시도함
+        MvcResult result = cancelCost(costId);
+
+        // Then: 404 Not Found + NOT_FOUND — 이미 삭제된(deletedAt 설정) 기록은 조회되지 않음 (엣지케이스)
+        assertThat(result.getResponse().getStatus())
+                .as("이미 취소된 기록의 재취소는 404를 반환해야 합니다 (엣지케이스)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void cancelCostExcludesFromListAndDetailView() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-016)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: 비용을 취소한 뒤 목록/상세 조회를 수행함
+        MvcResult cancelResult = cancelCost(costId);
+        assertThat(cancelResult.getResponse().getStatus()).isEqualTo(204);
+
+        MvcResult listResult = listCosts(null, null, null);
+        MvcResult detailResult = getCostById(costId);
+
+        // Then: 목록 조회에서는 제외되고(AC-016), 상세 조회는 404를 반환함
+        assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(listResult);
+        assertThat(body).as("취소된 비용은 목록 조회에서 제외되어야 합니다 (AC-016)").isEmpty();
+
+        assertThat(detailResult.getResponse().getStatus())
+                .as("취소된 비용의 상세 조회는 404를 반환해야 합니다").isEqualTo(404);
+        assertError(detailResult, "NOT_FOUND");
     }
 }

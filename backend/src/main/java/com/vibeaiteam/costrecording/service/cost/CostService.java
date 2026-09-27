@@ -165,4 +165,18 @@ public class CostService {
             throw new CostValidationException("memo는 255자 이하여야 합니다.");
         }
     }
+
+    // 비용을 논리 취소한다. status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며,
+    // 물리 삭제는 수행하지 않는다. 존재하지 않거나 이미 취소된 기록은
+    // findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(재취소는 자연 배제).
+    @Transactional
+    public void cancel(Long id) {
+        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+        LocalDateTime now = LocalDateTime.now();
+        cost.setStatus(STATUS_CANCELLED);
+        cost.setDeletedAt(now);
+        cost.setUpdatedAt(now);
+        costRepository.save(cost);
+    }
 }
