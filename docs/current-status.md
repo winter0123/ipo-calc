@@ -19,7 +19,7 @@
 
 ## 진행 중 워커 (2026-09-23, 이번 세션 — Run `run_84af99a11878`, 사용자 지시로 역할별 모델 다양화함)
 
-- **backend** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-2`, 브랜치 `winter0123/cost-recording`): Epic 9 SF-2 비용 등록 API 재착수(이전 미커밋 작업 유실로 처음부터), **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_0dec97cba0ec`, task `task_023073a68744`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
+- **backend** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-2`, 브랜치 `winter0123/cost-recording-sf3`): Epic 9 SF-2 완료·병합(PR #146) → Epic 9 SF-3(목록/상세 조회) 착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`(동일 터미널 재사용), dispatch `ctx_826d516e8ed0`, task `task_9d8b59572f8d`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
 - **backend-3** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-3-3`, 브랜치 `winter0123/investment-query-api-sf1`): Epic 11 SF-2 투자 내역 전체 조회 API 재착수, **OpenCode**+OpenRouter `poolside/laguna-s-2.1:free`(모델 다양화로 교체), dispatch `ctx_7a2b949bb030`, task `task_d2c7315a2c15`, terminal `term_dd938b0c-7a53-4886-b865-bd20ae6e00b0`
 - **planning** (`/Users/joy/orca/workspaces/vibe-ai-team/planning-3`, 브랜치 `winter0123/profit-calculation-breakdown-drift-check`): Epic 16 breakdown 완료(PR #144 병합)→ 다음 작업으로 Epic 10(profit-calculation) breakdown 드리프트 점검 착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`, dispatch `ctx_71252686c0ff`, task `task_e394062c9ad1`, terminal `term_01c4ca30-ceed-4aaa-bc25-92c95b117b8c`
 - **frontend** (`/Users/joy/orca/workspaces/vibe-ai-team/frontend-3`, 브랜치 `winter0123/web-sale-profit-workflow-sf0`): Epic 15 SF-0(공통 apiFetch 에러 처리 수정, Issue #134) 착수 — **사용자 결정(2026-09-23): 별도 선행 SF-0으로 처리**(roadmap.md 8절 갱신 완료), **OpenCode**+OpenRouter `nex-agi/nex-n2.5-pro:free`(모델 다양화로 교체), dispatch `ctx_52d69b1d2043`, task `task_d9f76f155e4c`, terminal `term_0ae207fc-5e71-430e-8ba5-4073e80571e7`
@@ -28,7 +28,9 @@ cost-recording/investment-query-api-sf1 브랜치는 모두 이번 세션에 `gi
 
 **PR #144 병합 완료(2026-09-23)**: Epic 16(web-inquiry-dashboard) breakdown, 5개 SF로 분해. GitHub 이슈 #133 유지(구현 미착수이므로 계속 status:planned).
 
-**모델 다양화(2026-09-23, 사용자 지시)**: 4개 워커가 전부 같은 모델을 쓰지 않도록 역할·워크스페이스별로 서로 다른 무료 모델을 배정했다 — Epic9 SF-2(nemotron-3-ultra), Epic11 SF-2(laguna-s-2.1), Epic10 드리프트점검(nemotron-3-super), Epic15 SF-0(nex-n2.5-pro, 처음 실사용 — 결과를 ai-free-model.md에 기록할 것).
+**모델 다양화(2026-09-23, 사용자 지시)**: 4개 워커가 전부 같은 모델을 쓰지 않도록 역할·워크스페이스별로 서로 다른 무료 모델을 배정했다 — Epic9 SF-2/3(nemotron-3-ultra), Epic11 SF-2(laguna-s-2.1), Epic10 드리프트점검(nemotron-3-super), Epic15 SF-0(nex-n2.5-pro, 처음 실사용 — 결과를 ai-free-model.md에 기록할 것).
+
+**PR #146 병합 완료(2026-09-23)**: Epic 9(cost-recording) SF-2 비용 등록 API. 테스트 12개+전체 회귀 통과 확인.
 
 ## ⚠️ 2026-09-22 세션 시작 시 발견: 고정 워크스페이스 소실 및 재생성
 
