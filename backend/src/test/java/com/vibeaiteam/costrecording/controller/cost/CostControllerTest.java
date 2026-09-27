@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -174,10 +175,14 @@ class CostControllerTest {
     }
 
     private Long registerInvestorAndGetId() throws Exception {
+        return registerInvestorAndGetId("비용투자자");
+    }
+
+    private Long registerInvestorAndGetId(String displayName) throws Exception {
         MvcResult result = mockMvc.perform(post("/investors")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "displayName", "비용투자자",
+                                "displayName", displayName,
                                 "relationship", "SELF")))
                         .session(session))
                 .andReturn();
@@ -623,5 +628,377 @@ class CostControllerTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(201);
         Map<String, Object> response = readBody(result);
         assertThat(response.get("incurredAt")).isEqualTo("2020-01-01T00:00:00");
+    }
+
+    // ==================== SF-3: 비용 목록/상세 조회 테스트 (AC-006~AC-010, AC-016) ====================
+
+    private MvcResult listCosts(Long subscriptionId, Long investorId, String investorName) throws Exception {
+        StringBuilder url = new StringBuilder("/costs?");
+        if (subscriptionId != null) {
+            url.append("subscriptionId=").append(subscriptionId).append("&");
+        }
+        if (investorId != null) {
+            url.append("investorId=").append(investorId).append("&");
+        }
+        if (investorName != null) {
+            url.append("investorName=").append(investorName).append("&");
+        }
+        // 마지막 & 제거
+        if (url.charAt(url.length() - 1) == '&') {
+            url.deleteCharAt(url.length() - 1);
+        }
+        return mockMvc.perform(get(url.toString()).session(session)).andReturn();
+    }
+
+    private MvcResult getCostById(Long id) throws Exception {
+        return mockMvc.perform(get("/costs/" + id).session(session)).andReturn();
+    }
+
+    private List<Map<String, Object>> readList(MvcResult result) throws Exception {
+        return objectMapper.readValue(utf8Body(result),
+                new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+    }
+
+    @Test
+    void listCostsReturnsOnlyActiveExcludingCancelled() throws Exception {
+        // Given: 여러 비용이 등록되고 그중 하나가 취소됨 (AC-006, AC-016)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult first = registerCost(validRequest(subscriptionId));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long costId1 = ((Number) readBody(first).get("id")).longValue();
+
+        Map<String, Object> secondRequest = validRequest(subscriptionId);
+        secondRequest.put("costType", "계좌개설비");
+        secondRequest.put("amount", 15000);
+        secondRequest.put("incurredAt", "2026-09-11T10:00:00");
+        MvcResult second = registerCost(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long costId2 = ((Number) readBody(second).get("id")).longValue();
+
+        // 첫 번째 비용을 취소(CANCELLED)
+        Cost cancelled = costRepository.findById(costId1).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        costRepository.saveAndFlush(cancelled);
+
+        // When: GET /costs 요청을 보냄
+        MvcResult result = listCosts(null, null, null);
+
+        // Then: 200 OK와 함께 ACTIVE 비용만 반환되고 CANCELLED 기록은 제외됨 (AC-006, AC-016)
+        assertThat(result.getResponse().getStatus())
+                .as("목록 조회는 200 OK를 반환해야 합니다 (AC-006)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue())
+                .as("취소된 기록은 목록에서 제외되어야 합니다 (AC-016)").isEqualTo(costId2);
+        assertThat(body.get(0).get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void listCostsFiltersBySubscriptionId() throws Exception {
+        // Given: 서로 다른 두 청약이 각각 하나의 비용 기록을 가짐 (AC-007)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+
+        Long subscriptionId1 = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        Long firmId2 = registerFirm();
+        Long securitiesAccountId2 = registerSecuritiesAccount(investorId, firmId2);
+        Long ipoId2 = createIpo("기업B", "공모주B", "654321");
+        Long subscriptionId2 = createSubscription(investorId, securitiesAccountId2, ipoId2);
+
+        MvcResult first = registerCost(validRequest(subscriptionId1));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long costId1 = ((Number) readBody(first).get("id")).longValue();
+
+        Map<String, Object> secondRequest = validRequest(subscriptionId2);
+        secondRequest.put("costType", "이체수수료");
+        secondRequest.put("amount", 5000);
+        MvcResult second = registerCost(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long costId2 = ((Number) readBody(second).get("id")).longValue();
+
+        // When: GET /costs?subscriptionId={subscriptionId1} 요청을 보냄
+        MvcResult result = listCosts(subscriptionId1, null, null);
+
+        // Then: 200 OK와 함께 해당 청약의 비용만 반환됨 (AC-007)
+        assertThat(result.getResponse().getStatus())
+                .as("청약별 필터 조회는 200 OK를 반환해야 합니다 (AC-007)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue())
+                .as("subscriptionId 필터에 해당하는 기록만 반환되어야 합니다 (AC-007)").isEqualTo(costId1);
+        assertThat(((Number) body.get(0).get("subscriptionId")).longValue()).isEqualTo(subscriptionId1);
+    }
+
+    @Test
+    void listCostsFiltersByInvestorId() throws Exception {
+        // Given: 서로 다른 두 투자자가 각각 하나의 비용 기록을 가짐 (AC-008)
+        signupAndLogin();
+        Long investorId1 = registerInvestorAndGetId();
+        Long firmId1 = registerFirm();
+        Long securitiesAccountId1 = registerSecuritiesAccount(investorId1, firmId1);
+        Long ipoId1 = createIpo();
+        Long subscriptionId1 = createSubscription(investorId1, securitiesAccountId1, ipoId1);
+
+        MvcResult first = registerCost(validRequest(subscriptionId1));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long costId1 = ((Number) readBody(first).get("id")).longValue();
+
+        // 다른 계정의 투자자로 비용 등록 (다른 계정 세션 필요하지만 여기서는 같은 계정에서 다른 투자자 생성)
+        Long investorId2 = registerInvestorAndGetId();
+        Long firmId2 = registerFirm();
+        Long securitiesAccountId2 = registerSecuritiesAccount(investorId2, firmId2);
+        Long ipoId2 = createIpo("기업B", "공모주B", "654321");
+        Long subscriptionId2 = createSubscription(investorId2, securitiesAccountId2, ipoId2);
+
+        Map<String, Object> secondRequest = validRequest(subscriptionId2);
+        secondRequest.put("costType", "이체수수료");
+        secondRequest.put("amount", 5000);
+        MvcResult second = registerCost(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long costId2 = ((Number) readBody(second).get("id")).longValue();
+
+        // When: GET /costs?investorId={investorId1} 요청을 보냄
+        MvcResult result = listCosts(null, investorId1, null);
+
+        // Then: 200 OK와 함께 해당 투자자의 비용만 반환됨 (AC-008)
+        assertThat(result.getResponse().getStatus())
+                .as("투자자별 필터 조회는 200 OK를 반환해야 합니다 (AC-008)").isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue())
+                .as("investorId 필터에 해당하는 기록만 반환되어야 합니다 (AC-008)").isEqualTo(costId1);
+    }
+
+    @Test
+    void listCostsFiltersByInvestorName() throws Exception {
+        // Given: 서로 다른 투자자명으로 비용 기록이 존재함 (AC-008 investorName 필터)
+        signupAndLogin();
+        Long investorId1 = registerInvestorAndGetId("투자자김철수");
+        Long firmId1 = registerFirm();
+        Long securitiesAccountId1 = registerSecuritiesAccount(investorId1, firmId1);
+        Long ipoId1 = createIpo();
+        Long subscriptionId1 = createSubscription(investorId1, securitiesAccountId1, ipoId1);
+
+        MvcResult first = registerCost(validRequest(subscriptionId1));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long costId1 = ((Number) readBody(first).get("id")).longValue();
+
+        Long investorId2 = registerInvestorAndGetId("투자자이영희");
+        Long firmId2 = registerFirm();
+        Long securitiesAccountId2 = registerSecuritiesAccount(investorId2, firmId2);
+        Long ipoId2 = createIpo("기업B", "공모주B", "654321");
+        Long subscriptionId2 = createSubscription(investorId2, securitiesAccountId2, ipoId2);
+
+        Map<String, Object> secondRequest = validRequest(subscriptionId2);
+        secondRequest.put("costType", "이체수수료");
+        secondRequest.put("amount", 5000);
+        MvcResult second = registerCost(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+        Long costId2 = ((Number) readBody(second).get("id")).longValue();
+
+        // 투자자1의 displayName으로 필터링 (like 검색이므로 앞부분만)
+        String prefix = "투자자김"; // "투자자김철수"의 앞 3글자
+
+        // When: GET /costs?investorName={prefix} 요청을 보냄
+        MvcResult result = listCosts(null, null, prefix);
+
+        // Then: 200 OK와 함께 해당 투자자명의 비용만 반환됨 (investorName like 검색)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue()).isEqualTo(costId1);
+    }
+
+    @Test
+    void listCostsFiltersBySubscriptionIdAndInvestorId() throws Exception {
+        // Given: subscriptionId와 investorId를 동시에 필터링 (둘 다 주어진 경우)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult first = registerCost(validRequest(subscriptionId));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(first).get("id")).longValue();
+
+        // When: GET /costs?subscriptionId={id}&investorId={id} 요청을 보냄
+        MvcResult result = listCosts(subscriptionId, investorId, null);
+
+        // Then: 200 OK와 함께 해당하는 기록만 반환됨
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue()).isEqualTo(costId);
+    }
+
+    @Test
+    void listCostsReturnsSortedByIncurredAtDescThenCreatedAtDesc() throws Exception {
+        // Given: 여러 비용이 다른 incurredAt으로 등록됨 (정렬 확인)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        // 과거 날짜로 먼저 등록
+        Map<String, Object> firstRequest = validRequest(subscriptionId);
+        firstRequest.put("incurredAt", "2026-09-01T10:00:00");
+        firstRequest.put("costType", "첫번째비용");
+        MvcResult first = registerCost(firstRequest);
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+
+        // 이후 날짜로 등록
+        Map<String, Object> secondRequest = validRequest(subscriptionId);
+        secondRequest.put("incurredAt", "2026-09-10T10:00:00");
+        secondRequest.put("costType", "두번째비용");
+        MvcResult second = registerCost(secondRequest);
+        assertThat(second.getResponse().getStatus()).isEqualTo(201);
+
+        // 더 과거 날짜로 등록
+        Map<String, Object> thirdRequest = validRequest(subscriptionId);
+        thirdRequest.put("incurredAt", "2026-08-01T10:00:00");
+        thirdRequest.put("costType", "세번째비용");
+        MvcResult third = registerCost(thirdRequest);
+        assertThat(third.getResponse().getStatus()).isEqualTo(201);
+
+        // When: GET /costs 요청을 보냄
+        MvcResult result = listCosts(null, null, null);
+
+        // Then: incurredAt 내림차순, 동일 시 createdAt 내림차순으로 정렬됨
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(3);
+        // 최신 incurredAt(2026-09-10)이 첫 번째
+        assertThat(body.get(0).get("costType")).isEqualTo("두번째비용");
+        // 그 다음 2026-09-01
+        assertThat(body.get(1).get("costType")).isEqualTo("첫번째비용");
+        // 가장 오래된 2026-08-01이 마지막
+        assertThat(body.get(2).get("costType")).isEqualTo("세번째비용");
+    }
+
+    @Test
+    void getCostByIdReturnsDetail() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-009)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: GET /costs/{id} 요청을 보냄
+        MvcResult result = getCostById(costId);
+
+        // Then: 200 OK와 함께 해당 비용의 상세 정보가 반환됨 (AC-009)
+        assertThat(result.getResponse().getStatus())
+                .as("상세 조회는 200 OK를 반환해야 합니다 (AC-009)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("id")).longValue()).isEqualTo(costId);
+        assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId);
+        assertThat(response.get("costType")).isEqualTo("청약수수료");
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(25000L);
+        assertThat(response.get("incurredAt")).isEqualTo("2026-09-10T10:00:00");
+        assertThat(response.get("memo")).isEqualTo("OO증권 청약수수료");
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get("deletedAt")).isNull();
+        assertThat(response.get("createdAt")).isNotNull();
+        assertThat(response.get("updatedAt")).isNotNull();
+    }
+
+    @Test
+    void getCostByIdWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-010)
+        signupAndLogin();
+
+        // When: GET /costs/{존재하지 않는 id} 요청을 보냄
+        MvcResult result = getCostById(99999999L);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-010)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 상세 조회는 404를 반환해야 합니다 (AC-010)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void getCostByIdForCancelledCostReturns404() throws Exception {
+        // Given: 비용이 등록 후 취소(CANCELLED + deletedAt)됨 (엣지케이스: 취소된 기록 조회 불가)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        Cost cancelled = costRepository.findById(costId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        costRepository.saveAndFlush(cancelled);
+
+        // When: 취소된 비용에 GET /costs/{id} 요청을 보냄
+        MvcResult result = getCostById(costId);
+
+        // Then: 404 Not Found + NOT_FOUND — 이미 삭제된(deletedAt 설정) 기록은 조회되지 않음 (AC-016)
+        assertThat(result.getResponse().getStatus())
+                .as("CANCELLED 비용의 상세 조회는 404를 반환해야 합니다 (AC-016)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void listCostsExcludesCostsOfCancelledSubscription() throws Exception {
+        // Given: Subscription이 CANCELLED되었으나 연결된 Cost는 ACTIVE인 경우 (엣지케이스: 청약 취소와 비용의 관계)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // Subscription을 CANCELLED로 변경 (Cost는 여전히 ACTIVE)
+        Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        subscriptionRepository.saveAndFlush(cancelled);
+
+        // When: GET /costs 요청을 보냄 (subscriptionId 필터 없음)
+        MvcResult result = listCosts(null, null, null);
+
+        // Then: 비용은 여전히 조회됨 — 청약이 취소되어도 비용 기록은 보존됨 (spec 엣지케이스)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        List<Map<String, Object>> body = readList(result);
+        assertThat(body).hasSize(1);
+        assertThat(((Number) body.get(0).get("id")).longValue()).isEqualTo(costId);
+        assertThat(body.get(0).get("status")).isEqualTo("ACTIVE");
     }
 }
