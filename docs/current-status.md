@@ -1,8 +1,73 @@
 # 프로젝트 현재 상황 (Master Lead 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-22 — PR #139 이후의 구현 현황과 roadmap 의존성을 정합화했다. 다음 세션 시작 전에는 `orca worktree list --json`, `orca terminal list --json`, `orca orchestration worker-list --json`으로 실제 live 상태를 다시 확인한다.
+> 마지막 갱신: 2026-09-23 (세션 재개 직후) — PR #143까지 반영, 워크스페이스 2차 소실 확인 및 재생성. 다음 세션 시작 전에는 `orca worktree list --json`, `orca terminal list --json`, `orca orchestration worker-list --json`으로 실제 live 상태를 다시 확인한다.
 
-## 세션 종료 시점 요약 (2026-09-22)
+## ⚠️ 2026-09-23 세션 시작 시 발견: 고정 워크스페이스 2차 소실 (재발)
+
+이전 세션(2026-09-22) 종료 후 다시 `/Users/joy/orca/workspaces/vibe-ai-team/` 디렉터리가 비었다(`.orca-worktree-trash`도 빈 상태). `orca worktree list --json`에도 vibe-ai-team 하위 워크스페이스가 전혀 등록되어 있지 않았다(main 체크아웃과 무관한 다른 두 저장소만 조회됨). 2026-09-22에도 동일 현상이 있었고 원인은 이번에도 미상이다(Orca 자체 이슈로 추정, 이 세션이 삭제하지 않음).
+
+**영향 범위 확인**: `orca orchestration worker-list --json`(최근 100건)을 확인한 결과 진행 중이던 3개 워커(backend-2의 Epic 9 SF-2, backend-3-2의 Epic 11 SF-2, planning-3의 Epic 16 breakdown)가 모두 `failed`/`retained`로 정산되어 있었고 reclaimable 워커는 0건이었다. `git branch -r`로 실제 원격 브랜치 상태를 대조한 결과:
+- `winter0123/cost-recording`: SF-1 커밋만 존재 — **Epic 9 SF-2(CostController/Service/DTO/테스트) 미커밋 작업 전량 유실**
+- `winter0123/investment-query-api-sf1`: SF-1 커밋만 존재 — **Epic 11 SF-2(InvestmentHistoryController/QueryService/테스트) 미커밋 작업 전량 유실**
+- Epic 16(web-inquiry-dashboard) breakdown: 브랜치 자체가 origin에 없음 — **작성 중이던 내용 전량 유실**
+- 반면 **PR #143(Epic 15 breakdown)은 이미 병합 완료**되어 있었다 — 이전 세션이 종료 직전 이 작업만은 병합까지 끝냈던 것으로 확인됨. current-status.md가 그 사실을 반영하지 못한 채 종료되어 있었다(세션 중간에 끊긴 것으로 추정).
+- main 체크아웃에는 이전 세션이 마지막에 남긴 미커밋 문서 수정(AGENTS.md/project-agent-guide.md/ai-free-model.md/current-status.md/roadmap.md/prompt.md)이 작업 트리에 그대로 남아 있었다(git 자체는 무손상) — 이번 세션이 `git merge --ff-only origin/main`으로 origin 최신(PR #143까지)과 합치고 그 위에 이 갱신을 커밋한다.
+
+**결론**: git에 push된 작업은 이번에도 100% 무손상. 유실은 항상 "워커가 파일은 썼지만 아직 커밋하지 않은 상태에서 워크스페이스가 사라진 경우"에만 발생한다. **재발 방지책(제안, 사용자 확인 필요)**: 워커가 파일 단위 작업을 완료하는 즉시(전체 SF 완료를 기다리지 않고) WIP 커밋을 주기적으로 남기도록 지시를 강화하는 방안을 고려할 것 — 이번 세션에서는 우선 유실된 3개 작업을 처음부터 재배정한다.
+
+**조치**: `origin/main`(PR #143 포함) 기준으로 4개 고정 워크스페이스를 재생성했다. 아래 "워크스페이스 구조" 표에 실제 경로를 최신화한다.
+
+## 진행 중 워커 (2026-09-23, 이번 세션 — Run `run_84af99a11878`)
+
+- **backend** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-2`, 브랜치 `winter0123/cost-recording`): Epic 9 SF-2 비용 등록 API 재착수(이전 미커밋 작업 유실로 처음부터), **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_0dec97cba0ec`, task `task_023073a68744`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
+- **backend-3** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-3-3`, 브랜치 `winter0123/investment-query-api-sf1`): Epic 11 SF-2 투자 내역 전체 조회 API 재착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_1734e746ae1a`, task `task_d2c7315a2c15`, terminal `term_11aede01-21a3-4bc5-8f4c-e3cfcf522533`
+- **planning** (`/Users/joy/orca/workspaces/vibe-ai-team/planning-3`, 브랜치 `winter0123/web-inquiry-dashboard-breakdown`): Epic 16 breakdown 재착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`, dispatch `ctx_620115cd1ce8`, task `task_e85940d48ee2`, terminal `term_01c4ca30-ceed-4aaa-bc25-92c95b117b8c`
+- **frontend** (`/Users/joy/orca/workspaces/vibe-ai-team/frontend-3`, 브랜치 `winter0123/web-sale-profit-workflow-sf0`): Epic 15 SF-0(공통 apiFetch 에러 처리 수정, Issue #134) 신규 착수 — **사용자 결정(2026-09-23): 별도 선행 SF-0으로 처리**(roadmap.md 8절 갱신 완료), **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_b07bd568ab7d`, task `task_d9f76f155e4c`, terminal `term_de4e7862-4855-4917-8d68-85fe1fe726aa`
+
+cost-recording/investment-query-api-sf1 브랜치는 모두 이번 세션에 `git rebase origin/main` + `--force-with-lease` push로 최신화했다(SF-1 커밋은 이미 main에 스쿼시 병합되어 있어 rebase 시 자동 스킵됨 — 실질적으로 origin/main과 완전히 동일한 지점에서 재시작).
+
+## ⚠️ 2026-09-22 세션 시작 시 발견: 고정 워크스페이스 소실 및 재생성
+
+이전 세션 종료 후 `backend`, `frontend`, `planning`, `backend-3` 네 워크스페이스가 Orca 등록에서 사라지고 `/Users/joy/orca/workspaces/vibe-ai-team/` 디렉터리가 비어 있었다(`.orca-worktree-trash`도 비어 있어 복구 불가). 원인은 미상이며 이 세션이 삭제한 것은 아니다. git 쪽은 무손상 확인(모든 관련 브랜치가 로컬·origin에 그대로 존재, `gh pr list --state merged`와 current-status.md 기록이 100% 일치) — 실제로 유실된 작업은 없었다.
+
+**조치**: `origin/main` 기준으로 워크스페이스를 재생성했다. Orca가 기존 이름 카운터를 기억하고 있어 `backend`, `planning`, `frontend`라는 이름 대신 다음 실제 경로가 생성됐다(표시 이름은 계속 backend/planning/frontend로 고정됨):
+
+| 역할 | 실제 경로(신규) | 브랜치 |
+|---|---|---|
+| backend | `/Users/joy/orca/workspaces/vibe-ai-team/backend-2` | `winter0123/sale-management-cancel` |
+| planning | `/Users/joy/orca/workspaces/vibe-ai-team/planning-3` | `winter0123/web-sale-profit-workflow-breakdown` |
+| frontend | `/Users/joy/orca/workspaces/vibe-ai-team/frontend-2` | `winter0123/frontend-2` (아직 작업 없음, 유휴) |
+| backend-3 | 아직 미생성 (Epic 8 병합 후 Epic 9/11 병렬 착수 시점에 재생성 예정) |  |
+
+**다음 세션 유의사항**: `docs/project-agent-guide.md`의 워크스페이스 경로 표(5.2절)가 `backend`/`frontend`/`planning`(접미사 없음)로 돼 있으나 실제로는 위 표의 `-2`/`-3` 접미사 경로를 써야 한다. `orca worktree list --json`으로 실제 경로를 재확인하지 않고 안내서의 경로를 그대로 신뢰하지 않는다.
+
+## 진행 중 (2026-09-22, 이번 세션)
+
+- **PR #140 병합 완료**: Epic 8(sale-management) SF-5 매도 취소 API. Epic 8 전체 완료. GitHub 이슈 #126 close.
+- **backend-2** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-2`, 브랜치 `winter0123/cost-recording-sf2`): Epic 9 SF-2 CostControllerTest 작성 중, **OpenCode**+OpenRouter `poolside/laguna-s-2.1:free`, dispatch `ctx_82d594f0ddb9` (task_4c7b866aee0f)
+- **backend-3-2** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-3-2`, 브랜치 `winter0123/investment-query-api-sf2`): Epic 11 SF-2 InvestmentHistoryControllerTest/QueryServiceTest 작성 중, **OpenCode**+OpenRouter `poolside/laguna-s-2.1:free`, dispatch `ctx_a0d927d8de4d` (task_ece0f48225ef)
+- **planning-3** (`/Users/joy/orca/workspaces/vibe-ai-team/planning-3`, 브랜치 `winter0123/web-inquiry-dashboard-breakdown`): Epic 16 breakdown 작성 중, **OpenCode**+OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`, dispatch `ctx_5b9574d2bbcc` (task_740a9428def3)
+- **frontend-2** (`/Users/joy/orca/workspaces/vibe-ai-team/frontend-2`): 유휴. Epic 15 breakdown 완료·승인 + GitHub Issue #134 결정 후 착수 예정.
+
+**정정(2026-09-22)**: `backend-3-2` 생성 시 `--parent-worktree`를 실수로 main이 아닌 `backend-2`로 지정해 backend-3이 backend의 하위 worktree로 잘못 등록됐었다. 실제 작업(git 브랜치/커밋)에는 영향 없었으며, `orca worktree set --parent-worktree path:/Users/joy/IdeaProjects/vibe-ai-team`으로 main의 형제 관계로 즉시 정정했다.
+
+**사용자 지시(2026-09-22)**: 이제부터 새로 만드는 모든 워커는 OpenCode+OpenRouter 경로(`opencode --model openrouter/<provider>/<model>:free`)로 생성한다. `docs/project-agent-guide.md` 6장도 이 순서로 갱신됨(6.2 OpenCode 경로가 1순위, 6.3 Claude Code+OpenRouter 직접 경로가 2순위).
+
+## PR 병합 이력 (이번 세션, 2026-09-22)
+- PR #140: Epic 8 SF-5(매도 취소 API) — Epic 8 완료, 이슈 #126 close
+- PR #141: Epic 9 SF-1(Cost 엔티티/Repository/마이그레이션)
+- PR #142: Epic 11 SF-1(투자내역조회 기반 계층)
+- **사용자 결정(2026-09-22)**: 취소된 청약도 투자 내역에 표시함(상태값으로 구분) — roadmap.md 8절 갱신 완료
+
+## 진행 중 워커 (최신, 2026-09-22 07:52 KST - Poolside rate limit으로 재디스패치)
+- backend-2: Epic 9 SF-2 CostControllerTest, **OpenCode**+OpenRouter (model auto), dispatch `ctx_dc72f6d72d59`, task_4c7b866aee0f, terminal `term_6c3bbbe9-d9fe-4247-9404-06d0072fb131` — **활성 작업 중 확인됨** (스피닝 애니메이션)
+- backend-3-2: Epic 11 SF-2 InvestmentHistoryControllerTest/QueryServiceTest, **OpenCode**+OpenRouter (model auto), dispatch `ctx_557d275a2e4e`, task_ece0f48225ef, terminal `term_9f7f755b-6793-4ddc-82dc-59607b122ad6` — **활성 작업 중 확인됨** (스피닝 애니메이션)
+- planning-3: Epic 16 breakdown, **OpenCode**+OpenRouter (model auto), dispatch `ctx_28fd283babc2`, task_740a9428def3, terminal `term_0a815a70-c4c5-429d-8b10-1c400ee379e2` — **활성 작업 중 확인됨** (문서 읽기 시작, Poolside 재시도 중이나 읽기 진행 중)
+- frontend-2: 유휴
+
+**정리 완료**: 이전 Poolside rate limit 걸린 3개 워커(`ctx_82d594f0ddb9`, `ctx_a0d927d8de4d`, `ctx_5b9574d2bbcc`)는 abandon + release 처리함. 구 워커 터미널들은 retained 상태이나 새 디스패치가 별도 터미널로 정상 작동 중.
+
+## 세션 종료 시점 요약 (2026-09-22, 이전 세션분 — 아래는 과거 기록)
 
 이번 세션에서 병합된 것: PR #135(Epic8 SF-3), #136(Epic10 breakdown), #137(Epic14 SF-3, Epic14 전체 완료), #138(Epic12 breakdown), #139(Epic8 SF-4). Epic 14는 이슈 #127까지 정상 close됨.
 **알아둘 것**: 3건(Epic10 breakdown, Epic12 breakdown, Epic8 SF-4) 모두 워커가 실제 작업은 끝냈지만 `worker_done`을 정상 전송하지 못했다(디스패치 capability 오류 1건, tool-call 오용 1건, 명령 미실행 1건) — Master가 diff/테스트/문서 내용을 직접 재검증한 뒤 수동으로 completed 처리하고 병합했다. 자동 보고를 못 받는 사례가 이번 세션에서 3번 반복됐으니, 다음 세션에서도 `check --wait` 타임아웃 시 `worker-read --dispatch <id> --json`으로 트랜스크립트를 직접 확인하는 습관을 유지한다.
