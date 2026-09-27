@@ -41,6 +41,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -1000,5 +1001,234 @@ class CostControllerTest {
         assertThat(body).hasSize(1);
         assertThat(((Number) body.get(0).get("id")).longValue()).isEqualTo(costId);
         assertThat(body.get(0).get("status")).isEqualTo("ACTIVE");
+    }
+
+    // ==================== SF-4: 비용 수정 테스트 (AC-011, AC-012, AC-013) ====================
+
+    private MvcResult updateCost(Long id, Map<String, Object> request) throws Exception {
+        return mockMvc.perform(patch("/costs/" + id)
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn();
+    }
+
+    @Test
+    void updateCostWithPartialFieldsReturns200AndUpdatedFields() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-011)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: costType과 amount만 담긴 수정 요청을 보냄 (나머지 필드는 미제공)
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("costType", "수정된청약수수료");
+        updateRequest.put("amount", 30000);
+        MvcResult result = updateCost(costId, updateRequest);
+
+        // Then: 200 OK + 제공된 필드는 갱신, 미제공 필드는 기존값 유지, updatedAt 갱신 (AC-011)
+        assertThat(result.getResponse().getStatus())
+                .as("유효한 부분 수정은 200 OK를 반환해야 합니다 (AC-011)").isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(response.get("costType")).isEqualTo("수정된청약수수료");
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(30000L);
+        assertThat(response.get("incurredAt")).isEqualTo("2026-09-10T10:00:00"); // 기존값 유지
+        assertThat(response.get("memo")).isEqualTo("OO증권 청약수수료"); // 기존값 유지
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+        assertThat(response.get("updatedAt")).isNotNull();
+
+        Cost updated = costRepository.findById(costId).orElseThrow();
+        assertThat(updated.getCostType()).isEqualTo("수정된청약수수료");
+        assertThat(updated.getAmount()).isEqualTo(30000L);
+        assertThat(updated.getIncurredAt()).isEqualTo(java.time.LocalDateTime.parse("2026-09-10T10:00:00"));
+        assertThat(updated.getMemo()).isEqualTo("OO증권 청약수수료");
+        assertThat(updated.getStatus()).isEqualTo("ACTIVE");
+        assertThat(updated.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void updateCostWithInvalidAmountReturns400() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-012)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When/Then: amount < 0 시 400 VALIDATION_ERROR (AC-012)
+        Map<String, Object> negativeAmount = new LinkedHashMap<>();
+        negativeAmount.put("amount", -1);
+        assertValidationError(updateCost(costId, negativeAmount));
+
+        // And: 기존 값이 변경되지 않음 (AC-012)
+        Cost unchanged = costRepository.findById(costId).orElseThrow();
+        assertThat(unchanged.getAmount()).isEqualTo(25000L);
+    }
+
+    @Test
+    void updateCostWithMemoExceeding255CharsReturns400() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (AC-012)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: memo 256자로 수정 시도
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("memo", "a".repeat(256));
+        MvcResult result = updateCost(costId, request);
+
+        // Then: 400 VALIDATION_ERROR
+        assertThat(result.getResponse().getStatus())
+                .as("memo 255자 초과 시 400을 반환해야 합니다 (AC-012)").isEqualTo(400);
+        assertError(result, "VALIDATION_ERROR");
+    }
+
+    @Test
+    void updateCostWithUnknownIdReturns404() throws Exception {
+        // Given: 인증된 세션이 준비되어 있고 대상 ID가 존재하지 않는 값임 (AC-013)
+        signupAndLogin();
+
+        // When: PATCH /costs/{존재하지 않는 id} 요청을 보냄
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "수정된 메모");
+        MvcResult result = updateCost(99999999L, updateRequest);
+
+        // Then: 404 Not Found + NOT_FOUND (AC-013)
+        assertThat(result.getResponse().getStatus())
+                .as("존재하지 않는 ID의 수정은 404를 반환해야 합니다 (AC-013)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateCostForCancelledRecordReturns404() throws Exception {
+        // Given: 비용이 등록 후 취소(CANCELLED + deletedAt)됨 (엣지케이스: 취소된 기록 재수정 금지)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        Cost cancelled = costRepository.findById(costId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        costRepository.saveAndFlush(cancelled);
+
+        // When: 취소된 기록에 PATCH 수정 요청을 보냄
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "수정된 메모");
+        MvcResult result = updateCost(costId, updateRequest);
+
+        // Then: 404 Not Found + NOT_FOUND (엣지케이스 — 조회 API에서 노출되지 않는 기록이므로)
+        assertThat(result.getResponse().getStatus())
+                .as("CANCELLED 기록의 수정은 404를 반환해야 합니다 (엣지케이스)").isEqualTo(404);
+        assertError(result, "NOT_FOUND");
+    }
+
+    @Test
+    void updateCostWithAllFieldsReturns200() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (전체 필드 수정 확인)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: 모든 필드(costType/amount/incurredAt/memo)를 수정 요청
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("costType", "이체수수료");
+        updateRequest.put("amount", 5000);
+        updateRequest.put("incurredAt", "2026-09-15T14:30:00");
+        updateRequest.put("memo", "수정된 메모");
+        MvcResult result = updateCost(costId, updateRequest);
+
+        // Then: 200 OK + 모든 필드 갱신됨
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(response.get("costType")).isEqualTo("이체수수료");
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(5000L);
+        assertThat(response.get("incurredAt")).isEqualTo("2026-09-15T14:30:00");
+        assertThat(response.get("memo")).isEqualTo("수정된 메모");
+        assertThat(response.get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void updateCostWithZeroAmountReturns200() throws Exception {
+        // Given: 등록된 ACTIVE 비용 기록이 존재함 (amount=0 허용 확인)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: amount=0으로 수정
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("amount", 0);
+        MvcResult result = updateCost(costId, updateRequest);
+
+        // Then: 200 OK — amount 0은 허용 (0 미만만 400)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(((Number) response.get("amount")).longValue()).isEqualTo(0L);
+    }
+
+    @Test
+    void updateCostWithEmptyMemoReturns200() throws Exception {
+        // Given: memo가 있는 비용 기록이 존재함 (빈 문자열로 메모 비우기 확인)
+        signupAndLogin();
+        Long investorId = registerInvestorAndGetId();
+        Long firmId = registerFirm();
+        Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+        Long ipoId = createIpo();
+        Long subscriptionId = createSubscription(investorId, securitiesAccountId, ipoId);
+
+        MvcResult registerResult = registerCost(validRequest(subscriptionId));
+        assertThat(registerResult.getResponse().getStatus()).isEqualTo(201);
+        Long costId = ((Number) readBody(registerResult).get("id")).longValue();
+
+        // When: memo를 빈 문자열로 수정
+        Map<String, Object> updateRequest = new LinkedHashMap<>();
+        updateRequest.put("memo", "");
+        MvcResult result = updateCost(costId, updateRequest);
+
+        // Then: 200 OK — memo는 빈 문자열 허용
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> response = readBody(result);
+        assertThat(response.get("memo")).isEqualTo("");
     }
 }
