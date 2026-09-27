@@ -6,6 +6,14 @@
 > **API 계약 출처**: docs/spec/dashboard-aggregation-api.md (AC-001~013, D-D-001~007), docs/architecture/dashboard-aggregation-api.md
 > **의존 관계**: Epic 10 (profit-calculation) 구현 완료 및 main 머지 완료 — **ProfitCalculator가 이 Epic의 핵심 의존성이므로, SF-1부터 착수하기 전에 Epic 10이 backend에 머지된 상태여야 한다.**
 
+## 드리프트 점검(2026-09-28)
+
+(1) **엔티티/API 계약 일치 확인**: breakdown이 참조하는 Epic 10 ProfitCalculator 메서드(calculateAcquisitionAmount, calculateMatchedCost, calculatePreTaxProfit, calculateAfterTaxProfit, calculateAllocationRatio)는 profit-calculation spec의 SF-1 정의와 일치함. Epic 11의 소유권 검증 원칙(D-Q-006, 인증된 Account가 소유한 Investor 데이터만 반환)도 investment-query-api spec과 이 breakdown의 소유권 검증 헬퍼 설계가 일치함.
+
+(2) **선행조건 충족 상태**: Epic 8(sale-management) 완전히 병합됨. Epic 9(cost-recording) SF-1만 병합, SF-4까지 진행 중. Epic 10(profit-calculation)은 아직 병합되지 않음(backend에 profitcalculation 패키지 없음) — breakdown의 게이트 조건 "Epic 10 머지 완료"는 여전히 미충족이라 SF-1 착수 불가. Epic 11(investment-query-api)은 SF-1 병합, SF-2 진행 중.
+
+(3) **roadmap.md 8절 사용자 결정 영향**: Epic 12 집계 로직에 영향 없음 — 취소된 청약 투자내역 표시 결정은 Epic 11 조회 API에 영향을 주지만, 대시보드 집계는 CANCELLED Sale을 자체적으로 제외하므로 무관. apiFetch #134는 프론트엔드 에러 처리 결정으로 백엔드 집계 로직과 무관. breakdown의 가정은 여전히 유효함.
+
 ---
 
 ## 이 Epic의 특이사항 (분해 전에 반드시 인지)
