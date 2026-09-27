@@ -6,6 +6,23 @@
 > **API 계약 출처**: docs/spec/profit-calculation.md (AC-001~013, D-P-001~005), docs/architecture/profit-calculation.md
 > **의존 관계**: Epic 5 (IPO) + Epic 6 (subscription) + Epic 7 (allocation) + Epic 8 (sale) 구현 완료 필요 — Sale/Cost/Allocation/Subscription/IPO 엔티티 및 Repository가 선행되어야 함. **특히 Epic 9 (cost-recording)가 main에 머지된 뒤에야 CostRepository가 존재하므로, SF-2/SF-3 컴파일이 가능한 시점 = Epic 8·9 모두 머지 완료**
 
+## 드리프트 점검(2026-09-28)
+
+(1) **엔티티 필드명 일치 확인**: breakdown 문서에서 참조하는 Sale/Cost/Allocation 엔티티의 필드명이 실제 코드와 일치함.
+   - Sale.java: allocationId, quantity, price, amount, saleDate, fee, tax, otherCost, status 필드가 breakdown에서 사용되는 saleAmount, saleDate, allocationId, quantity, saleFee, saleTax, saleOtherCost 등에 정확히 매핑됨.
+   - Cost.java: subscriptionId, amount, incurredAt, memo, status 필드가 breakdown의 Cost.amount 집계에 사용됨.
+   - Allocation.java: subscriptionId, allocatedQuantity, allocatedAt, allocationMethod, allocationPrice, note, status 필드가 breakdown의 allocationPrice와 allocatedQuantity 계산에 사용됨.
+
+(2) **선행조건 충족 상태**: breakdown 작성 시점 "미구현"으로 표시된 Epic 8/9 관련 선행조건 중 현재 시점의 실제 상태:
+   - Epic 8 (sale-management): 완전히 병합됨 (backend/salemanagement 디렉토리 존재 및 Sale 엔티티 확인)
+   - Epic 9 (cost-recording): SF-1만 병합됨, SF-2 진행 중 (backend/costrecording 디렉토리 존재 및 Cost 엔티티 확인)
+   - 따라서 breakdown의 게이트 조건 "Epic 8·9 모두 머지 완료"는 아직 충족되지 않았으나, SF-1 기반 계층은 Epic 8만으로도 진행 가능 (CostRepository 대신 빈 리스트 처리)
+
+(3) **roadmap.md 8절 사용자 결정 영향**: Epic 10 계산 로직에 영향을 주는 사용자 결정 사항 없음.
+   - 취소된 청약 투자내역 표시: Epic 11(투자 내역 조회)에 관한 결정으로, Epic 10의 수익 계산 로직에 영향 없음.
+   - apiFetch #134 SF-0: 프론트엔드 에러 처리 관련 결정으로, Epic 10의 백엔드 계산 로직에 영향 없음.
+   - 따라서 Epic 10 계산 로직에 영향을 주는 사용자 결정 사항은 없으며, breakdown의 가정은 여전히 유효함.
+
 ---
 
 ## 이 Epic의 특이사항 (분해 전에 반드시 인지)
