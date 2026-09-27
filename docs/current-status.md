@@ -30,7 +30,16 @@ cost-recording/investment-query-api-sf1 브랜치는 모두 이번 세션에 `gi
 
 **모델 다양화(2026-09-23, 사용자 지시)**: 4개 워커가 전부 같은 모델을 쓰지 않도록 역할·워크스페이스별로 서로 다른 무료 모델을 배정했다 — Epic9 SF-2/3(nemotron-3-ultra), Epic11 SF-2(laguna-s-2.1), Epic10 드리프트점검(nemotron-3-super), Epic15 SF-0(nex-n2.5-pro, 처음 실사용 — 결과를 ai-free-model.md에 기록할 것).
 
-**PR #146 병합 완료(2026-09-23)**: Epic 9(cost-recording) SF-2 비용 등록 API. 테스트 12개+전체 회귀 통과 확인.
+**PR #146~149 병합 완료(2026-09-23)**: Epic 9 SF-2/SF-3(비용 등록·목록/상세 조회), Epic 15 SF-0(apiFetch 수정, Issue #134 close), Epic 10/12 breakdown 드리프트 점검.
+
+## 진행 중 워커 (2026-09-23, 최신 배치)
+
+- **backend**: Epic 9 SF-4(비용 수정 API), `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_bf35ad3923bc`, task `task_9cd8cfc526e8`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
+- **backend-3**: Epic 11 SF-2(투자 내역 전체 조회), 429로 2회 실패(laguna-s-2.1, qwen3.8-27b) 후 `nvidia/nemotron-3.5-lightning:free`(미검증)로 정상 진행 중, dispatch `ctx_f6cb4e4108be`, task `task_d2c7315a2c15`, terminal `term_3c047ddb-b320-431a-8729-f0b64bda5b46`
+- **frontend**: Epic 15 SF-1(매도 등록 화면), `inclusionai/ling-3.0-flash-fin:free`, dispatch `ctx_abcc91d1b79a`, task `task_403f06fd54f5`, terminal `term_686677e0-6277-4bc3-9db6-92ccb1dcfb8d`
+- **planning**: 유휴 — Phase 0/breakdown 16개 Epic 전부 완료, Epic 10/12 드리프트 점검도 완료. 다음 안전 작업(사용자 가이드 스크린샷)은 브라우저 도구가 필요해 텍스트 전용 무료 모델 워커에 부적합. Epic 11 SF-2 또는 Epic 9 SF-5가 병합되면 그 결과를 반영한 재점검 또는 Epic 10 SF-1 실착수 준비로 재평가한다.
+
+**모니터링 방식 변경(2026-09-28, 사용자 지시)**: `worker_done` 알림과 `liveness.verdict`만으로는 업스트림 429/timeout으로 조용히 멈춘 워커를 못 잡는다는 걸 확인했다. 이제 최소 5분 간격으로 활성 워커 터미널을 직접 `terminal read`로 훑는다(project-agent-guide.md 7.1.1절 신설). `check --wait`의 `--timeout-ms`도 900000(15분) 대신 300000(5분)으로 줄여서 운영한다.
 
 ## ⚠️ 2026-09-22 세션 시작 시 발견: 고정 워크스페이스 소실 및 재생성
 
