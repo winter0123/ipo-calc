@@ -126,6 +126,10 @@ PR별 실제 사용 기록 표는 다음과 같다.
 | 2026-09-22 | #143 | 웹 매도·비용·수익 확인(Epic 15): breakdown 작성 (4차, OpenCode 경로 성공) | Planning | nvidia/nemotron-3-super-120b-a12b:free (OpenCode+OpenRouter 경로) | 성공 — 3개 SF로 적절히 분해, AC/E2E 매핑 정확, Issue #134 처리를 사용자 결정 필요 사항으로 올바르게 명시(임의 결정 안 함). 사소한 오타 1건(본문에 스페인어 단어 "inmediatamente" 혼입) 발견해 Master가 직접 수정 후 병합 | OpenCode 경로가 Claude Code 직접 경로의 연쇄 실패(idle timeout, 429) 이후 첫 성공 사례 — 같은 시간대 문제가 Claude Code 경유 경로 특정 이슈였을 가능성 시사 |
 | 2026-09-22 | (진행 중, PR 없음) | 비용 기록(Epic 9): SF-2 비용 등록 API | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | 1차 재작업 필요 — CostController/Service/DTO/예외 프로덕션 코드는 스펙대로 구현했으나 테스트 파일이 0개(costrecording 테스트 디렉터리 자체가 없음). "275개 테스트 통과"는 기존 테스트만 통과했다는 뜻으로 신규 기능은 전혀 검증 안 됨. 같은 모델·같은 터미널에 CostControllerTest 작성을 재지시함(결과 대기 중) | Epic 14 SF-3(#137)에서도 동일 패턴(테스트 누락)이 있었음 — 이 모델이 구현 태스크에서 테스트 작성을 스펙에 명시해도 종종 누락하는 경향이 관찰됨. 향후 이 모델에 Implementation을 맡길 때는 "테스트 작성"을 별도 완료조건 문장으로 굵게 강조하는 것을 고려 |
 
+| 2026-09-28 | #146 | 비용 기록(Epic 9): SF-2 비용 등록 API (재작업 후) | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | 재작업 후 통과 — 테스트 12개 신규 작성, 전체 회귀 통과. 같은 모델·같은 터미널 재사용으로 이어서 Epic 9 SF-3 착수함 | |
+| 2026-09-28 | docs만(PR #144) | 웹 조회·대시보드(Epic 16): breakdown 작성 | Planning | nvidia/nemotron-3-super-120b-a12b:free | 재작업 없이 통과(사소 정정만) — 5개 SF로 분해, AC/의존성 매핑 정확. SF-5 섹션에 중국어 문장이 섞여 있어(사고 과정이 그대로 노출된 것으로 추정) Master가 한국어로 정정 후 병합 | 비영어 모델이 내부적으로 다른 언어로 추론하다가 최종 출력에 그 파편이 섞이는 사례가 이번이 두 번째(PR #143 스페인어 1건, 이번 중국어 2곳) — 이 계열 모델을 문서 작성에 쓸 때는 최종 산출물의 언어 혼입 여부를 항상 확인해야 함 |
+| 2026-09-28 | 진행 중 | 투자 내역 조회 API(Epic 11): SF-2 전체 조회 API | Implementation | poolside/laguna-s-2.1:free | 실패(인프라) — 파일 읽기 단계까지는 정상 진행했으나 "temporarily rate-limited upstream" 메시지와 함께 멈춤(429 계열). 부분 파일(AllocationRepository에 findBySubscriptionIdIn 메서드 1개)만 쓰여진 상태에서 abandon, 해당 변경은 다음 시도가 이어받도록 보존함 | 사용자 지시로 4개 워커 모델을 의도적으로 분산 배정한 상황에서 발생 — 같은 모델을 여러 워커에 쓴 게 아니라 단순 업스트림 혼잡으로 판단. `qwen/qwen3.8-27b:free`(미검증 모델)로 교체해 재시도 중, 결과를 다음 줄에 추가할 것 |
+
 이후 Master가 각 PR을 병합·검증할 때마다 한 줄씩 추가한다. 기록에는 모델명뿐 아니라 역할, 실제 결과, 재작업 여부, 실패 원인 분류(모델 문제/인프라 문제/지시 문제)를 포함한다. 과거 PR의 모델은 추측하지 않는다.
 
 ## 7. 모델 선정 갱신 규칙
