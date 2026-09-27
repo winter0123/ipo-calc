@@ -28,7 +28,16 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   }
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`)
+    let errorMessage = `Request failed: ${response.status}`
+    try {
+      const errorBody = await response.json()
+      if (errorBody && typeof errorBody === 'object' && 'message' in errorBody) {
+        errorMessage = String(errorBody.message)
+      }
+    } catch {
+      // 응답이 JSON이 아니거나 파싱 실패 시 기존 메시지 유지
+    }
+    throw new Error(errorMessage)
   }
 
   // 204 No Content 같은 경우
