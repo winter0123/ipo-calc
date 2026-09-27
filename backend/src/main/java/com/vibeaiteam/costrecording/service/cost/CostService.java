@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -61,6 +62,28 @@ public class CostService {
 
         Cost saved = costRepository.save(cost);
         return CostResponse.from(saved);
+    }
+
+    // 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
+    // investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
+    // 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
+    @Transactional(readOnly = true)
+    public List<CostResponse> list(Long subscriptionId, Long investorId, String investorName) {
+        String investorNamePattern = (investorName != null) ? investorName + "%" : null;
+        List<Cost> costs = costRepository.findActiveWithFilters(subscriptionId, investorId, investorNamePattern);
+        return costs.stream()
+                .map(CostResponse::from)
+                .toList();
+    }
+
+    // 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
+    // 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
+    // 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
+    @Transactional(readOnly = true)
+    public CostResponse getById(Long id) {
+        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+        return CostResponse.from(cost);
     }
 
     // 요청 필수값 검증: subscriptionId, costType, amount, incurredAt 누락 시 400
