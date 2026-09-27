@@ -3,6 +3,7 @@ package com.vibeaiteam.costrecording.service.cost;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostRegisterRequest;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostResponse;
+import com.vibeaiteam.costrecording.controller.cost.dto.CostUpdateRequest;
 import com.vibeaiteam.costrecording.controller.cost.exception.CostForbiddenException;
 import com.vibeaiteam.costrecording.controller.cost.exception.CostNotFoundException;
 import com.vibeaiteam.costrecording.controller.cost.exception.CostValidationException;
@@ -64,6 +65,37 @@ public class CostService {
         return CostResponse.from(saved);
     }
 
+    // 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
+    // subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
+    // CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
+    // updatedAt을 갱신한다.
+    @Transactional
+    public CostResponse update(Long id, CostUpdateRequest request) {
+        validateUpdateRequest(request);
+
+        // 대상 Cost 조회 — 없거나 CANCELLED이면 404 (findByIdAndDeletedAtIsNull 사용)
+        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+
+        // 필드 업데이트 (제공된 필드만)
+        if (request.getCostType() != null) {
+            cost.setCostType(request.getCostType());
+        }
+        if (request.getAmount() != null) {
+            cost.setAmount(request.getAmount());
+        }
+        if (request.getIncurredAt() != null) {
+            cost.setIncurredAt(request.getIncurredAt());
+        }
+        if (request.getMemo() != null) {
+            cost.setMemo(request.getMemo());
+        }
+
+        cost.setUpdatedAt(LocalDateTime.now());
+        Cost saved = costRepository.save(cost);
+        return CostResponse.from(saved);
+    }
+
     // 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
     // investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
     // 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
@@ -116,6 +148,21 @@ public class CostService {
                 .orElseThrow(() -> new CostNotFoundException("투자자를 찾을 수 없습니다."));
         if (!currentAccountId.equals(investor.getAccountId())) {
             throw new CostForbiddenException("계정 소유권이 없습니다.");
+        }
+    }
+
+    // 수정 요청 검증: amount 0 미만 시 400, memo 255자 초과 시 400
+    private void validateUpdateRequest(CostUpdateRequest request) {
+        if (request == null) {
+            throw new CostValidationException("비용 수정 정보는 필수입니다.");
+        }
+
+        if (request.getAmount() != null && request.getAmount() < 0) {
+            throw new CostValidationException("amount는 0 이상이어야 합니다.");
+        }
+
+        if (request.getMemo() != null && request.getMemo().length() > 255) {
+            throw new CostValidationException("memo는 255자 이하여야 합니다.");
         }
     }
 }

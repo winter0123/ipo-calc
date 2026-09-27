@@ -2,11 +2,13 @@ package com.vibeaiteam.costrecording.controller.cost;
 
 import com.vibeaiteam.costrecording.controller.cost.dto.CostRegisterRequest;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostResponse;
+import com.vibeaiteam.costrecording.controller.cost.dto.CostUpdateRequest;
 import com.vibeaiteam.costrecording.service.cost.CostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-// 비용(Cost) 기록에 대한 등록/목록조회/상세조회 API를 제공한다. 사용자가 청약/취득 단계에서 발생한 비용(청약수수료, 계좌개설비, 이체수수료 등)을
+// 비용(Cost) 기록에 대한 등록/목록조회/상세조회/수정 API를 제공한다. 사용자가 청약/취득 단계에서 발생한 비용(청약수수료, 계좌개설비, 이체수수료 등)을
 // 사후에 수동으로 입력·기록하는 기능이다. 실시간 비용 처리가 아니라 이미 발생한 비용 결과를 기록했다(사실 기록)는 성격이다.
 @RestController
 @RequestMapping("/costs")
@@ -53,6 +55,16 @@ public class CostController {
     @GetMapping("/{id}")
     public ResponseEntity<CostResponse> getById(@PathVariable Long id) {
         CostResponse response = costService.getById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    // 비용 ID로 기록을 부분 수정한다. 요청에 담긴 필드(costType/amount/incurredAt/memo)만 갱신하고(미제공 필드는 기존값 유지),
+    // 200 OK와 함께 수정된 비용 정보를 반환한다. subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
+    // 존재하지 않거나 이미 취소된(CANCELLED) 기록이면 404, amount 0 미만/memo 255자 초과 시 400을 반환한다.
+    @PatchMapping("/{id}")
+    public ResponseEntity<CostResponse> update(
+            @PathVariable Long id, @RequestBody CostUpdateRequest request) {
+        CostResponse response = costService.update(id, request);
         return ResponseEntity.ok(response);
     }
 }
