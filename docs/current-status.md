@@ -17,14 +17,18 @@
 
 **조치**: `origin/main`(PR #143 포함) 기준으로 4개 고정 워크스페이스를 재생성했다. 아래 "워크스페이스 구조" 표에 실제 경로를 최신화한다.
 
-## 진행 중 워커 (2026-09-23, 이번 세션 — Run `run_84af99a11878`)
+## 진행 중 워커 (2026-09-23, 이번 세션 — Run `run_84af99a11878`, 사용자 지시로 역할별 모델 다양화함)
 
 - **backend** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-2`, 브랜치 `winter0123/cost-recording`): Epic 9 SF-2 비용 등록 API 재착수(이전 미커밋 작업 유실로 처음부터), **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_0dec97cba0ec`, task `task_023073a68744`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
-- **backend-3** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-3-3`, 브랜치 `winter0123/investment-query-api-sf1`): Epic 11 SF-2 투자 내역 전체 조회 API 재착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_1734e746ae1a`, task `task_d2c7315a2c15`, terminal `term_11aede01-21a3-4bc5-8f4c-e3cfcf522533`
-- **planning** (`/Users/joy/orca/workspaces/vibe-ai-team/planning-3`, 브랜치 `winter0123/web-inquiry-dashboard-breakdown`): Epic 16 breakdown 재착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`, dispatch `ctx_620115cd1ce8`, task `task_e85940d48ee2`, terminal `term_01c4ca30-ceed-4aaa-bc25-92c95b117b8c`
-- **frontend** (`/Users/joy/orca/workspaces/vibe-ai-team/frontend-3`, 브랜치 `winter0123/web-sale-profit-workflow-sf0`): Epic 15 SF-0(공통 apiFetch 에러 처리 수정, Issue #134) 신규 착수 — **사용자 결정(2026-09-23): 별도 선행 SF-0으로 처리**(roadmap.md 8절 갱신 완료), **OpenCode**+OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_b07bd568ab7d`, task `task_d9f76f155e4c`, terminal `term_de4e7862-4855-4917-8d68-85fe1fe726aa`
+- **backend-3** (`/Users/joy/orca/workspaces/vibe-ai-team/backend-3-3`, 브랜치 `winter0123/investment-query-api-sf1`): Epic 11 SF-2 투자 내역 전체 조회 API 재착수, **OpenCode**+OpenRouter `poolside/laguna-s-2.1:free`(모델 다양화로 교체), dispatch `ctx_7a2b949bb030`, task `task_d2c7315a2c15`, terminal `term_dd938b0c-7a53-4886-b865-bd20ae6e00b0`
+- **planning** (`/Users/joy/orca/workspaces/vibe-ai-team/planning-3`, 브랜치 `winter0123/profit-calculation-breakdown-drift-check`): Epic 16 breakdown 완료(PR #144 병합)→ 다음 작업으로 Epic 10(profit-calculation) breakdown 드리프트 점검 착수, **OpenCode**+OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`, dispatch `ctx_71252686c0ff`, task `task_e394062c9ad1`, terminal `term_01c4ca30-ceed-4aaa-bc25-92c95b117b8c`
+- **frontend** (`/Users/joy/orca/workspaces/vibe-ai-team/frontend-3`, 브랜치 `winter0123/web-sale-profit-workflow-sf0`): Epic 15 SF-0(공통 apiFetch 에러 처리 수정, Issue #134) 착수 — **사용자 결정(2026-09-23): 별도 선행 SF-0으로 처리**(roadmap.md 8절 갱신 완료), **OpenCode**+OpenRouter `nex-agi/nex-n2.5-pro:free`(모델 다양화로 교체), dispatch `ctx_52d69b1d2043`, task `task_d9f76f155e4c`, terminal `term_0ae207fc-5e71-430e-8ba5-4073e80571e7`
 
 cost-recording/investment-query-api-sf1 브랜치는 모두 이번 세션에 `git rebase origin/main` + `--force-with-lease` push로 최신화했다(SF-1 커밋은 이미 main에 스쿼시 병합되어 있어 rebase 시 자동 스킵됨 — 실질적으로 origin/main과 완전히 동일한 지점에서 재시작).
+
+**PR #144 병합 완료(2026-09-23)**: Epic 16(web-inquiry-dashboard) breakdown, 5개 SF로 분해. GitHub 이슈 #133 유지(구현 미착수이므로 계속 status:planned).
+
+**모델 다양화(2026-09-23, 사용자 지시)**: 4개 워커가 전부 같은 모델을 쓰지 않도록 역할·워크스페이스별로 서로 다른 무료 모델을 배정했다 — Epic9 SF-2(nemotron-3-ultra), Epic11 SF-2(laguna-s-2.1), Epic10 드리프트점검(nemotron-3-super), Epic15 SF-0(nex-n2.5-pro, 처음 실사용 — 결과를 ai-free-model.md에 기록할 것).
 
 ## ⚠️ 2026-09-22 세션 시작 시 발견: 고정 워크스페이스 소실 및 재생성
 
