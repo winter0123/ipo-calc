@@ -261,8 +261,9 @@ orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/plann
 
 `orca orchestration check --wait`는 워커가 정상적으로 `worker_done`을 보낼 때만 알려준다. 무료 모델이 OpenRouter 업스트림에서 429(rate-limited)나 idle timeout으로 멈추면 터미널 프로세스 자체는 살아있어서 `worker-show`의 `projection.liveness.verdict`가 계속 `live`로 나오고, `check --wait`도 타임아웃(900초) 전까지는 아무 신호 없이 조용하다 — 즉 자동 알림 경로로는 이 상태를 절대 잡지 못한다.
 
-이 프로젝트는 별도 자동 폴링(Claude Code `/loop` 등)을 걸지 않기로 했다(2026-09-28 사용자 결정: 수동 확인 유지). 대신 다음 시점마다 활성 dispatch 전체의 터미널을 `orca terminal read --terminal <handle> --limit 50 --json`으로 직접 훑어 화면 텍스트에 `rate-limited`, `Upstream idle timeout`, `Request rejected (429)` 같은 문구가 있는지 확인한다:
+이 프로젝트는 별도 자동 폴링(Claude Code `/loop` 등)을 걸지 않기로 했다(2026-09-28 사용자 결정: 수동 확인 유지). 대신 **최소 5분 간격**으로 활성 dispatch 전체의 터미널을 `orca terminal read --terminal <handle> --limit 50 --json`으로 직접 훑어 화면 텍스트에 `rate-limited`, `Upstream idle timeout`, `Request rejected (429)` 같은 문구가 있는지 확인한다(2026-09-28 사용자 지시). 구체적으로:
 
+- 대기 중에도 5분을 넘기지 않는 주기로 활성 워커들의 터미널을 직접 읽는다(예: 짧은 `check --wait --timeout-ms`를 걸거나, 다른 작업을 하는 틈틈이 5분 경과 여부를 확인해 훑는다) — 900초 같은 긴 타임아웃 하나만 걸어두고 그 사이를 비워두지 않는다
 - `check --wait`가 (타임아웃이든 메시지 도착이든) 한 번 돌아올 때마다 — 그 김에 다른 활성 워커들도 같이 훑는다
 - 사용자가 상태를 묻거나 "멈춘 것 같다"고 알릴 때
 - 진행 상황을 보고하기 직전
