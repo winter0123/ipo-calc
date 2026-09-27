@@ -257,6 +257,18 @@ orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/plann
 
 에러 이후 새 진행이 없거나, 같은 생각 문구가 반복되거나, 파일·커밋이 늘지 않으면 중지로 판단한다. 파일을 삭제하지 않고 새 무료 모델로 같은 태스크를 재배정한다. 비어 있는 작업공간은 `current-status.md`의 다음 큐와 1\~2 Epic 앞선 planning 준비 상태를 대조해 같은 점검 주기 안에 다음 작업을 배정하거나, 예외 사유를 기록한다.
 
+### 7.1.1 "조용히 멈춘 워커" 감지 — `worker_done` 알림과 liveness 판정만으로는 부족함(2026-09-28 확인)
+
+`orca orchestration check --wait`는 워커가 정상적으로 `worker_done`을 보낼 때만 알려준다. 무료 모델이 OpenRouter 업스트림에서 429(rate-limited)나 idle timeout으로 멈추면 터미널 프로세스 자체는 살아있어서 `worker-show`의 `projection.liveness.verdict`가 계속 `live`로 나오고, `check --wait`도 타임아웃(900초) 전까지는 아무 신호 없이 조용하다 — 즉 자동 알림 경로로는 이 상태를 절대 잡지 못한다.
+
+이 프로젝트는 별도 자동 폴링(Claude Code `/loop` 등)을 걸지 않기로 했다(2026-09-28 사용자 결정: 수동 확인 유지). 대신 다음 시점마다 활성 dispatch 전체의 터미널을 `orca terminal read --terminal <handle> --limit 50 --json`으로 직접 훑어 화면 텍스트에 `rate-limited`, `Upstream idle timeout`, `Request rejected (429)` 같은 문구가 있는지 확인한다:
+
+- `check --wait`가 (타임아웃이든 메시지 도착이든) 한 번 돌아올 때마다 — 그 김에 다른 활성 워커들도 같이 훑는다
+- 사용자가 상태를 묻거나 "멈춘 것 같다"고 알릴 때
+- 진행 상황을 보고하기 직전
+
+터미널 텍스트에서 업스트림 에러 문구가 확인되면(단순 heartbeat/thinking 반복이 아니라 실제 에러 메시지), `worker-abandon` → 해당 worktree `git status --short`로 부분 작업 확인(있으면 내용 검토 후 보존 또는 되돌리기) → `terminal close` → 다른 무료 모델로 `terminal create` → `terminal wait --for tui-idle` → `worker-start --retry-of <이전 dispatch>` 순서로 재배정한다. 같은 시간대에 서로 다른 모델 2개 이상이 연달아 즉시 실패하면 개별 모델 문제가 아니라 OpenRouter 계정 레벨 혼잡일 가능성을 의심한다.
+
 ### 7.2 선택형 Hermes 알림
 
 Hermes 알림은 필수가 아니다. 설정되어 있다면 기능 구현 완료 PR, 사람 결정 필요 BLOCKED, 화면 사용자 가이드 발행을 알려준다. 감지 스크립트는 Claude 세션과 독립되어야 하며, PR 감시는 `--state all`을 쓴다.
