@@ -1,0 +1,27 @@
+.toggle {
+  display: flex;
+  gap: 16px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.option input[type="radio"] {
+  accent-color: #0066cc;
+  width: 16px;
+  height: 16px;
+}
+
+.option:hover {
+  color: #0066cc;
+}
