@@ -19,6 +19,10 @@
 | `docs/current-status.md`       | 세션 종료 시점의 실제 진행 상황과 다음 작업                                          | Master + 모든 팀장 |
 | `docs/ai-free-model.md`        | 무료 모델의 검증 결과와 PR별 사용 관찰 기록                                         | Master + 모든 팀장 |
 | `docs/daily-log/YYYY_MM_DD.md` | 날짜별 append-only 이력                                                 | Master(작성), 팀장(참고) |
+| `docs/prompt-master.md`        | 새 Master 세션을 시작할 때 붙여넣는 초기 프롬프트                                    | 사용자가 Master 세션에 붙여넣음 |
+| `docs/prompt-backend.md`       | backend 팀장을 생성할 때 그 터미널에 전달하는 초기 프롬프트                              | Master가 backend 팀장 dispatch 시 사용 |
+| `docs/prompt-frontend.md`      | frontend 팀장을 생성할 때 그 터미널에 전달하는 초기 프롬프트                             | Master가 frontend 팀장 dispatch 시 사용 |
+| `docs/prompt-planning.md`      | planning 팀장을 생성할 때 그 터미널에 전달하는 초기 프롬프트                             | Master가 planning 팀장 dispatch 시 사용 |
 
 
 과거 운영 중 발생한 사건의 시간순 서사는 `docs/daily-log/YYYY_MM_DD.md`와 각 Epic의 work-log에 유지한다. 이 문서에는 앞으로도 행동을 바꾸는 규칙과 재현 가능한 명령만 남긴다.
