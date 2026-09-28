@@ -1,0 +1,71 @@
+.empty-state-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 24px;
+  min-height: 200px;
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.empty-state-message {
+  margin: 0;
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.empty-state-reset-button {
+  padding: 10px 20px;
+  background-color: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.empty-state-reset-button:hover {
+  background-color: #1565c0;
+}
+
+.empty-state-reset-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* 모바일 */
+@media (max-width: 640px) {
+  .empty-state-container {
+    padding: 32px 16px;
+  }
+
+  .empty-state-message {
+    font-size: 14px;
+  }
+
+  .empty-state-reset-button {
+    width: 100%;
+    max-width: 280px;
+    padding: 12px;
+  }
+}
+
+/* 데스크톱 */
+@media (min-width: 1024px) {
+  .empty-state-container {
+    padding: 64px 24px;
+  }
+
+  .empty-state-message {
+    font-size: 18px;
+  }
+}

@@ -8,6 +8,9 @@ import SubscriptionRegisterPage from './pages/SubscriptionRegisterPage/Subscript
 import SubscriptionListPage from './pages/SubscriptionListPage/SubscriptionListPage.tsx'
 import AllocationRegisterPage from './pages/AllocationRegisterPage/AllocationRegisterPage.tsx'
 import SaleRegisterPage from './pages/SaleRegisterPage/SaleRegisterPage.tsx'
+import CostRegisterPage from './pages/CostRegisterPage/CostRegisterPage.tsx'
+import ProfitViewPage from './pages/ProfitViewPage/ProfitViewPage.tsx'
+import InvestmentHistoryPage from './pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'
 
 function App() {
   return (
@@ -25,6 +28,9 @@ function App() {
       <Route path="/subscriptions" element={<SubscriptionListPage />} />
       <Route path="/allocations/register" element={<AllocationRegisterPage />} />
       <Route path="/sales/register" element={<SaleRegisterPage />} />
+      <Route path="/costs/register" element={<CostRegisterPage />} />
+      <Route path="/profits/view" element={<ProfitViewPage />} />
+      <Route path="/investments" element={<InvestmentHistoryPage />} />
     </Routes>
   )
 }

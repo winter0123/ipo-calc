@@ -1,0 +1,83 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.resultsArea {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading {
+  margin: 0;
+  padding: 32px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.error {
+  margin: 0;
+  padding: 12px 16px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #dc2626;
+}
+
+.placeholder {
+  padding: 32px;
+  text-align: center;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* 모바일 */
+@media (max-width: 640px) {
+  .container {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .loading {
+    padding: 24px 16px;
+  }
+}
+
+/* 태블릿 */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .container {
+    padding: 24px;
+  }
+}
+
+/* 데스크톱 */
+@media (min-width: 1024px) {
+  .container {
+    padding: 32px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+}

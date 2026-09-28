@@ -31,4 +31,9 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
                                       @Param("investorName") String investorName);
 
     List<Cost> findBySubscriptionIdAndStatusAndDeletedAtIsNull(Long subscriptionId, String status);
+
+    /**
+     * 배치 조회: subscriptionId 목록으로 ACTIVE Cost 일괄 조회 (N+1 방지용)
+     */
+    List<Cost> findBySubscriptionIdInAndStatusAndDeletedAtIsNull(List<Long> subscriptionIds, String status);
 }

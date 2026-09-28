@@ -6,6 +6,24 @@
 > **API 계약 출처**: docs/spec/web-sale-profit-workflow.md (D-W15-005), docs/architecture/web-sale-profit-workflow.md
 > **의존 관계**: Epic 13/14의 `shared`/`entities` 재사용. 백엔드는 Epic 8 SF-5(취소) 병합 대기 중, Epic 9/10/11 미구현
 
+## 드리프트 재점검(2026-09-28)
+
+| 항목 | 변경 전 | 변경 후 | 근거 |
+|---|---|---|---|
+| SF-2 백엔드 상태 | POST /costs **미구현** | Epic 9, 구현·병합 완료 | current-status.md: Epic 9 SF-2~5 전체 완료(PR #146~#151) |
+| SF-3 GET /sales/{saleId}/profit | **미구현** | Epic 10 SF-2, 구현·병합 완료 | current-status.md: PR #155 PASS |
+| SF-3 GET /investors/{investorId}/profits | **미구현**(Epic 11로 표기) | Epic 10 SF-3, 구현·병합 완료(PR #161) | gh pr list: PR #161 병합(2026-09-28T03:37:56Z) |
+| SF-3 선행 조건 | Epic 9·10 둘 다 미구현 | Epic 9 완료, Epic 10 전체 완료(SF-1~3) — SF-3 완전한 실연동 즉시 가능 | roadmap.md §5, current-status.md §5, PR #161 병합 확인 |
+| 백엔드 게이트 조건 | Epic 9·10 둘 다 미구현 | Epic 9 완료, Epic 10 전체 완료(SF-1~3) → 실연동 즉시 가능 | 위 변경 사항 반영 |
+
+> 수정 근거: roadmap.md §4/§5 및 current-status.md의 PR 병합 이력을 대조하여 "미구현" 표기를 실제 상태로 최신화. 다른 문서·코드는 수정하지 않음.
+
+## 2차 재점검(같은 날, PR #161 반영)
+
+- PR #161(`feat(profit-calculation): SF-3 투자자별 전체 수익 목록 API`)이 2026-09-28T03:37:56Z에 main에 병합 완료 — `gh pr list`로 직접 재확인.
+- Epic 10 SF-3(`GET /investors/{investorId}/profits`) 상태를 "진행 중"에서 "구현·병합 완료"로 갱신; SF-3의 실연동·E2E가 즉시 가능해짐.
+- Epic 9·Epic 10이 이제 모두 완료됐으므로, SF-3 선행 조건·백엔드 게이트 조건도 "완료" 기준으로 정정. 기존 재점검 섹션은 유지.
+
 ---
 
 ## 세부 기능(SF) 개요
@@ -18,9 +36,9 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 
 | SF | 화면 | 선행 조건 | 백엔드 API 상태 | 착수 가능 여부 |
 |---|---|---|---|---|
-| SF-1 | 매도 등록 화면 | Epic 8 SF-4 완료(자연 충족) | POST /sales **SF-5(취소) 병합 대기 중**, GET /investment-history/{subscriptionId}(Epic 11) **미구현** | UI 구현은 가능하나 실연동·E2E는 관련 백엔드 완료 후 |
-| SF-2 | 비용 등록 화면 | SF-1 + Epic 8 완료 | POST /costs **미구현** | UI 구현은 가능하나 실연동·E2E는 Epic 9 완료 후 |
-| SF-3 | 수익 확인 화면 | SF-2 + Epic 9/10 완료 | GET /sales/{saleId}/profit, GET /investors/{investorId}/profits **미구현** | UI 구현은 가능하나 실연동·E2E는 Epic 10·11 완료 후 |
+| SF-1 | 매도 등록 화면 | Epic 8 SF-4 완료(자연 충족) | POST /sales **SF-5(취소) 병합 대기 중**, GET /investment-history/{subscriptionId} **Epic 11 SF-3, 구현·병합 완료(PR #162)** | UI 구현은 가능하나 실연동·E2E는 관련 백엔드 완료 후 |
+| SF-2 | 비용 등록 화면 | SF-1 + Epic 8 완료 | POST /costs **Epic 9, 구현·병합 완료** | 실연동·E2E 즉시 가능(Epic 9 완료됨) |
+| SF-3 | 수익 확인 화면 | SF-2 + Epic 9/10 완료 | GET /sales/{saleId}/profit **Epic 10 SF-2, 구현·병합 완료**, GET /investors/{investorId}/profits **Epic 10 SF-3, 구현·병합 완료(PR #161)** | 실연동·E2E 즉시 가능(Epic 9·Epic 10 전체 완료) |
 
 ---
 
@@ -45,7 +63,7 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 
 **사용 백엔드 API**:
 - `POST /sales` — Epic 8, SF-5(취소) 병합 대기 중 (PR #139 이후)
-- `GET /investment-history/{subscriptionId}` — Epic 11, **미구현** (참고 표시용; 응답에서 `remainingQuantity` 필드 추출)
+- `GET /investment-history/{subscriptionId}` — Epic 11 SF-3, 구현·병합 완료(PR #162) (참고 표시용; 응답에서 `remainingQuantity` 필드 추출)
 
 **특이사항**:
 - 폼 유효성은 서버 규칙을 대체하지 않는다: quantity는 0 초과 정수, price/amount/fee/tax/otherCost는 0 이상 정수만 프론트 검증(D-W15-002). 최소 매도 단위 등 백엔드에 없는 규칙 신설 금지.
@@ -75,7 +93,7 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 - `App.tsx` — `/costs/register` 라우트 추가
 
 **사용 백엔드 API**:
-- `POST /costs` — Epic 9, **미구현** (docs/breakdown/cost-recording.md 참고)
+- `POST /costs` — Epic 9, 구현·병합 완료 (docs/breakdown/cost-recording.md 참고)
 
 **특이사항**:
 - 폼 유효성은 서버 규칙을 대체하지 않는다: amount는 0 초과 정수만 프론트 검증(D-W15-002).
@@ -91,7 +109,7 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 
 **커버하는 AC**: AC-013(매도건별 수익 조회 성공), AC-014(투자자별 수익 조회 성공), AC-015(존재하지 않는 매도건 404), AC-016(존재하지 않는 투자자 404), AC-017(수익 조회에서 음수 손실 표시), AC-019(접근성), AC-020(반응형), AC-022(확인 다이얼로그 재사용). E2E 시나리오 5/16/17/20/21은 이 SF 대상.
 
-**선행 SF**: SF-2 (필수). **백엔드 선행 조건: Epic 9(비용 기록)와 Epic 10(수익·수익률 계산) 완료 필요** — 현재 둘 다 미구현.
+**선행 SF**: SF-2 (필수). **백엔드 선행 조건: Epic 9(비용 기록) 완료됨, Epic 10(수익·수익률 계산) 전체 완료(SF-1~3)** — Epic 9·Epic 10 모두 전체 완료 — SF-3(수익 확인 화면)의 완전한 실연동이 지금 바로 가능하다.
 
 **산출물 파일 경로**:
 - `entities/profit/types.ts` — **신규**. `SaleProfit`, `InvestorProfit` 타입 정의 (수익 조회 API 응답)
@@ -106,8 +124,8 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 - `App.tsx` — `/profits/view` 라우트 추가
 
 **사용 백엔드 API**:
-- `GET /sales/{saleId}/profit` — Epic 10, **미구현** (docs/breakdown/profit-calculation.md 참고)
-- `GET /investors/{investorId}/profits` — Epic 11, **미구현** (docs/breakdown/investment-query-api.md 참고)
+- `GET /sales/{saleId}/profit` — Epic 10 SF-2, 구현·병합 완료 (PR #155, docs/breakdown/profit-calculation.md 참고)
+- `GET /investors/{investorId}/profits` — Epic 10 SF-3, 구현·병합 완료(PR #161) (docs/breakdown/profit-calculation.md 참고)
 
 **특이사항**:
 - 수익이 음수(손실)인 경우에도 API 응답 필드 값을 그대로 표시하며, `preTaxProfit` 및 `afterTaxProfit` 필드에 빨간색 또는 마이너스 기호를 적용한다(D-W15-001 CalculationTrace 금지).
@@ -192,8 +210,8 @@ SF-1 (매도 등록 화면) → SF-2 (비용 등록 화면) → SF-3 (수익 확
 
 **백엔드 게이트 조건**:
 - SF-1(ui): Epic 8 SF-5(취소) 병합 대기 중 → 실제 작업은 가능하나 완전한 E2E 검증은 SF-5 완료 후
-- SF-2(ui): Epic 8 완료 필요 → 현재 SF-4까지 완료
-- SF-3(ui): Epic 9·10 완료 필요 → 현재 둘 다 미구현
+- SF-2(ui): Epic 8 완료 필요 → 현재 SF-4까지 완료, 백엔드 POST /costs는 Epic 9 완료로 실연동 가능
+- SF-3(ui): Epic 9 완료, Epic 10 전체 완료(SF-1~3) → 실연동 즉시 가능
 
 **planning 역할**: 
 - Epic 15 breakdown 작성 완료 후 즉시 Epic 16 breakdown 시작 가능

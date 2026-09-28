@@ -2,6 +2,7 @@ plugins {
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
     id("java")
+    id("checkstyle")
 }
 
 group = "com.vibeaiteam"
@@ -40,4 +41,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+checkstyle {
+    toolVersion = "10.19.0"
+    configFile = file("config/checkstyle/checkstyle.xml")
 }
