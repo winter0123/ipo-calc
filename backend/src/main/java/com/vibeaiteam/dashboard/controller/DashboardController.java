@@ -1,11 +1,15 @@
 package com.vibeaiteam.dashboard.controller;
 
+import com.vibeaiteam.dashboard.dto.InvestorAggregationDto;
+import com.vibeaiteam.dashboard.dto.SecuritiesFirmAggregationDto;
 import com.vibeaiteam.dashboard.dto.SummaryDto;
 import com.vibeaiteam.dashboard.service.DashboardAggregationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 대시보드 집계 API 컨트롤러
@@ -32,5 +36,31 @@ public class DashboardController {
     @GetMapping("/summary")
     public SummaryDto getSummary() {
         return dashboardAggregationService.getSummary();
+    }
+
+    /**
+     * 투자자별 실현수익 집계 조회
+     * 현재 계정 소유 ACTIVE Sale을 투자자별로 그룹핑해 총투자금, 총세전/세후수익, 수익률, 참여건수를 반환한다.
+     * investorId 오름차순으로 정렬된다 (AC-002).
+     * 매도 기록이 없으면 빈 리스트를 반환한다.
+     * 
+     * @return 투자자별 집계 결과 리스트
+     */
+    @GetMapping("/by-investor")
+    public List<InvestorAggregationDto> getByInvestor() {
+        return dashboardAggregationService.getByInvestor();
+    }
+
+    /**
+     * 증권사별 실현수익 집계 조회
+     * 현재 계정 소유 ACTIVE Sale을 증권사별로 그룹핑해 총투자금, 총세전/세후수익, 수익률, 참여건수를 반환한다.
+     * securitiesFirmId 오름차순으로 정렬된다 (AC-003).
+     * 매도 기록이 없으면 빈 리스트를 반환한다.
+     * 
+     * @return 증권사별 집계 결과 리스트
+     */
+    @GetMapping("/by-securities-firm")
+    public List<SecuritiesFirmAggregationDto> getBySecuritiesFirm() {
+        return dashboardAggregationService.getBySecuritiesFirm();
     }
 }
