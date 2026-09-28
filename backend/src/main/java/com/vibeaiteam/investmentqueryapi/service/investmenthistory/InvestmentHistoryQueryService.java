@@ -4,6 +4,12 @@ import com.vibeaiteam.investmentqueryapi.dto.investmenthistory.InvestmentHistory
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryForbiddenException;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryNotFoundException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
+import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
+import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
+import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
+import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
@@ -21,8 +27,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +43,9 @@ public class InvestmentHistoryQueryService {
     private final IpoRepository ipoRepository;
     private final SaleRepository saleRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final InvestorRepository investorRepository;
+    private final SecuritiesAccountRepository securitiesAccountRepository;
+    private final SecuritiesFirmRepository securitiesFirmRepository;
     private final InvestmentHistoryAssembler assembler;
 
     @PersistenceContext
@@ -71,8 +82,25 @@ public class InvestmentHistoryQueryService {
             ipoMap = Map.of();
         }
 
-        // f. Assembler로 DTO 조합
-        return assembler.toDto(subscription, allocation, activeSales, ipoMap);
+        // f. Investor 조회 (투자자명용)
+        String investorName = null;
+        Investor investor = investorRepository.findById(subscription.getInvestorId()).orElse(null);
+        if (investor != null) {
+            investorName = investor.getDisplayName();
+        }
+
+        // g. SecuritiesAccount 조회 (증권사명용)
+        String securitiesFirmName = null;
+        SecuritiesAccount securitiesAccount = securitiesAccountRepository.findByIdAndDeletedAtIsNull(subscription.getSecuritiesAccountId()).orElse(null);
+        if (securitiesAccount != null) {
+            SecuritiesFirm securitiesFirm = securitiesFirmRepository.findByIdAndDeletedAtIsNull(securitiesAccount.getSecuritiesFirmId()).orElse(null);
+            if (securitiesFirm != null) {
+                securitiesFirmName = securitiesFirm.getName();
+            }
+        }
+
+        // h. Assembler로 DTO 조합
+        return assembler.toDto(subscription, allocation, activeSales, ipoMap, investorName, securitiesFirmName);
     }
 
     public Page<InvestmentHistoryDto> getHistory(
@@ -148,8 +176,42 @@ public class InvestmentHistoryQueryService {
             ipoMap = Map.of();
         }
 
+        // Step 3b: Investor 배치 조회 (investorName용)
+        Map<Long, String> investorNameMap = Map.of();
+        if (!subscriptionIds.isEmpty()) {
+            Set<Long> investorIds = subscriptionList.stream()
+                    .map(Subscription::getInvestorId)
+                    .collect(Collectors.toSet());
+            Map<Long, Investor> investorMap = investorRepository.findAllById(investorIds).stream()
+                    .collect(Collectors.toMap(Investor::getId, java.util.function.Function.identity()));
+            investorNameMap = investorMap.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDisplayName()));
+        }
+
+        // Step 3c: SecuritiesAccount 배치 조회 -> SecuritiesFirm 배치 조회 (securitiesFirmName용)
+        Map<Long, String> securitiesFirmNameMap = Map.of();
+        if (!subscriptionIds.isEmpty()) {
+            Set<Long> securitiesAccountIds = subscriptionList.stream()
+                    .map(Subscription::getSecuritiesAccountId)
+                    .collect(Collectors.toSet());
+            Map<Long, SecuritiesAccount> securitiesAccountMap = securitiesAccountRepository.findAllById(securitiesAccountIds).stream()
+                    .collect(Collectors.toMap(SecuritiesAccount::getId, java.util.function.Function.identity()));
+
+            Set<Long> securitiesFirmIds = securitiesAccountMap.values().stream()
+                    .map(SecuritiesAccount::getSecuritiesFirmId)
+                    .collect(Collectors.toSet());
+            Map<Long, SecuritiesFirm> securitiesFirmMap = securitiesFirmRepository.findAllById(securitiesFirmIds).stream()
+                    .collect(Collectors.toMap(SecuritiesFirm::getId, java.util.function.Function.identity()));
+
+            securitiesFirmNameMap = new LinkedHashMap<>();
+            for (Map.Entry<Long, SecuritiesAccount> entry : securitiesAccountMap.entrySet()) {
+                SecuritiesFirm sf = securitiesFirmMap.get(entry.getValue().getSecuritiesFirmId());
+                securitiesFirmNameMap.put(entry.getKey(), sf != null ? sf.getName() : null);
+            }
+        }
+
         // Step 4: DTO 조합
-        List<InvestmentHistoryDto> dtoList = assembler.toDtos(subscriptionList, allocationMap, saleMap, ipoMap);
+        List<InvestmentHistoryDto> dtoList = assembler.toDtos(subscriptionList, allocationMap, saleMap, ipoMap, investorNameMap, securitiesFirmNameMap);
 
         // Step 5: 페이지 메타데이터 및 반환
         return new PageImpl<>(dtoList, subscriptionPage.getPageable(), subscriptionPage.getTotalElements());

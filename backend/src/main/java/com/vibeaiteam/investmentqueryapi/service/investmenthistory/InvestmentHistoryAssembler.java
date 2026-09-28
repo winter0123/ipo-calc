@@ -19,7 +19,9 @@ public class InvestmentHistoryAssembler {
     public InvestmentHistoryDto toDto(Subscription subscription,
                                       Allocation allocation,
                                       List<Sale> activeSales,
-                                      Map<Long, Ipo> ipoMap) {
+                                      Map<Long, Ipo> ipoMap,
+                                      String investorName,
+                                      String securitiesFirmName) {
         InvestmentHistoryDto dto = new InvestmentHistoryDto();
 
         dto.setId(subscription.getId());
@@ -29,6 +31,8 @@ public class InvestmentHistoryAssembler {
         dto.setIpoFixedPrice(subscription.getIpoId() != null && ipoMap != null ? ipoMap.get(subscription.getIpoId()).getFixedPrice() : null);
         dto.setSubscriptionQuantity(subscription.getQuantity());
         dto.setSubscriptionStatus(subscription.getStatus());
+        dto.setInvestorName(investorName);
+        dto.setSecuritiesFirmName(securitiesFirmName);
 
         if (allocation != null) {
             AllocationSummaryDto allocationDto = new AllocationSummaryDto();
@@ -76,7 +80,9 @@ public class InvestmentHistoryAssembler {
     public List<InvestmentHistoryDto> toDtos(List<Subscription> subscriptions,
                                               Map<Long, Allocation> allocationMap,
                                               Map<Long, List<Sale>> saleMap,
-                                              Map<Long, Ipo> ipoMap) {
+                                              Map<Long, Ipo> ipoMap,
+                                              Map<Long, String> investorNameMap,
+                                              Map<Long, String> securitiesFirmNameMap) {
         return subscriptions.stream()
                 .map(subscription -> {
                     Allocation allocation = allocationMap.get(subscription.getId());
@@ -84,7 +90,9 @@ public class InvestmentHistoryAssembler {
                     if (sales == null) {
                         sales = List.of();
                     }
-                    return toDto(subscription, allocation, sales, ipoMap);
+                    String investorName = investorNameMap != null ? investorNameMap.get(subscription.getInvestorId()) : null;
+                    String securitiesFirmName = securitiesFirmNameMap != null ? securitiesFirmNameMap.get(subscription.getSecuritiesAccountId()) : null;
+                    return toDto(subscription, allocation, sales, ipoMap, investorName, securitiesFirmName);
                 })
                 .collect(Collectors.toList());
     }
