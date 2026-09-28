@@ -29,4 +29,6 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
     List<Cost> findActiveWithFilters(@Param("subscriptionId") Long subscriptionId,
                                       @Param("investorId") Long investorId,
                                       @Param("investorName") String investorName);
+
+    List<Cost> findBySubscriptionIdAndStatusAndDeletedAtIsNull(Long subscriptionId, String status);
 }
