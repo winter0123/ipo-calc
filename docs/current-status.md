@@ -1,50 +1,41 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-28 세션 종료 시점. **다음 세션은 구조가 바뀐다** — 팀장 계층을 폐지하고 "코디네이터 1명 + 병렬 워커"로 되돌아간다. 시작 전 반드시 `docs/prompt-master.md`, `AGENTS.md` 6.0절을 읽는다. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다(과거 3회 연속 원인불명 재생성 이력 있음).
+> 마지막 갱신: 2026-09-28 세션 종료 시점(3차 재개 세션). **로드맵 16개 Epic 전체 구현 완료.** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
 
-## 세션 요약 (2026-09-28, 3단계)
+## 세션 요약 (2026-09-28, 3차 재개 — "코디네이터 1명 + 병렬 워커" 구조 첫 실전 운영)
 
-**1단계(오전)**: Epic 9(비용 기록) 전체 완료, Epic 10·11 SF-1~2 진행, Epic 15 SF-1 진행(테스트 갭 남김), Epic 16 breakdown 작성. 상세는 `docs/daily-log/2026_09_28.md` 첫 번째 섹션.
+`AGENTS.md` 6.0절 구조(Master 1명 + OpenCode 무료 모델 워커 N개)로 세션을 시작해, 대시보드 집계 API(Epic 12) SF-2~4와 웹 조회·대시보드(Epic 16) SF-2~5를 순차로 완료했다. **이로써 로드맵 16개 Epic 전체가 구현 완료됐다.** 상세 PR 목록과 이슈·트러블슈팅은 `docs/daily-log/2026_09_28.md`의 세 번째 세션 섹션("3차 재개 세션 — ... 로드맵 16개 Epic 전체 완료")을 진실 소스로 한다 — 이 문서에는 중복 기록하지 않는다.
 
-**2단계(재개, 팀장 계층 실험)**: 사용량 제한 해제 후 backend/frontend/planning 팀장 3개를 새로 만들어 하루 운영. Epic 10·11·15를 전부 완료했고(이슈 #129·#130 close), Epic 12 SF-1과 Epic 16 SF-1도 완료했다. 팀장 2명이 초반에 직접 코드/문서를 고치는 사고가 있었으나 즉시 시정했고, 이후 팀장들이 자기 워커의 실수(회귀·오염·사실 오류)를 스스로 잡아내는 것도 여러 번 확인했다.
-
-**3단계(구조 회귀 결정)**: 하루 운영 결과를 사용자와 함께 평가한 뒤, **팀장 계층을 폐지하고 다음 세션부터 "코디네이터 1명 + 병렬 워커" 구조로 되돌리기로 결정**했다. 근거: 병렬 처리량은 팀장 계층이 아니라 작업공간 분리 자체에서 나왔고, 팀장의 1차 검증은 Master가 병합 전 어차피 재검증하므로 중복이었다. 반면 Claude 세션 4개(Master+팀장3)가 동시에 Pro 토큰을 태웠고 그 상당수가 "대기 중" 턴이었다. 상세 경위와 문서·코드 변경 목록은 아래 "다음 세션 구조 변경" 절.
-
-이번 세션 전체 PR 병합 이력은 `docs/daily-log/2026_09_28.md`의 두 "기능 구현 현황" 표(오전/재개)를 진실 소스로 한다 — 이 문서에는 중복 기록하지 않는다.
-
-## 다음 세션 구조 변경 (2026-09-28 결정, 2026-09-29부터 적용)
-
-**기본 구조를 "코디네이터 1명 + 병렬 워커"로 되돌린다.** 핵심 원칙: Claude 토큰은 무료 모델이 못 믿을 두 지점(요구사항 정의·검증)에만 쓰고, 대기·정지 감지 같은 기계적인 일은 셸이 한다.
-
-변경한 문서·코드(전부 이번 세션에 반영 완료):
-- `AGENTS.md` 6.0절: 새 기본 구조. 6.0.2절: 팀장 계층을 "마감 촉박 시 선택지"로 강등하고 오늘의 실측(좋았던 점/비쌌던 점/결론) 기록. 6.0.3절: deps/pull/gate 3원칙은 두 구조 공통. 8.4절: 정지 감지를 watchdog 기반으로 교체.
-- `docs/prompt-master.md`: 새 구조 기준 전면 재작성(토큰 절약 규칙, DAG 일괄 정의, 세션 재개 시 `run-use` 재바인딩 절차 포함).
-- `docs/worker-spec-template.md`(신규): 워커에게 줄 자기완결적 spec 형식. 오늘 실제 관측된 워커 실수 4종(범위 이탈, 사실 오인, 회귀 은폐, 검증 명령 창작)을 막는 항목으로 구성.
-- `docs/guide-backend.md`/`guide-frontend.md`/`guide-planning.md`: "팀장 전용" → "Master(워커 spec 작성 시)+워커가 읽는 작업 가이드"로 역할 재정의.
-- `docs/prompt-backend.md`/`prompt-frontend.md`/`prompt-planning.md`: 삭제하지 않음(팀장 계층을 다시 쓸 때 대비). 상단에 "AGENTS.md 6.0.2절을 택했을 때만 적용" 배너 추가, watchdog 감시 항목 반영.
-- `docs/project-agent-guide.md`: 4.2.0절(신규, 기본 구조 요약표) 추가, 4.2.1절은 "선택적 구조"로 강등, 6.1절 watchdog 기반으로 정리, 문서 목록 표 전면 교체.
-- `scripts/orca-worker-watchdog.py`(신규): 활성 워커 터미널을 훑어 업스트림 에러(`rate-limited`/`429`/`idle timeout`)·무출력 정지(기본 8분)·실제 모델명을 한 줄로 요약해 `/tmp/orca-worker-status.txt`에 기록. 코디네이터는 터미널 원문(회당 수천 토큰) 대신 이 파일만 읽는다. **감지만 하고 재배정은 하지 않는다**(오진 비용이 자동화 이득보다 큼). `--loop`/`--selftest` 지원.
-- `CLAUDE.md`: 존재하지 않는 AGENTS.md 장 번호(12.4/5.4/22/14~15장) 인용을 실제 번호로 정정, 프론트엔드 진행 상태를 현재대로 갱신.
-
-watchdog 첫 실행에서 바로 유용한 신호를 잡았다: backend/frontend 워커가 **동시에 같은 모델(Nemotron 3 Ultra)** 을 쓰고 있었다 — 모델 다양화 원칙 위반이 사람 눈에 안 띄던 것을 드러냈다.
-
-## 모니터링 방식 (최신, 이전 5분 규칙은 폐기)
-
-- `check --wait`의 `--timeout-ms`는 **900000(15분) 이상**으로 건다. 5분처럼 짧게 걸면 재시도마다 reasoning 턴이 열려 "대기 중"에도 토큰이 계속 나간다(오늘 실측).
-- 터미널 원문을 반복해서 읽지 않는다. `scripts/orca-worker-watchdog.py --loop 120`을 별도 터미널에 띄우고 `/tmp/orca-worker-status.txt` 요약만 읽는다. `ERROR`/`STALL`이 찍힌 워커만 실제 터미널을 연다.
-- `worker-list`의 `liveness: live`는 프로세스 생존만 의미한다 — OpenRouter 429로 화면에 에러만 뜬 채 멈춰도 `live`로 나온다. watchdog이 텍스트까지 보는 이유가 이것이다.
-- 상세 절차는 `docs/project-agent-guide.md` 6.1절.
+세션 중 사용자 결정으로 반영한 것: ① checkstyle(Google Java Style) 플러그인을 이번 세션에 추가(PR #170) — 기존 코드 34개 파일 6,940건 위반은 범위 밖으로 분리해 뒀다(아래 "알려진 부채" 참고). ② OpenRouter 일일 무료 한도 소진 시 워커 전체를 OpenCode Zen 경로로 전환하는 절차를 실전 적용했다(project-agent-guide.md 5.2절 그대로 동작 확인).
 
 ## 로드맵 진행 현황 (2026-09-28 세션 종료 시점)
 
-- **완료**: Epic 1~11, 13, 14, 15 (이번 세션에 Epic 9·10·11·15 완료 — 이슈 #128·#129·#130 close)
-- **진행 중**: Epic 12(대시보드 집계 API) — SF-1(기반 계층) 완료, SF-2~4(엔드포인트) 남음
-- **breakdown/작업 초안 완료·구현 대기**: Epic 16(웹 조회·대시보드) — SF-1(투자 내역 화면 필터+EmptyState) 완료, SF-2~5 작업 초안 준비 완료(PR #166), Epic 12 완료 후 이어서 착수
+**완료: Epic 1~16 전체.** GitHub Issue #128(Epic 9)·#129(Epic 10)·#130(Epic 11)·#131(Epic 12)·#132(Epic 15)·#133(Epic 16) 모두 close 확인.
 
-## 다음 세션이 바로 처리할 것
+로드맵에 정의된 16개 Epic의 최초 구현은 이번 세션으로 끝났다. 다음 세션은 신규 기능 착수가 아니라 아래 "알려진 부채·다음 세션 후보"에서 우선순위를 사용자와 정하는 것으로 시작한다.
 
-1. **Epic 12 SF-2~4**: SF-1 기반 계층(PR #167) 위에 실제 집계 엔드포인트(전체/투자자별/증권사별/기간별)를 구현한다. task 초안은 PR #157에 있다.
-2. **Epic 16 SF-2~5**: 투자 내역 상세, 대시보드 탭·카드, 나머지 화면. task 초안은 PR #163(SF-1, 완료)·#166(SF-2~5)에 있다. Epic 12 완료가 전제 조건이다.
-3. **미해결 라우팅 갭**: `SaleRegisterForm`이 `navigate('/investments')`를 호출하는데 그 라우트가 없다(Epic 16 SF-1로 일부 해소됨 — 재확인 필요). 비용 등록 화면도 같은 이유로 성공 후 이동을 생략했다. Epic 16 SF 범위에서 두 화면의 라우트 연결을 마저 확인한다.
-4. **checkstyle Gradle task 부재**: `docs/guide-backend.md`가 `checkstyleMain`/`checkstyleTest`를 검증 명령으로 언급하지만 `build.gradle.kts`에 플러그인이 없다. 설정할지 문서에서 뺄지 사용자 결정이 필요하다.
-5. **팀장 워크스페이스 정리**: backend-4/frontend-4/planning-4 워크스페이스는 다음 세션에서 그대로 재사용하거나(브랜치만 새로 생성), 필요 시 정리 후 재생성한다. 팀장 터미널 자체는 다음 세션에서 만들지 않는다(코디네이터가 직접 워커를 배정).
+## 알려진 부채·다음 세션 후보 (착수 전 사용자 우선순위 확인 필요)
+
+1. **checkstyle 기존 위반 6,940건 정리 여부**: `checkstyleMain`/`checkstyleTest`는 `check`/`build` 라이프사이클에 안 걸려 있어 당장 빌드를 막지는 않지만, 방치하면 신규 코드에도 검증 없이 위반이 쌓인다. 전체 정리(대규모 diff, 리스크 있음) vs. 신규/수정 파일만 점진적으로 정리 vs. 방치 중 사용자 결정 필요.
+2. **Epic 16 남은 사용자 결정 3건** (`docs/work-plan/web-inquiry-dashboard-sf2-task-draft.md` 등에 기록됨):
+   - 투자 내역 목록/상세에 투자자명·증권계좌 표시가 필요한지 — 필요하면 백엔드 DTO 확장 또는 별도 조회 API가 있어야 한다(현재 `InvestmentHistoryDto` 응답에 해당 필드 없음).
+   - `ui/src/shared/components/`에 공용 Button/Input/FormField/ErrorMessage/Spinner를 만들지, 계속 인라인 패턴으로 갈지 — 여러 SF에서 반복적으로 "재사용 지시했지만 실제로는 없다"는 드리프트가 발견됐다.
+   - 비용 등록 화면의 성공 후 이동(navigate) 처리가 아직 없다(SaleRegisterForm은 PR #168로 `/investments`가 해소됨, CostRegisterForm은 미해결).
+3. **GitHub Issue #134 관련 공통 수정**: 여러 Epic 15/16 draft가 "별도 SF-0로 분리 여부 미정"으로 남겨둔 항목이다. Epic 15 SF-0(PR #147)에서 `apiFetch` 자체는 이미 수정됐으므로, 남은 범위가 실제로 있는지부터 재확인이 필요할 수 있다.
+4. **Epic 16 접근성(axe-core)·E2E 시나리오 실측 검증**: 이번 세션 워커들은 코드 레벨로 접근성 속성(aria-*)을 구현했다고 보고했지만, 실제 브라우저에서 axe-core 스캔이나 E2E 시나리오를 돌려 확인한 적은 없다. 웹 UI QA 패스가 필요하다.
+5. **팀장(Lead) 계층 재사용 여부**: AGENTS.md 6.0.2절에 "마감 촉박·다도메인 동시 진행 시 선택지"로 강등돼 남아 있다. 이번 세션은 6.0(코디네이터+병렬 워커) 단독으로 8개 PR(SF)을 무리 없이 처리했다 — 특별한 이유가 없으면 계속 6.0을 기본으로 쓴다.
+
+## 워크스페이스 상태 (2026-09-28 세션 종료 시점)
+
+- `backend-4`(`/Users/joy/orca/workspaces/vibe-ai-team/backend-4`): 마지막 브랜치 `winter0123/dashboard-aggregation-api-sf4`(병합 완료, PR #174). 다음 세션 착수 시 `git checkout -B <새 브랜치> origin/main`으로 새로 시작할 것 — 이 브랜치를 이어 쓰지 않는다.
+- `frontend-4`(`/Users/joy/orca/workspaces/vibe-ai-team/frontend-4`): 마지막 브랜치 `winter0123/dashboard-sf5`(병합 완료, PR #178). 동일하게 다음 세션은 origin/main 기준 새 브랜치로 시작.
+- `planning-4`(`/Users/joy/orca/workspaces/vibe-ai-team/planning-4`): 마지막 브랜치 `winter0123/user-guides-catchup`(병합 완료, PR #172).
+- `backend-5`(임시): checkstyle 설정 작업 후 병합 확인하고 세션 중 제거함(`orca worktree rm`).
+- 세션 종료 시점 모든 워커 dispatch가 `completed`/`retained`로 정산됐고 `worker-list --terminal-state reclaimable`은 0건이다. watchdog(`scripts/orca-worker-watchdog.py`)은 세션 종료와 함께 중지했다 — 다음 세션 시작 시 다시 `--loop 120`으로 띄운다.
+- Master 메인 체크아웃(`/Users/joy/IdeaProjects/vibe-ai-team`)은 이번 세션 중 origin/main과 한 번 분기됐던 로컬 전용 커밋(908203c, 문서 전용)을 발견해 병합·재푸시로 정합성을 회복했다. 다음 세션 시작 시 `git status`/`git log`로 재확인할 것.
+
+## 모니터링·운영 방식 (변경 없음, 유지)
+
+- `check --wait`의 `--timeout-ms`는 900000(15분) 이상. 터미널 원문을 반복해서 읽지 않고 watchdog 상태 파일만 본다. 상세 절차는 `docs/project-agent-guide.md` 6.1절.
+- 세션 재개(`/low-priority` 등)로 프로세스 incarnation이 바뀌면 `orca orchestration run-use --id <run_id>`로 재바인딩한다 — 이번 세션에 실제로 필요했다.
+- OpenRouter 일일 무료 한도 소진(`free-models-per-day-high-balance`)이 확인되면 개별 모델 재시도 대신 워커 전체를 OpenCode Zen(`opencode/<모델>`) 경로로 일괄 전환한다.
