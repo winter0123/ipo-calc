@@ -1,21 +1,31 @@
 package com.vibeaiteam.salemanagement.repository.sale;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.account.Account;
+import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
+import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
+import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
+import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
+import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
+import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,6 +46,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SaleRepositoryTest {
 
     @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
     private SaleRepository saleRepository;
 
     @Autowired
@@ -43,6 +56,18 @@ class SaleRepositoryTest {
 
     @Autowired
     private SubscriptionRepository subscriptionRepository;
+
+    @Autowired
+    private InvestorRepository investorRepository;
+
+    @Autowired
+    private SecuritiesAccountRepository securitiesAccountRepository;
+
+    @Autowired
+    private SecuritiesFirmRepository securitiesFirmRepository;
+
+    @Autowired
+    private AccountRepository accountRepository;
 
     private Long createSubscription(Long ipoId, LocalDateTime createdAt) {
         Subscription subscription = Subscription.builder()
@@ -83,6 +108,80 @@ class SaleRepositoryTest {
                 .fee(1500L)
                 .tax(0L)
                 .otherCost(null)
+                .status("ACTIVE")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+    }
+
+    private Long createAccount(LocalDateTime createdAt) {
+        Account account = Account.builder()
+                .email("test-" + UUID.randomUUID() + "@example.com")
+                .passwordHash("hash")
+                .name("테스트 계정")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+        return accountRepository.saveAndFlush(account).getId();
+    }
+
+    private Long createSecuritiesFirm(LocalDateTime createdAt) {
+        SecuritiesFirm securitiesFirm = SecuritiesFirm.builder()
+                .name("테스트 증권사")
+                .status("ACTIVE")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+        return securitiesFirmRepository.saveAndFlush(securitiesFirm).getId();
+    }
+
+    private Long createInvestor(Long accountId, String displayName, LocalDateTime createdAt) {
+        Investor investor = Investor.builder()
+                .accountId(accountId)
+                .displayName(displayName)
+                .relationship("SELF")
+                .status("ACTIVE")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+        return investorRepository.saveAndFlush(investor).getId();
+    }
+
+    private Long createSecuritiesAccount(Long investorId, Long securitiesFirmId, LocalDateTime createdAt) {
+        SecuritiesAccount securitiesAccount = SecuritiesAccount.builder()
+                .investorId(investorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber("12345678")
+                .accountName("테스트 계좌")
+                .isDefault(true)
+                .status("ACTIVE")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+        return securitiesAccountRepository.saveAndFlush(securitiesAccount).getId();
+    }
+
+    private Subscription createSubscriptionEntity(Long investorId, Long securitiesAccountId, Long ipoId, LocalDateTime createdAt) {
+        return Subscription.builder()
+                .investorId(investorId)
+                .securitiesAccountId(securitiesAccountId)
+                .ipoId(ipoId)
+                .quantity(100L)
+                .depositAmount(5000000L)
+                .subscribedAt(createdAt)
+                .status("ACTIVE")
+                .createdAt(createdAt)
+                .updatedAt(createdAt)
+                .build();
+    }
+
+    private Allocation createAllocationEntity(Long subscriptionId, Long allocatedQuantity, Long allocationPrice, LocalDateTime createdAt) {
+        return Allocation.builder()
+                .subscriptionId(subscriptionId)
+                .allocatedQuantity(allocatedQuantity)
+                .allocatedAt(createdAt)
+                .allocationMethod("PROPORTIONAL")
+                .allocationPrice(allocationPrice)
                 .status("ACTIVE")
                 .createdAt(createdAt)
                 .updatedAt(createdAt)
@@ -245,5 +344,152 @@ class SaleRepositoryTest {
 
         // Then: ACTIVE 상태인 3건의 수량 합계(90)만 반환됨 (CANCELLED 제외)
         assertThat(sum).isEqualTo(90L);
+    }
+
+    // ===========================================
+    // 신규 메서드: findAllByStatusAndInvestorAccountId 테스트 (Epic 12 SF-1 추가)
+    // ===========================================
+
+    @Test
+    void findAllByStatusAndInvestorAccountIdFiltersByAccount() {
+        // Given: 계정 1의 투자자, 계정 2의 투자자 각각 생성
+        LocalDateTime now = LocalDateTime.now();
+
+        Long account1Id = createAccount(now);
+        Long account2Id = createAccount(now);
+
+        Long securitiesFirmId = createSecuritiesFirm(now);
+
+        Long investor1Id = createInvestor(account1Id, "투자자1", now);
+        Long investor2Id = createInvestor(account2Id, "투자자2", now);
+
+        Long securitiesAccount1Id = createSecuritiesAccount(investor1Id, securitiesFirmId, now);
+        Long securitiesAccount2Id = createSecuritiesAccount(investor2Id, securitiesFirmId, now);
+
+        Subscription subscription1 = createSubscriptionEntity(investor1Id, securitiesAccount1Id, 1L, now);
+        Long subscription1Id = subscriptionRepository.saveAndFlush(subscription1).getId();
+
+        Subscription subscription2 = createSubscriptionEntity(investor2Id, securitiesAccount2Id, 1L, now);
+        Long subscription2Id = subscriptionRepository.saveAndFlush(subscription2).getId();
+
+        Allocation allocation1 = createAllocationEntity(subscription1Id, 50L, 10000L, now);
+        Long allocation1Id = allocationRepository.saveAndFlush(allocation1).getId();
+
+        Allocation allocation2 = createAllocationEntity(subscription2Id, 50L, 10000L, now);
+        Long allocation2Id = allocationRepository.saveAndFlush(allocation2).getId();
+
+        // Sale 테이블에 데이터 삽입 (계정 1: ACTIVE 2건, CANCELLED 1건 / 계정 2: ACTIVE 1건)
+        Sale sale1 = Sale.builder()
+                .allocationId(allocation1Id)
+                .quantity(10L)
+                .amount(100000L)
+                .saleDate(now)
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        Sale sale2 = Sale.builder()
+                .allocationId(allocation1Id)
+                .quantity(10L)
+                .amount(100000L)
+                .saleDate(now)
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        Sale sale3 = Sale.builder()
+                .allocationId(allocation1Id)
+                .quantity(10L)
+                .amount(100000L)
+                .saleDate(now)
+                .status("CANCELLED")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        Sale sale4 = Sale.builder()
+                .allocationId(allocation2Id)
+                .quantity(20L)
+                .amount(200000L)
+                .saleDate(now)
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        entityManager.persistAndFlush(sale1);
+        entityManager.persistAndFlush(sale2);
+        entityManager.persistAndFlush(sale3);
+        entityManager.persistAndFlush(sale4);
+
+        // When: 계정 1의 ACTIVE Sale만 조회
+        List<Sale> account1ActiveSales = saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", account1Id);
+
+        // Then: 계정 1의 ACTIVE Sale 2건만 조회됨 (CANCELLED 제외, 계정 2 데이터 제외)
+        assertThat(account1ActiveSales).hasSize(2);
+        assertThat(account1ActiveSales).extracting(Sale::getId).containsExactlyInAnyOrder(sale1.getId(), sale2.getId());
+        assertThat(account1ActiveSales).allMatch(s -> "ACTIVE".equals(s.getStatus()));
+    }
+
+    @Test
+    void findAllByStatusAndInvestorAccountIdReturnsEmptyWhenNoActiveSales() {
+        // Given: 데이터 없음
+
+        // When
+        List<Sale> result = saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", 999L);
+
+        // Then: 빈 리스트 반환
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAllByStatusAndInvestorAccountIdExcludesCancelledSales() {
+        // Given: 계정 1의 투자자/구독/배정 생성
+        LocalDateTime now = LocalDateTime.now();
+        Long accountId = createAccount(now);
+        Long securitiesFirmId = createSecuritiesFirm(now);
+
+        Long investorId = createInvestor(accountId, "투자자1", now);
+        Long securitiesAccountId = createSecuritiesAccount(investorId, securitiesFirmId, now);
+
+        Subscription subscription = createSubscriptionEntity(investorId, securitiesAccountId, 1L, now);
+        Long subscriptionId = subscriptionRepository.saveAndFlush(subscription).getId();
+
+        Allocation allocation = createAllocationEntity(subscriptionId, 50L, 10000L, now);
+        Long allocationId = allocationRepository.saveAndFlush(allocation).getId();
+
+        // ACTIVE 1건, CANCELLED 1건 생성
+        Sale activeSale = Sale.builder()
+                .allocationId(allocationId)
+                .quantity(10L)
+                .amount(100000L)
+                .saleDate(now)
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        Sale cancelledSale = Sale.builder()
+                .allocationId(allocationId)
+                .quantity(10L)
+                .amount(100000L)
+                .saleDate(now)
+                .status("CANCELLED")
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        entityManager.persistAndFlush(activeSale);
+        entityManager.persistAndFlush(cancelledSale);
+
+        // When
+        List<Sale> result = saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", accountId);
+
+        // Then: ACTIVE만 조회됨
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getStatus()).isEqualTo("ACTIVE");
+        assertThat(result.get(0).getId()).isEqualTo(activeSale.getId());
     }
 }
