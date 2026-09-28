@@ -29,6 +29,7 @@ vi.mock('../useCostRegister.ts', () => ({
       mutationFn: mutationFnMock,
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['costs'] })
+        mockNavigate('/investments')
       },
     })
   },
@@ -58,7 +59,8 @@ const SUBSCRIPTION_HISTORY = {
 function defaultMock() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
     const p = String(path)
-    if (p.startsWith('/investment-history') && (!options || options.method === 'GET')) return SUBSCRIPTION_HISTORY
+    if (p.startsWith('/investment-history') && (!options || options.method === 'GET'))
+      return SUBSCRIPTION_HISTORY
     throw new Error(`unexpected path: ${String(path)}`)
   })
 }
@@ -173,7 +175,7 @@ describe('CostRegisterForm', () => {
           amount: 25000,
           incurredAt: '2026-09-10T10:00',
         }),
-        expect.any(Object)
+        expect.any(Object),
       )
     })
   })
@@ -188,11 +190,15 @@ describe('CostRegisterForm', () => {
   })
 
   it('400 에러 시 서버 메시지 그대로 표시', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request: amount must be positive'))
+    mutationFnMock = vi
+      .fn()
+      .mockRejectedValue(new Error('Request failed: 400 Bad Request: amount must be positive'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
-      expect(screen.getByText('Request failed: 400 Bad Request: amount must be positive')).toBeInTheDocument()
+      expect(
+        screen.getByText('Request failed: 400 Bad Request: amount must be positive'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -214,4 +220,22 @@ describe('CostRegisterForm', () => {
     })
   })
 
+  it('등록 성공 시 /investments로 이동', async () => {
+    mutationFnMock = vi.fn().mockResolvedValue({ id: 1 })
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/investments')
+    })
+  })
+
+  it('등록 실패 시 이동하지 않음', async () => {
+    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request'))
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Request failed: 400 Bad Request')).toBeInTheDocument()
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
 })
