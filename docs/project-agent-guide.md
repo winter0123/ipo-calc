@@ -132,9 +132,9 @@ gh pr view <PR번호> --json state,mergedAt
 
 | 작업공간       | 역할           | 기본 경로                                              |
 | ---------- | ------------ | -------------------------------------------------- |
-| `backend`  | 백엔드 B그룹      | `/Users/joy/orca/workspaces/vibe-ai-team/backend`  |
-| `frontend` | 프론트엔드 B그룹    | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` |
-| `planning` | 조사·기획·설계 A그룹 | `/Users/joy/orca/workspaces/vibe-ai-team/planning` |
+| `backend`  | 백엔드 B그룹, backend 팀장 상주      | `/Users/joy/orca/workspaces/vibe-ai-team/backend`  |
+| `frontend` | 프론트엔드 B그룹, frontend 팀장 상주    | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` |
+| `planning` | 조사·기획·설계 A그룹, planning 팀장 상주 | `/Users/joy/orca/workspaces/vibe-ai-team/planning` |
 
 
 독립 브랜치가 동시에 필요하면 `backend-2`, `backend-3`처럼 추가 작업공간을 만든다. 역할별 모든 `<역할>-N`을 합쳐 활성 워커는 최대 5개다. 새 워커를 만들기 직전에 `worker-list`로 실제 수를 세고, 독립 대기 작업 수와 여유 수만큼 한 번에 병렬 배정한다.
@@ -152,6 +152,29 @@ orca terminal show --terminal <handle> --json
 고정 작업공간과 그 하위 작업공간은 메인 작업공간의 자식 관계로 관리한다. 이 경우 `--no-parent`를 쓰지 않는다. 생성 뒤 `orca worktree list --json`으로 `parentWorktreeId`를 확인한다. 임시 `<역할>-N` 작업공간만 병합·터미널 종료를 확인한 뒤 제거한다.
 
 한 작업공간에는 한 브랜치만 둔다. 다른 작업이 같은 브랜치에서 서로 다른 파일만 작성하는 A그룹 문서 작업이면 워커만 추가할 수 있지만, 다른 PR·브랜치가 필요하면 별도 작업공간을 만든다. 공유 작업공간의 병렬 워커는 배정 파일만 수정·검증하고 Git 명령으로 인덱스나 브랜치를 바꾸지 않는다. Master 또는 Git Manager 한 명이 결과를 검증한 뒤 순차로 commit하며, 워커별 독립 커밋이 필요하면 별도 worktree를 만든다.
+
+### 5.2.1 팀장(Lead) 계층 채택 (2026-09-28부터)
+
+이 프로젝트는 AGENTS.md 6.0절의 팀장 계층 구조를 채택했다(사용자 결정, nested depth 한도 2로 확대됨). Master(main, depth 0)는 이제 워커에게 직접 task를 배정하지 않고, 역할별 고정 작업공간(backend/frontend/planning)에 상주하는 팀장(depth 1)에게 위임한다. 팀장이 그 밑에 실제 구현 워커(depth 2)를 직접 생성·검증·배정한다.
+
+**팀장 3개 고정 정보**:
+
+| 팀장 이름 | 담당 작업공간 | 실제 경로(2026-09-28 재생성) | 에이전트·모델 | 병합 권한 |
+|---|---|---|---|---|
+| backend 팀장 | backend | `orca worktree list --json`으로 확인 (아래 "팀장 세션 현황" 갱신) | Claude Code, `claude-sonnet-5` (Master와 동일) | PR 생성까지, main 병합은 Master가 최종 확인 후 수행 |
+| frontend 팀장 | frontend | 〃 | 〃 | 〃 |
+| planning 팀장 | planning | 〃 | 〃 | 〃 |
+
+**운영 규칙**:
+- 팀장은 1회성 워커가 아니라 세션 내내 유지되는 상시 코디네이터다. 팀장의 터미널 제목은 "backend 팀장"/"frontend 팀장"/"planning 팀장"으로 고정한다.
+- 팀장이 만드는 워커(depth 2)는 이 프로젝트 무료 모델 정책(6장)과 모델 다양화 원칙을 그대로 따른다 — OpenCode + OpenRouter, 같은 시간대 동일 모델 반복 배정 금지.
+- 팀장은 자기 워커의 `worker_done`을 `check --wait`로 직접 기다리고 diff·테스트를 1차 검증한다. 429/timeout으로 조용히 멈춘 워커는 팀장이 직접 감지·재배정한다 — 7.1.1절의 5분 주기 직접 확인 절차가 팀장에게도 동일 적용된다.
+- 팀장은 검증 후 자신이 commit·PR 생성까지 한다. **main 병합은 Master가 팀장의 PR을 한 번 더 확인한 뒤 수행**한다(팀장은 병합하지 않는다).
+- 팀장은 **담당 SF 하나가 검증·병합될 때마다** Master의 Run에 요약 보고를 보낸다(`orca orchestration send --to run:<master-run-id>`). Master는 이 요약 보고만 받고 팀장 밑 워커 dispatch에는 개입하지 않는다 — 단, 팀장 자체가 응답 없을 때는 Master가 직접 개입해 팀장을 재생성한다.
+- depth 한도: Master(0) → 팀장(1) → 팀장의 워커(2)까지만 허용. 팀장의 워커가 추가로 워커를 만드는 depth 3 위임은 금지.
+- 이 구조 도입 시점에 기존 하위 작업공간(backend-2/backend-3-3/frontend-3/planning-3 등 임시 접미사 경로)은 정리하고, 접미사 없는 `backend`/`frontend`/`planning` 이름으로 재생성했다(2026-09-28). 각 팀장은 이 경로에 상주한다.
+
+**팀장 세션 현황(최신 갱신은 current-status.md 참고)**: 팀장의 실제 터미널 handle, dispatch ID, 담당 중인 Epic/SF는 세션마다 바뀌므로 이 문서가 아니라 `docs/current-status.md`에 최신 상태로 기록한다.
 
 ```bash
 cd <작업공간-경로>
