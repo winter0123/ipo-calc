@@ -25,6 +25,14 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     Long sumActiveQuantityByAllocationIdExcludingId(@Param("allocationId") Long allocationId, @Param("excludeId") Long excludeId);
 
     @Query("SELECT s FROM Sale s " +
+           "JOIN Allocation a ON s.allocationId = a.id " +
+           "JOIN Subscription sub ON a.subscriptionId = sub.id " +
+           "JOIN Investor i ON sub.investorId = i.id " +
+           "WHERE s.deletedAt IS NULL AND s.status = :status " +
+           "AND i.accountId = :accountId")
+    List<Sale> findAllByStatusAndInvestorAccountId(@Param("status") String status, @Param("accountId") Long accountId);
+
+    @Query("SELECT s FROM Sale s " +
            "WHERE s.allocationId IN ?1 AND s.status = ?2 AND s.deletedAt IS NULL")
     List<Sale> findByAllocationIdInAndStatus(List<Long> allocationIds, String status);
 

@@ -1,0 +1,124 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background-color: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.input::placeholder {
+  color: #999;
+}
+
+.hint {
+  font-size: 12px;
+  color: #999;
+}
+
+.resetButton {
+  align-self: flex-start;
+  padding: 10px 20px;
+  background-color: #fff;
+  color: #1976d2;
+  border: 1px solid #1976d2;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.resetButton:hover {
+  background-color: #1976d2;
+  color: #fff;
+}
+
+.resetButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* 반응형: 모바일(~640px) 세로 스택 */
+@media (max-width: 640px) {
+  .container {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .resetButton {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+/* 태블릿(641px~1023px) */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .fieldGroup {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .resetButton {
+    margin-top: auto;
+  }
+}
+
+/* 데스크톱(1024px~) 가로 배치 */
+@media (min-width: 1024px) {
+  .container {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 24px;
+  }
+
+  .fieldGroup {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .resetButton {
+    margin-top: auto;
+    white-space: nowrap;
+  }
+}
