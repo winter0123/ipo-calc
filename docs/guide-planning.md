@@ -1,6 +1,10 @@
-# planning 팀장 전용 가이드
+# planning 작업 가이드
 
-> 이 문서는 **planning 팀장만** 읽는다. backend/frontend 팀장은 이 문서를 읽을 필요가 없다. 공통 규칙은 `AGENTS.md` → `docs/project-agent-guide.md` → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다.
+> **누가 읽는가**: ① Master가 planning 워커(조사·기획·설계·breakdown)의 task spec을 쓸 때, ② planning 워커가 작업 전에.
+>
+> 공통 규칙은 `AGENTS.md`(6.0절 구조) → `docs/project-agent-guide.md` → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다. spec 형식은 `docs/worker-spec-template.md`를 따른다.
+>
+> **문서 작업 워커에게 특히 주의**: "append하라"고 지시했는데 워커가 기존 본문을 삭제한 사고가 있었다. 병합 전 `git diff --stat`으로 삭제된 줄 수를 반드시 확인한다.
 
 ## 1. 조사·기획·설계 규칙
 

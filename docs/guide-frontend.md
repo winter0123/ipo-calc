@@ -1,6 +1,8 @@
-# frontend 팀장 전용 가이드
+# frontend 작업 가이드
 
-> 이 문서는 **frontend 팀장만** 읽는다. backend/planning 팀장은 이 문서를 읽을 필요가 없다. 공통 규칙은 `AGENTS.md` → `docs/project-agent-guide.md` → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다.
+> **누가 읽는가**: ① Master가 frontend 워커의 task spec을 쓸 때(검증 명령을 **여기서 그대로 복사해** spec에 넣는다 — `typecheck`만이 아니라 `build`까지 포함해야 한다), ② frontend 워커가 작업 전에.
+>
+> 공통 규칙은 `AGENTS.md`(6.0절 구조) → `docs/project-agent-guide.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다. spec 형식은 `docs/worker-spec-template.md`를 따른다.
 
 ## 1. 기술 기준
 

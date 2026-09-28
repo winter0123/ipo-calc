@@ -1,6 +1,8 @@
-# backend 팀장 전용 가이드
+# backend 작업 가이드
 
-> 이 문서는 **backend 팀장만** 읽는다. frontend/planning 팀장은 이 문서를 읽을 필요가 없다. 공통 규칙은 `AGENTS.md` → `docs/project-agent-guide.md` → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다.
+> **누가 읽는가**: ① Master가 backend 워커의 task spec을 쓸 때(특히 2절 검증 명령을 **여기서 그대로 복사해** spec에 넣는다 — 기억으로 쓰면 없는 Gradle task를 적어 워커가 막힌다), ② backend 워커가 작업 전에.
+>
+> 공통 규칙은 `AGENTS.md`(6.0절 구조) → `docs/project-agent-guide.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 먼저 읽는다. spec 형식은 `docs/worker-spec-template.md`를 따른다.
 
 ## 1. 기술 기준
 
