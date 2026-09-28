@@ -270,6 +270,8 @@ orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/plann
 
 터미널 텍스트에서 업스트림 에러 문구가 확인되면(단순 heartbeat/thinking 반복이 아니라 실제 에러 메시지), `worker-abandon` → 해당 worktree `git status --short`로 부분 작업 확인(있으면 내용 검토 후 보존 또는 되돌리기) → `terminal close` → 다른 무료 모델로 `terminal create` → `terminal wait --for tui-idle` → `worker-start --retry-of <이전 dispatch>` 순서로 재배정한다. 같은 시간대에 서로 다른 모델 2개 이상이 연달아 즉시 실패하면 개별 모델 문제가 아니라 OpenRouter 계정 레벨 혼잡일 가능성을 의심한다.
 
+**주의(2026-09-28 재발 확인)**: `terminal show`의 `lastOutputAt`이 "방금"으로 나온다고 곧바로 정상 판단하지 않는다 — 그 최근 출력 자체가 `[Poolside] ... temporarily rate-limited upstream` 같은 에러 메시지이고 그 이후로 멈춰있는 경우가 실제로 있었다(사용자가 직접 화면을 보고 지적함). `lastOutputAt`은 "터미널이 죽었는지" 판단하는 보조 지표일 뿐이며, 5분 점검마다 반드시 `terminal read`로 **최근 몇 줄의 실제 텍스트 내용**까지 읽어 에러 문구 유무를 확인한다. 또한 특정 OpenRouter 모델을 지정해도 OpenCode가 내부적으로 다른 모델(주로 Laguna S 2.1)로 자동 폴백하는 사례가 반복 관찰됐다 — 터미널 하단 상태줄의 실제 모델명(`Build · <모델명>`)을 지정한 모델과 대조해 확인한다.
+
 ### 7.2 선택형 Hermes 알림
 
 Hermes 알림은 필수가 아니다. 설정되어 있다면 기능 구현 완료 PR, 사람 결정 필요 BLOCKED, 화면 사용자 가이드 발행을 알려준다. 감지 스크립트는 Claude 세션과 독립되어야 하며, PR 감시는 `--state all`을 쓴다.
