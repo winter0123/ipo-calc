@@ -1,0 +1,132 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 500px;
+}
+
+.loading,
+.blockError {
+  padding: 24px;
+  text-align: center;
+  color: #666;
+}
+
+.blockError {
+  color: #d32f2f;
+  background-color: #ffebee;
+  border-radius: 4px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px}
+.field label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
+  border-color: #d32f2f;
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 12px;
+}
+
+.formError {
+  padding: 12px;
+  background-color: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-radius: 4px;
+  color: #c62828;
+  font-size: 14px;
+}
+
+.submitButton {
+  margin-top: 8px;
+  padding: 12px 24px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: #1565c0;
+}
+
+.submitButton:disabled {
+  background-color: #90caf9;
+  cursor: not-allowed;
+}
+
+/* 반응형 */
+@media (min-width: 640px) {
+  .container {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 600px;
+  }
+
+  .field {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .field label {
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    flex: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 700px;
+  }
+}
