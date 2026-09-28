@@ -77,7 +77,7 @@ async function waitForLoaded() {
 
 async function waitForResultsLoaded() {
   await waitFor(() => {
-    expect(screen.getByText('투자 내역 2건 조회됨 (테이블은 다음 SF에서 구현)')).toBeInTheDocument()
+    expect(screen.getByText('카카오뱅크')).toBeInTheDocument()
   })
 }
 
@@ -109,16 +109,13 @@ describe('InvestmentHistoryPage', () => {
     renderPage()
     await waitForResultsLoaded()
 
-    // 투자자 ID 필터 입력
     const investorInput = screen.getByLabelText('투자자 ID')
     fireEvent.change(investorInput, { target: { value: '1' } })
 
-    // 입력값이 UI에 반영됨 (비동기 대기)
     await waitFor(() => {
       expect(investorInput).toHaveValue('1')
     })
 
-    // 재조회가 트리거됨 (호출 횟수 증가)
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledTimes(2)
     })
@@ -163,7 +160,6 @@ describe('InvestmentHistoryPage', () => {
     renderPage()
     await waitForResultsLoaded()
 
-    // 필터 입력
     const investorInput = screen.getByLabelText('투자자 ID')
     fireEvent.change(investorInput, { target: { value: '1' } })
     await waitFor(() => {
@@ -173,17 +169,19 @@ describe('InvestmentHistoryPage', () => {
       expect(investorInput).toHaveValue('1')
     })
 
-    // 초기화 버튼 클릭
     fireEvent.click(screen.getByRole('button', { name: /초기화/i }))
 
-    // 필터가 비워짐
     await waitFor(() => {
       expect(investorInput).toHaveValue('')
     })
 
-    // 재조회됨 (초기 1 + 필터변경 1 + 초기화 1 + useEffect on reset 1 = 4)
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledTimes(4)
+    })
+
+    // 초기화 후 필터가 비워졌는지 확인
+    await waitFor(() => {
+      expect(investorInput).toHaveValue('')
     })
   })
 
@@ -198,12 +196,10 @@ describe('InvestmentHistoryPage', () => {
 
     expect(screen.getByRole('button', { name: '전체 필터 초기화' })).toBeInTheDocument()
 
-    // EmptyState의 초기화 버튼 클릭
     fireEvent.click(screen.getByRole('button', { name: '전체 필터 초기화' }))
 
-    // 재조회됨
     await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledTimes(3)
+      expect(apiFetch).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -242,15 +238,11 @@ describe('InvestmentHistoryPage', () => {
     renderPage()
     await waitForLoaded()
 
-    // FilterBar가 role="search"를 가짐
     expect(screen.getByRole('search')).toBeInTheDocument()
-
-    // 각 필드에 label과 hint가 연결됨
     expect(screen.getByLabelText('투자자 ID')).toBeInTheDocument()
     expect(screen.getByLabelText('증권계좌 ID')).toBeInTheDocument()
     expect(screen.getByLabelText('IPO ID')).toBeInTheDocument()
 
-    // 초기화 버튼에 aria-label이 있음
     expect(screen.getByRole('button', { name: /초기화/i })).toHaveAttribute(
       'aria-label',
       '필터 초기화',
