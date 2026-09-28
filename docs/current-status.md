@@ -34,9 +34,11 @@ cost-recording/investment-query-api-sf1 브랜치는 모두 이번 세션에 `gi
 
 ## 진행 중 워커 (2026-09-23, 최신 배치)
 
-- **backend**: Epic 9(비용 기록) SF-1~5 전체 완료(PR #141/#146/#148/#150/#151, 이슈 #128 close) → Epic 10 SF-1(PR #152) 완료 → Epic 10 SF-2(단일 매도건 수익 계산 API) 착수, `nvidia/nemotron-3-ultra-550b-a55b:free`(동일 터미널 재사용), dispatch `ctx_1ba31dab96b7`, task `task_2575819cce72`, terminal `term_e065240a-a246-4fbb-afbb-f556c3bc67e7`
-- **backend-3**: Epic 11 SF-2(투자 내역 전체 조회), 429로 2회 실패(laguna-s-2.1, qwen3.8-27b) 후 `nvidia/nemotron-3.5-lightning:free`로 정상 진행 중, dispatch `ctx_f6cb4e4108be`, task `task_d2c7315a2c15`, terminal `term_3c047ddb-b320-431a-8729-f0b64bda5b46`
-- **frontend**: Epic 15 SF-1(매도 등록 화면), `inclusionai/ling-3.0-flash-fin:free`, dispatch `ctx_abcc91d1b79a`, task `task_403f06fd54f5`, terminal `term_686677e0-6277-4bc3-9db6-92ccb1dcfb8d`
+- **backend**: Epic 9(비용 기록) SF-1~5 전체 완료(이슈 #128 close), Epic 10 SF-1(PR #152) 완료 → Epic 10 SF-2 진행 중 8분간 무응답으로 조용히 멈춰 재시작(부분 작업은 보존됨: ProfitController/ProfitCalculationService 초안), `nvidia/nemotron-3-ultra-550b-a55b:free`, dispatch `ctx_1f07351df8a1`, task `task_2575819cce72`, terminal `term_e2619bca-c61c-4b7b-ad7e-c28d221f43db`
+- **backend-3**: Epic 11 SF-2(투자 내역 전체 조회), 8분간 무응답으로 조용히 멈춰 재시작(부분 작업 보존: 대부분 파일 생성됨, 컴파일 에러 디버깅 중이었음), `nvidia/nemotron-3.5-lightning:free`(동일 모델 재시도), dispatch `ctx_25e855c7e764`, task `task_d2c7315a2c15`, terminal `term_4a41c47f-8415-4c9c-9a6a-ef614383f9f8`
+- **frontend**: Epic 15 SF-1(매도 등록 화면), 8분간 무응답으로 조용히 멈춰 재시작(부분 작업 보존: entities/sale, features/sale-register 대부분 생성됨, 단 테스트 파일 1개가 mockNavigate 중복선언으로 깨진 상태였음 — 새 워커가 확인 후 정리 필요), `nex-agi/nex-n2.5-mini:free`(미검증)로 교체, dispatch `ctx_7187c9825bb5`, task `task_403f06fd54f5`, terminal `term_37160d37-aef0-464f-a10b-8065ea39622c`
+
+**5분 주기 감시로 처음 잡아낸 "조용히 멈춘 워커" 사례(2026-09-28)**: 3개 워커가 동시에 8분 넘게 아무 출력 없이 멈춰 있었다(에러 메시지 없이 그냥 응답 중단 — 429/timeout류 명시적 에러와 다른 패턴). `terminal show`의 `lastOutputAt`을 20초 간격 재확인으로 확정 판단했다. 실수로 정상 작동 중이던 backend-2까지 함께 abandon했으나(당시 스피너 활성 상태였음, 판단 착오) 부분 작업이 git status에 보존돼 있어 손실 없이 재시작함.
 - **planning**: 유휴 — Phase 0/breakdown 16개 Epic 전부 완료, Epic 10/12 드리프트 점검도 완료. 다음 안전 작업(사용자 가이드 스크린샷)은 브라우저 도구가 필요해 텍스트 전용 무료 모델 워커에 부적합. Epic 11 SF-2 또는 Epic 10 SF-1이 병합되면 그 결과를 반영한 재점검으로 재평가한다.
 
 **모니터링 방식 변경(2026-09-28, 사용자 지시)**: `worker_done` 알림과 `liveness.verdict`만으로는 업스트림 429/timeout으로 조용히 멈춘 워커를 못 잡는다는 걸 확인했다. 이제 최소 5분 간격으로 활성 워커 터미널을 직접 `terminal read`로 훑는다(project-agent-guide.md 7.1.1절 신설). `check --wait`의 `--timeout-ms`도 900000(15분) 대신 300000(5분)으로 줄여서 운영한다.
