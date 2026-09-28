@@ -42,4 +42,25 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "JOIN Investor i ON s.investorId = i.id " +
             "WHERE i.accountId = :currentAccountId AND s.deletedAt IS NULL")
     Page<Subscription> findByInvestorAccountId(@Param("currentAccountId") Long currentAccountId, Pageable pageable);
+
+    /**
+     * 계정 스코프를 강제하는 필터 조회 메서드
+     * ipoId/investorId/securitiesAccountId 필터 + deletedAt IS NULL 조건 포함
+     * 반드시 현재 계정 소유 Investor로 스코프를 강제 (AC-005 리스크 방지)
+     * 서브쿼리 방식이 아닌 JOIN으로 현재 계정의 Investor Subscription만 조회
+     */
+    @Query("SELECT s FROM Subscription s " +
+            "JOIN Investor i ON s.investorId = i.id " +
+            "WHERE i.accountId = :currentAccountId " +
+            "AND (:investorId IS NULL OR i.id = :investorId) " +
+            "AND (:securitiesAccountId IS NULL OR s.securitiesAccountId = :securitiesAccountId) " +
+            "AND (:ipoId IS NULL OR s.ipoId = :ipoId) " +
+            "AND s.deletedAt IS NULL " +
+            "ORDER BY s.subscribedAt DESC")
+    Page<Subscription> findByInvestorAccountIdWithFilters(
+            @Param("currentAccountId") Long currentAccountId,
+            @Param("investorId") Long investorId,
+            @Param("securitiesAccountId") Long securitiesAccountId,
+            @Param("ipoId") Long ipoId,
+            Pageable pageable);
 }
