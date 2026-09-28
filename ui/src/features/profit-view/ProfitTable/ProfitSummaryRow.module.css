@@ -1,0 +1,36 @@
+.summaryRow {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+.summaryRow td {
+  padding: 12px 16px;
+  border-top: 2px solid #e0e0e0;
+  border-bottom: none;
+  text-align: left;
+}
+
+.label {
+  text-align: right !important;
+}
+
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: 'SF Mono', 'Fira Code', 'Monaco', monospace;
+}
+
+.totalSaleAmount {
+  font-weight: 600;
+}
+
+.negative {
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .summaryRow td {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

@@ -1,0 +1,60 @@
+import type { SaleProfit, InvestorProfit } from '../../../entities/profit/types.ts'
+import ProfitRow from './ProfitRow.tsx'
+import ProfitSummaryRow from './ProfitSummaryRow.tsx'
+import styles from './ProfitTable.module.css'
+
+interface ProfitTableProps {
+  data: SaleProfit | InvestorProfit | null
+  mode: 'sale' | 'investor'
+}
+
+export default function ProfitTable({ data, mode }: ProfitTableProps) {
+  if (!data) return null
+
+  const isInvestorMode = mode === 'investor'
+  const sales = isInvestorMode ? (data as InvestorProfit).sales : [(data as SaleProfit)]
+  const showSummary = isInvestorMode
+
+  return (
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>매도ID</th>
+            <th>매도일시</th>
+            <th>배정ID</th>
+            <th>수량</th>
+            <th>매도금액</th>
+            <th>취득금액</th>
+            <th>비용금액</th>
+            <th>수수료</th>
+            <th>세금</th>
+            <th>기타비용</th>
+            <th>세전수익</th>
+            <th>세후수익</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sales.length === 0 ? (
+            <tr>
+              <td colSpan={12} className={styles.empty}>
+                매도 내역이 없습니다.
+              </td>
+            </tr>
+          ) : (
+            sales.map((profit) => (
+              <ProfitRow key={profit.saleId} profit={profit} />
+            ))
+          )}
+          {showSummary && (
+            <ProfitSummaryRow
+              totalSaleAmount={(data as InvestorProfit).totalSaleAmount}
+              totalPreTaxProfit={(data as InvestorProfit).totalPreTaxProfit}
+              totalAfterTaxProfit={(data as InvestorProfit).totalAfterTaxProfit}
+            />
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
