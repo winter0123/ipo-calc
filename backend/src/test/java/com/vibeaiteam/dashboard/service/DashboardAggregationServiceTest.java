@@ -124,6 +124,22 @@ class DashboardAggregationServiceTest {
                 .build();
     }
 
+    private Sale createSaleWithDate(Long id, Long allocationId, Long quantity, Long amount, Long fee, Long tax, Long otherCost, LocalDateTime saleDate) {
+        return Sale.builder()
+                .id(id)
+                .allocationId(allocationId)
+                .quantity(quantity)
+                .amount(amount)
+                .fee(fee != null ? fee : 0L)
+                .tax(tax != null ? tax : 0L)
+                .otherCost(otherCost != null ? otherCost : 0L)
+                .saleDate(saleDate)
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
     private Allocation createAllocation(Long id, Long subscriptionId, Long allocatedQuantity, Long allocationPrice) {
         return Allocation.builder()
                 .id(id)
@@ -635,6 +651,175 @@ class DashboardAggregationServiceTest {
         // Then: securitiesFirmId가 null인 데이터는 제외되고, 유효한 증권사만 반환
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getSecuritiesFirmId()).isEqualTo(200L);
+    }
+
+    @Test
+    void getByPeriodGroupsByMonthAndSortsAscending() {
+        // Given: 3개월(2024-01, 2024-02, 2024-03)에 각각 Sale 데이터
+        LocalDateTime jan = LocalDateTime.of(2024, 1, 15, 10, 0);
+        LocalDateTime feb = LocalDateTime.of(2024, 2, 20, 10, 0);
+        LocalDateTime mar = LocalDateTime.of(2024, 3, 10, 10, 0);
+        
+        Sale sale1 = createSaleWithDate(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L, jan);
+        Sale sale2 = createSaleWithDate(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L, feb);
+        Sale sale3 = createSaleWithDate(3L, 300L, 15L, 200000L, 1500L, 7000L, 300L, mar);
+        Sale sale4 = createSaleWithDate(4L, 400L, 10L, 180000L, 1000L, 5000L, 200L, mar); // 같은 기간(3월)에 2건
+        
+        Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+        Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+        Allocation allocation3 = createAllocation(300L, 3000L, 80L, 11000L);
+        Allocation allocation4 = createAllocation(400L, 4000L, 60L, 10000L);
+        
+        Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+        Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+        Subscription subscription3 = createSubscription(3000L, 30L, 3L, 3L, 100L);
+        Subscription subscription4 = createSubscription(4000L, 40L, 4L, 4L, 100L);
+        
+        Investor investor1 = createInvestor(10L, 1L, "투자자 A");
+        Investor investor2 = createInvestor(20L, 1L, "투자자 B");
+        Investor investor3 = createInvestor(30L, 1L, "투자자 C");
+        Investor investor4 = createInvestor(40L, 1L, "투자자 D");
+        
+        SecuritiesAccount securitiesAccount1 = createSecuritiesAccount(1L, 100L);
+        SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+        SecuritiesAccount securitiesAccount3 = createSecuritiesAccount(3L, 300L);
+        SecuritiesAccount securitiesAccount4 = createSecuritiesAccount(4L, 400L);
+        
+        SecuritiesFirm securitiesFirm1 = createSecuritiesFirm(100L, "증권사 A");
+        SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "증권사 B");
+        SecuritiesFirm securitiesFirm3 = createSecuritiesFirm(300L, "증권사 C");
+        SecuritiesFirm securitiesFirm4 = createSecuritiesFirm(400L, "증권사 D");
+        
+        Ipo ipo1 = createIpo(1L, 9000L);
+        Ipo ipo2 = createIpo(2L, 9500L);
+        Ipo ipo3 = createIpo(3L, 10000L);
+        Ipo ipo4 = createIpo(4L, 11000L);
+        
+        Cost cost1 = Cost.builder().id(1L).subscriptionId(1000L).amount(100000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost2 = Cost.builder().id(2L).subscriptionId(2000L).amount(150000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost3 = Cost.builder().id(3L).subscriptionId(3000L).amount(150000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost4 = Cost.builder().id(4L).subscriptionId(4000L).amount(80000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+
+        setupMocksWithSales(
+                List.of(sale1, sale2, sale3, sale4),
+                List.of(allocation1, allocation2, allocation3, allocation4),
+                List.of(subscription1, subscription2, subscription3, subscription4),
+                List.of(investor1, investor2, investor3, investor4),
+                List.of(securitiesAccount1, securitiesAccount2, securitiesAccount3, securitiesAccount4),
+                List.of(securitiesFirm1, securitiesFirm2, securitiesFirm3, securitiesFirm4),
+                List.of(cost1, cost2, cost3, cost4),
+                List.of(ipo1, ipo2, ipo3, ipo4)
+        );
+
+        // When
+        List<PeriodAggregationDto> result = dashboardAggregationService.getByPeriod("month");
+
+        // Then: 월별로 그룹핑, period 오름차순 정렬 (2024-01, 2024-02, 2024-03)
+        assertThat(result).hasSize(3);
+        
+        // 2024-01: 1건
+        PeriodAggregationDto dto1 = result.get(0);
+        assertThat(dto1.getPeriod()).isEqualTo("2024-01");
+        assertThat(dto1.getParticipationCount()).isEqualTo(1);
+        assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(50L * 10000L); // 500000
+        
+        // 2024-02: 1건
+        PeriodAggregationDto dto2 = result.get(1);
+        assertThat(dto2.getPeriod()).isEqualTo("2024-02");
+        assertThat(dto2.getParticipationCount()).isEqualTo(1);
+        assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(100L * 12000L); // 1200000
+        
+        // 2024-03: 2건
+        PeriodAggregationDto dto3 = result.get(2);
+        assertThat(dto3.getPeriod()).isEqualTo("2024-03");
+        assertThat(dto3.getParticipationCount()).isEqualTo(2);
+        // 80*11000 + 60*10000 = 880000 + 600000 = 1480000
+        assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(1480000L);
+    }
+
+    @Test
+    void getByPeriodGroupsByYearAndSortsAscending() {
+        // Given: 3년(2023, 2024, 2025)에 각각 Sale 데이터
+        LocalDateTime sale1Date = LocalDateTime.of(2023, 6, 15, 10, 0);
+        LocalDateTime sale2Date = LocalDateTime.of(2024, 3, 20, 10, 0);
+        LocalDateTime sale3Date = LocalDateTime.of(2024, 11, 10, 10, 0); // 같은 해(2024)에 2건
+        LocalDateTime sale4Date = LocalDateTime.of(2025, 1, 10, 10, 0);
+        
+        Sale sale1 = createSaleWithDate(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L, sale1Date);
+        Sale sale2 = createSaleWithDate(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L, sale2Date);
+        Sale sale3 = createSaleWithDate(3L, 300L, 15L, 200000L, 1500L, 7000L, 300L, sale3Date);
+        Sale sale4 = createSaleWithDate(4L, 400L, 10L, 180000L, 1000L, 5000L, 200L, sale4Date);
+        
+        Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+        Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+        Allocation allocation3 = createAllocation(300L, 3000L, 80L, 11000L);
+        Allocation allocation4 = createAllocation(400L, 4000L, 60L, 10000L);
+        
+        Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+        Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+        Subscription subscription3 = createSubscription(3000L, 30L, 3L, 3L, 100L);
+        Subscription subscription4 = createSubscription(4000L, 40L, 4L, 4L, 100L);
+        
+        Investor investor1 = createInvestor(10L, 1L, "투자자 A");
+        Investor investor2 = createInvestor(20L, 1L, "투자자 B");
+        Investor investor3 = createInvestor(30L, 1L, "투자자 C");
+        Investor investor4 = createInvestor(40L, 1L, "투자자 D");
+        
+        SecuritiesAccount securitiesAccount1 = createSecuritiesAccount(1L, 100L);
+        SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+        SecuritiesAccount securitiesAccount3 = createSecuritiesAccount(3L, 300L);
+        SecuritiesAccount securitiesAccount4 = createSecuritiesAccount(4L, 400L);
+        
+        SecuritiesFirm securitiesFirm1 = createSecuritiesFirm(100L, "증권사 A");
+        SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "증권사 B");
+        SecuritiesFirm securitiesFirm3 = createSecuritiesFirm(300L, "증권사 C");
+        SecuritiesFirm securitiesFirm4 = createSecuritiesFirm(400L, "증권사 D");
+        
+        Ipo ipo1 = createIpo(1L, 9000L);
+        Ipo ipo2 = createIpo(2L, 9500L);
+        Ipo ipo3 = createIpo(3L, 10000L);
+        Ipo ipo4 = createIpo(4L, 11000L);
+        
+        Cost cost1 = Cost.builder().id(1L).subscriptionId(1000L).amount(100000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost2 = Cost.builder().id(2L).subscriptionId(2000L).amount(150000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost3 = Cost.builder().id(3L).subscriptionId(3000L).amount(150000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        Cost cost4 = Cost.builder().id(4L).subscriptionId(4000L).amount(80000L).costType("TRANSFER_FEE").status("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+
+        setupMocksWithSales(
+                List.of(sale1, sale2, sale3, sale4),
+                List.of(allocation1, allocation2, allocation3, allocation4),
+                List.of(subscription1, subscription2, subscription3, subscription4),
+                List.of(investor1, investor2, investor3, investor4),
+                List.of(securitiesAccount1, securitiesAccount2, securitiesAccount3, securitiesAccount4),
+                List.of(securitiesFirm1, securitiesFirm2, securitiesFirm3, securitiesFirm4),
+                List.of(cost1, cost2, cost3, cost4),
+                List.of(ipo1, ipo2, ipo3, ipo4)
+        );
+
+        // When
+        List<PeriodAggregationDto> result = dashboardAggregationService.getByPeriod("year");
+
+        // Then: 연도별로 그룹핑, period 오름차순 정렬 (2023, 2024, 2025)
+        assertThat(result).hasSize(3);
+        
+        // 2023: 1건
+        PeriodAggregationDto dto1 = result.get(0);
+        assertThat(dto1.getPeriod()).isEqualTo("2023");
+        assertThat(dto1.getParticipationCount()).isEqualTo(1);
+        assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(50L * 10000L); // 500000
+        
+        // 2024: 2건
+        PeriodAggregationDto dto2 = result.get(1);
+        assertThat(dto2.getPeriod()).isEqualTo("2024");
+        assertThat(dto2.getParticipationCount()).isEqualTo(2);
+        // 100*12000 + 80*11000 = 1200000 + 880000 = 2080000
+        assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+        
+        // 2025: 1건
+        PeriodAggregationDto dto3 = result.get(2);
+        assertThat(dto3.getPeriod()).isEqualTo("2025");
+        assertThat(dto3.getParticipationCount()).isEqualTo(1);
+        assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(60L * 10000L); // 600000
     }
 
     @Test
