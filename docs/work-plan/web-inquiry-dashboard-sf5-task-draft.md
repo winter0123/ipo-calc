@@ -1,8 +1,8 @@
 # 웹 조회·대시보드 — SF-5 작업 초안 (web-inquiry-dashboard SF-5 task draft)
 
-> **게이트 문구**: 이 초안은 Epic 11·Epic 12가 main에 병합 확인된 뒤에만 frontend 팀장에게 전달한다. 전달 전 PR #157 병합 여부와 ui/ 실제 파일 상태를 재확인할 것.
+> **게이트 문구(2026-09-28 갱신)**: **PR #157은 이미 main에 병합**되었고, **PR #168(Epic 16 SF-1)·PR #162(Epic 11 SF-3)·PR #167(Epic 12 SF-1)도 병합 완료**다. 따라서 "PR #157 병합 여부 재확인" 게이트는 **사라졌다**. ui/ 실제 파일 상태는 본 문서 5절 "드리프트 점검"에 `origin/main` 기준으로 대조해 반영했다. 남은 게이트는 **Epic 12 SF-2~4(`/summary`, `/by-investor`, `/by-securities-firm`, `/by-period`) 병합 확인**뿐이며, 병합되면 mock이 아닌 실연동으로 검증해야 한다.
 >
-> **참고: Epic 12는 backend가 SF-1~4를 한 번에 구현 중 — 병합 시점에 API 상태를 재확인할 것** (아직 병합 전이므로 API가 이미 구현됐다고 단정하지 않음)
+> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java`
 
 ---
 
@@ -12,7 +12,7 @@
 
 **커버하는 AC**: AC-008(기간 파라미터 유효성 검사), AC-004(월별 집계 정상), AC-005(연도별 집계 정상), AC-019(접근성), AC-020(반응형), AC-021(네트워크 오류). E2E 시나리오 9/10/11/12/13/14/15/16/17/18/19/20/21/22는 이 SF 대상 (참고: 기간별 탭 관련 시나리오).
 
-**선행 SF**: SF-4 (필수). **백엔드 선행 조건: Epic 12(대시보드 집계 API) 미구현** — 현재 SF-4까지 완료된 Epic 12는 미구현 상태.
+**선행 SF**: SF-4 (필수). **백엔드 선행 조건: Epic 12의 대시보드 엔드포인트가 아직 main에 없음** — `DashboardController`·DTO 4종·`DashboardAggregationService`는 SF-1로 이미 병합(PR #167)됐고, `@GetMapping`은 SF-2~4에서 붙는다. 이 SF가 쓰는 `/by-period`는 SF-4 범위다. (2026-09-28 드리프트 정정, 원문은 "Epic 12 미구현"이었음)
 
 **산출물 파일 경로** (architecture.md "모듈 소유권" 참고, FSD):
 - `features/dashboard/PeriodSelector/PeriodSelector.tsx` (+ `.module.css`) — 연도 선택기 컴포넌트 (Input 필드 + 버튼 또는 Select)
@@ -21,7 +21,9 @@
 - `entities/dashboard/api-client.ts` — 기존 파일 업데이트 (년도 및 월 선택 사항을 파라미터로 전달하는 함수 수정)
 
 **사용 백엔드 API** (spec.md, architecture.md 참고):
-- `GET /dashboard/by-period?unit=month|year&year=<year>&month=<month>` — Epic 12, **미구현** (해당 파라미터 전달)
+- `GET /dashboard/by-period?unit=month|year&year=<year>&month=<month>` — Epic 12 SF-4, **아직 main에 없음** (이번 세션에 backend가 SF-2~4 완료 예정 → 착수 직전 재확인)
+
+> 2026-09-28 드리프트 정정: 원문은 "Epic 12, **미구현**"이었다. SF-1 기반 계층은 병합(#167)됐고 엔드포인트는 진행 중이므로 표현을 바꿨다. `PeriodAggregationDto`(PR #167 병합)가 이 API의 응답 DTO 정본이다.
 
 **특이사항** (breakdown.md, spec.md, architecture.md 종합):
 - **연도 선택기**: 사용자가 4자리 연도를 입력할 수 있는 Input 컴포넌트를 제공하며, 빈 값이면 현재 연도를 기본값으로 사용한다. 월별 탭에서는 월은 항상 현재 월을 기본값으로 사용하고, 월 선택기는 spec에 명시가 없으므로 이 SF의 범위에 포함하지 않는다(향후 고려 사항으로 남김).
@@ -45,7 +47,7 @@ Epic 16(web-inquiry-dashboard) SF-5 수행: 대시보드 화면(/dashboard)의 �
 
 ## 범위 (In Scope)
 1. **PeriodSelector 컴포넌트** (\`ui/src/features/dashboard/PeriodSelector/PeriodSelector.tsx\` + \`.module.css\`)
-   - 연도 입력 필드: 4자리 연도 숫자 입력 가능한 Input 컴포넌트 (shared/components/Input 재사용)
+   - 연도 입력 필드: 4자리 연도 숫자 입력 가능한 `<input type="number">` (2026-09-28 드리프트 정정 — 원문은 "Input 컴포넌트 (shared/components/Input 재사용)"이었으나 **`ui/src/shared/components/Input/`는 존재하지 않는다**. 기존 화면의 인라인 `<input>` + `styles.css` 모듈 패턴을 따를 것. 공용 Input을 새로 만들지 말 것)
    - 빈 값이면 현재 연도를 기본값으로 사용 (새 Date().getFullYear())
    - 입력 유효성: 숫자 4자리, 합리적 범위(예: 2000~현재연도+1) 검증 — 클라이언트 사이드 1차 검증, 서버 400 응답 시 에러 메시지 표시
    - 조회 버튼: Button 컴포넌트(shared 재사용) — 클릭 시 onSearch 콜백 호출, year 값 전달
@@ -70,7 +72,7 @@ Epic 16(web-inquiry-dashboard) SF-5 수행: 대시보드 화면(/dashboard)의 �
    - 월별 탭: \"월: <현재 월>\" 표시(읽기 전용) + 연도 선택기 + 조회 버튼
    - 연도별 탭: 연도 선택기 + 조회 버튼
    - 빈 결과 시 EmptyState(재사용) 표시 — \"해당 조건에 해당하는 기록이 없습니다.\" + 필터 초기화 버튼(현재 탭 재조회 + 연도 선택기 초기화)
-   - 에러 시 ErrorMessage(shared) 표시 — 네트워크/500 에러 메시지
+   - 에러 시 인라인 `<p role="alert">` 표시 — 네트워크/500 에러 메시지 (2026-09-28 드리프트 정정 — shared `ErrorMessage` 컴포넌트는 존재하지 않는다. `InvestmentHistoryPage.tsx`의 `getErrorMessage()` 패턴을 따를 것)
    - 비즈니스 로직 누적하지 않음 (선언적 UI만)
 
 4. **entities/dashboard/api-client.ts 업데이트** (기존 파일 수정)
@@ -95,6 +97,7 @@ Epic 16(web-inquiry-dashboard) SF-5 수행: 대시보드 화면(/dashboard)의 �
 - docs/guide-frontend.md (검증 명령, 기술 기준, FSD 구조 규칙)
 - ui/src/widgets/EmptyState/EmptyState.tsx (SF-1 산출물 — 재사용)
 - ui/src/shared/components/Button/Button.tsx, Input/Input.tsx, FormField/FormField.tsx, ErrorMessage/ErrorMessage.tsx, Spinner/Spinner.tsx (기존 재사용 — 중복 생성 금지)
+  > **2026-09-28 드리프트 정정**: 위 5개 파일은 **모두 존재하지 않는다**(저장소 전체 이력에 생성 기록 0건). `ui/src/shared/components/`에는 `ConfirmDialog`만 있다. 인라인 `<input>`/`<p role="alert">` 패턴으로 구현할 것.
 - ui/src/shared/api/client.ts (apiFetch — Issue #134 수정 완료 패턴 확인)
 - ui/src/features/dashboard/useDashboardByPeriod.ts (SF-4 산출물 — 업데이트 대상)
 - ui/src/pages/DashboardPage/DashboardPage.tsx (SF-4 산출물 — 업데이트 대상)
@@ -152,7 +155,7 @@ pnpm run build
    - PR 생성 및 리뷰 요청 (병합은 Master 승인 후)
 
 6. **Mock 데이터 검증**
-   - GET /dashboard/by-period 미구현이므로 mock 데이터로 연도 선택/월별·연도별 탭/빈 결과/에러/유효성 검사 플로우 수동 확인 완료
+   - GET /dashboard/by-period 엔드포인트가 아직 main에 없으므로 mock 데이터로 연도 선택/월별·연도별 탭/빈 결과/에러/유효성 검사 플로우 수동 확인 완료
    - 연도 미입력(기본값 현재 연도), 연도 입력(특정 연도), 잘못된 연도(숫자 아님/범위 밖) 케이스 확인
    - 월별 탭: month=현재월 자동 전달, 연도별 탭: month 미전달 확인
    - 실연동은 Epic 12(SF-4) 완료 후 전환 예정
@@ -187,16 +190,56 @@ pnpm run build
 
 ## 4. 참고 사항 (작업자 인수인계용)
 
-- **PR #157 현황**: Epic 16 컴포넌트/라우팅 실측 점검 결과가 담긴 PR로, `/dashboard` 라우트가 이미 investor 목록 페이지를 가리키고 있어 재작성 필요, `/investments` 라우트 없음. 이 초안에는 코드로 확인하지 말고 \"PR #157 병합 후 실제 파일 상태 재확인 필요\" 문구만 상단 게이트에 남김.
+- **라우팅 갭 #3 (2026-09-28 재확인 → 해소됨)**: 원문은 "`/dashboard` 라우트가 이미 investor 목록 페이지를 가리키고 있어 재작성 필요, **`/investments` 라우트 없음**"이었다. `/investments`는 **PR #168(Epic 16 SF-1)로 main에 추가되어 해소**되었다. 이 SF는 라우팅을 건드리지 않는다.
+- **shared 컴포넌트 실제 목록**: `ui/src/shared/components/`에는 `ConfirmDialog`만 있다. `Button`/`Input`/`FormField`/`ErrorMessage`/`Spinner`은 생성 이력이 없다.
 - **GitHub Issue #134**: `apiFetch`가 서버 400 메시지를 버리는 문제. breakdown.md에 별도 SF-0로 분리할지 각 폼 SF에 포함할지 범위 밖으로 미룰지 사용자 결정 대기 중. 결정 전까지는 현재 패턴(`shared/api/client.ts`의 수정된 `apiFetch` + 폼의 `getFormErrorMessage()` 패턴)대로 구현하되, 추후 일괄 수정 가능성 염두.
 - **EmptyState 위젯 재사용**: SF-1에서 생성된 `widgets/EmptyState/`를 그대로 재사용함. 대시보드에서는 필터 초기화 버튼이 \"현재 탭 재조회\" 역할로 동작하도록 useDashboardTabs 훅과 연동. SF-5에서는 연도 선택기도 함께 초기화.
 - **SF-4 산출물 의존**: useDashboardByPeriod 훅, entities/dashboard/api-client.ts, DashboardPage는 SF-4에서 생성된 것을 업데이트함.
 - **월 선택기 미포함**: spec(D-W16-005)에 \"월별 탭 선택 시 기본 최신 월을 조회하고, 필요시 연도 선택기를 함께 제공한다\"고만 명시되어 월 선택기는 범위 밖. 향후 별도 고려 사항으로 남김.
-- **연도 유효성 검사**: 클라이언트 1차 검증(숫자 4자리, 2000~현재연도+1 범위) + 서버 400 응답 시 에러 메시지 표시(기존 ErrorMessage 패턴 재사용). INVALID_YEAR 에러 코드는 서버 계약에 따름.
+- **연도 유효성 검사**: 클라이언트 1차 검증(숫자 4자리, 2000~현재연도+1 범위) + 서버 400 응답 시 에러 메시지 표시(인라인 `<p role="alert">` 패턴 — shared ErrorMessage는 미존재). INVALID_YEAR 에러 코드는 서버 계약에 따름.
 - **SF-1~2 산출물과 독립**: 대시보드 화면은 투자 내역 화면과 별도 페이지이므로 SF-1~2 산출물과 파일 충돌 없음.
 
 ---
 
-**문서 버전**: 1.0 (초안)  
+## 5. 드리프트 점검 (2026-09-28, ui/ 실제 코드 대조)
+
+**대조 기준**: `origin/main`의 실제 파일(`git show origin/main:<path>`). 본 문서의 워크트리는 origin/main보다 뒤처져 있어(PR #157·#167·#168 미반영) 판단은 항상 origin/main 기준이다.
+
+**필수 검증 명령 결과** (`grep -rn "navigate(" ui/src --include="*.tsx" | grep -i "investments\|dashboard"`):
+
+```text
+ui/src/features/investor-register/InvestorRegisterForm.tsx:27:        navigate('/dashboard')
+ui/src/features/securities-account-register/SecuritiesAccountRegisterForm.tsx:39:          navigate('/dashboard')
+ui/src/features/login/LoginForm.tsx:20:        navigate('/dashboard')
+```
+
+> 이 명령은 `--include="*.tsx"`라 `useSaleRegister.ts`(.ts)의 `navigate('/investments')`를 잡지 못한다. `.ts`를 포함하면 1건이 추가된다(세부 내용은 SF-2 초안의 드리프트 점검 절 참조).
+
+### 라우팅 갭 #3 결론: **해소됨** (`/investments`는 PR #168로 추가됨)
+
+- 이 SF는 라우팅과 무관하다. 연도 선택기를 `DashboardPage` 안에 배치하는 것이 유일한 UI 작업이다.
+
+### 발견한 드리프트 목록 (원문 인용 → 정정)
+
+| # | 위치 | 원문 인용 | 사실 | 정정 |
+|---|---|---|---|---|
+| 1 | 1절 선행 SF | "**백엔드 선행 조건: Epic 12(대시보드 집계 API) 미구현**" | SF-1 기반 계층은 PR #167로 병합됨. 엔드포인트만 SF-2~4에서 추가 | 본문 수정 완료 |
+| 2 | 1절 사용 API | "`GET /dashboard/by-period...` — Epic 12, **미구현**" | SF-4 진행 중. 응답 DTO(`PeriodAggregationDto`)는 이미 main에 있음 | 본문 수정 완료 |
+| 3 | 2절 spec 1번 | "연도 입력 필드: 4자리 연도 숫자 입력 가능한 **Input 컴포넌트 (shared/components/Input 재사용)**" | `ui/src/shared/components/Input/` 미존재(생성 이력 0건) | 본문 수정 완료 — 인라인 `<input>` |
+| 4 | 2절 spec (에러 처리) | "에러 시 **ErrorMessage(shared)** 표시" | `ErrorMessage` 미존재 | 본문 수정 완료 — 인라인 `<p role="alert">` |
+| 5 | 2절 읽을 파일 | "ui/src/shared/components/Button/Button.tsx, Input/Input.tsx, FormField/FormField.tsx, ErrorMessage/ErrorMessage.tsx, Spinner/Spinner.tsx (기존 재사용 — 중복 생성 금지)" | 5개 파일 모두 없음 | 본문 수정 완료 |
+| 6 | 2절 완료 조건 6번 | "GET /dashboard/by-period 미구현이므로 mock 데이터로..." | 표현만 부정확(엔드포인트만 미병합) | 본문 수정 완료 |
+| 7 | 4절 참고 | "**`/investments` 라우트 없음**" | PR #168로 존재 | 본문 수정 완료 (해소됨) |
+| 8 | 4절 참고 | "기존 **ErrorMessage 패턴** 재사용" | shared ErrorMessage 미존재 | 본문 수정 완료 |
+
+### 착수 전 확인 필요 (사용자 결정)
+
+1. **Epic 12 SF-4(`/by-period`) 병합 시점**: 병합 후에는 `year`/`month` 파라미터 계약을 `PeriodAggregationDto` 기준으로 확정하고 실연동 재검증한다.
+2. **공용 Input 생성 여부**: 이 SF가 첫 Input 사용처다. 여기서 `shared/components/Input`을 새로 만들지 않으면 이후 Epic에서 인라인 `<input>`이 계속 중복된다.
+
+---
+
+**문서 버전**: 1.1 (초안 + 2026-09-28 드리프트 점검 반영)  
 **작성일**: 2026-09-28  
+**드리프트 점검일**: 2026-09-28 (ui/ 실제 코드 대조, 대조 기준 `origin/main`)  
 **담당**: planning 그룹 → frontend 팀장 전달 대기
