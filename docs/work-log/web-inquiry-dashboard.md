@@ -130,3 +130,42 @@ Epic 16 SF-3 수행: 대시보드 화면(/dashboard)의 탭 전환(DashboardTabs
 - `/investments` 라우트는 PR #168로 이미 존재하므로 네비게이션 링크 유효
 - 실연동은 Epic 12(SF-2~4) 병합 후 전환 예정
 - `securities-firm` 키는 oxc 파서 오류(`-`를 뺄셈으로 인식)를 방지하기 위해 `TAB_LABELS_MAP`과 `getTabKey` 함수로 별도 처리
+
+## 2026-09-28 — SF-4 구현 완료 (frontend worker)
+
+### 작업 개요
+Epic 16 SF-4 수행: 대시보드 카드 위젯(DashboardCardGroup, DashboardCard), 4개 대시보드 API용 TanStack Query 훅, entities/dashboard 신규 생성. **실연동**으로 진행 (Epic 12 SF-1~4가 main에 병합 완료). SF-3(DashboardTabs, useDashboardTabs)은 그대로 재사용.
+
+### 구현 파일
+- **신규**: `ui/src/entities/dashboard/types.ts` — DashboardSummary, DashboardByInvestor, DashboardBySecuritiesFirm, DashboardByPeriod 타입 정의 (backend DTO Long→number, Double→number 매핑)
+- **신규**: `ui/src/entities/dashboard/api-client.ts` — GET /dashboard/summary, /by-investor, /by-securities-firm, /by-period 호출 함수
+- **신규**: `ui/src/features/dashboard/useDashboardSummary.ts` — queryKey ['dashboardSummary'], enabled 옵션 지원
+- **신규**: `ui/src/features/dashboard/useDashboardByInvestor.ts` — queryKey ['dashboardByInvestor']
+- **신규**: `ui/src/features/dashboard/useDashboardBySecuritiesFirm.ts` — queryKey ['dashboardBySecuritiesFirm']
+- **신규**: `ui/src/features/dashboard/useDashboardByPeriod.ts` — queryKey ['dashboardByPeriod', unit, year?, month?]
+- **신규**: `ui/src/widgets/DashboardCardGroup/DashboardCardGroup.tsx` + `.module.css` — 5개 카드 그리드, 반응형(모바일1열/태블릿2열/데스크톱5열)
+- **신규**: `ui/src/widgets/DashboardCard/DashboardCard.tsx` + `.module.css` — 레이블+값, 금액/퍼센트/정수 포맷팅, 총투자금 0일 때 수익률 0.0%
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.tsx` — mock-hooks 제거, 실 API 훅으로 교체, 인라인 카드/리스트 제거 후 DashboardCardGroup/DashboardCard 위젯 호출
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.module.css` — cardGrid/card 제거, list/loading/error/navLink 유지
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.test.tsx` — mock-hooks.ts 대신 개별 훅 모킹
+- **삭제**: `ui/src/features/dashboard/mock-hooks.ts` — 실연동으로 대체
+- **추가**: `docs/work-log/web-inquiry-dashboard.md` — 작업 로그 append
+
+### 검증 결과
+- `pnpm run test`: 123 passed ✅
+- `pnpm run lint`: 0 errors (10 warnings, 모두 test 파일 any) ✅
+- `pnpm run typecheck`: ✅
+- `pnpm run build`: ✅
+- `pnpm run format:check`: 내 파일 모두 통과 ✅
+
+### 실연동 확인
+- GET /dashboard/summary, /by-investor, /by-securities-firm, /by-period 모두 backend에 존재 (Epic 12 SF-2~4 병합 확인됨)
+- SummaryDto(Long/Double → number), InvestorAggregationDto, SecuritiesFirmAggregationDto, PeriodAggregationDto 타입 매핑 완료
+- `useDashboardByPeriod`는 unit 파라미터로 month/year 구분
+
+### 참고
+- EmptyState 위젯은 SF-1에서 생성된 `widgets/EmptyState/`를 그대로 재사용
+- shared `Spinner`/`ErrorMessage` 컴포넌트는 존재하지 않으므로 인라인 `<p>` 패턴 사용
+- `/investments` 라우트는 PR #168로 이미 존재하므로 네비게이션 링크 유효
+- `useDashboardTabs.ts`, `DashboardTabs.tsx`는 SF-3 산출물로 수정 최소화
+- `docs/current-status.md`는 Master 전용 문서이므로 건드리지 않음

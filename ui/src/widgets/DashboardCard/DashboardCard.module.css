@@ -1,0 +1,42 @@
+.card {
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 모바일 */
+@media (max-width: 640px) {
+  .card {
+    padding: 12px;
+  }
+  .value {
+    font-size: 18px;
+  }
+}
+
+/* 데스크톱 */
+@media (min-width: 1024px) {
+  .card {
+    padding: 20px;
+  }
+  .value {
+    font-size: 24px;
+  }
+}
