@@ -18,6 +18,15 @@ export async function getDashboardBySecuritiesFirm(): Promise<DashboardBySecurit
   return apiFetch<DashboardBySecuritiesFirm[]>('/dashboard/by-securities-firm', { method: 'GET' })
 }
 
-export async function getDashboardByPeriod(unit: 'month' | 'year'): Promise<DashboardByPeriod[]> {
-  return apiFetch<DashboardByPeriod[]>(`/dashboard/by-period?unit=${unit}`, { method: 'GET' })
+export async function getDashboardByPeriod(
+  unit: 'month' | 'year',
+  year?: number,
+  month?: number,
+): Promise<DashboardByPeriod[]> {
+  const params = new URLSearchParams({ unit })
+  if (year !== undefined) params.set('year', String(year))
+  if (month !== undefined) params.set('month', String(month))
+  return apiFetch<DashboardByPeriod[]>(`/dashboard/by-period?${params.toString()}`, {
+    method: 'GET',
+  })
 }

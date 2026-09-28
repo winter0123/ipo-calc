@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDashboardTabs } from '../../features/dashboard/useDashboardTabs.ts'
 import { useDashboardSummary } from '../../features/dashboard/useDashboardSummary.ts'
@@ -7,19 +8,24 @@ import { useDashboardByPeriod } from '../../features/dashboard/useDashboardByPer
 import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
 import DashboardTabs from '../../features/dashboard/DashboardTabs/DashboardTabs.tsx'
 import DashboardCardGroup from '../../widgets/DashboardCardGroup/DashboardCardGroup.tsx'
+import PeriodSelector from '../../features/dashboard/PeriodSelector/PeriodSelector.tsx'
 import styles from './DashboardPage.module.css'
 
 export default function DashboardPage() {
   const { currentTab, setCurrentTab, invalidateCurrentTab } = useDashboardTabs()
   const queryClient = useQueryClient()
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
 
   const summaryQuery = useDashboardSummary({ enabled: currentTab === 'all' })
   const investorQuery = useDashboardByInvestor({ enabled: currentTab === 'investor' })
   const securitiesFirmQuery = useDashboardBySecuritiesFirm({
     enabled: currentTab === 'securities-firm',
   })
-  const monthQuery = useDashboardByPeriod({ unit: 'month', enabled: currentTab === 'month' })
-  const yearQuery = useDashboardByPeriod({ unit: 'year', enabled: currentTab === 'year' })
+  const periodQuery = useDashboardByPeriod({
+    unit: currentTab === 'month' ? 'month' : 'year',
+    year: selectedYear,
+    enabled: currentTab === 'month' || currentTab === 'year',
+  })
 
   const currentQuery = (() => {
     switch (currentTab) {
@@ -30,9 +36,9 @@ export default function DashboardPage() {
       case 'securities-firm':
         return securitiesFirmQuery
       case 'month':
-        return monthQuery
+        return periodQuery
       case 'year':
-        return yearQuery
+        return periodQuery
     }
   })()
 
@@ -40,7 +46,12 @@ export default function DashboardPage() {
     setCurrentTab(tab)
   }
 
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year)
+  }
+
   const handleReset = () => {
+    setSelectedYear(new Date().getFullYear())
     invalidateCurrentTab(queryClient)
   }
 
@@ -61,6 +72,8 @@ export default function DashboardPage() {
     }
     return '대시보드 데이터를 불러오는 데 실패했습니다.'
   }
+
+  const hasPeriodSelector = currentTab === 'month' || currentTab === 'year'
 
   const renderContent = () => {
     if (currentQuery.isLoading) {
@@ -136,6 +149,13 @@ export default function DashboardPage() {
       <h1 className={styles.title}>대시보드</h1>
       <DashboardTabs currentTab={currentTab} onTabChange={handleTabChange} />
       <div className={styles.resultsArea}>
+        {hasPeriodSelector && (
+          <PeriodSelector
+            unit={currentTab === 'month' ? 'month' : 'year'}
+            initialYear={selectedYear}
+            onSearch={handleYearChange}
+          />
+        )}
         {renderContent()}
         <nav className={styles.navLink}>
           <a href="/investments">투자 내역 화면으로 이동</a>

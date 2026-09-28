@@ -10,13 +10,17 @@ interface UseDashboardByPeriodOptions {
 }
 
 export function useDashboardByPeriod({ unit, year, month, enabled }: UseDashboardByPeriodOptions) {
+  const currentMonth = new Date().getMonth() + 1
+  const effectiveMonth = unit === 'month' ? (month ?? currentMonth) : undefined
+  const effectiveYear = year
+
   const queryKey: (string | number)[] = ['dashboardByPeriod', unit]
-  if (year !== undefined) queryKey.push(year)
-  if (month !== undefined) queryKey.push(month)
+  if (effectiveYear !== undefined) queryKey.push(effectiveYear)
+  if (effectiveMonth !== undefined) queryKey.push(effectiveMonth)
 
   return useQuery<DashboardByPeriod[], Error>({
     queryKey,
-    queryFn: () => getDashboardByPeriod(unit),
+    queryFn: () => getDashboardByPeriod(unit, effectiveYear, effectiveMonth),
     enabled: enabled ?? true,
     staleTime: 0,
     select: (data) => data,

@@ -169,3 +169,36 @@ Epic 16 SF-4 수행: 대시보드 카드 위젯(DashboardCardGroup, DashboardCar
 - `/investments` 라우트는 PR #168로 이미 존재하므로 네비게이션 링크 유효
 - `useDashboardTabs.ts`, `DashboardTabs.tsx`는 SF-3 산출물로 수정 최소화
 - `docs/current-status.md`는 Master 전용 문서이므로 건드리지 않음
+
+## 2026-09-28 — SF-5 구현 완료 (frontend worker)
+
+### 작업 개요
+Epic 16 SF-5 수행: 기간별 탭(월별/연도별)에서 사용할 연도 선택기(PeriodSelector) 컴포넌트 구현, `useDashboardByPeriod` 훅 업데이트(연도/월 파라미터 전달), `DashboardPage`에 PeriodSelector 배치, `entities/dashboard/api-client.ts`의 `getDashboardByPeriod`에 year/month 쿼리 파라미터 추가. **실연동**으로 진행 (GET /dashboard/by-period는 이미 main에 존재, PR #174). SF-4(DashboardCardGroup, DashboardCard, 4개 useDashboard* 훅, entities/dashboard)는 완료된 것으로 가정.
+
+### 구현 파일
+- **신규**: `ui/src/features/dashboard/PeriodSelector/PeriodSelector.tsx` — 연도 Input(4자리 숫자) + 조회 버튼, 빈 값 시 현재 연도 기본값, 클라이언트 유효성 검증(4자리/범위), 월별 탭에서 "월: 현재 월" 읽기 전용 표시, aria-label/aria-invalid/aria-describedby 적용
+- **신규**: `ui/src/features/dashboard/PeriodSelector/PeriodSelector.module.css` — 반응형(PERIODSelector 모바일 전체 폭/데스크톱 폭 제한), 인라인 input 패턴
+- **수정**: `ui/src/features/dashboard/useDashboardByPeriod.ts` — `getDashboardByPeriod(unit, year?, month?)` 호출로 업데이트, `effectiveMonth` 자동 결정(월별 탭→현재 월, 연도별 탭→undefined), `queryKey`에 year/month 포함
+- **수정**: `ui/src/entities/dashboard/api-client.ts` — `getDashboardByPeriod(unit, year?, month?)`로 업데이트, URLSearchParams로 year/month 쿼리 스트링 전달
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.tsx` — `selectedYear` 상태 추가, `PeriodSelector` 배치(월/연도 탭), `handleYearChange`/`handleReset` 업데이트, `useDashboardByPeriod`에 `year` 파라미터 전달
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.module.css` — 추가 스타일 불필요(PeriodSelector 자체 CSS 모듈)
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.test.tsx` — `useDashboardTabs` mock 추가, `PeriodSelector` mock 추가, 월별 탭 테스트 추가
+- **추가**: `docs/work-log/web-inquiry-dashboard.md` — 작업 로그 append
+
+### 검증 결과
+- `pnpm run test`: 124 passed ✅
+- `pnpm run lint`: 0 errors (11 warnings, 모두 test 파일 any) ✅
+- `pnpm run typecheck`: ✅
+- `pnpm run build`: ✅
+- `pnpm run format:check`: 내 파일 모두 통과 ✅
+
+### 실연동 확인
+- GET /dashboard/by-period는 backend에 존재 (Epic 12 SF-4, PR #174)
+- `getDashboardByPeriod('month', year, currentMonth)` → `/dashboard/by-period?unit=month&year=YYYY&month=M`
+- `getDashboardByPeriod('year', year)` → `/dashboard/by-period?unit=year&year=YYYY`
+- year/month가 undefined이면 쿼리 스트링에 포함하지 않음
+
+### 참고
+- `ui/src/shared/components/`에는 ConfirmDialog만 존재하므로 Button은 인라인 `<button>`으로 구현
+- `PeriodSelector`는 자체 CSS 모듈을 가지며, `DashboardPage.module.css`에 추가 스타일 불필요
+- `docs/current-status.md`는 Master 전용 문서이므로 건드리지 않음

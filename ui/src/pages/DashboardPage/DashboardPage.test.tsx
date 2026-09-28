@@ -49,6 +49,34 @@ vi.mock('../../features/dashboard/useDashboardBySecuritiesFirm.ts', () => ({
 vi.mock('../../features/dashboard/useDashboardByPeriod.ts', () => ({
   useDashboardByPeriod: vi.fn(() => defaultEmptyQuery),
 }))
+vi.mock('../../features/dashboard/useDashboardTabs.ts', () => ({
+  useDashboardTabs: vi.fn(() => ({
+    currentTab: 'all',
+    setCurrentTab: vi.fn(),
+    invalidateCurrentTab: vi.fn(),
+    getTabQueryConfig: vi.fn(),
+  })),
+}))
+vi.mock('../../features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
+  default: function MockPeriodSelector(props: {
+    unit: string
+    initialYear?: number
+    onSearch: (year: number) => void
+  }) {
+    return (
+      <div data-testid="period-selector" data-unit={props.unit}>
+        <input type="number" data-testid="year-input" defaultValue={props.initialYear} />
+        <button
+          type="button"
+          data-testid="search-button"
+          onClick={() => props.onSearch(props.initialYear ?? 2026)}
+        >
+          조회
+        </button>
+      </div>
+    )
+  },
+}))
 
 describe('DashboardPage', () => {
   beforeEach(() => {
@@ -104,6 +132,29 @@ describe('DashboardPage', () => {
     await waitForLoaded()
 
     expect(screen.getByText('해당 조건에 해당하는 기록이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('월별 탭에서 PeriodSelector가 렌더링됨', async () => {
+    const { useDashboardByPeriod } =
+      await import('../../features/dashboard/useDashboardByPeriod.ts')
+    vi.mocked(useDashboardByPeriod).mockReturnValue({
+      data: [] as unknown,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    const { useDashboardTabs } = await import('../../features/dashboard/useDashboardTabs.ts')
+    vi.mocked(useDashboardTabs).mockReturnValue({
+      currentTab: 'month',
+      setCurrentTab: vi.fn(),
+      invalidateCurrentTab: vi.fn(),
+      getTabQueryConfig: vi.fn(),
+    })
+
+    renderPage()
+    await waitForLoaded()
+
+    expect(screen.getByTestId('period-selector')).toBeInTheDocument()
   })
 
   it('투자 내역 화면으로 이동 링크가 존재함', async () => {
