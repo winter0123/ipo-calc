@@ -14,7 +14,7 @@ import lombok.Setter;
 public class AllocationSummaryDto {
 
     private Long id;
-    private Integer allocatedQuantity;
+    private Long allocatedQuantity;
     private Long allocationPrice;
     private String allocationStatus;
 }

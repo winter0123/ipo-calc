@@ -20,7 +20,7 @@ public class InvestmentHistoryDto {
     private Long ipoId;
     private String ipoName;
     private Long ipoFixedPrice;
-    private Integer subscriptionQuantity;
+    private Long subscriptionQuantity;
     private String subscriptionStatus;
     private AllocationSummaryDto allocation;
     private List<SaleSummaryDto> sales;

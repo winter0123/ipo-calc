@@ -26,4 +26,11 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
            "WHERE a.deletedAt IS NULL AND i.id = :investorId " +
            "ORDER BY a.createdAt DESC")
     List<Allocation> findByInvestorId(@Param("investorId") Long investorId);
+
+    /**
+     * 배치 조회: subscriptionId 목록으로 Allocation 일괄 조회 (N+1 방지용)
+     * deletedAt IS NULL 조건 포함
+     */
+    @Query("SELECT a FROM Allocation a WHERE a.subscriptionId IN :subscriptionIds AND a.deletedAt IS NULL")
+    List<Allocation> findBySubscriptionIdIn(@Param("subscriptionIds") List<Long> subscriptionIds);
 }

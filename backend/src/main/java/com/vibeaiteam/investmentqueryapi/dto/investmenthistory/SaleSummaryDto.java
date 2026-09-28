@@ -14,7 +14,7 @@ import lombok.Setter;
 public class SaleSummaryDto {
 
     private Long id;
-    private Integer quantity;
+    private Long quantity;
     private Long amount;
     private Long fee;
     private Long tax;
