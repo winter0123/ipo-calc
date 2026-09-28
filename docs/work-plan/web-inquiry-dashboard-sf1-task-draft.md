@@ -186,6 +186,19 @@ pnpm run build
 
 ---
 
-**문서 버전**: 1.0 (초안)  
+## 5. 드리프트 점검 (2026-09-28, ui/ 실제 코드 대조) — 참고용
+
+**이 초안은 이미 구현·병합 완료(PR #168)되어 더 이상 실행하지 않는다.** 다만 SF-2~5 인수인계 전에 알아둘 사실이 있어 기록한다.
+
+- **라우팅 갭 #3 → 해소됨**: 이 초안 작성 시점에는 "`/investments` 라우트 없음"이 사실이었으나, PR #168로 `App.tsx`에 `<Route path="/investments" element={<InvestmentHistoryPage />} />`가 추가되어 해소되었다.
+- **Epic 11 SF-3 완료**: 원문 "`GET /investment-history/{subscriptionId}`(상세 조회, Epic 11 SF-3)만 미구현이므로 해당 훅은 mock으로 처리"는 더 이상 사실이 아니다. PR #162로 구현·병합되어 실연동 가능하다.
+- **함수명 오기**: 원문 "`getInvestmentHistory/getInvestmentHistoryById` 사용"에서 상세 조회의 실제 함수명은 **`getSubscriptionDetail`**이다(`git show origin/main:ui/src/entities/subscription/api-client.ts`).
+- **shared 컴포넌트 부재**: 원문이 "PR #157 병합 후 실제 파일 상태 재확인 필요"만 남긴 부분은, `ui/src/shared/components/`에 `ConfirmDialog`만 있고 `Button`/`Input`/`FormField`/`ErrorMessage`/`Spinner`는 생성 이력이 없다는 사실로 정정한다.
+
+> 상세 드리프트 목록은 SF-2 초안의 5절 "드리프트 점검"에 있다.
+
+---
+
+**문서 버전**: 1.1 (초안, 참고용 드리프트 메모 추가)  
 **작성일**: 2026-09-28  
 **담당**: planning 그룹 → frontend 팀장 전달 대기
