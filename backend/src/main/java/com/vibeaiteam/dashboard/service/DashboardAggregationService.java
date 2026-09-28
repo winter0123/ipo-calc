@@ -394,12 +394,76 @@ public class DashboardAggregationService {
     }
 
     /**
-     * 기간별 집계 (SF-4에서 구현 예정)
+     * 기간별 집계 (SF-4: 기간별 실현수익 집계 API 구현)
+     * loadCalculatedSales() 결과를 saleDateKey 기준으로 그룹핑해 각 기간별 집계값을 계산한다.
+     * unit=month: saleDateKey("YYYY-MM")를 그대로 그룹 키로 사용
+     * unit=year: saleDateKey의 앞 4자리("YYYY")를 그룹 키로 사용
+     * period 문자열 오름차순으로 정렬해 반환 (AC-004, AC-005).
+     * 데이터가 없으면 빈 리스트 반환.
+     * 
+     * @param unit "month" 또는 "year" (Controller에서 사전 검증됨)
      */
     public List<PeriodAggregationDto> getByPeriod(String unit) {
-        // TODO: unit 검증 후 loadCalculatedSales() 결과를 saleDate 기준 그룹핑
-        // unit=month: "YYYY-MM", unit=year: "YYYY"
-        return Collections.emptyList();
+        List<CalculatedSale> calculatedSales = loadCalculatedSales();
+
+        if (calculatedSales.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return calculatedSales.stream()
+                .collect(Collectors.groupingBy(cs -> getPeriodKey(cs.saleDateKey(), unit)))
+                .entrySet().stream()
+                .map(entry -> aggregatePeriodGroup(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(PeriodAggregationDto::getPeriod))
+                .toList();
+    }
+
+    /**
+     * saleDateKey에서 unit에 맞는 기간 키를 추출한다.
+     * month: "YYYY-MM" 그대로, year: 앞 4자리("YYYY")만 추출
+     */
+    private String getPeriodKey(String saleDateKey, String unit) {
+        return "year".equals(unit) ? saleDateKey.substring(0, 4) : saleDateKey;
+    }
+
+    /**
+     * 기간별 그룹 집계 헬퍼 메서드
+     * 주어진 CalculatedSale 리스트를 단일 그룹으로 집계해 PeriodAggregationDto를 생성한다.
+     */
+    private PeriodAggregationDto aggregatePeriodGroup(String period, List<CalculatedSale> group) {
+        long totalInvestmentAmount = group.stream()
+                .mapToLong(cs -> {
+                    Long price = cs.allocationPrice();
+                    Long qty = cs.allocatedQuantity();
+                    if (price == null || qty == null) {
+                        return 0L;
+                    }
+                    return price * qty;
+                })
+                .sum();
+
+        long totalPreTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::preTaxProfit)
+                .sum();
+
+        long totalAfterTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::afterTaxProfit)
+                .sum();
+
+        double totalProfitRate = (totalInvestmentAmount == 0L)
+                ? 0.0
+                : (totalAfterTaxProfit * 100.0) / totalInvestmentAmount;
+
+        int participationCount = group.size();
+
+        return PeriodAggregationDto.builder()
+                .period(period)
+                .totalInvestmentAmount(totalInvestmentAmount)
+                .totalPreTaxProfit(totalPreTaxProfit)
+                .totalAfterTaxProfit(totalAfterTaxProfit)
+                .totalProfitRate(totalProfitRate)
+                .participationCount(participationCount)
+                .build();
     }
 
     /**

@@ -1,12 +1,15 @@
 package com.vibeaiteam.dashboard.controller;
 
 import com.vibeaiteam.dashboard.dto.InvestorAggregationDto;
+import com.vibeaiteam.dashboard.dto.PeriodAggregationDto;
 import com.vibeaiteam.dashboard.dto.SecuritiesFirmAggregationDto;
 import com.vibeaiteam.dashboard.dto.SummaryDto;
+import com.vibeaiteam.dashboard.exception.DashboardValidationException;
 import com.vibeaiteam.dashboard.service.DashboardAggregationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -62,5 +65,24 @@ public class DashboardController {
     @GetMapping("/by-securities-firm")
     public List<SecuritiesFirmAggregationDto> getBySecuritiesFirm() {
         return dashboardAggregationService.getBySecuritiesFirm();
+    }
+
+    /**
+     * 기간별 실현수익 집계 조회
+     * 현재 계정 소유 ACTIVE Sale을 매도일자 기준으로 기간별(month/year) 그룹핑해 총투자금, 총세전/세후수익, 수익률, 참여건수를 반환한다.
+     * period 오름차순으로 정렬된다 (AC-004, AC-005).
+     * unit 파라미터는 month 또는 year만 허용하며, 그 외 값은 400 Bad Request (AC-008).
+     * 매도 기록이 없으면 빈 리스트를 반환한다.
+     * 
+     * @param unit 기간 단위 (month: "YYYY-MM", year: "YYYY")
+     * @return 기간별 집계 결과 리스트
+     * @throws DashboardValidationException unit이 month/year가 아닌 경우
+     */
+    @GetMapping("/by-period")
+    public List<PeriodAggregationDto> getByPeriod(@RequestParam String unit) {
+        if (!"month".equals(unit) && !"year".equals(unit)) {
+            throw new DashboardValidationException("unit은 month 또는 year여야 합니다.");
+        }
+        return dashboardAggregationService.getByPeriod(unit);
     }
 }
