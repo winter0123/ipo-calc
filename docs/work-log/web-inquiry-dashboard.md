@@ -101,3 +101,32 @@ Epic 16 SF-2: 투자 내역 화면의 목록 표(`InvestmentHistoryTable`)와 �
 - `FilterBar.tsx`, `EmptyState.tsx`, `useInvestmentHistoryFilters.ts`는 SF-1 산출물로 재사용(수정 금지)
 - `ConfirmDialog`는 기존 재사용(중복 생성 금지)
 - `shared/components/Button/Input/FormField/ErrorMessage/Spinner`는 존재하지 않으므로 인라인 패턴 사용
+
+## 2026-09-28 — SF-3 구현 완료 (frontend worker)
+
+### 작업 개요
+Epic 16 SF-3 수행: 대시보드 화면(/dashboard)의 탭 전환(DashboardTabs)과 탭 상태 관리 훅(useDashboardTabs), 대시보드 페이지 배치(DashboardPage) 구현. SF-1에서 생성된 EmptyState 위젯 재사용. `/dashboard` 라우트는 이미 존재하므로 App.tsx 수정 불필요. 백엔드 API(GET /dashboard/summary, /by-investor, /by-securities-firm, /by-period)는 Epic 12 SF-2~4에서 구현 예정이므로 mock 데이터로 검증.
+
+### 구현 파일
+- **신규**: `ui/src/features/dashboard/DashboardTabs/DashboardTabs.tsx` — 5개 탭(전체/투자자별/증권사별/월별/연도별), role="tablist"/"tab", aria-selected, 키보드 네비게이션(←/→, Home/End, Enter/Space)
+- **신규**: `ui/src/features/dashboard/DashboardTabs/DashboardTabs.module.css` — 모바일 탭 바 스크롤, 데스크톱 인라인 배치
+- **신규**: `ui/src/features/dashboard/useDashboardTabs.ts` — 탭 상태 관리, 탭별 queryKey 매핑, invalidateCurrentTab
+- **신규**: `ui/src/features/dashboard/mock-hooks.ts` — mock query hooks (useDashboardSummary, useDashboardByInvestor, useDashboardBySecuritiesFirm, useDashboardByPeriod)
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.tsx` — 투자자 목록 화면에서 대시보드 탭 화면으로 재작성, EmptyState 재사용, 네비게이션 링크(/investments) 포함
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.module.css` — 대시보드 레이아웃, 카드 그리드, 반응형
+- **수정**: `ui/src/pages/DashboardPage/DashboardPage.test.tsx` — SF-3 반영 테스트
+- **추가**: `docs/work-log/web-inquiry-dashboard.md` — 작업 로그 append
+
+### 검증 결과
+- `pnpm run test`: 123 passed ✅
+- `pnpm run lint`: 0 errors ✅
+- `pnpm run typecheck`: ✅
+- `pnpm run format:check`: 내 파일 모두 통과 ✅
+- `pnpm run build`: ✅
+
+### 참고
+- EmptyState 위젯은 SF-1에서 생성된 `widgets/EmptyState/`를 그대로 재사용
+- shared `Spinner`/`ErrorMessage` 컴포넌트는 존재하지 않으므로 인라인 `<p>` 패턴 사용
+- `/investments` 라우트는 PR #168로 이미 존재하므로 네비게이션 링크 유효
+- 실연동은 Epic 12(SF-2~4) 병합 후 전환 예정
+- `securities-firm` 키는 oxc 파서 오류(`-`를 뺄셈으로 인식)를 방지하기 위해 `TAB_LABELS_MAP`과 `getTabKey` 함수로 별도 처리
