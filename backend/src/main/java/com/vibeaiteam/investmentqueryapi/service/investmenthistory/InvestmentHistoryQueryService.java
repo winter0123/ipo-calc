@@ -40,6 +40,41 @@ public class InvestmentHistoryQueryService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    public InvestmentHistoryDto getHistoryDetail(Long subscriptionId) {
+        // a. Subscription 조회 (없으면 404)
+        Subscription subscription = subscriptionRepository.findByIdAndDeletedAtIsNull(subscriptionId)
+                .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 청약을 찾을 수 없습니다."));
+
+        // b. 소유권 검증 (타 계정 소유면 403)
+        ownershipVerifier.verifySubscriptionOwnership(subscription.getInvestorId());
+
+        // c. Allocation 조회 (없으면 null)
+        Allocation allocation = allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(subscriptionId, "ACTIVE").orElse(null);
+
+        // d. ACTIVE Sale 조회 (Allocation이 있으면, 없으면 빈 리스트)
+        List<Sale> activeSales = List.of();
+        if (allocation != null) {
+            activeSales = saleRepository.findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(allocation.getId(), "ACTIVE");
+        }
+
+        // e. IpoMap 구성 (단건이므로 Map.of)
+        Map<Long, Ipo> ipoMap;
+        Long ipoId = subscription.getIpoId();
+        if (ipoId != null) {
+            Ipo ipo = ipoRepository.findById(ipoId).orElse(null);
+            if (ipo != null) {
+                ipoMap = Map.of(ipoId, ipo);
+            } else {
+                ipoMap = Map.of();
+            }
+        } else {
+            ipoMap = Map.of();
+        }
+
+        // f. Assembler로 DTO 조합
+        return assembler.toDto(subscription, allocation, activeSales, ipoMap);
+    }
+
     public Page<InvestmentHistoryDto> getHistory(
             Long investorId,
             Long securitiesAccountId,
