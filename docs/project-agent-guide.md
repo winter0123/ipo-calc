@@ -1,19 +1,24 @@
-# vibe-ai-team 프로젝트 에이전트 운영 안내서
+# vibe-ai-team 프로젝트 에이전트 운영 안내서 (Master + 모든 팀장 공통)
 
-> 이 문서는 이 저장소에만 적용된다. 공통 규칙은 루트 [AGENTS.md](../AGENTS.md)에 있고, 이 문서는 그 규칙을 공모주 투자 수익 관리 서비스의 실제 스택·Orca 환경·무료 모델 운영 방식으로 구체화한다. 새 세션은 `AGENTS.md` → 이 문서 → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 읽는다.
+> 이 문서는 이 저장소에만 적용되며, **Master와 backend/frontend/planning 팀장 전원이 공통으로 읽는다.** 공통 규칙은 루트 [AGENTS.md](../AGENTS.md)에 있고, 이 문서는 그 규칙을 공모주 투자 수익 관리 서비스의 실제 스택·Orca 환경·무료 모델 운영 방식으로 구체화한다. 역할별 세부 구현 규칙·기술스택·검증 명령은 이 문서에 없고 각자의 역할별 가이드에만 있다 — 자기 역할에 해당하는 가이드 하나만 읽으면 된다(다른 역할의 가이드는 읽을 필요 없음).
+>
+> 새 세션(Master)은 `AGENTS.md` → 이 문서 → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 읽는다. 각 팀장은 `AGENTS.md` → 이 문서 → 자기 역할의 가이드(`docs/guide-backend.md`/`docs/guide-frontend.md`/`docs/guide-planning.md`) → `docs/work-plan.md` → `docs/roadmap.md` → `docs/current-status.md` 순서로 읽는다.
 
 ## 1. 문서 경계와 진실 소스
 
 
-| 문서                             | 책임                                                                 |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `AGENTS.md`                    | 모든 프로젝트에 재사용할 개발·Orca·병렬화·검증 원칙                                    |
-| 이 문서                           | 현재 프로젝트의 기술 스택, 작업공간, OpenCode 무료 모델 실행법, GitHub·알림 운영 |
-| `docs/work-plan.md`            | 제품 도메인, MVP 요구사항, 금융 규칙과 미결정 사항                                    |
-| `docs/roadmap.md`              | 현재 구현 순서, Epic 의존성, SF 게이트, 실행 큐                                   |
-| `docs/current-status.md`       | 세션 종료 시점의 실제 진행 상황과 다음 작업                                          |
-| `docs/ai-free-model.md`        | 무료 모델의 검증 결과와 PR별 사용 관찰 기록                                         |
-| `docs/daily-log/YYYY_MM_DD.md` | 날짜별 append-only 이력                                                 |
+| 문서                             | 책임                                                                 | 누가 읽는가 |
+| ------------------------------ | ------------------------------------------------------------------ | --- |
+| `AGENTS.md`                    | 모든 프로젝트에 재사용할 개발·Orca·병렬화·검증 원칙                                    | Master + 모든 팀장 |
+| 이 문서                           | 현재 프로젝트의 공통 운영(작업공간, 팀장 계층, 무료 모델 정책, GitHub·알림, 모니터링) | Master + 모든 팀장 |
+| `docs/guide-backend.md`        | 백엔드 기술스택·검증 명령·구현 규칙                                              | backend 팀장만 |
+| `docs/guide-frontend.md`       | 프론트엔드 기술스택·검증 명령·구현 규칙                                            | frontend 팀장만 |
+| `docs/guide-planning.md`       | 조사·기획·설계 규칙, 선행 큐 운영, 사용자 가이드 작성                                  | planning 팀장만 |
+| `docs/work-plan.md`            | 제품 도메인, MVP 요구사항, 금융 규칙과 미결정 사항                                    | Master + 모든 팀장 |
+| `docs/roadmap.md`              | 현재 구현 순서, Epic 의존성, SF 게이트, 실행 큐                                   | Master + 모든 팀장 |
+| `docs/current-status.md`       | 세션 종료 시점의 실제 진행 상황과 다음 작업                                          | Master + 모든 팀장 |
+| `docs/ai-free-model.md`        | 무료 모델의 검증 결과와 PR별 사용 관찰 기록                                         | Master + 모든 팀장 |
+| `docs/daily-log/YYYY_MM_DD.md` | 날짜별 append-only 이력                                                 | Master(작성), 팀장(참고) |
 
 
 과거 운영 중 발생한 사건의 시간순 서사는 `docs/daily-log/YYYY_MM_DD.md`와 각 Epic의 work-log에 유지한다. 이 문서에는 앞으로도 행동을 바꾸는 규칙과 재현 가능한 명령만 남긴다.
@@ -37,67 +42,15 @@
 
 `frontend/`는 소스 폴더가 아니라 Orca 작업공간 이름이므로, 프론트엔드 앱 소스는 반드시 `ui/`에 둔다.
 
-## 3. 현재 기술 기준과 검증 명령
+## 3. 현재 기술 기준 개요
 
-
-| 영역       | 기준                                                                               |
-| -------- | -------------------------------------------------------------------------------- |
-| Backend  | Java 21, Spring Boot 3.3.4, Spring Data JPA, Spring Security, Flyway, PostgreSQL |
-| Frontend | React 19, TypeScript, Vite, TanStack Query, React Hook Form, FSD 유사 구조           |
-| 인프라      | Docker Compose, PostgreSQL 17 컨테이너, 호스트 포트 5433                                  |
-| 패키지 관리   | Backend Gradle Wrapper, Frontend pnpm                                            |
-
-
-실제 설정 파일을 먼저 읽고 다음 명령을 쓴다.
-
-```bash
-# backend/
-./gradlew test
-./gradlew build
-
-# ui/
-pnpm run test
-pnpm run lint
-pnpm run typecheck
-pnpm run format:check
-pnpm run build
-```
-
-`ui`에서는 `typecheck`만으로 끝내지 않는다. `tsc -b`를 실행하는 `pnpm run build`도 필수다. `typecheck`가 프로젝트 참조 하위의 타입 오류를 놓친 사례가 있었기 때문이다.
+이 프로젝트는 백엔드(Java/Spring Boot)와 프론트엔드(React/TypeScript) 두 스택을 쓴다. **정확한 검증 명령과 구현 규칙은 이 문서에 없다** — backend 팀장은 `docs/guide-backend.md`, frontend 팀장은 `docs/guide-frontend.md`를 본다. Master는 팀장의 검증 보고를 신뢰하되, 최종 병합 전 직접 검증할 때는 해당 가이드의 명령을 그대로 재실행한다.
 
 로컬 환경·Docker·DB 복구 절차와 실제 환경 변수 이름은 `docs/setup-history.md`를 진실 소스로 사용한다. 시크릿 값은 이 문서, 커밋, work-log 어디에도 쓰지 않는다.
 
-## 4. 역할별 프로젝트 구현 규칙
+## 4. GitHub·브랜치·작업공간 운영
 
-### 4.1 백엔드
-
-- 들여쓰기는 4칸, 탭 금지다.
-- Google Java Style Checkstyle을 엄격하게 적용하며, 실제 플러그인 구성 뒤 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
-- Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
-- 모든 조회·변경 API는 계정 소유권 또는 글로벌 기준정보 여부를 명확히 구분한다. 개인정보·인증정보·계좌번호 평문을 로그에 남기지 않는다.
-- PostgreSQL 문법만 쓴다. `AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`를 쓰지 않는다. PK는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 작성한다.
-- Flyway에서 테이블을 만들 때는 테이블 목적, 각 컬럼의 의미, 인덱스·제약조건의 이유를 한글 SQL 주석으로 남긴다.
-- Controller 클래스에는 리소스와 제공 API를 설명하는 한글 주석을, 각 매핑 메서드에는 그 엔드포인트의 동작·주요 오류 조건을 설명하는 한글 한 줄 주석을 둔다.
-
-### 4.2 프론트엔드
-
-- `pnpm`만 사용한다. `pnpm-lock.yaml`을 커밋하며 `package-lock.json`을 만들지 않는다.
-- ESLint, Prettier, TypeScript strict를 유지한다. 들여쓰기는 2칸, 탭 금지다.
-- FSD 레이어는 반드시 `src/{app,pages,widgets,features,entities,shared}/`처럼 `src` 바로 아래 형제로 둔다. `entities`, `features`, `pages`, `shared`, `widgets`를 `src/app/` 아래에 중첩하지 않는다.
-- 의존 방향은 `app → pages → widgets → features → entities → shared`다. 하위 레이어가 상위 레이어를 참조하거나 순환 참조하지 않는다.
-- 서버 상태는 TanStack Query, UI 상태는 지역 상태 또는 꼭 필요한 전역 상태로 구분한다. `useEffect`를 파생 상태·단순 계산·이벤트 처리 대체 수단으로 남용하지 않는다.
-- 모든 화면은 처음부터 모바일 웹을 지원한다. 터치 대상은 최소 44×44px, `<meta name="viewport" content="width=device-width, initial-scale=1">` 유지, 가로 스크롤 금지, 640px/768px/1024px에서 레이아웃을 확인한다.
-- 화면 작업은 로딩·오류·빈 상태, 키보드 접근성, 의미 있는 컴포넌트·통합·E2E 테스트를 함께 다룬다.
-
-### 4.3 조사·기획·테스트·QA
-
-- Phase 0 문서는 `research` → `spec` → `architecture` 순서로 작성한다. 모두 실제 근거·링크·미결정 사항을 포함해야 한다.
-- 이미 Phase 0가 끝난 Epic이라도 구현 직전에는 `breakdown-research`와 `breakdown`으로 SF 범위와 API 계약 드리프트를 재확인한다.
-- Test는 AC별 정상·실패·권한·경계 조건을 테스트 케이스로 만든다. QA는 프로젝트에 존재하는 실제 명령과 브라우저 증적으로만 PASS를 기록한다.
-
-## 5. GitHub·브랜치·작업공간 운영
-
-### 5.1 GitHub Issue 병행 운영
+### 4.1 GitHub Issue 병행 운영
 
 이 프로젝트는 Orca 태스크(실행 단위)와 GitHub Issue(사람이 보는 현황)를 함께 운영한다. Git Manager 또는 Master만 `gh issue`·`gh pr`을 실행한다.
 
@@ -125,7 +78,7 @@ gh pr view <PR번호> --json state,mergedAt
 
 일상적인 SF 완료 PR은 테스트·리뷰·보안·병합 확인을 거친 뒤 사용자 사전 승인 범위에서 main에 병합할 수 있다. 보안 설정, 데이터 마이그레이션, 큰 범위·애매한 변경은 항상 사용자 게이트를 연다.
 
-### 5.2 작업공간
+### 4.2 작업공간
 
 기본 작업공간은 아래 셋이며 프로젝트 종료까지 유지한다.
 
@@ -153,7 +106,7 @@ orca terminal show --terminal <handle> --json
 
 한 작업공간에는 한 브랜치만 둔다. 다른 작업이 같은 브랜치에서 서로 다른 파일만 작성하는 A그룹 문서 작업이면 워커만 추가할 수 있지만, 다른 PR·브랜치가 필요하면 별도 작업공간을 만든다. 공유 작업공간의 병렬 워커는 배정 파일만 수정·검증하고 Git 명령으로 인덱스나 브랜치를 바꾸지 않는다. Master 또는 Git Manager 한 명이 결과를 검증한 뒤 순차로 commit하며, 워커별 독립 커밋이 필요하면 별도 worktree를 만든다.
 
-### 5.2.1 팀장(Lead) 계층 채택 (2026-09-28부터)
+### 4.2.1 팀장(Lead) 계층 채택 (2026-09-28부터)
 
 이 프로젝트는 AGENTS.md 6.0절의 팀장 계층 구조를 채택했다(사용자 결정, nested depth 한도 2로 확대됨). Master(main, depth 0)는 이제 워커에게 직접 task를 배정하지 않고, 역할별 고정 작업공간(backend/frontend/planning)에 상주하는 팀장(depth 1)에게 위임한다. 팀장이 그 밑에 실제 구현 워커(depth 2)를 직접 생성·검증·배정한다.
 
@@ -167,8 +120,8 @@ orca terminal show --terminal <handle> --json
 
 **운영 규칙**:
 - 팀장은 1회성 워커가 아니라 세션 내내 유지되는 상시 코디네이터다. 팀장의 터미널 제목은 "backend 팀장"/"frontend 팀장"/"planning 팀장"으로 고정한다.
-- 팀장이 만드는 워커(depth 2)는 이 프로젝트 무료 모델 정책(6장)과 모델 다양화 원칙을 그대로 따른다 — OpenCode + OpenRouter, 같은 시간대 동일 모델 반복 배정 금지.
-- 팀장은 자기 워커의 `worker_done`을 `check --wait`로 직접 기다리고 diff·테스트를 1차 검증한다. 429/timeout으로 조용히 멈춘 워커는 팀장이 직접 감지·재배정한다 — 7.1.1절의 5분 주기 직접 확인 절차가 팀장에게도 동일 적용된다.
+- 팀장이 만드는 워커(depth 2)는 이 프로젝트 무료 모델 정책(5장)과 모델 다양화 원칙을 그대로 따른다 — OpenCode + OpenRouter, 같은 시간대 동일 모델 반복 배정 금지.
+- 팀장은 자기 워커의 `worker_done`을 `check --wait`로 직접 기다리고 diff·테스트를 1차 검증한다. 429/timeout으로 조용히 멈춘 워커는 팀장이 직접 감지·재배정한다 — 6.1.1절의 5분 주기 직접 확인 절차가 팀장에게도 동일 적용된다.
 - 팀장은 검증 후 자신이 commit·PR 생성까지 한다. **main 병합은 Master가 팀장의 PR을 한 번 더 확인한 뒤 수행**한다(팀장은 병합하지 않는다).
 - 팀장은 **담당 SF 하나가 검증·병합될 때마다** Master의 Run에 요약 보고를 보낸다(`orca orchestration send --to run:<master-run-id>`). Master는 이 요약 보고만 받고 팀장 밑 워커 dispatch에는 개입하지 않는다 — 단, 팀장 자체가 응답 없을 때는 Master가 직접 개입해 팀장을 재생성한다.
 - depth 한도: Master(0) → 팀장(1) → 팀장의 워커(2)까지만 허용. 팀장의 워커가 추가로 워커를 만드는 depth 3 위임은 금지.
@@ -185,9 +138,9 @@ git push -u origin <git사용자명>/<epic-slug>
 
 메인 저장소가 `main`을 점유하므로 하위 worktree에서 `git checkout main`을 하지 않는다. 항상 `origin/main`에서 새 브랜치를 만든다. 병합 뒤 다음 작업 시작 시 새 브랜치를 만든 후에만 이전 브랜치를 정리한다.
 
-## 6. OpenCode 무료 모델 운영
+## 5. OpenCode 무료 모델 운영
 
-### 6.1 기본 원칙
+### 5.1 기본 원칙
 
 - Master Lead는 Orca 위의 Claude Code 코디네이터다. `worker-start`로 만들지 않는다.
 - 워커는 기본적으로 무료 모델만 사용하며, OpenRouter 모델은 ID의 `:free` 접미사와 가격 정보를 모두 확인한다. OpenCode Zen 모델은 해당 서비스의 현재 무료 카탈로그에서 확인한다. 유료 API·서비스와 네이티브 Claude 전환은 사용자 명시 승인 없이는 금지다.
@@ -218,7 +171,7 @@ curl -s "https://openrouter.ai/api/v1/models"
 
 `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`는 Research/Planning 가능성은 남아 있으나, Implementation/Test처럼 도구 호출이 잦은 역할에는 재배정하지 않는다. 관찰 근거는 `ai-free-model.md`에 유지한다.
 
-### 6.2 OpenCode 실행 경로
+### 5.2 OpenCode 실행 경로
 
 현재 Orca에서는 `worker-start --agent opencode --model ...`가 launch-time 모델 선택을 지원하지 않아 실패할 수 있다. 이 경우 모델을 터미널 생성 때 직접 지정하고, 이후에는 해당 터미널을 worker에 묶는다.
 
@@ -248,7 +201,7 @@ orca orchestration task-update --id <task_id> --status completed \
 
 수동 완료는 자동 보고처럼 기록하지 않으며, 원인·증적·처리 방식을 work-log에 남긴다.
 
-### 6.3 무료 여부와 호환성 확인
+### 5.3 무료 여부와 호환성 확인
 
 새 OpenRouter 모델의 첫 오류가 나면 곧바로 실패 목록에 넣지 않는다. 먼저 OpenRouter에서 여전히 무료인지 확인한다.
 
@@ -258,17 +211,17 @@ curl -s "https://openrouter.ai/api/v1/models" | python3 -c "import json,sys; d=j
 
 OpenRouter 목록에 없거나 `:free`가 사라졌거나 `pricing.prompt`/`pricing.completion`이 0이 아니면 OpenRouter 무료 모델이 아니다. OpenCode Zen 모델은 `opencode models`와 현재 무료 카탈로그로 별도 확인한다. 일시 장애와 무료 목록 제외를 구분한다. 새 모델은 작은 파일 쓰기 태스크로 검증하고 결과를 `docs/ai-free-model.md`에 추가한다.
 
-### 6.4 Master 사용량과 컨텍스트 대응
+### 5.4 Master 사용량과 컨텍스트 대응
 
 Master 자신의 Claude Code 사용량 제한은 사람 또는 현재 CLI가 제공하는 기능 범위에서만 다룬다. `/low-priority`, `/limit-reset`은 환경에 따라 보이지 않거나 동작하지 않을 수 있으므로 존재를 확인하고 사람이 실행한다.
 
 워커가 10분 동안 완료·escalation을 보내지 않으면 먼저 `terminal read`와 `worker-read`로 실제 상태를 확인한다. 토큰 초과가 명확할 때만 `/compact`하고 같은 태스크를 다시 주입한다. 동일 태스크에서 세 번 반복되면 더 작은 SF로 재분해한다.
 
-## 7. 모니터링·알림·사용자 가이드
+## 6. 모니터링·알림·사용자 가이드
 
-### 7.1 모니터링
+### 6.1 모니터링
 
-`task-list` 상태 폴링만으로는 모델 오류로 멈춘 워커를 발견할 수 없다. Monitor 알림을 받았을 때, `dispatched`가 여러 번 지속될 때, 사용자가 상태를 물을 때, 진행 상황을 보고할 때마다 실제 터미널 또는 트랜스크립트를 확인한다. 이때 backend/frontend만 보지 말고 세 기본 작업공간을 모두 확인한다.
+`task-list` 상태 폴링만으로는 모델 오류로 멈춘 워커를 발견할 수 없다. Monitor 알림을 받았을 때, `dispatched`가 여러 번 지속될 때, 사용자가 상태를 물을 때, 진행 상황을 보고할 때마다 실제 터미널 또는 트랜스크립트를 확인한다. 이 규칙은 Master가 팀장을 감시할 때, 그리고 팀장이 자기 워커를 감시할 때 모두 동일하게 적용된다 — Master는 backend/frontend/planning 세 팀장 터미널을 모두 확인하고, 각 팀장은 자기 밑의 워커 터미널을 모두 확인한다.
 
 ```bash
 orca terminal read --terminal <handle> --json
@@ -280,7 +233,7 @@ orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/plann
 
 에러 이후 새 진행이 없거나, 같은 생각 문구가 반복되거나, 파일·커밋이 늘지 않으면 중지로 판단한다. 파일을 삭제하지 않고 새 무료 모델로 같은 태스크를 재배정한다. 비어 있는 작업공간은 `current-status.md`의 다음 큐와 1\~2 Epic 앞선 planning 준비 상태를 대조해 같은 점검 주기 안에 다음 작업을 배정하거나, 예외 사유를 기록한다.
 
-### 7.1.1 "조용히 멈춘 워커" 감지 — `worker_done` 알림과 liveness 판정만으로는 부족함(2026-09-28 확인)
+### 6.1.1 "조용히 멈춘 워커" 감지 — `worker_done` 알림과 liveness 판정만으로는 부족함(2026-09-28 확인)
 
 `orca orchestration check --wait`는 워커가 정상적으로 `worker_done`을 보낼 때만 알려준다. 무료 모델이 OpenRouter 업스트림에서 429(rate-limited)나 idle timeout으로 멈추면 터미널 프로세스 자체는 살아있어서 `worker-show`의 `projection.liveness.verdict`가 계속 `live`로 나오고, `check --wait`도 타임아웃(900초) 전까지는 아무 신호 없이 조용하다 — 즉 자동 알림 경로로는 이 상태를 절대 잡지 못한다.
 
@@ -295,7 +248,7 @@ orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/plann
 
 **주의(2026-09-28 재발 확인)**: `terminal show`의 `lastOutputAt`이 "방금"으로 나온다고 곧바로 정상 판단하지 않는다 — 그 최근 출력 자체가 `[Poolside] ... temporarily rate-limited upstream` 같은 에러 메시지이고 그 이후로 멈춰있는 경우가 실제로 있었다(사용자가 직접 화면을 보고 지적함). `lastOutputAt`은 "터미널이 죽었는지" 판단하는 보조 지표일 뿐이며, 5분 점검마다 반드시 `terminal read`로 **최근 몇 줄의 실제 텍스트 내용**까지 읽어 에러 문구 유무를 확인한다. 또한 특정 OpenRouter 모델을 지정해도 OpenCode가 내부적으로 다른 모델(주로 Laguna S 2.1)로 자동 폴백하는 사례가 반복 관찰됐다 — 터미널 하단 상태줄의 실제 모델명(`Build · <모델명>`)을 지정한 모델과 대조해 확인한다.
 
-### 7.2 선택형 Hermes 알림
+### 6.2 선택형 Hermes 알림
 
 Hermes 알림은 필수가 아니다. 설정되어 있다면 기능 구현 완료 PR, 사람 결정 필요 BLOCKED, 화면 사용자 가이드 발행을 알려준다. 감지 스크립트는 Claude 세션과 독립되어야 하며, PR 감시는 `--state all`을 쓴다.
 
@@ -306,13 +259,11 @@ hermes send --to telegram "🚨 사람 결정 필요: <한 줄 요약> — <선�
 
 공용 알림 스크립트·상태 파일은 저장소 밖 `~/.hermes/`에 둔다. 초기 연결 시에는 기존 최대 PR 번호를 상태 파일에 시딩해 과거 PR 알림이 쏟아지지 않게 한다. 기본 폴링 주기는 600초다.
 
-### 7.3 프론트엔드 사용자 가이드
+### 6.3 프론트엔드 사용자 가이드
 
-프론트엔드 SF가 병합되면 planning 작업공간에서 실제 화면을 띄워 데스크톱 1280px·모바일 390px 스크린샷을 만든다. `docs/user-guides/[epic-slug]/`에 스크린샷과 외부 CDN 없는 순수 HTML 안내서를 추가하고 일반 PR로 병합한다.
+프론트엔드 SF가 병합되면 planning 팀장이 실제 화면 스크린샷과 사용자 가이드를 만든다. 정확한 절차는 `docs/guide-planning.md` 4절을 본다. 휴대폰에서 볼 공유 링크가 필요하면 Master가 별도 Artifact를 발행하고 링크를 Hermes로 보낸다 — Artifact 발행은 외부 공개 행위이므로 사용자 또는 설정된 권한 범위 안에서만 수행한다.
 
-휴대폰에서 볼 공유 링크가 필요하면 Master가 별도 Artifact를 발행하고 링크를 Hermes로 보낸다. Artifact 발행은 외부 공개 행위이므로 사용자 또는 설정된 권한 범위 안에서만 수행한다.
-
-### 7.4 일일 로그
+### 6.4 일일 로그
 
 일일 로그는 이 프로젝트 전용 문서다. `docs/daily-log/` 폴더에 `YYYY_MM_DD.md` 파일을 날짜별로 하나씩 만든다. 기존 날짜 파일은 수정하지 않고 append-only로 보존하며, 같은 날짜에 세션이 여러 번이면 해당 날짜 파일의 표에 행을 추가한다. 새 날짜가 시작되면 새 파일을 만든다.
 
@@ -325,12 +276,12 @@ docs/daily-log/
 └── YYYY_MM_DD.md
 ```
 
-## 8. 세션 종료 체크리스트
+## 7. 세션 종료 체크리스트
 
 1. diff·테스트·빌드·PR 병합 상태를 실제로 확인한다.
 2. 완료 SF의 워커·터미널을 바로 정리한다.
 3. `docs/current-status.md`를 최신 Epic/SF·작업공간·블로커·다음 큐로 덮어쓴다.
-4. `docs/daily-log/YYYY_MM_DD.md`에 당일 내용을 append한다. 파일명·숫자 요약·표·Epic/SF/PR 표기는 이 문서 7.4의 형식을 따른다.
+4. `docs/daily-log/YYYY_MM_DD.md`에 당일 내용을 append한다. 파일명·숫자 요약·표·Epic/SF/PR 표기는 이 문서 6.4의 형식을 따른다.
 5. 새 설치·마이그레이션이 있으면 `docs/setup-history.md`를 갱신한다.
 6. 모델 교체·오류·적합도 관찰이 있으면 `docs/ai-free-model.md`와 해당 work-log에 남긴다.
 
