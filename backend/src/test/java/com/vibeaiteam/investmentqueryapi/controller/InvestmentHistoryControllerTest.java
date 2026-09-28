@@ -2,6 +2,8 @@ package com.vibeaiteam.investmentqueryapi.controller;
 
 import com.vibeaiteam.investmentqueryapi.controller.investmenthistory.InvestmentHistoryController;
 import com.vibeaiteam.investmentqueryapi.dto.investmenthistory.InvestmentHistoryDto;
+import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryForbiddenException;
+import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryNotFoundException;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryValidationException;
 import com.vibeaiteam.investmentqueryapi.service.investmenthistory.InvestmentHistoryQueryService;
 import org.junit.jupiter.api.AfterEach;
@@ -114,5 +116,63 @@ class InvestmentHistoryControllerTest {
 
         mockMvc.perform(get("/investment-history?ipoId=101"))
                 .andExpect(status().isOk());
+    }
+
+    // ===========================================
+    // SF-3 단건 상세 조회 테스트
+    // ===========================================
+
+    @Test
+    void getHistoryDetail_존재하지않는subscriptionId_404() throws Exception {
+        // Given: 존재하지 않는 subscriptionId
+        when(queryService.getHistoryDetail(anyLong()))
+                .thenThrow(new InvestmentQueryNotFoundException("해당 청약을 찾을 수 없습니다."));
+
+        // When & Then: 404 Not Found
+        mockMvc.perform(get("/investment-history/9999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
+
+    @Test
+    void getHistoryDetail_타계정소유_403() throws Exception {
+        // Given: 타 계정 소유 Subscription
+        when(queryService.getHistoryDetail(anyLong()))
+                .thenThrow(new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다."));
+
+        // When & Then: 403 Forbidden
+        mockMvc.perform(get("/investment-history/9999"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+    }
+
+    @Test
+    void getHistoryDetail_정상_배정_매도있음_200() throws Exception {
+        // Given: 정상 응답 DTO
+        InvestmentHistoryDto dto = new InvestmentHistoryDto();
+        dto.setId(1L);
+        dto.setSubscriptionQuantity(100L);
+        when(queryService.getHistoryDetail(1L)).thenReturn(dto);
+
+        // When & Then: 200 OK + DTO 필드 검증
+        mockMvc.perform(get("/investment-history/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.subscriptionQuantity").value(100));
+    }
+
+    @Test
+    void getHistoryDetail_정상_배정없음_200() throws Exception {
+        // Given: 배정 없는 정상 응답 DTO
+        InvestmentHistoryDto dto = new InvestmentHistoryDto();
+        dto.setId(2L);
+        dto.setSubscriptionQuantity(100L);
+        dto.setRemainingQuantity(null);
+        when(queryService.getHistoryDetail(2L)).thenReturn(dto);
+
+        // When & Then: 200 OK
+        mockMvc.perform(get("/investment-history/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(2));
     }
 }

@@ -95,6 +95,7 @@ class InvestmentHistoryQueryServiceTest {
         doNothing().when(ownershipVerifier).verifyInvestorIdOwnership(anyLong());
         doNothing().when(ownershipVerifier).verifySecuritiesAccountIdOwnership(anyLong());
         doNothing().when(ownershipVerifier).verifyIpoIdOwnership(anyLong());
+        doNothing().when(ownershipVerifier).verifySubscriptionOwnership(anyLong());
 
         // Current account investor
         currentAccountInvestor = Investor.builder()
@@ -334,5 +335,97 @@ class InvestmentHistoryQueryServiceTest {
         // Then: 페이지네이션 객체 반환
         assertThat(result).isNotNull();
         assertThat(result.getTotalElements()).isZero();
+    }
+
+    // ===========================================
+    // SF-3 단건 상세 조회 테스트
+    // ===========================================
+
+    @Test
+    void getHistoryDetail_존재하지않는subscriptionId_404() {
+        // Given: 존재하지 않는 subscriptionId
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.empty());
+
+        // When & Then: InvestmentQueryNotFoundException 발생
+        assertThatThrownBy(() -> queryService.getHistoryDetail(SUBSCRIPTION_ID))
+                .isInstanceOf(InvestmentQueryNotFoundException.class)
+                .hasMessage("해당 청약을 찾을 수 없습니다.");
+    }
+
+    @Test
+    void getHistoryDetail_타계정소유_403() {
+        // Given: 타 계정 소유 Subscription
+        Subscription otherSubscription = Subscription.builder()
+                .id(SUBSCRIPTION_ID)
+                .investorId(INVESTOR_ID + 1) // 타 계정의 investorId
+                .securitiesAccountId(SECURITIES_ACCOUNT_ID)
+                .ipoId(IPO_ID)
+                .quantity(100L)
+                .status("ACTIVE")
+                .subscribedAt(LocalDateTime.now())
+                .build();
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(otherSubscription));
+        doThrow(new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다."))
+                .when(ownershipVerifier).verifySubscriptionOwnership(anyLong());
+
+        // When & Then: InvestmentQueryForbiddenException 발생
+        assertThatThrownBy(() -> queryService.getHistoryDetail(SUBSCRIPTION_ID))
+                .isInstanceOf(InvestmentQueryForbiddenException.class)
+                .hasMessage("해당 데이터에 접근 권한이 없습니다.");
+    }
+
+    @Test
+    void getHistoryDetail_정상_배정_매도있음_200() {
+        // Given: 배정+매도 있는 경우
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(testSubscription));
+        when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE"))
+                .thenReturn(java.util.Optional.of(testAllocation));
+        when(saleRepository.findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(testAllocation.getId(), "ACTIVE"))
+                .thenReturn(List.of(testSale));
+        when(ipoRepository.findById(IPO_ID))
+                .thenReturn(java.util.Optional.of(testIpo));
+
+        // When
+        InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
+
+        // Then: 200 + 실제 Assembler가 생성한 DTO 필드 검증
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(SUBSCRIPTION_ID);
+        assertThat(result.getSubscriptionQuantity()).isEqualTo(100L);
+        assertThat(result.getAllocation()).isNotNull();
+        assertThat(result.getAllocation().getId()).isEqualTo(5L);
+        assertThat(result.getSales()).hasSize(1);
+        assertThat(result.getRemainingQuantity()).isEqualTo(70L);
+        assertThat(result.getIpoName()).isEqualTo("샘플테크");
+        verify(allocationRepository).findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
+        verify(saleRepository).findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(testAllocation.getId(), "ACTIVE");
+    }
+
+    @Test
+    void getHistoryDetail_정상_배정없음_200() {
+        // Given: 배정 없는 경우
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(testSubscription));
+        when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE"))
+                .thenReturn(java.util.Optional.empty());
+        when(ipoRepository.findById(IPO_ID))
+                .thenReturn(java.util.Optional.of(testIpo));
+
+        // When
+        InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
+
+        // Then: 200 + allocation=null, sales=[], remainingQuantity=null 패턴
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(SUBSCRIPTION_ID);
+        assertThat(result.getSubscriptionQuantity()).isEqualTo(100L);
+        assertThat(result.getAllocation()).isNull();
+        assertThat(result.getSales()).isEmpty();
+        assertThat(result.getRemainingQuantity()).isNull();
+        assertThat(result.getIpoName()).isEqualTo("샘플테크");
+        verify(allocationRepository).findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
+        verify(saleRepository, never()).findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(anyLong(), eq("ACTIVE"));
     }
 }
