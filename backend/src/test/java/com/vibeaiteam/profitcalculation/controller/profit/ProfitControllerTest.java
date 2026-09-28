@@ -295,6 +295,13 @@ class ProfitControllerTest {
                 .andReturn();
     }
 
+    private MvcResult getInvestorProfits(Long investorId) throws Exception {
+        return mockMvc.perform(get("/investors/" + investorId + "/profits")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+    }
+
     private Map<String, Object> readBody(MvcResult result) throws Exception {
         return objectMapper.readValue(utf8Body(result), Map.class);
     }
@@ -693,6 +700,175 @@ class ProfitControllerTest {
         assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(378000L);
         // afterTaxProfit = 378000 - 0(null→0) = 378000
         assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(378000L);
+    }
+
+    // ==================== AC-010: 투자자별 수익 목록 조회 성공 ====================
+
+    @Test
+    void getInvestorProfitsReturns200WithMultipleSalesAndTotals() throws Exception {
+        // Given: 한 투자자에 여러 ACTIVE Sale이 존재함 (AC-010)
+        // - allocationPrice=12000, allocatedQuantity=100, ACTIVE Cost 합계 40000
+        // - Sale 1 (2026-10-14): quantity=30, amount=750000, fee=1500, tax=0
+        //   matchedAcquisition=360000, matchedCost=12000, preTax=376500, afterTax=376500
+        // - Sale 2 (2026-10-15): quantity=20, amount=500000, fee=0, tax=0
+        //   matchedAcquisition=240000, matchedCost=8000, preTax=252000, afterTax=252000
+        // - totalSaleAmount=1250000, totalPreTaxProfit=628500, totalAfterTaxProfit=628500
+        signupAndLogin();
+        Long allocationId = setupFoundation(12000L);
+        Long subscriptionId = allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+        Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+        createCost(subscriptionId, 40000L, "ACTIVE");
+
+        // saleDate가 10/14인 Sale을 나중에 생성해도 id가 더 작으므로 정렬 검증에 영향 없음
+        Long saleId2 = createSale(allocationId, 20L, 500000L, 0L, 0L, 0L,
+                LocalDateTime.of(2026, 10, 15, 14, 30));
+        Long saleId1 = createSale(allocationId, 30L, 750000L, 1500L, 0L, 0L,
+                LocalDateTime.of(2026, 10, 14, 14, 30));
+
+        // When: GET /investors/{investorId}/profits
+        MvcResult result = getInvestorProfits(investorId);
+
+        // Then: 200 OK, sales 배열 + 합계 3종 필드 검증, saleDate 오름차순 정렬 (AC-010)
+        assertThat(result.getResponse().getStatus())
+                .as("투자자별 수익 목록 조회는 200을 반환해야 합니다 (AC-010)").isEqualTo(200);
+        Map<String, Object> body = readBody(result);
+        assertThat(((Number) body.get("investorId")).longValue()).isEqualTo(investorId);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sales = (List<Map<String, Object>>) body.get("sales");
+        assertThat(sales).hasSize(2);
+
+        // saleDate 오름차순 정렬 검증 (2026-10-14이 먼저 와야 함)
+        assertThat((String) sales.get(0).get("saleDate"))
+                .as("sales는 saleDate 오름차순 정렬되어야 합니다 (AC-010)").isEqualTo("2026-10-14T14:30:00");
+        assertThat((String) sales.get(1).get("saleDate"))
+                .isEqualTo("2026-10-15T14:30:00");
+
+        // 개별 Sale 필드 검증 (첫 번째 Sale = saleId1)
+        assertThat(((Number) sales.get(0).get("saleId")).longValue()).isEqualTo(saleId1);
+        assertThat(((Number) sales.get(0).get("saleAmount")).longValue()).isEqualTo(750000L);
+        assertThat(((Number) sales.get(0).get("matchedAcquisitionAmount")).longValue()).isEqualTo(360000L);
+        assertThat(((Number) sales.get(0).get("matchedCostAmount")).longValue()).isEqualTo(12000L);
+        assertThat(((Number) sales.get(0).get("preTaxProfit")).longValue()).isEqualTo(376500L);
+        assertThat(((Number) sales.get(0).get("afterTaxProfit")).longValue()).isEqualTo(376500L);
+
+        // 합계 3종 필드 검증
+        assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(1250000L);
+        assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(628500L);
+        assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(628500L);
+    }
+
+    // ==================== AC-011: 존재하지 않는 Investor 조회 시 404 ====================
+
+    @Test
+    void getInvestorProfitsForNonExistentInvestorReturns404() throws Exception {
+        // Given: 존재하지 않는 investorId가 제공됨 (AC-011)
+        signupAndLogin();
+
+        // When: GET /investors/{nonExistentId}/profits
+        MvcResult result = getInvestorProfits(99999999L);
+
+        // Then: 404 Not Found, NOT_FOUND + message 포함 (AC-011)
+        assertNotFoundError(result);
+    }
+
+    // ==================== AC-012: 매도 건이 없는 투자자 조회 시 200 + sales: [] + 합계 0 ====================
+
+    @Test
+    void getInvestorProfitsWithNoSalesReturns200AndEmptyListAndZeroTotals() throws Exception {
+        // Given: 투자자는 존재하지만 매도 기록이 없음 (AC-012)
+        signupAndLogin();
+        Long allocationId = setupFoundation(12000L);
+        Long subscriptionId = allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+        Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+
+        // When: GET /investors/{investorId}/profits
+        MvcResult result = getInvestorProfits(investorId);
+
+        // Then: 200 OK, sales 빈 배열, 합계 0 (AC-012)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> body = readBody(result);
+        assertThat(((Number) body.get("investorId")).longValue()).isEqualTo(investorId);
+        assertThat(body.get("sales")).as("매도 건이 없으면 sales는 빈 배열이어야 합니다 (AC-012)").isInstanceOf(List.class);
+        assertThat(((List<?>) body.get("sales"))).isEmpty();
+        assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(0L);
+        assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(0L);
+        assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(0L);
+    }
+
+    // ==================== AC-008 (목록): CANCELLED Sale 제외 ====================
+
+    @Test
+    void getInvestorProfitsExcludesCancelledSales() throws Exception {
+        // Given: ACTIVE Sale + CANCELLED Sale이 동일 투자자에 존재함 (AC-008)
+        signupAndLogin();
+        Long allocationId = setupFoundation(12000L);
+        Long subscriptionId = allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+        Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+        createCost(subscriptionId, 40000L, "ACTIVE");
+
+        Long activeSaleId = createSale(allocationId, 30L, 750000L, 0L, 0L, 0L,
+                LocalDateTime.of(2026, 10, 15, 14, 30));
+        Long cancelledSaleId = createSale(allocationId, 20L, 500000L, 0L, 0L, 0L,
+                LocalDateTime.of(2026, 10, 14, 14, 30));
+
+        // CANCELLED 상태로 변경
+        Sale cancelled = saleRepository.findById(cancelledSaleId).orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        cancelled.setStatus("CANCELLED");
+        cancelled.setDeletedAt(now);
+        cancelled.setUpdatedAt(now);
+        saleRepository.saveAndFlush(cancelled);
+
+        // When: GET /investors/{investorId}/profits
+        MvcResult result = getInvestorProfits(investorId);
+
+        // Then: CANCELLED Sale이 목록에서 제외됨 (AC-008)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        Map<String, Object> body = readBody(result);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sales = (List<Map<String, Object>>) body.get("sales");
+        assertThat(sales).hasSize(1);
+        assertThat(((Number) sales.get(0).get("saleId")).longValue())
+                .as("CANCELLED Sale은 목록에서 제외되어야 합니다 (AC-008)").isEqualTo(activeSaleId);
+    }
+
+    // ==================== AC-013 (투자자별): 조회 후 DB 레코드 수·내용 변하지 않음 ====================
+
+    @Test
+    void getInvestorProfitsDoesNotModifyDatabase() throws Exception {
+        // Given: 수익 계산 API를 호출할 수 있는 상태임 (AC-013)
+        signupAndLogin();
+        Long allocationId = setupFoundation(12000L);
+        Long subscriptionId = allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+        Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+        Long costId = createCost(subscriptionId, 40000L, "ACTIVE").getId();
+        Long saleId = createSale(allocationId, 30L, 750000L, 1500L, 0L, 0L,
+                LocalDateTime.of(2026, 10, 15, 14, 30));
+
+        // DB 상태 스냅샷 (응답 전)
+        long saleCountBefore = saleRepository.count();
+        long costCountBefore = costRepository.count();
+        long allocationCountBefore = allocationRepository.count();
+        long subscriptionCountBefore = subscriptionRepository.count();
+        Sale saleBefore = saleRepository.findById(saleId).orElseThrow();
+        Cost costBefore = costRepository.findById(costId).orElseThrow();
+
+        // When: GET /investors/{investorId}/profits
+        MvcResult result = getInvestorProfits(investorId);
+
+        // Then: 응답 후 데이터베이스에 추가·변경되는 레코드가 없음 (AC-013)
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(saleRepository.count()).isEqualTo(saleCountBefore);
+        assertThat(costRepository.count()).isEqualTo(costCountBefore);
+        assertThat(allocationRepository.count()).isEqualTo(allocationCountBefore);
+        assertThat(subscriptionRepository.count()).isEqualTo(subscriptionCountBefore);
+        Sale saleAfter = saleRepository.findById(saleId).orElseThrow();
+        assertThat(saleAfter.getUpdatedAt()).isEqualTo(saleBefore.getUpdatedAt());
+        assertThat(saleAfter.getAmount()).isEqualTo(saleBefore.getAmount());
+        assertThat(saleAfter.getQuantity()).isEqualTo(saleBefore.getQuantity());
+        Cost costAfter = costRepository.findById(costId).orElseThrow();
+        assertThat(costAfter.getAmount()).isEqualTo(costBefore.getAmount());
     }
 
     // ==================== 헬퍼: 배정수량 커스텀 ====================
