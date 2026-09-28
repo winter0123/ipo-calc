@@ -5,8 +5,6 @@
 > **작성일**: 2026-09-28
 > **API 계약 출처**: docs/spec/web-inquiry-dashboard.md (D-W16-004), docs/architecture/web-inquiry-dashboard.md
 > **의존 관계**: Epic 11(투자 내역 조회)와 Epic 12(대시보드 집계 API)의 프론트엔드 구현이므로, 백엔드 API가 완료되어야 실연동 가능. 그러나 UI 구현은 mock으로 가능. Epic 12의 dashboard-aggregation-api는 Epic 10(profit-calculation)에 의존하며, Epic 10이 main에 머지되지 않은 상태에서는 API 모킹으로 개발 진행.
->
-> **드리프트 재점검(2026-09-28)**: 작성 시점 이후 `GET /investment-history`(Epic 11 SF-2, PR #153)가 이미 병합됐다. 따라서 SF-1/SF-2가 "미구현"으로 표기한 목록 API는 실제로는 구현 완료 상태이며, SF-2의 실연동 게이트는 이제 상세 조회 `GET /investment-history/{subscriptionId}`(Epic 11 SF-3, 미착수)만 남았다. Epic 12(SF-3~SF-4가 참조하는 API)는 여전히 전부 미구현이라 SF-3~SF-5는 변동 없음. 이 문서의 개별 SF 표는 실제 구현 착수 시점에 다시 한 번 실시간 확인한다.
 
 ---
 

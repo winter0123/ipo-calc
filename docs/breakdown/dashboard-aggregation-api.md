@@ -6,20 +6,11 @@
 > **API 계약 출처**: docs/spec/dashboard-aggregation-api.md (AC-001~013, D-D-001~007), docs/architecture/dashboard-aggregation-api.md
 > **의존 관계**: Epic 10 (profit-calculation) 구현 완료 및 main 머지 완료 — **ProfitCalculator가 이 Epic의 핵심 의존성이므로, SF-1부터 착수하기 전에 Epic 10이 backend에 머지된 상태여야 한다.**
 
-## 드리프트 점검(2026-09-28, 최초 점검)
+## 드리프트 점검(2026-09-28)
 
 (1) **엔티티/API 계약 일치 확인**: breakdown이 참조하는 Epic 10 ProfitCalculator 메서드(calculateAcquisitionAmount, calculateMatchedCost, calculatePreTaxProfit, calculateAfterTaxProfit, calculateAllocationRatio)는 profit-calculation spec의 SF-1 정의와 일치함. Epic 11의 소유권 검증 원칙(D-Q-006, 인증된 Account가 소유한 Investor 데이터만 반환)도 investment-query-api spec과 이 breakdown의 소유권 검증 헬퍼 설계가 일치함.
 
-(2) **선행조건 충족 상태(최초 점검 시점)**: Epic 8(sale-management) 완전히 병합됨. Epic 9(cost-recording) SF-1만 병합, SF-4까지 진행 중. Epic 10(profit-calculation)은 아직 병합되지 않음(backend에 profitcalculation 패키지 없음) — breakdown의 게이트 조건 "Epic 10 머지 완료"는 여전히 미충족이라 SF-1 착수 불가. Epic 11(investment-query-api)은 SF-1 병합, SF-2 진행 중.
-
-## 드리프트 재점검(2026-09-28, 같은 날 후속 — Epic 10 SF-1~2 병합 반영)
-
-최초 점검 이후 같은 세션에서 Epic 9 전체 완료(#128 close), Epic 10 SF-1(PR #152)·SF-2(PR #155) 병합, Epic 11 SF-2(PR #153) 병합이 추가로 발생했다. 게이트 재평가 결과는 다음과 같다.
-
-- **여전히 미충족**: breakdown의 착수 게이트는 "Epic 10 **전체** 완료(SF-3까지) 후 main 머지"다. 현재 Epic 10은 SF-3(`GET /investors/{investorId}/profits`, 투자자별 전체 수익 목록)가 backend 팀장에게 막 배정되어 진행 중이며 아직 병합되지 않았다. 따라서 Epic 12 SF-1 착수는 계속 대기 상태이고, 이 breakdown 문서와 코드 작업은 시작하지 않는다.
-- **ProfitCalculator 계약 재확인**: Epic 10 SF-1(PR #152)이 병합되며 `calculateAcquisitionAmount`/`calculateMatchedCost`/`calculatePreTaxProfit`/`calculateAfterTaxProfit`/`calculateAllocationRatio` 시그니처가 실제 코드로 고정됐다. SF-2(PR #155)의 `GET /sales/{saleId}/profit` 구현도 이 메서드들을 그대로 사용해 breakdown이 가정한 계약과 일치함을 코드 레벨에서 확인함(별도 코드 변경 필요 없음).
-- **Epic 11 SF-3 의존과는 무관**: 이 Epic의 게이트는 Epic 10만 해당하며 Epic 11 SF-3(투자 내역 단건 상세)과는 직접 의존이 없다. Epic 11 진행 상태는 이 breakdown에 영향을 주지 않는다.
-- **다음 재평가 시점**: backend 팀장이 Epic 10 SF-3를 병합 완료로 보고하면, 그 시점에 이 게이트를 다시 확인하고 즉시 SF-1 Subticket을 생성한다.
+(2) **선행조건 충족 상태**: Epic 8(sale-management) 완전히 병합됨. Epic 9(cost-recording) SF-1만 병합, SF-4까지 진행 중. Epic 10(profit-calculation)은 아직 병합되지 않음(backend에 profitcalculation 패키지 없음) — breakdown의 게이트 조건 "Epic 10 머지 완료"는 여전히 미충족이라 SF-1 착수 불가. Epic 11(investment-query-api)은 SF-1 병합, SF-2 진행 중.
 
 (3) **roadmap.md 8절 사용자 결정 영향**: Epic 12 집계 로직에 영향 없음 — 취소된 청약 투자내역 표시 결정은 Epic 11 조회 API에 영향을 주지만, 대시보드 집계는 CANCELLED Sale을 자체적으로 제외하므로 무관. apiFetch #134는 프론트엔드 에러 처리 결정으로 백엔드 집계 로직과 무관. breakdown의 가정은 여전히 유효함.
 
