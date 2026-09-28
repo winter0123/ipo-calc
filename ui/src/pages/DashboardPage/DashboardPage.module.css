@@ -44,22 +44,6 @@
   gap: 16px;
 }
 
-.cardGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.card {
-  padding: 16px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #1f2937;
-  text-align: center;
-}
-
 .list {
   list-style: none;
   padding: 0;
@@ -98,13 +82,8 @@
     padding: 16px;
     gap: 16px;
   }
-
   .title {
     font-size: 22px;
-  }
-
-  .cardGrid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -113,10 +92,6 @@
   .container {
     padding: 24px;
   }
-
-  .cardGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 /* 데스크톱 */
@@ -124,12 +99,7 @@
   .container {
     padding: 32px;
   }
-
   .title {
     font-size: 32px;
-  }
-
-  .cardGrid {
-    grid-template-columns: repeat(5, 1fr);
   }
 }
