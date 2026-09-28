@@ -210,20 +210,59 @@ public class DashboardAggregationService {
     }
 
     /**
-     * 전체 집계 (SF-2에서 구현 예정)
-     * SF-1에서는 loadCalculatedSales()가 정상 동작하는지만 검증하고 스텁 결과 반환
+     * 전체 집계 (SF-2: 전체 실현수익 집계 API 구현)
+     * loadCalculatedSales()로 조회한 계산용 기록 목록을 단일 그룹으로 집계해 SummaryDto를 구성한다.
+     * - totalInvestmentAmount = Σ(allocatedQuantity × allocationPrice), allocationPrice가 null이면 0으로 취급
+     * - totalPreTaxProfit = Σ(CalculatedSale.preTaxProfit())
+     * - totalAfterTaxProfit = Σ(CalculatedSale.afterTaxProfit())
+     * - totalProfitRate = totalInvestmentAmount가 0이면 0.0, 아니면 (totalAfterTaxProfit / totalInvestmentAmount) × 100
+     * - participationCount = calculatedSales 리스트 크기
+     * 매도 기록이 없으면 모든 필드 0인 SummaryDto 반환 (AC-006)
      */
     public SummaryDto getSummary() {
-        // loadCalculatedSales() 호출로 공통 데이터 준비 로직 검증
-        loadCalculatedSales();
-        
-        // SF-1에서는 스텁 반환 (실제 집계는 SF-2에서 구현)
+        List<CalculatedSale> calculatedSales = loadCalculatedSales();
+
+        if (calculatedSales.isEmpty()) {
+            return SummaryDto.builder()
+                    .totalInvestmentAmount(0L)
+                    .totalPreTaxProfit(0L)
+                    .totalAfterTaxProfit(0L)
+                    .totalProfitRate(0.0)
+                    .participationCount(0)
+                    .build();
+        }
+
+        long totalInvestmentAmount = calculatedSales.stream()
+                .mapToLong(cs -> {
+                    Long price = cs.allocationPrice();
+                    Long qty = cs.allocatedQuantity();
+                    if (price == null || qty == null) {
+                        return 0L;
+                    }
+                    return price * qty;
+                })
+                .sum();
+
+        long totalPreTaxProfit = calculatedSales.stream()
+                .mapToLong(CalculatedSale::preTaxProfit)
+                .sum();
+
+        long totalAfterTaxProfit = calculatedSales.stream()
+                .mapToLong(CalculatedSale::afterTaxProfit)
+                .sum();
+
+        double totalProfitRate = (totalInvestmentAmount == 0L)
+                ? 0.0
+                : (totalAfterTaxProfit * 100.0) / totalInvestmentAmount;
+
+        int participationCount = calculatedSales.size();
+
         return SummaryDto.builder()
-                .totalInvestmentAmount(0L)
-                .totalPreTaxProfit(0L)
-                .totalAfterTaxProfit(0L)
-                .totalProfitRate(0.0)
-                .participationCount(0)
+                .totalInvestmentAmount(totalInvestmentAmount)
+                .totalPreTaxProfit(totalPreTaxProfit)
+                .totalAfterTaxProfit(totalAfterTaxProfit)
+                .totalProfitRate(totalProfitRate)
+                .participationCount(participationCount)
                 .build();
     }
 
