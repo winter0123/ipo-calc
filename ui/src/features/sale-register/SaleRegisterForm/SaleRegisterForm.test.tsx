@@ -24,13 +24,12 @@ let mutationFnMock: (data: unknown) => Promise<unknown> = () => Promise.resolve(
 
 vi.mock('../useSaleRegister.ts', () => ({
   useSaleRegister: () => {
-    const navigate = vi.fn()
     const queryClient = useQueryClient()
     return useMutation({
       mutationFn: mutationFnMock,
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
-        navigate('/investments')
+        mockNavigate('/investments')
       },
     })
   },
@@ -78,8 +77,8 @@ function defaultMock() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
     const p = String(path)
     if (p === '/investors' && (!options || options.method === 'GET')) return INVESTORS
-    if (p.startsWith('/investment-history') && (!options || options.method === 'GET')) return SUBSCRIPTION_HISTORY
     if (p === '/investment-history/1' && (!options || options.method === 'GET')) return ALLOCATION_DETAIL
+    if (p.startsWith('/investment-history') && (!options || options.method === 'GET')) return SUBSCRIPTION_HISTORY
     throw new Error(`unexpected path: ${String(path)}`)
   })
 }
@@ -164,6 +163,51 @@ describe('SaleRegisterForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
       expect(screen.getByText('0 이상 정수를 입력해 주세요.')).toBeInTheDocument()
+    })
+  })
+
+  it('등록 성공 시 /investments로 이동 (AC-001)', async () => {
+    mutationFnMock = vi.fn().mockResolvedValue({ id: 1 })
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/investments')
+    })
+  })
+
+  it('404 에러 시 "배정을 찾을 수 없습니다." 표시 (AC-004)', async () => {
+    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 404 Not Found'))
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(screen.getByText('배정을 찾을 수 없습니다.')).toBeInTheDocument()
+    })
+  })
+
+  it('409 에러 시 원본 메시지 표시 (AC-005)', async () => {
+    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 409 Conflict: <상세>'))
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Request failed: 409 Conflict: <상세>')).toBeInTheDocument()
+    })
+  })
+
+  it('400 에러 시 "입력값을 확인해 주세요." 표시 (AC-006)', async () => {
+    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request'))
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
+    })
+  })
+
+  it('네트워크 오류 시 "네트워크 연결을 확인해 주세요." 표시 (AC-021)', async () => {
+    mutationFnMock = vi.fn().mockRejectedValue(new Error('Failed to fetch'))
+    await setupForm()
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() => {
+      expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
     })
   })
 
