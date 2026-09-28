@@ -1,75 +1,135 @@
 .container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 24px;
-  max-width: 480px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .title {
-  font-size: 24px;
+  margin: 0;
+  font-size: 28px;
   font-weight: 600;
-  margin-bottom: 24px;
   color: #1f2937;
 }
 
-.status {
+.resultsArea {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading {
+  margin: 0;
+  padding: 32px;
+  text-align: center;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .error {
-  color: #ef4444;
+  margin: 0;
+  padding: 12px 16px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
   font-size: 14px;
+  color: #dc2626;
 }
 
-.investorList {
+.dataArea {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.card {
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  text-align: center;
+}
+
+.list {
   list-style: none;
   padding: 0;
   margin: 0;
-}
-
-.investorItem {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list li {
+  padding: 12px 16px;
+  background-color: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background-color: #fff;
-}
-
-.investorName {
-  font-size: 15px;
-  font-weight: 500;
-  color: #111827;
-}
-
-.registerButton {
-  padding: 8px 14px;
-  background-color: #3b82f6;
-  color: #fff;
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.navLink {
+  margin-top: 16px;
+}
+
+.navLink a {
+  color: #1976d2;
   text-decoration: none;
-  white-space: nowrap;
+  font-size: 14px;
 }
 
-.registerButton:hover {
-  background-color: #2563eb;
+.navLink a:hover {
+  text-decoration: underline;
 }
 
-@media (min-width: 768px) {
+/* 모바일 */
+@media (max-width: 640px) {
   .container {
-    max-width: 560px;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
   }
 }
 
+/* 태블릿 */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .container {
+    padding: 24px;
+  }
+
+  .cardGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 데스크톱 */
 @media (min-width: 1024px) {
   .container {
-    max-width: 640px;
+    padding: 32px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+
+  .cardGrid {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
