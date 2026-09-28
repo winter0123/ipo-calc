@@ -25,4 +25,6 @@ public class InvestmentHistoryDto {
     private AllocationSummaryDto allocation;
     private List<SaleSummaryDto> sales;
     private Long remainingQuantity;
+    private String investorName;
+    private String securitiesFirmName;
 }

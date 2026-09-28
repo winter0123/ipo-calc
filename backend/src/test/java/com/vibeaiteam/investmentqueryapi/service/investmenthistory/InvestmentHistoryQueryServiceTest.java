@@ -12,7 +12,11 @@ import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryNotFoundExcept
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryValidationException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
+import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
+import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
+import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import org.junit.jupiter.api.AfterEach;
@@ -71,6 +75,15 @@ class InvestmentHistoryQueryServiceTest {
     @MockBean
     private SubscriptionRepository subscriptionRepository;
 
+    @MockBean
+    private InvestorRepository investorRepository;
+
+    @MockBean
+    private SecuritiesAccountRepository securitiesAccountRepository;
+
+    @MockBean
+    private SecuritiesFirmRepository securitiesFirmRepository;
+
     private static final Long CURRENT_ACCOUNT_ID = 1L;
     private static final Long OTHER_ACCOUNT_ID = 2L;
     private static final Long INVESTOR_ID = 10L;
@@ -81,6 +94,7 @@ class InvestmentHistoryQueryServiceTest {
     private Investor currentAccountInvestor;
     private Investor otherAccountInvestor;
     private SecuritiesAccount securitiesAccount;
+    private SecuritiesFirm securitiesFirm;
     private Ipo testIpo;
     private Subscription testSubscription;
     private Allocation testAllocation;
@@ -123,6 +137,13 @@ class InvestmentHistoryQueryServiceTest {
                 .accountNumber("123-456-789")
                 .accountName("테스트 계좌")
                 .isDefault(true)
+                .status("ACTIVE")
+                .build();
+
+        // Securities firm
+        securitiesFirm = SecuritiesFirm.builder()
+                .id(1L)
+                .name("테스트 증권사")
                 .status("ACTIVE")
                 .build();
 
@@ -188,6 +209,9 @@ class InvestmentHistoryQueryServiceTest {
         when(allocationRepository.findBySubscriptionIdIn(anyList()))
                 .thenReturn(Collections.emptyList());
         when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
 
         // When: 필터 없이 전체 조회
         Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
@@ -207,6 +231,9 @@ class InvestmentHistoryQueryServiceTest {
         when(allocationRepository.findBySubscriptionIdIn(anyList()))
                 .thenReturn(Collections.emptyList());
         when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
 
         // When: ipoId로 필터링한 조회
         Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, IPO_ID, 0, 20);
@@ -269,6 +296,9 @@ class InvestmentHistoryQueryServiceTest {
         when(allocationRepository.findBySubscriptionIdIn(any()))
                 .thenReturn(Collections.emptyList());
         when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
 
         // When
         Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
@@ -289,6 +319,9 @@ class InvestmentHistoryQueryServiceTest {
         when(saleRepository.findByAllocationIdInAndStatus(any(), eq("ACTIVE")))
                 .thenReturn(Collections.emptyList());
         when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
 
         // When
         Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
@@ -309,6 +342,9 @@ class InvestmentHistoryQueryServiceTest {
         when(saleRepository.findByAllocationIdInAndStatus(anyList(), eq("ACTIVE")))
                 .thenReturn(List.of(testSale));
         when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
 
         // When
         Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
@@ -387,6 +423,12 @@ class InvestmentHistoryQueryServiceTest {
                 .thenReturn(List.of(testSale));
         when(ipoRepository.findById(IPO_ID))
                 .thenReturn(java.util.Optional.of(testIpo));
+        when(investorRepository.findById(INVESTOR_ID))
+                .thenReturn(java.util.Optional.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(SECURITIES_ACCOUNT_ID))
+                .thenReturn(java.util.Optional.of(securitiesAccount));
+        when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.of(securitiesFirm));
 
         // When
         InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
@@ -400,6 +442,8 @@ class InvestmentHistoryQueryServiceTest {
         assertThat(result.getSales()).hasSize(1);
         assertThat(result.getRemainingQuantity()).isEqualTo(70L);
         assertThat(result.getIpoName()).isEqualTo("샘플테크");
+        assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(result.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
         verify(allocationRepository).findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
         verify(saleRepository).findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(testAllocation.getId(), "ACTIVE");
     }
@@ -413,6 +457,12 @@ class InvestmentHistoryQueryServiceTest {
                 .thenReturn(java.util.Optional.empty());
         when(ipoRepository.findById(IPO_ID))
                 .thenReturn(java.util.Optional.of(testIpo));
+        when(investorRepository.findById(INVESTOR_ID))
+                .thenReturn(java.util.Optional.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(SECURITIES_ACCOUNT_ID))
+                .thenReturn(java.util.Optional.of(securitiesAccount));
+        when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.of(securitiesFirm));
 
         // When
         InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
@@ -425,7 +475,180 @@ class InvestmentHistoryQueryServiceTest {
         assertThat(result.getSales()).isEmpty();
         assertThat(result.getRemainingQuantity()).isNull();
         assertThat(result.getIpoName()).isEqualTo("샘플테크");
+        assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(result.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
         verify(allocationRepository).findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
         verify(saleRepository, never()).findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(anyLong(), eq("ACTIVE"));
+    }
+
+    // ===========================================
+    // 신규 필드 investorName, securitiesFirmName 테스트
+    // ===========================================
+
+    @Test
+    void getHistory_investorName_securitiesFirmName_채워짐() {
+        // Given: 투자자/증권계좌/증권사 데이터가 모두 있는 경우
+        when(subscriptionRepository.findByInvestorAccountIdWithFilters(
+                eq(CURRENT_ACCOUNT_ID), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testSubscription)));
+        when(allocationRepository.findBySubscriptionIdIn(anyList()))
+                .thenReturn(Collections.emptyList());
+        when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(anySet())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(anySet())).thenReturn(List.of(securitiesFirm));
+
+        // When
+        Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
+
+        // Then: investorName, securitiesFirmName이 올바르게 채워짐
+        assertThat(result.getContent()).hasSize(1);
+        InvestmentHistoryDto dto = result.getContent().get(0);
+        assertThat(dto.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(dto.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
+    }
+
+    @Test
+    void getHistory_투자자없음_investorName_null() {
+        // Given: Investor가 없는 경우 (방어 코드)
+        when(subscriptionRepository.findByInvestorAccountIdWithFilters(
+                eq(CURRENT_ACCOUNT_ID), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testSubscription)));
+        when(allocationRepository.findBySubscriptionIdIn(anyList()))
+                .thenReturn(Collections.emptyList());
+        when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(securitiesAccountRepository.findAllById(any())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(any())).thenReturn(List.of(securitiesFirm));
+
+        // When
+        Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
+
+        // Then: investorName은 null, securitiesFirmName은 채워짐 (예외 발생 안 함)
+        assertThat(result.getContent()).hasSize(1);
+        InvestmentHistoryDto dto = result.getContent().get(0);
+        assertThat(dto.getInvestorName()).isNull();
+        assertThat(dto.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
+    }
+
+    @Test
+    void getHistory_증권계좌없음_securitiesFirmName_null() {
+        // Given: SecuritiesAccount가 없는 경우 (방어 코드)
+        when(subscriptionRepository.findByInvestorAccountIdWithFilters(
+                eq(CURRENT_ACCOUNT_ID), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testSubscription)));
+        when(allocationRepository.findBySubscriptionIdIn(anyList()))
+                .thenReturn(Collections.emptyList());
+        when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(any())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(securitiesFirmRepository.findAllById(any())).thenReturn(List.of(securitiesFirm));
+
+        // When
+        Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
+
+        // Then: investorName은 채워짐, securitiesFirmName은 null (예외 발생 안 함)
+        assertThat(result.getContent()).hasSize(1);
+        InvestmentHistoryDto dto = result.getContent().get(0);
+        assertThat(dto.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(dto.getSecuritiesFirmName()).isNull();
+    }
+
+    @Test
+    void getHistory_증권사없음_securitiesFirmName_null() {
+        // Given: SecuritiesFirm이 없는 경우 (방어 코드)
+        when(subscriptionRepository.findByInvestorAccountIdWithFilters(
+                eq(CURRENT_ACCOUNT_ID), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testSubscription)));
+        when(allocationRepository.findBySubscriptionIdIn(anyList()))
+                .thenReturn(Collections.emptyList());
+        when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
+        when(investorRepository.findAllById(any())).thenReturn(List.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findAllById(any())).thenReturn(List.of(securitiesAccount));
+        when(securitiesFirmRepository.findAllById(any())).thenReturn(Collections.emptyList());
+
+        // When
+        Page<InvestmentHistoryDto> result = queryService.getHistory(null, null, null, 0, 20);
+
+        // Then: investorName은 채워짐, securitiesFirmName은 null (예외 발생 안 함)
+        assertThat(result.getContent()).hasSize(1);
+        InvestmentHistoryDto dto = result.getContent().get(0);
+        assertThat(dto.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(dto.getSecuritiesFirmName()).isNull();
+    }
+
+    @Test
+    void getHistoryDetail_투자자없음_investorName_null() {
+        // Given: Investor가 없는 단건 조회
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(testSubscription));
+        when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE"))
+                .thenReturn(java.util.Optional.empty());
+        when(ipoRepository.findById(IPO_ID))
+                .thenReturn(java.util.Optional.of(testIpo));
+        when(investorRepository.findById(INVESTOR_ID))
+                .thenReturn(java.util.Optional.empty());
+        when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(SECURITIES_ACCOUNT_ID))
+                .thenReturn(java.util.Optional.of(securitiesAccount));
+        when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.of(securitiesFirm));
+
+        // When
+        InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
+
+        // Then: investorName은 null, securitiesFirmName은 채워짐 (예외 발생 안 함)
+        assertThat(result).isNotNull();
+        assertThat(result.getInvestorName()).isNull();
+        assertThat(result.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
+    }
+
+    @Test
+    void getHistoryDetail_증권계좌없음_securitiesFirmName_null() {
+        // Given: SecuritiesAccount가 없는 단건 조회
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(testSubscription));
+        when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE"))
+                .thenReturn(java.util.Optional.empty());
+        when(ipoRepository.findById(IPO_ID))
+                .thenReturn(java.util.Optional.of(testIpo));
+        when(investorRepository.findById(INVESTOR_ID))
+                .thenReturn(java.util.Optional.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(SECURITIES_ACCOUNT_ID))
+                .thenReturn(java.util.Optional.empty());
+        when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.of(securitiesFirm));
+
+        // When
+        InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
+
+        // Then: investorName은 채워짐, securitiesFirmName은 null (예외 발생 안 함)
+        assertThat(result).isNotNull();
+        assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(result.getSecuritiesFirmName()).isNull();
+    }
+
+    @Test
+    void getHistoryDetail_증권사없음_securitiesFirmName_null() {
+        // Given: SecuritiesFirm이 없는 단건 조회
+        when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
+                .thenReturn(java.util.Optional.of(testSubscription));
+        when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE"))
+                .thenReturn(java.util.Optional.empty());
+        when(ipoRepository.findById(IPO_ID))
+                .thenReturn(java.util.Optional.of(testIpo));
+        when(investorRepository.findById(INVESTOR_ID))
+                .thenReturn(java.util.Optional.of(currentAccountInvestor));
+        when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(SECURITIES_ACCOUNT_ID))
+                .thenReturn(java.util.Optional.of(securitiesAccount));
+        when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(java.util.Optional.empty());
+
+        // When
+        InvestmentHistoryDto result = queryService.getHistoryDetail(SUBSCRIPTION_ID);
+
+        // Then: investorName은 채워짐, securitiesFirmName은 null (예외 발생 안 함)
+        assertThat(result).isNotNull();
+        assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
+        assertThat(result.getSecuritiesFirmName()).isNull();
     }
 }
