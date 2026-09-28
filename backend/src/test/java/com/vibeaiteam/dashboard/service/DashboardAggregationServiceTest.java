@@ -383,6 +383,261 @@ class DashboardAggregationServiceTest {
     }
 
     @Test
+    void getByInvestorGroupsByInvestorIdAndSortsAscending() {
+        // Given: 2명의 투자자, 각각 다른 Sale 데이터
+        // 투자자 1 (id=10): Sale 1개
+        // 투자자 2 (id=20): Sale 2개
+        
+        Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
+        Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);
+        Sale sale3 = createSale(3L, 300L, 15L, 200000L, 1500L, 7000L, 300L);
+        
+        Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+        Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+        Allocation allocation3 = createAllocation(300L, 3000L, 80L, 11000L);
+        
+        Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+        Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+        Subscription subscription3 = createSubscription(3000L, 20L, 2L, 2L, 100L);
+        
+        Investor investor1 = createInvestor(10L, 1L, "투자자 김철수");
+        Investor investor2 = createInvestor(20L, 1L, "투자자 이영희");
+        
+        SecuritiesAccount securitiesAccount1 = createSecuritiesAccount(1L, 100L);
+        SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+        
+        SecuritiesFirm securitiesFirm1 = createSecuritiesFirm(100L, "테스트 증권사 A");
+        SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "테스트 증권사 B");
+        
+        Ipo ipo1 = createIpo(1L, 9000L);
+        Ipo ipo2 = createIpo(2L, 9500L);
+        
+        Cost cost1 = Cost.builder()
+                .id(1L)
+                .subscriptionId(1000L)
+                .amount(100000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        Cost cost2 = Cost.builder()
+                .id(2L)
+                .subscriptionId(2000L)
+                .amount(150000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        Cost cost3 = Cost.builder()
+                .id(3L)
+                .subscriptionId(3000L)
+                .amount(150000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        setupMocksWithSales(
+                List.of(sale1, sale2, sale3),
+                List.of(allocation1, allocation2, allocation3),
+                List.of(subscription1, subscription2, subscription3),
+                List.of(investor1, investor2),
+                List.of(securitiesAccount1, securitiesAccount2),
+                List.of(securitiesFirm1, securitiesFirm2),
+                List.of(cost1, cost2, cost3),
+                List.of(ipo1, ipo2)
+        );
+
+        // When
+        List<InvestorAggregationDto> result = dashboardAggregationService.getByInvestor();
+
+        // Then: 투자자별로 그룹핑, investorId 오름차순 정렬
+        assertThat(result).hasSize(2);
+        
+        // 첫 번째: investorId=10
+        InvestorAggregationDto dto1 = result.get(0);
+        assertThat(dto1.getInvestorId()).isEqualTo(10L);
+        assertThat(dto1.getInvestorName()).isEqualTo("투자자 김철수");
+        assertThat(dto1.getParticipationCount()).isEqualTo(1);
+        
+        // 두 번째: investorId=20 (2건의 Sale)
+        InvestorAggregationDto dto2 = result.get(1);
+        assertThat(dto2.getInvestorId()).isEqualTo(20L);
+        assertThat(dto2.getInvestorName()).isEqualTo("투자자 이영희");
+        assertThat(dto2.getParticipationCount()).isEqualTo(2);
+        
+        // 투자금 검증: investor1 = 50*10000 = 500000, investor2 = 100*12000 + 80*11000 = 1200000 + 880000 = 2080000
+        assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(500000L);
+        assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+    }
+
+    @Test
+    void getBySecuritiesFirmGroupsBySecuritiesFirmIdAndSortsAscending() {
+        // Given: 2개 증권사, 각각 다른 Sale 데이터
+        // 증권사 1 (id=100): Sale 1개
+        // 증권사 2 (id=200): Sale 2개
+        
+        Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
+        Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);
+        Sale sale3 = createSale(3L, 300L, 15L, 200000L, 1500L, 7000L, 300L);
+        
+        Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+        Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+        Allocation allocation3 = createAllocation(300L, 3000L, 80L, 11000L);
+        
+        Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+        Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+        Subscription subscription3 = createSubscription(3000L, 30L, 2L, 2L, 100L);
+        
+        Investor investor1 = createInvestor(10L, 1L, "투자자 김철수");
+        Investor investor2 = createInvestor(20L, 1L, "투자자 이영희");
+        Investor investor3 = createInvestor(30L, 1L, "투자자 박민수");
+        
+        SecuritiesAccount securitiesAccount1 = createSecuritiesAccount(1L, 100L);
+        SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+        
+        SecuritiesFirm securitiesFirm1 = createSecuritiesFirm(100L, "테스트 증권사 A");
+        SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "테스트 증권사 B");
+        
+        Ipo ipo1 = createIpo(1L, 9000L);
+        Ipo ipo2 = createIpo(2L, 9500L);
+        
+        Cost cost1 = Cost.builder()
+                .id(1L)
+                .subscriptionId(1000L)
+                .amount(100000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        Cost cost2 = Cost.builder()
+                .id(2L)
+                .subscriptionId(2000L)
+                .amount(150000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        Cost cost3 = Cost.builder()
+                .id(3L)
+                .subscriptionId(3000L)
+                .amount(150000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        setupMocksWithSales(
+                List.of(sale1, sale2, sale3),
+                List.of(allocation1, allocation2, allocation3),
+                List.of(subscription1, subscription2, subscription3),
+                List.of(investor1, investor2, investor3),
+                List.of(securitiesAccount1, securitiesAccount2),
+                List.of(securitiesFirm1, securitiesFirm2),
+                List.of(cost1, cost2, cost3),
+                List.of(ipo1, ipo2)
+        );
+
+        // When
+        List<SecuritiesFirmAggregationDto> result = dashboardAggregationService.getBySecuritiesFirm();
+
+        // Then: 증권사별로 그룹핑, securitiesFirmId 오름차순 정렬
+        assertThat(result).hasSize(2);
+        
+        // 첫 번째: securitiesFirmId=100
+        SecuritiesFirmAggregationDto dto1 = result.get(0);
+        assertThat(dto1.getSecuritiesFirmId()).isEqualTo(100L);
+        assertThat(dto1.getSecuritiesFirmName()).isEqualTo("테스트 증권사 A");
+        assertThat(dto1.getParticipationCount()).isEqualTo(1);
+        
+        // 두 번째: securitiesFirmId=200 (2건의 Sale)
+        SecuritiesFirmAggregationDto dto2 = result.get(1);
+        assertThat(dto2.getSecuritiesFirmId()).isEqualTo(200L);
+        assertThat(dto2.getSecuritiesFirmName()).isEqualTo("테스트 증권사 B");
+        assertThat(dto2.getParticipationCount()).isEqualTo(2);
+        
+        // 투자금 검증: firm1 = 50*10000 = 500000, firm2 = 100*12000 + 80*11000 = 2080000
+        assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(500000L);
+        assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+    }
+
+    @Test
+    void getBySecuritiesFirmExcludesNullSecuritiesFirmId() {
+        // Given: securitiesFirmId가 null인 Sale 포함
+        Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
+        Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);
+        
+        Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+        Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+        
+        // securitiesAccount에 securitiesFirmId가 null인 경우
+        Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+        Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+        
+        Investor investor1 = createInvestor(10L, 1L, "투자자 김철수");
+        Investor investor2 = createInvestor(20L, 1L, "투자자 이영희");
+        
+        // securitiesFirmId가 null인 계좌
+        SecuritiesAccount securitiesAccount1 = SecuritiesAccount.builder()
+                .id(1L)
+                .securitiesFirmId(null)
+                .accountNumber("1234567890")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+        
+        SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "테스트 증권사 B");
+        
+        Ipo ipo1 = createIpo(1L, 9000L);
+        Ipo ipo2 = createIpo(2L, 9500L);
+        
+        Cost cost1 = Cost.builder()
+                .id(1L)
+                .subscriptionId(1000L)
+                .amount(100000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        Cost cost2 = Cost.builder()
+                .id(2L)
+                .subscriptionId(2000L)
+                .amount(150000L)
+                .costType("TRANSFER_FEE")
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        setupMocksWithSales(
+                List.of(sale1, sale2),
+                List.of(allocation1, allocation2),
+                List.of(subscription1, subscription2),
+                List.of(investor1, investor2),
+                List.of(securitiesAccount1, securitiesAccount2),
+                List.of(securitiesFirm2),
+                List.of(cost1, cost2),
+                List.of(ipo1, ipo2)
+        );
+
+        // When
+        List<SecuritiesFirmAggregationDto> result = dashboardAggregationService.getBySecuritiesFirm();
+
+        // Then: securitiesFirmId가 null인 데이터는 제외되고, 유효한 증권사만 반환
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getSecuritiesFirmId()).isEqualTo(200L);
+    }
+
+    @Test
     void getByPeriodReturnsEmptyListWhenNoSales() {
         // Given: 현재 계정 ID 반환, Sale 없음
         setupEmptyMocks();

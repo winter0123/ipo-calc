@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -267,19 +268,129 @@ public class DashboardAggregationService {
     }
 
     /**
-     * 투자자별 집계 (SF-3에서 구현 예정)
+     * 투자자별 집계 (SF-3: 투자자별 실현수익 집계 API 구현)
+     * loadCalculatedSales() 결과를 investorId로 그룹핑해 각 투자자별 집계값을 계산한다.
+     * investorId 오름차순으로 정렬해 반환 (AC-002).
+     * 데이터가 없으면 빈 리스트 반환.
      */
     public List<InvestorAggregationDto> getByInvestor() {
-        // TODO: loadCalculatedSales() 결과를 investorId로 그룹핑 후 집계
-        return Collections.emptyList();
+        List<CalculatedSale> calculatedSales = loadCalculatedSales();
+
+        if (calculatedSales.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return calculatedSales.stream()
+                .collect(Collectors.groupingBy(CalculatedSale::investorId))
+                .entrySet().stream()
+                .map(entry -> aggregateInvestorGroup(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(InvestorAggregationDto::getInvestorId))
+                .toList();
     }
 
     /**
-     * 증권사별 집계 (SF-3에서 구현 예정)
+     * 증권사별 집계 (SF-3: 증권사별 실현수익 집계 API 구현)
+     * loadCalculatedSales() 결과를 securitiesFirmId로 그룹핑해 각 증권사별 집계값을 계산한다.
+     * securitiesFirmId가 null인 데이터는 제외한다 (방어 코드).
+     * securitiesFirmId 오름차순으로 정렬해 반환 (AC-003).
+     * 데이터가 없으면 빈 리스트 반환.
      */
     public List<SecuritiesFirmAggregationDto> getBySecuritiesFirm() {
-        // TODO: loadCalculatedSales() 결과를 securitiesFirmId로 그룹핑 후 집계
-        return Collections.emptyList();
+        List<CalculatedSale> calculatedSales = loadCalculatedSales();
+
+        if (calculatedSales.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return calculatedSales.stream()
+                .filter(cs -> cs.securitiesFirmId() != null)
+                .collect(Collectors.groupingBy(CalculatedSale::securitiesFirmId))
+                .entrySet().stream()
+                .map(entry -> aggregateSecuritiesFirmGroup(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(SecuritiesFirmAggregationDto::getSecuritiesFirmId))
+                .toList();
+    }
+
+    /**
+     * 투자자별 그룹 집계 헬퍼 메서드
+     * 주어진 CalculatedSale 리스트를 단일 그룹으로 집계해 InvestorAggregationDto를 생성한다.
+     */
+    private InvestorAggregationDto aggregateInvestorGroup(Long investorId, List<CalculatedSale> group) {
+        long totalInvestmentAmount = group.stream()
+                .mapToLong(cs -> {
+                    Long price = cs.allocationPrice();
+                    Long qty = cs.allocatedQuantity();
+                    if (price == null || qty == null) {
+                        return 0L;
+                    }
+                    return price * qty;
+                })
+                .sum();
+
+        long totalPreTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::preTaxProfit)
+                .sum();
+
+        long totalAfterTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::afterTaxProfit)
+                .sum();
+
+        double totalProfitRate = (totalInvestmentAmount == 0L)
+                ? 0.0
+                : (totalAfterTaxProfit * 100.0) / totalInvestmentAmount;
+
+        int participationCount = group.size();
+
+        return InvestorAggregationDto.builder()
+                .investorId(investorId)
+                .investorName(group.get(0).investorName())
+                .totalInvestmentAmount(totalInvestmentAmount)
+                .totalPreTaxProfit(totalPreTaxProfit)
+                .totalAfterTaxProfit(totalAfterTaxProfit)
+                .totalProfitRate(totalProfitRate)
+                .participationCount(participationCount)
+                .build();
+    }
+
+    /**
+     * 증권사별 그룹 집계 헬퍼 메서드
+     * 주어진 CalculatedSale 리스트를 단일 그룹으로 집계해 SecuritiesFirmAggregationDto를 생성한다.
+     */
+    private SecuritiesFirmAggregationDto aggregateSecuritiesFirmGroup(Long securitiesFirmId, List<CalculatedSale> group) {
+        long totalInvestmentAmount = group.stream()
+                .mapToLong(cs -> {
+                    Long price = cs.allocationPrice();
+                    Long qty = cs.allocatedQuantity();
+                    if (price == null || qty == null) {
+                        return 0L;
+                    }
+                    return price * qty;
+                })
+                .sum();
+
+        long totalPreTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::preTaxProfit)
+                .sum();
+
+        long totalAfterTaxProfit = group.stream()
+                .mapToLong(CalculatedSale::afterTaxProfit)
+                .sum();
+
+        double totalProfitRate = (totalInvestmentAmount == 0L)
+                ? 0.0
+                : (totalAfterTaxProfit * 100.0) / totalInvestmentAmount;
+
+        int participationCount = group.size();
+
+        return SecuritiesFirmAggregationDto.builder()
+                .securitiesFirmId(securitiesFirmId)
+                .securitiesFirmName(group.get(0).securitiesFirmName())
+                .totalInvestmentAmount(totalInvestmentAmount)
+                .totalPreTaxProfit(totalPreTaxProfit)
+                .totalAfterTaxProfit(totalAfterTaxProfit)
+                .totalProfitRate(totalProfitRate)
+                .participationCount(participationCount)
+                .build();
     }
 
     /**
