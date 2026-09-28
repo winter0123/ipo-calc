@@ -1,61 +1,34 @@
-import { useEffect, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import FilterBar, {
-  type InvestmentHistoryFilters,
+  type InvestmentHistoryFilters as FilterInvestmentHistoryFilters,
 } from '../../features/investment-history/FilterBar/FilterBar.tsx'
-import { getInvestmentHistory } from '../../entities/subscription/api-client.ts'
-import type { InvestmentHistoryResponse } from '../../entities/subscription/types.ts'
+import { useInvestmentHistory } from '../../features/investment-history/useInvestmentHistory.ts'
+import type { InvestmentHistoryFilters } from '../../entities/subscription/types.ts'
 import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
+import InvestmentHistoryTable from '../../widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx'
 import styles from './InvestmentHistoryPage.module.css'
 
-function filtersToApiParams(filters: InvestmentHistoryFilters): Record<string, number> {
-  const params: Record<string, number> = {}
-  if (filters.investorId !== '') params.investorId = Number(filters.investorId)
-  if (filters.securitiesAccountId !== '')
-    params.securitiesAccountId = Number(filters.securitiesAccountId)
-  if (filters.ipoId !== '') params.ipoId = Number(filters.ipoId)
-  return params
+function filtersToApiParams(filters: FilterInvestmentHistoryFilters): InvestmentHistoryFilters {
+  return {
+    investorId: filters.investorId ? Number(filters.investorId) : undefined,
+    securitiesAccountId: filters.securitiesAccountId
+      ? Number(filters.securitiesAccountId)
+      : undefined,
+    ipoId: filters.ipoId ? Number(filters.ipoId) : undefined,
+  }
 }
 
 export default function InvestmentHistoryPage() {
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState<InvestmentHistoryFilters>({
+  const [filters, setFilters] = useState<FilterInvestmentHistoryFilters>({
     investorId: '',
     securitiesAccountId: '',
     ipoId: '',
   })
   const apiFilters = filtersToApiParams(filters)
 
-  // Ref to always have current filters for queryFn (avoids stale closure)
-  const apiFiltersRef = useRef(apiFilters)
-
-  // Update ref after render (avoids "Cannot update ref during render" lint error)
-  useEffect(() => {
-    apiFiltersRef.current = apiFilters
-  }, [apiFilters])
-
-  // Invalidate queries after filters change (runs after render, so ref is current)
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
-  }, [filters, queryClient])
-
-  const handleChange = (field: keyof InvestmentHistoryFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleReset = () => {
-    setFilters({
-      investorId: '',
-      securitiesAccountId: '',
-      ipoId: '',
-    })
-    queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
-  }
-
-  const { data, isLoading, error } = useQuery<InvestmentHistoryResponse>({
-    queryKey: ['investmentHistory'],
-    queryFn: () => getInvestmentHistory(apiFiltersRef.current),
-  })
+  const { data, isLoading, error } = useInvestmentHistory(apiFilters)
 
   const getErrorMessage = () => {
     if (!error) return null
@@ -71,6 +44,19 @@ export default function InvestmentHistoryPage() {
       return '네트워크 연결을 확인해 주세요.'
     }
     return '투자 내역을 불러오는 데 실패했습니다.'
+  }
+
+  const handleChange = (field: keyof FilterInvestmentHistoryFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleReset = () => {
+    setFilters({
+      investorId: '',
+      securitiesAccountId: '',
+      ipoId: '',
+    })
+    queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
   }
 
   const items = data?.content ?? []
@@ -92,11 +78,7 @@ export default function InvestmentHistoryPage() {
 
         {!isLoading && !error && items.length === 0 && <EmptyState onResetFilters={handleReset} />}
 
-        {!isLoading && !error && items.length > 0 && (
-          <div className={styles.placeholder}>
-            투자 내역 {items.length}건 조회됨 (테이블은 다음 SF에서 구현)
-          </div>
-        )}
+        {!isLoading && !error && items.length > 0 && <InvestmentHistoryTable items={items} />}
       </div>
     </div>
   )

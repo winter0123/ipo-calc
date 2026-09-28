@@ -59,3 +59,45 @@ Epic 14의 필터 버튼 그룹 패턴(청약 목록 화면의 미배정/배정�
 `docs/architecture/web-inquiry-dashboard.md` 작성 태스크 지시에
 반영되었다. **이 Epic이 완료되면 로드맵 16개 Epic 전체의 Phase 0가
 완료된다.**
+
+## 2026-09-28 — SF-2 구현 완료 (frontend worker)
+
+### 작업 개요
+Epic 16 SF-2: 투자 내역 화면의 목록 표(`InvestmentHistoryTable`)와 상세 확장(`InvestmentHistoryDetail`) 위젯, TanStack Query 훅(`useInvestmentHistory`, `useInvestmentHistoryDetail`) 구현. SF-1(FilterBar, EmptyState, InvestmentHistoryPage 기본 배치)은 main에 이미 병합 완료(PR #168). 백엔드 API(GET /investment-history, GET /investment-history/{subscriptionId})는 이미 구현·병합 완료이므로 **실연동**으로 개발.
+
+### 구현 파일
+- **신규**: `ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx` — 목록 행 렌더링, 상세 확장/접기, 선택된 행 하이라이트
+- **신규**: `ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryTable.module.css` — 테이블 스타일, 반응형(640/768/1024px)
+- **신규**: `ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryRow.tsx` — 단일 행, 키보드 접근성(Tab/Enter/Space, `role="row"`, `tabIndex=0`)
+- **신규**: `ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryDetail.tsx` — subscription + allocation + sales[] 중첩 표시
+- **신규**: `ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryDetail.module.css` — 상세 정보 스타일, 중첩 그룹화
+- **신규**: `ui/src/features/investment-history/useInvestmentHistory.ts` — `queryKey: ['investmentHistory', filters]`, `staleTime: 0`
+- **신규**: `ui/src/features/investment-history/useInvestmentHistoryDetail.ts` — `queryKey: ['investmentHistoryDetail', subscriptionId]`, `enabled: !!subscriptionId`, 404 에러 처리
+- **수정**: `ui/src/pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx` — SF-1 placeholder를 `InvestmentHistoryTable`로 교체, `useInvestmentHistory` 훅 통합
+- **수정**: `ui/src/pages/InvestmentHistoryPage/InvestmentHistoryPage.test.tsx` — SF-2 반영하여 테스트 업데이트
+
+### 실연동 검증
+- `GET /investment-history`(목록, PR #153)와 `GET /investment-history/{subscriptionId}`(상세, PR #162)는 **모두 구현·병합 완료**이므로 mock이 아닌 실 API로 개발
+- `entities/subscription/types.ts`의 `InvestmentHistoryItem`(allocation, sales[], remainingQuantity 포함), `AllocationSummary`, `SaleSummary` 타입 재사용
+- `entities/subscription/api-client.ts`의 `getInvestmentHistory`, `getSubscriptionDetail` 함수 재사용
+- `InvestmentHistoryDto.java`의 실제 필드(`id`, `subscribedAt`, `ipoId`, `ipoName`, `ipoFixedPrice`, `subscriptionQuantity`, `subscriptionStatus`, `allocation`, `sales`, `remainingQuantity`)와 프론트 타입 정합 확인 완료
+- `investorName`/`securitiesAccount`는 `GET /investment-history` 응답에 해당 필드가 없으므로 표시하지 않음(백엔드 계약 확장 필요 시 별도 조회)
+
+### 접근성/반응형/코드 품질
+- `remainingQuantity`에 `aria-readonly="true"` 적용
+- 404 에러 메시지에 `aria-live="polite"` 적용
+- 테이블 행 키보드 네비게이션(Tab, Enter, Escape) 지원
+- 640px/768px/1024px 브레이크포인트 반응형 구현
+- ESLint/Prettier/TypeScript strict 모두 통과
+
+### 검증 결과
+- `pnpm run test`: 15 passed, 118 passed ✅
+- `pnpm run lint`: 0 errors, 1 warning(기존) ✅
+- `pnpm run typecheck`: ✅
+- `pnpm run format:check`: 내 파일 모두 통과 ✅
+- `pnpm run build`: ✅
+
+### 참고
+- `FilterBar.tsx`, `EmptyState.tsx`, `useInvestmentHistoryFilters.ts`는 SF-1 산출물로 재사용(수정 금지)
+- `ConfirmDialog`는 기존 재사용(중복 생성 금지)
+- `shared/components/Button/Input/FormField/ErrorMessage/Spinner`는 존재하지 않으므로 인라인 패턴 사용
