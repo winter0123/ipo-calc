@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>공모주 투자 수익 관리 — 매도·비용·수익 사용자 가이드</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #181522;
+      --muted: #625c6d;
+      --line: #e4e0e8;
+      --surface: #ffffff;
+      --surface-soft: #f7f5f9;
+      --accent: #7c3aed;
+      --accent-soft: #f1eafe;
+      --warning: #9a3412;
+      --warning-soft: #fff4ec;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+      color: var(--ink);
+      background: #f3f1f5;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: var(--accent); }
+    a:hover { text-decoration-thickness: 2px; }
+    img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+
+    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .hero { padding: 56px 0 36px; background: var(--surface); border-bottom: 1px solid var(--line); }
+    .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: 0.78rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1, h2, h3 { margin: 0; line-height: 1.25; letter-spacing: -0.025em; }
+    h1 { max-width: 760px; font-size: clamp(2rem, 6vw, 4rem); }
+    h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); }
+    h3 { font-size: 1.05rem; }
+    .lede { max-width: 760px; margin: 18px 0 0; color: var(--muted); font-size: 1.08rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .meta span { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-soft); color: var(--muted); font-size: 0.84rem; }
+
+    main { padding: 34px 0 72px; }
+    .toc { padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 12px 30px rgba(24, 21, 34, 0.05); }
+    .toc h2 { font-size: 1.15rem; }
+    .toc ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 12px 0 0; padding-left: 20px; }
+    .toc li { padding-left: 4px; }
+
+    .screen { margin-top: 44px; padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+    .screen-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .screen-heading p { margin: 0; color: var(--muted); }
+    .summary { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 20px; align-items: start; }
+    .card { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .card p { margin: 0; color: var(--muted); }
+    .card ul { margin: 12px 0 0; padding-left: 20px; }
+    .card li { margin: 6px 0; }
+    .rule { margin-top: 14px; padding: 12px 14px; border-left: 4px solid var(--accent); border-radius: 6px; background: var(--accent-soft); }
+    .flow { margin-top: 18px; padding: 16px; border-radius: 12px; background: var(--surface-soft); }
+    .flow strong { color: var(--ink); }
+    .flow ol { margin: 8px 0 0; padding-left: 22px; }
+    .flow li { margin: 4px 0; }
+
+    .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+    .shot figure { margin: 0; }
+    .shot figcaption { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 0.88rem; }
+    .shot figcaption span:last-child { white-space: nowrap; }
+
+    .note { margin-top: 30px; padding: 18px 20px; border: 1px solid #f2c9a8; border-radius: 12px; background: var(--warning-soft); color: var(--warning); }
+    footer { padding: 22px 0 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 1120px); }
+      .hero { padding: 36px 0 26px; }
+      main { padding-top: 22px; }
+      .toc { padding: 18px; }
+      .toc ul { grid-template-columns: 1fr; }
+      .screen { margin-top: 34px; padding-top: 24px; }
+      .screen-heading { display: block; }
+      .screen-heading p { margin-top: 6px; }
+      .summary, .shots { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <p class="eyebrow">Epic 15 · Web Sale Profit Workflow</p>
+      <h1>분할 매도와 비용 기록, 실현수익 확인 가이드</h1>
+      <p class="lede">이 가이드는 배정된 주식을 매도한 사실과 그에 따르는 비용을 기록하고, 확정된 실현수익을 확인하는 웹 화면을 안내합니다. 매도 → 비용 → 수익 확인 순서로 진행하면 투자 성과가 숫자로 남습니다.</p>
+      <div class="meta" aria-label="가이드 정보">
+        <span>대상 경로: /sales/register, /costs/register, /profits/view</span>
+        <span>확인 크기: 데스크톱 1280px · 모바일 390px</span>
+        <span>오프라인 HTML</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <nav class="toc" aria-labelledby="toc-title">
+      <h2 id="toc-title">목차</h2>
+      <ul>
+        <li><a href="#sale-register">1. 매도 등록</a></li>
+        <li><a href="#cost-register">2. 비용 등록</a></li>
+        <li><a href="#profit-view">3. 수익 확인</a></li>
+      </ul>
+    </nav>
+
+    <section class="screen" id="sale-register" aria-labelledby="sale-register-title">
+      <div class="screen-heading">
+        <h2 id="sale-register-title">1. 매도 등록</h2>
+        <p>배정된 주식 중 일부를 매도한 사실을 기록하는 화면입니다.</p>
+      </div>
+      <div class="summary">
+        <div class="card">
+          <h3>화면의 목적</h3>
+          <p>투자자 → 청약 → 배정 순서로 선택하면 매도할 주식이 좁혀지고, 선택한 배정의 잔여 수량을 참고할 수 있습니다. 남은 수량을 전량 매도하려면 청약이나 배정을 새로 만들 필요가 없습니다.</p>
+          <div class="rule"><strong>입력 및 검증:</strong> 투자자·청약·배정·매도수량·매도일시는 필수입니다. 매도수량은 0 초과 정수이고, 단가·금액·수수료·세금·기타비용은 입력 시 0 이상 정수여야 합니다.</div>
+        </div>
+        <div class="card">
+          <h3>주요 입력 필드</h3>
+          <ul>
+            <li><strong>투자자:</strong> 매도한 사용자 (목록에서 선택)</li>
+            <li><strong>청약:</strong> 해당 투자자의 투자 내역 (선택 시 목록이 갱신)</li>
+            <li><strong>배정:</strong> 매도 대상 배정, 청약 선택 시 자동으로 채워짐</li>
+            <li><strong>매도수량:</strong> 매도한 주식 수 (0 초과 정수)</li>
+            <li><strong>단가 / 금액 (선택):</strong> 단가만 입력하면 금액을 계산해 채웁니다</li>
+            <li><strong>매도일시:</strong> 매도 시각</li>
+            <li><strong>수수료 · 세금 · 기타비용 (선택):</strong> 0 이상 정수</li>
+          </ul>
+          <div class="flow">
+            <strong>사용 흐름</strong>
+            <ol>
+              <li>투자자를 선택하면 청약 목록이 불러옵니다.</li>
+              <li>청약을 선택하면 배정이 자동 선택됩니다.</li>
+              <li>매도수량과 매도일시를 입력하고 비용 항목을 보탭니다.</li>
+              <li><strong>등록</strong>을 선택해 저장합니다.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="shots">
+        <figure class="shot">
+          <img src="screenshots/sale-register-desktop.png" alt="데스크톱 너비 1280픽셀의 매도 등록 화면">
+          <figcaption><span>데스크톱</span><span>1280 × 720</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="screenshots/sale-register-mobile.png" alt="모바일 너비 390픽셀의 매도 등록 화면">
+          <figcaption><span>모바일</span><span>390 × 844</span></figcaption>
+        </figure>
+      </div>
+      <div class="note">배정은 청약을 고른 뒤 자동으로 채워집니다. 배정이 비어 있으면 해당 청약이 아직 배정 단계가 아니므로 먼저 배정을 등록해야 매도를 기록할 수 있습니다.</div>
+    </section>
+
+    <section class="screen" id="cost-register" aria-labelledby="cost-register-title">
+      <div class="screen-heading">
+        <h2 id="cost-register-title">2. 비용 등록</h2>
+        <p>청약과 매도에 딸린 비용을 따로 기록해 수익 계산을 정확히 맞추는 화면입니다.</p>
+      </div>
+      <div class="summary">
+        <div class="card">
+          <h3>화면의 목적</h3>
+          <p>수수료나 세금처럼 매도 건에 붙지 않는 비용을 청약 단위로 기록합니다. 등록한 비용은 수익 확인 단계의 비용금액에 반영됩니다.</p>
+          <div class="rule"><strong>입력 및 검증:</strong> 청약·비용종류·금액·발생일시는 필수입니다. 금액은 0 초과 정수이고 비용종류는 255자 이하입니다.</div>
+        </div>
+        <div class="card">
+          <h3>주요 입력 필드</h3>
+          <ul>
+            <li><strong>청약:</strong> 비용이 발생한 투자 내역 (목록에서 선택)</li>
+            <li><strong>비용종류:</strong> 비용을 설명하는 문구 (255자 이하)</li>
+            <li><strong>금액:</strong> 비용 금액 (0 초과 정수)</li>
+            <li><strong>발생일시:</strong> 비용이 발생한 시각</li>
+            <li><strong>메모 (선택):</strong> 개인 기록</li>
+          </ul>
+          <div class="flow">
+            <strong>사용 흐름</strong>
+            <ol>
+              <li>비용이 발생한 청약을 선택합니다.</li>
+              <li>비용종류와 금액, 발생일시를 입력합니다.</li>
+              <li><strong>등록</strong>을 선택해 저장합니다.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="shots">
+        <figure class="shot">
+          <img src="screenshots/cost-register-desktop.png" alt="데스크톱 너비 1280픽셀의 비용 등록 화면">
+          <figcaption><span>데스크톱</span><span>1280 × 720</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="screenshots/cost-register-mobile.png" alt="모바일 너비 390픽셀의 비용 등록 화면">
+          <figcaption><span>모바일</span><span>390 × 844</span></figcaption>
+        </figure>
+      </div>
+      <div class="note">매도 화면의 수수료·세금과 비용 화면의 기록은 서로 다른 항목입니다. 두 곳에 나누어 남기면 수익 확인에서 각각 비용금액과 수수료·세금으로 구분해 보여 줍니다.</div>
+    </section>
+
+    <section class="screen" id="profit-view" aria-labelledby="profit-view-title">
+      <div class="screen-heading">
+        <h2 id="profit-view-title">3. 수익 확인</h2>
+        <p>매도 1건 또는 투자자별 실현수익을 숫자로 확인하는 화면입니다.</p>
+      </div>
+      <div class="summary">
+        <div class="card">
+          <h3>화면의 목적</h3>
+          <p><strong>매도건별</strong> 탭에서는 매도건 ID로 1건을 조회하고, <strong>투자자별</strong> 탭에서는 투자자를 골라 그 사람의 매도 목록과 합계를 봅니다. 조회 전에는 입력 안내만 표시됩니다.</p>
+          <div class="rule"><strong>확인할 정보:</strong> 표에는 매도ID, 매도일시, 배정ID, 수량, 매도금액, 취득금액, 비용금액, 수수료, 세금, 기타비용, 세전수익, 세후수익이 열로 표시됩니다.</div>
+        </div>
+        <div class="card">
+          <h3>조회 방법</h3>
+          <ul>
+            <li><strong>매도건별:</strong> 매도건 ID 입력 → <strong>조회</strong></li>
+            <li><strong>투자자별:</strong> 투자자 선택 → <strong>조회</strong></li>
+            <li><strong>세전수익:</strong> 비용을 제외한 매도 이익</li>
+            <li><strong>세후수익:</strong> 수수료·세금까지 반영한 최종 이익</li>
+          </ul>
+          <div class="flow">
+            <strong>사용 흐름</strong>
+            <ol>
+              <li>매도건별과 투자자별 중 필요한 탭을 고릅니다.</li>
+              <li>매도건 ID 또는 투자자를 선택합니다.</li>
+              <li><strong>조회</strong>를 선택해 표를 확인합니다.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="shots">
+        <figure class="shot">
+          <img src="screenshots/profit-view-desktop.png" alt="데스크톱 너비 1280픽셀의 수익 확인 화면">
+          <figcaption><span>데스크톱</span><span>1280 × 720</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="screenshots/profit-view-mobile.png" alt="모바일 너비 390픽셀의 수익 확인 화면">
+          <figcaption><span>모바일</span><span>390 × 844</span></figcaption>
+        </figure>
+      </div>
+      <div class="note">표는 12열이 넓어 모바일에서는 가로로 넘쳐 보입니다. 좁은 화면에서는 수치를 대조하기 어렵으니 데스크톱에서 확인하는 편이 편합니다.</div>
+    </section>
+
+    <footer>
+      <p>이미지 경로: <code>docs/user-guides/web-sale-profit-workflow/screenshots/</code> 아래의 6개 PNG 파일. HTML과 이미지 폴더를 함께 배포하면 상대 경로로 표시됩니다.</p>
+      <p>스크린샷은 실제 화면을 캡처하되, 서버 DB에 연결할 수 없어 투자자·청약·배정·매도 데이터는 문서용 예시 값으로 채워 두었습니다. 필드 구성과 검증 문구는 구현된 화면 그대로입니다.</p>
+    </footer>
+  </main>
+</body>
+</html>
