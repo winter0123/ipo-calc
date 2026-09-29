@@ -31,6 +31,7 @@ export default function InvestmentHistoryRow({
       <td>{item.id}</td>
       <td>{formattedDate}</td>
       <td>{item.ipoName}</td>
+      <td>{item.investorName ?? '-'}</td>
       <td>{item.subscriptionQuantity}</td>
       <td>{item.subscriptionStatus}</td>
       <td aria-readonly="true">{item.remainingQuantity ?? '-'}</td>
