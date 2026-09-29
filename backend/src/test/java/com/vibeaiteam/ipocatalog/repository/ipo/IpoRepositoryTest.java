@@ -300,4 +300,149 @@ class IpoRepositoryTest {
     assertThat(reRegistered.getId()).isNotNull();
     assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
   }
+
+  @Test
+  void saveAndFindByCorpCodeReturnsIpo() {
+    // Given: corp_code가 있는 ACTIVE IPO 저장
+    LocalDateTime now = LocalDateTime.now();
+    Ipo ipo =
+        Ipo.builder()
+            .companyName("테스트기업")
+            .ipoName("테스트공모주")
+            .corpCode("12345678")
+            .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+            .status("ACTIVE")
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
+
+    // When: 저장 후 findByCorpCodeAndStatusAndDeletedAtIsNull로 조회
+    Ipo saved = ipoRepository.saveAndFlush(ipo);
+    Optional<Ipo> found =
+        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("12345678", "ACTIVE");
+
+    // Then: 저장된 IPO가 corp_code, companyName, ipoName으로 정상 조회된다
+    assertThat(found).isPresent();
+    assertThat(found.get().getId()).isEqualTo(saved.getId());
+    assertThat(found.get().getCorpCode()).isEqualTo("12345678");
+    assertThat(found.get().getCompanyName()).isEqualTo("테스트기업");
+    assertThat(found.get().getIpoName()).isEqualTo("테스트공모주");
+    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getDeletedAt()).isNull();
+  }
+
+  @Test
+  void saveDuplicateActiveCorpCodeThrowsDataIntegrityViolationException() {
+    // Given: 동일 corp_code의 ACTIVE IPO가 하나 저장되어 있음
+    // - uk_ipo_corp_code_active 부분 유니크 인덱스로 활성 IPO 간 corp_code 중복 방지
+
+    LocalDateTime now = LocalDateTime.now();
+    ipoRepository.save(
+        Ipo.builder()
+            .companyName("기업A")
+            .ipoName("공모주A")
+            .corpCode("12345678")
+            .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+            .status("ACTIVE")
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
+
+    Ipo duplicate =
+        Ipo.builder()
+            .companyName("기업B")
+            .ipoName("공모주B")
+            .corpCode("12345678") // 동일 corp_code
+            .subscriptionStartDate(LocalDate.of(2026, 11, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 2))
+            .status("ACTIVE")
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+
+    // When & Then: 동일 corp_code + ACTIVE로 저장 시 데이터 무결성 위반 예외 발생
+    assertThrows(
+        DataIntegrityViolationException.class, () -> ipoRepository.saveAndFlush(duplicate));
+  }
+
+  @Test
+  void saveNullCorpCodeAllowedForMultipleActiveIpos() {
+    // Given: corp_code가 null인 ACTIVE IPO가 저장되어 있음
+    // - corp_code가 NULL인 경우 uk_ipo_corp_code_active 제약에서 제외됨
+
+    LocalDateTime now = LocalDateTime.now();
+    ipoRepository.save(
+        Ipo.builder()
+            .companyName("기업A")
+            .ipoName("공모주A")
+            .corpCode(null)
+            .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+            .status("ACTIVE")
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
+
+    // When: corp_code가 null인 또 다른 ACTIVE IPO 저장
+    Ipo another =
+        ipoRepository.saveAndFlush(
+            Ipo.builder()
+                .companyName("기업B")
+                .ipoName("공모주B")
+                .corpCode(null) // corp_code null 허용
+                .subscriptionStartDate(LocalDate.of(2026, 11, 1))
+                .subscriptionEndDate(LocalDate.of(2026, 11, 2))
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build());
+
+    // Then: 유니크 위반 없이 저장된다 (corp_code NULL은 부분 유니크 제약에서 제외)
+    assertThat(another.getId()).isNotNull();
+    assertThat(another.getCorpCode()).isNull();
+  }
+
+  @Test
+  void saveSameCorpCodeAfterSoftDeleteAllowed() {
+    // Given: "12345678" corp_code를 가진 ACTIVE IPO가 저장 후 논리 삭제(status=INACTIVE, deletedAt)됨
+    // - 삭제된 IPO(deletedAt 설정)는 조회 제외, 동일 corp_code 재등록 허용
+    // - INACTIVE 레코드는 부분 유니크 제약에 영향받지 않음 (재등록 가능)
+
+    LocalDateTime now = LocalDateTime.now();
+    Ipo existing =
+        ipoRepository.save(
+            Ipo.builder()
+                .companyName("기존기업")
+                .ipoName("기존공모주")
+                .corpCode("12345678")
+                .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+                .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+                .status("ACTIVE")
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    existing.setStatus("INACTIVE");
+    existing.setDeletedAt(now);
+    ipoRepository.saveAndFlush(existing);
+
+    // When: 동일 corp_code로 새 ACTIVE IPO 저장
+    Ipo reRegistered =
+        ipoRepository.saveAndFlush(
+            Ipo.builder()
+                .companyName("신규기업")
+                .ipoName("신규공모주")
+                .corpCode("12345678")
+                .subscriptionStartDate(LocalDate.of(2026, 11, 1))
+                .subscriptionEndDate(LocalDate.of(2026, 11, 2))
+                .status("ACTIVE")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build());
+
+    // Then: 유니크 위반 없이 저장된다 (활성 IPO 간 중복만 제약)
+    assertThat(reRegistered.getId()).isNotNull();
+    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+  }
 }
