@@ -74,7 +74,7 @@
 .submitButton {
   margin-top: 8px;
   padding: 14px 20px;
-  background-color: #3b82f6;
+  background-color: #2563eb;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -86,7 +86,7 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #1d4ed8;
 }
 
 .submitButton:disabled {
