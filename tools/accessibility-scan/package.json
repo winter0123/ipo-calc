@@ -1,0 +1,13 @@
+{
+  "name": "accessibility-scan",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "scan": "node scan.mjs"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.51.0"
+  }
+}
