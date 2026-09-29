@@ -13,7 +13,7 @@
 - **dev DB 정리**: 공유 dev Postgres에 누수돼 있던 `securities_firms` 1행이 clean main에서도 테스트 2건을 깨뜨리고 있었다. 참조 없음을 확인하고 사용자 승인 후 그 1행만 삭제.
 - **운영 변경**: OpenCode 워커는 `OPENCODE_CONFIG=/Users/joy/.config/opencode/orca-worker.json`(검증·읽기 허용, git 변경·비밀 파일·`rm -rf` 거부)으로 띄운다. 워커 완료 판단은 `worker_done` 대기가 아니라 터미널 유휴 여부(`esc interrupt` 유무)와 파일·diff 변경을 직접 확인해서 한다(워커가 `worker_done` 없이 끝내거나 뒤늦게 보내는 일이 잦음). `worker-start`에는 `--worktree path:<절대경로>`가 필수다.
 
-**야간 후속(사용자 부재 중, 병합 안 함)**: E19 SF-3(#195)과 SF-4(#196) PR을 열었다. #196은 #195 위에 쌓인 PR이므로 #195 병합 후 base를 main으로 재지정해야 한다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. 랜드마크 axe 재스캔은 병합 후 실행해야 한다.
+**야간 후속**: E19 SF-3(#195), SF-4(#196), 접근성 color-contrast 교정(#197)을 2026-09-30 사용자 승인 후 병합했다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. 랜드마크·color-contrast axe 재스캔(`tools/accessibility-scan/scan.mjs`, 백엔드·로그인 데이터 필요)은 아직 실행하지 못했다.
 
 **다음 착수 후보**: Epic 17 SF-3(동기화 서비스)는 아래 미결정 항목을 사용자와 정한 뒤 시작한다.
 
@@ -50,12 +50,12 @@
 
 **완료: Epic 1~16 전체.** GitHub Issue #128·#129·#130·#131·#132·#133 모두 close.
 
-**Epic 17~19 구현 진행 중.** research(#187·#188·#189)→roadmap→breakdown→spec(E19 #190, E17 #191)까지 끝났고, 첫 구현 3건이 병합됐다: Epic 19 SF-1(#192), Epic 17 SF-1(#193), `ipos.corp_code`(#194). 남은 것: Epic 17 SF-2 이후(ustockplus 보완·동기화 서비스·스케줄러), Epic 19 SF-2(달력, Epic 17 완료 전까지 보류; SF-3·SF-4는 PR #195·#196 병합 대기), Epic 18 전체(KIS 게이트 4건 해소 선행). Epic 18 spec은 아직 없다.
+**Epic 17~19 구현 진행 중.** research(#187·#188·#189)→roadmap→breakdown→spec(E19 #190, E17 #191)까지 끝났고, 첫 구현 3건이 병합됐다: Epic 19 SF-1(#192), Epic 17 SF-1(#193), `ipos.corp_code`(#194). 남은 것: Epic 17 SF-2 이후(ustockplus 보완·동기화 서비스·스케줄러), Epic 19 SF-2(달력, Epic 17 완료 전까지 보류; SF-1·3·4 병합 완료), Epic 18 전체(KIS 게이트 4건 해소 선행). Epic 18 spec은 아직 없다.
 
 ## 알려진 부채·다음 세션 후보
 
 1. **Epic 17 SF-3 착수 전 사용자 결정 5건**: (a) 단일 `slprc`를 밴드/확정가 중 어디에 매핑하고 희망가·확정가 중 무엇인지, (b) `sbd` 하나로 NOT NULL인 `subscriptionEndDate`를 어떻게 채울지, (c) IPO와 유상증자 구분 기준(DS001 `stock_code` 유무는 가설), (d) OpenDART 일일 호출 한도, (e) 상태 코드 011/012 의미. 이후 E17 SF-2(ustockplus 보완)·SF-3 진행. Epic 19 SF-2~4는 E17 완료와 연동, Epic 18은 KIS 공식 GitHub 원문 열람(게이트 4건) 후 spec부터.
-2. **접근성 위반 32건 수정**: `docs/qa/accessibility-report.md`에 화면별·규칙별로 정리돼 있다. 우선순위: critical(대시보드 탭 aria-valid-attr-value) → serious(color-contrast 9건, 버튼/힌트 텍스트 색상 대비) → moderate(landmark-one-main/region, 거의 전 화면에 `<main>` 랜드마크가 없어서 발생 — Epic 19 SF-4 `MainLayout` 신설로 대부분 해소될 예정).
+2. **접근성 재스캔**: critical(#195)·serious color-contrast(#197)·moderate landmark(#196) 수정이 병합됐다. `docs/qa/accessibility-report.md` 기준 위반이 실제로 사라졌는지 `tools/accessibility-scan/scan.mjs`로 재확인하고 리포트를 갱신한다(백엔드+dev Postgres+로그인 데이터 필요).
 3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
 4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
 5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
@@ -63,7 +63,7 @@
 ## 워크스페이스 상태 (2026-09-29 세션 종료 시점)
 
 - `backend-4`: 마지막 브랜치 `winter0123/e17-ipo-corp-code`(병합 완료, PR #194). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
-- `frontend-4`: 현재 브랜치 `winter0123/e19-sf4-main-layout`(PR #196, 미병합; #195 브랜치 위에 쌓임). 병합 후 `origin/main`에서 새 브랜치로 시작.
+- `frontend-4`: 마지막 브랜치 `winter0123/e19-sf4-main-layout`(병합 완료, PR #196). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
 - `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
 - 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
 
