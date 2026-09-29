@@ -23,6 +23,8 @@ const HISTORY_RESPONSE: InvestmentHistoryResponse = {
       allocation: null,
       sales: [],
       remainingQuantity: null,
+      investorName: '김철수',
+      securitiesFirmName: '한국투자증권',
     },
     {
       id: 2,
@@ -40,6 +42,8 @@ const HISTORY_RESPONSE: InvestmentHistoryResponse = {
       },
       sales: [],
       remainingQuantity: 20,
+      investorName: null,
+      securitiesFirmName: null,
     },
   ],
   totalElements: 2,

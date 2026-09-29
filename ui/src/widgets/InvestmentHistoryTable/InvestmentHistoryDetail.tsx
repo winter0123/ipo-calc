@@ -38,6 +38,14 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
           <dd>{detail.ipoName}</dd>
         </div>
         <div className={styles.dlRow}>
+          <dt>투자자명</dt>
+          <dd>{detail.investorName ?? '-'}</dd>
+        </div>
+        <div className={styles.dlRow}>
+          <dt>증권사명</dt>
+          <dd>{detail.securitiesFirmName ?? '-'}</dd>
+        </div>
+        <div className={styles.dlRow}>
           <dt>IPO 고정가</dt>
           <dd>{detail.ipoFixedPrice.toLocaleString()}원</dd>
         </div>

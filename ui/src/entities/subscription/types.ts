@@ -23,11 +23,10 @@ export interface Subscription {
 }
 
 /**
- * GET /investment-history 응답 DTO — Epic 11(investment-query-api) 미구현.
- * docs/breakdown/investment-query-api.md SF-1 산출물 파일 경로(InvestmentHistoryDto 등)에
- * 정의된 필드 그대로 타입만 선반영한다. 백엔드 구현 시 필드가 달라지면 함께 갱신한다.
- * 주의: 이 DTO에는 증권계좌 정보(securitiesAccountId 등)가 없다 — web-subscription-workflow
- * spec 2절의 "청약 카드에 증권계좌 표시" 요구사항과의 불일치를 발견했다(work-log 기록).
+ * GET /investment-history 응답 DTO — Epic 11(investment-query-api) 구현 완료.
+ * 백엔드 InvestmentHistoryDto(PR #180)에 맞춰 유지한다. 투자자/증권사 필드가 늘었으므로
+ * 아래 주석이 말하던 "증권계좌 정보가 없다"는 불일치는 해결됐다 — 대신 증권계좌 ID가 아닌
+ * 증권사명(securitiesFirmName)으로 표기한다.
  */
 export interface AllocationSummary {
   id: number
@@ -58,6 +57,10 @@ export interface InvestmentHistoryItem {
   allocation: AllocationSummary | null
   sales: SaleSummary[]
   remainingQuantity: number | null
+  /** 투자자명 — 투자자 정보가 없으면 null (백엔드 PR #180) */
+  investorName: string | null
+  /** 증권사명 — 증권계좌가 없으면 null (백엔드 PR #180) */
+  securitiesFirmName: string | null
 }
 
 export interface InvestmentHistoryFilters {

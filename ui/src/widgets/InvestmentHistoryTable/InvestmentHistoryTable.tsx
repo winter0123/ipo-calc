@@ -41,6 +41,7 @@ export default function InvestmentHistoryTable({
             <th scope="col">구독 ID</th>
             <th scope="col">구독일</th>
             <th scope="col">공모주명</th>
+            <th scope="col">투자자</th>
             <th scope="col">청약수량</th>
             <th scope="col">상태</th>
             <th scope="col">잔여수량</th>
