@@ -55,6 +55,9 @@ public class OpenDartEquitySecurityDetail {
   /** 청약기일 시작일 파싱 결과 (파싱 실패 시 {@code null}) */
   private LocalDate subscriptionStartDate;
 
+  /** 청약기일 종료일 파싱 결과 (기간 문자열이면 종료일, 단일 날짜/파싱 실패 시 {@code null}) */
+  private LocalDate subscriptionEndDate;
+
   /** 증권수량 파싱 결과 (파싱 실패 시 {@code null}) */
   private Long offeringShareCount;
 
@@ -67,6 +70,7 @@ public class OpenDartEquitySecurityDetail {
   /** 원문 필드에서 파싱하여 보조 필드 채움. DS006 응답 매핑 후 호출. */
   public void parseDerivedFields() {
     this.subscriptionStartDate = parseSbdStartDate(this.sbd);
+    this.subscriptionEndDate = parseSbdEndDate(this.sbd);
     this.offeringShareCount = parseNumber(this.stkcnt);
     this.offerPrice = parseNumber(this.slprc);
     this.totalOfferingAmount = parseNumber(this.slta);
@@ -88,6 +92,28 @@ public class OpenDartEquitySecurityDetail {
     // "2026년 11월 05일 ~ 2026년 11월 06일" 또는 "2026년 11월 05일"에서 첫 번째 날짜만 추출
     String firstDatePart = sbd.split("~")[0].trim();
     return parseKoreanDate(firstDatePart);
+  }
+
+  /**
+   * 청약기일(sbd) 문자열에서 종료일 추출하여 {@code LocalDate}로 변환.
+   *
+   * <p>형식 예: {@code "2026년 11월 05일 ~ 2026년 11월 06일"} → 종료일 파싱, {@code "2026년 11월 05일"} → {@code
+   * null} (단일 날짜는 다음 영업일 계산은 Service 계층에서 수행), {@code "-"}, {@code null} → {@code null}
+   *
+   * @param sbd 원문 청약기일 문자열
+   * @return 파싱된 종료일 (기간 문자열인 경우) 또는 {@code null}
+   */
+  private static LocalDate parseSbdEndDate(String sbd) {
+    if (sbd == null || sbd.isBlank() || sbd.equals("-")) {
+      return null;
+    }
+    String[] parts = sbd.split("~");
+    if (parts.length < 2) {
+      // 단일 날짜인 경우 종료일은 Service 계층에서 다음 영업일로 계산
+      return null;
+    }
+    String secondDatePart = parts[1].trim();
+    return parseKoreanDate(secondDatePart);
   }
 
   /**

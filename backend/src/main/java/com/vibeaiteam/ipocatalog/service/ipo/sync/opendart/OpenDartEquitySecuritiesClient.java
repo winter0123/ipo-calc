@@ -121,7 +121,10 @@ public class OpenDartEquitySecuritiesClient {
     if ("013".equals(status)) {
       return; // 데이터 없음 - 정상 처리
     }
-    if ("011".equals(status)) {
+    if ("010".equals(status)
+        || "011".equals(status)
+        || "012".equals(status)
+        || "901".equals(status)) {
       throw new OpenDartAuthenticationException(status, message);
     }
     throw new OpenDartApiException(status, message);
