@@ -16,7 +16,7 @@
   color: #333;
 }
 
-.option input[type="radio"] {
+.option input[type='radio'] {
   accent-color: #0066cc;
   width: 16px;
   height: 16px;

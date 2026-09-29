@@ -19,12 +19,10 @@ export default function SaleRegisterForm() {
     error: investorsError,
   } = useQuery({ queryKey: ['investors'], queryFn: fetchInvestors })
 
-  const {
-    data: subscriptionHistory,
-    isLoading: subscriptionsLoading,
-  } = useQuery({
+  const { data: subscriptionHistory, isLoading: subscriptionsLoading } = useQuery({
     queryKey: ['investmentHistory', selectedInvestorId],
-    queryFn: () => getInvestmentHistory(selectedInvestorId ? { investorId: selectedInvestorId } : {}),
+    queryFn: () =>
+      getInvestmentHistory(selectedInvestorId ? { investorId: selectedInvestorId } : {}),
     enabled: !!selectedInvestorId,
   })
 
@@ -92,7 +90,12 @@ export default function SaleRegisterForm() {
   }
 
   const validateNonNegativeInteger = (v: unknown) =>
-    v === undefined || v === null || v === '' || Number.isNaN(Number(v)) || (Number.isInteger(Number(v)) && Number(v) >= 0) || '0 이상 정수를 입력해 주세요.'
+    v === undefined ||
+    v === null ||
+    v === '' ||
+    Number.isNaN(Number(v)) ||
+    (Number.isInteger(Number(v)) && Number(v) >= 0) ||
+    '0 이상 정수를 입력해 주세요.'
 
   if (investorsLoading) {
     return <div className={styles.loading}>목록을 불러오는 중...</div>

@@ -20,8 +20,24 @@ vi.mock('../../entities/investor/api-client.ts', async () => {
 import { fetchInvestors } from '../../entities/investor/api-client.ts'
 
 const INVESTORS = [
-  { id: 1, displayName: '홍길동', accountId: 1, status: 'ACTIVE', deletedAt: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-  { id: 2, displayName: '김철수', accountId: 1, status: 'ACTIVE', deletedAt: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+  {
+    id: 1,
+    displayName: '홍길동',
+    accountId: 1,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+  {
+    id: 2,
+    displayName: '김철수',
+    accountId: 1,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
 ]
 
 const SALE_PROFIT = {

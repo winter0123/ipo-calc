@@ -36,7 +36,15 @@ vi.mock('../useSaleRegister.ts', () => ({
 }))
 
 const INVESTORS = [
-  { id: 1, displayName: '홍길동', accountId: 1, status: 'ACTIVE', deletedAt: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+  {
+    id: 1,
+    displayName: '홍길동',
+    accountId: 1,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
 ]
 
 const SUBSCRIPTION_HISTORY = {
@@ -68,7 +76,17 @@ const ALLOCATION_DETAIL = {
   ipoFixedPrice: 39000,
   subscriptionQuantity: 100,
   subscriptionStatus: 'ACTIVE',
-  allocation: { id: 1, allocatedQuantity: 50, allocatedAt: null, allocationMethod: null, allocationPrice: null, note: null, status: 'PENDING', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+  allocation: {
+    id: 1,
+    allocatedQuantity: 50,
+    allocatedAt: null,
+    allocationMethod: null,
+    allocationPrice: null,
+    note: null,
+    status: 'PENDING',
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
   sales: [],
   remainingQuantity: 50,
 }
@@ -77,8 +95,10 @@ function defaultMock() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
     const p = String(path)
     if (p === '/investors' && (!options || options.method === 'GET')) return INVESTORS
-    if (p === '/investment-history/1' && (!options || options.method === 'GET')) return ALLOCATION_DETAIL
-    if (p.startsWith('/investment-history') && (!options || options.method === 'GET')) return SUBSCRIPTION_HISTORY
+    if (p === '/investment-history/1' && (!options || options.method === 'GET'))
+      return ALLOCATION_DETAIL
+    if (p.startsWith('/investment-history') && (!options || options.method === 'GET'))
+      return SUBSCRIPTION_HISTORY
     throw new Error(`unexpected path: ${String(path)}`)
   })
 }
@@ -210,5 +230,4 @@ describe('SaleRegisterForm', () => {
       expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
     })
   })
-
 })

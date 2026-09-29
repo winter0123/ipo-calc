@@ -41,7 +41,9 @@ export async function getInvestmentHistory(
  * 배정 등록 화면 진입 시 청약 상세 조회용으로 사용된다(참고 표시용 청약수량 추출).
  * 응답에서 subscriptionQuantity(청약수량) 필드를 추출한다.
  */
-export async function getSubscriptionDetail(subscriptionId: number): Promise<InvestmentHistoryItem> {
+export async function getSubscriptionDetail(
+  subscriptionId: number,
+): Promise<InvestmentHistoryItem> {
   return apiFetch<InvestmentHistoryItem>(`/investment-history/${subscriptionId}`, {
     method: 'GET',
   })

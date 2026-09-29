@@ -140,7 +140,11 @@ export default function ProfitViewPage() {
         )}
 
         {activeQuery.error && (
-          <div id={`${mode === 'sale' ? 'saleId' : 'investorId'}-error`} className={styles.error} role="alert">
+          <div
+            id={`${mode === 'sale' ? 'saleId' : 'investorId'}-error`}
+            className={styles.error}
+            role="alert"
+          >
             {getErrorMessage()}
           </div>
         )}

@@ -12,7 +12,7 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
   if (!data) return null
 
   const isInvestorMode = mode === 'investor'
-  const sales = isInvestorMode ? (data as InvestorProfit).sales : [(data as SaleProfit)]
+  const sales = isInvestorMode ? (data as InvestorProfit).sales : [data as SaleProfit]
   const showSummary = isInvestorMode
 
   return (
@@ -42,9 +42,7 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
               </td>
             </tr>
           ) : (
-            sales.map((profit) => (
-              <ProfitRow key={profit.saleId} profit={profit} />
-            ))
+            sales.map((profit) => <ProfitRow key={profit.saleId} profit={profit} />)
           )}
           {showSummary && (
             <ProfitSummaryRow
