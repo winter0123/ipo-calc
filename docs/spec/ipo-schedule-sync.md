@@ -220,7 +220,7 @@ public class OpenDartApiProperties {
 | `slprc` | 모집(매출)가액 | 미정(`fixedPrice` 후보?) | Long | 7.1절 | 모집가액이 총액인지 per-share인지 실제 응답 재검증 필요. 숫자 쉼표 포함 문자열("10,000", "22,000,000,000"). 단, 증권신고서 단계의 slprc가 확정 공모가인지 희망가인지는 미확인 → "미정"으로 남김 |
 | `slta` | 모집총액 | 미정 | Long | 7.1절 | 총 모집 금액. 숫자 쉼표 포함 문자열("22,000,000,000"). "-" = null |
 | `actnmn` | 인수인명(주간사) | 미정(신규 컬럼 필요?) | String | 7.1절 | SF-3 컬럼 추가 범위에 포함되지 않음 → 미정 |
-| `corp_code` | 회사고유번호 | (조회 키, 저장 안 함) | String | 7.1절 | 매핑용 키로만 사용 |
+| `corp_code` | 회사고유번호 | `corpCode` (`ipos.corp_code`, V11) | String | 7.1절 | 자동 동기화 레코드 식별 키. 컨트롤러/DTO 노출은 SF-3에서 결정 |
 | `corp_name` | 기업명 | `companyName` | String | 7.1절 추정 | DS001 응답에서 확인 예정. DS006에 포함 여부 미정 |
 | `group` | DS006 응답 그룹 구분 | — | — | 7.1절 | "일반사항","증권의종류","인수인정보" 등. 각 group 내 list[]에 필드 포함 |
 
@@ -380,7 +380,7 @@ SF-1 구현 시작 전 **Master가 아래 세 항목을 확인**해야 한다(`d
 | M-10 | `actnmn`(주간사/인수인명) → Ipo 엔티티 `underwriter` 컬럼 추가 여부 | SF-3 컬럼 추가 논의 필요(현재는 미정) | SF-3 설계 시 |
 | M-11 | OpenDART rate limit(초당 호출 제한) | OpenDART 개발가이드 확인 | SF-1 구현 시(200ms 기본 안전장치 유지) |
 | M-12 | 테스트 HTTP 목 서버: WireMock 추가 의존성 여부 | `MockRestServiceServer`(spring-boot-starter-test에 포함)로 대체 가능. 추가 의존성 없이 검증 가능 | SF-1 구현 시 |
-| M-13 | `(stockCode, subscriptionStartDate)` 중복 키 문제 및 IPO/유상증자 구분 | 기존 DB(V5/V6)는 stock_code가 있으면 stock_code 유니크, 없으면 (ipo_name, subscription_start_date) 유니크다. 따라서 기존 키 사용은 가능하다. 남은 결정은 자동 동기화 레코드의 식별 키로 corp_code 컬럼을 추가할지이며 권고안은 추가(개명·재상장 안전). 결정 주체: 사용자, 시점: SF-3 착수 전. | SF-3 전에 Master 결정 **완료** |
+| M-13 | `(stockCode, subscriptionStartDate)` 중복 키 문제 및 IPO/유상증자 구분 | 기존 DB(V5/V6)는 stock_code가 있으면 stock_code 유니크, 없으면 (ipo_name, subscription_start_date) 유니크다. 따라서 기존 키 사용은 가능하다. 자동 동기화 레코드의 식별 키로 `ipos.corp_code`(VARCHAR(8), nullable, ACTIVE 한정 부분 유니크 `uk_ipo_corp_code_active`)를 추가하기로 **2026-09-29 사용자가 결정했고 V11로 구현·병합됐다(#194)**. 개명·재상장에 안전하다. | SF-3 전에 Master 결정 **완료** |
 
 ---
 
