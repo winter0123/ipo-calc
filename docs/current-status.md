@@ -1,6 +1,19 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-29 세션 종료 시점(4차 재개 세션). **로드맵 16개 Epic 전체 구현 완료 + 알려진 부채 전부 해소(checkstyle/typecheck/format/접근성 QA).** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+> 마지막 갱신: 2026-09-29 세션 종료 시점(4차 재개 세션). **로드맵 16개 Epic 전체 구현 완료 + 알려진 부채 전부 해소(checkstyle/typecheck/format/접근성 QA) + 사용자 요청으로 스코프 확장(Epic 17~19) 연구·계획·세부분해까지 완료(코드 미작성, Phase 0).** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+
+## 세션 요약 (2026-09-29, 4차 재개 후속 — 스코프 확장: Epic 17~19)
+
+사용자가 신규 기능 4건(공모주 일정 자동 동기화·증권계좌 선택형 조회·월별 달력/손익·증권사 조회전용 자동 채움)을 요청했고, "조사 먼저, 계획은 그다음"이라는 명시적 지시에 따라 Phase 0(research→roadmap 문서화→breakdown)까지 진행했다. **코드는 아직 한 줄도 작성하지 않았다.** 상세는 `docs/daily-log/2026_09_29.md`(후속 섹션)를 진실 소스로 한다.
+
+- **Epic 17(공모주 청약 일정 자동 동기화)**: 데이터소스를 사용자와 실시간으로 검증해 최종 확정 — **OpenDART DS006(지분증권) 기본 + `api.ustockplus.com`(네이버 u+stock 비공식 백엔드) 보완**. `docs/research/ipo-schedule-sync.md` 7절에 조사 과정·확정 근거 전체 기록.
+- **Epic 18(증권사 조회 전용 연동, 1개사 파일럿)**: 한국투자증권(KIS Developers) 대상. **원칙: 어떤 브로커·어떤 상황에서도 주문 API는 요청·사용하지 않는다.** research가 "높음" 영향도 미확인 4건(체결 필드명, 조회전용 권한 옵션, 토큰 갱신, 계좌번호 파라미터)을 남겼고, 이 4건이 breakdown의 착수 전 게이트로 지정됨 — `docs/research/broker-readonly-api-pilot.md`, `docs/breakdown/broker-readonly-api-pilot.md`.
+- **Epic 19(사후 등록 UX/UI 개선)**: 조사 결과 예상보다 범위가 좁음(폼은 이미 대부분 드롭다운) — 실제 문제는 투자내역 필터바와 `<main>` landmark 부재로 좁혀짐. SF-2(공모주 달력)는 Epic 17 완료 전까지 구현 보류.
+- **문서화**: `docs/roadmap.md` 1.1절(스코프 확장 결정) 신설, 5절 Epic 마스터 표에 E17~E19 추가(+ E1~E16 상태 정정), 6절에 3개 Epic 실행 카드 신설, 4절 현재 기준선 전면 재작성. `docs/breakdown/{ipo-schedule-sync,broker-readonly-api-pilot,posthoc-ux-redesign}.md` 3건 신규 작성(총 15개 SF) — 통상 breakdown은 planning 워커 산출물이나, 이번엔 실시간 조사 맥락이 Master에게만 있어 예외적으로 직접 작성.
+- **`CLAUDE.md`(gitignored, 로컬 전용) 갱신**: "자동 증권사 연동 범위 밖" 조항을 사용자 승인으로 해제하고 프로젝트 개요 문단을 스코프 확장 반영으로 수정. git으로 추적되지 않으므로 실제 스코프 결정의 정본은 `docs/roadmap.md` 1.1절이다.
+- **세션 중 사고**: Master가 일본어를 한 차례 출력해 사용자가 강하게 질책 — 이후 세션 전체 한국어 전용으로 확정.
+
+**다음 세션 착수 우선순위(제안)**: (1) Epic 19 SF-1(투자내역 계좌선택 UI) — 독립적이고 리스크 낮음, (2) Epic 17 SF-1(OpenDART 클라이언트) — 데이터소스 확정됨, (3) Epic 18은 KIS Developers 공식 GitHub(`koreainvestment/open-trading-api`) 원문 열람으로 게이트 4건 해소부터.
 
 ## 세션 요약 (2026-09-29, 4차 재개 — Epic 16 후속 부채 전량 처리)
 
@@ -22,12 +35,15 @@
 
 **완료: Epic 1~16 전체.** GitHub Issue #128·#129·#130·#131·#132·#133 모두 close.
 
+**Phase 0 완료(research→roadmap→breakdown), 구현 미착수: Epic 17~19.** research는 PR #187·#188·#189로 병합, roadmap 반영과 breakdown 3건은 main에 직접 커밋(`38c3eb7`/`f6b675a`/`de3da06`/`b157821`). 다음 단계는 spec(`docs/spec/`)이지만, 이 세 Epic은 breakdown이 이미 상당히 구체적이라 사용자 검토 후 spec을 건너뛰고 바로 SF 착수할지 여부를 사용자와 확인 필요.
+
 ## 알려진 부채·다음 세션 후보
 
-1. **접근성 위반 32건 수정**: `docs/qa/accessibility-report.md`에 화면별·규칙별로 정리돼 있다. 우선순위: critical(대시보드 탭 aria-valid-attr-value) → serious(color-contrast 9건, 버튼/힌트 텍스트 색상 대비) → moderate(landmark-one-main/region, 거의 전 화면에 `<main>` 랜드마크가 없어서 발생 — 공통 레이아웃 컴포넌트 하나만 고치면 대부분 해소될 가능성이 높다).
-2. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
-3. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
-4. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR을 무리 없이 처리했다.
+1. **Epic 17~19 실제 구현 착수**: `docs/breakdown/{ipo-schedule-sync,broker-readonly-api-pilot,posthoc-ux-redesign}.md` 참고. Epic 19 SF-1이 가장 독립적이고 착수 리스크가 낮다. Epic 18은 KIS Developers 공식 GitHub 원문 열람(게이트 4건)이 선행돼야 SF-3 이후 착수 가능.
+2. **접근성 위반 32건 수정**: `docs/qa/accessibility-report.md`에 화면별·규칙별로 정리돼 있다. 우선순위: critical(대시보드 탭 aria-valid-attr-value) → serious(color-contrast 9건, 버튼/힌트 텍스트 색상 대비) → moderate(landmark-one-main/region, 거의 전 화면에 `<main>` 랜드마크가 없어서 발생 — Epic 19 SF-4 `MainLayout` 신설로 대부분 해소될 예정).
+3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
+4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
+5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
 
 ## 워크스페이스 상태 (2026-09-29 세션 종료 시점)
 
