@@ -26,7 +26,11 @@ pnpm run format:check
 pnpm run build
 ```
 
-`typecheck`만으로 끝내지 않는다. `tsc -b`를 실행하는 `pnpm run build`도 필수다 — `typecheck`가 프로젝트 참조 하위의 타입 오류를 놓친 사례가 있었다.
+`typecheck`만으로 끝내지 않는다. `pnpm run build`도 필수다.
+
+> **정정 (2026-09-29)**: 위 문장의 기존 이유는 더 이상 성립하지 않는다. `typecheck`가 한때 `tsc --noEmit`이었을 때, `ui/tsconfig.json`이 `files: []` + `references`만 있는 solution-style 구성이라 `tsc --noEmit` 단독 실행은 **0개 파일을 검사하는 no-op**이었다. 그래서 타입 체크는 `pnpm run build`의 `tsc -b`가 대신 수행하고 있었다.
+>
+> `typecheck`는 이제 `tsc -b`로 실행되며, `references`를 따라가 `tsconfig.app.json`·`tsconfig.node.json` 양쪽을 실제로 검사한다(두 파일 모두 `noEmit: true`라 산출물 출력은 없다). **그래서 `build`를 생략해서는 안 된다** — 이유가 바뀌었을 뿐이다: `build`는 같은 `tsc -b`에 더해 `vite build`(번들링·에셋 처리)까지 수행한다. 타입 오류 확인은 `typecheck`로 충분하고, 번들까지 확인하려면 `build`가 필요하다.
 
 ## 3. 프론트엔드 구현 규칙
 
