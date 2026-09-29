@@ -1,12 +1,11 @@
 package com.vibeaiteam.ipocatalog.controller.ipo.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
 
 @Getter
 @Setter
@@ -15,9 +14,9 @@ import java.util.List;
 @AllArgsConstructor
 public class IpoImportResponse {
 
-    private int successCount;
+  private int successCount;
 
-    private int failureCount;
+  private int failureCount;
 
-    private List<IpoImportFailure> failures;
+  private List<IpoImportFailure> failures;
 }

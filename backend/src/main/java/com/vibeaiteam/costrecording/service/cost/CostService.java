@@ -13,170 +13,179 @@ import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class CostService {
 
-    private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_CANCELLED = "CANCELLED";
+  private static final String STATUS_ACTIVE = "ACTIVE";
+  private static final String STATUS_CANCELLED = "CANCELLED";
 
-    private final CostRepository costRepository;
-    private final SubscriptionRepository subscriptionRepository;
-    private final InvestorRepository investorRepository;
-    private final SecurityUtils securityUtils;
+  private final CostRepository costRepository;
+  private final SubscriptionRepository subscriptionRepository;
+  private final InvestorRepository investorRepository;
+  private final SecurityUtils securityUtils;
 
-    // 비용을 등록한다. subscriptionId 존재 검증(404), 계정 소유권 검증(403), amount 0 이상 검증(400)을 수행하고,
-    // status=ACTIVE로 새 Cost를 생성해 저장한다.
-    @Transactional
-    public CostResponse register(CostRegisterRequest request) {
-        validateRequest(request);
+  // 비용을 등록한다. subscriptionId 존재 검증(404), 계정 소유권 검증(403), amount 0 이상 검증(400)을 수행하고,
+  // status=ACTIVE로 새 Cost를 생성해 저장한다.
+  @Transactional
+  public CostResponse register(CostRegisterRequest request) {
+    validateRequest(request);
 
-        Long subscriptionId = request.getSubscriptionId();
+    Long subscriptionId = request.getSubscriptionId();
 
-        // 1. Subscription 존재 검증 (deletedAt IS NULL, CANCELLED 제외) — 404
-        Subscription subscription = subscriptionRepository.findByIdAndDeletedAtIsNull(subscriptionId)
-                .orElseThrow(() -> new CostNotFoundException("청약 기록을 찾을 수 없습니다."));
+    // 1. Subscription 존재 검증 (deletedAt IS NULL, CANCELLED 제외) — 404
+    Subscription subscription =
+        subscriptionRepository
+            .findByIdAndDeletedAtIsNull(subscriptionId)
+            .orElseThrow(() -> new CostNotFoundException("청약 기록을 찾을 수 없습니다."));
 
-        // 2. 계정 소유권 검증 — Subscription → Investor → Account 체인으로 확인 — 403
-        validateSubscriptionOwnership(subscription);
+    // 2. 계정 소유권 검증 — Subscription → Investor → Account 체인으로 확인 — 403
+    validateSubscriptionOwnership(subscription);
 
-        // 3. Cost 생성 및 저장 (status=ACTIVE)
-        LocalDateTime now = LocalDateTime.now();
-        Cost cost = Cost.builder()
-                .subscriptionId(subscriptionId)
-                .costType(request.getCostType())
-                .amount(request.getAmount())
-                .incurredAt(request.getIncurredAt())
-                .memo(request.getMemo())
-                .status(STATUS_ACTIVE)
-                .deletedAt(null)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+    // 3. Cost 생성 및 저장 (status=ACTIVE)
+    LocalDateTime now = LocalDateTime.now();
+    Cost cost =
+        Cost.builder()
+            .subscriptionId(subscriptionId)
+            .costType(request.getCostType())
+            .amount(request.getAmount())
+            .incurredAt(request.getIncurredAt())
+            .memo(request.getMemo())
+            .status(STATUS_ACTIVE)
+            .deletedAt(null)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
 
-        Cost saved = costRepository.save(cost);
-        return CostResponse.from(saved);
+    Cost saved = costRepository.save(cost);
+    return CostResponse.from(saved);
+  }
+
+  // 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
+  // subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
+  // CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
+  // updatedAt을 갱신한다.
+  @Transactional
+  public CostResponse update(Long id, CostUpdateRequest request) {
+    validateUpdateRequest(request);
+
+    // 대상 Cost 조회 — 없거나 CANCELLED이면 404 (findByIdAndDeletedAtIsNull 사용)
+    Cost cost =
+        costRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+
+    // 필드 업데이트 (제공된 필드만)
+    if (request.getCostType() != null) {
+      cost.setCostType(request.getCostType());
+    }
+    if (request.getAmount() != null) {
+      cost.setAmount(request.getAmount());
+    }
+    if (request.getIncurredAt() != null) {
+      cost.setIncurredAt(request.getIncurredAt());
+    }
+    if (request.getMemo() != null) {
+      cost.setMemo(request.getMemo());
     }
 
-    // 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
-    // subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
-    // CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
-    // updatedAt을 갱신한다.
-    @Transactional
-    public CostResponse update(Long id, CostUpdateRequest request) {
-        validateUpdateRequest(request);
+    cost.setUpdatedAt(LocalDateTime.now());
+    Cost saved = costRepository.save(cost);
+    return CostResponse.from(saved);
+  }
 
-        // 대상 Cost 조회 — 없거나 CANCELLED이면 404 (findByIdAndDeletedAtIsNull 사용)
-        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+  // 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
+  // investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
+  // 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
+  @Transactional(readOnly = true)
+  public List<CostResponse> list(Long subscriptionId, Long investorId, String investorName) {
+    String investorNamePattern = (investorName != null) ? investorName + "%" : null;
+    List<Cost> costs =
+        costRepository.findActiveWithFilters(subscriptionId, investorId, investorNamePattern);
+    return costs.stream().map(CostResponse::from).toList();
+  }
 
-        // 필드 업데이트 (제공된 필드만)
-        if (request.getCostType() != null) {
-            cost.setCostType(request.getCostType());
-        }
-        if (request.getAmount() != null) {
-            cost.setAmount(request.getAmount());
-        }
-        if (request.getIncurredAt() != null) {
-            cost.setIncurredAt(request.getIncurredAt());
-        }
-        if (request.getMemo() != null) {
-            cost.setMemo(request.getMemo());
-        }
+  // 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
+  // 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
+  // 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
+  @Transactional(readOnly = true)
+  public CostResponse getById(Long id) {
+    Cost cost =
+        costRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+    return CostResponse.from(cost);
+  }
 
-        cost.setUpdatedAt(LocalDateTime.now());
-        Cost saved = costRepository.save(cost);
-        return CostResponse.from(saved);
+  // 요청 필수값 검증: subscriptionId, costType, amount, incurredAt 누락 시 400
+  // amount 0 미만 시 400, memo 255자 초과 시 400
+  private void validateRequest(CostRegisterRequest request) {
+    if (request == null) {
+      throw new CostValidationException("비용 등록 정보는 필수입니다.");
     }
 
-    // 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
-    // investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
-    // 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
-    @Transactional(readOnly = true)
-    public List<CostResponse> list(Long subscriptionId, Long investorId, String investorName) {
-        String investorNamePattern = (investorName != null) ? investorName + "%" : null;
-        List<Cost> costs = costRepository.findActiveWithFilters(subscriptionId, investorId, investorNamePattern);
-        return costs.stream()
-                .map(CostResponse::from)
-                .toList();
+    if (request.getSubscriptionId() == null
+        || request.getCostType() == null
+        || request.getAmount() == null
+        || request.getIncurredAt() == null) {
+      throw new CostValidationException("subscriptionId, costType, amount, incurredAt는 필수입니다.");
     }
 
-    // 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
-    // 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
-    // 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
-    @Transactional(readOnly = true)
-    public CostResponse getById(Long id) {
-        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
-        return CostResponse.from(cost);
+    if (request.getAmount() < 0) {
+      throw new CostValidationException("amount는 0 이상이어야 합니다.");
     }
 
-    // 요청 필수값 검증: subscriptionId, costType, amount, incurredAt 누락 시 400
-    // amount 0 미만 시 400, memo 255자 초과 시 400
-    private void validateRequest(CostRegisterRequest request) {
-        if (request == null) {
-            throw new CostValidationException("비용 등록 정보는 필수입니다.");
-        }
+    if (request.getMemo() != null && request.getMemo().length() > 255) {
+      throw new CostValidationException("memo는 255자 이하여야 합니다.");
+    }
+  }
 
-        if (request.getSubscriptionId() == null
-                || request.getCostType() == null
-                || request.getAmount() == null
-                || request.getIncurredAt() == null) {
-            throw new CostValidationException("subscriptionId, costType, amount, incurredAt는 필수입니다.");
-        }
+  // Subscription 소유권 검증: Subscription → Investor(accountId) → 현재 계정 ID 비교
+  private void validateSubscriptionOwnership(Subscription subscription) {
+    Long currentAccountId = securityUtils.getCurrentAccountId();
+    Investor investor =
+        investorRepository
+            .findById(subscription.getInvestorId())
+            .orElseThrow(() -> new CostNotFoundException("투자자를 찾을 수 없습니다."));
+    if (!currentAccountId.equals(investor.getAccountId())) {
+      throw new CostForbiddenException("계정 소유권이 없습니다.");
+    }
+  }
 
-        if (request.getAmount() < 0) {
-            throw new CostValidationException("amount는 0 이상이어야 합니다.");
-        }
-
-        if (request.getMemo() != null && request.getMemo().length() > 255) {
-            throw new CostValidationException("memo는 255자 이하여야 합니다.");
-        }
+  // 수정 요청 검증: amount 0 미만 시 400, memo 255자 초과 시 400
+  private void validateUpdateRequest(CostUpdateRequest request) {
+    if (request == null) {
+      throw new CostValidationException("비용 수정 정보는 필수입니다.");
     }
 
-    // Subscription 소유권 검증: Subscription → Investor(accountId) → 현재 계정 ID 비교
-    private void validateSubscriptionOwnership(Subscription subscription) {
-        Long currentAccountId = securityUtils.getCurrentAccountId();
-        Investor investor = investorRepository.findById(subscription.getInvestorId())
-                .orElseThrow(() -> new CostNotFoundException("투자자를 찾을 수 없습니다."));
-        if (!currentAccountId.equals(investor.getAccountId())) {
-            throw new CostForbiddenException("계정 소유권이 없습니다.");
-        }
+    if (request.getAmount() != null && request.getAmount() < 0) {
+      throw new CostValidationException("amount는 0 이상이어야 합니다.");
     }
 
-    // 수정 요청 검증: amount 0 미만 시 400, memo 255자 초과 시 400
-    private void validateUpdateRequest(CostUpdateRequest request) {
-        if (request == null) {
-            throw new CostValidationException("비용 수정 정보는 필수입니다.");
-        }
-
-        if (request.getAmount() != null && request.getAmount() < 0) {
-            throw new CostValidationException("amount는 0 이상이어야 합니다.");
-        }
-
-        if (request.getMemo() != null && request.getMemo().length() > 255) {
-            throw new CostValidationException("memo는 255자 이하여야 합니다.");
-        }
+    if (request.getMemo() != null && request.getMemo().length() > 255) {
+      throw new CostValidationException("memo는 255자 이하여야 합니다.");
     }
+  }
 
-    // 비용을 논리 취소한다. status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며,
-    // 물리 삭제는 수행하지 않는다. 존재하지 않거나 이미 취소된 기록은
-    // findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(재취소는 자연 배제).
-    @Transactional
-    public void cancel(Long id) {
-        Cost cost = costRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
-        LocalDateTime now = LocalDateTime.now();
-        cost.setStatus(STATUS_CANCELLED);
-        cost.setDeletedAt(now);
-        cost.setUpdatedAt(now);
-        costRepository.save(cost);
-    }
+  // 비용을 논리 취소한다. status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며,
+  // 물리 삭제는 수행하지 않는다. 존재하지 않거나 이미 취소된 기록은
+  // findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(재취소는 자연 배제).
+  @Transactional
+  public void cancel(Long id) {
+    Cost cost =
+        costRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+    LocalDateTime now = LocalDateTime.now();
+    cost.setStatus(STATUS_CANCELLED);
+    cost.setDeletedAt(now);
+    cost.setUpdatedAt(now);
+    costRepository.save(cost);
+  }
 }

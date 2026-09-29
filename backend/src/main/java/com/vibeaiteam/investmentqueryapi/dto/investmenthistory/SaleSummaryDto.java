@@ -13,12 +13,12 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SaleSummaryDto {
 
-    private Long id;
-    private Long quantity;
-    private Long amount;
-    private Long fee;
-    private Long tax;
-    private Long otherCost;
-    private String status;
-    private String soldAt;
+  private Long id;
+  private Long quantity;
+  private Long amount;
+  private Long fee;
+  private Long tax;
+  private Long otherCost;
+  private String status;
+  private String soldAt;
 }

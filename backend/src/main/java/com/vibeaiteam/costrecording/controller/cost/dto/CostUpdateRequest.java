@@ -1,12 +1,11 @@
 package com.vibeaiteam.costrecording.controller.cost.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -15,11 +14,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CostUpdateRequest {
 
-    private String costType;
+  private String costType;
 
-    private Long amount;
+  private Long amount;
 
-    private LocalDateTime incurredAt;
+  private LocalDateTime incurredAt;
 
-    private String memo;
+  private String memo;
 }

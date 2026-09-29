@@ -13,13 +13,13 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SecuritiesAccountRegisterRequest {
 
-    private Long investorId;
+  private Long investorId;
 
-    private Long securitiesFirmId;
+  private Long securitiesFirmId;
 
-    private String accountNumber;
+  private String accountNumber;
 
-    private String accountName;
+  private String accountName;
 
-    private Boolean isDefault;
+  private Boolean isDefault;
 }

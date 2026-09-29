@@ -1,46 +1,42 @@
 package com.vibeaiteam.subscriptionmanagement.exception;
 
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
+import java.nio.charset.StandardCharsets;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.nio.charset.StandardCharsets;
-
 @RestControllerAdvice
 public class SubscriptionExceptionHandler {
 
-    private static final MediaType JSON_UTF8 = new MediaType("application", "json", StandardCharsets.UTF_8);
+  private static final MediaType JSON_UTF8 =
+      new MediaType("application", "json", StandardCharsets.UTF_8);
 
-    @ExceptionHandler(SubscriptionValidationException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(SubscriptionValidationException ex) {
-        return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
-    }
+  @ExceptionHandler(SubscriptionValidationException.class)
+  public ResponseEntity<ErrorResponse> handleValidation(SubscriptionValidationException ex) {
+    return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+  }
 
-    @ExceptionHandler(SubscriptionConflictException.class)
-    public ResponseEntity<ErrorResponse> handleConflict(SubscriptionConflictException ex) {
-        return response(HttpStatus.CONFLICT, "DUPLICATE_SUBSCRIPTION", ex.getMessage());
-    }
+  @ExceptionHandler(SubscriptionConflictException.class)
+  public ResponseEntity<ErrorResponse> handleConflict(SubscriptionConflictException ex) {
+    return response(HttpStatus.CONFLICT, "DUPLICATE_SUBSCRIPTION", ex.getMessage());
+  }
 
-    @ExceptionHandler(SubscriptionNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(SubscriptionNotFoundException ex) {
-        return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
-    }
+  @ExceptionHandler(SubscriptionNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleNotFound(SubscriptionNotFoundException ex) {
+    return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+  }
 
-    @ExceptionHandler(SubscriptionForbiddenException.class)
-    public ResponseEntity<ErrorResponse> handleForbidden(SubscriptionForbiddenException ex) {
-        return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
-    }
+  @ExceptionHandler(SubscriptionForbiddenException.class)
+  public ResponseEntity<ErrorResponse> handleForbidden(SubscriptionForbiddenException ex) {
+    return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+  }
 
-    private ResponseEntity<ErrorResponse> response(HttpStatus status, String errorCode, String message) {
-        ErrorResponse response = ErrorResponse.builder()
-                .error(errorCode)
-                .message(message)
-                .build();
-        return ResponseEntity.status(status)
-                .contentType(JSON_UTF8)
-                .body(response);
-    }
+  private ResponseEntity<ErrorResponse> response(
+      HttpStatus status, String errorCode, String message) {
+    ErrorResponse response = ErrorResponse.builder().error(errorCode).message(message).build();
+    return ResponseEntity.status(status).contentType(JSON_UTF8).body(response);
+  }
 }

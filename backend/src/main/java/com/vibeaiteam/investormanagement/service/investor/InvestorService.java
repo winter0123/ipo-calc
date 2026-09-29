@@ -10,121 +10,122 @@ import com.vibeaiteam.investormanagement.exception.InvestorForbiddenException;
 import com.vibeaiteam.investormanagement.exception.InvestorNotFoundException;
 import com.vibeaiteam.investormanagement.exception.InvestorValidationException;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class InvestorService {
 
-    private static final int DISPLAY_NAME_MAX_LENGTH = 50;
-    private static final Set<String> SUPPORTED_STATUS = Set.of("ACTIVE", "INACTIVE", "BOTH");
-    private static final String DEFAULT_STATUS = "ACTIVE";
+  private static final int DISPLAY_NAME_MAX_LENGTH = 50;
+  private static final Set<String> SUPPORTED_STATUS = Set.of("ACTIVE", "INACTIVE", "BOTH");
+  private static final String DEFAULT_STATUS = "ACTIVE";
 
-    private final InvestorRepository investorRepository;
-    private final SecurityUtils securityUtils;
+  private final InvestorRepository investorRepository;
+  private final SecurityUtils securityUtils;
 
-    public InvestorResponse register(InvestorRegisterRequest request) {
-        Long accountId = securityUtils.getCurrentAccountId();
-        String displayName = validateDisplayName(request.getDisplayName());
+  public InvestorResponse register(InvestorRegisterRequest request) {
+    Long accountId = securityUtils.getCurrentAccountId();
+    String displayName = validateDisplayName(request.getDisplayName());
 
-        LocalDateTime now = LocalDateTime.now();
-        Investor investor = Investor.builder()
-                .accountId(accountId)
-                .displayName(displayName)
-                .relationship(request.getRelationship())
-                .status("ACTIVE")
-                .deletedAt(null)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+    LocalDateTime now = LocalDateTime.now();
+    Investor investor =
+        Investor.builder()
+            .accountId(accountId)
+            .displayName(displayName)
+            .relationship(request.getRelationship())
+            .status("ACTIVE")
+            .deletedAt(null)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
 
-        Investor saved = investorRepository.save(investor);
-        return InvestorResponse.from(saved);
+    Investor saved = investorRepository.save(investor);
+    return InvestorResponse.from(saved);
+  }
+
+  public List<InvestorResponse> list(String status) {
+    Long accountId = securityUtils.getCurrentAccountId();
+    String normalized = normalizeStatus(status);
+    List<Investor> investors =
+        "BOTH".equals(normalized)
+            ? investorRepository.findByAccountId(accountId)
+            : investorRepository.findByAccountIdAndStatus(accountId, normalized);
+    return investors.stream().map(InvestorResponse::from).toList();
+  }
+
+  public InvestorResponse getById(Long id) {
+    Investor investor = findOwnedInvestor(id);
+    return InvestorResponse.from(investor);
+  }
+
+  public InvestorResponse update(Long id, InvestorUpdateRequest request) {
+    Investor investor = findOwnedInvestor(id);
+
+    if (request.getDisplayName() != null) {
+      investor.setDisplayName(validateDisplayName(request.getDisplayName()));
     }
-
-    public List<InvestorResponse> list(String status) {
-        Long accountId = securityUtils.getCurrentAccountId();
-        String normalized = normalizeStatus(status);
-        List<Investor> investors = "BOTH".equals(normalized)
-                ? investorRepository.findByAccountId(accountId)
-                : investorRepository.findByAccountIdAndStatus(accountId, normalized);
-        return investors.stream()
-                .map(InvestorResponse::from)
-                .toList();
+    if (request.getRelationship() != null) {
+      investor.setRelationship(normalizeRelationship(request.getRelationship()));
     }
+    investor.setUpdatedAt(LocalDateTime.now());
 
-    public InvestorResponse getById(Long id) {
-        Investor investor = findOwnedInvestor(id);
-        return InvestorResponse.from(investor);
+    Investor saved = investorRepository.save(investor);
+    return InvestorResponse.from(saved);
+  }
+
+  public SuccessResponse deactivate(Long id) {
+    Investor investor = findOwnedInvestor(id);
+    if (!"INACTIVE".equals(investor.getStatus())) {
+      LocalDateTime now = LocalDateTime.now();
+      investor.setStatus("INACTIVE");
+      investor.setDeletedAt(now);
+      investor.setUpdatedAt(now);
+      investorRepository.save(investor);
     }
+    return SuccessResponse.of("투자자가 비활성화되었습니다.");
+  }
 
-    public InvestorResponse update(Long id, InvestorUpdateRequest request) {
-        Investor investor = findOwnedInvestor(id);
-
-        if (request.getDisplayName() != null) {
-            investor.setDisplayName(validateDisplayName(request.getDisplayName()));
-        }
-        if (request.getRelationship() != null) {
-            investor.setRelationship(normalizeRelationship(request.getRelationship()));
-        }
-        investor.setUpdatedAt(LocalDateTime.now());
-
-        Investor saved = investorRepository.save(investor);
-        return InvestorResponse.from(saved);
+  private Investor findOwnedInvestor(Long id) {
+    Long accountId = securityUtils.getCurrentAccountId();
+    Investor investor =
+        investorRepository
+            .findById(id)
+            .orElseThrow(() -> new InvestorNotFoundException("투자자를 찾을 수 없습니다."));
+    if (!accountId.equals(investor.getAccountId())) {
+      throw new InvestorForbiddenException("계정 소유권이 없습니다.");
     }
+    return investor;
+  }
 
-    public SuccessResponse deactivate(Long id) {
-        Investor investor = findOwnedInvestor(id);
-        if (!"INACTIVE".equals(investor.getStatus())) {
-            LocalDateTime now = LocalDateTime.now();
-            investor.setStatus("INACTIVE");
-            investor.setDeletedAt(now);
-            investor.setUpdatedAt(now);
-            investorRepository.save(investor);
-        }
-        return SuccessResponse.of("투자자가 비활성화되었습니다.");
+  private String normalizeStatus(String status) {
+    if (status == null || status.trim().isEmpty()) {
+      return DEFAULT_STATUS;
     }
+    String upper = status.trim().toUpperCase();
+    if (!SUPPORTED_STATUS.contains(upper)) {
+      throw new InvestorValidationException("status는 ACTIVE, INACTIVE, BOTH 중 하나여야 합니다.");
+    }
+    return upper;
+  }
 
-    private Investor findOwnedInvestor(Long id) {
-        Long accountId = securityUtils.getCurrentAccountId();
-        Investor investor = investorRepository.findById(id)
-                .orElseThrow(() -> new InvestorNotFoundException("투자자를 찾을 수 없습니다."));
-        if (!accountId.equals(investor.getAccountId())) {
-            throw new InvestorForbiddenException("계정 소유권이 없습니다.");
-        }
-        return investor;
+  private String validateDisplayName(String displayName) {
+    if (displayName == null || displayName.trim().isEmpty()) {
+      throw new InvestorValidationException("표시 이름은 필수입니다.");
     }
+    if (displayName.trim().length() > DISPLAY_NAME_MAX_LENGTH) {
+      throw new InvestorValidationException("표시 이름은 최대 50자까지 가능합니다.");
+    }
+    return displayName.trim();
+  }
 
-    private String normalizeStatus(String status) {
-        if (status == null || status.trim().isEmpty()) {
-            return DEFAULT_STATUS;
-        }
-        String upper = status.trim().toUpperCase();
-        if (!SUPPORTED_STATUS.contains(upper)) {
-            throw new InvestorValidationException("status는 ACTIVE, INACTIVE, BOTH 중 하나여야 합니다.");
-        }
-        return upper;
+  private String normalizeRelationship(String relationship) {
+    if (relationship == null || relationship.isEmpty()) {
+      return null;
     }
-
-    private String validateDisplayName(String displayName) {
-        if (displayName == null || displayName.trim().isEmpty()) {
-            throw new InvestorValidationException("표시 이름은 필수입니다.");
-        }
-        if (displayName.trim().length() > DISPLAY_NAME_MAX_LENGTH) {
-            throw new InvestorValidationException("표시 이름은 최대 50자까지 가능합니다.");
-        }
-        return displayName.trim();
-    }
-
-    private String normalizeRelationship(String relationship) {
-        if (relationship == null || relationship.isEmpty()) {
-            return null;
-        }
-        return relationship;
-    }
+    return relationship;
+  }
 }

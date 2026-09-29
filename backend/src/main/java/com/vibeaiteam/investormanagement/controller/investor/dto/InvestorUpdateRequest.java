@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class InvestorUpdateRequest {
 
-    private String displayName;
+  private String displayName;
 
-    private String relationship;
+  private String relationship;
 }

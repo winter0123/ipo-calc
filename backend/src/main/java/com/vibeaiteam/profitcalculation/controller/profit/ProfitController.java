@@ -15,21 +15,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ProfitController {
 
-    private final ProfitCalculationService profitCalculationService;
+  private final ProfitCalculationService profitCalculationService;
 
-    // 특정 매도건의 순수익을 계산해 반환한다.
-    // CANCELLED 상태의 Sale이나 존재하지 않는 Sale이면 404를 반환한다.
-    @GetMapping("/sales/{saleId}/profit")
-    public ResponseEntity<ProfitDto> getSaleProfit(@PathVariable Long saleId) {
-        ProfitDto profit = profitCalculationService.calculateForSale(saleId);
-        return ResponseEntity.ok(profit);
-    }
+  // 특정 매도건의 순수익을 계산해 반환한다.
+  // CANCELLED 상태의 Sale이나 존재하지 않는 Sale이면 404를 반환한다.
+  @GetMapping("/sales/{saleId}/profit")
+  public ResponseEntity<ProfitDto> getSaleProfit(@PathVariable Long saleId) {
+    ProfitDto profit = profitCalculationService.calculateForSale(saleId);
+    return ResponseEntity.ok(profit);
+  }
 
-    // 투자자의 모든 ACTIVE 매도건 수익 목록과 합계를 계산해 반환한다.
-    // 존재하지 않는 Investor면 404를 반환하고, 매도 건이 없으면 빈 목록과 합계 0을 반환한다.
-    @GetMapping("/investors/{investorId}/profits")
-    public ResponseEntity<InvestorProfitDto> getInvestorProfits(@PathVariable Long investorId) {
-        InvestorProfitDto profits = profitCalculationService.calculateForInvestor(investorId);
-        return ResponseEntity.ok(profits);
-    }
+  // 투자자의 모든 ACTIVE 매도건 수익 목록과 합계를 계산해 반환한다.
+  // 존재하지 않는 Investor면 404를 반환하고, 매도 건이 없으면 빈 목록과 합계 0을 반환한다.
+  @GetMapping("/investors/{investorId}/profits")
+  public ResponseEntity<InvestorProfitDto> getInvestorProfits(@PathVariable Long investorId) {
+    InvestorProfitDto profits = profitCalculationService.calculateForInvestor(investorId);
+    return ResponseEntity.ok(profits);
+  }
 }

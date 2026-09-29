@@ -18,24 +18,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
+  private final AuthService authService;
 
-    // 로그인 요청의 아이디/비밀번호를 검증해 인증 세션을 생성하고 200 OK를 반환한다. 검증에 실패하면 401을 반환한다.
-    @PostMapping("/login")
-    public ResponseEntity<Void> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse) {
-        authService.login(request, httpServletRequest, httpServletResponse);
-        return ResponseEntity.ok().build();
-    }
+  // 로그인 요청의 아이디/비밀번호를 검증해 인증 세션을 생성하고 200 OK를 반환한다. 검증에 실패하면 401을 반환한다.
+  @PostMapping("/login")
+  public ResponseEntity<Void> login(
+      @Valid @RequestBody LoginRequest request,
+      HttpServletRequest httpServletRequest,
+      HttpServletResponse httpServletResponse) {
+    authService.login(request, httpServletRequest, httpServletResponse);
+    return ResponseEntity.ok().build();
+  }
 
-    // 현재 요청의 인증 세션을 종료하고 200 OK를 반환한다.
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse) {
-        authService.logout(httpServletRequest, httpServletResponse);
-        return ResponseEntity.ok().build();
-    }
+  // 현재 요청의 인증 세션을 종료하고 200 OK를 반환한다.
+  @PostMapping("/logout")
+  public ResponseEntity<Void> logout(
+      HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+    authService.logout(httpServletRequest, httpServletResponse);
+    return ResponseEntity.ok().build();
+  }
 }

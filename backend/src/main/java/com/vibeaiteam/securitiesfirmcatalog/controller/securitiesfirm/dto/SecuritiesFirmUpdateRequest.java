@@ -13,9 +13,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SecuritiesFirmUpdateRequest {
 
-    private String name;
+  private String name;
 
-    private String externalCode;
+  private String externalCode;
 
-    private String businessRegistrationNumber;
+  private String businessRegistrationNumber;
 }

@@ -13,9 +13,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SuccessResponse {
 
-    private String message;
+  private String message;
 
-    public static SuccessResponse of(String message) {
-        return SuccessResponse.builder().message(message).build();
-    }
+  public static SuccessResponse of(String message) {
+    return SuccessResponse.builder().message(message).build();
+  }
 }

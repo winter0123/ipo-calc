@@ -20,15 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AccountController {
 
-    private final SignupService signupService;
+  private final SignupService signupService;
 
-    // 회원가입 요청을 받아 계정과 세션을 생성하고, 201 Created와 함께 생성된 계정 정보를 반환한다.
-    @PostMapping
-    public ResponseEntity<SignupResponse> signup(
-            @Valid @RequestBody SignupRequest request,
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse) {
-        SignupResponse response = signupService.signup(request, httpServletRequest, httpServletResponse);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+  // 회원가입 요청을 받아 계정과 세션을 생성하고, 201 Created와 함께 생성된 계정 정보를 반환한다.
+  @PostMapping
+  public ResponseEntity<SignupResponse> signup(
+      @Valid @RequestBody SignupRequest request,
+      HttpServletRequest httpServletRequest,
+      HttpServletResponse httpServletResponse) {
+    SignupResponse response =
+        signupService.signup(request, httpServletRequest, httpServletResponse);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
 }
