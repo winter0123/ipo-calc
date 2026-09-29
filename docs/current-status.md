@@ -55,7 +55,7 @@
 ## 알려진 부채·다음 세션 후보
 
 1. **Epic 17 SF-3 착수 전 사용자 결정 5건**: (a) 단일 `slprc`를 밴드/확정가 중 어디에 매핑하고 희망가·확정가 중 무엇인지, (b) `sbd` 하나로 NOT NULL인 `subscriptionEndDate`를 어떻게 채울지, (c) IPO와 유상증자 구분 기준(DS001 `stock_code` 유무는 가설), (d) OpenDART 일일 호출 한도, (e) 상태 코드 011/012 의미. 이후 E17 SF-2(ustockplus 보완)·SF-3 진행. Epic 19 SF-2~4는 E17 완료와 연동, Epic 18은 KIS 공식 GitHub 원문 열람(게이트 4건) 후 spec부터.
-2. **접근성 재스캔 완료(2026-09-30)**: #195~#197 병합 후 12개 화면을 axe로 재스캔해 위반 0건(이전 32건). 리포트는 `docs/qa/accessibility-report.md`에 갱신됐다. 참고: 스캔 스크립트는 로그인 실패 시 가입 계정을 만들므로 dev DB에 `testscan*@example.com` 잔여 계정이 쌓인다.
+2. **접근성 재스캔 완료(2026-09-30)**: #195~#197 병합 후 12개 화면을 axe로 재스캔해 위반 0건(이전 32건). 리포트는 `docs/qa/accessibility-report.md`에 갱신됐다. 스캔은 `tools/accessibility-scan/run-scan.sh`(실행마다 빈 포트를 새로 골라 다른 프로젝트와 충돌하지 않음)로 돌린다. 참고: 스캔 스크립트는 로그인 실패 시 가입 계정을 만들므로 dev DB에 `testscan*@example.com` 잔여 계정이 쌓인다.
 3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
 4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
 5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
