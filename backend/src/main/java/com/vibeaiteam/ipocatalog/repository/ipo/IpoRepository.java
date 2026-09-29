@@ -16,6 +16,8 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
 
   Optional<Ipo> findByStockCodeAndStatusAndDeletedAtIsNull(String stockCode, String status);
 
+  Optional<Ipo> findByCorpCodeAndStatusAndDeletedAtIsNull(String corpCode, String status);
+
   Optional<Ipo> findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
       String ipoName, LocalDate subscriptionStartDate, String status);
 }

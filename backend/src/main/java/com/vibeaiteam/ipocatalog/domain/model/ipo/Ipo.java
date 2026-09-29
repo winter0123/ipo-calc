@@ -36,6 +36,9 @@ public class Ipo {
   @Column(name = "stock_code", length = 255)
   private String stockCode;
 
+  @Column(name = "corp_code", length = 8)
+  private String corpCode;
+
   @Column(name = "round_label", length = 255)
   private String roundLabel;
 
