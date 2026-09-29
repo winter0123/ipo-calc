@@ -13,7 +13,7 @@
 - **dev DB 정리**: 공유 dev Postgres에 누수돼 있던 `securities_firms` 1행이 clean main에서도 테스트 2건을 깨뜨리고 있었다. 참조 없음을 확인하고 사용자 승인 후 그 1행만 삭제.
 - **운영 변경**: OpenCode 워커는 `OPENCODE_CONFIG=/Users/joy/.config/opencode/orca-worker.json`(검증·읽기 허용, git 변경·비밀 파일·`rm -rf` 거부)으로 띄운다. 워커 완료 판단은 `worker_done` 대기가 아니라 터미널 유휴 여부(`esc interrupt` 유무)와 파일·diff 변경을 직접 확인해서 한다(워커가 `worker_done` 없이 끝내거나 뒤늦게 보내는 일이 잦음). `worker-start`에는 `--worktree path:<절대경로>`가 필수다.
 
-**야간 후속**: E19 SF-3(#195), SF-4(#196), 접근성 color-contrast 교정(#197)을 2026-09-30 사용자 승인 후 병합했다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. 랜드마크·color-contrast axe 재스캔(`tools/accessibility-scan/scan.mjs`, 백엔드·로그인 데이터 필요)은 아직 실행하지 못했다.
+**야간 후속**: E19 SF-3(#195), SF-4(#196), 접근성 color-contrast 교정(#197)을 2026-09-30 사용자 승인 후 병합했다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. axe 재스캔 결과 12개 화면 위반 0건(부채 2번 참고).
 
 **다음 착수 후보**: Epic 17 SF-3(동기화 서비스)는 아래 미결정 항목을 사용자와 정한 뒤 시작한다.
 
@@ -55,7 +55,7 @@
 ## 알려진 부채·다음 세션 후보
 
 1. **Epic 17 SF-3 착수 전 사용자 결정 5건**: (a) 단일 `slprc`를 밴드/확정가 중 어디에 매핑하고 희망가·확정가 중 무엇인지, (b) `sbd` 하나로 NOT NULL인 `subscriptionEndDate`를 어떻게 채울지, (c) IPO와 유상증자 구분 기준(DS001 `stock_code` 유무는 가설), (d) OpenDART 일일 호출 한도, (e) 상태 코드 011/012 의미. 이후 E17 SF-2(ustockplus 보완)·SF-3 진행. Epic 19 SF-2~4는 E17 완료와 연동, Epic 18은 KIS 공식 GitHub 원문 열람(게이트 4건) 후 spec부터.
-2. **접근성 재스캔**: critical(#195)·serious color-contrast(#197)·moderate landmark(#196) 수정이 병합됐다. `docs/qa/accessibility-report.md` 기준 위반이 실제로 사라졌는지 `tools/accessibility-scan/scan.mjs`로 재확인하고 리포트를 갱신한다(백엔드+dev Postgres+로그인 데이터 필요).
+2. **접근성 재스캔 완료(2026-09-30)**: #195~#197 병합 후 12개 화면을 axe로 재스캔해 위반 0건(이전 32건). 리포트는 `docs/qa/accessibility-report.md`에 갱신됐다. 참고: 스캔 스크립트는 로그인 실패 시 가입 계정을 만들므로 dev DB에 `testscan*@example.com` 잔여 계정이 쌓인다.
 3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
 4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
 5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
