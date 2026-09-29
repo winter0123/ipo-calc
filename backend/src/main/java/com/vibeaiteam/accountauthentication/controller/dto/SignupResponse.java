@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SignupResponse {
 
-    private Long accountId;
-    private String email;
-    private String name;
+  private Long accountId;
+  private String email;
+  private String name;
 }

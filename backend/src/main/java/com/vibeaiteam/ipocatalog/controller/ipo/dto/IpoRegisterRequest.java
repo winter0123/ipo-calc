@@ -1,12 +1,11 @@
 package com.vibeaiteam.ipocatalog.controller.ipo.dto;
 
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -15,25 +14,25 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class IpoRegisterRequest {
 
-    private String companyName;
+  private String companyName;
 
-    private String ipoName;
+  private String ipoName;
 
-    private String stockCode;
+  private String stockCode;
 
-    private String roundLabel;
+  private String roundLabel;
 
-    private Long lowerBandPrice;
+  private Long lowerBandPrice;
 
-    private Long upperBandPrice;
+  private Long upperBandPrice;
 
-    private Long fixedPrice;
+  private Long fixedPrice;
 
-    private LocalDate subscriptionStartDate;
+  private LocalDate subscriptionStartDate;
 
-    private LocalDate subscriptionEndDate;
+  private LocalDate subscriptionEndDate;
 
-    private LocalDate listingDate;
+  private LocalDate listingDate;
 
-    private Long offeringShareCount;
+  private Long offeringShareCount;
 }

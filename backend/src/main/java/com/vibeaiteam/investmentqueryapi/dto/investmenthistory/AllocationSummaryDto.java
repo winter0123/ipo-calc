@@ -13,8 +13,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AllocationSummaryDto {
 
-    private Long id;
-    private Long allocatedQuantity;
-    private Long allocationPrice;
-    private String allocationStatus;
+  private Long id;
+  private Long allocatedQuantity;
+  private Long allocationPrice;
+  private String allocationStatus;
 }

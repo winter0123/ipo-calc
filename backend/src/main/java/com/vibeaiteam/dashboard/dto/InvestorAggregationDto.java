@@ -13,17 +13,17 @@ import lombok.Setter;
 @AllArgsConstructor
 public class InvestorAggregationDto {
 
-    private Long investorId;
+  private Long investorId;
 
-    private String investorName;
+  private String investorName;
 
-    private Long totalInvestmentAmount;
+  private Long totalInvestmentAmount;
 
-    private Long totalPreTaxProfit;
+  private Long totalPreTaxProfit;
 
-    private Long totalAfterTaxProfit;
+  private Long totalAfterTaxProfit;
 
-    private Double totalProfitRate;
+  private Double totalProfitRate;
 
-    private Integer participationCount;
+  private Integer participationCount;
 }

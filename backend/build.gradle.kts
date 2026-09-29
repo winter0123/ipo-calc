@@ -3,6 +3,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.6"
     id("java")
     id("checkstyle")
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 group = "com.vibeaiteam"
@@ -46,4 +47,13 @@ tasks.test {
 checkstyle {
     toolVersion = "10.19.0"
     configFile = file("config/checkstyle/checkstyle.xml")
+}
+
+spotless {
+    java {
+        target("src/main/java/**/*.java", "src/test/java/**/*.java")
+        googleJavaFormat("1.22.0")
+        importOrder()
+        removeUnusedImports()
+    }
 }

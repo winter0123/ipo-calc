@@ -1,12 +1,11 @@
 package com.vibeaiteam.salemanagement.controller.sale.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -15,19 +14,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class SaleRegisterRequest {
 
-    private Long allocationId;
+  private Long allocationId;
 
-    private Long quantity;
+  private Long quantity;
 
-    private Long price;
+  private Long price;
 
-    private Long amount;
+  private Long amount;
 
-    private LocalDateTime saleDate;
+  private LocalDateTime saleDate;
 
-    private Long fee;
+  private Long fee;
 
-    private Long tax;
+  private Long tax;
 
-    private Long otherCost;
+  private Long otherCost;
 }

@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class IpoImportFailure {
 
-    private int rowNumber;
+  private int rowNumber;
 
-    private String reason;
+  private String reason;
 }

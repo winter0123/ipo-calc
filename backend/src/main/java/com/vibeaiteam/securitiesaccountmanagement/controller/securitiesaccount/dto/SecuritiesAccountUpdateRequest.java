@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class SecuritiesAccountUpdateRequest {
 
-    private String accountName;
+  private String accountName;
 
-    private Long securitiesFirmId;
+  private Long securitiesFirmId;
 }
