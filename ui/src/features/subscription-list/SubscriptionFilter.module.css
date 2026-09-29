@@ -24,7 +24,7 @@
 }
 
 .button[aria-pressed='true'] {
-  background-color: #3b82f6;
+  background-color: #2563eb;
   border-color: #3b82f6;
   color: #fff;
 }

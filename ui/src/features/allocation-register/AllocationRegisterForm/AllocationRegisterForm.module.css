@@ -61,7 +61,7 @@
 .field select:disabled,
 .field textarea:disabled {
   background-color: #f5f5f5;
-  color: #999;
+  color: #6b7280;
   cursor: not-allowed;
 }
 
