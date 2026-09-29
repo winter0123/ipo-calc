@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const { currentTab, setCurrentTab, invalidateCurrentTab } = useDashboardTabs()
   const queryClient = useQueryClient()
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
 
   const summaryQuery = useDashboardSummary({ enabled: currentTab === 'all' })
   const investorQuery = useDashboardByInvestor({ enabled: currentTab === 'investor' })
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const periodQuery = useDashboardByPeriod({
     unit: currentTab === 'month' ? 'month' : 'year',
     year: selectedYear,
+    month: currentTab === 'month' ? selectedMonth : undefined,
     enabled: currentTab === 'month' || currentTab === 'year',
   })
 
@@ -46,12 +48,21 @@ export default function DashboardPage() {
     setCurrentTab(tab)
   }
 
-  const handleYearChange = (year: number) => {
+  const handlePeriodChange = (year: number, month?: number) => {
     setSelectedYear(year)
+    if (month !== undefined) {
+      setSelectedMonth(month)
+    }
   }
 
+  const periodSelectorKey = `${currentTab}-${selectedYear}-${selectedMonth}`
+
   const handleReset = () => {
-    setSelectedYear(new Date().getFullYear())
+    const now = new Date()
+    setSelectedYear(now.getFullYear())
+    if (currentTab === 'month') {
+      setSelectedMonth(now.getMonth() + 1)
+    }
     invalidateCurrentTab(queryClient)
   }
 
@@ -151,9 +162,11 @@ export default function DashboardPage() {
       <div className={styles.resultsArea}>
         {hasPeriodSelector && (
           <PeriodSelector
+            key={periodSelectorKey}
             unit={currentTab === 'month' ? 'month' : 'year'}
             initialYear={selectedYear}
-            onSearch={handleYearChange}
+            initialMonth={currentTab === 'month' ? selectedMonth : undefined}
+            onSearch={handlePeriodChange}
           />
         )}
         {renderContent()}

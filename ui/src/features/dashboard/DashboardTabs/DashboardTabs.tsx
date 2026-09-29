@@ -74,7 +74,6 @@ export default function DashboardTabs({ currentTab, onTabChange }: DashboardTabs
           type="button"
           role="tab"
           aria-selected={currentTab === tab}
-          aria-controls={`tabpanel-${tab}`}
           id={`tab-${tab}`}
           tabIndex={currentTab === tab ? 0 : -1}
           className={`${styles.tab} ${currentTab === tab ? styles.activeTab : ''}`}
