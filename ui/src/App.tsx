@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import MainLayout from './shared/components/MainLayout/MainLayout.tsx'
 import LoginPage from './pages/LoginPage/LoginPage.tsx'
 import SignupPage from './pages/SignupPage/SignupPage.tsx'
 import InvestorRegisterPage from './pages/InvestorRegisterPage/InvestorRegisterPage.tsx'
@@ -15,22 +16,24 @@ import InvestmentHistoryPage from './pages/InvestmentHistoryPage/InvestmentHisto
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<div>Hello</div>} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/investors/register" element={<InvestorRegisterPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route
-        path="/securities-accounts/register/:investorId"
-        element={<SecuritiesAccountRegisterPage />}
-      />
-      <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
-      <Route path="/subscriptions" element={<SubscriptionListPage />} />
-      <Route path="/allocations/register" element={<AllocationRegisterPage />} />
-      <Route path="/sales/register" element={<SaleRegisterPage />} />
-      <Route path="/costs/register" element={<CostRegisterPage />} />
-      <Route path="/profits/view" element={<ProfitViewPage />} />
-      <Route path="/investments" element={<InvestmentHistoryPage />} />
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<div>Hello</div>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/investors/register" element={<InvestorRegisterPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/securities-accounts/register/:investorId"
+          element={<SecuritiesAccountRegisterPage />}
+        />
+        <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
+        <Route path="/subscriptions" element={<SubscriptionListPage />} />
+        <Route path="/allocations/register" element={<AllocationRegisterPage />} />
+        <Route path="/sales/register" element={<SaleRegisterPage />} />
+        <Route path="/costs/register" element={<CostRegisterPage />} />
+        <Route path="/profits/view" element={<ProfitViewPage />} />
+        <Route path="/investments" element={<InvestmentHistoryPage />} />
+      </Route>
     </Routes>
   )
 }
