@@ -41,7 +41,9 @@
   border-radius: 6px;
   font-size: 14px;
   background-color: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .input:focus,

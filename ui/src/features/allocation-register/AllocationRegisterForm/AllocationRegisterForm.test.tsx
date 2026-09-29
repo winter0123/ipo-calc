@@ -33,7 +33,8 @@ const SUBSCRIPTION_DETAIL = {
 
 function mockSubscriptionDetailFetch() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-    if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+    if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+      return SUBSCRIPTION_DETAIL
     throw new Error(`unexpected path: ${String(path)}`)
   })
 }
@@ -107,7 +108,8 @@ describe('AllocationRegisterForm', () => {
     await waitForDetailLoaded()
 
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         return {
           id: 1,
@@ -135,7 +137,9 @@ describe('AllocationRegisterForm', () => {
       )
     })
 
-    const call = vi.mocked(apiFetch).mock.calls.find(([path, opts]) => path === '/allocations' && opts?.method === 'POST')!
+    const call = vi
+      .mocked(apiFetch)
+      .mock.calls.find(([path, opts]) => path === '/allocations' && opts?.method === 'POST')!
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
@@ -203,11 +207,15 @@ describe('AllocationRegisterForm', () => {
   })
 
   it('청약 상세 조회 404 응답 시 에러 메시지 표시 (AC-015)', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Request failed: 404 - 청약을 찾을 수 없습니다'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new Error('Request failed: 404 - 청약을 찾을 수 없습니다'),
+    )
     renderForm()
 
     await waitFor(() => {
-      expect(screen.getByText('청약 정보를 불러올 수 없습니다. 청약 목록으로 이동합니다.')).toBeInTheDocument()
+      expect(
+        screen.getByText('청약 정보를 불러올 수 없습니다. 청약 목록으로 이동합니다.'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -218,7 +226,8 @@ describe('AllocationRegisterForm', () => {
 
     // POST /allocations만 에러를 던지도록 설정 (GET /investment-history/1은 mockSubscriptionDetailFetch가 처리)
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         throw new Error('Request failed: 400 - 배정수량은 청약수량을 초과할 수 없습니다.')
       }
@@ -240,7 +249,8 @@ describe('AllocationRegisterForm', () => {
     await waitForDetailLoaded()
 
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         throw new Error('Conflict: 409')
       }
@@ -262,7 +272,8 @@ describe('AllocationRegisterForm', () => {
     await waitForDetailLoaded()
 
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         throw new Error('Bad Request: 400 - 유효하지 않은 입력입니다.')
       }
@@ -284,7 +295,8 @@ describe('AllocationRegisterForm', () => {
     await waitForDetailLoaded()
 
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         throw new Error('Failed to fetch')
       }
@@ -306,7 +318,8 @@ describe('AllocationRegisterForm', () => {
     await waitForDetailLoaded()
 
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
-      if (path === '/investment-history/1' && (!options || options.method === 'GET')) return SUBSCRIPTION_DETAIL
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
         return {
           id: 1,
@@ -336,7 +349,9 @@ describe('AllocationRegisterForm', () => {
       )
     })
 
-    const call = vi.mocked(apiFetch).mock.calls.find(([path, opts]) => path === '/allocations' && opts?.method === 'POST')!
+    const call = vi
+      .mocked(apiFetch)
+      .mock.calls.find(([path, opts]) => path === '/allocations' && opts?.method === 'POST')!
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)

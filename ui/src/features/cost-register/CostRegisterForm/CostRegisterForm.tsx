@@ -47,7 +47,12 @@ export default function CostRegisterForm() {
   }
 
   const validatePositiveInteger = (v: unknown) =>
-    v === undefined || v === null || v === '' || Number.isNaN(Number(v)) || (Number.isInteger(Number(v)) && Number(v) > 0) || '0 초과 정수를 입력해 주세요.'
+    v === undefined ||
+    v === null ||
+    v === '' ||
+    Number.isNaN(Number(v)) ||
+    (Number.isInteger(Number(v)) && Number(v) > 0) ||
+    '0 초과 정수를 입력해 주세요.'
 
   if (subscriptionsLoading) {
     return <div className={styles.loading}>목록을 불러오는 중...</div>

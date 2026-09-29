@@ -11,9 +11,11 @@ export default function AllocationRegisterForm() {
   const subscriptionId = Number(searchParams.get('subscriptionId'))
   const navigate = useNavigate()
 
-  const { data: subscriptionDetail, isLoading: detailLoading, error: detailError } = useSubscriptionDetail(
-    subscriptionId || null,
-  )
+  const {
+    data: subscriptionDetail,
+    isLoading: detailLoading,
+    error: detailError,
+  } = useSubscriptionDetail(subscriptionId || null)
 
   const { mutate, isPending, error } = useAllocationRegister()
 
@@ -24,14 +26,17 @@ export default function AllocationRegisterForm() {
   } = useForm<AllocationRegisterRequest>({ mode: 'onSubmit' })
 
   const onSubmit = (data: Omit<AllocationRegisterRequest, 'subscriptionId'>) => {
-    mutate({ ...data, subscriptionId }, {
-      onSuccess: () => {
-        navigate('/subscriptions')
+    mutate(
+      { ...data, subscriptionId },
+      {
+        onSuccess: () => {
+          navigate('/subscriptions')
+        },
+        onError: () => {
+          // 에러 메시지는 error 상태로 처리
+        },
       },
-      onError: () => {
-        // 에러 메시지는 error 상태로 처리
-      },
-    })
+    )
   }
 
   const getFormErrorMessage = () => {
