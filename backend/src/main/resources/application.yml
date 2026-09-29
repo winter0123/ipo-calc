@@ -35,6 +35,9 @@ spring:
 app:
   encryption:
     key: ${APP_ENCRYPTION_KEY:}
+  opendart:
+    api-key: ${OPENDART_API_KEY:}
+    base-url: https://opendart.fss.or.kr
 
 server:
   port: 8080

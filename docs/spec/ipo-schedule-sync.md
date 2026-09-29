@@ -4,7 +4,7 @@
 > **범위**: SF-1(OpenDART 클라이언트) 구현 워커를 위한 상세 명세. SF-2~5는 개요 수준.
 > **기준 문서**: `docs/research/ipo-schedule-sync.md`(특히 7절 최종 결정), `docs/breakdown/ipo-schedule-sync.md`, `docs/spec/ipo-catalog.md`, `docs/architecture/ipo-catalog.md`
 > **언어**: 한국어 (표준 IT 용어 한정)
-> **상태**: 착수 전 게이트 미충족 — SF-1 구현 전 OpenDART 키 발급 + 실제 응답 1건 확보 필요
+> **상태**: 착수 전 게이트 (a)(b) 충족(2026-09-29) — SF-1 구현 착수
 
 ## 문서 개요
 
