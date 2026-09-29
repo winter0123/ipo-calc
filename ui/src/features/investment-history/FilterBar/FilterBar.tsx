@@ -1,4 +1,5 @@
 import styles from './FilterBar.module.css'
+import AccountSelector from '../AccountSelector/AccountSelector.tsx'
 
 export interface InvestmentHistoryFilters {
   investorId: string
@@ -13,43 +14,23 @@ export interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onFiltersChange, onReset }: FilterBarProps) {
+  const handleInvestorChange = (value: string) => {
+    onFiltersChange('investorId', value)
+    onFiltersChange('securitiesAccountId', '')
+  }
+
+  const handleSecuritiesAccountChange = (value: string) => {
+    onFiltersChange('securitiesAccountId', value)
+  }
+
   return (
     <div className={styles.container} role="search" aria-label="투자 내역 필터">
-      <div className={styles.fieldGroup}>
-        <label htmlFor="investorId" className={styles.label}>
-          투자자 ID
-        </label>
-        <input
-          id="investorId"
-          type="text"
-          className={styles.input}
-          value={filters.investorId}
-          onChange={(e) => onFiltersChange('investorId', e.target.value)}
-          placeholder="투자자 ID 입력"
-          aria-describedby="investorId-hint"
-        />
-        <span id="investorId-hint" className={styles.hint}>
-          비워두면 전체 조회
-        </span>
-      </div>
-
-      <div className={styles.fieldGroup}>
-        <label htmlFor="securitiesAccountId" className={styles.label}>
-          증권계좌 ID
-        </label>
-        <input
-          id="securitiesAccountId"
-          type="text"
-          className={styles.input}
-          value={filters.securitiesAccountId}
-          onChange={(e) => onFiltersChange('securitiesAccountId', e.target.value)}
-          placeholder="증권계좌 ID 입력"
-          aria-describedby="securitiesAccountId-hint"
-        />
-        <span id="securitiesAccountId-hint" className={styles.hint}>
-          비워두면 전체 조회
-        </span>
-      </div>
+      <AccountSelector
+        investorId={filters.investorId}
+        securitiesAccountId={filters.securitiesAccountId}
+        onInvestorChange={handleInvestorChange}
+        onSecuritiesAccountChange={handleSecuritiesAccountChange}
+      />
 
       <div className={styles.fieldGroup}>
         <label htmlFor="ipoId" className={styles.label}>
@@ -63,6 +44,7 @@ export default function FilterBar({ filters, onFiltersChange, onReset }: FilterB
           onChange={(e) => onFiltersChange('ipoId', e.target.value)}
           placeholder="IPO ID 입력"
           aria-describedby="ipoId-hint"
+          style={{ minWidth: 44 }}
         />
         <span id="ipoId-hint" className={styles.hint}>
           비워두면 전체 조회

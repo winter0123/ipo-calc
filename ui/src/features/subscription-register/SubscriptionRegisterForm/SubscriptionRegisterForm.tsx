@@ -20,7 +20,7 @@ export default function SubscriptionRegisterForm() {
     data: securitiesAccounts,
     isLoading: securitiesAccountsLoading,
     error: securitiesAccountsError,
-  } = useQuery({ queryKey: ['securities-accounts'], queryFn: fetchSecuritiesAccounts })
+  } = useQuery({ queryKey: ['securities-accounts'], queryFn: () => fetchSecuritiesAccounts() })
   const {
     data: ipos,
     isLoading: iposLoading,

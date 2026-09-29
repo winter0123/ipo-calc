@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import FilterBar, {
   type InvestmentHistoryFilters as FilterInvestmentHistoryFilters,
 } from '../../features/investment-history/FilterBar/FilterBar.tsx'
 import { useInvestmentHistory } from '../../features/investment-history/useInvestmentHistory.ts'
+import { useInvestorList } from '../../features/investment-history/useInvestorList.ts'
 import type { InvestmentHistoryFilters } from '../../entities/subscription/types.ts'
 import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
 import InvestmentHistoryTable from '../../widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx'
@@ -28,6 +30,7 @@ export default function InvestmentHistoryPage() {
   })
   const apiFilters = filtersToApiParams(filters)
 
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestorList()
   const { data, isLoading, error } = useInvestmentHistory(apiFilters)
 
   const getErrorMessage = () => {
@@ -60,6 +63,43 @@ export default function InvestmentHistoryPage() {
   }
 
   const items = data?.content ?? []
+  const hasInvestors = investors && investors.length > 0
+
+  if (investorsLoading) {
+    return (
+      <div className={styles.container}>
+        <h1 className={styles.title}>투자 내역</h1>
+        <p className={styles.loading}>투자자 목록을 불러오는 중...</p>
+      </div>
+    )
+  }
+
+  if (investorsError) {
+    return (
+      <div className={styles.container}>
+        <h1 className={styles.title}>투자 내역</h1>
+        <p className={styles.error} role="alert">
+          투자자 목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
+        </p>
+      </div>
+    )
+  }
+
+  if (!hasInvestors) {
+    return (
+      <div className={styles.container}>
+        <h1 className={styles.title}>투자 내역</h1>
+        <div className={styles.emptyInvestors} role="status" aria-live="polite">
+          <p className={styles.emptyMessage}>
+            등록된 투자자가 없습니다. 투자자를 먼저 등록해 주세요.
+          </p>
+          <Link to="/investors/register" className={styles.registerLink}>
+            투자자 등록하기
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.container}>
