@@ -68,10 +68,12 @@ const IPOS = [
 
 function mockDropdownFetches() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-    if (path === '/investors') return INVESTORS
-    if (path === '/securities-accounts') return SECURITIES_ACCOUNTS
-    if (path === '/ipos') return IPOS
-    throw new Error(`unexpected path: ${String(path)}`)
+    const pathStr = String(path)
+    if (pathStr === '/investors') return INVESTORS
+    if (pathStr === '/securities-accounts' || pathStr.startsWith('/securities-accounts?'))
+      return SECURITIES_ACCOUNTS
+    if (pathStr === '/ipos') return IPOS
+    throw new Error(`unexpected path: ${pathStr}`)
   })
 }
 
@@ -116,14 +118,16 @@ describe('SubscriptionRegisterForm', () => {
   it('드롭다운 로딩 상태를 표시한 뒤 응답 수신 후 옵션을 채움', async () => {
     let resolveInvestors: (value: unknown) => void = () => {}
     vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-      if (path === '/investors') {
+      const pathStr = String(path)
+      if (pathStr === '/investors') {
         return new Promise((resolve) => {
           resolveInvestors = resolve
         })
       }
-      if (path === '/securities-accounts') return SECURITIES_ACCOUNTS
-      if (path === '/ipos') return IPOS
-      throw new Error(`unexpected path: ${String(path)}`)
+      if (pathStr === '/securities-accounts' || pathStr.startsWith('/securities-accounts?'))
+        return SECURITIES_ACCOUNTS
+      if (pathStr === '/ipos') return IPOS
+      throw new Error(`unexpected path: ${pathStr}`)
     })
 
     renderForm()

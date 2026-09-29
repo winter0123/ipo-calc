@@ -1,0 +1,90 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.select {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #fff;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  min-height: 44px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.select:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.hint {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 반응형: 모바일(~640px) 세로 스택 */
+@media (max-width: 640px) {
+  .container {
+    gap: 12px;
+  }
+
+  .select {
+    padding: 12px;
+    font-size: 16px; /* iOS 줌 방지 */
+  }
+}
+
+/* 태블릿(641px~1023px) */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+  }
+
+  .fieldGroup {
+    flex: 1;
+    min-width: 200px;
+  }
+}
+
+/* 데스크톱(1024px~) 가로 배치 */
+@media (min-width: 1024px) {
+  .container {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 24px;
+  }
+
+  .fieldGroup {
+    flex: 1;
+    min-width: 0;
+  }
+}
