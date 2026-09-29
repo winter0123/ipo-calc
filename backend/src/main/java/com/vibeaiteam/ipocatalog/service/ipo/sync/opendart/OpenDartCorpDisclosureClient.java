@@ -1,0 +1,213 @@
+package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
+
+import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+/**
+ * OpenDART DS001 공시검색 클라이언트.
+ *
+ * <p>최근 N일 내 "증권신고서(지분증권)" 제출 회사 목록을 조회한다. 같은 {@code corp_code}의 정정·발행조건확정 공시는 접두어([기재정정],
+ * [발행조건확정]) 제거 후 하나로 합치고, {@code rcept_dt}가 가장 최신인 항목을 채택한다.
+ */
+public class OpenDartCorpDisclosureClient {
+
+  private static final String ENDPOINT_PATH = "/api/list.json";
+  private static final String REPORT_TYPE_FILTER = "C001"; // 증권신고서-지분증권
+  private static final int PAGE_COUNT = 100; // 페이지당 최대 건수
+  private static final int REQUEST_INTERVAL_MS = 200; // 호출 간 최소 간격
+  private static final int CONNECT_TIMEOUT_MS = 5_000; // 연결 타임아웃 5초
+  private static final int READ_TIMEOUT_MS = 15_000; // 읽기 타임아웃 15초
+
+  private final RestClient restClient;
+  private final OpenDartApiProperties properties;
+  private long lastRequestTimeMs = 0;
+
+  /** 생성자 (테스트용 - RestClient 직접 주입). */
+  public OpenDartCorpDisclosureClient(RestClient restClient, OpenDartApiProperties properties) {
+    this.restClient = restClient;
+    this.properties = properties;
+  }
+
+  /** 생성자 (운영용 - RestClient.Builder로 생성, 타임아웃 설정 포함). */
+  public OpenDartCorpDisclosureClient(
+      RestClient.Builder restClientBuilder, OpenDartApiProperties properties) {
+    this(
+        restClientBuilder
+            .baseUrl(properties.getBaseUrl())
+            .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
+            .requestFactory(createRequestFactory())
+            .build(),
+        properties);
+  }
+
+  private static SimpleClientHttpRequestFactory createRequestFactory() {
+    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
+    factory.setReadTimeout(READ_TIMEOUT_MS);
+    return factory;
+  }
+
+  /**
+   * 최근 지정된 일수 내 지분증권 증권신고서 제출 회사 목록을 조회한다.
+   *
+   * @param daysBack 조회할 과거 일수 (예: 7 → 최근 7일)
+   * @return 필터링 및 디듀프된 {@link OpenDartDisclosureItem} 리스트
+   * @throws IllegalStateException API 키가 설정되지 않은 경우
+   * @throws OpenDartAuthenticationException 인증키 오류(status 011)인 경우
+   * @throws OpenDartApiException 기타 API 오류인 경우
+   */
+  public List<OpenDartDisclosureItem> searchRecentEquitySecuritiesCompanies(int daysBack) {
+    validateApiKey();
+    LocalDate endDate = LocalDate.now();
+    LocalDate startDate = endDate.minusDays(daysBack);
+    return searchByDateRange(startDate, endDate);
+  }
+
+  /**
+   * 지정된 기간 내 지분증권 증권신고서 제출 회사 목록을 조회한다.
+   *
+   * @param startDate 시작일 (포함)
+   * @param endDate 종료일 (포함)
+   * @return 필터링 및 디듀프된 {@link OpenDartDisclosureItem} 리스트
+   */
+  public List<OpenDartDisclosureItem> searchByDateRange(LocalDate startDate, LocalDate endDate) {
+    validateApiKey();
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+    String bgnDe = startDate.format(formatter);
+    String endDe = endDate.format(formatter);
+
+    List<OpenDartDisclosureItem> allItems = new ArrayList<>();
+    int pageNo = 1;
+    int totalPages = 1;
+
+    do {
+      enforceRateLimit();
+      int currentPage = pageNo;
+      OpenDartListResponse response =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder ->
+                      uriBuilder
+                          .path(ENDPOINT_PATH)
+                          .queryParam("crtfc_key", properties.getApiKey())
+                          .queryParam("bgn_de", bgnDe)
+                          .queryParam("end_de", endDe)
+                          .queryParam("pblntf_detail_ty", REPORT_TYPE_FILTER)
+                          .queryParam("page_no", currentPage)
+                          .queryParam("page_count", PAGE_COUNT)
+                          .build())
+              .retrieve()
+              .body(OpenDartListResponse.class);
+
+      if (response == null) {
+        throw new OpenDartApiException("null", "OpenDART API 응답이 null입니다.");
+      }
+
+      handleStatus(response.status(), response.message());
+
+      if ("013".equals(response.status())) {
+        // 조회된 데이터 없음 - 정상 처리
+        break;
+      }
+
+      if (response.list() == null) {
+        break;
+      }
+
+      allItems.addAll(response.list());
+      totalPages = response.total_page();
+      pageNo++;
+
+    } while (pageNo <= totalPages);
+
+    // 지분증권 증권신고서만 필터링 + 정정/발행조건확정 디듀프
+    return filterAndDeduplicate(allItems);
+  }
+
+  private void validateApiKey() {
+    if (properties.isApiKeyMissing()) {
+      throw new IllegalStateException("OpenDART API 키가 설정되지 않았습니다. OPENDART_API_KEY 환경변수를 확인하세요.");
+    }
+  }
+
+  private void enforceRateLimit() {
+    long now = System.currentTimeMillis();
+    long elapsed = now - lastRequestTimeMs;
+    if (elapsed < REQUEST_INTERVAL_MS) {
+      try {
+        Thread.sleep(REQUEST_INTERVAL_MS - elapsed);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("요청 간격 대기 중 인터럽트 발생", e);
+      }
+    }
+    lastRequestTimeMs = System.currentTimeMillis();
+  }
+
+  private void handleStatus(String status, String message) {
+    if ("000".equals(status)) {
+      return; // 정상
+    }
+    if ("013".equals(status)) {
+      return; // 데이터 없음 - 정상 처리
+    }
+    if ("011".equals(status)) {
+      throw new OpenDartAuthenticationException(status, message);
+    }
+    throw new OpenDartApiException(status, message);
+  }
+
+  /** 지분증권 증권신고서만 필터링하고, 같은 corp_code의 정정/발행조건확정 공시를 최신 1건으로 디듀프. */
+  private List<OpenDartDisclosureItem> filterAndDeduplicate(List<OpenDartDisclosureItem> items) {
+    // 1단계: "증권신고서(지분증권)" 포함 항목만 필터링 (정정/확정 공시도 정규화 후 포함)
+    List<OpenDartDisclosureItem> filtered =
+        items.stream().filter(OpenDartDisclosureItem::isEquitySecuritiesReport).toList();
+
+    // 2단계: corp_code별로 그룹화하여 최신 rcept_dt 1건만 채택
+    Map<String, OpenDartDisclosureItem> latestByCorpCode = new LinkedHashMap<>();
+    for (OpenDartDisclosureItem item : filtered) {
+      String key = item.getCorpCode();
+      OpenDartDisclosureItem existing = latestByCorpCode.get(key);
+      if (existing == null || compareRceptDt(item.getRceptDt(), existing.getRceptDt()) > 0) {
+        latestByCorpCode.put(key, item);
+      }
+    }
+
+    // 3단계: rcept_dt 내림차순 정렬 (최신순)
+    return latestByCorpCode.values().stream()
+        .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptDt).reversed())
+        .toList();
+  }
+
+  /**
+   * 접수일자(YYYYMMDD) 문자열 비교.
+   *
+   * @return a > b 이면 양수, 같으면 0, a < b 이면 음수
+   */
+  private int compareRceptDt(String a, String b) {
+    if (a == null) return b == null ? 0 : -1;
+    if (b == null) return 1;
+    return a.compareTo(b);
+  }
+
+  /** DS001 응답 매핑용 내부 레코드. */
+  private record OpenDartListResponse(
+      String status,
+      String message,
+      int page_no,
+      int page_count,
+      int total_count,
+      int total_page,
+      List<OpenDartDisclosureItem> list) {}
+}
