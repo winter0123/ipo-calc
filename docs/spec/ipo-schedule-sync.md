@@ -69,7 +69,7 @@ SF-1과 SF-2는 병렬 가능하지만, 두 클라이언트의 **결과 병합**
 | `stockCode` | 한국거래소 종목코드(6자리 숫자 문자열). `Ipo.stockCode` 컬럼, 두 소스 매핑 키 |
 | `sbd` | DS006 응답 필드: 청약기일 (청약 시작일) |
 | `pymd` | DS006 응답 필드: 납입기일 (청약 납입 마감일) |
-| `slprc` | DS006 응답 필드: 모집(매출)가액 (= 공모가. 자세한 의미는 §3.1 미정) |
+| `slprc` | DS006 응답 필드: 모집(매출)가액 (= 공모가. 자세한 의미는 §4.6 재검증) |
 | `stkcnt` | DS006 응답 필드: 증권수량 (= 공모주식수) |
 | `actnmn` | DS006 응답 필드: 인수인명 (= 주간사) |
 | `TO_BE_LISTED` | ustockplus `calendarStockType` 값: 상장예정일 |
@@ -84,21 +84,6 @@ SF-1과 SF-2는 병렬 가능하지만, 두 클라이언트의 **결과 병합**
 ### 3.1 OpenDART DS006 응답 필드 → Ipo 엔티티 매핑
 
 > **근거**: `docs/research/ipo-schedule-sync.md` 7.1절 (Master WebFetch 직접 확인). OpenDART 응답 스키마는 `status`(응답 코드) + `list`(결과 배열) 구조이며, 각 요소의 필드명은 아래와 같다.
-
-| DS006 필드 | 의미 | Ipo 엔티티 필드 | 타입 | 매핑 근거 | 비고 |
-|---|---|---|---|---|---|
-| `sbd` | 청약기일 | `subscriptionStartDate` | LocalDate | 7.1절 | 청약 시작일로 매핑. 종료일(subscriptionEndDate)은 별도 확인 필요(미정) |
-| `pymd` | 납입기일 | 미정(신규 컬럼 필요?) | — | 7.1절 | 현재 Ipo 엔티티에 없음. SF-3 컬럼 추가 범위에 포함되지 않음 → 미정, 확인 필요 |
-| `sband` | 청약공고일 | 미정 | — | 7.1절 | 현재 Ipo 엔티티에 없음. 사용처 없으면 생략 가능 |
-| `asand` | 배정공고일 | 미정 | — | 7.1절 | 현재 Ipo 엔티티에 없음 |
-| `asstd` | 배정기준일 | 미정 | — | 7.1절 | 현재 Ipo 엔티티에 없음 |
-| `stksen` | 증권종류 | 미정 | — | 7.1절 | "주식/채권" 구분. 현재 Ipo 엔티티에 없음 |
-| `stkcnt` | 증권수량 | `offeringShareCount` | Long | 7.1절 | 공모주식수로 매핑 |
-| `slprc` | 모집(매출)가액 | 미정(`fixedPrice` 후보?) | Long | 7.1절 | 7.1절에서 "공모가"로 주석했으나 모집가액은 총액. per-share 가격인지, 총액인지 실제 응답으로 재검증 필요 |
-| `slta` | 모집총액 | 미정 | Long | 7.1절 | 총 모집 금액. 현재 Ipo 엔티티에 없음 |
-| `actnmn` | 인수인명(주간사) | 미정(신규 컬럼 필요?) | String | 7.1절 | 현재 Ipo 엔티티에 `underwriter` 필드 없음. SF-3 컬럼 추가 범위에 포함되지 않음 → 미정, 확인 필요 |
-| `corp_name` | 기업명 | `companyName` | String | 7.1절 추정 | DS001 응답에서 확인 예정. DS006 응답에 포함 여부 미정 |
-| `corp_code` | 회사고유번호 | (조회 키, 저장 안 함) | String | 7.1절 | 매핑용 키로만 사용 |
 
 **7.1절 확인된 갭**: DS006 응답에 **상장예정일(listing date) 필드가 없다**. `listingDate`는 ustockplus `TO_BE_LISTED`에서 보완받는다(§3.2).
 
@@ -161,16 +146,15 @@ backend/src/main/java/com/vibeaiteam/ipocatalog/service/ipo/sync/opendart/
 ### 4.3 2단계 호출 구조
 
 **Step 1 — DS001(공시검색)**: `corp_code` 목록 획득
-- 엔드포인트: 미정, 확인 필요(게이트 (a)에서 OpenDART 개발가이드 원문으로 확정). API 형식(XML/JSON)도 미정
-- 요청 파라미터: `crtfc_key`, `bgn_de`(YYYYMMDD), `end_de`(YYYYMMDD), 보고서명 필터(미정 — `"증권신고서(지분증권)"`는 breakdown §SF-1 근거)
-- 응답 필드 (미확인 — 샘플 필요): `corp_code`, `corp_name`, `stock_code` (상장 기업만 제공)
-- `apiGrpCd=DS001`은 `docs/research/ipo-schedule-sync.md` 7.1절에 기록됨
+- 엔드포인트: `GET https://opendart.fss.or.kr/api/list.json` (JSON). `apiGrpCd=DS001`은 `docs/research/ipo-schedule-sync.md` 7.1절에 기록됨
+- 요청 파라미터: `crtfc_key`, `bgn_de`(YYYYMMDD), `end_de`(YYYYMMDD), `pblntf_detail_ty=C001`(증권신고서-지분증권 분류, 동작 확인), `page_no`, `page_count`
+- 응답 필드 (2026-09-29 실측): `status`, `message`, `page_no`, `page_count`, `total_count`, `total_page`, `list[]`. `list` 항목 필드: `corp_code`, `corp_name`, `stock_code`, `corp_cls`, `report_nm`, `rcept_no`, `flr_nm`, `rcept_dt`, `rm`
+- 클라이언트 필터: report_nm에 "증권신고서(지분증권)"이 포함된 항목만 남긴다. 같은 corp_code의 정정·발행조건확정 공시는 report_nm 접두어([기재정정] 등)를 제거해 한 건으로 합치고 rcept_dt가 가장 최신인 항목을 채택한다.
 
 **Step 2 — DS006(지분증권 상세)**: 각 `corp_code`로 필드 조회
-- 엔드포인트: 미정, 확인 필요(게이트 (a)에서 OpenDART 개발가이드 원문으로 확정). API 형식(XML/JSON)도 미정
+- 엔드포인트: `GET https://opendart.fss.or.kr/api/estkRs.json` (JSON). `apiGrpCd=DS006`, `apiId=2020054` — `docs/research/ipo-schedule-sync.md` 7.1절에 기록됨
 - 요청 파라미터: `crtfc_key`, `corp_code`(8자리), `bgn_de`, `end_de`
-- `apiGrpCd=DS006`, `apiId=2020054` — `docs/research/ipo-schedule-sync.md` 7.1절에 기록됨
-- 응답: `status` 필드 + `list` 배열 (JSON/XML 구조 모두 미정 — 샘플 필요)
+- 응답: `status` 필드 + `group[]` 배열. 각 원소는 `{title, list[]}` 구조. title: "일반사항","증권의종류","인수인정보","자금의사용목적","매출인에관한사항","일반청약자환매청구권"
 
 **요청 간 최소 간격**: 200ms (`Thread.sleep` 또는 `RestClient` 인터셉터). research 6절 "Rate limit 미확인" → 클라이언트 자체 안전장치로 적용(SF-4가 재시도 정책 담당).
 
@@ -222,27 +206,30 @@ public class OpenDartApiProperties {
 
 ### 4.6 DTO 필드 매핑 (DS006 응답 → Ipo 엔티티)
 
+> **근거**: `docs/research/ipo-schedule-sync.md` 7.1절 및 scratchpad 실측(2026-09-29). DS006 응답은 평면 `list`가 아닌 **group[] 배열** 구조이며, 각 group은 `{title, list[]}`를 갖는다. DTO 설계는 이 group 구조를 반영하지만, 기존 클래스명(`OpenDartDisclosureItem`, `OpenDartEquitySecurityDetail`)은 유지한다.
+
 | DS006 필드 | 의미 | Ipo 엔티티 필드 | 타입 | 매핑 근거 | 비고 |
 |---|---|---|---|---|---|
-| `sbd` | 청약기일 | `subscriptionStartDate` | LocalDate | 7.1절 | 청약 시작일. 종료일은 별도 확인 필요(미정) |
-| `pymd` | 납입기일 | 미정 | — | 7.1절 | 현재 Ipo 엔티티에 없음 → 미정, 확인 필요 |
-| `sband` | 청약공고일 | 미정 | — | 7.1절 | 미정 |
-| `asand` | 배정공고일 | 미정 | — | 7.1절 | 미정 |
-| `asstd` | 배정기준일 | 미정 | — | 7.1절 | 미정 |
-| `stksen` | 증권종류 | 미정 | — | 7.1절 | 미정 |
-| `stkcnt` | 증권수량 | `offeringShareCount` | Long | 7.1절 | 공모주식수로 매핑 |
-| `slprc` | 모집(매출)가액 | 미정(`fixedPrice` 후보?) | Long | 7.1절 | 모집가액이 총액인지 per-share인지 실제 응답 재검증 필요 |
-| `slta` | 모집총액 | 미정 | Long | 7.1절 | 미정 |
+| `sbd` | 청약기일 | `subscriptionStartDate` | LocalDate | 7.1절 | 청약 시작일. 종료일은 별도 확인 필요(미정). 기간 문자열("2026년 11월 05일 ~ 2026년 11월 06일") → 시작일/종료일 분리 파싱 불가 경우 단일 날짜로 간주(미정) |
+| `pymd` | 납입기일 | 미정 | — | 7.1절 | 현재 Ipo 엔티티에 없음 → 미정, 확인 필요. 날짜 형식: "2026년 11월 10일" 또는 "-"(null) |
+| `sband` | 청약공고일 | 미정 | — | 7.1절 | 미정. 날짜 형식: "2026년 11월 05일" 또는 "-"(null) |
+| `asand` | 배정공고일 | 미정 | — | 7.1절 | 미정. 날짜 형식: "2026년 11월 10일" 또는 "-"(null) |
+| `asstd` | 배정기준일 | 미정 | — | 7.1절 | 미정. 날짜 형식: "2026년 11월" 또는 "-"(null) |
+| `stksen` | 증권종류 | 미정 | — | 7.1절 | "주식/채권" 구분. group "증권의종류" 내 필드 |
+| `stkcnt` | 증권수량 | `offeringShareCount` | Long | 7.1절 | 공모주식수로 매핑. 숫자 쉼표 포함 문자열("2,200,000") 파싱 |
+| `slprc` | 모집(매출)가액 | 미정(`fixedPrice` 후보?) | Long | 7.1절 | 모집가액이 총액인지 per-share인지 실제 응답 재검증 필요. 숫자 쉼표 포함 문자열("10,000", "22,000,000,000"). 단, 증권신고서 단계의 slprc가 확정 공모가인지 희망가인지는 미확인 → "미정"으로 남김 |
+| `slta` | 모집총액 | 미정 | Long | 7.1절 | 총 모집 금액. 숫자 쉼표 포함 문자열("22,000,000,000"). "-" = null |
 | `actnmn` | 인수인명(주간사) | 미정(신규 컬럼 필요?) | String | 7.1절 | SF-3 컬럼 추가 범위에 포함되지 않음 → 미정 |
 | `corp_code` | 회사고유번호 | (조회 키, 저장 안 함) | String | 7.1절 | 매핑용 키로만 사용 |
 | `corp_name` | 기업명 | `companyName` | String | 7.1절 추정 | DS001 응답에서 확인 예정. DS006에 포함 여부 미정 |
+| `group` | DS006 응답 그룹 구분 | — | — | 7.1절 | "일반사항","증권의종류","인수인정보" 등. 각 group 내 list[]에 필드 포함 |
 
 ### 4.7 OpenDART 응답 status 코드 처리
 
 | status 값 | 의미 | 처리 방식 | 근거 |
 |---|---|---|---|
-| `"000"` | 정상 | `list` 배열을 정상 파싱 | OpenDART API 일반적 convention. research 7절에 직접 기술되지 않음 → "미정, 확인 필요"로 표기하되 일반적 convention으로 가정 |
-| `"013"` | 조회된 데이터 없음 | 빈 결과로 처리(에러 아님, AC-1704) | OpenDART API 일반적 convention. research 7절에 직접 기술되지 않음 → "미정, 확인 필요"로 표기 |
+| `"000"` | 정상 | `list` 배열을 정상 파싱 | 2026-09-29 실측: 정상 응답에서 status="000", message="정상" |
+| `"013"` | 조회된 데이터 없음 | 빈 결과로 처리(에러 아님, AC-1704) | **DS006 실측**: OpenDART API에서 "조회된 데이타가 없습니다." 메시지 반환. DS001에서도 동일 코드 사용 시 동일 처리 |
 | `"011"` | 인증키 오류 | `OpenDartAuthenticationException` 발생 | OpenDART API 일반적 convention. 미정, 확인 필요 |
 | `"012"` | 조회 불가 | 재시도 가능 오류. SF-4 재시도 대상 | 미정, 확인 필요 |
 | 기타 | 알 수 없는 오류 | `OpenDartApiException` 발생 | 미정, 확인 필요 |
@@ -258,6 +245,11 @@ public class OpenDartApiProperties {
   3. API 키 누락 → `IllegalStateException` (AC-1703)
   4. 200ms 간격: 연속 호출 시 스레드 슬립 검증
   5. DS001 → DS006 흐름: `OpenDartCorpDisclosureClient` 결과의 `corp_code`가 `OpenDartEquitySecuritiesClient` 호출 파라미터로 전달되는지 검증
+  6. 테스트 픽스처: `src/test/resources`에 `ds001-c001.json`, `ds006-optonix.json`, `ds006-empty.json`을 복사하여 키 없이 사용 (keys 필드 제거)
+
+- 요청 URI와 쿼리스트링(crtfc_key 포함)은 로그와 예외 메시지에 절대 남기지 않는다.
+- RestClient에 연결/읽기 타임아웃을 명시 설정한다(값은 구현 시 결정, 기본 무한대 금지).
+- 모든 OpenDART 호출은 조회 전용이다.
 
 ### 4.9 기존 코드와의 연동
 - `IpoRepository` (`com.vibeaiteam.ipocatalog.repository.ipo`) — SF-3에서 upsert 시 사용
@@ -298,22 +290,27 @@ public class OpenDartApiProperties {
 
 ## 9. 착수 전 게이트
 
-SF-1 구현 시작 전 **Master가 아래 두 항목을 확인**해야 한다(`docs/breakdown/ipo-schedule-sync.md` §착수 전 Master 확인 필요와 동일):
+SF-1 구현 시작 전 **Master가 아래 세 항목을 확인**해야 한다(`docs/breakdown/ipo-schedule-sync.md` §착수 전 Master 확인 필요와 동일):
 
 ### (a) OpenDART 인증키 발급 + 실제 호출 테스트 (1회)
 - `opendart.fss.or.kr/uss/umt/EgovMberInsertView.do`에서 `crtfc_key` 발급
 - 발급한 키로 DS001(공시검색) + DS006(지분증권)을 각각 1회 호출하여 정상 응답 확인
-- **완료** → SF-1 착수 가능 (실제 응답 스키마로 DTO 필드 확정)
+- **완료** → SF-1 착수 가능 (실제 응답 스키마로 DTO 필드 확정). **2026-09-29 실측 완료**
 - **미완료** → 대기 (인증키 발급 후 실제 응답 1건을 확보하고 시작)
 
 ### (b) DS006 실제 응답 샘플 1건 확보
-- DS006 응답의 `status` 값, `list` 배열 내 필드명과 타입, `list`가 빈 배열인 경우의 응답 구조 확인
+- DS006 응답의 `status` 값, `group[]` 배열 내 필드명과 타입, `list`가 빈 배열인 경우의 응답 구조 확인
 - DS001 응답의 `stock_code` 필드 존재 여부와 `corp_name` 필드명 확인 → SF-3 매핑 로직 결정에 직결
 - DS001 응답 `status` 값(정상/데이터 없음) 확인
-- **완료** → §4.6, §4.7의 "미정" 표시된 필드 매핑을 실제 응답으로 재검증
+- **완료** → §4.6, §4.7의 "미정" 표시된 필드 매핑을 실제 응답으로 재검증. **2026-09-29 실측 완료**
 - **미완료** → DTO 필드는 샘플로 재검증 필요 (구현 전 착수 불가)
 
-> **주의**: §4.6, §4.7, §3.3의 "미정, 확인 필요" 표시는 모두 착수 전 게이트(a)+(b) 완료 시 실제 응답으로 교체된다. 게이트 미충족 상태에서 SF-1 구현을 시작하면 DTO 필드가 틀려서 재작업 위험이 있다.
+### (c) ustockplus 헤더 재확인 (SF-2 전제)
+- `Origin: https://ustock.naver.com`, `Referer: https://ustock.naver.com/...` 헤더 고정 방식 재확인
+- **완료** → SF-2 착수 가능
+- **미완료** → 대기
+
+> **주의**: §4.6, §4.7, §13-M의 "미정, 확인 필요" 표시는 모두 착수 전 게이트(a)+(b)+(c) 완료 시 실제 API 응답으로 교체된다. 게이트 미충족 상태에서 SF-1 구현을 시작하면 DTO 필드가 틀려서 재작업 위험이 있다.
 
 ## 10. 핵심 설계 원칙 (AC/규칙)
 
@@ -358,11 +355,11 @@ SF-1 구현 시작 전 **Master가 아래 두 항목을 확인**해야 한다(`d
 |---|---|---|---|
 | E-1 | DS001 조회 시 `page_no` 페이지가 여러 페이지 | 페이지네이션 루프로 전체 `corp_code` 수집 후 DS006 순회 | SF-1 |
 | E-2 | DS006 응답 `list`가 빈 배열 | 빈 리스트 반환, 예외 없음(AC-1704) | SF-1 |
-| E-3 | DS001 응답에 `stock_code`가 없는 기업 | 회사명(`corp_name`)으로 ustockplus 결과와 매칭(미정 — SF-3 매핑 전략) | SF-1/SF-3 |
+| E-3 | DS001 응답에 `stock_code`가 없는 기업 | `stock_code`가 빈 문자열이면 IPO(기업공개) 후보, 값이 있으면 유상증자(가능성이 높음, SF-3에서 확정). company_name으로 ustockplus 결과와 매핑 전략은 SF-3에서 결정 필요(미정) | SF-1/SF-3 |
 | E-4 | ustockplus 호출 실패(403/500/스펙 변경) | `try-catch` 후 log WARN, 해당 필드(null)로 저장. OpenDART 데이터 unaffected | SF-2 |
 | E-5 | 동일 종목의 여러 회차 공모주 | `(stockCode, subscriptionStartDate)` 복합키로 구분. roundLabel로 추가 구분 | SF-3 |
 | E-6 | 수동 등록 IPO와 자동 동기화 결과 충돌 | `syncSource == null`인 레코드는 건너뜀(R-1). 자동 생성 레코드만 갱신 | SF-3 |
-| E-7 | OpenDART 응답에서 청약 종료일 필드 미확인 | `subscriptionEndDate`를 `sbd`에서 파생하거나 별도 필드로 확보 필요(미정) | SF-1 |
+| E-7 | OpenDART 응답에서 청약 종료일 필드 미확인 | `sbd`는 기간 문자열("2026년 11월 05일 ~ 2026년 11월 06일") 형태로 제공되며, 시작일/종료일 구별 및 `subscriptionEndDate` 채우기 전략은 미정. SF-3에서 확정 필요(사용자 결정) | SF-1/SF-3 |
 | E-8 | DS006 `slprc`가 총액인지 per-share인지 | `fixedPrice` 매핑 전 실제 응답 재검증 필요(§4.6 표 참고) | SF-1 |
 | E-9 | ustockplus rate limit 초과 | `x-ratelimit-*` 헤더 존중, 클라이언트-level rate limiter 도입 가능성 | SF-2 |
 | E-10 | 스케줄러가 로컬/CI에서 실행 | `@Profile`로 비활성화(AC-1733) | SF-4 |
@@ -371,18 +368,19 @@ SF-1 구현 시작 전 **Master가 아래 두 항목을 확인**해야 한다(`d
 
 | # | 항목 | 확인 방법 | 담당/시점 |
 |---|---|---|---|
-| M-1 | OpenDART DS001 정확한 URL 경로 및 요청 파라미터(보고서명 필터 방식) | OpenDART 개발가이드 공시검색(DS001) 원문에서 URL·요청 파라미터 확인 | Master 착수 전 게이트(a) |
-| M-2 | DS006 API의 정확한 URL/apiId(`apiGrpCd=DS006&apiId=2020054`) | OpenDART 개발가이드 DS006 상세 페이지 원문 확인 | Master 착수 전 게이트(a) |
-| M-3 | DS006 응답 `status` 코드 값("000"/"013"/"011"/"012" 등) | 실제 호출 후 응답 확인 | Master 착수 전 게이트(b) |
-| M-4 | DS006 응답 필드 정확한 명세(sbd, pymd, sband, asand, asstd, stksen, stkcnt, slprc, slta, actnmn) | 실제 호출 후 JSON 응답 구조 확인 | Master 착수 전 게이트(b) |
-| M-5 | DS001 응답에 `stock_code` 필드 존재 여부와 정확한 필드명 | 실제 호출 후 응답 확인 | Master 착수 전 게이트(b) |
-| M-6 | `slprc`(모집가액)가 per-share 공모가인지, 총액인지 | 실제 응답 값과 공모가 비교 | Master 착수 전 게이트(b) |
-| M-7 | `sbd`(청약기일)가 청약 시작일인지, 종료일인지, 단일 날짜인지 | 실제 응답 값 확인 | Master 착수 전 게이트(b) |
+| M-1 | OpenDART DS001 정확한 URL 경로 및 요청 파라미터(보고서명 필터 방식) | OpenDART 개발가이드 공시검색(DS001) 원문에서 URL·요청 파라미터 확인 | Master 착수 전 게이트(a) **완료(2026-09-29)** |
+| M-2 | DS006 API의 정확한 URL/apiId(`apiGrpCd=DS006&apiId=2020054`) | OpenDART 개발가이드 DS006 상세 페이지 원문 확인 | Master 착수 전 게이트(a) **완료(2026-09-29)** |
+| M-3 | DS006 응답 `status` 코드 값("000"/"013"/"011"/"012" 등) | 실제 호출 후 응답 확인 | Master 착수 전 게이트(b) **완료(2026-09-29)** |
+| M-4 | DS006 응답 필드 정확한 명세(sbd, pymd, sband, asand, asstd, stksen, stkcnt, slprc, slta, actnmn) | 실제 호출 후 JSON 응답 구조 확인 | Master 착수 전 게이트(b) **완료(2026-09-29)** |
+| M-5 | DS001 응답에 `stock_code` 필드 존재 여부와 정확한 필드명 | 실제 호출 후 응답 확인 | Master 착수 전 게이트(b) **완료(2026-09-29)** |
+| M-6 | `slprc`(모집가액)가 per-share 공모가인지, 총액인지 | 실제 응답 값과 공모가 비교 | Master 착수 전 게이트(b) **완료(2026-09-29)** |
+| M-7 | `sbd`(청약기일)가 청약 시작일인지, 종료일인지, 단일 날짜인지 | 실제 응답 값 확인 | Master 착수 전 게이트(b) **완료(2026-09-29)** |
 | M-8 | `pymd`(납입기일), `sband`(청약공고일), `asand`(배정공고일), `asstd`(배정기준일), `slta`(모집총액)의 Ipo 엔티티 매핑 | 추후 SF-3 컬럼 추가 논의 필요(현재는 미정) | SF-3 설계 시 |
 | M-9 | ustockplus Origin/Referer 헤더 방식이 여전히 유효한지 | 착수 직전 재확인(curl 재현) | SF-2 착수 전 게이트 |
 | M-10 | `actnmn`(주간사/인수인명) → Ipo 엔티티 `underwriter` 컬럼 추가 여부 | SF-3 컬럼 추가 논의 필요(현재는 미정) | SF-3 설계 시 |
 | M-11 | OpenDART rate limit(초당 호출 제한) | OpenDART 개발가이드 확인 | SF-1 구현 시(200ms 기본 안전장치 유지) |
 | M-12 | 테스트 HTTP 목 서버: WireMock 추가 의존성 여부 | `MockRestServiceServer`(spring-boot-starter-test에 포함)로 대체 가능. 추가 의존성 없이 검증 가능 | SF-1 구현 시 |
+| M-13 | `(stockCode, subscriptionStartDate)` 중복 키 문제 및 IPO/유상증자 구분 | 기존 DB(V5/V6)는 stock_code가 있으면 stock_code 유니크, 없으면 (ipo_name, subscription_start_date) 유니크다. 따라서 기존 키 사용은 가능하다. 남은 결정은 자동 동기화 레코드의 식별 키로 corp_code 컬럼을 추가할지이며 권고안은 추가(개명·재상장 안전). 결정 주체: 사용자, 시점: SF-3 착수 전. | SF-3 전에 Master 결정 **완료** |
 
 ---
 
