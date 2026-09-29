@@ -1,6 +1,19 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-09-29 세션 종료 시점(4차 재개 세션). **로드맵 16개 Epic 전체 구현 완료 + 알려진 부채 전부 해소(checkstyle/typecheck/format/접근성 QA) + 사용자 요청으로 스코프 확장(Epic 17~19) 연구·계획·세부분해까지 완료(코드 미작성, Phase 0).** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+> 마지막 갱신: 2026-09-29 세션 종료 시점(5차 재개 세션). **로드맵 16개 Epic 전체 구현 완료 + 알려진 부채 전부 해소 + 스코프 확장(Epic 17~19)의 spec 2건과 첫 구현 3건(E19 SF-1, E17 SF-1, ipos.corp_code) 병합 완료.** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+
+## 세션 요약 (2026-09-29, 5차 재개 — Epic 17~19 spec + 첫 구현 3건)
+
+세션 범위를 "Epic 19 SF-1 + Epic 17 SF-1, spec 먼저 → 승인 후 구현"으로 정하고 PR 5건(#190~#194)을 병합했다. 상세는 `docs/daily-log/2026_09_29.md`(마지막 섹션)를 진실 소스로 한다.
+
+- **spec 2건 병합**: Epic 19(#190), Epic 17(#191). Epic 17 spec은 실측 API 사실·보안 요건(키가 URL 쿼리이므로 URI 로깅 금지, RestClient 타임아웃, 조회 전용)을 반영했고, 기존 DB 규칙(V5/V6)에 맞춰 M-13을 정정했다.
+- **Epic 19 SF-1 병합(#192)**: 투자 내역 필터를 숫자 ID 입력에서 투자자→증권계좌 연쇄 드롭다운으로 교체. 워커 1차 결과의 계좌 초기화 버그를 Master가 잡아 재작업.
+- **Epic 17 SF-1 병합(#193)**: OpenDART DS001·DS006 클라이언트. 워커 1차 결과에서 오류 응답을 삼키는 처리 순서 버그·가짜 테스트 픽스처·타임아웃 누락을 Master가 코드 리뷰로 잡아 재작업.
+- **ipos.corp_code 병합(#194)**: V11 마이그레이션(nullable + ACTIVE 한정 부분 유니크), `Ipo.corpCode`, 조회 메서드. 자동 동기화 레코드의 식별 키로 사용자가 승인한 결정이며, spec M-13에 반영(`0d38ddb`).
+- **dev DB 정리**: 공유 dev Postgres에 누수돼 있던 `securities_firms` 1행이 clean main에서도 테스트 2건을 깨뜨리고 있었다. 참조 없음을 확인하고 사용자 승인 후 그 1행만 삭제.
+- **운영 변경**: OpenCode 워커는 `OPENCODE_CONFIG=/Users/joy/.config/opencode/orca-worker.json`(검증·읽기 허용, git 변경·비밀 파일·`rm -rf` 거부)으로 띄운다. 워커 완료 판단은 `worker_done` 대기가 아니라 터미널 유휴 여부(`esc interrupt` 유무)와 파일·diff 변경을 직접 확인해서 한다(워커가 `worker_done` 없이 끝내거나 뒤늦게 보내는 일이 잦음). `worker-start`에는 `--worktree path:<절대경로>`가 필수다.
+
+**다음 착수 후보**: Epic 17 SF-3(동기화 서비스)는 아래 미결정 항목을 사용자와 정한 뒤 시작한다.
 
 ## 세션 요약 (2026-09-29, 4차 재개 후속 — 스코프 확장: Epic 17~19)
 
@@ -35,11 +48,11 @@
 
 **완료: Epic 1~16 전체.** GitHub Issue #128·#129·#130·#131·#132·#133 모두 close.
 
-**Phase 0 완료(research→roadmap→breakdown), 구현 미착수: Epic 17~19.** research는 PR #187·#188·#189로 병합, roadmap 반영과 breakdown 3건은 main에 직접 커밋(`38c3eb7`/`f6b675a`/`de3da06`/`b157821`). 다음 단계는 spec(`docs/spec/`)이지만, 이 세 Epic은 breakdown이 이미 상당히 구체적이라 사용자 검토 후 spec을 건너뛰고 바로 SF 착수할지 여부를 사용자와 확인 필요.
+**Epic 17~19 구현 진행 중.** research(#187·#188·#189)→roadmap→breakdown→spec(E19 #190, E17 #191)까지 끝났고, 첫 구현 3건이 병합됐다: Epic 19 SF-1(#192), Epic 17 SF-1(#193), `ipos.corp_code`(#194). 남은 것: Epic 17 SF-2 이후(ustockplus 보완·동기화 서비스·스케줄러), Epic 19 SF-2~4(SF-2 달력은 Epic 17 완료 전까지 보류), Epic 18 전체(KIS 게이트 4건 해소 선행). Epic 18 spec은 아직 없다.
 
 ## 알려진 부채·다음 세션 후보
 
-1. **Epic 17~19 실제 구현 착수**: `docs/breakdown/{ipo-schedule-sync,broker-readonly-api-pilot,posthoc-ux-redesign}.md` 참고. Epic 19 SF-1이 가장 독립적이고 착수 리스크가 낮다. Epic 18은 KIS Developers 공식 GitHub 원문 열람(게이트 4건)이 선행돼야 SF-3 이후 착수 가능.
+1. **Epic 17 SF-3 착수 전 사용자 결정 5건**: (a) 단일 `slprc`를 밴드/확정가 중 어디에 매핑하고 희망가·확정가 중 무엇인지, (b) `sbd` 하나로 NOT NULL인 `subscriptionEndDate`를 어떻게 채울지, (c) IPO와 유상증자 구분 기준(DS001 `stock_code` 유무는 가설), (d) OpenDART 일일 호출 한도, (e) 상태 코드 011/012 의미. 이후 E17 SF-2(ustockplus 보완)·SF-3 진행. Epic 19 SF-2~4는 E17 완료와 연동, Epic 18은 KIS 공식 GitHub 원문 열람(게이트 4건) 후 spec부터.
 2. **접근성 위반 32건 수정**: `docs/qa/accessibility-report.md`에 화면별·규칙별로 정리돼 있다. 우선순위: critical(대시보드 탭 aria-valid-attr-value) → serious(color-contrast 9건, 버튼/힌트 텍스트 색상 대비) → moderate(landmark-one-main/region, 거의 전 화면에 `<main>` 랜드마크가 없어서 발생 — Epic 19 SF-4 `MainLayout` 신설로 대부분 해소될 예정).
 3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
 4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
@@ -47,11 +60,10 @@
 
 ## 워크스페이스 상태 (2026-09-29 세션 종료 시점)
 
-- `backend-4`: 마지막 브랜치 `winter0123/watchdog-error-patterns`(병합 완료, PR #185). 다음 세션은 새 브랜치로 시작.
-- `frontend-4`: 마지막 브랜치 `winter0123/fix-prettier-violations`(병합 완료, PR #184).
-- `planning-4`: 마지막 브랜치 `winter0123/accessibility-qa-pass`(병합 완료, PR #186).
-- 로컬 Postgres(`docker compose`)와 backend `bootRun`을 이번 세션에 Master가 직접 기동했다가 접근성 QA 완료 후 종료했다. 다음 세션에 다시 필요하면 `docker compose up -d` → `DB_PASSWORD=vibe_local_password ./gradlew bootRun`.
-- 세션 종료 시점 모든 워커 dispatch가 정산됐고 `worker-list --terminal-state reclaimable`은 0건이다. watchdog은 세션 종료와 함께 중지 — 다음 세션 시작 시 `--loop 120`으로 재기동.
+- `backend-4`: 마지막 브랜치 `winter0123/e17-ipo-corp-code`(병합 완료, PR #194). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
+- `frontend-4`: 마지막 브랜치 `winter0123/e19-sf1-account-selector`(병합 완료, PR #192).
+- `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
+- 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
 
 ## 모니터링·운영 방식 (2026-09-29 갱신)
 
