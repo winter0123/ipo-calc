@@ -28,7 +28,8 @@ import time
 # 2026-09-28 실제로 워커를 멈춰 세운 문구들에서 뽑았다.
 ERROR_PATTERNS = re.compile(
     r"rate[- ]limited|Upstream idle timeout|Request rejected|\b429\b"
-    r"|quota exceeded|insufficient credits|API Error",
+    r"|quota exceeded|insufficient credits|API Error"
+    r"|Endpoint is unavailable|Upstream request failed",
     re.IGNORECASE,
 )
 # OpenCode 상태줄: "Build · Laguna S 2.1 (free) OpenRouter" — 지정 모델과 실제 모델 대조용.
@@ -110,6 +111,9 @@ def run_once(tree_filter: str, stall_min: float, status_path: str) -> int:
 def selftest() -> int:
     assert classify("[Poolside] ... temporarily rate-limited upstream", 1, 8)[0] == "ERROR"
     assert classify("Upstream idle timeout", 1, 8)[0] == "ERROR"
+    assert classify("Endpoint is unavailable", 1, 8)[0] == "ERROR"
+    assert classify("Upstream request failed", 1, 8)[0] == "ERROR"
+    assert classify("Error from provider (Console): Upstream request failed: Endpoint is unavailable.", 1, 8)[0] == "ERROR"
     assert classify("정상 작업 중", 9, 8)[0] == "STALL"
     assert classify("정상 작업 중", 2, 8)[0] == "OK"
     assert MODEL_LINE.findall("Build · Laguna S 2.1 (free) OpenRouter")[-1] == "Laguna S 2.1"
