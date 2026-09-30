@@ -19,6 +19,7 @@ spring:
 app:
   encryption:
     key: pQSZosg8xShWKKLtxE0Yk/fF4GOaG7DPB2fizcRDHnc=
+    broker-key: DKN+EauX5IPvKhIvOAlCNtBUTmXV1rm+pY/A+IEeHIQ=
   datagokr:
     service-key: ""
     base-url: https://apis.data.go.kr
