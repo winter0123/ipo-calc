@@ -148,7 +148,9 @@ class DashboardAggregatorTest {
     assertThat(byYear.get(0).getTotalInvestmentAmount()).isEqualTo(1_000_000L);
     assertThat(DashboardAggregator.summarize(acrossMonths).getTotalInvestmentAmount())
         .isEqualTo(1_000_000L);
-    assertThat(byMonth).extracting(PeriodAggregationDto::getParticipationCount).containsExactly(1, 1);
+    assertThat(byMonth)
+        .extracting(PeriodAggregationDto::getParticipationCount)
+        .containsExactly(1, 1);
     assertThat(byYear.get(0).getParticipationCount()).isEqualTo(1);
     assertThat(DashboardAggregator.summarize(acrossMonths).getParticipationCount()).isEqualTo(1);
   }
