@@ -14,7 +14,7 @@
   1. KIS 앱키를 `.env`에 넣고 변수 이름을 알려준다. 그러면 Master가 실계좌를 1회만 조회한다(키는 로그·커밋에 남기지 않음).
   2. 매도일이 알려진 공모주 종목 1건을 알려준다.
   3. 응답 숫자값을 출력에서 볼지, 형태(필드명·자릿수)만 볼지 정한다.
-  4. Epic 17 SF-2(ustockplus)를 폐기할지 유지할지 정한다(현재 유지, 동기화 편입 보류).
+  4. ~~Epic 17 SF-2(ustockplus) 폐기 여부~~ — 2026-09-30 사용자가 편입으로 확정. 확인해 보니 이미 편입돼 있다(#211 `IpoScheduleMergeService`가 `IpoSyncService`에서 OpenDART 루프 완료 뒤 호출, #200 스케줄러가 매일 04:30 실행, `app.ipo-sync.enabled` 기본 true). 추가 구현 없음.
   5. 사용자 소유 미커밋 변경(`docs/project-agent-guide.md` 수정, `docs/prompt-{backend,frontend,planning}.md` 삭제)을 커밋할지 정한다.
   6. CLAUDE.md의 낡은 내용(checkstyle 플러그인 없음, `--rerun` 안내) 수정을 승인한다.
   7. E2E 실측(#222)이 찾은 제품 결함 3건을 고칠지, 어떻게 고칠지 정한다(아래 "E2E 시나리오 실측" 참고). 특히 E2E-2는 화면 로그인이 불가능하므로 우선순위가 높다.
@@ -29,7 +29,7 @@
 
 **막힌 곳(사용자 입력 필요)**:
 1. **KIS 앱키를 `.env`에 넣는 일**(지금은 발급 불가). 그 뒤 Master가 실계좌를 1회 호출해 필드·`pdno` 형식을 확인하고 SF-4b → SF-5 → SF-6(프론트)을 진행한다. 변수 이름, 알려진 공모주 매도일, 숫자값을 출력에 볼지 형태만 볼지는 아직 답이 없다.
-2. **E17 SF-2(ustockplus) 폐기 여부**: 클라이언트(#206)는 병합됐으나 동기화에는 붙이지 않은 상태다.
+2. ~~E17 SF-2(ustockplus) 폐기 여부~~: 해결. 사용자가 편입으로 확정했고 코드는 #211·#200에서 이미 연결돼 있다(이전의 "붙이지 않은 상태"라는 기록이 틀렸다). 단, OpenDART 루프가 중단되면(`OPENDART_API_KEY` 없음·한도 초과) ustockplus 병합은 실행되지 않는다. 비공식 API라 차단·스펙 변경 시 상장예정일·배정일·환불일만 비고 나머지는 정상 동작한다.
 
 **DB 슬롯 풀(#215)**: 슬롯 `vibe_slot_1~4`(1~3 워커, 4 Master). `scripts/db-slot.sh reset <n>` 후 `DB_NAME=vibe_slot_<n>`으로 테스트한다. **슬롯을 새로 만든 DB에서 전체 테스트가 622개 중 17개 실패한다** — V15 시드 증권사 14개와 테스트 하드코딩 이름 충돌, 그리고 `SecuritiesFirmControllerTest`의 tearDown이 시드 행을 삭제하는 기존 테스트 결함(#215가 만든 회귀 아님, Master가 슬롯 4에서 재현). 이 결함이 기본 공유 DB의 `securities_firms`가 0행이던 이유다. 별도 SF로 수정해 **#216으로 병합**했다(4개 클래스: 위 3개 + 그 수정으로 드러난 `SecuritiesFirmRepositoryTest`, 범위 확장은 Master 승인). Master가 슬롯 4를 reset한 직후 전체 테스트 650개 통과, reset 없이 재실행도 650개 통과, 시드 증권사 15개 보존, checkstyle 0을 직접 확인했다. 이제 슬롯은 reset 직후에도 전체 테스트가 통과해야 정상이다. 참고: 기본 공유 DB의 `securities_firms`는 과거 테스트가 시드를 지운 잔해라 0행일 수 있고 기능에는 영향이 없다.
 
