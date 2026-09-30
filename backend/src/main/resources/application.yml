@@ -39,6 +39,8 @@ app:
   opendart:
     api-key: ${OPENDART_API_KEY:}
     base-url: https://opendart.fss.or.kr
+  ustockplus:
+    base-url: https://api.ustockplus.com
   datagokr:
     service-key: ${DATA_GO_KR_SERVICE_KEY:}
     base-url: https://apis.data.go.kr
