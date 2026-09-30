@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.adapter.kis;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -121,6 +122,32 @@ class KisSecretLeakageTest {
         .contains("securitiesAccountId=42")
         .contains("method=GET")
         .contains("status=200");
+  }
+
+  @Test
+  void queryFailureLog_containsNoAccountNumberFromRequestUrl() {
+    mockServer
+        .expect(requestTo(org.hamcrest.Matchers.containsString("inquire-period-trade-profit")))
+        .andRespond(
+            org.springframework.test.web.client.response.MockRestResponseCreators.withException(
+                new java.io.IOException("connection reset")));
+
+    KisCredentials credentials =
+        new KisCredentials(DUMMY_APP_KEY, DUMMY_APP_SECRET, DUMMY_CANO, DUMMY_PRODT_CD);
+    KisAccessToken token =
+        new KisAccessToken(DUMMY_TOKEN, LocalDateTime.of(2026, 12, 31, 23, 59, 59));
+
+    assertThatThrownBy(
+            () ->
+                queryClient.queryPeriodTradeProfit(
+                    42L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        .hasMessageNotContaining(DUMMY_CANO);
+
+    String logs = allCapturedLogs();
+    assertThat(logs).contains("securitiesAccountId=42");
+    assertThat(logs).doesNotContain(DUMMY_APP_KEY, DUMMY_APP_SECRET, DUMMY_TOKEN, DUMMY_CANO);
+    // 예외 객체를 통째로 로깅하면 스택트레이스와 요청 URL이 남는다.
+    assertThat(listAppender.list).allMatch(event -> event.getThrowableProxy() == null);
   }
 
   @Test

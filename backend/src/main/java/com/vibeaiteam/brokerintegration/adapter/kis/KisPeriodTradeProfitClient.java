@@ -137,7 +137,10 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
       throw e;
     } catch (RuntimeException e) {
       // 예외 메시지에 앱키/시크릿/토큰/CANO가 실리지 않도록 원인 예외의 타입만 남긴다.
-      log.error("KIS 기간별 매매손익 조회 중 오류: securitiesAccountId={}", securitiesAccountId, e);
+      log.error(
+          "KIS 기간별 매매손익 조회 중 오류: securitiesAccountId={}, cause={}",
+          securitiesAccountId,
+          e.getClass().getSimpleName());
       throw new BrokerApiException(
           "query_failed",
           "KIS 기간별 매매손익 조회 중 오류 발생: " + e.getClass().getSimpleName(),

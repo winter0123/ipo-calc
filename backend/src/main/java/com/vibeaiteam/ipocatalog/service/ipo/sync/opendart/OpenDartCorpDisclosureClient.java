@@ -12,6 +12,7 @@ import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * OpenDART DS001 공시검색 클라이언트.
@@ -98,22 +99,29 @@ public class OpenDartCorpDisclosureClient {
     do {
       enforceRateLimit();
       int currentPage = pageNo;
-      OpenDartListResponse response =
-          restClient
-              .get()
-              .uri(
-                  uriBuilder ->
-                      uriBuilder
-                          .path(ENDPOINT_PATH)
-                          .queryParam("crtfc_key", properties.getApiKey())
-                          .queryParam("bgn_de", bgnDe)
-                          .queryParam("end_de", endDe)
-                          .queryParam("pblntf_detail_ty", REPORT_TYPE_FILTER)
-                          .queryParam("page_no", currentPage)
-                          .queryParam("page_count", PAGE_COUNT)
-                          .build())
-              .retrieve()
-              .body(OpenDartListResponse.class);
+      OpenDartListResponse response;
+      try {
+        response =
+            restClient
+                .get()
+                .uri(
+                    uriBuilder ->
+                        uriBuilder
+                            .path(ENDPOINT_PATH)
+                            .queryParam("crtfc_key", properties.getApiKey())
+                            .queryParam("bgn_de", bgnDe)
+                            .queryParam("end_de", endDe)
+                            .queryParam("pblntf_detail_ty", REPORT_TYPE_FILTER)
+                            .queryParam("page_no", currentPage)
+                            .queryParam("page_count", PAGE_COUNT)
+                            .build())
+                .retrieve()
+                .body(OpenDartListResponse.class);
+      } catch (RestClientException e) {
+        // 예외 메시지에는 crtfc_key가 담긴 요청 URL이 들어가므로 원인 예외를 잇지 않고 클래스명만 남긴다.
+        throw new OpenDartApiException(
+            "http_error", "OpenDART API 호출 실패: " + e.getClass().getSimpleName());
+      }
 
       if (response == null) {
         throw new OpenDartApiException("null", "OpenDART API 응답이 null입니다.");
