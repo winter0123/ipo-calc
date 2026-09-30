@@ -60,12 +60,27 @@
 4. **E2E 시나리오 실측**: 접근성은 이번에 실측했지만, spec 문서의 E2E 시나리오(사용자 흐름 전체) 자체를 Playwright로 돌려본 적은 아직 없다.
 5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
 
-## 워크스페이스 상태 (2026-09-29 세션 종료 시점)
+## 워크스페이스 상태 (2026-09-30 세션 종료 시점)
 
-- `backend-4`: 마지막 브랜치 `winter0123/e17-sf4-scheduler`(병합 완료, PR #200, 현재 `origin/main` detached). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
-- `frontend-4`: 마지막 브랜치 `winter0123/e19-sf4-main-layout`(병합 완료, PR #196). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
+- `backend-4`: 마지막 브랜치 `winter0123/checkstyle-test-cleanup`(병합 완료, PR #202, 현재 `origin/main` detached). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
+- `frontend-4`: 마지막 브랜치 `winter0123/e19-sf2-ipo-calendar`(병합 완료, PR #201, `origin/main` detached).
 - `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
 - 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
+
+## 2026-09-30 세션 요약 (다음 세션 인계용)
+
+**병합**: #200(E17 SF-4 일일 스케줄러+재시도), #201(E19 SF-2 공모주 일정 달력), #202(테스트 코드 checkstyle 위반 87건 정리). 상세 트러블슈팅은 `docs/daily-log/2026_09_29.md`.
+
+**문서 정리(커밋 `8244941`)**: Epic 18 브레이크다운의 게이트 4건 조사 결과 반영(① 수수료·세금은 기간별매매손익현황 TTTC8715R만 있음/일자×종목 집계, ② "조회 전용"은 읽기전용 키가 아니라 쓰기 코드를 안 만든다는 뜻으로 확정, ③ 토큰은 만료시각까지 암호화 캐시, ④ 계좌번호는 CANO+ACNT_PRDT_CD 쿼리 파라미터). SF-5(`GET /ipo-schedule`)는 폐기하고 기존 `GET /ipos`를 씀 — 관련 문서(`docs/breakdown/ipo-schedule-sync.md`, `docs/spec/ipo-schedule-sync.md`, `docs/breakdown/posthoc-ux-redesign.md`, `docs/spec/posthoc-ux-redesign.md`, 로드맵) 전부 갱신.
+
+**checkstyle 재조사로 정정**: 이전 세션 기록의 "532건"은 정확했다(이번 세션 초반에 `--rerun`과 `--rerun-tasks`를 헷갈려 캐시된 결과를 "87건"으로 잘못 판단했던 적이 있음 — **checkstyle 재검증은 반드시 `--rerun-tasks`를 쓴다, `--rerun`은 이 프로젝트에서 무시된다**). 실제 내역: 테스트 코드 87건은 이번 세션에 직접 수정해 PR #202로 병합 완료(SummaryJavadoc 마침표, star import 전개, 라인 길이, 중괄호, 그리고 테스트 전용 관례를 인정하는 `config/checkstyle/checkstyle-suppressions.xml` 신설). **남은 것은 프로덕션 코드 약 440건(`MissingJavadocMethod` 276 + `MissingJavadocType` 152 + 기타)** — 사용자에게 규칙을 끌지 직접 채울지 물었고, **"규칙 끄지 말고 네가 직접 수정해"로 확정**. 다음 세션에서 이어서 진행: `backend-4`에서 `DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q`로 최신 위반 목록을 뽑고, Master(코디네이터)가 직접 public 클래스·메서드에 한 줄 Javadoc을 채운다(기계적 작업이라 워커에게 맡기기엔 방향 판단 여지가 적지만, 분량이 크면 워커 위임도 재고).
+
+**Epic 18 미결 사용자 결정 3건 (다음 세션에 이어 확인)**:
+1. 매도 자동 채움에 기간별매매손익현황(`TTTC8715R`, 일자×종목 집계)을 쓸지 — Master는 같은 날 같은 종목 분할매도를 합산 매칭하는 방식을 권고.
+2. 실계좌 KIS 조회 1회 호출 승인 여부 (`prsm_tlex_smtl` 의미, 공모주 배정분 표시, `pdno` 형식 확인용 — 앱키 사용).
+3. E17 SF-2(ustockplus 스크래핑) 폐기하고 상장·배정·환불일 수동 입력 여부 — Master는 폐기를 권고.
+
+**환경**: 세션 도중 Docker Desktop이 꺼져 있어 로컬 Postgres 컨테이너가 내려간 채로 테스트가 427건 실패한 적이 있었다(코드 문제 아님) — `open -a Docker` → `docker compose up -d`로 복구. 다음 세션 시작 시 `docker ps`로 컨테이너 상태부터 확인.
 
 ## 모니터링·운영 방식 (2026-09-29 갱신)
 
