@@ -310,9 +310,9 @@ class DashboardAggregationServiceTest {
     // Then: 집계 검증
     assertThat(result).isNotNull();
 
-    // totalInvestmentAmount = Σ(allocatedQuantity × allocationPrice) = 50*10000 + 100*12000 =
-    // 500000 + 1200000 = 1700000
-    assertThat(result.getTotalInvestmentAmount()).isEqualTo(1700000L);
+    // totalInvestmentAmount = Σ(allocationPrice × 매도수량) = 10000*10 + 12000*20 =
+    // 100000 + 240000 = 340000 (배정금액을 매도 수량 비율로 안분)
+    assertThat(result.getTotalInvestmentAmount()).isEqualTo(340000L);
 
     // 참여 건수 = 2
     assertThat(result.getParticipationCount()).isEqualTo(2);
@@ -331,10 +331,10 @@ class DashboardAggregationServiceTest {
     assertThat(result.getTotalPreTaxProfit()).isEqualTo(28800L + 37500L); // 66300
     assertThat(result.getTotalAfterTaxProfit()).isEqualTo(23800L + 27500L); // 51300
 
-    // totalProfitRate = (totalAfterTaxProfit / totalInvestmentAmount) * 100 = (51300 / 1700000) *
-    // 100 = 3.0176...
+    // totalProfitRate = (totalAfterTaxProfit / totalInvestmentAmount) * 100 = (51300 / 340000) *
+    // 100 = 15.088...
     assertThat(result.getTotalProfitRate())
-        .isCloseTo(3.018, org.assertj.core.api.Assertions.offset(0.01));
+        .isCloseTo(15.088, org.assertj.core.api.Assertions.offset(0.01));
   }
 
   @Test
@@ -504,10 +504,10 @@ class DashboardAggregationServiceTest {
     assertThat(dto2.getInvestorName()).isEqualTo("투자자 이영희");
     assertThat(dto2.getParticipationCount()).isEqualTo(2);
 
-    // 투자금 검증: investor1 = 50*10000 = 500000, investor2 = 100*12000 + 80*11000 = 1200000 + 880000 =
-    // 2080000
-    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(500000L);
-    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+    // 투자금 검증(단가 × 매도수량): investor1 = 10000*10 = 100000, investor2 = 12000*20 + 11000*15 =
+    // 240000 + 165000 = 405000
+    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(100000L);
+    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(405000L);
   }
 
   @Test
@@ -600,9 +600,9 @@ class DashboardAggregationServiceTest {
     assertThat(dto2.getSecuritiesFirmName()).isEqualTo("테스트 증권사 B");
     assertThat(dto2.getParticipationCount()).isEqualTo(2);
 
-    // 투자금 검증: firm1 = 50*10000 = 500000, firm2 = 100*12000 + 80*11000 = 2080000
-    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(500000L);
-    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+    // 투자금 검증(단가 × 매도수량): firm1 = 10000*10 = 100000, firm2 = 12000*20 + 11000*15 = 405000
+    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(100000L);
+    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(405000L);
   }
 
   @Test
@@ -678,7 +678,7 @@ class DashboardAggregationServiceTest {
   }
 
   @Test
-  void splitSalesOfOneAllocationCountInvestmentOnce() {
+  void splitSalesOfOneAllocationProrateInvestmentBySoldQuantity() {
     Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
     Sale sale2 = createSale(2L, 100L, 20L, 300000L, 2000L, 10000L, 500L);
     Allocation allocation = createAllocation(100L, 1000L, 50L, 10000L);
@@ -695,11 +695,11 @@ class DashboardAggregationServiceTest {
 
     SummaryDto summary = dashboardAggregationService.getSummary();
 
-    // 배정 50주 × 10000 = 500000 (매도 2건으로 나눠 팔아도 한 번만)
-    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(500000L);
+    // 매도 10주 + 20주 × 10000 = 300000 (배정 50주 중 판 30주 몫만 투자금)
+    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(300000L);
     assertThat(summary.getParticipationCount()).isEqualTo(2);
     assertThat(dashboardAggregationService.getByInvestor().get(0).getTotalInvestmentAmount())
-        .isEqualTo(500000L);
+        .isEqualTo(300000L);
   }
 
   @Test
@@ -839,20 +839,20 @@ class DashboardAggregationServiceTest {
     PeriodAggregationDto dto1 = result.get(0);
     assertThat(dto1.getPeriod()).isEqualTo("2024-01");
     assertThat(dto1.getParticipationCount()).isEqualTo(1);
-    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(50L * 10000L); // 500000
+    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(10L * 10000L); // 100000
 
     // 2024-02: 1건
     PeriodAggregationDto dto2 = result.get(1);
     assertThat(dto2.getPeriod()).isEqualTo("2024-02");
     assertThat(dto2.getParticipationCount()).isEqualTo(1);
-    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(100L * 12000L); // 1200000
+    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(20L * 12000L); // 240000
 
     // 2024-03: 2건
     PeriodAggregationDto dto3 = result.get(2);
     assertThat(dto3.getPeriod()).isEqualTo("2024-03");
     assertThat(dto3.getParticipationCount()).isEqualTo(2);
-    // 80*11000 + 60*10000 = 880000 + 600000 = 1480000
-    assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(1480000L);
+    // 15*11000 + 10*10000 = 165000 + 100000 = 265000
+    assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(265000L);
   }
 
   @Test
@@ -959,20 +959,20 @@ class DashboardAggregationServiceTest {
     PeriodAggregationDto dto1 = result.get(0);
     assertThat(dto1.getPeriod()).isEqualTo("2023");
     assertThat(dto1.getParticipationCount()).isEqualTo(1);
-    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(50L * 10000L); // 500000
+    assertThat(dto1.getTotalInvestmentAmount()).isEqualTo(10L * 10000L); // 100000
 
     // 2024: 2건
     PeriodAggregationDto dto2 = result.get(1);
     assertThat(dto2.getPeriod()).isEqualTo("2024");
     assertThat(dto2.getParticipationCount()).isEqualTo(2);
-    // 100*12000 + 80*11000 = 1200000 + 880000 = 2080000
-    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(2080000L);
+    // 20*12000 + 15*11000 = 240000 + 165000 = 405000
+    assertThat(dto2.getTotalInvestmentAmount()).isEqualTo(405000L);
 
     // 2025: 1건
     PeriodAggregationDto dto3 = result.get(2);
     assertThat(dto3.getPeriod()).isEqualTo("2025");
     assertThat(dto3.getParticipationCount()).isEqualTo(1);
-    assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(60L * 10000L); // 600000
+    assertThat(dto3.getTotalInvestmentAmount()).isEqualTo(10L * 10000L); // 100000
   }
 
   @Test
