@@ -678,6 +678,31 @@ class DashboardAggregationServiceTest {
   }
 
   @Test
+  void splitSalesOfOneAllocationCountInvestmentOnce() {
+    Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
+    Sale sale2 = createSale(2L, 100L, 20L, 300000L, 2000L, 10000L, 500L);
+    Allocation allocation = createAllocation(100L, 1000L, 50L, 10000L);
+
+    setupMocksWithSales(
+        List.of(sale1, sale2),
+        List.of(allocation),
+        List.of(createSubscription(1000L, 10L, 1L, 1L, 100L)),
+        List.of(createInvestor(10L, 1L, "테스트 투자자")),
+        List.of(createSecuritiesAccount(1L, 100L)),
+        List.of(createSecuritiesFirm(100L, "테스트 증권사")),
+        Collections.emptyList(),
+        List.of(createIpo(1L, 9000L)));
+
+    SummaryDto summary = dashboardAggregationService.getSummary();
+
+    // 배정 50주 × 10000 = 500000 (매도 2건으로 나눠 팔아도 한 번만)
+    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(500000L);
+    assertThat(summary.getParticipationCount()).isEqualTo(2);
+    assertThat(dashboardAggregationService.getByInvestor().get(0).getTotalInvestmentAmount())
+        .isEqualTo(500000L);
+  }
+
+  @Test
   void missingSecuritiesFirmRowDoesNotFailAndIsExcludedFromFirmAggregation() {
     Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
     Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);

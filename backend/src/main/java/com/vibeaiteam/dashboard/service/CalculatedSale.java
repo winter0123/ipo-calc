@@ -20,7 +20,8 @@ public record CalculatedSale(
     String investorName,
     String securitiesFirmName,
     Long allocatedQuantity,
-    Long allocationPrice) {
+    Long allocationPrice,
+    Long allocationId) {
 
   private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
@@ -68,6 +69,7 @@ public record CalculatedSale(
         investor.getDisplayName(),
         securitiesFirmName,
         allocation.getAllocatedQuantity(),
-        allocation.getAllocationPrice());
+        allocation.getAllocationPrice(),
+        allocation.getId());
   }
 }
