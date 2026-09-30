@@ -2,6 +2,8 @@ package com.vibeaiteam.accountauthentication.domain.model.account;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,6 +39,11 @@ public class Account {
 
   @Column(name = "name", length = 50)
   private String name;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "role", nullable = false, length = 20)
+  @Builder.Default
+  private AccountRole role = AccountRole.USER;
 
   @Column(name = "failed_login_attempts", nullable = false)
   @Builder.Default
