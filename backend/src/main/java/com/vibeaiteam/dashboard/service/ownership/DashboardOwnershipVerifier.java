@@ -15,6 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 대시보드 조회 대상의 소유권을 검증한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,7 +29,7 @@ public class DashboardOwnershipVerifier {
   private final SubscriptionRepository subscriptionRepository;
   private final InvestorRepository investorRepository;
 
-  /** Sale ID를 통한 소유권 검증 Sale → Allocation → Subscription → Investor 경유로 현재 계정 소유 확인 */
+  /** Sale ID를 통한 소유권 검증 Sale → Allocation → Subscription → Investor 경유로 현재 계정 소유 확인. */
   public void verifySaleOwnership(Long saleId) {
     Long currentAccountId = securityUtils.getCurrentAccountId();
     Sale sale =
@@ -45,7 +48,7 @@ public class DashboardOwnershipVerifier {
     }
   }
 
-  /** 현재 계정 소유의 ACTIVE Sale만 조회하도록 필터링 loadCalculatedSales()에서 호출하여 계정 스코프 강제 */
+  /** 현재 계정 소유의 ACTIVE Sale만 조회하도록 필터링 loadCalculatedSales()에서 호출하여 계정 스코프 강제. */
   public Long getCurrentAccountId() {
     return securityUtils.getCurrentAccountId();
   }

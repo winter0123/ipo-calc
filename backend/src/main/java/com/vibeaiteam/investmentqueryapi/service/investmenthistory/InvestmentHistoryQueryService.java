@@ -30,6 +30,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+/**
+ * 투자 이력 조회 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class InvestmentHistoryQueryService {
@@ -47,6 +50,9 @@ public class InvestmentHistoryQueryService {
 
   @PersistenceContext private EntityManager entityManager;
 
+  /**
+   * 청약 ID로 투자 이력 상세를 조회한다. 청약이 없으면 404를 반환한다.
+   */
   public InvestmentHistoryDto getHistoryDetail(Long subscriptionId) {
     // a. Subscription 조회 (없으면 404)
     Subscription subscription =
@@ -114,10 +120,13 @@ public class InvestmentHistoryQueryService {
         subscription, allocation, activeSales, ipoMap, investorName, securitiesFirmName);
   }
 
+  /**
+   * 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 조회한다.
+   */
   public Page<InvestmentHistoryDto> getHistory(
       Long investorId, Long securitiesAccountId, Long ipoId, int page, int size) {
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
+    final Long currentAccountId = securityUtils.getCurrentAccountId();
 
     // Step 1: 인증 및 소유권 검증 (모든 필터에 대해 재검증)
     if (investorId != null) {
@@ -171,7 +180,7 @@ public class InvestmentHistoryQueryService {
     }
 
     // Assembler는 subscriptionId 기준으로 sales를 조회하므로, allocationId 기준 결과를 subscriptionId 기준으로 재매핑한다.
-    Map<Long, List<Sale>> saleMap =
+    final Map<Long, List<Sale>> saleMap =
         allocationMap.entrySet().stream()
             .collect(
                 Collectors.toMap(

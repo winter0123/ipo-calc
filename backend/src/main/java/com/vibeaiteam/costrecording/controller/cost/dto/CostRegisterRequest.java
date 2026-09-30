@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 비용 등록 요청 DTO.
+ */
 @Getter
 @Setter
 @Builder

@@ -13,6 +13,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 매도 JPA 엔티티.
+ */
 @Entity
 @Table(name = "sales")
 @Getter

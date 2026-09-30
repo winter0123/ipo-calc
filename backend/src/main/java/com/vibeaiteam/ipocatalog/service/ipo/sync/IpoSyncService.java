@@ -214,7 +214,8 @@ public class IpoSyncService {
     }
 
     log.info(
-        "동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, failures={}, aborted={}",
+        "동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, "
+            + "failures={}, aborted={}",
         result.getCreated(),
         result.getUpdated(),
         result.getSkippedManual(),

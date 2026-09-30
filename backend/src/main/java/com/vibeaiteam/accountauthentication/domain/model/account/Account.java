@@ -13,6 +13,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 계정 JPA 엔티티.
+ */
 @Entity
 @Table(name = "accounts")
 @Getter
@@ -55,10 +58,16 @@ public class Account {
     this.email = email != null ? email.toLowerCase() : null;
   }
 
+  /**
+   * 로그인 실패 횟수를 1 증가시킨다.
+   */
   public void incrementFailedLoginAttempts() {
     this.failedLoginAttempts = this.failedLoginAttempts + 1;
   }
 
+  /**
+   * 로그인 실패 횟수를 0으로 초기화한다.
+   */
   public void resetFailedLoginAttempts() {
     this.failedLoginAttempts = 0;
   }
@@ -67,9 +76,15 @@ public class Account {
     return this.lockedUntil != null && this.lockedUntil.isAfter(LocalDateTime.now());
   }
 
+  /**
+   * Lombok 빌더 확장. 이메일을 소문자로 정규화한다.
+   */
   public static class AccountBuilder {
     private String email;
 
+    /**
+     * 이메일을 소문자로 변환해 설정한다. null이면 null을 유지한다.
+     */
     public AccountBuilder email(String email) {
       this.email = email != null ? email.toLowerCase() : null;
       return this;

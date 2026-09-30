@@ -9,6 +9,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 공모주 응답 DTO.
+ */
 @Getter
 @Setter
 @Builder
@@ -46,6 +49,9 @@ public class IpoResponse {
 
   private LocalDateTime updatedAt;
 
+  /**
+   * 엔티티를 응답 DTO로 변환한다.
+   */
   public static IpoResponse from(Ipo ipo) {
     return IpoResponse.builder()
         .id(ipo.getId())

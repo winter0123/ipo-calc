@@ -22,6 +22,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 청약 관리 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
@@ -35,6 +38,9 @@ public class SubscriptionService {
   private final IpoRepository ipoRepository;
   private final SecurityUtils securityUtils;
 
+  /**
+   * 청약을 등록한다.
+   */
   @Transactional
   public SubscriptionResponse register(SubscriptionRegisterRequest request) {
     validateRequest(request);
@@ -80,10 +86,12 @@ public class SubscriptionService {
     }
   }
 
-  // 등록된 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면 해당 조건으로
-  // 필터링하고(둘 다 null이면 전체), 삭제되지 않은(ACTIVE) 기록만 반환한다. 둘 다 주어진 경우 investorId 우선
-  // 조회 후 그 결과 안에서 securitiesAccountId를 다시 필터링한다. 조회 시 계정 소유권 검증은 수행하지 않는다.
-  // (AC-007/008/009/018 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않음)
+  /**
+   * 등록된 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면 해당 조건으로
+   * 필터링하고(둘 다 null이면 전체), 삭제되지 않은(ACTIVE) 기록만 반환한다. 둘 다 주어진 경우 investorId 우선
+   * 조회 후 그 결과 안에서 securitiesAccountId를 다시 필터링한다. 조회 시 계정 소유권 검증은 수행하지 않는다.
+   * (AC-007/008/009/018 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않음)
+   */
   @Transactional(readOnly = true)
   public List<SubscriptionResponse> list(Long investorId, Long securitiesAccountId) {
     List<Subscription> subscriptions;
@@ -109,10 +117,12 @@ public class SubscriptionService {
     return subscriptions.stream().map(SubscriptionResponse::from).toList();
   }
 
-  // 청약 ID로 단건 청약을 조회한다. 삭제되지 않은(ACTIVE) 기록만 반환하고, 존재하지 않거나 취소된
-  // 기록이면 404 SubscriptionNotFoundException을 던진다(AC-010/011). 조회 시 계정 소유권 검증은 수행하지
-  // 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않고, 등록(SF-2) 시에만 소유권을
-  // 이미 강제했으므로 중복 검증하지 않는다. (IpoService.getById 패턴)
+  /**
+   * 청약 ID로 단건 청약을 조회한다. 삭제되지 않은(ACTIVE) 기록만 반환하고, 존재하지 않거나 취소된
+   * 기록이면 404 SubscriptionNotFoundException을 던진다(AC-010/011). 조회 시 계정 소유권 검증은 수행하지
+   * 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않고, 등록(SF-2) 시에만 소유권을
+   * 이미 강제했으므로 중복 검증하지 않는다. (IpoService.getById 패턴)
+   */
   @Transactional(readOnly = true)
   public SubscriptionResponse getById(Long id) {
     Subscription subscription =
@@ -122,20 +132,22 @@ public class SubscriptionService {
     return SubscriptionResponse.from(subscription);
   }
 
-  // SF-4: 청약 기록의 일부 필드만 부분 수정한다(IpoService.update와 동일한 패턴 — 제공된 필드만 갱신).
-  // 이미 취소(CANCELLED)되었거나 존재하지 않는 기록은 404(엣지케이스). investorId/securitiesAccountId/ipoId가
-  // 새로 제공된 경우에만 존재/소유권을 재검증하고, 최종 조합은 자기 자신을 제외하고 중복 검사한다.
-  // 배정(Allocation) 연결 시 수량 축소 제한은 Epic 7 구현 시 함께 추가할 예정으로 이번 SF에서는 다루지 않는다.
+  /**
+   * SF-4: 청약 기록의 일부 필드만 부분 수정한다(IpoService.update와 동일한 패턴 — 제공된 필드만 갱신).
+   * 이미 취소(CANCELLED)되었거나 존재하지 않는 기록은 404(엣지케이스). investorId/securitiesAccountId/ipoId가
+   * 새로 제공된 경우에만 존재/소유권을 재검증하고, 최종 조합은 자기 자신을 제외하고 중복 검사한다.
+   * 배정(Allocation) 연결 시 수량 축소 제한은 Epic 7 구현 시 함께 추가할 예정으로 이번 SF에서는 다루지 않는다.
+   */
   @Transactional
   public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
-    Subscription subscription =
+    final Subscription subscription =
         subscriptionRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
 
     Long updatedInvestorId = request.getInvestorId();
-    Long updatedSecuritiesAccountId = request.getSecuritiesAccountId();
-    Long updatedIpoId = request.getIpoId();
+    final Long updatedSecuritiesAccountId = request.getSecuritiesAccountId();
+    final Long updatedIpoId = request.getIpoId();
     Long updatedQuantity = request.getQuantity();
     Long updatedDepositAmount = request.getDepositAmount();
 
@@ -198,9 +210,11 @@ public class SubscriptionService {
     }
   }
 
-  // SF-5: 청약 기록을 논리 취소한다(IpoService.deactivate와 동일 패턴). status를 CANCELLED로 변경하고
-  // deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된
-  // 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+  /**
+   * SF-5: 청약 기록을 논리 취소한다(IpoService.deactivate와 동일 패턴). status를 CANCELLED로 변경하고
+   * deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된
+   * 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+   */
   @Transactional
   public void cancel(Long id) {
     Subscription subscription =

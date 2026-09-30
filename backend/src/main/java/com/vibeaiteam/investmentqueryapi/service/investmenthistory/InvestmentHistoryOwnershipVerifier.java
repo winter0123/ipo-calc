@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 투자 이력 조회 대상의 소유권을 검증한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,7 +27,7 @@ public class InvestmentHistoryOwnershipVerifier {
 
   /**
    * investorId 필터에 대한 소유권 재검증 investorRepository.findById(investorId)로 조회 → Investor.accountId !=
-   * currentAccountId면 403
+   * currentAccountId면 403.
    */
   public void verifyInvestorIdOwnership(Long investorId) {
     Long currentAccountId = securityUtils.getCurrentAccountId();
@@ -40,7 +43,7 @@ public class InvestmentHistoryOwnershipVerifier {
   /**
    * securitiesAccountId 필터에 대한 소유권 재검증 SecuritiesAccount 엔티티는 accountId 컬럼이 없고 investorId만 있으므로 2홉:
    * SecuritiesAccount → Investor(accountId) 비교
-   * investorRepository.findById(securitiesAccount.getInvestorId()).accountId와 currentAccountId 비교
+   * investorRepository.findById(securitiesAccount.getInvestorId()).accountId와 currentAccountId 비교.
    */
   public void verifySecuritiesAccountIdOwnership(Long securitiesAccountId) {
     Long currentAccountId = securityUtils.getCurrentAccountId();
@@ -59,7 +62,7 @@ public class InvestmentHistoryOwnershipVerifier {
 
   /**
    * ipoId 필터에 대한 소유권 재검증 existsByIpoIdAndInvestorAccountId(ipoId, currentAccountId)로 "현재 계정 소유 청약 중
-   * 해당 IPO 건이 하나라도 있는지" 확인, 없으면 403
+   * 해당 IPO 건이 하나라도 있는지" 확인, 없으면 403.
    */
   public void verifyIpoIdOwnership(Long ipoId) {
     Long currentAccountId = securityUtils.getCurrentAccountId();
@@ -70,7 +73,7 @@ public class InvestmentHistoryOwnershipVerifier {
     }
   }
 
-  /** 단건 조회 시 Subscription의 소유권 검증 Subscription의 Investor의 accountId와 비교 */
+  /** 단건 조회 시 Subscription의 소유권 검증 Subscription의 Investor의 accountId와 비교. */
   public void verifySubscriptionOwnership(Long subscriptionInvestorId) {
     Long currentAccountId = securityUtils.getCurrentAccountId();
     Investor investor =

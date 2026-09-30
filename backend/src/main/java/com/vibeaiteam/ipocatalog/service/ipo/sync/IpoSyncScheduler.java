@@ -69,7 +69,8 @@ public class IpoSyncScheduler {
 
     // 결과 요약 로그
     log.info(
-        "IPO 동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, failures={}, aborted={}, retryable={}",
+        "IPO 동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, "
+            + "failures={}, aborted={}, retryable={}",
         result.getCreated(),
         result.getUpdated(),
         result.getSkippedManual(),

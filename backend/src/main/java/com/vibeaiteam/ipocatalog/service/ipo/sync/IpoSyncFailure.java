@@ -14,12 +14,12 @@ import lombok.Setter;
 @AllArgsConstructor
 public class IpoSyncFailure {
 
-  /** 기업 고유번호 (corp_code) */
+  /** 기업 고유번호 (corp_code). */
   private String corpCode;
 
-  /** 기업명 */
+  /** 기업명. */
   private String corpName;
 
-  /** 실패 사유 */
+  /** 실패 사유. */
   private String reason;
 }

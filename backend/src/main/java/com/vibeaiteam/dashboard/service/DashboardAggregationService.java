@@ -36,6 +36,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 대시보드 집계 서비스. 요약, 투자자별, 증권사별, 기간별 집계를 제공한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -53,7 +56,7 @@ public class DashboardAggregationService {
 
   /**
    * 공통 데이터 준비 헬퍼: 현재 계정 소유 ACTIVE Sale 조회 + 배치 조회 + ProfitCalculator 적용 4개 엔드포인트(getSummary,
-   * getByInvestor, getBySecuritiesFirm, getByPeriod)가 공유
+   * getByInvestor, getBySecuritiesFirm, getByPeriod)가 공유.
    */
   private List<CalculatedSale> loadCalculatedSales() {
     Long currentAccountId = ownershipVerifier.getCurrentAccountId();
@@ -441,7 +444,7 @@ public class DashboardAggregationService {
         .build();
   }
 
-  /** 계산용 내부 레코드: Sale + 세전/세후순수익 + 그룹핑 키 + 추가 정보 */
+  /** 계산용 내부 레코드: Sale + 세전/세후순수익 + 그룹핑 키 + 추가 정보. */
   public record CalculatedSale(
       Sale sale,
       Long preTaxProfit,

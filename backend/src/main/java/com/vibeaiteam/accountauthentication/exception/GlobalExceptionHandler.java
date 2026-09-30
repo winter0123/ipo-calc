@@ -16,12 +16,18 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * 인증·계정 예외를 HTTP 에러 응답으로 변환한다.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
   private static final MediaType JSON_UTF8 =
       new MediaType("application", "json", StandardCharsets.UTF_8);
 
+  /**
+   * DuplicateEmailException을 HTTP 409 응답으로 변환한다.
+   */
   @ExceptionHandler(DuplicateEmailException.class)
   public ResponseEntity<ErrorResponse> handleDuplicateEmail(
       DuplicateEmailException ex, HttpServletRequest request) {
@@ -30,6 +36,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.CONFLICT).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * InvalidCredentialsException을 HTTP 401 응답으로 변환한다.
+   */
   @ExceptionHandler(InvalidCredentialsException.class)
   public ResponseEntity<ErrorResponse> handleInvalidCredentials(
       InvalidCredentialsException ex, HttpServletRequest request) {
@@ -38,6 +47,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * InvalidCurrentPasswordException을 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(InvalidCurrentPasswordException.class)
   public ResponseEntity<ErrorResponse> handleInvalidCurrentPassword(
       InvalidCurrentPasswordException ex, HttpServletRequest request) {
@@ -46,6 +58,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * AccountLockedException을 HTTP 403 응답으로 변환한다.
+   */
   @ExceptionHandler(AccountLockedException.class)
   public ResponseEntity<ErrorResponse> handleAccountLocked(
       AccountLockedException ex, HttpServletRequest request) {
@@ -54,6 +69,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * ValidationFailedException을 필드 오류가 담긴 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(ValidationFailedException.class)
   public ResponseEntity<ErrorResponse> handleValidationFailed(
       ValidationFailedException ex, HttpServletRequest request) {
@@ -71,6 +89,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * 요청 본문 Bean Validation 실패를 필드별 오류가 담긴 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
       MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -88,6 +109,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * 바인딩 실패를 필드별 오류가 담긴 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(BindException.class)
   public ResponseEntity<ErrorResponse> handleBindException(
       BindException ex, HttpServletRequest request) {
@@ -105,6 +129,9 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
   }
 
+  /**
+   * 제약 조건 위반을 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(ConstraintViolationException.class)
   public ResponseEntity<ErrorResponse> handleConstraintViolation(
       ConstraintViolationException ex, HttpServletRequest request) {

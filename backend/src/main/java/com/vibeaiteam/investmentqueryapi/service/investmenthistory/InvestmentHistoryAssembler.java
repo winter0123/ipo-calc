@@ -12,9 +12,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
+/**
+ * 청약·배정·매도 데이터를 투자 이력 DTO로 조립한다.
+ */
 @Component
 public class InvestmentHistoryAssembler {
 
+  /**
+   * 청약 1건과 관련 배정·매도를 투자 이력 DTO로 변환한다.
+   */
   public InvestmentHistoryDto toDto(
       Subscription subscription,
       Allocation allocation,
@@ -55,16 +61,16 @@ public class InvestmentHistoryAssembler {
         activeSales.stream()
             .map(
                 sale -> {
-                  SaleSummaryDto sDto = new SaleSummaryDto();
-                  sDto.setId(sale.getId());
-                  sDto.setQuantity(sale.getQuantity());
-                  sDto.setAmount(sale.getAmount());
-                  sDto.setFee(sale.getFee());
-                  sDto.setTax(sale.getTax());
-                  sDto.setOtherCost(sale.getOtherCost());
-                  sDto.setStatus(sale.getStatus());
-                  sDto.setSoldAt(sale.getSaleDate().toString());
-                  return sDto;
+                  SaleSummaryDto saleDto = new SaleSummaryDto();
+                  saleDto.setId(sale.getId());
+                  saleDto.setQuantity(sale.getQuantity());
+                  saleDto.setAmount(sale.getAmount());
+                  saleDto.setFee(sale.getFee());
+                  saleDto.setTax(sale.getTax());
+                  saleDto.setOtherCost(sale.getOtherCost());
+                  saleDto.setStatus(sale.getStatus());
+                  saleDto.setSoldAt(sale.getSaleDate().toString());
+                  return saleDto;
                 })
             .collect(Collectors.toList());
     dto.setSales(saleDtos);
@@ -83,6 +89,9 @@ public class InvestmentHistoryAssembler {
     return allocation.getAllocatedQuantity() - totalSoldQuantity;
   }
 
+  /**
+   * 청약 목록을 투자 이력 DTO 목록으로 변환한다.
+   */
   public List<InvestmentHistoryDto> toDtos(
       List<Subscription> subscriptions,
       Map<Long, Allocation> allocationMap,

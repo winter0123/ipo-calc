@@ -19,6 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 비용 관리 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class CostService {
@@ -31,8 +34,10 @@ public class CostService {
   private final InvestorRepository investorRepository;
   private final SecurityUtils securityUtils;
 
-  // 비용을 등록한다. subscriptionId 존재 검증(404), 계정 소유권 검증(403), amount 0 이상 검증(400)을 수행하고,
-  // status=ACTIVE로 새 Cost를 생성해 저장한다.
+  /**
+   * 비용을 등록한다. subscriptionId 존재 검증(404), 계정 소유권 검증(403), amount 0 이상 검증(400)을 수행하고,
+   * status=ACTIVE로 새 Cost를 생성해 저장한다.
+   */
   @Transactional
   public CostResponse register(CostRegisterRequest request) {
     validateRequest(request);
@@ -67,10 +72,12 @@ public class CostService {
     return CostResponse.from(saved);
   }
 
-  // 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
-  // subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
-  // CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
-  // updatedAt을 갱신한다.
+  /**
+   * 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
+   * subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
+   * CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
+   * updatedAt을 갱신한다.
+   */
   @Transactional
   public CostResponse update(Long id, CostUpdateRequest request) {
     validateUpdateRequest(request);
@@ -100,9 +107,11 @@ public class CostService {
     return CostResponse.from(saved);
   }
 
-  // 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
-  // investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
-  // 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
+  /**
+   * 삭제되지 않은 비용 목록을 조회한다. subscriptionId, investorId, investorName으로 필터링 가능하며,
+   * investorId/investorName은 Cost→Subscription→Investor 2단계 JOIN으로 수행한다.
+   * 정렬은 incurredAt 내림차순, createdAt 내림차순이다. CANCELLED(deletedAt IS NOT NULL)는 제외한다.
+   */
   @Transactional(readOnly = true)
   public List<CostResponse> list(Long subscriptionId, Long investorId, String investorName) {
     String investorNamePattern = (investorName != null) ? investorName + "%" : null;
@@ -111,9 +120,11 @@ public class CostService {
     return costs.stream().map(CostResponse::from).toList();
   }
 
-  // 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
-  // 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
-  // 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
+  /**
+   * 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
+   * 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
+   * 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
+   */
   @Transactional(readOnly = true)
   public CostResponse getById(Long id) {
     Cost cost =
@@ -173,9 +184,11 @@ public class CostService {
     }
   }
 
-  // 비용을 논리 취소한다. status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며,
-  // 물리 삭제는 수행하지 않는다. 존재하지 않거나 이미 취소된 기록은
-  // findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(재취소는 자연 배제).
+  /**
+   * 비용을 논리 취소한다. status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며,
+   * 물리 삭제는 수행하지 않는다. 존재하지 않거나 이미 취소된 기록은
+   * findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(재취소는 자연 배제).
+   */
   @Transactional
   public void cancel(Long id) {
     Cost cost =

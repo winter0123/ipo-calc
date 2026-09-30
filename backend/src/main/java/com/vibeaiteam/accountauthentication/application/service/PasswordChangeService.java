@@ -16,6 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 비밀번호 변경 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +28,9 @@ public class PasswordChangeService {
   private final PasswordEncoder passwordEncoder;
   private final SessionRegistry sessionRegistry;
 
+  /**
+   * 현재 비밀번호를 확인한 뒤 새 비밀번호로 변경한다.
+   */
   public void changePassword(
       PasswordChangeRequest request,
       HttpServletRequest httpServletRequest,
