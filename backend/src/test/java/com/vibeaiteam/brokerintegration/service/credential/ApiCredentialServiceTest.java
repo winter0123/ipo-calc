@@ -21,6 +21,7 @@ import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEn
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
@@ -77,10 +78,9 @@ class ApiCredentialServiceTest {
         new ApiCredentialService(
             credentialRepository,
             securitiesAccountRepository,
-            investorRepository,
             brokerSecretEncryptor,
             accountNumberEncryptor,
-            securityUtils,
+            new OwnershipGuard(securityUtils, investorRepository),
             Clock.systemDefaultZone());
   }
 
@@ -94,10 +94,9 @@ class ApiCredentialServiceTest {
     return new ApiCredentialService(
         credentialRepository,
         securitiesAccountRepository,
-        investorRepository,
         new BrokerSecretEncryptor(""),
         accountNumberEncryptor,
-        securityUtils,
+        new OwnershipGuard(securityUtils, investorRepository),
         Clock.systemDefaultZone());
   }
 

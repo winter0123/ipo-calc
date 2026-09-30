@@ -1,9 +1,9 @@
 package com.vibeaiteam.securitiesaccountmanagement.service.securitiesaccount;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
-import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.vibeaiteam.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
@@ -44,7 +44,7 @@ public class SecuritiesAccountService {
   private final SecuritiesFirmRepository securitiesFirmRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final AccountNumberEncryptor accountNumberEncryptor;
-  private final SecurityUtils securityUtils;
+  private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
   /**
@@ -66,10 +66,7 @@ public class SecuritiesAccountService {
             .findById(investorId)
             .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 투자자입니다"));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     securitiesFirmRepository
         .findByIdAndDeletedAtIsNull(securitiesFirmId)
@@ -113,10 +110,7 @@ public class SecuritiesAccountService {
             .findById(investorId)
             .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 투자자입니다"));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     List<SecuritiesAccount> accounts =
         "BOTH".equals(normalized)
@@ -142,10 +136,7 @@ public class SecuritiesAccountService {
             .findById(account.getInvestorId())
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     return toMaskedResponse(account);
   }
@@ -165,10 +156,8 @@ public class SecuritiesAccountService {
             .findById(account.getInvestorId())
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    Long currentAccountId =
+        ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
     Instant exposedAt = Instant.now(clock);
@@ -198,10 +187,7 @@ public class SecuritiesAccountService {
             .findById(account.getInvestorId())
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     if (request.getSecuritiesFirmId() != null) {
       SecuritiesFirm firm =
@@ -239,10 +225,7 @@ public class SecuritiesAccountService {
             .findById(account.getInvestorId())
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     LocalDateTime now = LocalDateTime.now(clock);
     account.setStatus(RecordStatus.INACTIVE);
@@ -272,10 +255,7 @@ public class SecuritiesAccountService {
             .findById(account.getInvestorId())
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     if (account.getStatus() != RecordStatus.ACTIVE) {
       throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
@@ -333,5 +313,9 @@ public class SecuritiesAccountService {
       throw new SecuritiesAccountValidationException("status는 ACTIVE, INACTIVE, BOTH 중 하나여야 합니다.");
     }
     return upper;
+  }
+
+  private static SecuritiesAccountForbiddenException forbidden() {
+    return new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
   }
 }

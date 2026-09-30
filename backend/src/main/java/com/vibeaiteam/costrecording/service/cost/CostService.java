@@ -1,7 +1,6 @@
 package com.vibeaiteam.costrecording.service.cost;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
-import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostRegisterRequest;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostResponse;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostUpdateRequest;
@@ -10,8 +9,7 @@ import com.vibeaiteam.costrecording.controller.cost.exception.CostNotFoundExcept
 import com.vibeaiteam.costrecording.controller.cost.exception.CostValidationException;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
 import com.vibeaiteam.costrecording.repository.cost.CostRepository;
-import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
@@ -30,8 +28,7 @@ public class CostService {
 
   private final CostRepository costRepository;
   private final SubscriptionRepository subscriptionRepository;
-  private final InvestorRepository investorRepository;
-  private final SecurityUtils securityUtils;
+  private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
   /**
@@ -159,14 +156,10 @@ public class CostService {
 
   // Subscription 소유권 검증: Subscription → Investor(accountId) → 현재 계정 ID 비교
   private void validateSubscriptionOwnership(Subscription subscription) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    Investor investor =
-        investorRepository
-            .findById(subscription.getInvestorId())
-            .orElseThrow(() -> new CostNotFoundException("투자자를 찾을 수 없습니다."));
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new CostForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwnedInvestor(
+        subscription.getInvestorId(),
+        () -> new CostNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new CostForbiddenException("계정 소유권이 없습니다."));
   }
 
   // 수정 요청 검증: amount 0 미만 시 400, memo 255자 초과 시 400

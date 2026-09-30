@@ -1,7 +1,6 @@
 package com.vibeaiteam.brokerintegration.service.credential;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
-import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialConflictException;
@@ -11,8 +10,7 @@ import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationExcepti
 import com.vibeaiteam.brokerintegration.exception.BrokerConnectionUnavailableException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
-import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
@@ -43,10 +41,9 @@ public class ApiCredentialService {
 
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
-  private final InvestorRepository investorRepository;
   private final BrokerSecretEncryptor brokerSecretEncryptor;
   private final AccountNumberEncryptor accountNumberEncryptor;
-  private final SecurityUtils securityUtils;
+  private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
   /**
@@ -175,15 +172,10 @@ public class ApiCredentialService {
             .findByIdAndDeletedAtIsNull(securitiesAccountId)
             .orElseThrow(() -> new ApiCredentialNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new ApiCredentialNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new ApiCredentialForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwnedInvestor(
+        account.getInvestorId(),
+        () -> new ApiCredentialNotFoundException("증권계좌를 찾을 수 없습니다."),
+        () -> new ApiCredentialForbiddenException("계정 소유권이 없습니다."));
     return account;
   }
 

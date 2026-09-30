@@ -11,6 +11,7 @@ import com.vibeaiteam.investormanagement.exception.InvestorForbiddenException;
 import com.vibeaiteam.investormanagement.exception.InvestorNotFoundException;
 import com.vibeaiteam.investormanagement.exception.InvestorValidationException;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ public class InvestorService {
 
   private final InvestorRepository investorRepository;
   private final SecurityUtils securityUtils;
+  private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
   /**
@@ -113,15 +115,10 @@ public class InvestorService {
   }
 
   private Investor findOwnedInvestor(Long id) {
-    Long accountId = securityUtils.getCurrentAccountId();
-    Investor investor =
-        investorRepository
-            .findById(id)
-            .orElseThrow(() -> new InvestorNotFoundException("투자자를 찾을 수 없습니다."));
-    if (!accountId.equals(investor.getAccountId())) {
-      throw new InvestorForbiddenException("계정 소유권이 없습니다.");
-    }
-    return investor;
+    return ownershipGuard.requireOwnedInvestor(
+        id,
+        () -> new InvestorNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new InvestorForbiddenException("계정 소유권이 없습니다."));
   }
 
   private String normalizeStatus(String status) {
