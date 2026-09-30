@@ -10,6 +10,8 @@ import type { SaleRegisterRequest } from '../../../entities/sale/types.ts'
 import styles from './SaleRegisterForm.module.css'
 import { toErrorMessage } from '../../../shared/api/apiError.ts'
 
+type OptionalNumberField = 'price' | 'amount' | 'fee' | 'tax' | 'otherCost'
+
 export default function SaleRegisterForm() {
   const [selectedInvestorId, setSelectedInvestorId] = useState<number | undefined>()
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | undefined>()
@@ -48,10 +50,7 @@ export default function SaleRegisterForm() {
   }, [allocationData, setValue])
 
   const onSubmit = (data: SaleRegisterRequest) => {
-    mutate(data, {
-      onSuccess: () => {},
-      onError: () => {},
-    })
+    mutate(data)
   }
 
   const getFormErrorMessage = () =>
@@ -79,6 +78,28 @@ export default function SaleRegisterForm() {
     Number.isNaN(Number(v)) ||
     (Number.isInteger(Number(v)) && Number(v) >= 0) ||
     '0 이상 정수를 입력해 주세요.'
+
+  const renderOptionalNumberField = (name: OptionalNumberField, label: string) => (
+    <div className={styles.field}>
+      <label htmlFor={name}>{label}</label>
+      <input
+        id={name}
+        type="number"
+        aria-invalid={!!errors[name] || !!error}
+        aria-describedby={`${name}-error`}
+        {...register(name, {
+          valueAsNumber: true,
+          validate: (v) => validateNonNegativeInteger(v),
+        })}
+        disabled={isPending}
+      />
+      {errors[name] && (
+        <span id={`${name}-error`} className={styles.error} aria-live="polite">
+          {String(errors[name]?.message)}
+        </span>
+      )}
+    </div>
+  )
 
   if (investorsLoading) {
     return <div className={styles.loading}>목록을 불러오는 중...</div>
@@ -195,45 +216,9 @@ export default function SaleRegisterForm() {
         )}
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor="price">단가 (선택)</label>
-        <input
-          id="price"
-          type="number"
-          aria-invalid={!!errors.price || !!error}
-          aria-describedby="price-error"
-          {...register('price', {
-            valueAsNumber: true,
-            validate: (v) => validateNonNegativeInteger(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.price && (
-          <span id="price-error" className={styles.error} aria-live="polite">
-            {String(errors.price.message)}
-          </span>
-        )}
-      </div>
+      {renderOptionalNumberField('price', '단가 (선택)')}
 
-      <div className={styles.field}>
-        <label htmlFor="amount">금액 (선택)</label>
-        <input
-          id="amount"
-          type="number"
-          aria-invalid={!!errors.amount || !!error}
-          aria-describedby="amount-error"
-          {...register('amount', {
-            valueAsNumber: true,
-            validate: (v) => validateNonNegativeInteger(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.amount && (
-          <span id="amount-error" className={styles.error} aria-live="polite">
-            {String(errors.amount.message)}
-          </span>
-        )}
-      </div>
+      {renderOptionalNumberField('amount', '금액 (선택)')}
 
       <div className={styles.field}>
         <label htmlFor="saleDate">매도일시</label>
@@ -254,65 +239,11 @@ export default function SaleRegisterForm() {
         )}
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor="fee">수수료 (선택)</label>
-        <input
-          id="fee"
-          type="number"
-          aria-invalid={!!errors.fee || !!error}
-          aria-describedby="fee-error"
-          {...register('fee', {
-            valueAsNumber: true,
-            validate: (v) => validateNonNegativeInteger(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.fee && (
-          <span id="fee-error" className={styles.error} aria-live="polite">
-            {String(errors.fee.message)}
-          </span>
-        )}
-      </div>
+      {renderOptionalNumberField('fee', '수수료 (선택)')}
 
-      <div className={styles.field}>
-        <label htmlFor="tax">세금 (선택)</label>
-        <input
-          id="tax"
-          type="number"
-          aria-invalid={!!errors.tax || !!error}
-          aria-describedby="tax-error"
-          {...register('tax', {
-            valueAsNumber: true,
-            validate: (v) => validateNonNegativeInteger(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.tax && (
-          <span id="tax-error" className={styles.error} aria-live="polite">
-            {String(errors.tax.message)}
-          </span>
-        )}
-      </div>
+      {renderOptionalNumberField('tax', '세금 (선택)')}
 
-      <div className={styles.field}>
-        <label htmlFor="otherCost">기타비용 (선택)</label>
-        <input
-          id="otherCost"
-          type="number"
-          aria-invalid={!!errors.otherCost || !!error}
-          aria-describedby="otherCost-error"
-          {...register('otherCost', {
-            valueAsNumber: true,
-            validate: (v) => validateNonNegativeInteger(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.otherCost && (
-          <span id="otherCost-error" className={styles.error} aria-live="polite">
-            {String(errors.otherCost.message)}
-          </span>
-        )}
-      </div>
+      {renderOptionalNumberField('otherCost', '기타비용 (선택)')}
 
       {getFormErrorMessage() && (
         <div className={styles.formError} aria-live="polite">
