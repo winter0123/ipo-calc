@@ -7,7 +7,9 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -150,15 +152,7 @@ public class MarketHolidaySyncService {
             },
             () -> {
               // 신규: 삽입
-              MarketHoliday holiday =
-                  MarketHoliday.builder()
-                      .holidayDate(date)
-                      .name(name)
-                      .source(source)
-                      .createdAt(LocalDateTime.now(clock))
-                      .build();
-              marketHolidayRepository.save(holiday);
-              yearResult.incrementInserted();
+              insertHoliday(date, name, source, yearResult);
               log.debug("휴장일 신규 삽입: date={}, name={}, source={}", date, name, source);
             });
   }
@@ -167,25 +161,28 @@ public class MarketHolidaySyncService {
   private void upsertHolidayIfAbsent(
       LocalDate date, String name, String source, YearSyncResult yearResult) {
     if (!marketHolidayRepository.existsByHolidayDate(date)) {
-      MarketHoliday holiday =
-          MarketHoliday.builder()
-              .holidayDate(date)
-              .name(name)
-              .source(source)
-              .createdAt(LocalDateTime.now(clock))
-              .build();
-      marketHolidayRepository.save(holiday);
-      yearResult.incrementInserted();
+      insertHoliday(date, name, source, yearResult);
       log.debug("휴장일 신규 삽입(RULE): date={}, name={}, source={}", date, name, source);
     } else {
       log.debug("휴장일 이미 존재 (건너뜀): date={}, source={}", date, source);
     }
   }
 
+  private void insertHoliday(
+      LocalDate date, String name, String source, YearSyncResult yearResult) {
+    marketHolidayRepository.save(
+        MarketHoliday.builder()
+            .holidayDate(date)
+            .name(name)
+            .source(source)
+            .createdAt(LocalDateTime.now(clock))
+            .build());
+    yearResult.incrementInserted();
+  }
+
   /** 동기화 결과 요약 DTO. */
   public static class SyncResult {
-    private final java.util.Map<Integer, YearSyncResult> yearResults =
-        new java.util.LinkedHashMap<>();
+    private final Map<Integer, YearSyncResult> yearResults = new LinkedHashMap<>();
 
     void addYearResult(int year, YearSyncResult yearResult) {
       yearResults.put(year, yearResult);
@@ -198,7 +195,7 @@ public class MarketHolidaySyncService {
       return yearResults.get(year);
     }
 
-    public java.util.Map<Integer, YearSyncResult> getAllYearResults() {
+    public Map<Integer, YearSyncResult> getAllYearResults() {
       return yearResults;
     }
 
