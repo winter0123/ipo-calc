@@ -3,6 +3,7 @@ package com.vibeaiteam.investmentqueryapi.service.investmenthistory;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryForbiddenException;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryNotFoundException;
@@ -66,7 +67,7 @@ class InvestmentHistoryOwnershipVerifierTest {
             .accountId(CURRENT_ACCOUNT_ID)
             .displayName("테스트 투자자")
             .relationship("SELF")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -77,7 +78,7 @@ class InvestmentHistoryOwnershipVerifierTest {
             .accountId(OTHER_ACCOUNT_ID)
             .displayName("타인 투자자")
             .relationship("FAMILY")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -90,7 +91,7 @@ class InvestmentHistoryOwnershipVerifierTest {
             .accountNumber("123-456-789")
             .accountName("테스트 계좌")
             .isDefault(true)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -103,7 +104,7 @@ class InvestmentHistoryOwnershipVerifierTest {
             .accountNumber("987-654-321")
             .accountName("타인 계좌")
             .isDefault(false)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();

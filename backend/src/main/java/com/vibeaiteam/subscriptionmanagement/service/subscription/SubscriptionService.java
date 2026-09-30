@@ -1,5 +1,6 @@
 package com.vibeaiteam.subscriptionmanagement.service.subscription;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
@@ -29,9 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String STATUS_CANCELLED = "CANCELLED";
 
   private final SubscriptionRepository subscriptionRepository;
   private final InvestorRepository investorRepository;
@@ -72,7 +70,7 @@ public class SubscriptionService {
             .depositAmount(request.getDepositAmount())
             .subscribedAt(request.getSubscribedAt())
             .memo(request.getMemo())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -224,7 +222,7 @@ public class SubscriptionService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
     LocalDateTime now = LocalDateTime.now(clock);
-    subscription.setStatus(STATUS_CANCELLED);
+    subscription.setStatus(RecordStatus.CANCELLED);
     subscription.setDeletedAt(now);
     subscription.setUpdatedAt(now);
     subscriptionRepository.save(subscription);
@@ -295,7 +293,7 @@ public class SubscriptionService {
     // AC-014: 수정 시에는 자기 자신(excludeId)을 제외하고 검사한다 (IpoService.checkDuplicate와 동일 패턴)
     subscriptionRepository
         .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
-            investorId, securitiesAccountId, ipoId, STATUS_ACTIVE)
+            investorId, securitiesAccountId, ipoId, RecordStatus.ACTIVE)
         .filter(existing -> !existing.getId().equals(excludeId))
         .ifPresent(
             existing -> {

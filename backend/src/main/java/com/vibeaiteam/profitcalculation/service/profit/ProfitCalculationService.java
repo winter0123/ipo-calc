@@ -1,5 +1,6 @@
 package com.vibeaiteam.profitcalculation.service.profit;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
@@ -51,7 +52,7 @@ public class ProfitCalculationService {
         saleRepository
             .findByIdAndDeletedAtIsNull(saleId)
             .orElseThrow(() -> new ProfitNotFoundException("해당 매도 건을 찾을 수 없습니다."));
-    if (!"ACTIVE".equals(sale.getStatus())) {
+    if (sale.getStatus() != RecordStatus.ACTIVE) {
       throw new ProfitNotFoundException("해당 매도 건을 찾을 수 없습니다.");
     }
 
@@ -79,7 +80,7 @@ public class ProfitCalculationService {
     // 5. ACTIVE Cost 조회 및 합계 계산
     List<Cost> activeCosts =
         costRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            subscription.getId(), "ACTIVE");
+            subscription.getId(), RecordStatus.ACTIVE);
     Long totalActiveCost = activeCosts.stream().map(Cost::getAmount).reduce(0L, Long::sum);
 
     // 6~9. 대응취득가액/대응취득비용/세전·세후순수익 계산 및 ProfitDto 구성
@@ -123,7 +124,7 @@ public class ProfitCalculationService {
 
     Map<Long, Long> totalActiveCostBySubscriptionId =
         costRepository
-            .findBySubscriptionIdInAndStatusAndDeletedAtIsNull(subscriptionIds, "ACTIVE")
+            .findBySubscriptionIdInAndStatusAndDeletedAtIsNull(subscriptionIds, RecordStatus.ACTIVE)
             .stream()
             .collect(
                 Collectors.groupingBy(

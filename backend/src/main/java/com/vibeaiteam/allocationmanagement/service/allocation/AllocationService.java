@@ -1,5 +1,6 @@
 package com.vibeaiteam.allocationmanagement.service.allocation;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationResponse;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationUpdateRequest;
@@ -24,8 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AllocationService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
 
   private final AllocationRepository allocationRepository;
   private final SubscriptionRepository subscriptionRepository;
@@ -58,7 +57,7 @@ public class AllocationService {
             .allocationMethod(request.getAllocationMethod())
             .allocationPrice(request.getAllocationPrice())
             .note(request.getNote())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -99,7 +98,7 @@ public class AllocationService {
   private void checkDuplicate(Long subscriptionId) {
     // AC-005: 동일 subscriptionId의 ACTIVE 배정 기록이 이미 있으면 409 (AC-006: CANCELLED는 무관)
     allocationRepository
-        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(subscriptionId, STATUS_ACTIVE)
+        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(subscriptionId, RecordStatus.ACTIVE)
         .ifPresent(
             existing -> {
               throw new AllocationConflictException("이미 등록된 배정 기록입니다.");
@@ -228,7 +227,7 @@ public class AllocationService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
     LocalDateTime now = LocalDateTime.now(clock);
-    allocation.setStatus("CANCELLED");
+    allocation.setStatus(RecordStatus.CANCELLED);
     allocation.setDeletedAt(now);
     allocation.setUpdatedAt(now);
     allocationRepository.save(allocation);

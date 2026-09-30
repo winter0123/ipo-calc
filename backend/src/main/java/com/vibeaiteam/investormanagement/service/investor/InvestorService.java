@@ -1,6 +1,7 @@
 package com.vibeaiteam.investormanagement.service.investor;
 
 import com.vibeaiteam.accountauthentication.controller.dto.SuccessResponse;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorRegisterRequest;
 import com.vibeaiteam.investormanagement.controller.investor.dto.InvestorResponse;
@@ -25,8 +26,9 @@ import org.springframework.stereotype.Service;
 public class InvestorService {
 
   private static final int DISPLAY_NAME_MAX_LENGTH = 50;
-  private static final Set<String> SUPPORTED_STATUS = Set.of("ACTIVE", "INACTIVE", "BOTH");
-  private static final String DEFAULT_STATUS = "ACTIVE";
+  private static final Set<String> SUPPORTED_STATUS =
+      Set.of(RecordStatus.ACTIVE.name(), RecordStatus.INACTIVE.name(), "BOTH");
+  private static final String DEFAULT_STATUS = RecordStatus.ACTIVE.name();
 
   private final InvestorRepository investorRepository;
   private final SecurityUtils securityUtils;
@@ -45,7 +47,7 @@ public class InvestorService {
             .accountId(accountId)
             .displayName(displayName)
             .relationship(request.getRelationship())
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -64,7 +66,8 @@ public class InvestorService {
     List<Investor> investors =
         "BOTH".equals(normalized)
             ? investorRepository.findByAccountId(accountId)
-            : investorRepository.findByAccountIdAndStatus(accountId, normalized);
+            : investorRepository.findByAccountIdAndStatus(
+                accountId, RecordStatus.valueOf(normalized));
     return investors.stream().map(InvestorResponse::from).toList();
   }
 
@@ -99,9 +102,9 @@ public class InvestorService {
    */
   public SuccessResponse deactivate(Long id) {
     Investor investor = findOwnedInvestor(id);
-    if (!"INACTIVE".equals(investor.getStatus())) {
+    if (investor.getStatus() != RecordStatus.INACTIVE) {
       LocalDateTime now = LocalDateTime.now(clock);
-      investor.setStatus("INACTIVE");
+      investor.setStatus(RecordStatus.INACTIVE);
       investor.setDeletedAt(now);
       investor.setUpdatedAt(now);
       investorRepository.save(investor);

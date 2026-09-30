@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
@@ -172,7 +173,7 @@ class InvestorControllerTest {
                 .accountId(otherAccountId)
                 .displayName("다른계정투자자")
                 .relationship("OTHER")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -227,7 +228,7 @@ class InvestorControllerTest {
     assertThat(investors).as("계정 소유 투자자 레코드가 1건 생성되어야 합니다").hasSize(1);
     assertThat(investors.get(0).getDisplayName()).isEqualTo("홍길동");
     assertThat(investors.get(0).getRelationship()).isEqualTo("SELF");
-    assertThat(investors.get(0).getStatus()).isEqualTo("ACTIVE");
+    assertThat(investors.get(0).getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(investors.get(0).getDeletedAt()).isNull();
   }
 
@@ -426,7 +427,7 @@ class InvestorControllerTest {
             .accountId(accountId)
             .displayName("김영희")
             .relationship("SPOUSE")
-            .status("INACTIVE")
+            .status(RecordStatus.INACTIVE)
             .deletedAt(now)
             .createdAt(now)
             .updatedAt(now)
@@ -457,7 +458,7 @@ class InvestorControllerTest {
             .accountId(accountId)
             .displayName("김영희")
             .relationship("SPOUSE")
-            .status("INACTIVE")
+            .status(RecordStatus.INACTIVE)
             .deletedAt(now)
             .createdAt(now)
             .updatedAt(now)
@@ -509,7 +510,7 @@ class InvestorControllerTest {
     return ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
   }
 
-  private Long createInvestorWithStatus(String status) {
+  private Long createInvestorWithStatus(RecordStatus status) {
     LocalDateTime now = LocalDateTime.now();
     Investor saved =
         investorRepository.save(
@@ -518,7 +519,7 @@ class InvestorControllerTest {
                 .displayName("상태투자자")
                 .relationship("OTHER")
                 .status(status)
-                .deletedAt("INACTIVE".equals(status) ? now : null)
+                .deletedAt(status == RecordStatus.INACTIVE ? now : null)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -632,7 +633,7 @@ class InvestorControllerTest {
   void updateInactiveInvestorReturns200WithUpdatedFields() throws Exception {
     // Given: INACTIVE 상태(비활성화된) 투자자를 본인 계정이 소유하고 있음 (엣지케이스 7)
     signupAndLogin();
-    Long investorId = createInvestorWithStatus("INACTIVE");
+    Long investorId = createInvestorWithStatus(RecordStatus.INACTIVE);
 
     var request =
         Map.of(
@@ -741,7 +742,7 @@ class InvestorControllerTest {
     Long investorId = registerAndGetId("홍길동");
     assertThat(investorRepository.findById(investorId).orElseThrow().getStatus())
         .as("사전 조건: 삭제 전 status는 ACTIVE여야 합니다")
-        .isEqualTo("ACTIVE");
+        .isEqualTo(RecordStatus.ACTIVE);
 
     // When: DELETE /investors/{investor_id} 요청을 보냄
     MvcResult result =
@@ -755,7 +756,9 @@ class InvestorControllerTest {
 
     // And: 투자자의 status가 INACTIVE로 변경되고 deletedAt에 현재 타임스탬프가 설정됨 (AC-009)
     Investor saved = investorRepository.findById(investorId).orElseThrow();
-    assertThat(saved.getStatus()).as("status가 INACTIVE로 변경되어야 합니다 (AC-009)").isEqualTo("INACTIVE");
+    assertThat(saved.getStatus())
+        .as("status가 INACTIVE로 변경되어야 합니다 (AC-009)")
+        .isEqualTo(RecordStatus.INACTIVE);
     assertThat(saved.getDeletedAt()).as("deletedAt에 현재 타임스탬프가 설정되어야 합니다 (AC-009)").isNotNull();
   }
 
@@ -771,7 +774,7 @@ class InvestorControllerTest {
                     .accountId(accountId)
                     .displayName("비활성투자자")
                     .relationship("OTHER")
-                    .status("INACTIVE")
+                    .status(RecordStatus.INACTIVE)
                     .deletedAt(originalDeletedAt)
                     .createdAt(originalDeletedAt)
                     .updatedAt(originalDeletedAt)
@@ -790,7 +793,9 @@ class InvestorControllerTest {
 
     // And: 기존 deletedAt 값이 그대로 유지되고 status도 INACTIVE가 유지됨 (멱등성)
     Investor saved = investorRepository.findById(investorId).orElseThrow();
-    assertThat(saved.getStatus()).as("status는 INACTIVE가 유지되어야 합니다 (엣지케이스 6)").isEqualTo("INACTIVE");
+    assertThat(saved.getStatus())
+        .as("status는 INACTIVE가 유지되어야 합니다 (엣지케이스 6)")
+        .isEqualTo(RecordStatus.INACTIVE);
     assertThat(saved.getDeletedAt())
         .as("기존 deletedAt이 그대로 유지되어야 합니다 (엣지케이스 6)")
         .isEqualTo(originalDeletedAt);
@@ -827,7 +832,7 @@ class InvestorControllerTest {
     var responseMap = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(responseMap.get("error")).as("에러 코드는 FORBIDDEN이어야 합니다").isEqualTo("FORBIDDEN");
     Investor other = investorRepository.findById(otherInvestorId).orElseThrow();
-    assertThat(other.getStatus()).as("계정 B의 투자자 상태가 변경되면 안 됩니다").isEqualTo("ACTIVE");
+    assertThat(other.getStatus()).as("계정 B의 투자자 상태가 변경되면 안 됩니다").isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test

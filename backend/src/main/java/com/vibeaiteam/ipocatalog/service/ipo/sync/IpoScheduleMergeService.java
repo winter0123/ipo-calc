@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
@@ -51,8 +52,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 @Slf4j
 public class IpoScheduleMergeService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
   private static final String SYNC_SOURCE_MERGED = "OPENDART+USTOCKPLUS";
 
   // 정규화용 패턴: "(주)", "㈜", "주식회사"
@@ -90,7 +89,7 @@ public class IpoScheduleMergeService {
     // stockCode가 null인 자동 동기화 레코드 후보군 미리 조회 (회사명 정규화 매칭용)
     List<Ipo> nullStockCodeCandidates =
         ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
-            STATUS_ACTIVE);
+            RecordStatus.ACTIVE);
 
     int mergedCount = 0;
     for (UstockPlusScheduleDates s : scheduleDates) {
@@ -136,7 +135,8 @@ public class IpoScheduleMergeService {
   private boolean mergeSingle(UstockPlusScheduleDates s, List<Ipo> nullStockCodeCandidates) {
     // (a) 종목코드로 직접 매칭
     Optional<Ipo> byStockCode =
-        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(s.stockCode(), STATUS_ACTIVE);
+        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+            s.stockCode(), RecordStatus.ACTIVE);
     Ipo target = null;
 
     if (byStockCode.isPresent()) {

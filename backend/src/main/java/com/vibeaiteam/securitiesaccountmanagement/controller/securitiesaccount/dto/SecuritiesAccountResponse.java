@@ -51,7 +51,7 @@ public class SecuritiesAccountResponse {
         .accountNumber(maskedAccountNumber)
         .accountName(account.getAccountName())
         .isDefault(account.getIsDefault())
-        .status(account.getStatus())
+        .status(account.getStatus().name())
         .deletedAt(account.getDeletedAt())
         .createdAt(account.getCreatedAt())
         .updatedAt(account.getUpdatedAt())

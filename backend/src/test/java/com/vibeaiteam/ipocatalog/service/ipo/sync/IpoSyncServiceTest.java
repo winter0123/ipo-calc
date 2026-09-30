@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
@@ -113,10 +114,10 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "옵토닉스", LocalDate.of(2026, 11, 5), "ACTIVE"))
+            "옵토닉스", LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
 
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 5)))
@@ -147,7 +148,7 @@ class IpoSyncServiceTest {
     assertThat(saved.getOfferingShareCount()).isEqualTo(2_200_000L);
     assertThat(saved.getSyncSource()).isEqualTo("OPENDART");
     assertThat(saved.getLastSyncedAt()).isNotNull();
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -161,10 +162,10 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일", "1,000,000", "15,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "옵토닉스", LocalDate.of(2026, 11, 5), "ACTIVE"))
+            "옵토닉스", LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
 
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 5)))
@@ -208,14 +209,14 @@ class IpoSyncServiceTest {
             .subscriptionEndDate(LocalDate.of(2026, 11, 6))
             .listingDate(LocalDate.of(2026, 11, 20)) // 수동 입력값 (보존되어야 함)
             .offeringShareCount(2_200_000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .syncSource("OPENDART")
             .lastSyncedAt(LocalDateTime.now().minusDays(1))
             .createdAt(LocalDateTime.now().minusDays(10))
             .updatedAt(LocalDateTime.now().minusDays(1))
             .build();
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(existing));
 
     // when
@@ -266,14 +267,14 @@ class IpoSyncServiceTest {
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
             .subscriptionEndDate(LocalDate.of(2026, 11, 6))
             .offeringShareCount(2_200_000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .syncSource(null) // 수동 등록
             .lastSyncedAt(null)
             .createdAt(LocalDateTime.now().minusDays(10))
             .updatedAt(LocalDateTime.now().minusDays(10))
             .build();
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(manualRecord));
 
     // when
@@ -299,7 +300,7 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
 
     Ipo manualRecord =
@@ -312,14 +313,14 @@ class IpoSyncServiceTest {
             .upperBandPrice(10_000L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
             .subscriptionEndDate(LocalDate.of(2026, 11, 6))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .syncSource(null) // 수동 등록
             .createdAt(LocalDateTime.now().minusDays(10))
             .updatedAt(LocalDateTime.now().minusDays(10))
             .build();
 
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "옵토닉스", LocalDate.of(2026, 11, 5), "ACTIVE"))
+            "옵토닉스", LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(Optional.of(manualRecord));
 
     // when
@@ -398,10 +399,10 @@ class IpoSyncServiceTest {
         createDetail("01028933", "멜콘", "2026년 11월 10일 ~ 2026년 11월 11일", "1,500,000", "20,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01028933")).thenReturn(List.of(detail2));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "멜콘", LocalDate.of(2026, 11, 10), "ACTIVE"))
+            "멜콘", LocalDate.of(2026, 11, 10), RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 10)))
         .thenReturn(LocalDate.of(2026, 11, 11));
@@ -465,10 +466,10 @@ class IpoSyncServiceTest {
         createDetail("01028933", "멜콘", "2026년 11월 10일 ~ 2026년 11월 11일", "1,500,000", "20,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01028933")).thenReturn(List.of(detail2));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "멜콘", LocalDate.of(2026, 11, 10), "ACTIVE"))
+            "멜콘", LocalDate.of(2026, 11, 10), RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 10)))
         .thenReturn(LocalDate.of(2026, 11, 11));
@@ -494,10 +495,10 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", "ACTIVE"))
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            "옵토닉스", LocalDate.of(2026, 11, 5), "ACTIVE"))
+            "옵토닉스", LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 5)))
         .thenReturn(LocalDate.of(2026, 11, 6));

@@ -1,5 +1,6 @@
 package com.vibeaiteam.securitiesfirmcatalog.service.securitiesfirm;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmRegisterRequest;
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmResponse;
 import com.vibeaiteam.securitiesfirmcatalog.controller.securitiesfirm.dto.SecuritiesFirmUpdateRequest;
@@ -22,8 +23,6 @@ import org.springframework.stereotype.Service;
 public class SecuritiesFirmService {
 
   private static final int NAME_MAX_LENGTH = 255;
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String STATUS_INACTIVE = "INACTIVE";
 
   private final SecuritiesFirmRepository securitiesFirmRepository;
   private final Clock clock;
@@ -35,7 +34,7 @@ public class SecuritiesFirmService {
     String name = validateName(request.getName());
 
     securitiesFirmRepository
-        .findByNameAndStatus(name, STATUS_ACTIVE)
+        .findByNameAndStatus(name, RecordStatus.ACTIVE)
         .ifPresent(
             existing -> {
               throw new SecuritiesFirmDuplicateException("이미 등록된 증권사명입니다.");
@@ -47,7 +46,7 @@ public class SecuritiesFirmService {
             .name(name)
             .externalCode(request.getExternalCode())
             .businessRegistrationNumber(request.getBusinessRegistrationNumber())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -88,7 +87,7 @@ public class SecuritiesFirmService {
       String newName = validateName(request.getName());
       if (!newName.equals(firm.getName())) {
         securitiesFirmRepository
-            .findByNameAndStatus(newName, STATUS_ACTIVE)
+            .findByNameAndStatus(newName, RecordStatus.ACTIVE)
             .ifPresent(
                 existing -> {
                   throw new SecuritiesFirmDuplicateException("이미 등록된 증권사명입니다.");
@@ -120,7 +119,7 @@ public class SecuritiesFirmService {
             .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
 
     LocalDateTime now = LocalDateTime.now(clock);
-    firm.setStatus(STATUS_INACTIVE);
+    firm.setStatus(RecordStatus.INACTIVE);
     firm.setDeletedAt(now);
     firm.setUpdatedAt(now);
     securitiesFirmRepository.save(firm);

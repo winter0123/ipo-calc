@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
@@ -165,7 +166,7 @@ class SecuritiesAccountControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -210,7 +211,7 @@ class SecuritiesAccountControllerTest {
                 .accountId(other.getId())
                 .displayName("다른계정투자자")
                 .relationship("OTHER")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -294,7 +295,7 @@ class SecuritiesAccountControllerTest {
         .as("DB에는 원본 평문이 아니라 암호화된 계좌번호가 저장되어야 합니다 (SF-2)")
         .isNotEqualTo(ACCOUNT_NUMBER);
     assertThat(saved.getInvestorId()).isEqualTo(investorId);
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     createdAccounts.add(saved);
   }
 
@@ -689,7 +690,7 @@ class SecuritiesAccountControllerTest {
                 ((Number) objectMapper.readValue(utf8Body(inactive), Map.class).get("id"))
                     .longValue())
             .orElseThrow();
-    inactiveAccount.setStatus("INACTIVE");
+    inactiveAccount.setStatus(RecordStatus.INACTIVE);
     inactiveAccount.setUpdatedAt(LocalDateTime.now());
     securitiesAccountRepository.save(inactiveAccount);
     createdAccounts.add(inactiveAccount);
@@ -818,7 +819,7 @@ class SecuritiesAccountControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -903,7 +904,7 @@ class SecuritiesAccountControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt(otherPlainNumber))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -972,7 +973,7 @@ class SecuritiesAccountControllerTest {
             .longValue();
 
     SecuritiesFirm firm = securitiesFirmRepository.findById(securitiesFirmId).orElseThrow();
-    firm.setStatus("INACTIVE");
+    firm.setStatus(RecordStatus.INACTIVE);
     firm.setDeletedAt(LocalDateTime.now());
     securitiesFirmRepository.save(firm);
 
@@ -1105,7 +1106,7 @@ class SecuritiesAccountControllerTest {
     Long originalFirmId = registerFirm();
     Long inactiveFirmId = registerFirm();
     SecuritiesFirm inactiveFirm = securitiesFirmRepository.findById(inactiveFirmId).orElseThrow();
-    inactiveFirm.setStatus("INACTIVE");
+    inactiveFirm.setStatus(RecordStatus.INACTIVE);
     securitiesFirmRepository.save(inactiveFirm);
 
     MvcResult registerResult =
@@ -1158,7 +1159,7 @@ class SecuritiesAccountControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -1221,7 +1222,7 @@ class SecuritiesAccountControllerTest {
         ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id"))
             .longValue();
     SecuritiesAccount before = securitiesAccountRepository.findById(accountId).orElseThrow();
-    assertThat(before.getStatus()).as("비활성화 전 status는 ACTIVE여야 합니다").isEqualTo("ACTIVE");
+    assertThat(before.getStatus()).as("비활성화 전 status는 ACTIVE여야 합니다").isEqualTo(RecordStatus.ACTIVE);
     assertThat(before.getDeletedAt()).as("비활성화 전 deletedAt은 null이어야 합니다").isNull();
     LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
     before.setUpdatedAt(oldUpdatedAt);
@@ -1244,7 +1245,9 @@ class SecuritiesAccountControllerTest {
 
     // And: DB에서 status=INACTIVE, deletedAt 설정, updatedAt 갱신 확인 (SF-6)
     SecuritiesAccount inDb = securitiesAccountRepository.findById(accountId).orElseThrow();
-    assertThat(inDb.getStatus()).as("비활성화 후 status는 INACTIVE여야 합니다 (SF-6)").isEqualTo("INACTIVE");
+    assertThat(inDb.getStatus())
+        .as("비활성화 후 status는 INACTIVE여야 합니다 (SF-6)")
+        .isEqualTo(RecordStatus.INACTIVE);
     assertThat(inDb.getDeletedAt()).as("비활성화 후 deletedAt이 설정되어야 합니다 (SF-6)").isNotNull();
     assertThat(inDb.getUpdatedAt()).as("비활성화 후 updatedAt이 갱신되어야 합니다 (SF-6)").isAfter(oldUpdatedAt);
   }
@@ -1285,7 +1288,7 @@ class SecuritiesAccountControllerTest {
     assertThat(inDb.getIsDefault())
         .as("비활성화된 계좌가 기본 계좌였다면 isDefault는 false로 clear되어야 합니다 (D-SA-004)")
         .isFalse();
-    assertThat(inDb.getStatus()).isEqualTo("INACTIVE");
+    assertThat(inDb.getStatus()).isEqualTo(RecordStatus.INACTIVE);
   }
 
   @Test
@@ -1324,7 +1327,7 @@ class SecuritiesAccountControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -1347,7 +1350,9 @@ class SecuritiesAccountControllerTest {
 
     SecuritiesAccount unchanged =
         securitiesAccountRepository.findById(otherAccount.getId()).orElseThrow();
-    assertThat(unchanged.getStatus()).as("소유권 없는 요청은 계좌를 비활성화하면 안 됩니다 (SF-6)").isEqualTo("ACTIVE");
+    assertThat(unchanged.getStatus())
+        .as("소유권 없는 요청은 계좌를 비활성화하면 안 됩니다 (SF-6)")
+        .isEqualTo(RecordStatus.ACTIVE);
   }
 
   private MvcResult setDefaultSecuritiesAccount(Long id) throws Exception {
@@ -1538,7 +1543,7 @@ class SecuritiesAccountControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(false)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)

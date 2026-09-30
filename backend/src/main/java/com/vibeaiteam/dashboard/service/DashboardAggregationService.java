@@ -1,5 +1,6 @@
 package com.vibeaiteam.dashboard.service;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
@@ -61,7 +62,7 @@ public class DashboardAggregationService {
   private List<CalculatedSale> loadCalculatedSales() {
     Long currentAccountId = ownershipVerifier.getCurrentAccountId();
     List<Sale> activeSales =
-        saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", currentAccountId);
+        saleRepository.findAllByStatusAndInvestorAccountId(RecordStatus.ACTIVE, currentAccountId);
 
     if (activeSales.isEmpty()) {
       return Collections.emptyList();
@@ -138,7 +139,7 @@ public class DashboardAggregationService {
     Map<Long, List<Cost>> costsBySubscription = new HashMap<>();
     List<Cost> costs =
         costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
-            new ArrayList<>(subscriptionIds), "ACTIVE");
+            new ArrayList<>(subscriptionIds), RecordStatus.ACTIVE);
     for (Cost c : costs) {
       costsBySubscription.computeIfAbsent(c.getSubscriptionId(), k -> new ArrayList<>()).add(c);
     }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,7 +60,7 @@ class SecuritiesFirmRepositoryTest {
             .name(firmName)
             .externalCode("SC-0001")
             .businessRegistrationNumber("123-45-67890")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -74,7 +75,7 @@ class SecuritiesFirmRepositoryTest {
     assertThat(found.get().getName()).isEqualTo(firmName);
     assertThat(found.get().getExternalCode()).isEqualTo("SC-0001");
     assertThat(found.get().getBusinessRegistrationNumber()).isEqualTo("123-45-67890");
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -90,19 +91,19 @@ class SecuritiesFirmRepositoryTest {
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(firmName)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
 
     // When: 동일 이름 + ACTIVE 상태로 findByNameAndStatus 호출
     Optional<SecuritiesFirm> result =
-        securitiesFirmRepository.findByNameAndStatus(firmName, "ACTIVE");
+        securitiesFirmRepository.findByNameAndStatus(firmName, RecordStatus.ACTIVE);
 
     // Then: 해당 증권사가 반환된다
     assertThat(result).isPresent();
     assertThat(result.get().getName()).isEqualTo(firmName);
-    assertThat(result.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(result.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -114,7 +115,7 @@ class SecuritiesFirmRepositoryTest {
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(firmName)
-            .status("INACTIVE")
+            .status(RecordStatus.INACTIVE)
             .deletedAt(now)
             .createdAt(now)
             .updatedAt(now)
@@ -122,7 +123,7 @@ class SecuritiesFirmRepositoryTest {
 
     // When: 동일 이름 + ACTIVE 상태로 findByNameAndStatus 호출
     Optional<SecuritiesFirm> result =
-        securitiesFirmRepository.findByNameAndStatus(firmName, "ACTIVE");
+        securitiesFirmRepository.findByNameAndStatus(firmName, RecordStatus.ACTIVE);
 
     // Then: 빈 Optional이 반환된다 (INACTIVE는 활성 중복 대상이 아님)
     assertThat(result).isEmpty();
@@ -141,21 +142,21 @@ class SecuritiesFirmRepositoryTest {
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(firstActiveName)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(secondActiveName)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(deletedName)
-            .status("INACTIVE")
+            .status(RecordStatus.INACTIVE)
             .deletedAt(now)
             .createdAt(now)
             .updatedAt(now)
@@ -198,7 +199,7 @@ class SecuritiesFirmRepositoryTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(activeName)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -206,7 +207,7 @@ class SecuritiesFirmRepositoryTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(uniqueFirmName("OLD증권"))
-                .status("INACTIVE")
+                .status(RecordStatus.INACTIVE)
                 .deletedAt(now)
                 .createdAt(now)
                 .updatedAt(now)
@@ -235,7 +236,7 @@ class SecuritiesFirmRepositoryTest {
     securitiesFirmRepository.save(
         SecuritiesFirm.builder()
             .name(firmName)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -243,7 +244,7 @@ class SecuritiesFirmRepositoryTest {
     SecuritiesFirm duplicate =
         SecuritiesFirm.builder()
             .name(firmName)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -266,11 +267,11 @@ class SecuritiesFirmRepositoryTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(firmName)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus("INACTIVE");
+    existing.setStatus(RecordStatus.INACTIVE);
     existing.setDeletedAt(now);
     securitiesFirmRepository.saveAndFlush(existing);
 
@@ -279,13 +280,13 @@ class SecuritiesFirmRepositoryTest {
         securitiesFirmRepository.saveAndFlush(
             SecuritiesFirm.builder()
                 .name(firmName)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build());
 
     // Then: 유니크 위반 없이 저장된다 (활성 증권사 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
-    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+    assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 }

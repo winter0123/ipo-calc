@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
@@ -111,7 +112,7 @@ class ApiCredentialServiceTest {
             .investorId(INVESTOR_ID)
             .accountNumber(accountNumberEncryptor.encrypt(PLAIN_ACCOUNT_NUMBER))
             .accountName("개인 MTS 계좌")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
     when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(ACCOUNT_ID))
         .thenReturn(Optional.of(account));
@@ -142,7 +143,7 @@ class ApiCredentialServiceTest {
         .appSecretEncrypted("encrypted-app-secret")
         .accessTokenEncrypted(accessTokenEncrypted)
         .tokenExpiresAt(tokenExpiresAt)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .deletedAt(null)
         .createdAt(updatedAt)
         .updatedAt(updatedAt)
@@ -175,7 +176,7 @@ class ApiCredentialServiceTest {
         .isEqualTo(DUMMY_APP_KEY);
     assertThat(brokerSecretEncryptor.decrypt(saved.getAppSecretEncrypted()))
         .isEqualTo(DUMMY_APP_SECRET);
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
 
     // And: 응답에는 연결 상태와 마스킹된 계좌번호만 있고 시크릿 필드는 없음 (AC-1811)
@@ -369,7 +370,7 @@ class ApiCredentialServiceTest {
     verify(credentialRepository, never()).delete(any(SecuritiesAccountApiCredential.class));
     verify(credentialRepository, never()).deleteAll(anyList());
     verify(credentialRepository).saveAll(List.of(credential));
-    assertThat(credential.getStatus()).isEqualTo("INACTIVE");
+    assertThat(credential.getStatus()).isEqualTo(RecordStatus.INACTIVE);
     assertThat(credential.getDeletedAt()).as("소프트 삭제 시각이 설정되어야 합니다").isNotNull();
     assertThat(credential.getUpdatedAt()).isNotNull();
   }

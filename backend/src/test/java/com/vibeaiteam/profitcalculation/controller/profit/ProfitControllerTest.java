@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
@@ -159,7 +160,7 @@ class ProfitControllerTest {
                 .accountId(findOrCreateAccount().getId())
                 .displayName("수익투자자")
                 .relationship("SELF")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -170,7 +171,7 @@ class ProfitControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("수익증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -185,7 +186,7 @@ class ProfitControllerTest {
                 .quantity(100L)
                 .depositAmount(1000000L)
                 .subscribedAt(LocalDateTime.of(2026, 10, 1, 9, 0))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -201,7 +202,7 @@ class ProfitControllerTest {
                 .allocationMethod("균등배정")
                 .allocationPrice(allocationPrice)
                 .note("테스트 배정")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -244,7 +245,7 @@ class ProfitControllerTest {
                 .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
                 .listingDate(java.time.LocalDate.of(2026, 10, 15))
                 .offeringShareCount(1000000L)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -272,7 +273,7 @@ class ProfitControllerTest {
             .fee(fee)
             .tax(tax)
             .otherCost(otherCost)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -282,7 +283,7 @@ class ProfitControllerTest {
     return saved.getId();
   }
 
-  private Cost createCost(Long subscriptionId, Long amount, String status) {
+  private Cost createCost(Long subscriptionId, Long amount, RecordStatus status) {
     LocalDateTime now = LocalDateTime.now();
     Cost cost =
         Cost.builder()
@@ -350,7 +351,7 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -388,7 +389,7 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 5000L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -436,7 +437,7 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
@@ -471,7 +472,7 @@ class ProfitControllerTest {
                 .accountId(accountRepository.findByEmail(testEmail).getId())
                 .displayName("수익투자자")
                 .relationship("SELF")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -482,7 +483,7 @@ class ProfitControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("수익증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -497,7 +498,7 @@ class ProfitControllerTest {
                 .quantity(100L)
                 .depositAmount(1000000L)
                 .subscribedAt(LocalDateTime.of(2026, 10, 1, 9, 0))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -514,7 +515,7 @@ class ProfitControllerTest {
                 .allocationMethod("균등배정")
                 .allocationPrice(null)
                 .note("테스트 배정")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -584,7 +585,7 @@ class ProfitControllerTest {
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
 
     // ACTIVE Cost 100원
-    createCost(subscriptionId, 100L, "ACTIVE");
+    createCost(subscriptionId, 100L, RecordStatus.ACTIVE);
 
     // 매도 1주 (33.33 → 33)
     Long saleId1 =
@@ -628,7 +629,7 @@ class ProfitControllerTest {
     // Sale을 CANCELLED 상태로 변경
     Sale cancelled = saleRepository.findById(saleId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     saleRepository.saveAndFlush(cancelled);
@@ -650,8 +651,8 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 10000L, "ACTIVE");
-    createCost(subscriptionId, 30000L, "CANCELLED");
+    createCost(subscriptionId, 10000L, RecordStatus.ACTIVE);
+    createCost(subscriptionId, 30000L, RecordStatus.CANCELLED);
     Long saleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
@@ -689,7 +690,7 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
@@ -726,7 +727,7 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, null, null, null, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -762,7 +763,7 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
 
     // saleDate가 10/14인 Sale을 나중에 생성해도 id가 더 작으므로 정렬 검증에 영향 없음
     Long saleId2 =
@@ -857,7 +858,7 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    createCost(subscriptionId, 40000L, "ACTIVE");
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
 
     Long activeSaleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -867,7 +868,7 @@ class ProfitControllerTest {
     // CANCELLED 상태로 변경
     Sale cancelled = saleRepository.findById(cancelledSaleId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     saleRepository.saveAndFlush(cancelled);
@@ -896,7 +897,7 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    Long costId = createCost(subscriptionId, 40000L, "ACTIVE").getId();
+    Long costId = createCost(subscriptionId, 40000L, RecordStatus.ACTIVE).getId();
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -941,7 +942,7 @@ class ProfitControllerTest {
                 .accountId(accountRepository.findByEmail(testEmail).getId())
                 .displayName("수익투자자")
                 .relationship("SELF")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -952,7 +953,7 @@ class ProfitControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("수익증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -967,7 +968,7 @@ class ProfitControllerTest {
                 .quantity(100L)
                 .depositAmount(1000000L)
                 .subscribedAt(LocalDateTime.of(2026, 10, 1, 9, 0))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -983,7 +984,7 @@ class ProfitControllerTest {
                 .allocationMethod("균등배정")
                 .allocationPrice(allocationPrice)
                 .note("테스트 배정")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)

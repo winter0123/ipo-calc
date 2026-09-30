@@ -1,5 +1,6 @@
 package com.vibeaiteam.costrecording.service.cost;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostRegisterRequest;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostResponse;
@@ -26,9 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CostService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String STATUS_CANCELLED = "CANCELLED";
 
   private final CostRepository costRepository;
   private final SubscriptionRepository subscriptionRepository;
@@ -64,7 +62,7 @@ public class CostService {
             .amount(request.getAmount())
             .incurredAt(request.getIncurredAt())
             .memo(request.getMemo())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -198,7 +196,7 @@ public class CostService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
     LocalDateTime now = LocalDateTime.now(clock);
-    cost.setStatus(STATUS_CANCELLED);
+    cost.setStatus(RecordStatus.CANCELLED);
     cost.setDeletedAt(now);
     cost.setUpdatedAt(now);
     costRepository.save(cost);

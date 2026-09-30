@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
@@ -73,14 +74,15 @@ class DashboardAggregationServiceTest {
 
   private void setupEmptyMocks() {
     when(ownershipVerifier.getCurrentAccountId()).thenReturn(1L);
-    when(saleRepository.findAllByStatusAndInvestorAccountId(anyString(), anyLong()))
+    when(saleRepository.findAllByStatusAndInvestorAccountId(any(RecordStatus.class), anyLong()))
         .thenReturn(Collections.emptyList());
     when(allocationRepository.findByIdIn(anyList())).thenReturn(Collections.emptyList());
     when(subscriptionRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
     when(investorRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
     when(securitiesAccountRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
     when(securitiesFirmRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
-    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(anyList(), anyString()))
+    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
+            anyList(), any(RecordStatus.class)))
         .thenReturn(Collections.emptyList());
     when(ipoRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
   }
@@ -95,14 +97,15 @@ class DashboardAggregationServiceTest {
       List<Cost> costs,
       List<Ipo> ipos) {
     when(ownershipVerifier.getCurrentAccountId()).thenReturn(1L);
-    when(saleRepository.findAllByStatusAndInvestorAccountId(eq("ACTIVE"), eq(1L)))
+    when(saleRepository.findAllByStatusAndInvestorAccountId(eq(RecordStatus.ACTIVE), eq(1L)))
         .thenReturn(sales);
     when(allocationRepository.findByIdIn(any())).thenReturn(allocations);
     when(subscriptionRepository.findAllById(any())).thenReturn(subscriptions);
     when(investorRepository.findAllById(any())).thenReturn(investors);
     when(securitiesAccountRepository.findAllById(any())).thenReturn(securitiesAccounts);
     when(securitiesFirmRepository.findAllById(any())).thenReturn(securitiesFirms);
-    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(any(), anyString()))
+    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
+            any(), any(RecordStatus.class)))
         .thenReturn(costs);
     when(ipoRepository.findAllById(any())).thenReturn(ipos);
   }
@@ -118,7 +121,7 @@ class DashboardAggregationServiceTest {
         .tax(tax != null ? tax : 0L)
         .otherCost(otherCost != null ? otherCost : 0L)
         .saleDate(LocalDateTime.now())
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -142,7 +145,7 @@ class DashboardAggregationServiceTest {
         .tax(tax != null ? tax : 0L)
         .otherCost(otherCost != null ? otherCost : 0L)
         .saleDate(saleDate)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -157,7 +160,7 @@ class DashboardAggregationServiceTest {
         .allocationPrice(allocationPrice)
         .allocationMethod("PROPORTIONAL")
         .allocatedAt(LocalDateTime.now())
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -173,7 +176,7 @@ class DashboardAggregationServiceTest {
         .quantity(quantity)
         .depositAmount(5000000L)
         .subscribedAt(LocalDateTime.now())
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -185,7 +188,7 @@ class DashboardAggregationServiceTest {
         .accountId(accountId)
         .displayName(name)
         .relationship("SELF")
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -196,7 +199,7 @@ class DashboardAggregationServiceTest {
         .id(id)
         .securitiesFirmId(securitiesFirmId)
         .accountNumber("1234567890")
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -206,7 +209,7 @@ class DashboardAggregationServiceTest {
     return SecuritiesFirm.builder()
         .id(id)
         .name(name)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -217,7 +220,7 @@ class DashboardAggregationServiceTest {
         .id(id)
         .ipoName("테스트 IPO")
         .fixedPrice(fixedPrice)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
@@ -275,7 +278,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -294,13 +297,14 @@ class DashboardAggregationServiceTest {
     SummaryDto result = dashboardAggregationService.getSummary();
 
     // Debug: verify mocks were called
-    verify(saleRepository).findAllByStatusAndInvestorAccountId(eq("ACTIVE"), eq(1L));
+    verify(saleRepository).findAllByStatusAndInvestorAccountId(eq(RecordStatus.ACTIVE), eq(1L));
     verify(allocationRepository).findByIdIn(any());
     verify(subscriptionRepository).findAllById(any());
     verify(investorRepository).findAllById(any());
     verify(securitiesAccountRepository).findAllById(any());
     verify(securitiesFirmRepository).findAllById(any());
-    verify(costRepository).findBySubscriptionIdInAndStatusAndDeletedAtIsNull(any(), anyString());
+    verify(costRepository)
+        .findBySubscriptionIdInAndStatusAndDeletedAtIsNull(any(), any(RecordStatus.class));
     verify(ipoRepository).findAllById(any());
 
     // Then: 집계 검증
@@ -356,7 +360,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -447,7 +451,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -457,7 +461,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(2000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -467,7 +471,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(3000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -543,7 +547,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -553,7 +557,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(2000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -563,7 +567,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(3000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -623,7 +627,7 @@ class DashboardAggregationServiceTest {
             .id(1L)
             .securitiesFirmId(null)
             .accountNumber("1234567890")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -640,7 +644,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -650,7 +654,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(2000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -722,7 +726,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -732,7 +736,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(2000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -742,7 +746,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(3000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -752,7 +756,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(4000L)
             .amount(80000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -842,7 +846,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(1000L)
             .amount(100000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -852,7 +856,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(2000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -862,7 +866,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(3000L)
             .amount(150000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -872,7 +876,7 @@ class DashboardAggregationServiceTest {
             .subscriptionId(4000L)
             .amount(80000L)
             .costType("TRANSFER_FEE")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -935,7 +939,7 @@ class DashboardAggregationServiceTest {
     dashboardAggregationService.getSummary();
 
     // Then: 올바른 파라미터로 Repository 호출 확인
-    verify(saleRepository).findAllByStatusAndInvestorAccountId("ACTIVE", 1L);
+    verify(saleRepository).findAllByStatusAndInvestorAccountId(RecordStatus.ACTIVE, 1L);
   }
 
   @Test

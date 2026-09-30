@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
@@ -174,7 +175,7 @@ class ApiCredentialControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -240,7 +241,7 @@ class ApiCredentialControllerTest {
                 .accountId(other.getId())
                 .displayName("다른계정투자자")
                 .relationship("OTHER")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -249,7 +250,7 @@ class ApiCredentialControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("다른계정증권사" + nonce)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -262,7 +263,7 @@ class ApiCredentialControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -364,7 +365,7 @@ class ApiCredentialControllerTest {
         .as("DB에 평문 앱시크릿이 보이면 안 됩니다 (AC-1810)")
         .isNotEqualTo(DUMMY_APP_SECRET)
         .doesNotContain(DUMMY_APP_SECRET);
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
   }
 
@@ -470,7 +471,7 @@ class ApiCredentialControllerTest {
             .filter(c -> "KIS".equals(c.getApiProvider()))
             .findFirst()
             .orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo("INACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.INACTIVE);
     assertThat(saved.getDeletedAt()).as("소프트 삭제 시각이 설정되어야 합니다").isNotNull();
 
     // And: 이후 상태 조회는 DISCONNECTED, 재등록은 201로 허용됨

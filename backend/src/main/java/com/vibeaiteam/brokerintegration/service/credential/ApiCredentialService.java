@@ -1,5 +1,6 @@
 package com.vibeaiteam.brokerintegration.service.credential;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
@@ -39,9 +40,6 @@ public class ApiCredentialService {
   static final String CONNECTION_EXPIRED = "EXPIRED";
   static final String CONNECTION_ERROR = "ERROR";
   static final String CONNECTION_DISCONNECTED = "DISCONNECTED";
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String STATUS_INACTIVE = "INACTIVE";
 
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
@@ -97,7 +95,7 @@ public class ApiCredentialService {
             .appSecretEncrypted(brokerSecretEncryptor.encrypt(appSecret))
             .accessTokenEncrypted(null)
             .tokenExpiresAt(null)
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -164,7 +162,7 @@ public class ApiCredentialService {
 
     LocalDateTime now = LocalDateTime.now(clock);
     for (SecuritiesAccountApiCredential credential : activeCredentials) {
-      credential.setStatus(STATUS_INACTIVE);
+      credential.setStatus(RecordStatus.INACTIVE);
       credential.setDeletedAt(now);
       credential.setUpdatedAt(now);
     }

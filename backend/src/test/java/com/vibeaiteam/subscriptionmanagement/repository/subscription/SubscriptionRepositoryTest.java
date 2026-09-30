@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,7 +42,7 @@ class SubscriptionRepositoryTest {
         .depositAmount(1000000L)
         .subscribedAt(createdAt)
         .memo(memo)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
         .build();
@@ -68,7 +69,7 @@ class SubscriptionRepositoryTest {
     assertThat(found.get().getQuantity()).isEqualTo(100L);
     assertThat(found.get().getDepositAmount()).isEqualTo(1000000L);
     assertThat(found.get().getMemo()).isEqualTo("비대면 청약");
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -85,7 +86,7 @@ class SubscriptionRepositoryTest {
     subscriptionRepository.save(buildSubscription(1L, 2L, 4L, "청약B", now.plusDays(1)));
 
     Subscription cancelled = buildSubscription(1L, 2L, 5L, "취소된 청약", now.minusDays(1));
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     subscriptionRepository.saveAndFlush(cancelled);
 
@@ -108,7 +109,7 @@ class SubscriptionRepositoryTest {
     Subscription active = subscriptionRepository.save(buildSubscription(1L, 2L, 3L, null, now));
 
     Subscription cancelled = buildSubscription(1L, 2L, 4L, null, now);
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     Subscription savedCancelled = subscriptionRepository.saveAndFlush(cancelled);
 
@@ -177,14 +178,14 @@ class SubscriptionRepositoryTest {
     Optional<Subscription> found =
         subscriptionRepository
             .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
-                1L, 2L, 3L, "ACTIVE");
+                1L, 2L, 3L, RecordStatus.ACTIVE);
 
     // Then: 등록 시 중복 검사에 사용할 ACTIVE 기록이 반환된다
     assertThat(found).isPresent();
     assertThat(found.get().getInvestorId()).isEqualTo(1L);
     assertThat(found.get().getSecuritiesAccountId()).isEqualTo(2L);
     assertThat(found.get().getIpoId()).isEqualTo(3L);
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -212,7 +213,7 @@ class SubscriptionRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     Subscription existing =
         subscriptionRepository.save(buildSubscription(1L, 2L, 3L, "기존 청약", now));
-    existing.setStatus("CANCELLED");
+    existing.setStatus(RecordStatus.CANCELLED);
     existing.setDeletedAt(now);
     subscriptionRepository.saveAndFlush(existing);
 
@@ -223,6 +224,6 @@ class SubscriptionRepositoryTest {
 
     // Then: 유니크 위반 없이 저장된다 (ACTIVE 기록 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
-    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+    assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 }

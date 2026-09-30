@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,7 +43,7 @@ class IpoRepositoryTest {
             .ipoName("테스트공모주")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -58,7 +59,7 @@ class IpoRepositoryTest {
     assertThat(found.get().getIpoName()).isEqualTo("테스트공모주");
     assertThat(found.get().getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 10, 1));
     assertThat(found.get().getSubscriptionEndDate()).isEqualTo(LocalDate.of(2026, 10, 2));
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -76,7 +77,7 @@ class IpoRepositoryTest {
             .ipoName("공모주A")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -86,7 +87,7 @@ class IpoRepositoryTest {
             .ipoName("공모주B")
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now.plusDays(1))
             .updatedAt(now.plusDays(1))
             .build());
@@ -96,7 +97,7 @@ class IpoRepositoryTest {
             .ipoName("폐지공모주")
             .subscriptionStartDate(LocalDate.of(2026, 9, 1))
             .subscriptionEndDate(LocalDate.of(2026, 9, 2))
-            .status("INACTIVE")
+            .status(RecordStatus.INACTIVE)
             .deletedAt(now)
             .createdAt(now.minusDays(1))
             .updatedAt(now.minusDays(1))
@@ -124,7 +125,7 @@ class IpoRepositoryTest {
                 .ipoName("활성공모주")
                 .subscriptionStartDate(LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -135,7 +136,7 @@ class IpoRepositoryTest {
                 .ipoName("삭제공모주")
                 .subscriptionStartDate(LocalDate.of(2026, 9, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 9, 2))
-                .status("INACTIVE")
+                .status(RecordStatus.INACTIVE)
                 .deletedAt(now)
                 .createdAt(now)
                 .updatedAt(now)
@@ -165,7 +166,7 @@ class IpoRepositoryTest {
             .stockCode("123456")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -177,7 +178,7 @@ class IpoRepositoryTest {
             .stockCode("123456") // 동일 stock_code
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -200,7 +201,7 @@ class IpoRepositoryTest {
             .ipoName("공모주A")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -211,7 +212,7 @@ class IpoRepositoryTest {
             .ipoName("공모주A") // 동일 ipo_name
             .subscriptionStartDate(LocalDate.of(2026, 10, 1)) // 동일 subscription_start_date
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -235,7 +236,7 @@ class IpoRepositoryTest {
             .stockCode(null)
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -249,7 +250,7 @@ class IpoRepositoryTest {
                 .stockCode(null) // stock_code null 허용
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build());
@@ -274,11 +275,11 @@ class IpoRepositoryTest {
                 .stockCode("123456")
                 .subscriptionStartDate(LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus("INACTIVE");
+    existing.setStatus(RecordStatus.INACTIVE);
     existing.setDeletedAt(now);
     ipoRepository.saveAndFlush(existing);
 
@@ -291,14 +292,14 @@ class IpoRepositoryTest {
                 .stockCode("123456")
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build());
 
     // Then: 유니크 위반 없이 저장된다 (활성 IPO 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
-    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+    assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -312,7 +313,7 @@ class IpoRepositoryTest {
             .corpCode("12345678")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -320,7 +321,7 @@ class IpoRepositoryTest {
     // When: 저장 후 findByCorpCodeAndStatusAndDeletedAtIsNull로 조회
     Ipo saved = ipoRepository.saveAndFlush(ipo);
     Optional<Ipo> found =
-        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("12345678", "ACTIVE");
+        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("12345678", RecordStatus.ACTIVE);
 
     // Then: 저장된 IPO가 corp_code, companyName, ipoName으로 정상 조회된다
     assertThat(found).isPresent();
@@ -328,7 +329,7 @@ class IpoRepositoryTest {
     assertThat(found.get().getCorpCode()).isEqualTo("12345678");
     assertThat(found.get().getCompanyName()).isEqualTo("테스트기업");
     assertThat(found.get().getIpoName()).isEqualTo("테스트공모주");
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
   }
 
@@ -345,7 +346,7 @@ class IpoRepositoryTest {
             .corpCode("12345678")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -357,7 +358,7 @@ class IpoRepositoryTest {
             .corpCode("12345678") // 동일 corp_code
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -380,7 +381,7 @@ class IpoRepositoryTest {
             .corpCode(null)
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -394,7 +395,7 @@ class IpoRepositoryTest {
                 .corpCode(null) // corp_code null 허용
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build());
@@ -419,11 +420,11 @@ class IpoRepositoryTest {
                 .corpCode("12345678")
                 .subscriptionStartDate(LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 10, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus("INACTIVE");
+    existing.setStatus(RecordStatus.INACTIVE);
     existing.setDeletedAt(now);
     ipoRepository.saveAndFlush(existing);
 
@@ -436,13 +437,13 @@ class IpoRepositoryTest {
                 .corpCode("12345678")
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build());
 
     // Then: 유니크 위반 없이 저장된다 (활성 IPO 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
-    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+    assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 }

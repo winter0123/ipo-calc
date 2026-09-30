@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
@@ -51,7 +52,7 @@ class IpoScheduleMergeServiceTest {
   @Captor private ArgumentCaptor<Ipo> ipoCaptor;
 
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 15);
-  private static final String STATUS_ACTIVE = "ACTIVE";
+  private static final RecordStatus STATUS_ACTIVE = RecordStatus.ACTIVE;
   private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
   @BeforeEach

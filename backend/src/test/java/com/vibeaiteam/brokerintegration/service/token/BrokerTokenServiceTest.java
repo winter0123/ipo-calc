@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisAccessToken;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisAuthClient;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
@@ -298,7 +299,7 @@ class BrokerTokenServiceTest {
         .appSecretEncrypted(secretEncryptor.encrypt(DUMMY_APP_SECRET))
         .accessTokenEncrypted(accessTokenEncrypted)
         .tokenExpiresAt(tokenExpiresAt)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(now)
         .updatedAt(now)
         .build();

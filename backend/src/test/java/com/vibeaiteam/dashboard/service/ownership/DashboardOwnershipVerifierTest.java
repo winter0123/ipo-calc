@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
@@ -75,7 +76,7 @@ class DashboardOwnershipVerifierTest {
             .accountId(CURRENT_ACCOUNT_ID)
             .displayName("테스트 투자자")
             .relationship("SELF")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -86,7 +87,7 @@ class DashboardOwnershipVerifierTest {
             .accountId(OTHER_ACCOUNT_ID)
             .displayName("타인 투자자")
             .relationship("FAMILY")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -100,7 +101,7 @@ class DashboardOwnershipVerifierTest {
             .quantity(100L)
             .depositAmount(5000000L)
             .subscribedAt(LocalDateTime.now())
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -114,7 +115,7 @@ class DashboardOwnershipVerifierTest {
             .quantity(100L)
             .depositAmount(5000000L)
             .subscribedAt(LocalDateTime.now())
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -127,7 +128,7 @@ class DashboardOwnershipVerifierTest {
             .allocatedAt(LocalDateTime.now())
             .allocationMethod("PROPORTIONAL")
             .allocationPrice(10000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -140,7 +141,7 @@ class DashboardOwnershipVerifierTest {
             .allocatedAt(LocalDateTime.now())
             .allocationMethod("PROPORTIONAL")
             .allocationPrice(10000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -152,7 +153,7 @@ class DashboardOwnershipVerifierTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(LocalDateTime.now())
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
@@ -164,7 +165,7 @@ class DashboardOwnershipVerifierTest {
             .quantity(20L)
             .amount(200000L)
             .saleDate(LocalDateTime.now())
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();

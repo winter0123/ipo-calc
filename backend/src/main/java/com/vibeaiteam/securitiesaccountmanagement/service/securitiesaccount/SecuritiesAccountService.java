@@ -1,5 +1,6 @@
 package com.vibeaiteam.securitiesaccountmanagement.service.securitiesaccount;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
@@ -35,10 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class SecuritiesAccountService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String DEFAULT_STATUS = STATUS_ACTIVE;
-  private static final Set<String> SUPPORTED_STATUS = Set.of("ACTIVE", "INACTIVE", "BOTH");
+  private static final String DEFAULT_STATUS = RecordStatus.ACTIVE.name();
+  private static final Set<String> SUPPORTED_STATUS =
+      Set.of(RecordStatus.ACTIVE.name(), RecordStatus.INACTIVE.name(), "BOTH");
 
   private final InvestorRepository investorRepository;
   private final SecuritiesFirmRepository securitiesFirmRepository;
@@ -87,7 +87,7 @@ public class SecuritiesAccountService {
             .accountNumber(accountNumberEncryptor.encrypt(plainAccountNumber))
             .accountName(request.getAccountName())
             .isDefault(isDefault)
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -121,7 +121,8 @@ public class SecuritiesAccountService {
     List<SecuritiesAccount> accounts =
         "BOTH".equals(normalized)
             ? securitiesAccountRepository.findByInvestorId(investorId)
-            : securitiesAccountRepository.findByInvestorIdAndStatus(investorId, normalized);
+            : securitiesAccountRepository.findByInvestorIdAndStatus(
+                investorId, RecordStatus.valueOf(normalized));
 
     return accounts.stream().map(this::toMaskedResponse).toList();
   }
@@ -207,7 +208,7 @@ public class SecuritiesAccountService {
           securitiesFirmRepository
               .findById(request.getSecuritiesFirmId())
               .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 증권사입니다"));
-      if (!STATUS_ACTIVE.equals(firm.getStatus())) {
+      if (firm.getStatus() != RecordStatus.ACTIVE) {
         throw new SecuritiesAccountValidationException("비활성화된 증권사로는 변경할 수 없습니다.");
       }
       account.setSecuritiesFirmId(request.getSecuritiesFirmId());
@@ -244,7 +245,7 @@ public class SecuritiesAccountService {
     }
 
     LocalDateTime now = LocalDateTime.now(clock);
-    account.setStatus("INACTIVE");
+    account.setStatus(RecordStatus.INACTIVE);
     account.setDeletedAt(now);
     // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
     if (Boolean.TRUE.equals(account.getIsDefault())) {
@@ -276,7 +277,7 @@ public class SecuritiesAccountService {
       throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
     }
 
-    if (!STATUS_ACTIVE.equals(account.getStatus())) {
+    if (account.getStatus() != RecordStatus.ACTIVE) {
       throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
     }
 
