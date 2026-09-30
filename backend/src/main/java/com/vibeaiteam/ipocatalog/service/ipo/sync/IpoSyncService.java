@@ -151,29 +151,13 @@ public class IpoSyncService {
           return result;
         }
         // 그 외 API 오류는 해당 건만 실패 처리하고 계속
-        result
-            .getFailures()
-            .add(
-                IpoSyncFailure.builder()
-                    .corpCode(corpCode)
-                    .corpName(corpName)
-                    .reason("DS006 조회 실패: " + e.getMessage())
-                    .build());
-        result.setFailureCount(result.getFailureCount() + 1);
+        recordFailure(result, corpCode, corpName, "DS006 조회 실패: " + e.getMessage());
         log.warn("DS006 조회 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
         continue;
       }
 
       if (details == null || details.isEmpty()) {
-        result
-            .getFailures()
-            .add(
-                IpoSyncFailure.builder()
-                    .corpCode(corpCode)
-                    .corpName(corpName)
-                    .reason("DS006 상세 정보 없음 (빈 응답)")
-                    .build());
-        result.setFailureCount(result.getFailureCount() + 1);
+        recordFailure(result, corpCode, corpName, "DS006 상세 정보 없음 (빈 응답)");
         log.warn("DS006 빈 응답: corpCode={}, corpName={}", corpCode, corpName);
         continue;
       }
@@ -183,15 +167,8 @@ public class IpoSyncService {
 
       // subscriptionStartDate가 null이면 실패 처리
       if (detail.getSubscriptionStartDate() == null) {
-        result
-            .getFailures()
-            .add(
-                IpoSyncFailure.builder()
-                    .corpCode(corpCode)
-                    .corpName(corpName)
-                    .reason("청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")")
-                    .build());
-        result.setFailureCount(result.getFailureCount() + 1);
+        recordFailure(
+            result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
         log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
         continue;
       }
@@ -204,15 +181,7 @@ public class IpoSyncService {
             } catch (Exception e) {
               // 트랜잭션 롤백 표시 (이미 롤백됨)
               status.setRollbackOnly();
-              result
-                  .getFailures()
-                  .add(
-                      IpoSyncFailure.builder()
-                          .corpCode(corpCode)
-                          .corpName(corpName)
-                          .reason("처리 중 예외: " + e.getMessage())
-                          .build());
-              result.setFailureCount(result.getFailureCount() + 1);
+              recordFailure(result, corpCode, corpName, "처리 중 예외: " + e.getMessage());
               log.warn("IPO 처리 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
             }
           });
@@ -228,22 +197,33 @@ public class IpoSyncService {
         result.getFailureCount(),
         result.isAborted());
 
-    // OpenDART 루프가 중단 없이 완료된 경우에만 ustockplus 일정 병합 시도
-    if (!result.isAborted()) {
-      try {
-        int merged = ipoScheduleMergeService.merge(LocalDate.now(clock));
-        result.setScheduleMerged(merged);
-        log.info("ustockplus 일정 병합 완료: merged={}", merged);
-      } catch (Exception e) {
-        // 병합 중 예외가 나도 OpenDART 결과는 그대로 반환 (WARN 로그만)
-        log.warn("ustockplus 일정 병합 중 예외 발생 (OpenDART 결과 유지): {}", e.getMessage());
-        result.setScheduleMerged(0);
-      }
-    } else {
-      result.setScheduleMerged(0);
-    }
+    mergeSchedule(result);
 
     return result;
+  }
+
+  private static void recordFailure(
+      IpoSyncResult result, String corpCode, String corpName, String reason) {
+    result
+        .getFailures()
+        .add(IpoSyncFailure.builder().corpCode(corpCode).corpName(corpName).reason(reason).build());
+    result.setFailureCount(result.getFailureCount() + 1);
+  }
+
+  /** OpenDART 루프가 중단 없이 완료된 경우에만 ustockplus 일정을 병합한다. 병합 예외는 삼킨다. */
+  private void mergeSchedule(IpoSyncResult result) {
+    if (result.isAborted()) {
+      result.setScheduleMerged(0);
+      return;
+    }
+    try {
+      int merged = ipoScheduleMergeService.merge(LocalDate.now(clock));
+      result.setScheduleMerged(merged);
+      log.info("ustockplus 일정 병합 완료: merged={}", merged);
+    } catch (Exception e) {
+      log.warn("ustockplus 일정 병합 중 예외 발생 (OpenDART 결과 유지): {}", e.getMessage());
+      result.setScheduleMerged(0);
+    }
   }
 
   /** 단일 IPO 처리 (독립 트랜잭션 내부에서 호출). */
