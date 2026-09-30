@@ -144,6 +144,10 @@ PR별 실제 사용 기록 표는 다음과 같다.
 | 2026-09-30 | #199 | Epic 17 KRX 휴장일 DB 테이블 + 월간 KASI 배치 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 예외 메시지로 서비스 키가 샐 수 있었고, 서비스가 `RestClient.Builder`에 의존, 서비스에 `@ConditionalOnProperty`, 테스트에 우회용 `@MockBean` | 보안 요건(키 로깅·예외 금지)을 스펙에 적었는데도 누락. 같은 결함이 SF-3에서도 있었으므로 워커 지시서에 "예외 메시지에 URL 금지"와 "슬라이스 호환 빈"을 체크리스트로 고정 |
 | 2026-09-30 | #200 | Epic 17 SF-4: OpenDART 일일 스케줄러 + 재시도 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 재시도 테스트 3건 실패, 범위 밖 `syncManual` 추가, 예외 메시지·스택트레이스 로깅, 빌드 중 동시 gradle 실행 | 스펙에 없는 메서드를 임의로 추가하는 경향. 로그에는 예외 클래스명만 남기라는 규칙을 반복 명시하고, 워커가 살아있는 동안 Master는 같은 워크트리에서 빌드하지 않는다 |
 | 2026-09-30 | #201 | Epic 19 SF-2: 공모주 일정 달력 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 상태 업데이터 내 부수효과, 시스템 시간 미고정 테스트, `listingDate` null 타입 누락, 들여쓰기 훼손 | 날짜 의존 테스트는 시간 고정을 스펙에 명시. 타입은 백엔드 응답의 null 가능 필드까지 대조하게 한다 |
+| 2026-09-30 | #214 | Epic 18 SF-2b: 증권계좌 API 자격증명 등록·조회·해제 | Implementation | opencode/mimo-v2.6-flash-free | 재작업 없이 통과 — Master가 전체 650 tests와 checkstyle 0을 직접 확인, 비밀값이 응답·`toString`에 없음을 코드로 확인 | OpenRouter 일일 한도 소진 후 Zen 전환 구간에서의 성공 사례. 스펙에 소유권 2단계·키 미설정 시 비활성을 명시했음 |
+| 2026-09-30 | #215 | 인프라: DB 슬롯 풀 + `DB_NAME` 오버라이드 | Implementation | opencode/big-pickle | 통과, 단 범위 밖 발견을 스스로 에스컬레이션 — 슬롯을 새로 만든 DB에서 기존 테스트 17건이 실패함을 발견하고 자기 변경이 원인이 아님을 기본 DB 전후 비교로 입증. Master가 슬롯 4에서 622/17/0으로 재현 | 스펙에 "기존 문제라고 주장하려면 근거를 붙여라"를 넣은 효과. 범위를 벗어난 테스트 수정을 하지 않고 결정을 요청함 |
+
+**2026-09-30 운영 사건(모델 품질과 분리해 기록)**: ① OpenRouter 일일 무료 한도 소진 → OpenCode Zen 무료 모델로 전환, 사용자 지시로 Nemotron 계열 제외(사용 모델: `big-pickle`, `mimo-v2.6-flash-free`, `longcat-2.5-preview-free`). ② `ling-3.0-flash-fin-free`는 제공자 오류로 사용 불가. ③ 터미널에 504 타임아웃이 뜬 채 입력 대기로 멈춘 워커를 watchdog이 OK로 판정 → 감지 패턴과 `esc interrupt` 부재 감지 추가(#208). ④ 존재하지 않는 모델 ID를 주면 조용히 다른 모델로 폴백됨 → `Build ·` 줄 확인 규칙. ⑤ Laguna 계열 정체, Nemotron Super의 품질·비용 한계는 세부 수치를 남기지 못했다(당시 Master 기록 누락).
 
 이후 Master가 각 PR을 병합·검증할 때마다 한 줄씩 추가한다. 기록에는 모델명뿐 아니라 역할, 실제 결과, 재작업 여부, 실패 원인 분류(모델 문제/인프라 문제/지시 문제)를 포함한다. 과거 PR의 모델은 추측하지 않는다.
 

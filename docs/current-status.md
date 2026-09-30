@@ -1,6 +1,28 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+> 마지막 갱신: 2026-09-30 세션 종료 시점. **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+
 > 마지막 갱신: 2026-09-29 세션 종료 시점(5차 재개 세션). **로드맵 16개 Epic 전체 구현 완료 + 알려진 부채 전부 해소 + 스코프 확장(Epic 17~19)의 spec 2건과 첫 구현 3건(E19 SF-1, E17 SF-1, ipos.corp_code) 병합 완료.** 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+
+## 세션 요약 (2026-09-30, Epic 17·18 구현 + 워커 운영 개선) — 최신
+
+상세는 `docs/daily-log/2026_09_30.md`, 결정·검증은 `docs/work-log/broker-readonly-api-pilot.md`를 진실 소스로 한다.
+
+**병합(#203~#216)**: 프로덕션 checkstyle 528건 정리(#203), E18 SF-1(#204)·SF-2a(#205)·SF-3a(#210)·SF-3b(#212)·SF-4a(#207)·SF-2b(#214), E17 SF-2 클라이언트(#206)·SF-3 일정 병합(#211), watchdog 504·정체 감지(#208), 운영 문서(#209), 들여쓰기 2칸(#213), DB 슬롯 풀(#215), 테스트 격리 수정(#216). Master가 SF-2b·슬롯 풀을 직접 검증했다(SF-2b 650 tests 통과, checkstyle 0).
+
+**Epic 18 사용자 결정 확정**: 매도 자동 채움은 `TTTC8715R`, 실계좌 1회 호출은 SF-3 이후 Master가 수행, E17 SF-2 유지. 조회 전용 = 주문·정정·취소 코드를 만들지 않는다는 뜻이며 ArchUnit으로 강제한다.
+
+**막힌 곳(사용자 입력 필요)**:
+1. **KIS 앱키를 `.env`에 넣는 일**(지금은 발급 불가). 그 뒤 Master가 실계좌를 1회 호출해 필드·`pdno` 형식을 확인하고 SF-4b → SF-5 → SF-6(프론트)을 진행한다. 변수 이름, 알려진 공모주 매도일, 숫자값을 출력에 볼지 형태만 볼지는 아직 답이 없다.
+2. **E17 SF-2(ustockplus) 폐기 여부**: 클라이언트(#206)는 병합됐으나 동기화에는 붙이지 않은 상태다.
+
+**DB 슬롯 풀(#215)**: 슬롯 `vibe_slot_1~4`(1~3 워커, 4 Master). `scripts/db-slot.sh reset <n>` 후 `DB_NAME=vibe_slot_<n>`으로 테스트한다. **슬롯을 새로 만든 DB에서 전체 테스트가 622개 중 17개 실패한다** — V15 시드 증권사 14개와 테스트 하드코딩 이름 충돌, 그리고 `SecuritiesFirmControllerTest`의 tearDown이 시드 행을 삭제하는 기존 테스트 결함(#215가 만든 회귀 아님, Master가 슬롯 4에서 재현). 이 결함이 기본 공유 DB의 `securities_firms`가 0행이던 이유다. 별도 SF로 수정해 **#216으로 병합**했다(4개 클래스: 위 3개 + 그 수정으로 드러난 `SecuritiesFirmRepositoryTest`, 범위 확장은 Master 승인). Master가 슬롯 4를 reset한 직후 전체 테스트 650개 통과, reset 없이 재실행도 650개 통과, 시드 증권사 15개 보존, checkstyle 0을 직접 확인했다. 이제 슬롯은 reset 직후에도 전체 테스트가 통과해야 정상이다. 참고: 기본 공유 DB의 `securities_firms`는 과거 테스트가 시드를 지운 잔해라 0행일 수 있고 기능에는 영향이 없다.
+
+**진행 중인 워커 없음.** 이번 Run의 SF task는 전부 completed(각각 Master 직접 검증, `gh pr view` 병합 확인, 터미널·워크트리 정리 완료).
+
+**운영 변경**: OpenRouter 일일 한도 소진 시 Zen 무료 모델(Nemotron 제외)로 전환, 잘못된 모델 ID는 조용히 폴백되므로 `Build ·` 줄 확인, watchdog은 504·`esc interrupt` 부재도 감지(감지 전용, 재배정은 Master), 완료 알림은 받는 즉시 ack, 병합 후 워커 터미널·워크트리 즉시 정리, 들여쓰기 2칸. 자세한 근거는 AGENTS.md 8~9장, `docs/guide-backend.md` 5절, `docs/ai-free-model.md`.
+
+**정리 대기(사용자 소유 변경)**: 메인 체크아웃에 커밋되지 않은 `docs/project-agent-guide.md` 수정(요약 표 재정렬 + 대기 방식 문구 변경)과 `docs/prompt-{backend,frontend,planning}.md` 삭제가 남아 있다. Master는 손대지 않았다. `CLAUDE.md`는 checkstyle 플러그인이 "아직 없다"고 적고 `--rerun`을 안내하는 등 낡았으니 사용자 승인 후 고친다.
 
 ## 세션 요약 (2026-09-29, 5차 재개 — Epic 17~19 spec + 첫 구현 3건)
 
