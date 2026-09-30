@@ -12,6 +12,7 @@
 - **세션 쿠키·remember-me(#245)**: `HttpOnly`·`SameSite=Lax`·`Secure`를 설정 한 곳(`server.servlet.session.cookie.*`, `SessionCookieWriter`)으로 단일화. **운영 배포 시 `SESSION_COOKIE_SECURE=true`와 `APP_REMEMBER_ME_KEY` 환경변수를 반드시 설정**(키 미설정이면 부팅마다 무작위 키 + WARN, 재시작 시 remember-me 무효). 프론트와 API는 같은 도메인/프록시여야 SameSite=Lax가 동작한다.
 - **E2E 10/10(#246·#247)**: 거래 흐름 시나리오 7~10 추가(청약→배정→분할 매도→대시보드 안분→소유권 격리). 처음 실측에서 E2E-7이 실패해 청약 등록 화면이 UI로는 열리지 않는 결함을 찾았고(증권계좌 조회에 `investorId` 누락), #247로 수정했다. 같은 PR에서 2026-09를 하드코딩한 UI 테스트 6건(10월부터 실패)을 날짜 고정으로 고쳤다. **7~10 실행에는 `E2E_DB_NAME`(슬롯 DB 이름) 환경변수가 필수**다. 자세한 실행법은 `docs/qa/e2e-report.md`.
 - **2차 리팩토링(#249~#254, 동작 불변, 테스트·E2E 그대로 통과)**: `IpoSyncService`(실패 기록·일정 병합 추출), `SecuritiesAccountService`(소유권 확인 조회 3종 추출), `IpoService.update`(`pick`·`findActive`), `MarketHolidaySyncService`(휴장일 삽입 추출), UI `SaleRegisterForm`(선택 숫자 필드 5개 통합), 체크스타일 경고 1건. `SubscriptionService`·`SubscriptionRegisterForm`은 이미 정리돼 있어 그대로 뒀다.
+- **UI 폼 잔여물 정리(#257, 동작 불변, UI 266 테스트·E2E 10/10)**: 주석뿐인/빈 `onError`·`onSuccess` 제거, `getFormErrorMessage()` 이중 호출을 `formErrorMessage` 1회 계산으로 통일(8개 폼), `CostRegisterForm` 도달 불가 `disabled` 조건·`AllocationRegisterForm` 낡은 주석 제거. 공용 `FormField`는 재도입하지 않았다.
 - **여전히 남은 것**: KIS 키 대기(아래 BLOCKED), 400 대 404 불일치는 없다(spec 확인 결과: 목록의 없는 투자자는 404, 계좌 수정의 없는 증권사는 spec AC-011이 400 — 둘 다 테스트로 고정).
 
 ## 야간 자율 작업 결과 (2026-09-30, #227~#239)
