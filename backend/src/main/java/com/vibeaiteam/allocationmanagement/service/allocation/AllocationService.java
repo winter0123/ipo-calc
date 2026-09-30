@@ -10,6 +10,7 @@ import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class AllocationService {
 
   private final AllocationRepository allocationRepository;
   private final SubscriptionRepository subscriptionRepository;
+  private final Clock clock;
 
   /**
    * 배정을 등록한다.
@@ -47,7 +49,7 @@ public class AllocationService {
 
     checkDuplicate(request.getSubscriptionId());
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Allocation allocation =
         Allocation.builder()
             .subscriptionId(request.getSubscriptionId())
@@ -205,7 +207,7 @@ public class AllocationService {
       allocation.setNote(updatedNote);
     }
 
-    allocation.setUpdatedAt(LocalDateTime.now());
+    allocation.setUpdatedAt(LocalDateTime.now(clock));
     try {
       Allocation saved = allocationRepository.save(allocation);
       return AllocationResponse.from(saved);
@@ -225,7 +227,7 @@ public class AllocationService {
         allocationRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     allocation.setStatus("CANCELLED");
     allocation.setDeletedAt(now);
     allocation.setUpdatedAt(now);

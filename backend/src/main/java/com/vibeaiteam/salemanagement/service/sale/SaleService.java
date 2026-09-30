@@ -10,6 +10,7 @@ import com.vibeaiteam.salemanagement.controller.sale.exception.SaleNotFoundExcep
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleValidationException;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class SaleService {
 
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
+  private final Clock clock;
 
   /**
    * 매도를 등록한다.
@@ -59,7 +61,7 @@ public class SaleService {
               + allocation.getAllocatedQuantity());
     }
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Sale sale =
         Sale.builder()
             .allocationId(allocation.getId())
@@ -167,7 +169,7 @@ public class SaleService {
       sale.setOtherCost(request.getOtherCost());
     }
 
-    sale.setUpdatedAt(LocalDateTime.now());
+    sale.setUpdatedAt(LocalDateTime.now(clock));
     Sale saved = saleRepository.save(sale);
     return SaleResponse.from(saved);
   }
@@ -244,7 +246,7 @@ public class SaleService {
         saleRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     sale.setStatus("CANCELLED");
     sale.setDeletedAt(now);
     sale.setUpdatedAt(now);

@@ -6,6 +6,7 @@ import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccoun
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -51,6 +52,7 @@ public class BrokerTokenService {
   private final KisAuthClient authClient;
   private final BrokerSecretEncryptor secretEncryptor;
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
+  private final Clock clock;
 
   /** 인증정보 ID별 발급 락. 인증정보 수만큼만 늘어나므로 제거하지 않는다. */
   private final Map<Long, ReentrantLock> issuanceLocks = new ConcurrentHashMap<>();
@@ -61,14 +63,17 @@ public class BrokerTokenService {
    * @param authClient 접근토큰 발급 클라이언트
    * @param secretEncryptor 시크릿 암호화 유틸리티
    * @param credentialRepository 인증정보 리포지터리
+   * @param clock 시각 기준
    */
   public BrokerTokenService(
       KisAuthClient authClient,
       BrokerSecretEncryptor secretEncryptor,
-      SecuritiesAccountApiCredentialRepository credentialRepository) {
+      SecuritiesAccountApiCredentialRepository credentialRepository,
+      Clock clock) {
     this.authClient = authClient;
     this.secretEncryptor = secretEncryptor;
     this.credentialRepository = credentialRepository;
+    this.clock = clock;
   }
 
   /**
@@ -141,7 +146,7 @@ public class BrokerTokenService {
     if (encryptedToken == null || encryptedToken.isBlank() || expiresAt == null) {
       return null;
     }
-    if (!expiresAt.isAfter(LocalDateTime.now().plus(REFRESH_MARGIN))) {
+    if (!expiresAt.isAfter(LocalDateTime.now(clock).plus(REFRESH_MARGIN))) {
       return null;
     }
     return new KisAccessToken(secretEncryptor.decrypt(encryptedToken), expiresAt);
@@ -174,7 +179,7 @@ public class BrokerTokenService {
 
     credential.setAccessTokenEncrypted(secretEncryptor.encrypt(issued.token()));
     credential.setTokenExpiresAt(issued.expiresAt());
-    credential.setUpdatedAt(LocalDateTime.now());
+    credential.setUpdatedAt(LocalDateTime.now(clock));
     credentialRepository.save(credential);
     log.info(
         "브로커 접근토큰 캐시 갱신: credentialId={}, expiresAt={}",

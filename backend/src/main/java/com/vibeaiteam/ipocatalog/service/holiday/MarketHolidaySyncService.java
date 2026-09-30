@@ -3,6 +3,7 @@ package com.vibeaiteam.ipocatalog.service.holiday;
 import com.vibeaiteam.ipocatalog.domain.model.holiday.MarketHoliday;
 import com.vibeaiteam.ipocatalog.repository.holiday.MarketHolidayRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.BusinessDayCalculator;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +39,7 @@ public class MarketHolidaySyncService {
   private final BusinessDayCalculator businessDayCalculator;
   private final DataGoKrApiProperties dataGoKrApiProperties;
   private final KasiSpecialDayClient kasiClient;
+  private final Clock clock;
 
   /**
    * 지정된 연도들의 휴장일을 동기화한다.
@@ -153,7 +155,7 @@ public class MarketHolidaySyncService {
                       .holidayDate(date)
                       .name(name)
                       .source(source)
-                      .createdAt(LocalDateTime.now())
+                      .createdAt(LocalDateTime.now(clock))
                       .build();
               marketHolidayRepository.save(holiday);
               yearResult.incrementInserted();
@@ -170,7 +172,7 @@ public class MarketHolidaySyncService {
               .holidayDate(date)
               .name(name)
               .source(source)
-              .createdAt(LocalDateTime.now())
+              .createdAt(LocalDateTime.now(clock))
               .build();
       marketHolidayRepository.save(holiday);
       yearResult.incrementInserted();

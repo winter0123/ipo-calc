@@ -14,6 +14,7 @@ import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosur
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,7 @@ class OpenDartCorpDisclosureClientTest {
             .requestFactory(restTemplate.getRequestFactory())
             .build();
     properties = new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr");
-    client = new OpenDartCorpDisclosureClient(restClient, properties);
+    client = new OpenDartCorpDisclosureClient(restClient, properties, Clock.systemDefaultZone());
     objectMapper = new ObjectMapper();
   }
 
@@ -256,7 +257,8 @@ class OpenDartCorpDisclosureClientTest {
     // given
     OpenDartApiProperties emptyProps = new OpenDartApiProperties("", "https://opendart.fss.or.kr");
     OpenDartCorpDisclosureClient clientWithEmptyKey =
-        new OpenDartCorpDisclosureClient(RestClient.builder(), emptyProps);
+        new OpenDartCorpDisclosureClient(
+            RestClient.builder(), emptyProps, Clock.systemDefaultZone());
 
     // when & then
     assertThatThrownBy(() -> clientWithEmptyKey.searchRecentEquitySecuritiesCompanies(7))

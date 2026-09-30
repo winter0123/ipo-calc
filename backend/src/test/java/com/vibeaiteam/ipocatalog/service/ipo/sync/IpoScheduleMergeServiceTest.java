@@ -16,8 +16,10 @@ import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusScheduleDates;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,11 +52,16 @@ class IpoScheduleMergeServiceTest {
 
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 15);
   private static final String STATUS_ACTIVE = "ACTIVE";
+  private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
   @BeforeEach
   void setUp() {
     mergeService =
-        new IpoScheduleMergeService(ustockPlusCalendarClient, ipoRepository, transactionTemplate);
+        new IpoScheduleMergeService(
+            ustockPlusCalendarClient,
+            ipoRepository,
+            transactionTemplate,
+            Clock.fixed(TODAY.atStartOfDay(SEOUL).toInstant(), SEOUL));
   }
 
   private UstockPlusScheduleDates createSchedule(

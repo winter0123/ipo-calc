@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.holiday;
 
+import java.time.Clock;
 import java.time.Year;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Component;
 public class MarketHolidaySyncScheduler {
 
   private final MarketHolidaySyncService marketHolidaySyncService;
+  private final Clock clock;
 
   /**
    * 매월 1일 03:00(KST) 실행.
@@ -32,7 +34,7 @@ public class MarketHolidaySyncScheduler {
    */
   @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Seoul")
   public void syncMonthly() {
-    int thisYear = Year.now().getValue();
+    int thisYear = Year.now(clock).getValue();
     int nextYear = thisYear + 1;
 
     log.info("월간 휴장일 동기화 시작: targetYears=[{}, {}]", thisYear, nextYear);

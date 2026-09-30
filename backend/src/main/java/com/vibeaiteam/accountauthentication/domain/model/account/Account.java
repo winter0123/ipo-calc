@@ -72,8 +72,14 @@ public class Account {
     this.failedLoginAttempts = 0;
   }
 
-  public boolean isAccountLocked() {
-    return this.lockedUntil != null && this.lockedUntil.isAfter(LocalDateTime.now());
+  /**
+   * 주어진 시각 기준으로 계정이 잠겨 있는지 반환한다.
+   *
+   * @param now 현재 시각
+   * @return 잠금 만료 전이면 true
+   */
+  public boolean isAccountLocked(LocalDateTime now) {
+    return this.lockedUntil != null && this.lockedUntil.isAfter(now);
   }
 
   /**

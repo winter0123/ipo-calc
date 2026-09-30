@@ -15,6 +15,7 @@ import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionForbiddenExce
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionNotFoundException;
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionValidationException;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class SubscriptionService {
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final IpoRepository ipoRepository;
   private final SecurityUtils securityUtils;
+  private final Clock clock;
 
   /**
    * 청약을 등록한다.
@@ -60,7 +62,7 @@ public class SubscriptionService {
 
     checkDuplicate(investorId, securitiesAccountId, ipoId, null);
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Subscription subscription =
         Subscription.builder()
             .investorId(investorId)
@@ -201,7 +203,7 @@ public class SubscriptionService {
       subscription.setMemo(request.getMemo());
     }
 
-    subscription.setUpdatedAt(LocalDateTime.now());
+    subscription.setUpdatedAt(LocalDateTime.now(clock));
     try {
       Subscription saved = subscriptionRepository.save(subscription);
       return SubscriptionResponse.from(saved);
@@ -221,7 +223,7 @@ public class SubscriptionService {
         subscriptionRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     subscription.setStatus(STATUS_CANCELLED);
     subscription.setDeletedAt(now);
     subscription.setUpdatedAt(now);

@@ -9,6 +9,7 @@ import com.vibeaiteam.accountauthentication.repository.account.AccountRepository
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class SignupService {
 
   private final AccountRepository accountRepository;
   private final PasswordEncoder passwordEncoder;
+  private final Clock clock;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -63,8 +65,8 @@ public class SignupService {
             .name(request.getName())
             .failedLoginAttempts(0)
             .lockedUntil(null)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
+            .createdAt(LocalDateTime.now(clock))
+            .updatedAt(LocalDateTime.now(clock))
             .build();
 
     Account savedAccount = accountRepository.saveAndFlush(account);

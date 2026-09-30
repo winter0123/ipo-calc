@@ -4,6 +4,7 @@ import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusScheduleDates;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,6 +62,7 @@ public class IpoScheduleMergeService {
   private final UstockPlusCalendarClient ustockPlusCalendarClient;
   private final IpoRepository ipoRepository;
   private final TransactionTemplate transactionTemplate;
+  private final Clock clock;
 
   /**
    * 오늘 기준 과거 30일 ~ 미래 59일(총 89일) ustockplus 일정을 조회해 기존 IPO 레코드에 병합한다.
@@ -183,7 +185,7 @@ public class IpoScheduleMergeService {
 
     // 메타데이터 갱신
     target.setSyncSource(SYNC_SOURCE_MERGED);
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     target.setLastSyncedAt(now);
     target.setUpdatedAt(now);
 

@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +34,7 @@ public class IpoSyncScheduler {
 
   private final IpoSyncService ipoSyncService;
   private final TaskScheduler taskScheduler;
+  private final Clock clock;
 
   @Value("${app.ipo-sync.days-back:90}")
   private int daysBack;
@@ -99,7 +101,7 @@ public class IpoSyncScheduler {
     }
 
     Duration delay = RETRY_DELAYS.get(attempt);
-    Instant nextRun = Instant.now().plus(delay);
+    Instant nextRun = Instant.now(clock).plus(delay);
 
     log.info("IPO 동기화 재시도 예약: attempt={}, delay={}, nextRun={}", attempt + 1, delay, nextRun);
 

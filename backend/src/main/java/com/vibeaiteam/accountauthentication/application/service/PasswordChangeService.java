@@ -7,6 +7,7 @@ import com.vibeaiteam.accountauthentication.exception.ValidationFailedException;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +28,7 @@ public class PasswordChangeService {
   private final AccountRepository accountRepository;
   private final PasswordEncoder passwordEncoder;
   private final SessionRegistry sessionRegistry;
+  private final Clock clock;
 
   /**
    * 현재 비밀번호를 확인한 뒤 새 비밀번호로 변경한다.
@@ -50,7 +52,7 @@ public class PasswordChangeService {
 
     String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
     account.setPasswordHash(newPasswordHash);
-    account.setUpdatedAt(LocalDateTime.now());
+    account.setUpdatedAt(LocalDateTime.now(clock));
     accountRepository.saveAndFlush(account);
 
     invalidateOtherSessions(httpServletRequest);

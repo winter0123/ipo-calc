@@ -19,7 +19,10 @@ import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -59,6 +62,7 @@ class BrokerTokenServiceTest {
   private BrokerSecretEncryptor secretEncryptor;
   private KisAuthClient authClient;
   private SecuritiesAccountApiCredentialRepository credentialRepository;
+  private final Clock clock = Clock.fixed(Instant.parse("2026-10-15T00:00:00Z"), ZoneOffset.UTC);
   private BrokerTokenService service;
   private SecuritiesAccountApiCredential credential;
   private LoggerContext loggerContext;
@@ -69,7 +73,7 @@ class BrokerTokenServiceTest {
     secretEncryptor = new BrokerSecretEncryptor(DUMMY_ENCRYPTION_KEY);
     authClient = mock(KisAuthClient.class);
     credentialRepository = mock(SecuritiesAccountApiCredentialRepository.class);
-    service = new BrokerTokenService(authClient, secretEncryptor, credentialRepository);
+    service = new BrokerTokenService(authClient, secretEncryptor, credentialRepository, clock);
 
     credential = buildCredential(null, null);
 
@@ -95,7 +99,8 @@ class BrokerTokenServiceTest {
   void getValidToken_validCachedToken_reusesCacheWithoutIssuing() {
     // Given: 만료 시각이 5분 여유를 넘게 남아 있는 캐시 토큰
     credential =
-        buildCredential(secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now().plusHours(12));
+        buildCredential(
+            secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now(clock).plusHours(12));
 
     // When
     KisAccessToken token = service.getValidToken(credential);
@@ -112,7 +117,7 @@ class BrokerTokenServiceTest {
     // Given: 만료 시각이 5분 여유 안에 들어온 캐시 토큰(아직 만료 전이지만 재사용하면 안 된다)
     credential =
         buildCredential(
-            secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now().plusMinutes(2));
+            secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now(clock).plusMinutes(2));
     stubSuccessfulIssuance();
 
     // When
@@ -165,7 +170,7 @@ class BrokerTokenServiceTest {
               issueCount.incrementAndGet();
               // 락이 없다면 다른 스레드와 발급이 겹치는 상황을 재현하기 위한 지연.
               Thread.sleep(50);
-              return new KisAccessToken(ISSUED_TOKEN, LocalDateTime.now().plusDays(1));
+              return new KisAccessToken(ISSUED_TOKEN, LocalDateTime.now(clock).plusDays(1));
             });
 
     int callers = 10;
@@ -218,7 +223,7 @@ class BrokerTokenServiceTest {
   void getValidToken_issuanceFails_keepsStaleCacheUntouched() {
     // Given: 이미 만료된 캐시 토큰이 있고 재발급이 실패한다.
     String staleCiphertext = secretEncryptor.encrypt(CACHED_TOKEN);
-    credential = buildCredential(staleCiphertext, LocalDateTime.now().minusMinutes(1));
+    credential = buildCredential(staleCiphertext, LocalDateTime.now(clock).minusMinutes(1));
     when(authClient.issueToken(anyString(), anyString()))
         .thenThrow(new BrokerApiException("token_issue_failed", "KIS 토큰 발급 중 오류 발생"));
 
@@ -235,7 +240,8 @@ class BrokerTokenServiceTest {
   void getValidToken_byCredentialId_looksUpCredentialAndReusesCache() {
     // Given: ID로 조회되는 인증정보에 유효한 캐시 토큰이 있다.
     credential =
-        buildCredential(secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now().plusHours(12));
+        buildCredential(
+            secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now(clock).plusHours(12));
 
     // When
     KisAccessToken token = service.getValidToken(CREDENTIAL_ID);
@@ -278,12 +284,12 @@ class BrokerTokenServiceTest {
 
   private void stubSuccessfulIssuance() {
     when(authClient.issueToken(anyString(), anyString()))
-        .thenReturn(new KisAccessToken(ISSUED_TOKEN, LocalDateTime.now().plusDays(1)));
+        .thenReturn(new KisAccessToken(ISSUED_TOKEN, LocalDateTime.now(clock).plusDays(1)));
   }
 
   private SecuritiesAccountApiCredential buildCredential(
       String accessTokenEncrypted, LocalDateTime tokenExpiresAt) {
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     return SecuritiesAccountApiCredential.builder()
         .id(CREDENTIAL_ID)
         .securitiesAccountId(77L)

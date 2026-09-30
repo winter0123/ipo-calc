@@ -8,6 +8,7 @@ import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosur
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -70,6 +71,7 @@ public class IpoSyncService {
   private final BusinessDayCalculator businessDayCalculator;
   private final TransactionTemplate transactionTemplate;
   private final IpoScheduleMergeService ipoScheduleMergeService;
+  private final Clock clock;
 
   /**
    * 최근 지정된 일수 내 IPO 정보를 동기화한다.
@@ -230,7 +232,7 @@ public class IpoSyncService {
     // OpenDART 루프가 중단 없이 완료된 경우에만 ustockplus 일정 병합 시도
     if (!result.isAborted()) {
       try {
-        int merged = ipoScheduleMergeService.merge(LocalDate.now());
+        int merged = ipoScheduleMergeService.merge(LocalDate.now(clock));
         result.setScheduleMerged(merged);
         log.info("ustockplus 일정 병합 완료: merged={}", merged);
       } catch (Exception e) {
@@ -295,7 +297,7 @@ public class IpoSyncService {
     }
 
     // 3) 신규 생성
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Ipo newIpo =
         Ipo.builder()
             .companyName(corpName)
@@ -348,8 +350,8 @@ public class IpoSyncService {
     existing.setSubscriptionEndDate(endDate);
     // fixedPrice, listingDate는 절대 수정하지 않음 (수동 입력 보호)
     existing.setSyncSource(SYNC_SOURCE_OPENDART);
-    existing.setLastSyncedAt(LocalDateTime.now());
-    existing.setUpdatedAt(LocalDateTime.now());
+    existing.setLastSyncedAt(LocalDateTime.now(clock));
+    existing.setUpdatedAt(LocalDateTime.now(clock));
 
     ipoRepository.saveAndFlush(existing);
   }

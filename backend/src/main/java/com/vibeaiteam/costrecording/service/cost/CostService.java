@@ -13,6 +13,7 @@ import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class CostService {
   private final SubscriptionRepository subscriptionRepository;
   private final InvestorRepository investorRepository;
   private final SecurityUtils securityUtils;
+  private final Clock clock;
 
   /**
    * 비용을 등록한다. subscriptionId 존재 검증(404), 계정 소유권 검증(403), amount 0 이상 검증(400)을 수행하고,
@@ -54,7 +56,7 @@ public class CostService {
     validateSubscriptionOwnership(subscription);
 
     // 3. Cost 생성 및 저장 (status=ACTIVE)
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Cost cost =
         Cost.builder()
             .subscriptionId(subscriptionId)
@@ -102,7 +104,7 @@ public class CostService {
       cost.setMemo(request.getMemo());
     }
 
-    cost.setUpdatedAt(LocalDateTime.now());
+    cost.setUpdatedAt(LocalDateTime.now(clock));
     Cost saved = costRepository.save(cost);
     return CostResponse.from(saved);
   }
@@ -195,7 +197,7 @@ public class CostService {
         costRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     cost.setStatus(STATUS_CANCELLED);
     cost.setDeletedAt(now);
     cost.setUpdatedAt(now);

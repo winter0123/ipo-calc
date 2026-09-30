@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -13,8 +14,8 @@ public class OpenDartClientConfig {
    */
   @Bean
   public OpenDartCorpDisclosureClient openDartCorpDisclosureClient(
-      OpenDartApiProperties properties) {
-    return new OpenDartCorpDisclosureClient(RestClient.builder(), properties);
+      OpenDartApiProperties properties, Clock clock) {
+    return new OpenDartCorpDisclosureClient(RestClient.builder(), properties, clock);
   }
 
   /**

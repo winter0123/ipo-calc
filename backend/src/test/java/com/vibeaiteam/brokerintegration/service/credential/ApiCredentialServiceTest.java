@@ -26,6 +26,7 @@ import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.Acco
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import java.lang.reflect.RecordComponent;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
@@ -78,7 +79,8 @@ class ApiCredentialServiceTest {
             investorRepository,
             brokerSecretEncryptor,
             accountNumberEncryptor,
-            securityUtils);
+            securityUtils,
+            Clock.systemDefaultZone());
   }
 
   private String newRandomKey() {
@@ -94,7 +96,8 @@ class ApiCredentialServiceTest {
         investorRepository,
         new BrokerSecretEncryptor(""),
         accountNumberEncryptor,
-        securityUtils);
+        securityUtils,
+        Clock.systemDefaultZone());
   }
 
   private void stubOwnedSecuritiesAccount() {

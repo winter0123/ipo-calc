@@ -17,6 +17,7 @@ import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.Acco
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +45,7 @@ public class SecuritiesAccountService {
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final AccountNumberEncryptor accountNumberEncryptor;
   private final SecurityUtils securityUtils;
+  private final Clock clock;
 
   /**
    * 증권계좌를 등록한다.
@@ -77,7 +79,7 @@ public class SecuritiesAccountService {
     boolean firstAccount = securitiesAccountRepository.findByInvestorId(investorId).isEmpty();
     boolean isDefault = firstAccount || Boolean.TRUE.equals(request.getIsDefault());
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     SecuritiesAccount entity =
         SecuritiesAccount.builder()
             .investorId(investorId)
@@ -168,7 +170,7 @@ public class SecuritiesAccountService {
     }
 
     String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
-    Instant exposedAt = Instant.now();
+    Instant exposedAt = Instant.now(clock);
 
     // D-SA-005: 감사 로그는 SLF4J 애플리케이션 로그로만 기록 (별도 DB 테이블 없음)
     log.info(
@@ -215,7 +217,7 @@ public class SecuritiesAccountService {
       account.setAccountName(request.getAccountName());
     }
 
-    account.setUpdatedAt(LocalDateTime.now());
+    account.setUpdatedAt(LocalDateTime.now(clock));
     SecuritiesAccount saved = securitiesAccountRepository.save(account);
 
     return toMaskedResponse(saved);
@@ -241,7 +243,7 @@ public class SecuritiesAccountService {
       throw new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
     }
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     account.setStatus("INACTIVE");
     account.setDeletedAt(now);
     // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
@@ -283,7 +285,7 @@ public class SecuritiesAccountService {
       throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
     }
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     try {
       // 기존 기본 계좌 해제를 먼저 flush해 신규 지정 UPDATE와 동시에 커밋되지 않게 한다.
       // (Hibernate의 dirty-checking 플러시 순서는 호출 순서를 보장하지 않아, flush 없이는

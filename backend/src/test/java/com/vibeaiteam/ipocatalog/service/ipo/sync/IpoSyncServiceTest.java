@@ -18,8 +18,11 @@ import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecurit
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,10 @@ class IpoSyncServiceTest {
   // TransactionTemplate은 실제 빈 사용 (Mock으로 람다 인자 캡처 시 타입 문제 발생)
   @Autowired private TransactionTemplate transactionTemplate;
 
+  private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+  private static final Clock FIXED_CLOCK =
+      Clock.fixed(Instant.parse("2026-10-15T00:00:00Z"), SEOUL);
+
   private IpoSyncService syncService;
 
   @Captor private ArgumentCaptor<Ipo> ipoCaptor;
@@ -68,7 +75,8 @@ class IpoSyncServiceTest {
             ipoRepository,
             businessDayCalculator,
             transactionTemplate,
-            ipoScheduleMergeService);
+            ipoScheduleMergeService,
+            FIXED_CLOCK);
   }
 
   private OpenDartDisclosureItem createCompany(String corpCode, String corpName, String stockCode) {
@@ -596,9 +604,10 @@ class IpoSyncServiceTest {
     // when
     IpoSyncResult result = syncService.sync(7);
 
-    // then
+    // then: 병합 기준일은 주입된 Clock의 오늘(서울 시간대)
     assertThat(result.isAborted()).isFalse();
     assertThat(result.getScheduleMerged()).isEqualTo(3);
+    verify(ipoScheduleMergeService).merge(LocalDate.of(2026, 10, 15));
   }
 
   @Test
