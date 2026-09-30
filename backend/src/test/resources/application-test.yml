@@ -19,6 +19,11 @@ spring:
 app:
   encryption:
     key: pQSZosg8xShWKKLtxE0Yk/fF4GOaG7DPB2fizcRDHnc=
+  datagokr:
+    service-key: ""
+    base-url: https://apis.data.go.kr
+  holiday-sync:
+    enabled: false
 
 logging:
   level:

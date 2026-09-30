@@ -1,0 +1,129 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "dateKind": "01",
+            "dateName": "신정",
+            "isHoliday": "Y",
+            "locdate": 20260101,
+            "seq": 1
+          },
+          {
+            "dateKind": "01",
+            "dateName": "설날 연휴",
+            "isHoliday": "Y",
+            "locdate": 20260216,
+            "seq": 2
+          },
+          {
+            "dateKind": "01",
+            "dateName": "설날 연휴",
+            "isHoliday": "Y",
+            "locdate": 20260217,
+            "seq": 3
+          },
+          {
+            "dateKind": "01",
+            "dateName": "설날 연휴",
+            "isHoliday": "Y",
+            "locdate": 20260218,
+            "seq": 4
+          },
+          {
+            "dateKind": "01",
+            "dateName": "삼일절 대체공휴일",
+            "isHoliday": "Y",
+            "locdate": 20260302,
+            "seq": 5
+          },
+          {
+            "dateKind": "01",
+            "dateName": "근로자의 날",
+            "isHoliday": "Y",
+            "locdate": 20260501,
+            "seq": 6
+          },
+          {
+            "dateKind": "01",
+            "dateName": "어린이날",
+            "isHoliday": "Y",
+            "locdate": 20260505,
+            "seq": 7
+          },
+          {
+            "dateKind": "01",
+            "dateName": "부처님오신날 대체공휴일",
+            "isHoliday": "Y",
+            "locdate": 20260525,
+            "seq": 8
+          },
+          {
+            "dateKind": "03",
+            "dateName": "지방선거일",
+            "isHoliday": "Y",
+            "locdate": 20260603,
+            "seq": 9
+          },
+          {
+            "dateKind": "01",
+            "dateName": "광복절 대체공휴일",
+            "isHoliday": "Y",
+            "locdate": 20260817,
+            "seq": 10
+          },
+          {
+            "dateKind": "01",
+            "dateName": "추석 연휴",
+            "isHoliday": "Y",
+            "locdate": 20260924,
+            "seq": 11
+          },
+          {
+            "dateKind": "01",
+            "dateName": "추석 연휴",
+            "isHoliday": "Y",
+            "locdate": 20260925,
+            "seq": 12
+          },
+          {
+            "dateKind": "01",
+            "dateName": "추석 대체공휴일",
+            "isHoliday": "Y",
+            "locdate": 20260928,
+            "seq": 13
+          },
+          {
+            "dateKind": "01",
+            "dateName": "개천절 대체공휴일",
+            "isHoliday": "Y",
+            "locdate": 20261005,
+            "seq": 14
+          },
+          {
+            "dateKind": "01",
+            "dateName": "한글날",
+            "isHoliday": "Y",
+            "locdate": 20261009,
+            "seq": 15
+          },
+          {
+            "dateKind": "01",
+            "dateName": "성탄절",
+            "isHoliday": "Y",
+            "locdate": 20261225,
+            "seq": 16
+          }
+        ]
+      },
+      "numOfRows": 100,
+      "pageNo": 1,
+      "totalCount": 16
+    }
+  }
+}

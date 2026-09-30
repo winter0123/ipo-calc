@@ -38,6 +38,11 @@ app:
   opendart:
     api-key: ${OPENDART_API_KEY:}
     base-url: https://opendart.fss.or.kr
+  datagokr:
+    service-key: ${DATA_GO_KR_SERVICE_KEY:}
+    base-url: https://apis.data.go.kr
+  holiday-sync:
+    enabled: true
 
 server:
   port: 8080
