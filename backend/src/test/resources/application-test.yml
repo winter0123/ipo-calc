@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/vibe_ai_team
+    url: jdbc:postgresql://localhost:5433/${DB_NAME:vibe_ai_team}
     username: vibe
     password: vibe_local_password
     driver-class-name: org.postgresql.Driver
