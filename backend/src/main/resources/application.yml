@@ -49,6 +49,8 @@ app:
   ipo-sync:
     enabled: true
     days-back: 90
+  kis:
+    base-url: https://openapi.koreainvestment.com:9443
 
 server:
   port: 8080
