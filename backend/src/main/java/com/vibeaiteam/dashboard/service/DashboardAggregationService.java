@@ -125,16 +125,18 @@ public class DashboardAggregationService {
 
       SecuritiesAccount securitiesAccount =
           securitiesAccountMap.get(subscription.getSecuritiesAccountId());
-      Long securitiesFirmId =
-          (securitiesAccount != null) ? securitiesAccount.getSecuritiesFirmId() : null;
+      SecuritiesFirm securitiesFirm =
+          (securitiesAccount != null)
+              ? securitiesFirmMap.get(securitiesAccount.getSecuritiesFirmId())
+              : null;
 
       calculatedSales.add(
           CalculatedSale.of(
               sale,
               allocation,
               investor,
-              securitiesFirmId,
-              securitiesFirmId != null ? securitiesFirmMap.get(securitiesFirmId).getName() : null,
+              securitiesFirm != null ? securitiesFirm.getId() : null,
+              securitiesFirm != null ? securitiesFirm.getName() : null,
               ipoMap.get(subscription.getIpoId()),
               costsBySubscription.getOrDefault(subscription.getId(), Collections.emptyList())));
     }
