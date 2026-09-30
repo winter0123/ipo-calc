@@ -39,26 +39,22 @@ export default function SecuritiesAccountRegisterForm() {
           alert(`등록 완료: ${response.accountNumber}`)
           navigate('/dashboard')
         },
-        onError: () => {
-          // 에러 메시지는 error 상태로 처리
-        },
       },
     )
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, {
-      byStatus: {
-        400: (e) =>
-          e.serverMessage?.includes('존재하지 않는 투자자')
-            ? '투자자 정보를 찾을 수 없습니다.'
-            : undefined,
-        404: (e) =>
-          e.serverMessage?.includes('증권사') && !e.serverMessage.includes('투자자')
-            ? '선택한 증권사를 찾을 수 없습니다.'
-            : '투자자 정보를 찾을 수 없습니다.',
-      },
-    })
+  const formErrorMessage = toErrorMessage(error, {
+    byStatus: {
+      400: (e) =>
+        e.serverMessage?.includes('존재하지 않는 투자자')
+          ? '투자자 정보를 찾을 수 없습니다.'
+          : undefined,
+      404: (e) =>
+        e.serverMessage?.includes('증권사') && !e.serverMessage.includes('투자자')
+          ? '선택한 증권사를 찾을 수 없습니다.'
+          : '투자자 정보를 찾을 수 없습니다.',
+    },
+  })
 
   if (firmsLoading) {
     return <div className={styles.loading}>증권사 목록을 불러오는 중...</div>
@@ -172,9 +168,9 @@ export default function SecuritiesAccountRegisterForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 

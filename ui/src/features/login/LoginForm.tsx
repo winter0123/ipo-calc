@@ -19,9 +19,6 @@ export default function LoginForm() {
       onSuccess: () => {
         navigate('/dashboard')
       },
-      onError: () => {
-        // 에러 메시지는 error 상태로 처리
-      },
     })
   }
 

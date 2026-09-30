@@ -50,24 +50,20 @@ export default function SubscriptionRegisterForm() {
       onSuccess: () => {
         navigate('/subscriptions')
       },
-      onError: () => {
-        // 에러 메시지는 error 상태로 처리
-      },
     })
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, {
-      byStatus: {
-        404: (e) => {
-          const msg = e.serverMessage ?? ''
-          if (msg.includes('증권계좌')) return '증권계좌를 찾을 수 없습니다.'
-          if (msg.includes('공모주')) return '공모주를 찾을 수 없습니다.'
-          return '투자자를 찾을 수 없습니다.'
-        },
-        409: '이미 동일한 조건의 청약이 존재합니다.',
+  const formErrorMessage = toErrorMessage(error, {
+    byStatus: {
+      404: (e) => {
+        const msg = e.serverMessage ?? ''
+        if (msg.includes('증권계좌')) return '증권계좌를 찾을 수 없습니다.'
+        if (msg.includes('공모주')) return '공모주를 찾을 수 없습니다.'
+        return '투자자를 찾을 수 없습니다.'
       },
-    })
+      409: '이미 동일한 조건의 청약이 존재합니다.',
+    },
+  })
 
   const dropdownsLoading = investorsLoading || iposLoading
   const dropdownsError = investorsError || iposError
@@ -258,9 +254,9 @@ export default function SubscriptionRegisterForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 

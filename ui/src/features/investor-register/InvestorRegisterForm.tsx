@@ -27,13 +27,10 @@ export default function InvestorRegisterForm() {
       onSuccess: () => {
         navigate('/dashboard')
       },
-      onError: () => {
-        // 에러 메시지는 error 상태로 처리
-      },
     })
   }
 
-  const getFormErrorMessage = () => toErrorMessage(error)
+  const formErrorMessage = toErrorMessage(error)
 
   return (
     <form
@@ -88,9 +85,9 @@ export default function InvestorRegisterForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 

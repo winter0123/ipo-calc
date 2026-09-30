@@ -33,20 +33,16 @@ export default function AllocationRegisterForm() {
         onSuccess: () => {
           navigate('/subscriptions')
         },
-        onError: () => {
-          // 에러 메시지는 error 상태로 처리
-        },
       },
     )
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, {
-      byStatus: {
-        404: '선택된 청약을 찾을 수 없습니다.',
-        409: '이미 동일한 청약에 대한 배정이 존재합니다.',
-      },
-    })
+  const formErrorMessage = toErrorMessage(error, {
+    byStatus: {
+      404: '선택된 청약을 찾을 수 없습니다.',
+      409: '이미 동일한 청약에 대한 배정이 존재합니다.',
+    },
+  })
 
   if (detailLoading) {
     return <div className={styles.loading}>청약 정보를 불러오는 중...</div>
@@ -59,9 +55,6 @@ export default function AllocationRegisterForm() {
       </div>
     )
   }
-
-  // subscriptionId가 유효하지 않으면 리다이렉트 (useEffect에서 처리하되 여기서는 UI만 표시)
-  // 실제 리다이렉트는 Page 컴포넌트에서 처리
 
   const referenceQuantity = subscriptionDetail.subscriptionQuantity
 
@@ -173,9 +166,9 @@ export default function AllocationRegisterForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 
