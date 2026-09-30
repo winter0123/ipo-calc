@@ -29,7 +29,7 @@ DB_PASSWORD=vibe_local_password ./gradlew build
 
 ## 3. 백엔드 구현 규칙
 
-- 들여쓰기는 4칸, 탭 금지다.
+- 들여쓰기는 2칸, 탭 금지다(Google Java Style, `backend/config/checkstyle/checkstyle.xml`의 `basicOffset=2`). 한 줄은 100자까지다.
 - Google Java Style Checkstyle(`build.gradle.kts`에 설정돼 있다, 위반은 WARN 수준이지만 **위반 0건**이 검증 통과 기준이다)을 적용하며 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
 - public 클래스·메서드·record에는 **한국어 Javadoc**을 달고 첫 문장 끝에 마침표를 붙인다. star import 금지.
 - Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
