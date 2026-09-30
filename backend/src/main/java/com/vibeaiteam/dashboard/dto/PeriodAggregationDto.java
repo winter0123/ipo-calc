@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 기간별 집계 DTO.
+ */
 @Getter
 @Setter
 @Builder

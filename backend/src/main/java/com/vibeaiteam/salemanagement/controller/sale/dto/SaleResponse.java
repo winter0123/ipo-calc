@@ -8,6 +8,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 매도 응답 DTO.
+ */
 @Getter
 @Setter
 @Builder
@@ -41,6 +44,9 @@ public class SaleResponse {
 
   private LocalDateTime updatedAt;
 
+  /**
+   * 엔티티를 응답 DTO로 변환한다.
+   */
   public static SaleResponse from(Sale sale) {
     return SaleResponse.builder()
         .id(sale.getId())

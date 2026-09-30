@@ -199,8 +199,12 @@ public class OpenDartCorpDisclosureClient {
    * @return a > b 이면 양수, 같으면 0, a < b 이면 음수
    */
   private int compareRceptDt(String a, String b) {
-    if (a == null) return b == null ? 0 : -1;
-    if (b == null) return 1;
+    if (a == null) {
+      return b == null ? 0 : -1;
+    }
+    if (b == null) {
+      return 1;
+    }
     return a.compareTo(b);
   }
 

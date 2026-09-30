@@ -189,6 +189,9 @@ public class MarketHolidaySyncService {
       yearResults.put(year, yearResult);
     }
 
+    /**
+     * 연도별 동기화 결과를 반환한다.
+     */
     public YearSyncResult getYearResult(int year) {
       return yearResults.get(year);
     }
@@ -197,18 +200,30 @@ public class MarketHolidaySyncService {
       return yearResults;
     }
 
+    /**
+     * 전체 연도의 신규 저장 건수 합계를 반환한다.
+     */
     public long totalInserted() {
       return yearResults.values().stream().mapToLong(YearSyncResult::getInserted).sum();
     }
 
+    /**
+     * 전체 연도의 갱신 건수 합계를 반환한다.
+     */
     public long totalUpdated() {
       return yearResults.values().stream().mapToLong(YearSyncResult::getUpdated).sum();
     }
 
+    /**
+     * 동기화에 실패한 연도 수를 반환한다.
+     */
     public long totalFailed() {
       return yearResults.values().stream().filter(YearSyncResult::isFailed).count();
     }
 
+    /**
+     * 동기화 결과 요약 문자열을 반환한다.
+     */
     public String summary() {
       return String.format(
           "inserted=%d, updated=%d, failed_years=%d, details=%s",
@@ -224,6 +239,9 @@ public class MarketHolidaySyncService {
     private boolean failed = false;
     private String failureReason;
 
+    /**
+     * 연도별 동기화 결과를 생성한다.
+     */
     public YearSyncResult(int year) {
       this.year = year;
     }

@@ -12,6 +12,9 @@ public final class AccountNumberMasker {
 
   private AccountNumberMasker() {}
 
+  /**
+   * 계좌번호 끝 4자리만 남기고 마스킹한다. null이면 null을 반환한다.
+   */
   public static String mask(String plainAccountNumber) {
     if (plainAccountNumber == null) {
       return null;

@@ -16,6 +16,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 공모주 관리 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class IpoService {
@@ -26,6 +29,9 @@ public class IpoService {
 
   private final IpoRepository ipoRepository;
 
+  /**
+   * 공모주 목록을 조회한다.
+   */
   @Transactional(readOnly = true)
   public List<IpoResponse> list() {
     return ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
@@ -33,6 +39,9 @@ public class IpoService {
         .toList();
   }
 
+  /**
+   * ID로 공모주를 조회한다.
+   */
   @Transactional(readOnly = true)
   public IpoResponse getById(Long id) {
     Ipo ipo =
@@ -42,6 +51,9 @@ public class IpoService {
     return IpoResponse.from(ipo);
   }
 
+  /**
+   * 공모주를 비활성화(소프트 삭제)한다.
+   */
   @Transactional
   public void deactivate(Long id) {
     Ipo ipo =
@@ -54,6 +66,9 @@ public class IpoService {
     ipoRepository.save(ipo);
   }
 
+  /**
+   * 공모주 정보를 수정한다.
+   */
   @Transactional
   public IpoResponse update(Long id, IpoUpdateRequest request) {
     Ipo ipo =
@@ -70,15 +85,16 @@ public class IpoService {
     Long updatedFixedPrice = request.getFixedPrice();
     LocalDate updatedSubscriptionStartDate = request.getSubscriptionStartDate();
     LocalDate updatedSubscriptionEndDate = request.getSubscriptionEndDate();
-    LocalDate updatedListingDate = request.getListingDate();
+    final LocalDate updatedListingDate = request.getListingDate();
     Long updatedOfferingShareCount = request.getOfferingShareCount();
 
-    String computedCompanyName =
+    final String computedCompanyName =
         updatedCompanyName != null ? updatedCompanyName.trim() : ipo.getCompanyName();
-    String computedIpoName = updatedIpoName != null ? updatedIpoName.trim() : ipo.getIpoName();
-    String computedStockCode =
+    final String computedIpoName =
+        updatedIpoName != null ? updatedIpoName.trim() : ipo.getIpoName();
+    final String computedStockCode =
         updatedStockCodeRaw != null ? normalizeOptional(updatedStockCodeRaw) : ipo.getStockCode();
-    String computedRoundLabel =
+    final String computedRoundLabel =
         updatedRoundLabel != null ? normalizeOptional(updatedRoundLabel) : ipo.getRoundLabel();
     LocalDate computedSubscriptionStartDate =
         updatedSubscriptionStartDate != null
@@ -88,12 +104,13 @@ public class IpoService {
         updatedSubscriptionEndDate != null
             ? updatedSubscriptionEndDate
             : ipo.getSubscriptionEndDate();
-    Long computedLowerBandPrice =
+    final Long computedLowerBandPrice =
         updatedLowerBandPrice != null ? updatedLowerBandPrice : ipo.getLowerBandPrice();
-    Long computedUpperBandPrice =
+    final Long computedUpperBandPrice =
         updatedUpperBandPrice != null ? updatedUpperBandPrice : ipo.getUpperBandPrice();
-    Long computedFixedPrice = updatedFixedPrice != null ? updatedFixedPrice : ipo.getFixedPrice();
-    Long computedOfferingShareCount =
+    final Long computedFixedPrice =
+        updatedFixedPrice != null ? updatedFixedPrice : ipo.getFixedPrice();
+    final Long computedOfferingShareCount =
         updatedOfferingShareCount != null ? updatedOfferingShareCount : ipo.getOfferingShareCount();
 
     if (updatedCompanyName != null) {
@@ -173,6 +190,9 @@ public class IpoService {
     }
   }
 
+  /**
+   * 공모주를 등록한다.
+   */
   @Transactional
   public IpoResponse register(IpoRegisterRequest request) {
     validateRequest(request);

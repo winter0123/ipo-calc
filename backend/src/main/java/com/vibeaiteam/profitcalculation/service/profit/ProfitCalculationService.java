@@ -25,8 +25,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 단일 매도건 및 투자자별 수익 계산을 담당하는 읽기 전용 서비스.
-// 트랜잭션 경계는 @Transactional(readOnly = true)로 선언한다.
+/**
+ * 단일 매도건 및 투자자별 수익 계산을 담당하는 읽기 전용 서비스.
+ * 트랜잭션 경계는 @Transactional(readOnly = true)로 선언한다.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProfitCalculationService {
@@ -38,8 +40,10 @@ public class ProfitCalculationService {
   private final IpoRepository ipoRepository;
   private final InvestorRepository investorRepository;
 
-  // 단일 매도건의 순수익을 계산한다.
-  // 계산 흐름: Sale → Allocation → Subscription → (IPO 조건부) → Cost → ProfitDto 구성
+  /**
+   * 단일 매도건의 순수익을 계산한다.
+   * 계산 흐름: Sale → Allocation → Subscription → (IPO 조건부) → Cost → ProfitDto 구성
+   */
   @Transactional(readOnly = true)
   public ProfitDto calculateForSale(Long saleId) {
     // 1. Sale 조회 — 없거나 CANCELLED이면 404
@@ -82,8 +86,10 @@ public class ProfitCalculationService {
     return buildProfitDto(sale, allocation, fixedPrice, totalActiveCost);
   }
 
-  // 투자자의 모든 ACTIVE Sale에 대한 수익을 계산하고 합계를 반환한다.
-  // N+1 방지를 위해 Allocation/Subscription/Cost/IPO를 배치 조회한다.
+  /**
+   * 투자자의 모든 ACTIVE Sale에 대한 수익을 계산하고 합계를 반환한다.
+   * N+1 방지를 위해 Allocation/Subscription/Cost/IPO를 배치 조회한다.
+   */
   @Transactional(readOnly = true)
   public InvestorProfitDto calculateForInvestor(Long investorId) {
     // 1. Investor 조회 — 없으면 404

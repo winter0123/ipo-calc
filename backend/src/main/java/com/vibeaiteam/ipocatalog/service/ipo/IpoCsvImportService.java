@@ -40,6 +40,9 @@ public class IpoCsvImportService {
 
   private final IpoService ipoService;
 
+  /**
+   * CSV 파일을 검증·파싱해 공모주를 일괄 등록하고 행별 성공·실패 결과를 반환한다.
+   */
   public IpoImportResponse importCsv(MultipartFile file) {
     validateFile(file);
     List<CSVRecord> records = parseRecords(file);

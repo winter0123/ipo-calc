@@ -27,7 +27,7 @@ public class BusinessDayCalculator {
 
   private final MarketHolidayRepository marketHolidayRepository;
 
-  /** 연도별 휴장일 캐시: year -> Set<LocalDate> */
+  /** 연도별 휴장일 캐시: year -> {@code Set<LocalDate>}. */
   private final Map<Integer, Set<LocalDate>> holidayCache = new ConcurrentHashMap<>();
 
   /** 주어진 날짜의 다음 영업일을 반환한다 (주말 및 KRX 휴장일 제외). */

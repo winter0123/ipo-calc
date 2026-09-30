@@ -8,18 +8,36 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 배정 JPA 저장소.
+ */
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
+  /**
+   * ID 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다.
+   */
   Optional<Allocation> findByIdAndDeletedAtIsNull(Long id);
 
+  /**
+   * 삭제되지 않은 배정을 목록 조회한다(생성일 내림차순).
+   */
   List<Allocation> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
+  /**
+   * 청약 ID · 상태 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다.
+   */
   Optional<Allocation> findBySubscriptionIdAndStatusAndDeletedAtIsNull(
       Long subscriptionId, String status);
 
+  /**
+   * 청약 ID 조건(삭제되지 않은 건만)으로 배정을 목록 조회한다(생성일 내림차순).
+   */
   List<Allocation> findBySubscriptionIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long subscriptionId);
 
+  /**
+   * 투자자 ID 조건으로 배정을 목록 조회한다.
+   */
   @Query(
       "SELECT a FROM Allocation a "
           + "JOIN Subscription s ON a.subscriptionId = s.id "
@@ -28,12 +46,13 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
           + "ORDER BY a.createdAt DESC")
   List<Allocation> findByInvestorId(@Param("investorId") Long investorId);
 
-  /** 배치 조회: subscriptionId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함 */
+  /** 배치 조회: subscriptionId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함. */
   @Query(
-      "SELECT a FROM Allocation a WHERE a.subscriptionId IN :subscriptionIds AND a.deletedAt IS NULL")
+      "SELECT a FROM Allocation a WHERE a.subscriptionId IN :subscriptionIds "
+          + "AND a.deletedAt IS NULL")
   List<Allocation> findBySubscriptionIdIn(@Param("subscriptionIds") List<Long> subscriptionIds);
 
-  /** 배치 조회: allocationId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함 */
+  /** 배치 조회: allocationId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함. */
   @Query("SELECT a FROM Allocation a WHERE a.id IN :allocationIds AND a.deletedAt IS NULL")
   List<Allocation> findByIdIn(@Param("allocationIds") List<Long> allocationIds);
 }

@@ -15,6 +15,9 @@ public class OpenDartApiProperties {
   private final String apiKey;
   private final String baseUrl;
 
+  /**
+   * API 키와 기본 URL 등 OpenDART 설정을 주입받는다.
+   */
   public OpenDartApiProperties(
       @Value("${app.opendart.api-key:}") String apiKey,
       @Value("${app.opendart.base-url:https://opendart.fss.or.kr}") String baseUrl) {

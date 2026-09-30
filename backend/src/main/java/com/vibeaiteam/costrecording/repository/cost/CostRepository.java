@@ -8,16 +8,31 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 비용 JPA 저장소.
+ */
 @Repository
 public interface CostRepository extends JpaRepository<Cost, Long> {
 
+  /**
+   * ID 조건(삭제되지 않은 건만)으로 비용을 단건 조회한다.
+   */
   Optional<Cost> findByIdAndDeletedAtIsNull(Long id);
 
+  /**
+   * 삭제되지 않은 비용을 목록 조회한다(발생일 내림차순, 생성일 내림차순).
+   */
   List<Cost> findAllByDeletedAtIsNullOrderByIncurredAtDescCreatedAtDesc();
 
+  /**
+   * 청약 ID 조건(삭제되지 않은 건만)으로 비용을 목록 조회한다(발생일 내림차순, 생성일 내림차순).
+   */
   List<Cost> findBySubscriptionIdAndDeletedAtIsNullOrderByIncurredAtDescCreatedAtDesc(
       Long subscriptionId);
 
+  /**
+   * 청약 ID·투자자 ID·투자자명 필터로 ACTIVE 비용을 조회한다(발생일·생성일 내림차순).
+   */
   @Query(
       "SELECT c FROM Cost c "
           + "JOIN Subscription s ON c.subscriptionId = s.id "
@@ -32,9 +47,12 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
       @Param("investorId") Long investorId,
       @Param("investorName") String investorName);
 
+  /**
+   * 청약 ID · 상태 조건(삭제되지 않은 건만)으로 비용을 목록 조회한다.
+   */
   List<Cost> findBySubscriptionIdAndStatusAndDeletedAtIsNull(Long subscriptionId, String status);
 
-  /** 배치 조회: subscriptionId 목록으로 ACTIVE Cost 일괄 조회 (N+1 방지용) */
+  /** 배치 조회: subscriptionId 목록으로 ACTIVE Cost 일괄 조회 (N+1 방지용). */
   List<Cost> findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
       List<Long> subscriptionIds, String status);
 }

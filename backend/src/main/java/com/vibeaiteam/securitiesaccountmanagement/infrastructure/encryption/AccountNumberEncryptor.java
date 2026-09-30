@@ -32,6 +32,9 @@ public class AccountNumberEncryptor {
 
   private final SecretKey secretKey;
 
+  /**
+   * Base64로 인코딩된 암호화 키를 주입받아 생성한다.
+   */
   public AccountNumberEncryptor(@Value("${app.encryption.key:}") String base64Key) {
     this.secretKey = (base64Key == null || base64Key.isBlank()) ? null : decodeKey(base64Key);
   }
@@ -48,11 +51,15 @@ public class AccountNumberEncryptor {
   private SecretKey getSecretKey() {
     if (secretKey == null) {
       throw new IllegalStateException(
-          "암호화 키가 설정되지 않았습니다. APP_ENCRYPTION_KEY(또는 app.encryption.key)에 32바이트 키의 Base64 값을 지정하세요.");
+          "암호화 키가 설정되지 않았습니다. "
+              + "APP_ENCRYPTION_KEY(또는 app.encryption.key)에 32바이트 키의 Base64 값을 지정하세요.");
     }
     return secretKey;
   }
 
+  /**
+   * 평문을 AES-GCM으로 암호화해 Base64 문자열로 반환한다.
+   */
   public String encrypt(String plainText) {
     try {
       byte[] iv = new byte[IV_LENGTH_BYTES];
@@ -71,6 +78,9 @@ public class AccountNumberEncryptor {
     }
   }
 
+  /**
+   * Base64 암호문을 복호화해 평문을 반환한다.
+   */
   public String decrypt(String encryptedText) {
     try {
       byte[] combined = Base64.getDecoder().decode(encryptedText);

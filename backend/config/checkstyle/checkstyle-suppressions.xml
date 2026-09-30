@@ -14,4 +14,6 @@
   <suppress checks="AbbreviationAsWordInName" files="[\\/]src[\\/]test[\\/].*Test\.java$"/>
   <!-- 테스트는 가독성을 위해 여러 id를 앞에 모아 선언하는 경우가 많아 이 규칙의 실효성이 낮다 -->
   <suppress checks="VariableDeclarationUsageDistance" files="[\\/]src[\\/]test[\\/].*Test\.java$"/>
+  <!-- OpenDART 응답 JSON이 snake_case라 record 컴포넌트명을 외부 스키마와 그대로 맞춘다 -->
+  <suppress checks="RecordComponentName" files="[\\/]OpenDart(EquitySecurities|CorpDisclosure)Client\.java$"/>
 </suppressions>

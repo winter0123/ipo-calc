@@ -17,6 +17,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 배정 관리 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class AllocationService {
@@ -26,6 +29,9 @@ public class AllocationService {
   private final AllocationRepository allocationRepository;
   private final SubscriptionRepository subscriptionRepository;
 
+  /**
+   * 배정을 등록한다.
+   */
   @Transactional
   public AllocationResponse register(AllocationRegisterRequest request) {
     validateRequest(request);
@@ -98,6 +104,9 @@ public class AllocationService {
             });
   }
 
+  /**
+   * 배정 목록을 조회한다.
+   */
   @Transactional(readOnly = true)
   public List<AllocationResponse> list(Long subscriptionId, Long investorId) {
     List<Allocation> allocations;
@@ -113,6 +122,9 @@ public class AllocationService {
     return allocations.stream().map(AllocationResponse::from).toList();
   }
 
+  /**
+   * ID로 배정을 조회한다.
+   */
   @Transactional(readOnly = true)
   public AllocationResponse getById(Long id) {
     Allocation allocation =
@@ -122,10 +134,12 @@ public class AllocationService {
     return AllocationResponse.from(allocation);
   }
 
-  // SF-4: 배정 기록의 일부 필드만 부분 수정한다(SubscriptionService.update / IpoService.update와 동일한 패턴).
-  // 제공된 필드만 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다.
-  // 시점 제약은 없음(D-A-007). 매도(Sale) 연결 시 수량 축소 제한은 Epic 8 구현 시 함께 추가할 예정으로
-  // 이번 SF에서는 확장 지점만 남겨 둔다(work-log에 "Epic 8 구현 시 추가 예정" 명시).
+  /**
+   * SF-4: 배정 기록의 일부 필드만 부분 수정한다(SubscriptionService.update / IpoService.update와 동일한 패턴).
+   * 제공된 필드만 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다.
+   * 시점 제약은 없음(D-A-007). 매도(Sale) 연결 시 수량 축소 제한은 Epic 8 구현 시 함께 추가할 예정으로
+   * 이번 SF에서는 확장 지점만 남겨 둔다(work-log에 "Epic 8 구현 시 추가 예정" 명시).
+   */
   @Transactional
   public AllocationResponse update(Long id, AllocationUpdateRequest request) {
     Allocation allocation =
@@ -135,10 +149,10 @@ public class AllocationService {
 
     Long updatedSubscriptionId = request.getSubscriptionId();
     Long updatedAllocatedQuantity = request.getAllocatedQuantity();
-    LocalDateTime updatedAllocatedAt = request.getAllocatedAt();
-    String updatedAllocationMethod = request.getAllocationMethod();
-    Long updatedAllocationPrice = request.getAllocationPrice();
-    String updatedNote = request.getNote();
+    final LocalDateTime updatedAllocatedAt = request.getAllocatedAt();
+    final String updatedAllocationMethod = request.getAllocationMethod();
+    final Long updatedAllocationPrice = request.getAllocationPrice();
+    final String updatedNote = request.getNote();
 
     if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < 0) {
       throw new AllocationValidationException("allocatedQuantity는 0 이상이어야 합니다.");
@@ -200,9 +214,11 @@ public class AllocationService {
     }
   }
 
-  // SF-5: 배정 기록을 논리 취소한다(SubscriptionService.cancel / IpoService.deactivate와 동일 패턴).
-  // status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016).
-  // 존재하지 않거나 이미 취소된 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+  /**
+   * SF-5: 배정 기록을 논리 취소한다(SubscriptionService.cancel / IpoService.deactivate와 동일 패턴).
+   * status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016).
+   * 존재하지 않거나 이미 취소된 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+   */
   @Transactional
   public void cancel(Long id) {
     Allocation allocation =

@@ -10,24 +10,42 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 청약 JPA 저장소.
+ */
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
+  /**
+   * ID 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다.
+   */
   Optional<Subscription> findByIdAndDeletedAtIsNull(Long id);
 
+  /**
+   * 삭제되지 않은 청약을 목록 조회한다(생성일 내림차순).
+   */
   List<Subscription> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
+  /**
+   * 투자자 ID 조건(삭제되지 않은 건만)으로 청약을 목록 조회한다(생성일 내림차순).
+   */
   List<Subscription> findAllByInvestorIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long investorId);
 
+  /**
+   * 증권계좌 ID 조건(삭제되지 않은 건만)으로 청약을 목록 조회한다(생성일 내림차순).
+   */
   List<Subscription> findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc(
       Long securitiesAccountId);
 
+  /**
+   * 투자자 ID · 증권계좌 ID · 공모주 ID · 상태 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다.
+   */
   Optional<Subscription> findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
       Long investorId, Long securitiesAccountId, Long ipoId, String status);
 
   /**
    * ipoId 필터 소유권 재검증용: 현재 계정이 소유한 청약 중 해당 IPO 건이 존재하는지 확인 Subscription → Investor(accountId) 조인으로
-   * 확인
+   * 확인.
    */
   @Query(
       "SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Subscription s "
@@ -38,7 +56,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
   /**
    * 필터 미지정 시 기본 조회: 현재 계정이 소유한 Investor의 Subscription만 페이징 조회 Subscription → Investor(accountId)
-   * 조인으로 필터링, subscribedAt DESC 정렬
+   * 조인으로 필터링, subscribedAt DESC 정렬.
    */
   @Query(
       "SELECT s FROM Subscription s "
@@ -49,7 +67,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
   /**
    * 계정 스코프를 강제하는 필터 조회 메서드 ipoId/investorId/securitiesAccountId 필터 + deletedAt IS NULL 조건 포함 반드시 현재
-   * 계정 소유 Investor로 스코프를 강제 (AC-005 리스크 방지) 서브쿼리 방식이 아닌 JOIN으로 현재 계정의 Investor Subscription만 조회
+   * 계정 소유 Investor로 스코프를 강제 (AC-005 리스크 방지) 서브쿼리 방식이 아닌 JOIN으로 현재 계정의 Investor Subscription만 조회.
    */
   @Query(
       "SELECT s FROM Subscription s "

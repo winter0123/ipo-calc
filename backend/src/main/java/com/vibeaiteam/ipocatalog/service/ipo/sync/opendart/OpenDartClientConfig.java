@@ -8,12 +8,18 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class OpenDartClientConfig {
 
+  /**
+   * OpenDART 기업 공시 조회 클라이언트 빈.
+   */
   @Bean
   public OpenDartCorpDisclosureClient openDartCorpDisclosureClient(
       OpenDartApiProperties properties) {
     return new OpenDartCorpDisclosureClient(RestClient.builder(), properties);
   }
 
+  /**
+   * OpenDART 지분증권 조회 클라이언트 빈.
+   */
   @Bean
   public OpenDartEquitySecuritiesClient openDartEquitySecuritiesClient(
       OpenDartApiProperties properties) {

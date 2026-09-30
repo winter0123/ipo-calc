@@ -13,6 +13,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 증권사 관리 서비스.
+ */
 @Service
 @RequiredArgsConstructor
 public class SecuritiesFirmService {
@@ -23,6 +26,9 @@ public class SecuritiesFirmService {
 
   private final SecuritiesFirmRepository securitiesFirmRepository;
 
+  /**
+   * 증권사를 등록한다.
+   */
   public SecuritiesFirmResponse register(SecuritiesFirmRegisterRequest request) {
     String name = validateName(request.getName());
 
@@ -48,11 +54,17 @@ public class SecuritiesFirmService {
     return SecuritiesFirmResponse.from(saved);
   }
 
+  /**
+   * 증권사 목록을 조회한다.
+   */
   public List<SecuritiesFirmResponse> list() {
     List<SecuritiesFirm> firms = securitiesFirmRepository.findByDeletedAtIsNull();
     return firms.stream().map(SecuritiesFirmResponse::from).toList();
   }
 
+  /**
+   * ID로 증권사를 조회한다.
+   */
   public SecuritiesFirmResponse getById(Long id) {
     SecuritiesFirm firm =
         securitiesFirmRepository
@@ -61,6 +73,9 @@ public class SecuritiesFirmService {
     return SecuritiesFirmResponse.from(firm);
   }
 
+  /**
+   * 증권사 정보를 수정한다.
+   */
   public SecuritiesFirmResponse update(Long id, SecuritiesFirmUpdateRequest request) {
     SecuritiesFirm firm =
         securitiesFirmRepository
@@ -93,6 +108,9 @@ public class SecuritiesFirmService {
     return SecuritiesFirmResponse.from(saved);
   }
 
+  /**
+   * 증권사를 비활성화(소프트 삭제)한다.
+   */
   public void deactivate(Long id) {
     SecuritiesFirm firm =
         securitiesFirmRepository

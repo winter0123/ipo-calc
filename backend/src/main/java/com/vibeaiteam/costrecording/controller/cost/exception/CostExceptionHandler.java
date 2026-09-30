@@ -8,22 +8,34 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * 비용 예외를 HTTP 에러 응답으로 변환한다.
+ */
 @RestControllerAdvice
 public class CostExceptionHandler {
 
   private static final MediaType JSON_UTF8 =
       new MediaType("application", "json", StandardCharsets.UTF_8);
 
+  /**
+   * CostValidationException을 HTTP 400 응답으로 변환한다.
+   */
   @ExceptionHandler(CostValidationException.class)
   public ResponseEntity<ErrorResponse> handleValidation(CostValidationException ex) {
     return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
   }
 
+  /**
+   * CostNotFoundException을 HTTP 404 응답으로 변환한다.
+   */
   @ExceptionHandler(CostNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(CostNotFoundException ex) {
     return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
+  /**
+   * CostForbiddenException을 HTTP 403 응답으로 변환한다.
+   */
   @ExceptionHandler(CostForbiddenException.class)
   public ResponseEntity<ErrorResponse> handleForbidden(CostForbiddenException ex) {
     return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());

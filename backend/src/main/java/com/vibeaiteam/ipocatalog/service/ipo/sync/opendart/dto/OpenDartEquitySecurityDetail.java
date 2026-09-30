@@ -16,55 +16,55 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OpenDartEquitySecurityDetail {
 
-  /** 회사고유번호 */
+  /** 회사고유번호. */
   private String corpCode;
 
-  /** 기업명 */
+  /** 기업명. */
   private String corpName;
 
-  /** 청약기일 (원문 문자열: "2026년 11월 05일 ~ 2026년 11월 06일" 등) */
+  /** 청약기일 (원문 문자열: "2026년 11월 05일 ~ 2026년 11월 06일" 등). */
   private String sbd;
 
-  /** 납입기일 (원문: "2026년 11월 10일" 또는 "-") */
+  /** 납입기일 (원문: "2026년 11월 10일" 또는 "-"). */
   private String pymd;
 
-  /** 청약공고일 (원문: "2026년 11월 05일" 또는 "-") */
+  /** 청약공고일 (원문: "2026년 11월 05일" 또는 "-"). */
   private String sband;
 
-  /** 배정공고일 (원문: "2026년 11월 10일" 또는 "-") */
+  /** 배정공고일 (원문: "2026년 11월 10일" 또는 "-"). */
   private String asand;
 
-  /** 배정기준일 (원문: "2026년 11월" 또는 "-") */
+  /** 배정기준일 (원문: "2026년 11월" 또는 "-"). */
   private String asstd;
 
-  /** 증권종류 (예: "보통주") */
+  /** 증권종류 (예: "보통주"). */
   private String stksen;
 
-  /** 증권수량 (쉼표 포함 문자열: "2,200,000") */
+  /** 증권수량 (쉼표 포함 문자열: "2,200,000"). */
   private String stkcnt;
 
-  /** 모집(매출)가액 (쉼표 포함 문자열: "10,000") */
+  /** 모집(매출)가액 (쉼표 포함 문자열: "10,000"). */
   private String slprc;
 
-  /** 모집총액 (쉼표 포함 문자열: "22,000,000,000" 또는 "-") */
+  /** 모집총액 (쉼표 포함 문자열: "22,000,000,000" 또는 "-"). */
   private String slta;
 
-  /** 인수인명/주간사 (예: "한국투자증권") */
+  /** 인수인명/주간사 (예: "한국투자증권"). */
   private String actnmn;
 
-  /** 청약기일 시작일 파싱 결과 (파싱 실패 시 {@code null}) */
+  /** 청약기일 시작일 파싱 결과 (파싱 실패 시 {@code null}). */
   private LocalDate subscriptionStartDate;
 
-  /** 청약기일 종료일 파싱 결과 (기간 문자열이면 종료일, 단일 날짜/파싱 실패 시 {@code null}) */
+  /** 청약기일 종료일 파싱 결과 (기간 문자열이면 종료일, 단일 날짜/파싱 실패 시 {@code null}). */
   private LocalDate subscriptionEndDate;
 
-  /** 증권수량 파싱 결과 (파싱 실패 시 {@code null}) */
+  /** 증권수량 파싱 결과 (파싱 실패 시 {@code null}). */
   private Long offeringShareCount;
 
-  /** 모집가액 파싱 결과 (파싱 실패 시 {@code null}) */
+  /** 모집가액 파싱 결과 (파싱 실패 시 {@code null}). */
   private Long offerPrice;
 
-  /** 모집총액 파싱 결과 (파싱 실패 시 {@code null}) */
+  /** 모집총액 파싱 결과 (파싱 실패 시 {@code null}). */
   private Long totalOfferingAmount;
 
   /** 원문 필드에서 파싱하여 보조 필드 채움. DS006 응답 매핑 후 호출. */

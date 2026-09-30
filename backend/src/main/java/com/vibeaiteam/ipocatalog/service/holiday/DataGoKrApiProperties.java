@@ -15,6 +15,9 @@ public class DataGoKrApiProperties {
   private final String serviceKey;
   private final String baseUrl;
 
+  /**
+   * 서비스 키와 기본 URL 등 공공데이터포털 API 설정을 주입받는다.
+   */
   public DataGoKrApiProperties(
       @Value("${app.datagokr.service-key:}") String serviceKey,
       @Value("${app.datagokr.base-url:https://apis.data.go.kr}") String baseUrl) {

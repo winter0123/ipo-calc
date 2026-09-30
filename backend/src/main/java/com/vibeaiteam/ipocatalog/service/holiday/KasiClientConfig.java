@@ -8,6 +8,9 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class KasiClientConfig {
 
+  /**
+   * 한국천문연구원 특일 정보 클라이언트 빈.
+   */
   @Bean
   public KasiSpecialDayClient kasiSpecialDayClient(DataGoKrApiProperties properties) {
     return new KasiSpecialDayClient(RestClient.builder(), properties);
