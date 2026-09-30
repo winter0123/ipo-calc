@@ -80,6 +80,12 @@ class InvestmentHistoryControllerTest {
   }
 
   @Test
+  void getHistory_size0이하_400() throws Exception {
+    mockMvc.perform(get("/investment-history?size=0")).andExpect(status().isBadRequest());
+    mockMvc.perform(get("/investment-history?size=-1")).andExpect(status().isBadRequest());
+  }
+
+  @Test
   void getHistory_size100초과_400() throws Exception {
     // When & Then: size > 100 이면 400 Bad Request
     mockMvc.perform(get("/investment-history?size=101")).andExpect(status().isBadRequest());

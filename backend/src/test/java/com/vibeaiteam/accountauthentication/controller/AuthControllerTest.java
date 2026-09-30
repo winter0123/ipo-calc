@@ -223,6 +223,18 @@ class AuthControllerTest {
     Account account = accountRepository.findByEmail(testEmail);
     assertThat(account.getLockedUntil()).isNotNull();
     assertThat(account.getFailedLoginAttempts()).isEqualTo(5);
+
+    // 잠긴 동안은 틀린 비밀번호도 동일한 응답을 받는다
+    var wrongRequest = Map.of("email", testEmail, "password", "wrongPassword");
+    MvcResult wrongResult =
+        mockMvc
+            .perform(
+                post("/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(wrongRequest)))
+            .andReturn();
+    assertThat(wrongResult.getResponse().getStatus()).isEqualTo(403);
+    assertThat(wrongResult.getResponse().getContentAsString()).isEqualTo(responseBody);
   }
 
   @Test
