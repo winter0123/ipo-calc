@@ -15,6 +15,7 @@ import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.Securiti
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,10 +72,11 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 .updatedAt(now)
                 .build());
 
+    // V15 시드와 겹치지 않는 고유 이름을 쓴다(uk_securities_firm_name_active 유니크 제약 대비).
     SecuritiesFirm securitiesFirm =
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
-                .name("한국투자증권")
+                .name(uniqueFirmName())
                 .status("ACTIVE")
                 .createdAt(now)
                 .updatedAt(now)
@@ -94,6 +96,16 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 .updatedAt(now)
                 .build());
     securitiesAccountId = securitiesAccount.getId();
+  }
+
+  /**
+   * 시드(V15)에 없는 고유 증권사명을 만든다.
+   *
+   * <p>securities_firms의 (name, status) 유니크 제약 때문에 시드와 같은 이름을 쓰면 저장이 실패한다. @DataJpaTest의
+   * 롤백으로 행은 남지 않지만, 이름은 매번 달라야 기존 행과 충돌하지 않는다.
+   */
+  private String uniqueFirmName() {
+    return "자격증명테스트증권-" + Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 16);
   }
 
   private SecuritiesAccountApiCredential buildCredential(
