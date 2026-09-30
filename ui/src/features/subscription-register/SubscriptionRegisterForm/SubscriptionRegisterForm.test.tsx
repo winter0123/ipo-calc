@@ -71,8 +71,7 @@ function mockDropdownFetches() {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
     const pathStr = String(path)
     if (pathStr === '/investors') return INVESTORS
-    if (pathStr === '/securities-accounts' || pathStr.startsWith('/securities-accounts?'))
-      return SECURITIES_ACCOUNTS
+    if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
     if (pathStr === '/ipos') return IPOS
     throw new Error(`unexpected path: ${pathStr}`)
   })
@@ -97,13 +96,13 @@ function renderForm() {
 async function waitForDropdownsLoaded() {
   await waitFor(() => {
     expect(screen.getByRole('option', { name: '홍길동' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: '테스트기업 공모주' })).toBeInTheDocument()
   })
 }
 
-function fillValidForm() {
+async function fillValidForm() {
   fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+  await screen.findByRole('option', { name: '미래에셋증권' })
   fireEvent.change(screen.getByLabelText('증권계좌'), { target: { value: '1' } })
   fireEvent.change(screen.getByLabelText('공모주'), { target: { value: '1' } })
   fireEvent.change(screen.getByLabelText('청약수량'), { target: { value: '100' } })
@@ -125,8 +124,7 @@ describe('SubscriptionRegisterForm', () => {
           resolveInvestors = resolve
         })
       }
-      if (pathStr === '/securities-accounts' || pathStr.startsWith('/securities-accounts?'))
-        return SECURITIES_ACCOUNTS
+      if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
       if (pathStr === '/ipos') return IPOS
       throw new Error(`unexpected path: ${pathStr}`)
     })
@@ -140,10 +138,58 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
   })
 
+  it('투자자를 고르기 전에는 증권계좌를 조회하지 않고 선택 후 investorId로 조회', async () => {
+    mockDropdownFetches()
+    renderForm()
+    await waitForDropdownsLoaded()
+
+    expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+    expect(apiFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/securities-accounts'),
+      expect.anything(),
+    )
+
+    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+
+    expect(await screen.findByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+    expect(screen.getByLabelText('증권계좌')).toBeEnabled()
+    expect(apiFetch).toHaveBeenCalledWith('/securities-accounts?investorId=1', expect.anything())
+  })
+
+  it('투자자를 바꾸면 선택했던 증권계좌가 초기화됨', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+      const pathStr = String(path)
+      if (pathStr === '/investors')
+        return [...INVESTORS, { ...INVESTORS[0], id: 2, displayName: '김철수' }]
+      if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+      if (pathStr === '/securities-accounts?investorId=2') return []
+      if (pathStr === '/ipos') return IPOS
+      throw new Error(`unexpected path: ${pathStr}`)
+    })
+    renderForm()
+    await waitForDropdownsLoaded()
+
+    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+    await screen.findByRole('option', { name: '미래에셋증권' })
+    fireEvent.change(screen.getByLabelText('증권계좌'), { target: { value: '1' } })
+    expect(screen.getByLabelText('증권계좌')).toHaveValue('1')
+
+    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '2' } })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByLabelText('증권계좌')).toHaveValue('')
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    expect(await screen.findByText('증권계좌를 선택해 주세요.')).toBeInTheDocument()
+  })
+
   it('정상 등록 성공 시 /subscriptions로 이동', async () => {
     mockDropdownFetches()
     renderForm()
     await waitForDropdownsLoaded()
+
+    await fillValidForm()
 
     vi.mocked(apiFetch).mockResolvedValueOnce({
       id: 1,
@@ -158,8 +204,6 @@ describe('SubscriptionRegisterForm', () => {
       createdAt: '2026-09-21T00:00:00Z',
       updatedAt: '2026-09-21T00:00:00Z',
     })
-
-    fillValidForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -205,7 +249,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    fillValidForm()
+    await fillValidForm()
     fireEvent.change(screen.getByLabelText('청약수량'), { target: { value: '0' } })
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
@@ -223,7 +267,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    fillValidForm()
+    await fillValidForm()
     fireEvent.change(screen.getByLabelText('증거금'), { target: { value: '-1' } })
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
@@ -241,11 +285,11 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
+    await fillValidForm()
+
     vi.mocked(apiFetch).mockRejectedValueOnce(
       new ApiError(404, '존재하지 않는 투자자입니다', '존재하지 않는 투자자입니다'),
     )
-
-    fillValidForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -259,11 +303,11 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
+    await fillValidForm()
+
     vi.mocked(apiFetch).mockRejectedValueOnce(
       new ApiError(404, '존재하지 않는 공모주입니다', '존재하지 않는 공모주입니다'),
     )
-
-    fillValidForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -277,9 +321,9 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
+    await fillValidForm()
 
-    fillValidForm()
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -293,9 +337,9 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(400, 'Request failed: 400'))
+    await fillValidForm()
 
-    fillValidForm()
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(400, 'Request failed: 400'))
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -309,9 +353,9 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Failed to fetch'))
+    await fillValidForm()
 
-    fillValidForm()
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Failed to fetch'))
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {

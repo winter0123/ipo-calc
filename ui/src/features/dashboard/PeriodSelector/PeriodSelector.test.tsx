@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import PeriodSelector from './PeriodSelector.tsx'
 
@@ -24,7 +24,13 @@ function renderPeriodSelector(
 
 describe('PeriodSelector', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-15T12:00:00'))
     mockOnSearch.mockClear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('AC-1920: 기본값이 현재 연·월', () => {
