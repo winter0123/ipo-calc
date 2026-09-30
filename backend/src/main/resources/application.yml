@@ -33,6 +33,8 @@ spring:
       mode: never
 
 app:
+  remember-me:
+    key: ${APP_REMEMBER_ME_KEY:}
   encryption:
     key: ${APP_ENCRYPTION_KEY:}
     broker-key: ${APP_ENCRYPTION_BROKER_KEY:}
@@ -56,3 +58,8 @@ server:
   port: 8080
   servlet:
     context-path: /
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
