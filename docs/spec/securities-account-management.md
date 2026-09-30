@@ -54,7 +54,7 @@
   }
   ```
 - **응답** (실패 - 필수값 누락): 400 Bad Request
-- **응답** (실패 - 존재하지 않는 투자자/증권사): 400 Bad Request
+- **응답** (실패 - 존재하지 않는 투자자/증권사): 404 Not Found (web-account-setup 명세 AC-011과 정렬)
 - **응답** (실패 - 소유권 없음): 403 Forbidden
 
 ### 2. 증권계좌 목록 조회 (마스킹된 계좌번호)
@@ -200,13 +200,13 @@
 ### AC-003: 증권계좌 등록 실패 (존재하지 않는 투자자)
 **Given:** 존재하지 않는 투자자 ID가 제공됨  
 **When:** POST /securities-accounts 요청을 보냄  
-**Then:** 400 Bad Request 응답을 반환함  
+**Then:** 404 Not Found 응답을 반환함  
 **And:** 레코드가 생성되지 않음
 
 ### AC-004: 증권계좌 등록 실패 (존재하지 않는 증권사)
 **Given:** 존재하지 않는 증권사 ID가 제공됨  
 **When:** POST /securities-accounts 요청을 보냄  
-**Then:** 400 Bad Request 응답을 반환함  
+**Then:** 404 Not Found 응답을 반환함  
 **And:** 레코드가 생성되지 않음
 
 ### AC-005: 증권계좌 등록 실패 (계정 소유권 없음)

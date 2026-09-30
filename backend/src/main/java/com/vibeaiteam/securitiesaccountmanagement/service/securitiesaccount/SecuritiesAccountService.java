@@ -64,13 +64,13 @@ public class SecuritiesAccountService {
     Investor investor =
         investorRepository
             .findById(investorId)
-            .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 투자자입니다"));
+            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
 
     ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 
     securitiesFirmRepository
         .findByIdAndDeletedAtIsNull(securitiesFirmId)
-        .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 증권사입니다"));
+        .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 증권사입니다"));
 
     // D-SA-003: 투자자의 첫 번째 계좌 등록 시 요청의 isDefault와 무관하게 true로 강제
     boolean firstAccount = securitiesAccountRepository.findByInvestorId(investorId).isEmpty();
@@ -108,7 +108,7 @@ public class SecuritiesAccountService {
     Investor investor =
         investorRepository
             .findById(investorId)
-            .orElseThrow(() -> new SecuritiesAccountValidationException("존재하지 않는 투자자입니다"));
+            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
 
     ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
 

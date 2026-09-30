@@ -46,8 +46,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * - AC-001: 증권계좌 등록 성공 — 유효한 요청 시 201 Created + 신규 레코드 생성, 응답에 계좌 ID/투자자 ID/증권사 ID/마스킹된
  * 계좌번호/status=ACTIVE/deletedAt=null 포함 - AC-002: 증권계좌 등록 실패 (필수값 누락) —
  * investorId/securitiesFirmId/accountNumber 중 하나 이상 누락 시 400 Bad Request + VALIDATION_ERROR, 레코드
- * 미생성 - AC-003: 증권계좌 등록 실패 (존재하지 않는 투자자) — 400 Bad Request, 레코드 미생성 - AC-004: 증권계좌 등록 실패 (존재하지 않는
- * 증권사) — 400 Bad Request, 레코드 미생성 - AC-005: 증권계좌 등록 실패 (계정 소유권 없음) — 계정 A가 계정 B의 투자자 ID로 요청 시 403
+ * 미생성 - AC-003: 증권계좌 등록 실패 (존재하지 않는 투자자) — 404 Not Found, 레코드 미생성 - AC-004: 증권계좌 등록 실패 (존재하지 않는
+ * 증권사) — 404 Not Found, 레코드 미생성 - AC-005: 증권계좌 등록 실패 (계정 소유권 없음) — 계정 A가 계정 B의 투자자 ID로 요청 시 403
  * Forbidden + FORBIDDEN - D-SA-003: 투자자의 첫 계좌 등록 시 isDefault=true 자동 설정 (요청의 isDefault와 무관하게 강제) -
  * SF-2: 등록 성공 시 accountNumber는 AES 암호화되어 DB에 저장되고, 응답에는 원본 평문이 아닌 마스킹된 값(뒷 4자리만 노출)이 포함된다.
  */
@@ -444,7 +444,7 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
-  void registerSecuritiesAccountWithUnknownInvestorReturns400() throws Exception {
+  void registerSecuritiesAccountWithUnknownInvestorReturns404() throws Exception {
     // Given: 인증된 계정이 존재하고, 존재하지 않는 투자자 ID가 전달됨 (AC-003)
     signupAndLogin();
     Long securitiesFirmId = registerFirm();
@@ -458,18 +458,18 @@ class SecuritiesAccountControllerTest {
     // When: POST /securities-accounts 요청을 보냄
     MvcResult result = registerSecuritiesAccount(request);
 
-    // Then: 400 Bad Request (AC-003)
+    // Then: 404 Not Found (AC-003)
     int status = result.getResponse().getStatus();
-    assertThat(status).as("존재하지 않는 투자자로 등록 시 400 Bad Request를 반환해야 합니다 (AC-003)").isEqualTo(400);
+    assertThat(status).as("존재하지 않는 투자자로 등록 시 404 Not Found를 반환해야 합니다 (AC-003)").isEqualTo(404);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(body.get("error"))
-        .as("에러 코드는 VALIDATION_ERROR여야 합니다 (AC-003)")
-        .isEqualTo("VALIDATION_ERROR");
+        .as("에러 코드는 NOT_FOUND여야 합니다 (AC-003)")
+        .isEqualTo("NOT_FOUND");
     assertThat(body.get("message")).isNotNull();
   }
 
   @Test
-  void registerSecuritiesAccountWithUnknownSecuritiesFirmReturns400() throws Exception {
+  void registerSecuritiesAccountWithUnknownSecuritiesFirmReturns404() throws Exception {
     // Given: 인증된 계정이 유효한 투자자를 소유하고, 존재하지 않는 증권사 ID가 전달됨 (AC-004)
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
@@ -483,13 +483,13 @@ class SecuritiesAccountControllerTest {
     // When: POST /securities-accounts 요청을 보냄
     MvcResult result = registerSecuritiesAccount(request);
 
-    // Then: 400 Bad Request (AC-004)
+    // Then: 404 Not Found (AC-004)
     int status = result.getResponse().getStatus();
-    assertThat(status).as("존재하지 않는 증권사로 등록 시 400 Bad Request를 반환해야 합니다 (AC-004)").isEqualTo(400);
+    assertThat(status).as("존재하지 않는 증권사로 등록 시 404 Not Found를 반환해야 합니다 (AC-004)").isEqualTo(404);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(body.get("error"))
-        .as("에러 코드는 VALIDATION_ERROR여야 합니다 (AC-004)")
-        .isEqualTo("VALIDATION_ERROR");
+        .as("에러 코드는 NOT_FOUND여야 합니다 (AC-004)")
+        .isEqualTo("NOT_FOUND");
     assertThat(body.get("message")).isNotNull();
   }
 
