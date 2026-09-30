@@ -15,7 +15,7 @@
 
 **야간 후속**: E19 SF-3(#195), SF-4(#196), 접근성 color-contrast 교정(#197)을 2026-09-30 사용자 승인 후 병합했다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. axe 재스캔 결과 12개 화면 위반 0건(부채 2번 참고).
 
-**후속(2026-09-30)**: E17 SF-3(#198, 동기화 서비스)과 KRX 휴장일 DB+월간 배치(#199, 결정 D-6)를 병합했다. SF-4(일 1회 스케줄러, #200)와 Epic 19 달력(#201)도 병합했다. SF-5(`GET /ipo-schedule`)는 폐기하고 `GET /ipos`를 재사용한다. SF-2(ustockplus)는 건너뛴 상태이며 폐기 여부 사용자 결정 대기. `DATA_GO_KR_SERVICE_KEY`는 실응답 확인 완료.
+**후속(2026-09-30)**: E17 SF-3(#198, 동기화 서비스)과 KRX 휴장일 DB+월간 배치(#199, 결정 D-6)를 병합했다. SF-4(일 1회 스케줄러, #200)와 Epic 19 달력(#201)도 병합했다. SF-5(`GET /ipo-schedule`)는 폐기하고 `GET /ipos`를 재사용한다. SF-2(ustockplus)는 사용자가 유지를 결정했고(2026-09-30) 게이트도 통과했다(`x-app-device: WEB` 헤더 필요, 조회 89일 제한) — 클라이언트 구현 진행 중. `DATA_GO_KR_SERVICE_KEY`는 실응답 확인 완료.
 
 ## 세션 요약 (2026-09-29, 4차 재개 후속 — 스코프 확장: Epic 17~19)
 
@@ -75,10 +75,12 @@
 
 **checkstyle 재조사로 정정**: 이전 세션 기록의 "532건"은 정확했다(이번 세션 초반에 `--rerun`과 `--rerun-tasks`를 헷갈려 캐시된 결과를 "87건"으로 잘못 판단했던 적이 있음 — **checkstyle 재검증은 반드시 `--rerun-tasks`를 쓴다, `--rerun`은 이 프로젝트에서 무시된다**). 실제 내역: 테스트 코드 87건은 이번 세션에 직접 수정해 PR #202로 병합 완료(SummaryJavadoc 마침표, star import 전개, 라인 길이, 중괄호, 그리고 테스트 전용 관례를 인정하는 `config/checkstyle/checkstyle-suppressions.xml` 신설). **남은 것은 프로덕션 코드 약 440건(`MissingJavadocMethod` 276 + `MissingJavadocType` 152 + 기타)** — 사용자에게 규칙을 끌지 직접 채울지 물었고, **"규칙 끄지 말고 네가 직접 수정해"로 확정**. 다음 세션에서 이어서 진행: `backend-4`에서 `DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q`로 최신 위반 목록을 뽑고, Master(코디네이터)가 직접 public 클래스·메서드에 한 줄 Javadoc을 채운다(기계적 작업이라 워커에게 맡기기엔 방향 판단 여지가 적지만, 분량이 크면 워커 위임도 재고).
 
-**Epic 18 미결 사용자 결정 3건 (다음 세션에 이어 확인)**:
-1. 매도 자동 채움에 기간별매매손익현황(`TTTC8715R`, 일자×종목 집계)을 쓸지 — Master는 같은 날 같은 종목 분할매도를 합산 매칭하는 방식을 권고.
-2. 실계좌 KIS 조회 1회 호출 승인 여부 (`prsm_tlex_smtl` 의미, 공모주 배정분 표시, `pdno` 형식 확인용 — 앱키 사용).
-3. E17 SF-2(ustockplus 스크래핑) 폐기하고 상장·배정·환불일 수동 입력 여부 — Master는 폐기를 권고.
+**Epic 18 사용자 결정 3건 — 2026-09-30 확정**:
+1. 매도·수수료·세금 자동 채움은 `TTTC8715R` 기준, 같은 날 같은 종목 분할매도는 합산해 매칭(Master 권고안 채택).
+2. 실계좌 KIS 조회 1회 승인. 앱키는 사용자가 `.env`에 넣기로 했으나 아직 발급 전 — SF-3 완료 뒤 Master가 1회만 호출한다(키는 로그·커밋에 남기지 않는다).
+3. E17 SF-2(ustockplus)는 폐기하지 않고 구현한다. 게이트 통과: `Origin`·`Referer`에 더해 `x-app-device: WEB` 헤더가 필수이고 조회 기간은 최대 89일이다.
+
+**세션 후반 진행(2026-09-30 오후)**: checkstyle 프로덕션 528건은 #203으로 병합 완료(0건). E18 SF-1(V14/V15, 증권사 API 컬럼+시드)은 backend-4 워커 결과를 검증 중이고, E17 SF-2(ustockplus 클라이언트)는 backend-6 워커가 구현 중이다. **SF-1은 병합 전이라 공유 dev DB에 V14/V15가 이미 적용돼 있다** — 그 사이 다른 작업공간에서 전체 테스트를 돌리면 Flyway 검증이 실패하므로, E18 SF-2(V16)는 SF-1 병합 뒤에 main 기준으로 시작한다. 워커 정지 사례: Laguna S 2.1이 spec을 받고 17분간 파일 변경 없이 멈춰 nemotron-3-super로 교체.
 
 **환경**: 세션 도중 Docker Desktop이 꺼져 있어 로컬 Postgres 컨테이너가 내려간 채로 테스트가 427건 실패한 적이 있었다(코드 문제 아님) — `open -a Docker` → `docker compose up -d`로 복구. 다음 세션 시작 시 `docker ps`로 컨테이너 상태부터 확인.
 

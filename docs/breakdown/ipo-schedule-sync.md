@@ -28,7 +28,7 @@
     ─ 아니면 → 대기 (인증키 발급 후 실제 응답 1건을 확보하고 시작)
 
 [게이트] ustockplus.com API의 Origin/Referer 헤더 방식이 여전히 유효한지 재확인했는가?
-    ─ 완료 → SF-2 착수 가능
+    ─ 완료 → SF-2 착수 가능  (2026-09-30 통과: Origin·Referer만으로는 부족하고 `x-app-device: WEB` 헤더까지 3개가 필요, 조회 기간 최대 89일)
     ─ 아니면 → 대기 (비공식 API라 스펙이 바뀌었을 수 있음, 착수 직전 재확인 필수)
 ```
 
@@ -87,7 +87,8 @@ SF-1 (OpenDART 클라이언트: DS001 공시검색 + DS006 지분증권 조회)
 **산출물 파일 경로**:
 - `service/ipo/sync/ustockplus/UstockPlusCalendarClient.java`
 - `service/ipo/sync/ustockplus/dto/UstockPlusCalendarItem.java` — `stockCode`, `stockName`, `calendarStockType`, `startDate`, `endDate`, `extraInfo`
-- `infrastructure.config.UstockPlusApiProperties` — Origin/Referer 헤더 값을 상수로 고정(`docs/research/ipo-schedule-sync.md` 7.3절에서 확인한 값)
+- `UstockPlusApiProperties` — Origin(`https://ustock.naver.com`)·Referer(`https://ustock.naver.com/service/ipo`)·`x-app-device: WEB` 세 헤더를 상수로 고정(`docs/research/ipo-schedule-sync.md` 7.3절). 하나라도 빠지면 400 `LOGIN_REQUIRED`(I0003)
+- 조회 기간은 최대 89일(90일 초과 시 400 `A0001`) — 클라이언트는 89일 초과 인자를 거절한다
 
 **특이사항**:
 - **이 클라이언트는 실패해도 전체 배치가 죽지 않아야 한다.** 호출부를 try-catch로 감싸고, 실패 시 해당 필드만 null로 남기고 OpenDART 데이터는 그대로 저장한다(SF-3에서 병합 시 반영).
