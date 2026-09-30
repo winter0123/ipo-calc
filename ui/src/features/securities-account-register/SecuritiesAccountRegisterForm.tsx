@@ -48,6 +48,9 @@ export default function SecuritiesAccountRegisterForm() {
   const getFormErrorMessage = () => {
     if (!error) return null
     const msg = error instanceof Error ? error.message : String(error)
+    if (msg.includes('존재하지 않는 투자자')) {
+      return '투자자 정보를 찾을 수 없습니다.'
+    }
     if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
       if (msg.includes('투자자') || msg.includes('investor')) {
         return '투자자 정보를 찾을 수 없습니다.'

@@ -37,7 +37,7 @@ export default function SignupForm() {
   const getFormErrorMessage = () => {
     if (!error) return null
     const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('409') || msg.includes('Conflict')) {
+    if (msg.includes('409') || msg.includes('Conflict') || msg.includes('이미 사용 중인 이메일')) {
       return '이미 사용 중인 이메일입니다.'
     }
     if (msg.includes('400') || msg.includes('Request failed')) {
