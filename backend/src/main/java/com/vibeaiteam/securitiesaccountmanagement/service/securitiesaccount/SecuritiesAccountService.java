@@ -61,12 +61,7 @@ public class SecuritiesAccountService {
           "investorId, securitiesFirmId, accountNumber는 필수 입력값입니다.");
     }
 
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    requireOwnedInvestor(investorId);
 
     securitiesFirmRepository
         .findByIdAndDeletedAtIsNull(securitiesFirmId)
@@ -105,12 +100,7 @@ public class SecuritiesAccountService {
     }
     String normalized = normalizeStatus(status);
 
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    requireOwnedInvestor(investorId);
 
     List<SecuritiesAccount> accounts =
         "BOTH".equals(normalized)
@@ -126,17 +116,8 @@ public class SecuritiesAccountService {
    */
   @Transactional(readOnly = true)
   public SecuritiesAccountResponse getById(Long id) {
-    SecuritiesAccount account =
-        securitiesAccountRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    SecuritiesAccount account = findActive(id);
+    requireOwner(account);
 
     return toMaskedResponse(account);
   }
@@ -146,18 +127,8 @@ public class SecuritiesAccountService {
    */
   @Transactional(readOnly = true)
   public SecuritiesAccountAccountNumberResponse getAccountNumber(Long id) {
-    SecuritiesAccount account =
-        securitiesAccountRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Long currentAccountId =
-        ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    SecuritiesAccount account = findActive(id);
+    Long currentAccountId = requireOwner(account);
 
     String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
     Instant exposedAt = Instant.now(clock);
@@ -177,17 +148,8 @@ public class SecuritiesAccountService {
    */
   @Transactional
   public SecuritiesAccountResponse update(Long id, SecuritiesAccountUpdateRequest request) {
-    SecuritiesAccount account =
-        securitiesAccountRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    SecuritiesAccount account = findActive(id);
+    requireOwner(account);
 
     if (request.getSecuritiesFirmId() != null) {
       SecuritiesFirm firm =
@@ -215,17 +177,8 @@ public class SecuritiesAccountService {
    */
   @Transactional
   public void deactivate(Long id) {
-    SecuritiesAccount account =
-        securitiesAccountRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    SecuritiesAccount account = findActive(id);
+    requireOwner(account);
 
     LocalDateTime now = LocalDateTime.now(clock);
     account.setStatus(RecordStatus.INACTIVE);
@@ -250,12 +203,7 @@ public class SecuritiesAccountService {
             .findById(id)
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+    requireOwner(account);
 
     if (account.getStatus() != RecordStatus.ACTIVE) {
       throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
@@ -289,6 +237,28 @@ public class SecuritiesAccountService {
       // 동시 요청으로 유니크 위반이 실제 발생하면 409로 변환하는 방어 코드
       throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
     }
+  }
+
+  private SecuritiesAccount findActive(Long id) {
+    return securitiesAccountRepository
+        .findByIdAndDeletedAtIsNull(id)
+        .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+  }
+
+  private Long requireOwner(SecuritiesAccount account) {
+    Investor investor =
+        investorRepository
+            .findById(account.getInvestorId())
+            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+    return ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
+  }
+
+  private void requireOwnedInvestor(Long investorId) {
+    Investor investor =
+        investorRepository
+            .findById(investorId)
+            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
+    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
   }
 
   private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {
