@@ -654,6 +654,23 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
+  void listSecuritiesAccountsWithNonexistentInvestorReturns404() throws Exception {
+    // Given: 인증된 계정이 존재하고, 존재하지 않는 investorId가 주어짐 (등록 AC-003과 동일하게 404)
+    signupAndLogin();
+
+    // When: 없는 투자자 ID로 GET /securities-accounts 요청을 보냄
+    MvcResult result =
+        mockMvc
+            .perform(get("/securities-accounts").param("investorId", "999999").session(session))
+            .andReturn();
+
+    // Then: 404 Not Found
+    assertThat(result.getResponse().getStatus())
+        .as("존재하지 않는 투자자의 계좌 목록 조회 시 404 Not Found를 반환해야 합니다")
+        .isEqualTo(404);
+  }
+
+  @Test
   void listSecuritiesAccountsFiltersByStatusWithActiveDefault() throws Exception {
     // Given: 한 투자자에게 ACTIVE 계좌 1개와 INACTIVE 계좌 1개가 연결되어 있음
     signupAndLogin();
@@ -1096,6 +1113,32 @@ class SecuritiesAccountControllerTest {
     assertThat(accountNumberEncryptor.decrypt(updated.getAccountNumber()))
         .as("DB의 계좌번호도 변경되면 안 됩니다 (SF-5)")
         .isEqualTo(ACCOUNT_NUMBER);
+  }
+
+  @Test
+  void updateSecuritiesAccountWithNonexistentSecuritiesFirmReturns400() throws Exception {
+    // Given: 인증된 계정이 소유한 증권계좌가 있음 (spec AC-011: 수정 시 없는 증권사는 400)
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    MvcResult registerResult =
+        registerSecuritiesAccount(
+            Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", ACCOUNT_NUMBER));
+    long accountId =
+        ((Number) objectMapper.readValue(utf8Body(registerResult), Map.class).get("id"))
+            .longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: 존재하지 않는 증권사 ID로 PATCH를 보냄
+    MvcResult result = updateSecuritiesAccount(accountId, Map.of("securitiesFirmId", 999999));
+
+    // Then: 400 Bad Request (등록의 404와 다른 것은 spec이 의도한 비대칭)
+    assertThat(result.getResponse().getStatus())
+        .as("수정 시 존재하지 않는 증권사는 400 Bad Request를 반환해야 합니다 (AC-011)")
+        .isEqualTo(400);
   }
 
   @Test
