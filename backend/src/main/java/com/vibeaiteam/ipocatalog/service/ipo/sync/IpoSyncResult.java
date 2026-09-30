@@ -38,4 +38,7 @@ public class IpoSyncResult {
 
   /** 중단 사유 (aborted=true인 경우) */
   private String abortReason;
+
+  /** 재시도 가능 여부 (일반 API 오류로 중단된 경우에만 true) */
+  private boolean retryable;
 }

@@ -97,13 +97,16 @@ public class IpoSyncService {
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
         result.setAborted(true);
+        result.setRetryable(false);
         result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
         log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
         return result;
       }
+      // 일반 API 오류 (예: 800 시스템 점검) → 재시도 가능으로 표시
       result.setAborted(true);
+      result.setRetryable(true);
       result.setAbortReason("API 오류: " + e.getMessage());
-      log.error("OpenDART API 오류로 동기화 중단: {}", e.getMessage());
+      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
       return result;
     }
 
