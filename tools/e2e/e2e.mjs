@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -10,9 +11,13 @@ const WRONG_PASSWORD = 'wrongpassword987!'
 const ACCOUNT_NUMBER = '1234567890123456'
 const LAST4 = ACCOUNT_NUMBER.slice(-4)
 const MISSING_INVESTOR_ID = '999999'
+const API_PREFIX = process.env.E2E_API_PREFIX ?? '/api-proxy'
+const DB_NAME = process.env.E2E_DB_NAME
+const DB_CONTAINER = process.env.E2E_DB_CONTAINER ?? 'vibe-ai-team-postgres'
+const DB_USER = process.env.E2E_DB_USER ?? 'vibe'
 
 const results = []
-const shared = { account: null, seq: 0 }
+const shared = { account: null, seq: 0, trade: null }
 
 function uniqueEmail() {
   shared.seq += 1
@@ -451,6 +456,384 @@ async function scenario6(browser) {
   }
 }
 
+const TRADE = {
+  allocatedQuantity: 100,
+  allocationPrice: 10000,
+  sales: [
+    { quantity: 30, price: 15000, amount: 450000, fee: 100, tax: 50 },
+    { quantity: 50, price: 12000, amount: 600000, fee: 200, tax: 100 },
+  ],
+  // 안분 규칙(#243): 총투자금 = 배정단가 × 매도수량 합, 참여 건수 = 서로 다른 배정 수
+  // 세전 = 매도금액 − 배정단가×매도수량 − 수수료, 세후 = 세전 − 세금 (비용 없음)
+  expected: {
+    investment: 800000,
+    preTax: 249700,
+    afterTax: 249550,
+    rate: '31.2%',
+    participation: 1,
+  },
+}
+
+function localDateTime(hour = 9) {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(hour)}:00`
+}
+
+function localDate() {
+  return localDateTime().slice(0, 10)
+}
+
+async function api(context, method, path, data) {
+  const response = await context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+    method,
+    data,
+    headers: { 'Content-Type': 'application/json' },
+  })
+  const text = await response.text()
+  if (!response.ok()) {
+    throw new Error(`API ${method} ${path} 실패: 상태=${response.status()} 본문=${text}`)
+  }
+  return text ? JSON.parse(text) : null
+}
+
+async function apiLogin(context, email) {
+  await api(context, 'POST', '/auth/login', { email, password: PASSWORD })
+}
+
+function promoteToAdmin(email) {
+  if (!DB_NAME) {
+    throw new Error(
+      '공모주 등록은 ADMIN 전용(#242)이라 DB 승격이 필요하다: E2E_DB_NAME(예: vibe_slot_2) 환경변수를 지정해야 한다',
+    )
+  }
+  execFileSync('docker', [
+    'exec',
+    DB_CONTAINER,
+    'psql',
+    '-U',
+    DB_USER,
+    '-d',
+    DB_NAME,
+    '-c',
+    `UPDATE accounts SET role='ADMIN' WHERE email='${email}'`,
+  ])
+}
+
+// 거래 흐름 시나리오용 픽스처: 계정·투자자·증권계좌는 API로, 공모주는 ADMIN 승격 후 API로 만든다(UI에 공모주 등록 화면 없음).
+async function ensureTrade(browser) {
+  if (shared.trade) return shared.trade
+  const email = uniqueEmail()
+  const ipoName = `E2E공모주-${Date.now()}`
+  const investorName = 'E2E Trader'
+  const setup = await browser.newContext()
+  try {
+    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Trader' })
+    await apiLogin(setup, email)
+    const firms = await api(setup, 'GET', '/securities-firms')
+    if (!firms || firms.length === 0) throw new Error('증권사 목록이 비어 있음(시드 확인 필요)')
+    const investor = await api(setup, 'POST', '/investors', { displayName: investorName })
+    await api(setup, 'POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: firms[0].id,
+      accountNumber: ACCOUNT_NUMBER,
+      isDefault: true,
+    })
+    promoteToAdmin(email)
+  } finally {
+    await setup.close()
+  }
+  const admin = await browser.newContext()
+  try {
+    await apiLogin(admin, email)
+    await api(admin, 'POST', '/ipos', {
+      companyName: ipoName,
+      ipoName,
+      subscriptionStartDate: localDate(),
+      subscriptionEndDate: localDate(),
+      fixedPrice: TRADE.allocationPrice,
+      offeringShareCount: 1000000,
+    })
+  } finally {
+    await admin.close()
+  }
+  shared.trade = { email, password: PASSWORD, ipoName, investorName, subscriptionId: null }
+  return shared.trade
+}
+
+async function loginTrader(browser, trade) {
+  const { context, page } = await openContext(browser)
+  const attempt = await login(page, trade.email, trade.password)
+  if (!attempt.ok) {
+    await context.close()
+    throw new Error(
+      `거래 계정 로그인 실패: 상태=${attempt.status} / 화면 에러=${attempt.texts.join(' | ') || '(없음)'}`,
+    )
+  }
+  return { context, page }
+}
+
+function requirePrevious(condition, id) {
+  if (!condition) throw new Error(`선행 시나리오 ${id}가 통과하지 않아 진행할 수 없다`)
+}
+
+async function scenario7(browser) {
+  const trade = await ensureTrade(browser)
+  const { context, page } = await loginTrader(browser, trade)
+  try {
+    const responsePromise = page
+      .waitForResponse(
+        (res) =>
+          res.request().method() === 'POST' && new URL(res.url()).pathname.endsWith('/subscriptions'),
+        { timeout: 15000 },
+      )
+      .catch(() => null)
+
+    const failedApis = []
+    page.on('response', (res) => {
+      if (res.status() >= 400) failedApis.push(`${res.request().method()} ${new URL(res.url()).pathname} → ${res.status()}`)
+    })
+
+    await goto(page, '/subscriptions/register')
+    const formShown = await waitFor(async () => {
+      if ((await page.locator('form[aria-label="청약 등록 폼"]').count()) > 0) return true
+      return (await page.locator('body').innerText()).includes('목록을 불러올 수 없습니다')
+    }, 30000)
+    if (!formShown || (await page.locator('form[aria-label="청약 등록 폼"]').count()) === 0) {
+      const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ')
+      throw new Error(
+        `청약 등록 폼 미표시: 기대=투자자·증권계좌·공모주 드롭다운이 채워진 폼 vs 실제 화면="${body.slice(0, 120)}" / 실패한 API=${[...new Set(failedApis)].join(', ') || '(없음)'}`,
+      )
+    }
+    await page.selectOption('#investorId', { label: trade.investorName })
+    await page.selectOption('#securitiesAccountId', { index: 1 })
+    await page.selectOption('#ipoId', { label: trade.ipoName })
+    await page.fill('#quantity', String(TRADE.allocatedQuantity))
+    await page.fill('#depositAmount', '500000')
+    await page.fill('#subscribedAt', localDateTime())
+    await submit(page)
+
+    const response = await responsePromise
+    const body = response ? await response.json().catch(() => null) : null
+    if (!(await waitForUrl(page, '**/subscriptions', 15000))) {
+      const texts = await errorTexts(page)
+      throw new Error(
+        `청약 등록 실패: 기대=/subscriptions 이동 vs 실제 URL=${page.url()} / POST 상태=${response ? response.status() : '응답 없음'} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
+      )
+    }
+    trade.subscriptionId = body && typeof body.id === 'number' ? body.id : null
+
+    const card = page.locator('li', { hasText: trade.ipoName })
+    await card.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+    const cardText = (await card.count()) > 0 ? await card.first().innerText() : ''
+    if (!cardText.includes(`${TRADE.allocatedQuantity}주`) || !cardText.includes('미배정')) {
+      throw new Error(
+        `목록 표시 불일치: 기대=${trade.ipoName}·${TRADE.allocatedQuantity}주·미배정 vs 실제 카드="${cardText.replace(/\s+/g, ' ') || '(카드 없음)'}"`,
+      )
+    }
+    trade.subscribed = true
+    return `POST /subscriptions 상태=${response.status()}, subscriptionId=${trade.subscriptionId}, 카드="${cardText.replace(/\s+/g, ' ')}"`
+  } finally {
+    await context.close()
+  }
+}
+
+// E2E-7(UI)이 실패해도 후속 시나리오를 검증할 수 있도록 API로 청약을 대신 만든다.
+async function ensureSubscription(browser, trade, notes) {
+  if (trade.subscribed) return
+  const context = await browser.newContext()
+  try {
+    await apiLogin(context, trade.email)
+    const investors = await api(context, 'GET', '/investors')
+    const accounts = await api(context, 'GET', `/securities-accounts?investorId=${investors[0].id}`)
+    const ipos = await api(context, 'GET', '/ipos')
+    const ipo = ipos.find((i) => i.ipoName === trade.ipoName)
+    const created = await api(context, 'POST', '/subscriptions', {
+      investorId: investors[0].id,
+      securitiesAccountId: accounts[0].id,
+      ipoId: ipo.id,
+      quantity: TRADE.allocatedQuantity,
+      depositAmount: 500000,
+      subscribedAt: localDateTime(),
+    })
+    trade.subscriptionId = created.id
+    trade.subscribed = true
+    notes.push(`E2E-7 미통과로 청약을 API로 대체 생성(subscriptionId=${created.id})`)
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario8(browser) {
+  const trade = await ensureTrade(browser)
+  const preNotes = []
+  await ensureSubscription(browser, trade, preNotes)
+  const { context, page } = await loginTrader(browser, trade)
+  try {
+    await goto(page, '/subscriptions')
+    const card = page.locator('li', { hasText: trade.ipoName }).first()
+    await card.waitFor({ state: 'visible', timeout: 15000 })
+    await card.getByRole('link', { name: '배정 입력' }).click()
+    await page.waitForSelector('form[aria-label="배정 등록 폼"]')
+
+    const responsePromise = page
+      .waitForResponse(
+        (res) =>
+          res.request().method() === 'POST' && new URL(res.url()).pathname.endsWith('/allocations'),
+        { timeout: 15000 },
+      )
+      .catch(() => null)
+
+    await page.fill('#allocatedQuantity', String(TRADE.allocatedQuantity))
+    await page.fill('#allocatedAt', localDateTime(10))
+    await page.fill('#allocationPrice', String(TRADE.allocationPrice))
+    await submit(page)
+
+    const response = await responsePromise
+    if (!(await waitForUrl(page, '**/subscriptions', 15000))) {
+      const texts = await errorTexts(page)
+      throw new Error(
+        `배정 등록 실패: 기대=/subscriptions 이동 vs 실제 URL=${page.url()} / POST 상태=${response ? response.status() : '응답 없음'} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
+      )
+    }
+    const after = page.locator('li', { hasText: trade.ipoName }).first()
+    await after.waitFor({ state: 'visible', timeout: 15000 })
+    const shown = await waitFor(async () => (await after.innerText()).includes('배정완료'), 10000)
+    const cardText = (await after.innerText()).replace(/\s+/g, ' ')
+    if (!shown) {
+      throw new Error(`배정 표시 불일치: 기대=배정완료 배지 vs 실제 카드="${cardText}"`)
+    }
+    trade.allocated = true
+    return [...preNotes, `POST /allocations 상태=${response ? response.status() : '응답 없음'}, 카드="${cardText}"`].join(' / ')
+  } finally {
+    await context.close()
+  }
+}
+
+async function registerSale(page, trade, sale) {
+  await goto(page, '/sales/register')
+  await page.waitForSelector('form[aria-label="매도 등록 폼"]')
+  await page.selectOption('#investorId', { label: trade.investorName })
+  await waitFor(async () => (await page.locator('#subscriptionId option').count()) > 1)
+  await page.selectOption('#subscriptionId', { index: 1 })
+  await waitFor(async () => (await page.locator('#allocationId option').count()) > 1)
+  await page.selectOption('#allocationId', { index: 1 })
+  await page.fill('#quantity', String(sale.quantity))
+  await page.fill('#price', String(sale.price))
+  await page.fill('#amount', String(sale.amount))
+  await page.fill('#saleDate', localDateTime(14))
+  await page.fill('#fee', String(sale.fee))
+  await page.fill('#tax', String(sale.tax))
+  await submit(page)
+  if (!(await waitForUrl(page, '**/investments', 15000))) {
+    const texts = await errorTexts(page)
+    throw new Error(
+      `매도 등록 실패(${sale.quantity}주): 기대=/investments 이동 vs 실제 URL=${page.url()} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
+    )
+  }
+}
+
+async function cardValue(page, label) {
+  const locator = page.locator(`[aria-label^="${label}: "]`).first()
+  await locator.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+  return (await locator.count()) > 0 ? (await locator.innerText()).trim() : '(없음)'
+}
+
+async function scenario9(browser) {
+  const trade = shared.trade
+  requirePrevious(trade?.allocated, 'E2E-8')
+  const { context, page } = await loginTrader(browser, trade)
+  try {
+    for (const sale of TRADE.sales) await registerSale(page, trade, sale)
+
+    await goto(page, '/dashboard')
+    await page.waitForSelector('h1')
+    const e = TRADE.expected
+    const expected = {
+      '총 투자금': `${e.investment.toLocaleString('en-US')}원`,
+      '세전 수익': `${e.preTax.toLocaleString('en-US')}원`,
+      '세후 수익': `${e.afterTax.toLocaleString('en-US')}원`,
+      수익률: e.rate,
+      '참여 건수': `${e.participation}건`,
+    }
+    const actual = {}
+    for (const label of Object.keys(expected)) actual[label] = await cardValue(page, label)
+    const mismatches = Object.keys(expected)
+      .filter((label) => actual[label] !== expected[label])
+      .map((label) => `${label}: 기대=${expected[label]} vs 실제=${actual[label]}`)
+    if (mismatches.length > 0) {
+      throw new Error(`대시보드 전체 탭 불일치(안분 규칙 #243): ${mismatches.join(' / ')}`)
+    }
+
+    await page.getByRole('tab', { name: '투자자별' }).click()
+    const line = `${trade.investorName}: ${e.investment.toLocaleString('en-US')}원`
+    const shown = await waitFor(
+      async () => (await page.locator('li', { hasText: trade.investorName }).count()) > 0,
+      10000,
+    )
+    const investorText = shown ? (await page.locator('li', { hasText: trade.investorName }).first().innerText()).trim() : '(없음)'
+    if (investorText !== line) {
+      throw new Error(`투자자별 탭 불일치: 기대="${line}" vs 실제="${investorText}"`)
+    }
+    return `매도 ${TRADE.sales.length}건(${TRADE.sales.map((s) => s.quantity).join('+')}주/배정 ${TRADE.allocatedQuantity}주) → ${Object.entries(actual).map(([k, v]) => `${k}=${v}`).join(', ')}, 투자자별="${investorText}"`
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario10(browser) {
+  const trade = shared.trade
+  requirePrevious(trade?.allocated, 'E2E-8')
+  const other = await ensureAccount(browser)
+  requirePrevious(other.email !== trade.email, 'E2E-10 (다른 계정 확보)')
+  const { context, page } = await openContext(browser)
+  try {
+    const notes = []
+    await authenticate(page, other, notes)
+
+    await goto(page, '/dashboard')
+    const emptyShown = await waitFor(async () => {
+      const text = await page.locator('body').innerText()
+      return text.includes('해당 조건에 해당하는 기록이 없습니다.')
+    }, 15000)
+    const dashboardText = await page.locator('body').innerText()
+    if (!emptyShown || dashboardText.includes(trade.investorName)) {
+      throw new Error(
+        `다른 계정 대시보드에 데이터 노출: 기대=빈 상태 vs 실제="${dashboardText.replace(/\s+/g, ' ').slice(0, 200)}"`,
+      )
+    }
+
+    await goto(page, '/subscriptions')
+    await page.getByRole('heading', { name: '청약 목록' }).waitFor()
+    const listed = await waitFor(async () => {
+      const text = await page.locator('body').innerText()
+      return text.includes('표시할 청약이 없습니다.') || text.includes(trade.ipoName)
+    }, 15000)
+    const listText = await page.locator('body').innerText()
+    if (!listed || listText.includes(trade.ipoName)) {
+      throw new Error(
+        `다른 계정 청약 목록에 타인 데이터 노출: 기대=표시할 청약이 없습니다. vs 실제="${listText.replace(/\s+/g, ' ').slice(0, 200)}"`,
+      )
+    }
+
+    if (trade.subscriptionId !== null) {
+      const status = await page.evaluate(
+        async ({ url }) => (await fetch(url, { credentials: 'include' })).status,
+        { url: `${BASE_URL}${API_PREFIX}/subscriptions/${trade.subscriptionId}` },
+      )
+      if (status !== 403) {
+        throw new Error(`타인 청약 직접 조회: 기대=403 vs 실제=${status}`)
+      }
+      notes.push(`GET /subscriptions/${trade.subscriptionId}=403`)
+    } else {
+      notes.push('subscriptionId 미확보로 직접 조회 확인 생략')
+    }
+    return [...notes, '대시보드=빈 상태, 청약 목록=표시할 청약 없음'].join(' / ')
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -458,6 +841,10 @@ const SCENARIOS = [
   ['E2E-4', '시나리오4: 중복 이메일 회원가입', scenario4],
   ['E2E-5', '시나리오5: 투자자 등록 빈 표시 이름', scenario5],
   ['E2E-6', '시나리오6: 존재하지 않는 investorId 증권계좌 등록', scenario6],
+  ['E2E-7', '거래흐름1: 청약 등록 → 목록 표시', scenario7],
+  ['E2E-8', '거래흐름2: 배정 등록(수량/단가) → 배정완료 표시', scenario8],
+  ['E2E-9', '거래흐름3: 분할 매도 2건 → 대시보드 안분 집계', scenario9],
+  ['E2E-10', '거래흐름4: 다른 계정에서 타인 데이터 비노출', scenario10],
 ]
 
 function printResults() {
