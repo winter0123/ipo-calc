@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchInvestors } from '../../../entities/investor/api-client.ts'
@@ -18,11 +18,6 @@ export default function SubscriptionRegisterForm() {
     error: investorsError,
   } = useQuery({ queryKey: ['investors'], queryFn: fetchInvestors })
   const {
-    data: securitiesAccounts,
-    isLoading: securitiesAccountsLoading,
-    error: securitiesAccountsError,
-  } = useQuery({ queryKey: ['securities-accounts'], queryFn: () => fetchSecuritiesAccounts() })
-  const {
     data: ipos,
     isLoading: iposLoading,
     error: iposError,
@@ -33,8 +28,22 @@ export default function SubscriptionRegisterForm() {
   const {
     register,
     handleSubmit,
+    control,
+    resetField,
     formState: { errors },
   } = useForm<SubscriptionRegisterRequest>({ mode: 'onSubmit' })
+
+  const selectedInvestorId = useWatch({ control, name: 'investorId' })
+  const investorSelected = Number.isFinite(selectedInvestorId)
+  const {
+    data: securitiesAccounts,
+    isLoading: securitiesAccountsLoading,
+    error: securitiesAccountsError,
+  } = useQuery({
+    queryKey: ['securities-accounts', selectedInvestorId],
+    queryFn: () => fetchSecuritiesAccounts(selectedInvestorId),
+    enabled: investorSelected,
+  })
 
   const onSubmit = (data: SubscriptionRegisterRequest) => {
     mutate(data, {
@@ -60,8 +69,8 @@ export default function SubscriptionRegisterForm() {
       },
     })
 
-  const dropdownsLoading = investorsLoading || securitiesAccountsLoading || iposLoading
-  const dropdownsError = investorsError || securitiesAccountsError || iposError
+  const dropdownsLoading = investorsLoading || iposLoading
+  const dropdownsError = investorsError || iposError
 
   if (dropdownsLoading) {
     return <div className={styles.loading}>목록을 불러오는 중...</div>
@@ -91,6 +100,7 @@ export default function SubscriptionRegisterForm() {
           {...register('investorId', {
             required: '투자자를 선택해 주세요.',
             valueAsNumber: true,
+            onChange: () => resetField('securitiesAccountId'),
           })}
           disabled={isPending}
         >
@@ -118,15 +128,26 @@ export default function SubscriptionRegisterForm() {
             required: '증권계좌를 선택해 주세요.',
             valueAsNumber: true,
           })}
-          disabled={isPending}
+          disabled={isPending || !investorSelected || securitiesAccountsLoading}
         >
-          <option value="">증권계좌 선택</option>
+          <option value="">
+            {!investorSelected
+              ? '투자자를 먼저 선택해 주세요'
+              : securitiesAccountsLoading
+                ? '불러오는 중...'
+                : '증권계좌 선택'}
+          </option>
           {securitiesAccounts?.map((account) => (
             <option key={account.id} value={account.id}>
               {account.securitiesFirmName ?? account.accountNumber}
             </option>
           ))}
         </select>
+        {securitiesAccountsError && (
+          <span className={styles.error} role="alert">
+            증권계좌 목록을 불러올 수 없습니다. 투자자를 다시 선택해 주세요.
+          </span>
+        )}
         {errors.securitiesAccountId && (
           <span id="securitiesAccountId-error" className={styles.error} aria-live="polite">
             {String(errors.securitiesAccountId.message)}

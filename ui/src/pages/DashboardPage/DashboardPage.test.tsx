@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -168,6 +168,8 @@ function asResult<T>(value: unknown): T {
 
 describe('DashboardPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-15T12:00:00'))
     vi.resetAllMocks()
 
     vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultSummaryQuery))
@@ -180,6 +182,10 @@ describe('DashboardPage', () => {
       invalidateCurrentTab: vi.fn(),
       getTabQueryConfig: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('기본 탭이 전체로 설정되고 탭이 렌더링됨', async () => {
