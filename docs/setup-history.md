@@ -35,6 +35,15 @@
 ### 프론트엔드
 6. 아직 프론트엔드 코드 없음. 생성되면 `npm install && npm run dev` 형태로 이 절차에 추가한다.
 
+### 테스트용 슬롯 DB (2026-09-30 추가)
+
+같은 Postgres 컨테이너(`vibe-ai-team-postgres`) 안에 슬롯 DB `vibe_slot_1`~`vibe_slot_4`를 두고 백엔드 테스트를 격리한다. 슬롯 1~3은 워커, 4는 Master 검증용이다.
+
+1. 슬롯 초기화(없으면 생성): `scripts/db-slot.sh reset <1-4>` — 마지막 줄에 `DB_NAME=vibe_slot_N`을 출력한다. `scripts/db-slot.sh list`로 존재 여부를 본다.
+2. 테스트 실행: `DB_NAME=vibe_slot_N DB_PASSWORD=<로컬비밀번호> ./gradlew test --rerun`
+3. `DB_NAME`을 주지 않으면 기본 DB(`vibe_ai_team`)를 쓴다 — 이 DB는 병합된 마이그레이션만 쌓인 dev 상태로만 유지한다.
+4. 슬롯을 reset 한 직후(마이그레이션이 처음부터 실행된 상태)에도 전체 테스트가 통과한다. 처음에는 V15 시드 증권사와 테스트 데이터가 충돌하는 기존 테스트가 실패했으나 #216에서 고쳤다. 새 테스트는 시드와 겹치지 않는 고유 이름을 쓰고 자기가 만든 행만 지운다.
+
 ---
 
 ## 3. 참고

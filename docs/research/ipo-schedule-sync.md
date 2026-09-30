@@ -188,7 +188,7 @@ Epic 17 "공모주 청약 일정 자동 동기화" 구현을 위한 사전 조�
 사용자가 브라우저 개발자도구 네트워크 탭에서 실제 요청을 캡처해 제공했고, Master가 동일 요청을 서버에서 재현해 검증했다.
 
 - **엔드포인트**: `GET https://api.ustockplus.com/v2/ipo/calendars?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
-- **인증**: 불필요(로그인 없이 접근 가능). 단, `Origin: https://ustock.naver.com`과 `Referer: https://ustock.naver.com/...` 헤더가 없으면 `LOGIN_REQUIRED`(`errorCode: I0003`) 오류를 반환한다(Master가 헤더 없이 직접 호출해 재현 확인). 두 헤더를 브라우저와 동일하게 보내면 `200 OK`로 정상 응답한다(Master가 curl로 재현 확인, 아래 응답 예시는 그 결과).
+- **인증**: 불필요(로그인 없이 접근 가능). 단, `Origin: https://ustock.naver.com`, `Referer: https://ustock.naver.com/service/ipo`, **`x-app-device: WEB`** 세 헤더가 모두 없으면(2026-09-30 재확인: 앞의 둘만으로는 부족하고 세 번째가 필수, 조회 기간은 최대 89일) `LOGIN_REQUIRED`(`errorCode: I0003`) 오류를 반환한다(Master가 헤더 없이 직접 호출해 재현 확인). 두 헤더를 브라우저와 동일하게 보내면 `200 OK`로 정상 응답한다(Master가 curl로 재현 확인, 아래 응답 예시는 그 결과).
 - **응답 구조**: `ipoCalendarResponses[]` 배열, 각 항목은 `stockCode`, `stockName`, `calendarStockType`, `startDate`, `endDate`, `extraInfo{finalOfferPrice, lockUpPromiseRatio, instCompetitiveness}`.
 - **확인된 `calendarStockType` 값**: `EXAMINATION_REQUESTED`(심사청구), `DEMAND_FORECAST`(수요예측), `OFFER_SUBSCRIPTION`(청약), **`TO_BE_LISTED`(상장예정일)**, **`ALLOTMENT_DATE`(배정일)**, **`REFUND_DATE`(환불일)** — OpenDART DS006이 못 주는 필드를 전부 커버한다.
 - **응답 헤더로 확인된 제약**: `access-control-allow-origin: https://ustock.naver.com`(CORS가 그 origin으로 고정 — 브라우저에서 다른 사이트가 직접 호출하면 CORS로 막히지만, **서버-to-서버 호출은 CORS의 적용을 받지 않는다**. 단 Origin/Referer 헤더로 "이 요청이 ustock.naver.com에서 왔는지"를 서버가 체크하고 있어, 그 체크를 헤더 값 지정으로 우회하는 셈이다). `x-ratelimit-burst-capacity: 120`, `x-ratelimit-replenish-rate: 15`(초당 15회 리필) — 트래픽 남용 방지 장치가 있다는 신호.
