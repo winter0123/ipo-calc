@@ -12,7 +12,7 @@
 - **세션 쿠키·remember-me(#245)**: `HttpOnly`·`SameSite=Lax`·`Secure`를 설정 한 곳(`server.servlet.session.cookie.*`, `SessionCookieWriter`)으로 단일화. **운영 배포 시 `SESSION_COOKIE_SECURE=true`와 `APP_REMEMBER_ME_KEY` 환경변수를 반드시 설정**(키 미설정이면 부팅마다 무작위 키 + WARN, 재시작 시 remember-me 무효). 프론트와 API는 같은 도메인/프록시여야 SameSite=Lax가 동작한다.
 - **E2E 10/10(#246·#247)**: 거래 흐름 시나리오 7~10 추가(청약→배정→분할 매도→대시보드 안분→소유권 격리). 처음 실측에서 E2E-7이 실패해 청약 등록 화면이 UI로는 열리지 않는 결함을 찾았고(증권계좌 조회에 `investorId` 누락), #247로 수정했다. 같은 PR에서 2026-09를 하드코딩한 UI 테스트 6건(10월부터 실패)을 날짜 고정으로 고쳤다. **7~10 실행에는 `E2E_DB_NAME`(슬롯 DB 이름) 환경변수가 필수**다. 자세한 실행법은 `docs/qa/e2e-report.md`.
 - **2차 리팩토링(#249~#254, 동작 불변, 테스트·E2E 그대로 통과)**: `IpoSyncService`(실패 기록·일정 병합 추출), `SecuritiesAccountService`(소유권 확인 조회 3종 추출), `IpoService.update`(`pick`·`findActive`), `MarketHolidaySyncService`(휴장일 삽입 추출), UI `SaleRegisterForm`(선택 숫자 필드 5개 통합), 체크스타일 경고 1건. `SubscriptionService`·`SubscriptionRegisterForm`은 이미 정리돼 있어 그대로 뒀다.
-- **여전히 남은 것**: KIS 키 대기(아래 BLOCKED), 400 대 404 불일치 2곳(`SecuritiesAccountService.list()`의 없는 투자자, 계좌 수정의 없는 증권사 — spec 확인 필요).
+- **여전히 남은 것**: KIS 키 대기(아래 BLOCKED), 400 대 404 불일치는 없다(spec 확인 결과: 목록의 없는 투자자는 404, 계좌 수정의 없는 증권사는 spec AC-011이 400 — 둘 다 테스트로 고정).
 
 ## 야간 자율 작업 결과 (2026-09-30, #227~#239)
 
@@ -21,7 +21,7 @@
 - **정정**: 없는 투자자·증권사로 증권계좌 등록 시 400 대신 404(#237, spec AC-011). #236은 UI 린트 경고 18건 제거.
 - **보안 점검(읽기 전용 감사) 후속**: 청약·배정·매도·비용·수익 서비스의 소유권 검증 누락(타 계정 조회·수정 가능)을 #239로 수정(타 계정 리소스 403 `FORBIDDEN`, 목록·필터는 본인 소유로 스코프, `OwnershipIsolationTest`). #238은 `size=0` 500 방지, SQL 바인딩·security DEBUG 로그 기본 제거, KIS 오류 로그에서 예외 객체 대신 타입만 기록. 로그인 잠금 순서는 결함이 아니었다(잠긴 뒤엔 정답·오답 모두 403 `ACCOUNT_LOCKED`).
 - **사용자 결정이 필요한 보안 항목(미처리)**: (1) 세션 쿠키 `Secure`·`SameSite` 설정(`AuthService`에 하드코딩, 운영 프로파일 없음), (2) 공용 카탈로그(IPO·증권사) 쓰기를 ADMIN으로 제한할지 — 지금은 아무 계정이나 공모가를 수정·삭제할 수 있다(개인용이면 가입 닫기도 대안), (3) remember-me 키 환경변수화, (4) OpenDART 키가 요청 URL로 로깅되는지 미확인.
-- **남은 400 대 404 불일치**: `SecuritiesAccountService.list()`의 없는 투자자, 계좌 수정의 없는 증권사가 여전히 400이다(spec이 400으로 규정한 곳 포함, 손대지 않음).
+- **400 대 404**: (정정) `list()`의 없는 투자자는 이미 404였고, 계좌 수정의 없는 증권사만 spec AC-011에 따라 400이다. 기록이 틀렸던 것.
 - **참고**: 백엔드 500줄 미만이지만 250줄 넘는 파일(IpoSyncService 357, SecuritiesAccountService 321, IpoService 315 등)이 다음 리팩토링 후보다.
 
 ## BLOCKED (2026-09-30 종료 시점) — 사용자 결정 gate
