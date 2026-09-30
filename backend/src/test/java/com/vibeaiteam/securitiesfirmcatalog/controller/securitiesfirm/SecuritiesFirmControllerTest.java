@@ -69,6 +69,7 @@ class SecuritiesFirmControllerTest {
   private String testEmail;
   private String testPassword;
   private String testName;
+  private String firmNameSuffix;
   private MockHttpSession session;
   private final List<SecuritiesFirm> registeredFirms = new ArrayList<>();
 
@@ -78,6 +79,7 @@ class SecuritiesFirmControllerTest {
     testEmail = "securities-owner-" + nonce + "@example.com";
     testPassword = "securePass123!";
     testName = "기준정보테스터";
+    firmNameSuffix = Long.toUnsignedString(nonce, 16);
     session = new MockHttpSession();
   }
 
@@ -85,6 +87,16 @@ class SecuritiesFirmControllerTest {
   void tearDown() {
     cleanupAccount(testEmail);
     cleanupFirms();
+  }
+
+  /**
+   * 시드(V15)의 14개 증권사와 절대 겹치지 않는 고유 증권사명을 만든다.
+   *
+   * <p>V15 시드가 넣은 이름(예: 한국투자증권)을 그대로 쓰면 등록 API가 409로 거부하고 (name, status) 유니크 제약도 걸린다. 테스트가 다루는 것은
+   * "이 테스트가 만든 행"이므로, 테스트마다 다른 접미사를 붙여 시드·다른 테스트와 충돌하지 않게 한다.
+   */
+  private String uniqueFirmName(String base) {
+    return base + "-" + firmNameSuffix;
   }
 
   private void cleanupAccount(String email) {
@@ -143,13 +155,29 @@ class SecuritiesFirmControllerTest {
     return new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
   }
 
+  /**
+   * DB에 있는 모든 활성(deletedAt IS NULL) 증권사의 이름을 반환한다.
+   *
+   * <p>시드(V15)까지 포함한 현재 DB 상태이므로, 목록 크기 절대값에 의존하지 않는 검증 기준이 된다.
+   */
+  private List<String> activeFirmNames() {
+    return securitiesFirmRepository.findByDeletedAtIsNull().stream()
+        .map(SecuritiesFirm::getName)
+        .collect(Collectors.toList());
+  }
+
+  private List<String> responseNames(List<Map<String, Object>> body) {
+    return body.stream().map(firm -> (String) firm.get("name")).collect(Collectors.toList());
+  }
+
   @Test
   void registerFirmWithValidRequestReturns201AndResponseFields() throws Exception {
     // Given: 인증된 사용자가 존재하고 유효한 증권사명이 제공됨 (AC-001)
     signupAndLogin();
+    String firmName = uniqueFirmName("한국투자증권");
     var request =
         Map.of(
-            "name", "한국투자증권",
+            "name", firmName,
             "externalCode", "SC-0001",
             "businessRegistrationNumber", "123-45-67890");
 
@@ -163,7 +191,7 @@ class SecuritiesFirmControllerTest {
     String responseBody = utf8Body(result);
     Map<String, Object> response = objectMapper.readValue(responseBody, Map.class);
     assertThat(response.get("id")).as("응답에 증권사 id가 포함되어야 합니다 (AC-001)").isNotNull();
-    assertThat(response.get("name")).as("응답에 증권사명이 포함되어야 합니다 (AC-001)").isEqualTo("한국투자증권");
+    assertThat(response.get("name")).as("응답에 증권사명이 포함되어야 합니다 (AC-001)").isEqualTo(firmName);
     assertThat(response.get("externalCode")).isEqualTo("SC-0001");
     assertThat(response.get("businessRegistrationNumber")).isEqualTo("123-45-67890");
     assertThat(response.get("status")).as("status는 ACTIVE여야 합니다 (AC-001)").isEqualTo(STATUS_ACTIVE);
@@ -172,8 +200,8 @@ class SecuritiesFirmControllerTest {
 
     // And: DB에 신규 증권사 레코드가 생성됨 (AC-001)
     SecuritiesFirm saved =
-        securitiesFirmRepository.findByNameAndStatus("한국투자증권", STATUS_ACTIVE).orElseThrow();
-    assertThat(saved.getName()).isEqualTo("한국투자증권");
+        securitiesFirmRepository.findByNameAndStatus(firmName, STATUS_ACTIVE).orElseThrow();
+    assertThat(saved.getName()).isEqualTo(firmName);
     assertThat(saved.getExternalCode()).isEqualTo("SC-0001");
     assertThat(saved.getBusinessRegistrationNumber()).isEqualTo("123-45-67890");
     assertThat(saved.getStatus()).isEqualTo(STATUS_ACTIVE);
@@ -240,16 +268,17 @@ class SecuritiesFirmControllerTest {
 
   @Test
   void registerFirmWithDuplicateActiveNameReturns409DuplicateName() throws Exception {
-    // Given: 기존에 동일한 이름의 활성(ACTIVE) 증권사가 존재함 (AC-003)
+    // Given: 이 테스트가 먼저 만든 고유 이름의 활성(ACTIVE) 증권사가 존재함 (AC-003)
     signupAndLogin();
-    MvcResult first = registerRequest(Map.of("name", "미래에셋증권"));
+    String firmName = uniqueFirmName("미래에셋증권");
+    MvcResult first = registerRequest(Map.of("name", firmName));
     assertThat(first.getResponse().getStatus()).as("테스트 사전 준비: 최초 등록은 201이어야 합니다").isEqualTo(201);
     SecuritiesFirm existing =
-        securitiesFirmRepository.findByNameAndStatus("미래에셋증권", STATUS_ACTIVE).orElseThrow();
+        securitiesFirmRepository.findByNameAndStatus(firmName, STATUS_ACTIVE).orElseThrow();
     registeredFirms.add(existing);
 
     // When: 동일한 name으로 POST /securities-firms 요청이 전송됨
-    MvcResult result = registerRequest(Map.of("name", "미래에셋증권"));
+    MvcResult result = registerRequest(Map.of("name", firmName));
 
     // Then: 409 Conflict + DUPLICATE_NAME (AC-003)
     int status = result.getResponse().getStatus();
@@ -264,19 +293,33 @@ class SecuritiesFirmControllerTest {
     // And: 추가 레코드가 생성되지 않음 (AC-003)
     List<SecuritiesFirm> matches =
         securitiesFirmRepository.findAll().stream()
-            .filter(f -> "미래에셋증권".equals(f.getName()) && STATUS_ACTIVE.equals(f.getStatus()))
+            .filter(f -> firmName.equals(f.getName()) && STATUS_ACTIVE.equals(f.getStatus()))
             .collect(Collectors.toList());
     assertThat(matches).as("중복 등록 실패 시 동일 활성 증권사 레코드는 1건뿐이어야 합니다 (AC-003)").hasSize(1);
   }
 
   @Test
   void listFirmsReturnsAllActiveFirmsAsList() throws Exception {
-    // Given: 인증된 사용자가 존재하고 활성(ACTIVE) 증권사 2곳이 등록되어 있음 (AC-004)
+    // Given: 인증된 사용자가 존재하고 이 테스트가 만든 활성(ACTIVE) 증권사 2곳이 등록되어 있음 (AC-004)
+    // 시드(V15)의 증권사도 목록에 함께 노출되므로 크기 절대값 대신 "모든 활성 증권사가 빠짐없이 포함되는지"로 검증한다.
     signupAndLogin();
-    registerRequest(Map.of("name", "한국투자증권", "externalCode", "SC-0001")); // 201
-    registerRequest(Map.of("name", "미래에셋증권", "externalCode", "SC-0002")); // 201
-    List<SecuritiesFirm> active = securitiesFirmRepository.findByDeletedAtIsNull();
-    registeredFirms.addAll(active);
+    String firstName = uniqueFirmName("한국투자증권");
+    String secondName = uniqueFirmName("미래에셋증권");
+    int firstStatus =
+        registerRequest(Map.of("name", firstName, "externalCode", "SC-0001"))
+            .getResponse()
+            .getStatus();
+    assertThat(firstStatus).as("테스트 사전 준비: 등록은 201이어야 합니다").isEqualTo(201);
+    int secondStatus =
+        registerRequest(Map.of("name", secondName, "externalCode", "SC-0002"))
+            .getResponse()
+            .getStatus();
+    assertThat(secondStatus).as("테스트 사전 준비: 등록은 201이어야 합니다").isEqualTo(201);
+    registeredFirms.add(
+        securitiesFirmRepository.findByNameAndStatus(firstName, STATUS_ACTIVE).orElseThrow());
+    registeredFirms.add(
+        securitiesFirmRepository.findByNameAndStatus(secondName, STATUS_ACTIVE).orElseThrow());
+    List<String> activeNames = activeFirmNames();
 
     // When: GET /securities-firms 요청이 전송됨
     MvcResult result = mockMvc.perform(get("/securities-firms").session(session)).andReturn();
@@ -285,11 +328,10 @@ class SecuritiesFirmControllerTest {
     int status = result.getResponse().getStatus();
     assertThat(status).as("목록 조회 시 200 OK여야 합니다 (AC-004)").isEqualTo(200);
     List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
-    assertThat(body).as("등록된 모든 활성 증권사가 목록에 포함되어야 합니다 (AC-004)").hasSize(2);
-    assertThat(body)
-        .extracting(inv -> inv.get("name"))
-        .as("등록된 활성 증권사 이름이 모두 포함되어야 합니다 (AC-004)")
-        .containsExactlyInAnyOrder("한국투자증권", "미래에셋증권");
+    assertThat(responseNames(body))
+        .as("등록된 모든 활성 증권사가 목록에 포함되어야 합니다 (AC-004)")
+        .containsAll(activeNames);
+    assertThat(body).as("목록에는 활성 증권사만 담겨야 합니다 (AC-004)").hasSameSizeAs(activeNames);
     for (Map<String, Object> firm : body) {
       assertThat(firm.get("status"))
           .as("목록 응답의 status는 ACTIVE여야 합니다 (AC-004)")
@@ -299,18 +341,21 @@ class SecuritiesFirmControllerTest {
 
   @Test
   void listFirmsExcludesSoftDeletedFirm() throws Exception {
-    // Given: 인증된 사용자가 존재하고 활성 증권사 1곳과 논리 삭제된 증권사 1곳이 존재함 (D-SF-003)
+    // Given: 인증된 사용자가 존재하고 이 테스트가 만든 활성 증권사 1곳과 논리 삭제된 증권사 1곳이 존재함 (D-SF-003)
     signupAndLogin();
-    registerRequest(Map.of("name", "한국투자증권")); // 201
+    String activeName = uniqueFirmName("한국투자증권");
+    int registerStatus = registerRequest(Map.of("name", activeName)).getResponse().getStatus();
+    assertThat(registerStatus).as("테스트 사전 준비: 등록은 201이어야 합니다").isEqualTo(201);
     SecuritiesFirm active =
-        securitiesFirmRepository.findByNameAndStatus("한국투자증권", STATUS_ACTIVE).orElseThrow();
+        securitiesFirmRepository.findByNameAndStatus(activeName, STATUS_ACTIVE).orElseThrow();
     registeredFirms.add(active);
 
+    String deletedName = uniqueFirmName("폐지증권");
     LocalDateTime now = LocalDateTime.now();
     SecuritiesFirm deleted =
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
-                .name("폐지증권")
+                .name(deletedName)
                 .status("INACTIVE")
                 .deletedAt(now)
                 .createdAt(now)
@@ -325,18 +370,24 @@ class SecuritiesFirmControllerTest {
     int status = result.getResponse().getStatus();
     assertThat(status).as("목록 조회 시 200 OK여야 합니다").isEqualTo(200);
     List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
-    assertThat(body).as("논리 삭제된 증권사는 목록에서 제외되어야 합니다 (D-SF-003)").hasSize(1);
-    assertThat(body.get(0).get("name")).as("활성 증권사만 목록에 포함되어야 합니다 (D-SF-003)").isEqualTo("한국투자증권");
+    assertThat(responseNames(body)).as("활성 증권사는 목록에 포함되어야 합니다 (D-SF-003)").contains(activeName);
+    assertThat(responseNames(body))
+        .as("논리 삭제된 증권사는 목록에서 제외되어야 합니다 (D-SF-003)")
+        .doesNotContain(deletedName);
+    assertThat(body)
+        .as("목록의 모든 증권사는 논리 삭제되지 않은 활성 증권사여야 합니다 (D-SF-003)")
+        .hasSameSizeAs(activeFirmNames());
   }
 
   @Test
   void getFirmByIdReturns200WithDetails() throws Exception {
     // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-005)
     signupAndLogin();
+    String firmName = uniqueFirmName("삼성증권");
     MvcResult created =
         registerRequest(
             Map.of(
-                "name", "삼성증권",
+                "name", firmName,
                 "externalCode", "SC-0003",
                 "businessRegistrationNumber", "111-22-33333"));
     Long firmId =
@@ -353,7 +404,7 @@ class SecuritiesFirmControllerTest {
     assertThat(status).as("존재하는 증권사 상세 조회 시 200 OK여야 합니다 (AC-005)").isEqualTo(200);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(((Number) body.get("id")).longValue()).isEqualTo(firmId);
-    assertThat(body.get("name")).isEqualTo("삼성증권");
+    assertThat(body.get("name")).isEqualTo(firmName);
     assertThat(body.get("externalCode")).isEqualTo("SC-0003");
     assertThat(body.get("businessRegistrationNumber")).isEqualTo("111-22-33333");
     assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
@@ -388,7 +439,7 @@ class SecuritiesFirmControllerTest {
     SecuritiesFirm deleted =
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
-                .name("OLD증권")
+                .name(uniqueFirmName("OLD증권"))
                 .status("INACTIVE")
                 .deletedAt(now)
                 .createdAt(now)
@@ -413,10 +464,12 @@ class SecuritiesFirmControllerTest {
   void updateFirmWithValidRequestReturns200AndReflectsFields() throws Exception {
     // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-007)
     signupAndLogin();
+    String currentName = uniqueFirmName("한국투자증권");
+    String newName = uniqueFirmName("미래에셋증권");
     MvcResult created =
         registerRequest(
             Map.of(
-                "name", "한국투자증권",
+                "name", currentName,
                 "externalCode", "SC-0001",
                 "businessRegistrationNumber", "123-45-67890"));
     Long firmId =
@@ -436,7 +489,7 @@ class SecuritiesFirmControllerTest {
                     .content(
                         objectMapper.writeValueAsString(
                             Map.of(
-                                "name", "미래에셋증권",
+                                "name", newName,
                                 "externalCode", "SC-0099",
                                 "businessRegistrationNumber", "999-88-77777")))
                     .session(session))
@@ -448,7 +501,7 @@ class SecuritiesFirmControllerTest {
 
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(((Number) body.get("id")).longValue()).isEqualTo(firmId);
-    assertThat(body.get("name")).isEqualTo("미래에셋증권");
+    assertThat(body.get("name")).isEqualTo(newName);
     assertThat(body.get("externalCode")).isEqualTo("SC-0099");
     assertThat(body.get("businessRegistrationNumber")).isEqualTo("999-88-77777");
     assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
@@ -456,7 +509,7 @@ class SecuritiesFirmControllerTest {
 
     // And: DB에 수정된 필드와 갱신된 updatedAt이 반영됨 (AC-007)
     SecuritiesFirm updated = securitiesFirmRepository.findById(firmId).orElseThrow();
-    assertThat(updated.getName()).isEqualTo("미래에셋증권");
+    assertThat(updated.getName()).isEqualTo(newName);
     assertThat(updated.getExternalCode()).isEqualTo("SC-0099");
     assertThat(updated.getBusinessRegistrationNumber()).isEqualTo("999-88-77777");
     assertThat(updated.getStatus()).isEqualTo(STATUS_ACTIVE);
@@ -469,10 +522,12 @@ class SecuritiesFirmControllerTest {
   void updateFirmWithOnlyNameReflectsPartialUpdate() throws Exception {
     // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (요청에 포함된 필드만 갱신)
     signupAndLogin();
+    String firmName = uniqueFirmName("키움증권");
+    String updatedName = uniqueFirmName("키움증권(변경)");
     MvcResult created =
         registerRequest(
             Map.of(
-                "name", "키움증권",
+                "name", firmName,
                 "externalCode", "SC-0010",
                 "businessRegistrationNumber", "123-45-11111"));
     Long firmId =
@@ -486,7 +541,7 @@ class SecuritiesFirmControllerTest {
             .perform(
                 patch("/securities-firms/" + firmId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(Map.of("name", "키움증권(변경)")))
+                    .content(objectMapper.writeValueAsString(Map.of("name", updatedName)))
                     .session(session))
             .andReturn();
 
@@ -495,12 +550,12 @@ class SecuritiesFirmControllerTest {
     assertThat(status).as("부분 수정 요청 시 200 OK를 반환해야 합니다").isEqualTo(200);
 
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(body.get("name")).isEqualTo("키움증권(변경)");
+    assertThat(body.get("name")).isEqualTo(updatedName);
     assertThat(body.get("externalCode")).isEqualTo("SC-0010");
     assertThat(body.get("businessRegistrationNumber")).isEqualTo("123-45-11111");
 
     SecuritiesFirm updated = securitiesFirmRepository.findById(firmId).orElseThrow();
-    assertThat(updated.getName()).isEqualTo("키움증권(변경)");
+    assertThat(updated.getName()).isEqualTo(updatedName);
     assertThat(updated.getExternalCode()).isEqualTo("SC-0010");
     assertThat(updated.getBusinessRegistrationNumber()).isEqualTo("123-45-11111");
   }
@@ -509,7 +564,8 @@ class SecuritiesFirmControllerTest {
   void updateFirmWithEmptyNameReturns400ValidationError() throws Exception {
     // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함 (AC-008)
     signupAndLogin();
-    MvcResult created = registerRequest(Map.of("name", "키움증권"));
+    String firmName = uniqueFirmName("키움증권");
+    MvcResult created = registerRequest(Map.of("name", firmName));
     Long firmId =
         ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
     SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
@@ -537,20 +593,22 @@ class SecuritiesFirmControllerTest {
 
     // And: 기존 데이터가 변경되지 않음 (AC-008)
     SecuritiesFirm still = securitiesFirmRepository.findById(firmId).orElseThrow();
-    assertThat(still.getName()).isEqualTo("키움증권");
+    assertThat(still.getName()).isEqualTo(firmName);
   }
 
   @Test
   void updateFirmWithDuplicateActiveNameReturns409DuplicateName() throws Exception {
-    // Given: 기존에 동일한 이름의 활성(ACTIVE) 증권사가 존재하고, 수정 대상 증권사가 존재함 (AC-009)
+    // Given: 이 테스트가 만든 다른 활성(ACTIVE) 증권사가 존재하고, 수정 대상 증권사가 존재함 (AC-009)
     signupAndLogin();
-    MvcResult first = registerRequest(Map.of("name", "미래에셋증권"));
+    String existingName = uniqueFirmName("미래에셋증권");
+    MvcResult first = registerRequest(Map.of("name", existingName));
     assertThat(first.getResponse().getStatus()).as("테스트 사전 준비: 최초 등록은 201이어야 합니다").isEqualTo(201);
     SecuritiesFirm existing =
-        securitiesFirmRepository.findByNameAndStatus("미래에셋증권", STATUS_ACTIVE).orElseThrow();
+        securitiesFirmRepository.findByNameAndStatus(existingName, STATUS_ACTIVE).orElseThrow();
     registeredFirms.add(existing);
 
-    MvcResult second = registerRequest(Map.of("name", "한국투자증권"));
+    String targetName = uniqueFirmName("한국투자증권");
+    MvcResult second = registerRequest(Map.of("name", targetName));
     Long targetId =
         ((Number) objectMapper.readValue(utf8Body(second), Map.class).get("id")).longValue();
     SecuritiesFirm target = securitiesFirmRepository.findById(targetId).orElseThrow();
@@ -562,7 +620,7 @@ class SecuritiesFirmControllerTest {
             .perform(
                 patch("/securities-firms/" + targetId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(Map.of("name", "미래에셋증권")))
+                    .content(objectMapper.writeValueAsString(Map.of("name", existingName)))
                     .session(session))
             .andReturn();
 
@@ -578,14 +636,15 @@ class SecuritiesFirmControllerTest {
 
     // And: 기존 데이터가 변경되지 않음 (AC-009)
     SecuritiesFirm still = securitiesFirmRepository.findById(targetId).orElseThrow();
-    assertThat(still.getName()).isEqualTo("한국투자증권");
+    assertThat(still.getName()).isEqualTo(targetName);
   }
 
   @Test
   void updateFirmWithSameCurrentNameReturns200AllowsNoChange() throws Exception {
-    // Given: 인증된 사용자가 존재하고 "삼성증권" 증권사가 존재함 (자기 자신과 동일 이름 → 중복 아님)
+    // Given: 인증된 사용자가 존재하고 이 테스트가 만든 증권사가 존재함 (자기 자신과 동일 이름 → 중복 아님)
     signupAndLogin();
-    MvcResult created = registerRequest(Map.of("name", "삼성증권"));
+    String firmName = uniqueFirmName("삼성증권");
+    MvcResult created = registerRequest(Map.of("name", firmName));
     Long firmId =
         ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
     SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
@@ -597,7 +656,7 @@ class SecuritiesFirmControllerTest {
             .perform(
                 patch("/securities-firms/" + firmId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(Map.of("name", "삼성증권")))
+                    .content(objectMapper.writeValueAsString(Map.of("name", firmName)))
                     .session(session))
             .andReturn();
 
@@ -606,9 +665,9 @@ class SecuritiesFirmControllerTest {
     assertThat(status).as("현재와 동일한 이름으로 수정 시 200 OK를 반환해야 합니다 (자기 자신 제외)").isEqualTo(200);
 
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(body.get("name")).isEqualTo("삼성증권");
+    assertThat(body.get("name")).isEqualTo(firmName);
     SecuritiesFirm still = securitiesFirmRepository.findById(firmId).orElseThrow();
-    assertThat(still.getName()).isEqualTo("삼성증권");
+    assertThat(still.getName()).isEqualTo(firmName);
   }
 
   @Test
@@ -644,7 +703,7 @@ class SecuritiesFirmControllerTest {
     MvcResult created =
         registerRequest(
             Map.of(
-                "name", "NH투자증권",
+                "name", uniqueFirmName("NH투자증권"),
                 "externalCode", "SC-0020",
                 "businessRegistrationNumber", "123-45-00000"));
     Long firmId =
@@ -679,14 +738,21 @@ class SecuritiesFirmControllerTest {
 
   @Test
   void deactivatedFirmIsExcludedFromList() throws Exception {
-    // Given: 인증된 사용자가 존재하고 활성 증권사 2곳이 등록되어 있음 (D-SF-003 필터 재사용 검증)
+    // Given: 인증된 사용자가 존재하고 이 테스트가 만든 활성 증권사 2곳이 등록되어 있음 (D-SF-003 필터 재사용 검증)
+    // 시드가 있어도 성립해야 하므로 목록 크기 대신 "고유 이름의 포함/제외"로 검증한다.
     signupAndLogin();
-    registerRequest(Map.of("name", "한국투자증권"));
-    registerRequest(Map.of("name", "미래에셋증권"));
-    List<SecuritiesFirm> active = securitiesFirmRepository.findByDeletedAtIsNull();
-    registeredFirms.addAll(active);
+    String keptName = uniqueFirmName("한국투자증권");
+    String removedName = uniqueFirmName("미래에셋증권");
+    int keepStatus = registerRequest(Map.of("name", keptName)).getResponse().getStatus();
+    assertThat(keepStatus).as("테스트 사전 준비: 등록은 201이어야 합니다").isEqualTo(201);
+    int removeStatus = registerRequest(Map.of("name", removedName)).getResponse().getStatus();
+    assertThat(removeStatus).as("테스트 사전 준비: 등록은 201이어야 합니다").isEqualTo(201);
+    SecuritiesFirm kept =
+        securitiesFirmRepository.findByNameAndStatus(keptName, STATUS_ACTIVE).orElseThrow();
+    registeredFirms.add(kept);
     SecuritiesFirm target =
-        active.stream().filter(f -> "미래에셋증권".equals(f.getName())).findFirst().orElseThrow();
+        securitiesFirmRepository.findByNameAndStatus(removedName, STATUS_ACTIVE).orElseThrow();
+    registeredFirms.add(target);
 
     // When: 한 곳이 비활성화된 뒤 GET /securities-firms 요청이 전송됨
     int deleteStatus =
@@ -702,15 +768,16 @@ class SecuritiesFirmControllerTest {
     int status = result.getResponse().getStatus();
     assertThat(status).as("목록 조회 시 200 OK여야 합니다").isEqualTo(200);
     List<Map<String, Object>> body = objectMapper.readValue(utf8Body(result), List.class);
-    assertThat(body).as("비활성화된 증권사는 목록에서 제외되어야 합니다").hasSize(1);
-    assertThat(body.get(0).get("name")).as("활성 증권사만 목록에 포함되어야 합니다").isEqualTo("한국투자증권");
+    assertThat(responseNames(body)).as("활성 상태로 남은 증권사는 목록에 포함되어야 합니다").contains(keptName);
+    assertThat(responseNames(body)).as("비활성화된 증권사는 목록에서 제외되어야 합니다").doesNotContain(removedName);
+    assertThat(body).as("목록에는 비활성화 전 상태였던 활성 증권사만 담겨야 합니다").hasSameSizeAs(activeFirmNames());
   }
 
   @Test
   void deactivatedFirmDetailReturns404NotFound() throws Exception {
     // Given: 인증된 사용자가 존재하고 등록된 증권사가 존재함
     signupAndLogin();
-    MvcResult created = registerRequest(Map.of("name", "KB증권"));
+    MvcResult created = registerRequest(Map.of("name", uniqueFirmName("KB증권")));
     Long firmId =
         ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
     SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
