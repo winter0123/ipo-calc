@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SubscriptionRegisterForm from './SubscriptionRegisterForm.tsx'
 import { apiFetch } from '../../../shared/api/client.ts'
+import { ApiError } from '../../../shared/api/apiError.ts'
 
 vi.mock('../../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -241,7 +242,7 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
 
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      new Error('Request failed: 404 - 존재하지 않는 투자자입니다'),
+      new ApiError(404, '존재하지 않는 투자자입니다', '존재하지 않는 투자자입니다'),
     )
 
     fillValidForm()
@@ -259,7 +260,7 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
 
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      new Error('Request failed: 404 - 존재하지 않는 공모주입니다'),
+      new ApiError(404, '존재하지 않는 공모주입니다', '존재하지 않는 공모주입니다'),
     )
 
     fillValidForm()
@@ -276,7 +277,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Conflict: 409'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
 
     fillValidForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
@@ -292,7 +293,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Request failed: 400'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(400, 'Request failed: 400'))
 
     fillValidForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))

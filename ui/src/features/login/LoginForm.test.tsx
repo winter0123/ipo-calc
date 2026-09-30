@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import LoginForm from './LoginForm.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -67,7 +68,7 @@ describe('LoginForm', () => {
   })
 
   it('401 시 에러 메시지 표시', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Unauthorized: 401'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(401, 'Unauthorized: 401'))
     renderLoginForm()
 
     fillAndSubmit('test@example.com', 'password123')

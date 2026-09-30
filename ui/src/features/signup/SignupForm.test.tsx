@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SignupForm from './SignupForm.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -74,7 +75,7 @@ describe('SignupForm', () => {
   })
 
   it('409 중복 시 이메일 중복 메시지 표시', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Conflict: 409'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
     renderSignupForm()
 
     fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
@@ -84,7 +85,9 @@ describe('SignupForm', () => {
   })
 
   it('백엔드 409 메시지("이미 사용 중인 이메일입니다")도 마침표가 붙은 메시지로 표시', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('이미 사용 중인 이메일입니다'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(409, '이미 사용 중인 이메일입니다', '이미 사용 중인 이메일입니다'),
+    )
     renderSignupForm()
 
     fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
@@ -94,7 +97,7 @@ describe('SignupForm', () => {
 
   it('400 오류 시 API 메시지 매핑', async () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      Object.assign(new Error('Bad Request: 400'), { message: '이름은 2자 이상이어야 합니다.' }),
+      new ApiError(400, '이름은 2자 이상이어야 합니다.', '이름은 2자 이상이어야 합니다.'),
     )
     renderSignupForm()
 

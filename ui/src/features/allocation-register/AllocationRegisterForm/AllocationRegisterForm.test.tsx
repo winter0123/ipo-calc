@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AllocationRegisterForm from './AllocationRegisterForm.tsx'
 import { apiFetch } from '../../../shared/api/client.ts'
+import { ApiError } from '../../../shared/api/apiError.ts'
 
 vi.mock('../../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -208,7 +209,7 @@ describe('AllocationRegisterForm', () => {
 
   it('청약 상세 조회 404 응답 시 에러 메시지 표시 (AC-015)', async () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      new Error('Request failed: 404 - 청약을 찾을 수 없습니다'),
+      new ApiError(404, '청약을 찾을 수 없습니다', '청약을 찾을 수 없습니다'),
     )
     renderForm()
 
@@ -229,7 +230,7 @@ describe('AllocationRegisterForm', () => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
-        throw new Error('Request failed: 400 - 배정수량은 청약수량을 초과할 수 없습니다.')
+        throw new ApiError(400, 'Request failed: 400')
       }
       throw new Error(`unexpected path: ${String(path)}`)
     })
@@ -252,7 +253,7 @@ describe('AllocationRegisterForm', () => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
-        throw new Error('Conflict: 409')
+        throw new ApiError(409, 'Request failed: 409')
       }
       throw new Error(`unexpected path: ${String(path)}`)
     })
@@ -275,7 +276,7 @@ describe('AllocationRegisterForm', () => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
-        throw new Error('Bad Request: 400 - 유효하지 않은 입력입니다.')
+        throw new ApiError(400, '유효하지 않은 입력입니다.', '유효하지 않은 입력입니다.')
       }
       throw new Error(`unexpected path: ${String(path)}`)
     })
@@ -284,7 +285,7 @@ describe('AllocationRegisterForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Bad Request: 400 - 유효하지 않은 입력입니다.')).toBeInTheDocument()
+      expect(screen.getByText('유효하지 않은 입력입니다.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRegisterInvestor, type RegisterInvestorRequest } from './useRegisterInvestor.ts'
 import { isValidDisplayName } from '../../shared/lib/validators.ts'
 import styles from './InvestorRegisterForm.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'SELF', label: '본인' },
@@ -32,25 +33,7 @@ export default function InvestorRegisterForm() {
     })
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    // 400 에러: apiFetch가 "Request failed: 400" 형태로 throw
-    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
-      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
-    }
-    // 네트워크 에러 (TypeError: Failed to fetch, Network error 등)
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    // 기타 에러
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () => toErrorMessage(error)
 
   return (
     <form

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestorRegisterForm from './InvestorRegisterForm.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -103,7 +104,7 @@ describe('InvestorRegisterForm', () => {
 
   it('유효하지 않은 relationship로 API 400 응답 시 에러 메시지 표시', async () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      Object.assign(new Error('Bad Request: 400'), { message: '유효한 관계를 선택해 주세요.' }),
+      new ApiError(400, '유효한 관계를 선택해 주세요.', '유효한 관계를 선택해 주세요.'),
     )
     renderInvestorRegisterForm()
 

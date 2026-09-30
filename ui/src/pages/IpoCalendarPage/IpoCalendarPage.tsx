@@ -1,22 +1,13 @@
 import { useIpoSchedule } from '../../features/ipo-calendar/useIpoSchedule.ts'
 import IpoCalendar from '../../widgets/IpoCalendar/IpoCalendar.tsx'
 import styles from './IpoCalendarPage.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 export default function IpoCalendarPage() {
   const { data: ipos, isLoading, error } = useIpoSchedule()
 
-  const getErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    return '공모주 일정을 불러오는 데 실패했습니다.'
-  }
+  const getErrorMessage = () =>
+    toErrorMessage(error, { fallback: '공모주 일정을 불러오는 데 실패했습니다.' })
 
   if (isLoading) {
     return (

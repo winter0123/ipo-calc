@@ -6,6 +6,7 @@ import { useSaleProfit } from '../../features/profit-view/useSaleProfit.ts'
 import { useInvestorProfits } from '../../features/profit-view/useInvestorProfits.ts'
 import ProfitTable from '../../features/profit-view/ProfitTable/ProfitTable.tsx'
 import styles from './ProfitViewPage.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 type QueryMode = 'sale' | 'investor'
 
@@ -39,30 +40,13 @@ export default function ProfitViewPage() {
     setInvestorId(e.target.value)
   }
 
-  const getErrorMessage = () => {
-    if (!activeQuery.error) return null
-    const msg = activeQuery.error.message
-
-    if (mode === 'sale') {
-      if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-        return '매도건을 찾을 수 없습니다.'
-      }
-    } else {
-      if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-        return '투자자를 찾을 수 없습니다.'
-      }
-    }
-
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-
-    return '수익 조회에 실패했습니다.'
-  }
+  const getErrorMessage = () =>
+    toErrorMessage(activeQuery.error, {
+      byStatus: {
+        404: mode === 'sale' ? '매도건을 찾을 수 없습니다.' : '투자자를 찾을 수 없습니다.',
+      },
+      fallback: '수익 조회에 실패했습니다.',
+    })
 
   const handleModeChange = (newMode: QueryMode) => {
     setMode(newMode)

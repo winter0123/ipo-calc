@@ -6,6 +6,7 @@ import InvestmentHistoryPage from './InvestmentHistoryPage.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
 import type { InvestmentHistoryResponse } from '../../entities/subscription/types.ts'
 import type { InvestorResponse } from '../../entities/investor/types.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -389,7 +390,7 @@ describe('InvestmentHistoryPage', () => {
   })
 
   it('404 에러 시 에러 메시지 표시', async () => {
-    setupHistoryErrorMock(new Error('Request failed: 404 Not Found'))
+    setupHistoryErrorMock(new ApiError(404, 'Request failed: 404'))
     renderPage()
 
     await waitForLoaded()
@@ -400,7 +401,7 @@ describe('InvestmentHistoryPage', () => {
   })
 
   it('기타 API 에러 시 공용 에러 메시지 표시', async () => {
-    setupHistoryErrorMock(new Error('Request failed: 500'))
+    setupHistoryErrorMock(new ApiError(500, 'Request failed: 500'))
     renderPage()
 
     await waitForLoaded()
