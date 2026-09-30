@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.repository.credential;
 
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -43,4 +44,22 @@ public interface SecuritiesAccountApiCredentialRepository
    * @return 활성 인증정보 (없으면 empty)
    */
   Optional<SecuritiesAccountApiCredential> findByIdAndDeletedAtIsNull(Long id);
+
+  /**
+   * 계좌 ID로 삭제되지 않은 인증정보를 최신 갱신 순으로 조회한다.
+   *
+   * @param securitiesAccountId 증권계좌 ID
+   * @return 활성 인증정보 목록 (없으면 빈 목록)
+   */
+  List<SecuritiesAccountApiCredential>
+      findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(Long securitiesAccountId);
+
+  /**
+   * 계좌 ID로 삭제되지 않은 인증정보 목록을 조회한다.
+   *
+   * @param securitiesAccountId 증권계좌 ID
+   * @return 활성 인증정보 목록 (없으면 빈 목록)
+   */
+  List<SecuritiesAccountApiCredential> findBySecuritiesAccountIdAndDeletedAtIsNull(
+      Long securitiesAccountId);
 }
