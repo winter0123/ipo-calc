@@ -398,6 +398,7 @@ SF-1 구현 시작 전 **Master가 아래 세 항목을 확인**해야 한다(`d
 | M-11 | OpenDART rate limit(초당 호출 제한)·일일 한도 | OpenDART 개발가이드 확인 | **결정 D-4(2026-09-30)**: 공식 문서에 정확한 일일 한도가 없다(통상 20,000건 초과 시 status 020). 사용자 결정으로 **하루 1회 실행**으로 시작하고 200ms 호출 간격 유지. 020 응답 시 그날 동기화 중단 |
 | M-12 | 테스트 HTTP 목 서버: WireMock 추가 의존성 여부 | `MockRestServiceServer`(spring-boot-starter-test에 포함)로 대체 가능. 추가 의존성 없이 검증 가능 | SF-1 구현 시 |
 | M-13 | `(stockCode, subscriptionStartDate)` 중복 키 문제 및 IPO/유상증자 구분 | 기존 DB(V5/V6)는 stock_code가 있으면 stock_code 유니크, 없으면 (ipo_name, subscription_start_date) 유니크다. 따라서 기존 키 사용은 가능하다. 자동 동기화 레코드의 식별 키로 `ipos.corp_code`(VARCHAR(8), nullable, ACTIVE 한정 부분 유니크 `uk_ipo_corp_code_active`)를 추가하기로 **2026-09-29 사용자가 결정했고 V11로 구현·병합됐다(#194)**. 개명·재상장에 안전하다. | SF-3 전에 Master 결정 **완료** |
+| M-14 | 금융위원회_주식발행정보(data.go.kr, GetStocIssuInfoService_V3)로 실제 상장일 자동 보정 | **결정 D-7(2026-09-30)**: 도입하지 않는다. 상장 후·영업일 하루 지연 갱신이라 사후 보정용일 뿐 청약 일정/배정/환불일을 채워 주지 못하고, 공공누리 2유형(상업적 이용 시 예탁결제원 정보이용계약 필요)이라 얻는 것 대비 부담이 크다. 상장일은 수동 입력을 유지한다 | 사용자 결정 완료 |
 
 ---
 
