@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSecuritiesFirms } from './useSecuritiesFirms.ts'
 import {
@@ -20,12 +20,12 @@ export default function SecuritiesAccountRegisterForm() {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
+    control,
   } = useForm<RegisterSecuritiesAccountRequest>({ mode: 'onSubmit' })
 
   const investorId = params.investorId ? Number(params.investorId) : 0
 
-  const accountNumberInput = watch('accountNumber')
+  const accountNumberInput = useWatch({ control, name: 'accountNumber' })
   const formattedAccountNumber = accountNumberInput
     ?.replace(/\D/g, '')
     .replace(/(.{4})/g, '$1-')

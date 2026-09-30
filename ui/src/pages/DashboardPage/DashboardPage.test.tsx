@@ -162,14 +162,18 @@ import { useDashboardBySecuritiesFirm } from '../../features/dashboard/useDashbo
 import { useDashboardByPeriod } from '../../features/dashboard/useDashboardByPeriod.ts'
 import { useDashboardTabs } from '../../features/dashboard/useDashboardTabs.ts'
 
+function asResult<T>(value: unknown): T {
+  return value as T
+}
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
 
-    vi.mocked(useDashboardSummary).mockReturnValue(defaultSummaryQuery as any)
-    vi.mocked(useDashboardByInvestor).mockReturnValue(defaultEmptyQuery as any)
-    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(defaultEmptyQuery as any)
-    vi.mocked(useDashboardByPeriod).mockReturnValue(defaultEmptyQuery as any)
+    vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultSummaryQuery))
+    vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardTabs).mockReturnValue({
       currentTab: 'all',
       setCurrentTab: vi.fn(),
@@ -190,17 +194,19 @@ describe('DashboardPage', () => {
   })
 
   it('로딩 상태를 표시함', async () => {
-    vi.mocked(useDashboardSummary).mockReturnValue({
-      data: {
-        totalInvestmentAmount: 100000000,
-        totalPreTaxProfit: 15000000,
-        totalAfterTaxProfit: 12000000,
-        totalProfitRate: 12.5,
-        participationCount: 45,
-      },
-      isLoading: true,
-      error: null,
-    } as any)
+    vi.mocked(useDashboardSummary).mockReturnValue(
+      asResult({
+        data: {
+          totalInvestmentAmount: 100000000,
+          totalPreTaxProfit: 15000000,
+          totalAfterTaxProfit: 12000000,
+          totalProfitRate: 12.5,
+          participationCount: 45,
+        },
+        isLoading: true,
+        error: null,
+      }),
+    )
 
     renderPage()
     await waitForLoaded()
@@ -209,10 +215,10 @@ describe('DashboardPage', () => {
   })
 
   it('빈 결과 시 EmptyState가 표시됨', async () => {
-    vi.mocked(useDashboardSummary).mockReturnValue(defaultEmptyQuery as any)
-    vi.mocked(useDashboardByInvestor).mockReturnValue(defaultEmptyQuery as any)
-    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(defaultEmptyQuery as any)
-    vi.mocked(useDashboardByPeriod).mockReturnValue(defaultEmptyQuery as any)
+    vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultEmptyQuery))
 
     renderPage()
     await waitForLoaded()
@@ -221,11 +227,13 @@ describe('DashboardPage', () => {
   })
 
   it('월별 탭에서 PeriodSelector가 렌더링되고 현재 월이 기본값으로 설정됨 (AC-1920)', async () => {
-    vi.mocked(useDashboardByPeriod).mockReturnValue({
-      data: [] as unknown,
-      isLoading: false,
-      error: null,
-    } as any)
+    vi.mocked(useDashboardByPeriod).mockReturnValue(
+      asResult({
+        data: [] as unknown,
+        isLoading: false,
+        error: null,
+      }),
+    )
 
     vi.mocked(useDashboardTabs).mockReturnValue({
       currentTab: 'month',
@@ -243,11 +251,13 @@ describe('DashboardPage', () => {
   })
 
   it('연도별 탭에서 PeriodSelector가 렌더링되고 현재 연도가 기본값으로 설정됨', async () => {
-    vi.mocked(useDashboardByPeriod).mockReturnValue({
-      data: [] as unknown,
-      isLoading: false,
-      error: null,
-    } as any)
+    vi.mocked(useDashboardByPeriod).mockReturnValue(
+      asResult({
+        data: [] as unknown,
+        isLoading: false,
+        error: null,
+      }),
+    )
 
     vi.mocked(useDashboardTabs).mockReturnValue({
       currentTab: 'year',
@@ -273,10 +283,10 @@ describe('DashboardPage', () => {
   })
 
   it('네트워크 오류 시 에러 메시지 표시', async () => {
-    vi.mocked(useDashboardSummary).mockReturnValue(defaultErrorQuery as any)
-    vi.mocked(useDashboardByInvestor).mockReturnValue(defaultErrorQuery as any)
-    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(defaultErrorQuery as any)
-    vi.mocked(useDashboardByPeriod).mockReturnValue(defaultErrorQuery as any)
+    vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultErrorQuery))
+    vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultErrorQuery))
+    vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultErrorQuery))
+    vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultErrorQuery))
 
     renderPage()
     await waitForLoaded()
@@ -285,11 +295,13 @@ describe('DashboardPage', () => {
   })
 
   it('월별 탭에서 "이전 달" 클릭 시 getDashboardByPeriod가 전월 인자로 호출되고 제목이 갱신됨 (조회 버튼 없이)', async () => {
-    vi.mocked(useDashboardByPeriod).mockReturnValue({
-      data: [] as unknown,
-      isLoading: false,
-      error: null,
-    } as any)
+    vi.mocked(useDashboardByPeriod).mockReturnValue(
+      asResult({
+        data: [] as unknown,
+        isLoading: false,
+        error: null,
+      }),
+    )
 
     vi.mocked(useDashboardTabs).mockReturnValue({
       currentTab: 'month',
@@ -317,11 +329,13 @@ describe('DashboardPage', () => {
   })
 
   it('월별 탭에서 "다음 달" 클릭 시 getDashboardByPeriod가 다음 월 인자로 호출되고 제목이 갱신됨', async () => {
-    vi.mocked(useDashboardByPeriod).mockReturnValue({
-      data: [] as unknown,
-      isLoading: false,
-      error: null,
-    } as any)
+    vi.mocked(useDashboardByPeriod).mockReturnValue(
+      asResult({
+        data: [] as unknown,
+        isLoading: false,
+        error: null,
+      }),
+    )
 
     vi.mocked(useDashboardTabs).mockReturnValue({
       currentTab: 'month',
