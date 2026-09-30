@@ -19,6 +19,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from '../../../shared/api/apiError.ts'
 
 let mutationFnMock: (data: unknown) => Promise<unknown> = () => Promise.resolve({})
 
@@ -196,7 +197,7 @@ describe('SaleRegisterForm', () => {
   })
 
   it('404 에러 시 "배정을 찾을 수 없습니다." 표시 (AC-004)', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 404 Not Found'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(404, 'Request failed: 404'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
@@ -205,16 +206,16 @@ describe('SaleRegisterForm', () => {
   })
 
   it('409 에러 시 원본 메시지 표시 (AC-005)', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 409 Conflict: <상세>'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(409, '<상세>', '<상세>'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
-      expect(screen.getByText('Request failed: 409 Conflict: <상세>')).toBeInTheDocument()
+      expect(screen.getByText('<상세>')).toBeInTheDocument()
     })
   })
 
   it('400 에러 시 "입력값을 확인해 주세요." 표시 (AC-006)', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(400, 'Request failed: 400'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {

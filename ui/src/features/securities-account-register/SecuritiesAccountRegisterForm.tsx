@@ -7,6 +7,7 @@ import {
   type RegisterSecuritiesAccountResponse,
 } from './useRegisterSecuritiesAccount.ts'
 import styles from './SecuritiesAccountRegisterForm.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 export default function SecuritiesAccountRegisterForm() {
   const navigate = useNavigate()
@@ -45,34 +46,19 @@ export default function SecuritiesAccountRegisterForm() {
     )
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('존재하지 않는 투자자')) {
-      return '투자자 정보를 찾을 수 없습니다.'
-    }
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      if (msg.includes('투자자') || msg.includes('investor')) {
-        return '투자자 정보를 찾을 수 없습니다.'
-      }
-      if (msg.includes('증권사') || msg.includes('securities')) {
-        return '선택한 증권사를 찾을 수 없습니다.'
-      }
-      return '투자자 정보를 찾을 수 없습니다.'
-    }
-    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
-      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () =>
+    toErrorMessage(error, {
+      byStatus: {
+        400: (e) =>
+          e.serverMessage?.includes('존재하지 않는 투자자')
+            ? '투자자 정보를 찾을 수 없습니다.'
+            : undefined,
+        404: (e) =>
+          e.serverMessage?.includes('증권사') && !e.serverMessage.includes('투자자')
+            ? '선택한 증권사를 찾을 수 없습니다.'
+            : '투자자 정보를 찾을 수 없습니다.',
+      },
+    })
 
   if (firmsLoading) {
     return <div className={styles.loading}>증권사 목록을 불러오는 중...</div>

@@ -3,6 +3,7 @@ import { useSubscriptionOptions } from '../useSubscriptionOptions.ts'
 import { useCostRegister } from '../useCostRegister.ts'
 import type { CostRegisterRequest } from '../../../entities/cost/types.ts'
 import styles from './CostRegisterForm.module.css'
+import { toErrorMessage } from '../../../shared/api/apiError.ts'
 
 export default function CostRegisterForm() {
   const {
@@ -26,25 +27,8 @@ export default function CostRegisterForm() {
     })
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      return '청약을 찾을 수 없습니다.'
-    }
-    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
-      return msg
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () =>
+    toErrorMessage(error, { byStatus: { 404: '청약을 찾을 수 없습니다.' } })
 
   const validatePositiveInteger = (v: unknown) =>
     v === undefined ||

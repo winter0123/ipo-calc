@@ -8,6 +8,7 @@ import { useAllocationOptions } from '../useAllocationOptions.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
 import type { SaleRegisterRequest } from '../../../entities/sale/types.ts'
 import styles from './SaleRegisterForm.module.css'
+import { toErrorMessage } from '../../../shared/api/apiError.ts'
 
 export default function SaleRegisterForm() {
   const [selectedInvestorId, setSelectedInvestorId] = useState<number | undefined>()
@@ -53,28 +54,10 @@ export default function SaleRegisterForm() {
     })
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      return '배정을 찾을 수 없습니다.'
-    }
-    if (msg.includes('Request failed: 409') || msg.includes('Conflict: 409')) {
-      return msg
-    }
-    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
-      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () =>
+    toErrorMessage(error, {
+      byStatus: { 404: '배정을 찾을 수 없습니다.', 409: (e) => e.message },
+    })
 
   const handleInvestorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value ? Number(e.target.value) : undefined

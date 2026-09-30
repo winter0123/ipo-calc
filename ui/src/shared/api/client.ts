@@ -4,6 +4,8 @@
  * (FSD 순환 참조 방지 — 로그인 리다이렉트는 pages/features 레벨에서 처리)
  */
 
+import { ApiError } from './apiError.ts'
+
 const DEFAULT_BASE_URL =
   typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL
@@ -24,20 +26,24 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   const response = await fetch(url, config)
 
   if (response.status === 401) {
-    throw new Error(`Unauthorized: ${response.status}`)
+    throw new ApiError(401, `Unauthorized: ${response.status}`)
   }
 
   if (!response.ok) {
-    let errorMessage = `Request failed: ${response.status}`
+    let serverMessage: string | undefined
     try {
       const errorBody = await response.json()
       if (errorBody && typeof errorBody === 'object' && 'message' in errorBody) {
-        errorMessage = String(errorBody.message)
+        serverMessage = String(errorBody.message)
       }
     } catch {
-      // 응답이 JSON이 아니거나 파싱 실패 시 기존 메시지 유지
+      // 응답이 JSON이 아니거나 파싱 실패 시 기본 메시지 유지
     }
-    throw new Error(errorMessage)
+    throw new ApiError(
+      response.status,
+      serverMessage ?? `Request failed: ${response.status}`,
+      serverMessage,
+    )
   }
 
   // 204 또는 본문 없는 200(예: POST /auth/login)은 undefined로 처리

@@ -5,26 +5,17 @@ import SubscriptionFilter, {
 import SubscriptionList from '../../features/subscription-list/SubscriptionList/SubscriptionList.tsx'
 import { useInvestmentHistory } from '../../features/subscription-list/useInvestmentHistory.ts'
 import styles from './SubscriptionListPage.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 export default function SubscriptionListPage() {
   const [filter, setFilter] = useState<SubscriptionFilterValue>('all')
   const { data, isLoading, error } = useInvestmentHistory()
 
-  const getErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      return '투자자 정보를 찾을 수 없습니다.'
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    return '청약 목록을 불러오는 데 실패했습니다.'
-  }
+  const getErrorMessage = () =>
+    toErrorMessage(error, {
+      byStatus: { 404: '투자자 정보를 찾을 수 없습니다.' },
+      fallback: '청약 목록을 불러오는 데 실패했습니다.',
+    })
 
   return (
     <div className={styles.container}>

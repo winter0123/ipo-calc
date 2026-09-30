@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoCalendarPage from './IpoCalendarPage.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
 import type { Ipo } from '../../entities/ipo/types.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -103,7 +104,7 @@ describe('IpoCalendarPage', () => {
   })
 
   it('기타 API 에러 시 공용 에러 메시지를 표시한다', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Request failed: 500'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'Request failed: 500'))
     renderPage()
 
     await waitFor(() => {

@@ -4,6 +4,7 @@ import { useSignup } from './useSignup.ts'
 import { isValidEmail, isMinLength } from '../../shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 function hasTwoCategories(v: string): boolean {
   const hasLetter = /[a-zA-Z]/.test(v)
@@ -34,18 +35,8 @@ export default function SignupForm() {
     })
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('409') || msg.includes('Conflict') || msg.includes('이미 사용 중인 이메일')) {
-      return '이미 사용 중인 이메일입니다.'
-    }
-    if (msg.includes('400') || msg.includes('Request failed')) {
-      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
-    }
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () =>
+    toErrorMessage(error, { byStatus: { 409: '이미 사용 중인 이메일입니다.' } })
 
   return (
     <form

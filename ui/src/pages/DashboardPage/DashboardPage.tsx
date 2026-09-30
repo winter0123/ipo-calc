@@ -10,6 +10,7 @@ import DashboardTabs from '../../features/dashboard/DashboardTabs/DashboardTabs.
 import DashboardCardGroup from '../../widgets/DashboardCardGroup/DashboardCardGroup.tsx'
 import PeriodSelector from '../../features/dashboard/PeriodSelector/PeriodSelector.tsx'
 import styles from './DashboardPage.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 export default function DashboardPage() {
   const { currentTab, setCurrentTab, invalidateCurrentTab } = useDashboardTabs()
@@ -74,15 +75,8 @@ export default function DashboardPage() {
     return summary.totalInvestmentAmount === 0 && summary.participationCount === 0
   })()
 
-  const getErrorMessage = () => {
-    if (!currentQuery.error) return null
-    const msg =
-      currentQuery.error instanceof Error ? currentQuery.error.message : String(currentQuery.error)
-    if (msg.includes('Failed to fetch') || msg.includes('Network error')) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    return '대시보드 데이터를 불러오는 데 실패했습니다.'
-  }
+  const getErrorMessage = () =>
+    toErrorMessage(currentQuery.error, { fallback: '대시보드 데이터를 불러오는 데 실패했습니다.' })
 
   const hasPeriodSelector = currentTab === 'month' || currentTab === 'year'
 

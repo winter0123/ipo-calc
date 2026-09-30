@@ -19,6 +19,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from '../../../shared/api/apiError.ts'
 
 let mutationFnMock: (data: unknown) => Promise<unknown> = () => Promise.resolve({})
 
@@ -181,7 +182,7 @@ describe('CostRegisterForm', () => {
   })
 
   it('404 에러 시 "청약을 찾을 수 없습니다." 표시', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 404 Not Found'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(404, 'Request failed: 404'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
@@ -192,22 +193,20 @@ describe('CostRegisterForm', () => {
   it('400 에러 시 서버 메시지 그대로 표시', async () => {
     mutationFnMock = vi
       .fn()
-      .mockRejectedValue(new Error('Request failed: 400 Bad Request: amount must be positive'))
+      .mockRejectedValue(new ApiError(400, 'amount must be positive', 'amount must be positive'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
-      expect(
-        screen.getByText('Request failed: 400 Bad Request: amount must be positive'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('amount must be positive')).toBeInTheDocument()
     })
   })
 
   it('400 에러 시 기본 메시지 표시', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(400, 'Request failed: 400'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
-      expect(screen.getByText('Request failed: 400 Bad Request')).toBeInTheDocument()
+      expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
     })
   })
 
@@ -230,11 +229,11 @@ describe('CostRegisterForm', () => {
   })
 
   it('등록 실패 시 이동하지 않음', async () => {
-    mutationFnMock = vi.fn().mockRejectedValue(new Error('Request failed: 400 Bad Request'))
+    mutationFnMock = vi.fn().mockRejectedValue(new ApiError(400, 'Request failed: 400'))
     await setupForm()
     fireEvent.click(screen.getByRole('button', { name: /등록/i }))
     await waitFor(() => {
-      expect(screen.getByText('Request failed: 400 Bad Request')).toBeInTheDocument()
+      expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })

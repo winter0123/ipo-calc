@@ -18,6 +18,7 @@ vi.mock('../../entities/investor/api-client.ts', async () => {
 })
 
 import { fetchInvestors } from '../../entities/investor/api-client.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 const INVESTORS = [
   {
@@ -199,7 +200,7 @@ describe('ProfitViewPage', () => {
     it('존재하지 않는 매도건 404 시 에러 메시지 표시 (AC-015)', async () => {
       vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
         const p = String(path)
-        if (p === '/sales/999/profit') throw new Error('Request failed: 404 Not Found')
+        if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
       })
 
@@ -274,7 +275,7 @@ describe('ProfitViewPage', () => {
     it('존재하지 않는 투자자 404 시 에러 메시지 표시 (AC-016)', async () => {
       vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
         const p = String(path)
-        if (p === '/investors/1/profits') throw new Error('Request failed: 404 Not Found')
+        if (p === '/investors/1/profits') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
       })
 
@@ -369,7 +370,7 @@ describe('ProfitViewPage', () => {
     it('에러 영역에 aria-live 속성이 있음', async () => {
       vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
         const p = String(path)
-        if (p === '/sales/999/profit') throw new Error('Request failed: 404 Not Found')
+        if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
       })
 

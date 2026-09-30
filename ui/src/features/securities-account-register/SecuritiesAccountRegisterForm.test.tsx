@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SecuritiesAccountRegisterForm from './SecuritiesAccountRegisterForm.tsx'
 import { apiFetch } from '../../shared/api/client.ts'
+import { ApiError } from '../../shared/api/apiError.ts'
 
 vi.mock('../../shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
@@ -142,7 +143,7 @@ describe('SecuritiesAccountRegisterForm', () => {
   it('존재하지 않는 투자자로 등록 시 에러 메시지 표시 (404)', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      new Error('Request failed: 404 - 존재하지 않는 투자자입니다'),
+      new ApiError(404, '존재하지 않는 투자자입니다', '존재하지 않는 투자자입니다'),
     )
 
     renderForm()
@@ -162,7 +163,9 @@ describe('SecuritiesAccountRegisterForm', () => {
 
   it('백엔드 400 "존재하지 않는 투자자입니다"도 투자자 없음 메시지로 표시', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('존재하지 않는 투자자입니다'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(400, '존재하지 않는 투자자입니다', '존재하지 않는 투자자입니다'),
+    )
 
     renderForm()
     await waitForFirmsLoaded()
@@ -179,7 +182,7 @@ describe('SecuritiesAccountRegisterForm', () => {
   it('존재하지 않는 증권사로 등록 시 에러 메시지 표시 (404)', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
     vi.mocked(apiFetch).mockRejectedValueOnce(
-      new Error('Request failed: 404 - 존재하지 않는 증권사입니다'),
+      new ApiError(404, '존재하지 않는 증권사입니다', '존재하지 않는 증권사입니다'),
     )
 
     renderForm()
@@ -199,7 +202,7 @@ describe('SecuritiesAccountRegisterForm', () => {
 
   it('400 응답 시 에러 메시지 표시', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Request failed: 400'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(400, 'Request failed: 400'))
 
     renderForm()
     await waitForFirmsLoaded()

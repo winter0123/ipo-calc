@@ -7,6 +7,7 @@ import { fetchIpos } from '../../../entities/ipo/api-client.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
 import type { SubscriptionRegisterRequest } from '../../../entities/subscription/types.ts'
 import styles from './SubscriptionRegisterForm.module.css'
+import { toErrorMessage } from '../../../shared/api/apiError.ts'
 
 export default function SubscriptionRegisterForm() {
   const navigate = useNavigate()
@@ -46,37 +47,18 @@ export default function SubscriptionRegisterForm() {
     })
   }
 
-  const getFormErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      if (msg.includes('투자자') || msg.includes('investor')) {
-        return '투자자를 찾을 수 없습니다.'
-      }
-      if (msg.includes('증권계좌') || msg.includes('securities-account')) {
-        return '증권계좌를 찾을 수 없습니다.'
-      }
-      if (msg.includes('공모주') || msg.includes('ipo')) {
-        return '공모주를 찾을 수 없습니다.'
-      }
-      return '투자자를 찾을 수 없습니다.'
-    }
-    if (msg.includes('Request failed: 409') || msg.includes('Conflict: 409')) {
-      return '이미 동일한 조건의 청약이 존재합니다.'
-    }
-    if (msg.includes('Request failed: 400') || msg.includes('Bad Request: 400')) {
-      return msg.includes('Request failed') ? '입력값을 확인해 주세요.' : msg
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    if (msg) return msg
-    return '네트워크 연결을 확인해 주세요.'
-  }
+  const getFormErrorMessage = () =>
+    toErrorMessage(error, {
+      byStatus: {
+        404: (e) => {
+          const msg = e.serverMessage ?? ''
+          if (msg.includes('증권계좌')) return '증권계좌를 찾을 수 없습니다.'
+          if (msg.includes('공모주')) return '공모주를 찾을 수 없습니다.'
+          return '투자자를 찾을 수 없습니다.'
+        },
+        409: '이미 동일한 조건의 청약이 존재합니다.',
+      },
+    })
 
   const dropdownsLoading = investorsLoading || securitiesAccountsLoading || iposLoading
   const dropdownsError = investorsError || securitiesAccountsError || iposError

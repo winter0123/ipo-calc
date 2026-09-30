@@ -10,6 +10,7 @@ import type { InvestmentHistoryFilters } from '../../entities/subscription/types
 import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
 import InvestmentHistoryTable from '../../widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx'
 import styles from './InvestmentHistoryPage.module.css'
+import { toErrorMessage } from '../../shared/api/apiError.ts'
 
 function filtersToApiParams(filters: FilterInvestmentHistoryFilters): InvestmentHistoryFilters {
   return {
@@ -33,21 +34,11 @@ export default function InvestmentHistoryPage() {
   const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestorList()
   const { data, isLoading, error } = useInvestmentHistory(apiFilters)
 
-  const getErrorMessage = () => {
-    if (!error) return null
-    const msg = error instanceof Error ? error.message : String(error)
-    if (msg.includes('Request failed: 404') || msg.includes('Not Found: 404')) {
-      return '투자 내역을 찾을 수 없습니다.'
-    }
-    if (
-      msg.includes('Failed to fetch') ||
-      msg.includes('Network error') ||
-      msg.includes('Network request failed')
-    ) {
-      return '네트워크 연결을 확인해 주세요.'
-    }
-    return '투자 내역을 불러오는 데 실패했습니다.'
-  }
+  const getErrorMessage = () =>
+    toErrorMessage(error, {
+      byStatus: { 404: '투자 내역을 찾을 수 없습니다.' },
+      fallback: '투자 내역을 불러오는 데 실패했습니다.',
+    })
 
   const handleChange = (field: keyof FilterInvestmentHistoryFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
