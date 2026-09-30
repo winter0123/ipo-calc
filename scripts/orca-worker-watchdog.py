@@ -6,7 +6,6 @@
 
 재배정은 하지 않는다: 에러 문구가 떠도 OpenCode가 스스로 회복하는 경우가 있어,
 오진으로 작업 중인 워커를 죽이는 비용이 자동 재배정의 이득보다 크다.
-# ponytail: 감지만 함. 재배정 자동화는 오진율을 실측한 뒤에 붙인다.
 
 사용:
   scripts/orca-worker-watchdog.py                 # 1회 점검
@@ -25,11 +24,15 @@ import subprocess
 import sys
 import time
 
+# 디스패치별 "esc interrupt" 부재 추적: dispatch_id -> 처음 관측된 타임스탬프(초)
+_esc_interrupt_missing_since: dict[str, float] = {}
+
 # 2026-09-28 실제로 워커를 멈춰 세운 문구들에서 뽑았다.
 ERROR_PATTERNS = re.compile(
     r"rate[- ]limited|Upstream idle timeout|Request rejected|\b429\b"
     r"|quota exceeded|insufficient credits|API Error"
-    r"|Endpoint is unavailable|Upstream request failed",
+    r"|Endpoint is unavailable|Upstream request failed"
+    r'|"code":\s*50[0-4]|\[50[0-4]\]|Timeout Occurred|Streaming response failed|server_error',
     re.IGNORECASE,
 )
 # OpenCode 상태줄: "Build · Laguna S 2.1 (free) OpenRouter" — 지정 모델과 실제 모델 대조용.
@@ -49,11 +52,33 @@ def orca(*args: str) -> dict | None:
     return payload.get("result") if payload.get("ok") else None
 
 
-def classify(tail: str, idle_min: float, stall_min: float) -> tuple[str, str]:
+def classify(tail: str, idle_min: float, stall_min: float, dispatch_id: str | None = None) -> tuple[str, str]:
     """터미널 꼬리 텍스트와 무출력 시간으로 상태를 판정한다."""
     hit = ERROR_PATTERNS.search(tail)
     if hit:
+        # 에러가 감지되면 추적 상태 초기화
+        if dispatch_id and dispatch_id in _esc_interrupt_missing_since:
+            del _esc_interrupt_missing_since[dispatch_id]
         return "ERROR", f"문구={hit.group(0)!r}"
+
+    # "esc interrupt"가 없는지 확인 (에이전트가 일하지 않는 상태)
+    has_esc_interrupt = "esc interrupt" in tail
+
+    if dispatch_id is not None:
+        if not has_esc_interrupt:
+            # 처음으로 "esc interrupt"가 없는 상태를 관측했다면 timestamps 기록
+            if dispatch_id not in _esc_interrupt_missing_since:
+                _esc_interrupt_missing_since[dispatch_id] = time.time()
+            # 지속 시간을 확인
+            missing_since = _esc_interrupt_missing_since[dispatch_id]
+            missing_min = (time.time() - missing_since) / 60
+            if missing_min >= stall_min:
+                return "STALL", f"{missing_min:.0f}분 'esc interrupt' 없음"
+        else:
+            # "esc interrupt"가 다시 보이면 추적 상태 초기화
+            if dispatch_id in _esc_interrupt_missing_since:
+                del _esc_interrupt_missing_since[dispatch_id]
+
     if idle_min >= stall_min:
         return "STALL", f"{idle_min:.0f}분 무출력"
     return "OK", ""
@@ -85,7 +110,7 @@ def inspect(dispatch: str, stall_min: float) -> tuple[str, str]:
     # 상태줄은 한 줄에 모델명과 브랜치명이 공백 여러 칸으로 나뉘어 같이 찍힌다.
     model = re.split(r"\s{2,}", models[-1].strip())[0] if models else "?"
 
-    status, why = classify(tail, idle_min, stall_min)
+    status, why = classify(tail, idle_min, stall_min, dispatch)
     detail = f"model={model} idle={idle_min:.0f}m handle={handle}"
     return status, f"{detail} {why}".strip()
 
@@ -109,13 +134,41 @@ def run_once(tree_filter: str, stall_min: float, status_path: str) -> int:
 
 
 def selftest() -> int:
-    assert classify("[Poolside] ... temporarily rate-limited upstream", 1, 8)[0] == "ERROR"
-    assert classify("Upstream idle timeout", 1, 8)[0] == "ERROR"
-    assert classify("Endpoint is unavailable", 1, 8)[0] == "ERROR"
-    assert classify("Upstream request failed", 1, 8)[0] == "ERROR"
-    assert classify("Error from provider (Console): Upstream request failed: Endpoint is unavailable.", 1, 8)[0] == "ERROR"
-    assert classify("정상 작업 중", 9, 8)[0] == "STALL"
-    assert classify("정상 작업 중", 2, 8)[0] == "OK"
+    # 기존 ERROR 패턴 테스트
+    assert classify("[Poolside] ... temporarily rate-limited upstream", 1, 8, None)[0] == "ERROR"
+    assert classify("Upstream idle timeout", 1, 8, None)[0] == "ERROR"
+    assert classify("Endpoint is unavailable", 1, 8, None)[0] == "ERROR"
+    assert classify("Upstream request failed", 1, 8, None)[0] == "ERROR"
+    assert classify("Error from provider (Console): Upstream request failed: Endpoint is unavailable.", 1, 8, None)[0] == "ERROR"
+    # 새로운 ERROR 패턴 테스트
+    assert classify('{"code":504,"message":"A Timeout Occurred"...}', 1, 8, None)[0] == "ERROR"
+    assert classify('Streaming response failed: [504] A Timeout Occurred', 1, 8, None)[0] == "ERROR"
+    assert classify('"type":"server_error"', 1, 8, None)[0] == "ERROR"
+    assert classify("  ┃   500 foo", 1, 8, None)[0] == "OK"
+
+    # 기존 STALL 테스트 (무출력 기반)
+    assert classify("정상 작업 중", 9, 8, None)[0] == "STALL"
+    assert classify("정상 작업 중", 2, 8, None)[0] == "OK"
+
+    # 새로운 STALL 테스트 ('esc interrupt' 기반)
+    global _esc_interrupt_missing_since
+    _esc_interrupt_missing_since.clear()  # 테스트 전 상태 초기화
+
+    # 처음에는 'esc interrupt'가 없어도 바로 STALL이 되지 않아야 함 (시간이 부족)
+    assert classify("일하는 중", 1, 2, "test_dispatch")[0] == "OK"
+    # 'esc interrupt'가 없는 상태가 지속되면 STALL이 되어야 함
+    # 시간 조작을 위해 내부 상태를 직접 설정
+    _esc_interrupt_missing_since["test_dispatch"] = time.time() - (2 * 60)  # 2분 전
+    assert classify("일하는 중", 1, 2, "test_dispatch")[0] == "STALL"
+    # 'esc interrupt'가 다시 보이면 추적이 초기화되어야 함
+    assert classify("일하는 중 esc interrupt", 1, 2, "test_dispatch")[0] == "OK"
+    # 다시 'esc interrupt'가 사라지면 추적이 시작되어야 함
+    _esc_interrupt_missing_since["test_dispatch"] = time.time() - (1 * 60)  # 1분 전
+    assert classify("일하는 중", 1, 2, "test_dispatch")[0] == "OK"  # 1분 밖에 지나지 않아서 OK
+    _esc_interrupt_missing_since["test_dispatch"] = time.time() - (3 * 60)  # 3분 전
+    assert classify("일하는 중", 1, 2, "test_dispatch")[0] == "STALL"  # 3분이 지나서 STALL
+
+    # 모델 라인 테스트
     assert MODEL_LINE.findall("Build · Laguna S 2.1 (free) OpenRouter")[-1] == "Laguna S 2.1"
     print("selftest OK")
     return 0
