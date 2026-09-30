@@ -4,7 +4,7 @@
 
 ## 야간 자율 작업 결과 (2026-09-30, #227~#239) — 최신
 
-- **리팩토링(#227~#231)**: `ApiError`·`toErrorMessage`, `Clock` 주입(Asia/Seoul), `RecordStatus` enum, `OwnershipGuard`, `DashboardAggregator` 분리. react-hook-form 이관과 공용 `FormField` 추출은 취소(폼 8개가 이미 이관됨, 추출은 레이아웃·aria 동작이 바뀜). 그 결과 `shared`의 `FormField`·`Input`은 미사용 상태로 남아 있다(**삭제 여부는 사용자 결정 대기**).
+- **리팩토링(#227~#231)**: `ApiError`·`toErrorMessage`, `Clock` 주입(Asia/Seoul), `RecordStatus` enum, `OwnershipGuard`, `DashboardAggregator` 분리. react-hook-form 이관과 공용 `FormField` 추출은 취소(폼 8개가 이미 이관됨, 추출은 레이아웃·aria 동작이 바뀜). 그 결과 미사용이던 `shared`의 `FormField`·`Input`은 사용자 결정으로 삭제했다.
 - **버그 수정**: 증권사 행 없는 증권계좌 대시보드 NPE(#233), 분할 매도 시 총투자금 중복 합산(#234). 월별·연도별은 한 배정이 여러 기간에 걸치면 기간별 투자금 합이 전체보다 클 수 있다(그룹 안에서만 dedupe — **기준 확정은 사용자 결정 대기**).
 - **정정**: 없는 투자자·증권사로 증권계좌 등록 시 400 대신 404(#237, spec AC-011). #236은 UI 린트 경고 18건 제거.
 - **보안 점검(읽기 전용 감사) 후속**: 청약·배정·매도·비용·수익 서비스의 소유권 검증 누락(타 계정 조회·수정 가능)을 #239로 수정(타 계정 리소스 403 `FORBIDDEN`, 목록·필터는 본인 소유로 스코프, `OwnershipIsolationTest`). #238은 `size=0` 500 방지, SQL 바인딩·security DEBUG 로그 기본 제거, KIS 오류 로그에서 예외 객체 대신 타입만 기록. 로그인 잠금 순서는 결함이 아니었다(잠긴 뒤엔 정답·오답 모두 403 `ACCOUNT_LOCKED`).
