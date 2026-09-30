@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
-import { buildCalendarEvents, type CalendarEvent } from '../../features/ipo-calendar/buildCalendarEvents.ts'
+import {
+  buildCalendarEvents,
+  type CalendarEvent,
+} from '../../features/ipo-calendar/buildCalendarEvents.ts'
 import type { Ipo } from '../../entities/ipo/types.ts'
 import styles from './IpoCalendar.module.css'
 
@@ -62,7 +65,7 @@ export default function IpoCalendar({ ipos, initialYear, initialMonth }: IpoCale
     setSelectedDate(date)
   }
 
-  const selectedDateEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : []
+  const selectedDateEvents = selectedDate ? (eventsByDate.get(selectedDate) ?? []) : []
 
   const weekRows = useMemo(() => {
     const rows: (number | null)[][] = []
@@ -90,7 +93,8 @@ export default function IpoCalendar({ ipos, initialYear, initialMonth }: IpoCale
     return rows
   }, [startingDayOfWeek, daysInMonth])
 
-  const formatDateKey = (day: number) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const formatDateKey = (day: number) =>
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
   return (
     <div className={styles.calendar}>
@@ -129,7 +133,9 @@ export default function IpoCalendar({ ipos, initialYear, initialMonth }: IpoCale
               const dayEvents = eventsByDate.get(dateKey) ?? []
               const isSelected = selectedDate === dateKey
               const isToday =
-                day === today.getDate() && month === today.getMonth() + 1 && year === today.getFullYear()
+                day === today.getDate() &&
+                month === today.getMonth() + 1 &&
+                year === today.getFullYear()
 
               return (
                 <button

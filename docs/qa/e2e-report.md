@@ -6,6 +6,20 @@
 > **BASE_URL**: `http://127.0.0.1:51022` (`tools/e2e/.base-url`)
 > **목적**: 통과시키는 것이 아니라, 지금까지 한 번도 실행되지 않은 시나리오를 실제 브라우저에서 돌려 현재 상태를 실측한다.
 
+## 재실측 결과 (수정 후, #224 병합 뒤)
+
+**총 6개 시나리오: PASS 6 / FAIL 0.** 아래 "시나리오 상세" 이하의 FAIL 기록은 수정 전(초기 실측) 결과이며, 원인과 수정 내용은 다음과 같다.
+
+| ID | 초기 결과 | 수정 | 재실측 |
+|---|---|---|---|
+| E2E-2 로그인 | FAIL | `apiFetch`가 본문 없는 200을 undefined로 처리(`ui/src/shared/api/client.ts`) | PASS (`/dashboard` 이동) |
+| E2E-4 중복 이메일 | FAIL | 백엔드 409 메시지도 마침표 붙은 문구로 표시(`SignupForm.tsx`) | PASS |
+| E2E-6 없는 투자자 | FAIL | 백엔드 400 "존재하지 않는 투자자입니다"를 "투자자 정보를 찾을 수 없습니다."로 표시(`SecuritiesAccountRegisterForm.tsx`) | PASS |
+
+- E2E-6은 화면 문구만 spec에 맞췄다. 실제 응답 상태는 여전히 400이다(spec AC-011은 404). 백엔드 테스트(`SecuritiesAccountControllerTest` AC-003)가 400을 명시하고 있어 백엔드 계약은 바꾸지 않았다. 백엔드를 404로 바꿀지는 별도 결정 사항이다.
+- E2E-5·E2E-6의 인증이 이제 로그인 UI 성공으로 잡힌다(초기에는 회원가입 폴백이었음).
+- 재실측 환경: 슬롯 DB `vibe_slot_4` reset 직후, 빈 포트로 띄운 백엔드·프론트, `pnpm run e2e` 1회.
+
 ## 실행 방법
 
 ```bash

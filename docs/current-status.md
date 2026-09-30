@@ -17,7 +17,7 @@
   4. ~~Epic 17 SF-2(ustockplus) 폐기 여부~~ — 2026-09-30 사용자가 편입으로 확정. 확인해 보니 이미 편입돼 있다(#211 `IpoScheduleMergeService`가 `IpoSyncService`에서 OpenDART 루프 완료 뒤 호출, #200 스케줄러가 매일 04:30 실행, `app.ipo-sync.enabled` 기본 true). 추가 구현 없음.
   5. 사용자 소유 미커밋 변경(`docs/project-agent-guide.md` 수정, `docs/prompt-{backend,frontend,planning}.md` 삭제)을 커밋할지 정한다.
   6. CLAUDE.md의 낡은 내용(checkstyle 플러그인 없음, `--rerun` 안내) 수정을 승인한다.
-  7. E2E 실측(#222)이 찾은 제품 결함 3건을 고칠지, 어떻게 고칠지 정한다(아래 "E2E 시나리오 실측" 참고). 특히 E2E-2는 화면 로그인이 불가능하므로 우선순위가 높다.
+  7. ~~E2E 결함 3건 수정~~ — #224로 해결(6/6 PASS). 남은 결정: 없는 투자자 등록 응답을 백엔드에서 400이 아닌 404로 바꿀지(spec AC-011은 404, 백엔드 테스트는 400).
 
 ## 세션 요약 (2026-09-30, Epic 17·18 구현 + 워커 운영 개선) — 최신
 
@@ -33,7 +33,9 @@
 
 **DB 슬롯 풀(#215)**: 슬롯 `vibe_slot_1~4`(1~3 워커, 4 Master). `scripts/db-slot.sh reset <n>` 후 `DB_NAME=vibe_slot_<n>`으로 테스트한다. **슬롯을 새로 만든 DB에서 전체 테스트가 622개 중 17개 실패한다** — V15 시드 증권사 14개와 테스트 하드코딩 이름 충돌, 그리고 `SecuritiesFirmControllerTest`의 tearDown이 시드 행을 삭제하는 기존 테스트 결함(#215가 만든 회귀 아님, Master가 슬롯 4에서 재현). 이 결함이 기본 공유 DB의 `securities_firms`가 0행이던 이유다. 별도 SF로 수정해 **#216으로 병합**했다(4개 클래스: 위 3개 + 그 수정으로 드러난 `SecuritiesFirmRepositoryTest`, 범위 확장은 Master 승인). Master가 슬롯 4를 reset한 직후 전체 테스트 650개 통과, reset 없이 재실행도 650개 통과, 시드 증권사 15개 보존, checkstyle 0을 직접 확인했다. 이제 슬롯은 reset 직후에도 전체 테스트가 통과해야 정상이다. 참고: 기본 공유 DB의 `securities_firms`는 과거 테스트가 시드를 지운 잔해라 0행일 수 있고 기능에는 영향이 없다.
 
-**E2E 시나리오 실측(#222, 완료)**: KIS 키를 못 넣는 동안 착수 가능한 부채 4번을 처리했다. `tools/e2e/e2e.mjs`(Playwright, 시나리오 1~6)와 `docs/qa/e2e-report.md`를 병합했고, Master가 `pnpm run e2e`를 직접 재실행해 결과를 확인했다. 결과는 **PASS 3 / FAIL 3**이며 FAIL 3건은 스크립트 문제가 아니라 제품이 spec과 다른 것이다(단언을 약하게 만들지 않고 그대로 FAIL로 기록).
+**E2E 결함 수정 완료(#224, 2026-09-30)**: 아래 3건을 프론트에서 고쳐 병합했고, 재실측 결과 **6/6 PASS**다(`docs/qa/e2e-report.md` "재실측 결과"). E2E-6은 화면 문구만 맞췄고 응답은 여전히 400이다(백엔드 테스트가 400을 명시해 계약은 그대로, 404로 바꿀지는 별도 결정). `ui/` format:check 9개 파일도 정리했다.
+
+**E2E 시나리오 실측(#222, 완료)**: KIS 키를 못 넣는 동안 착수 가능한 부채 4번을 처리했다. `tools/e2e/e2e.mjs`(Playwright, 시나리오 1~6)와 `docs/qa/e2e-report.md`를 병합했고, Master가 `pnpm run e2e`를 직접 재실행해 결과를 확인했다. 초기 결과는 **PASS 3 / FAIL 3**(수정 후 6/6)이며 FAIL 3건은 스크립트 문제가 아니라 제품이 spec과 다른 것이다(단언을 약하게 만들지 않고 그대로 FAIL로 기록).
 - **E2E-2 로그인 (높음)**: `/auth/login`이 본문 없는 200을 주는데 `ui/src/shared/api/client.ts`의 `apiFetch`가 204만 예외 처리하고 나머지는 `response.json()`을 호출해 실패한다. 화면에서 기존 계정으로 로그인할 수 없다. 고치는 방법: 백엔드가 로그인 응답에 JSON 본문을 주거나, `apiFetch`가 본문 없는 200도 처리한다.
 - **E2E-4 중복 이메일**: 표시 메시지에 마침표가 빠져 spec의 "이미 사용 중인 이메일입니다."와 다르다.
 - **E2E-6 없는 투자자로 증권계좌 등록**: spec은 404 "투자자 정보를 찾을 수 없습니다."인데 실제는 다른 메시지의 400이다.
@@ -103,7 +105,7 @@
 2. **접근성 재스캔 완료(2026-09-30)**: #195~#197 병합 후 12개 화면을 axe로 재스캔해 위반 0건(이전 32건). 리포트는 `docs/qa/accessibility-report.md`에 갱신됐다. 스캔은 `tools/accessibility-scan/run-scan.sh`(실행마다 빈 포트를 새로 골라 다른 프로젝트와 충돌하지 않음)로 돌린다. 참고: 스캔 스크립트는 로그인 실패 시 가입 계정을 만들므로 dev DB에 `testscan*@example.com` 잔여 계정이 쌓인다.
 3. **checkstyle 남은 532건**: Javadoc 누락(MissingJavadocMethodCheck 260, MissingJavadocTypeCheck 150 등) 위주로, 자동 포맷으로 해결 안 되고 사람이 실제로 문서를 써야 한다. 우선순위 판단 필요.
 4. **E2E 시나리오 실측 — 실측 완료(2026-09-30, #222), 결함 수정이 남음**: 시나리오 1~6을 실제 브라우저로 돌려 3 PASS / 3 FAIL. 실패 3건(E2E-2 로그인 불가, E2E-4 메시지 마침표, E2E-6 400 대 404)은 제품 결함이며 사용자 결정 후 별도 SF로 고친다. 시나리오 7~10(접근성·반응형·세션 쿠키·하이픈)은 범위에서 뺐다. 실행: `tools/e2e`에서 `pnpm run e2e`(사전 조건은 `docs/qa/e2e-report.md`).
-4-1. **`ui/` format:check 9개 파일 실패**: 기존 부채, 미해결.
+4-1. **`ui/` format:check 9개 파일 실패**: 해결(2026-09-30, 포맷만 변경).
 5. **팀장(Lead) 계층 재사용 여부**: 계속 미사용 — 이번 세션도 6.0 단독으로 9개 PR + 대형 스코프 확장 문서화를 무리 없이 처리했다.
 
 ## 워크스페이스 상태 (2026-09-30 세션 종료 시점)

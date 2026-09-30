@@ -26,7 +26,9 @@
   color: var(--text-h);
   font-size: 20px;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .navButton:hover {
@@ -57,7 +59,9 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .todayButton:hover {
@@ -118,7 +122,9 @@
   color: var(--text-h);
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
   display: flex;
   flex-direction: column;
   gap: 4px;

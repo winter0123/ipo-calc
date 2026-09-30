@@ -104,7 +104,9 @@ describe('IpoCalendar', () => {
   })
 
   it('날짜 칸 클릭 시 상세 영역에 회사명이 나온다', () => {
-    const ipos = [makeIpo({ companyName: '테스트기업', subscriptionStartDate: '2026-10-05T09:00:00Z' })]
+    const ipos = [
+      makeIpo({ companyName: '테스트기업', subscriptionStartDate: '2026-10-05T09:00:00Z' }),
+    ]
     render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const dateButton = screen.getByRole('button', { name: /10월 5일/ })
