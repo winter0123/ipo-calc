@@ -39,6 +39,7 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 - Google Java Style Checkstyle(`build.gradle.kts`에 설정돼 있다, 위반은 WARN 수준이지만 **위반 0건**이 검증 통과 기준이다)을 적용하며 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
 - public 클래스·메서드·record에는 **한국어 Javadoc**을 달고 첫 문장 끝에 마침표를 붙인다. star import 금지.
 - Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
+- 세션 쿠키·remember-me 환경 변수: `SESSION_COOKIE_SECURE`(기본 `false`; HTTPS로 서비스하는 운영에서는 `true`)가 세션 쿠키 `Secure` 값을 정한다. `HttpOnly`·`SameSite=Lax`는 `application.yml`의 `server.servlet.session.cookie.*`가 단일 출처이고 `SessionCookieWriter`가 같은 값을 쓴다(실제 컨테이너는 자체 Set-Cookie를 넣으므로 수동 쿠키는 중복 없이 MockMvc에서만 보충된다). `APP_REMEMBER_ME_KEY`(16자 이상 임의 문자열 권장)는 remember-me 서명 키이며, 비어 있으면 기동마다 임의 키를 만들고 WARN을 남긴다(재시작 시 기존 remember-me 쿠키 무효, 키 값은 로그에 남기지 않는다).
 - 공용 카탈로그(IPO·증권사) 쓰기(POST/PATCH/DELETE·import)는 `accounts.role = 'ADMIN'`만 가능하다(그 외 403 `FORBIDDEN`, `SecurityConfig`). 읽기는 로그인 사용자 전체. ADMIN은 가입 API로 만들 수 없고 DB에서 직접 지정한다: `UPDATE accounts SET role = 'ADMIN' WHERE email = '...';` (역할은 로그인 시점에 세션에 담기므로 재로그인 필요).
 - 모든 조회·변경 API는 계정 소유권 또는 글로벌 기준정보 여부를 명확히 구분한다. 개인정보·인증정보·계좌번호 평문을 로그에 남기지 않는다.
 - PostgreSQL 문법만 쓴다. `AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`를 쓰지 않는다. PK는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 작성한다.

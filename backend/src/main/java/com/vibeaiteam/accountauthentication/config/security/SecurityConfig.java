@@ -2,6 +2,9 @@ package com.vibeaiteam.accountauthentication.config.security;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +25,7 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 /**
  * Spring Security 설정. 세션 기반 인증을 사용하고 미인증 요청에는 401을 반환한다.
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -30,7 +34,10 @@ public class SecurityConfig {
    * 요청 인가 규칙, 세션 관리, 예외 처리를 구성한다.
    */
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain securityFilterChain(
+      HttpSecurity http, @Value("${app.remember-me.key:}") String rememberMeKey)
+      throws Exception {
+    String effectiveRememberMeKey = resolveRememberMeKey(rememberMeKey);
     http.authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
@@ -85,10 +92,18 @@ public class SecurityConfig {
         .rememberMe(
             remember ->
                 remember
-                    .key("account-authentication-remember-me-key")
+                    .key(effectiveRememberMeKey)
                     .tokenValiditySeconds(1209600));
 
     return http.build();
+  }
+
+  private static String resolveRememberMeKey(String configured) {
+    if (configured != null && !configured.isBlank()) {
+      return configured;
+    }
+    log.warn("APP_REMEMBER_ME_KEY가 설정되지 않아 기동마다 임의 키를 생성한다. 재시작하면 기존 remember-me 쿠키는 무효가 된다.");
+    return UUID.randomUUID().toString() + UUID.randomUUID();
   }
 
   /**

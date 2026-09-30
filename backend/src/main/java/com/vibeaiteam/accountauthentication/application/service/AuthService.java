@@ -1,5 +1,6 @@
 package com.vibeaiteam.accountauthentication.application.service;
 
+import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
 import com.vibeaiteam.accountauthentication.controller.dto.LoginRequest;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.exception.AccountLockedException;
@@ -35,6 +36,7 @@ public class AuthService {
   private final FailedLoginService failedLoginService;
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final Clock clock;
+  private final SessionCookieWriter sessionCookieWriter;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -87,13 +89,7 @@ public class AuthService {
 
     SecurityContextHolder.clearContext();
 
-    // 세션 삭제 쿠키 설정 (Max-Age=0)
-    jakarta.servlet.http.Cookie sessionCookie = new jakarta.servlet.http.Cookie("JSESSIONID", "");
-    sessionCookie.setPath("/");
-    sessionCookie.setHttpOnly(true);
-    sessionCookie.setSecure(false); // 프로덕션에서는 true
-    sessionCookie.setMaxAge(0); // 즉시 삭제
-    httpServletResponse.addCookie(sessionCookie);
+    sessionCookieWriter.expire(httpServletResponse);
   }
 
   private void createSession(
@@ -126,14 +122,6 @@ public class AuthService {
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
 
-    // MockMvc 호환성을 위해 세션 쿠키 수동 추가
-    String sessionId = session.getId();
-    jakarta.servlet.http.Cookie sessionCookie =
-        new jakarta.servlet.http.Cookie("JSESSIONID", sessionId);
-    sessionCookie.setPath("/");
-    sessionCookie.setHttpOnly(true);
-    sessionCookie.setSecure(false);
-    sessionCookie.setMaxAge(-1); // 세션 쿠키
-    httpServletResponse.addCookie(sessionCookie);
+    sessionCookieWriter.issueIfAbsent(httpServletResponse, session.getId());
   }
 }

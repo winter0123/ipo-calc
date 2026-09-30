@@ -1,5 +1,6 @@
 package com.vibeaiteam.accountauthentication.application.service;
 
+import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupRequest;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupResponse;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
@@ -34,6 +35,7 @@ public class SignupService {
   private final AccountRepository accountRepository;
   private final PasswordEncoder passwordEncoder;
   private final Clock clock;
+  private final SessionCookieWriter sessionCookieWriter;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -110,15 +112,6 @@ public class SignupService {
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
 
-    // Manually add session cookie for MockMvc compatibility
-    // In real servlet container, this is done automatically when session is created
-    String sessionId = session.getId();
-    jakarta.servlet.http.Cookie sessionCookie =
-        new jakarta.servlet.http.Cookie("JSESSIONID", sessionId);
-    sessionCookie.setPath("/");
-    sessionCookie.setHttpOnly(true);
-    sessionCookie.setSecure(false); // Set to true in production with HTTPS
-    sessionCookie.setMaxAge(-1); // Session cookie
-    httpServletResponse.addCookie(sessionCookie);
+    sessionCookieWriter.issueIfAbsent(httpServletResponse, session.getId());
   }
 }
