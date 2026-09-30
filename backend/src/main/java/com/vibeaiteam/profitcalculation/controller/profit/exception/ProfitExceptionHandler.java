@@ -26,6 +26,14 @@ public class ProfitExceptionHandler {
     return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
+  /**
+   * ProfitForbiddenException을 HTTP 403 응답으로 변환한다.
+   */
+  @ExceptionHandler(ProfitForbiddenException.class)
+  public ResponseEntity<ErrorResponse> handleForbidden(ProfitForbiddenException ex) {
+    return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+  }
+
   private ResponseEntity<ErrorResponse> response(
       HttpStatus status, String errorCode, String message) {
     ErrorResponse response = ErrorResponse.builder().error(errorCode).message(message).build();

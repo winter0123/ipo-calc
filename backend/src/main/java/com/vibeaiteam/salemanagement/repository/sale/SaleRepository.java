@@ -72,7 +72,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
   List<Sale> findByAllocationIdInAndStatus(List<Long> allocationIds, RecordStatus status);
 
   /**
-   * 배정 ID·투자자 ID·투자자명 필터로 ACTIVE 매도를 조회한다.
+   * 현재 계정(accountId) 소유 투자자의 ACTIVE 매도를 배정 ID·투자자 ID·투자자명 필터로 조회한다.
    */
   @Query(
       "SELECT s FROM Sale s "
@@ -82,11 +82,13 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
           + "WHERE s.deletedAt IS NULL AND s.status = "
           + RecordStatus.ACTIVE_HQL
           + " "
+          + "AND i.accountId = :accountId "
           + "AND (:allocationId IS NULL OR s.allocationId = :allocationId) "
           + "AND (:investorId IS NULL OR i.id = :investorId) "
           + "AND (:investorName IS NULL OR i.displayName = :investorName) "
           + "ORDER BY s.saleDate DESC, s.createdAt DESC")
   List<Sale> findActiveWithFilters(
+      @Param("accountId") Long accountId,
       @Param("allocationId") Long allocationId,
       @Param("investorId") Long investorId,
       @Param("investorName") String investorName);

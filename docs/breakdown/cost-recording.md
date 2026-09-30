@@ -59,7 +59,7 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록 API, Subscriptio
 - **검증 순서** (SubscriptionService.register 패턴 그대로):
   1. `findByIdAndDeletedAtIsNull(subscriptionId)`로 조회 → 없거나 취소(CANCELLED)되면 404
   2. Subscription → Investor 경유로 accountId 조회 → `securityUtils.getCurrentAccountId()`와 불일치하면 403 (SubscriptionForbiddenException과 동일 패턴의 CostForbiddenException)
-- **조회 시 소유권 검증은 하지 않는다** — SubscriptionService가 "조회 시 계정 소유권 검증은 수행하지 않는다(spec/architecture에 명시 없음)"고 한 것과 동일한 결정. 소유권 검증은 생성(레코드 소유권이 확정되는) 시점에만 강제한다.
+- **(보안 점검 후 정정: 조회·수정·취소에도 403 소유권 검증 적용, 목록은 현재 계정 한정)** 당시 결정: 조회 시 소유권 검증은 하지 않는다 — SubscriptionService가 "조회 시 계정 소유권 검증은 수행하지 않는다(spec/architecture에 명시 없음)"고 한 것과 동일한 결정. 소유권 검증은 생성(레코드 소유권이 확정되는) 시점에만 강제한다.
 - `subscriptionId`는 수정(PATCH) 요청 본문에 포함되지 않으므로 소유권 검증은 등록에서만 수행하고, 수정/취소/조회 시에는 재검증하지 않는다.
 ---
 
