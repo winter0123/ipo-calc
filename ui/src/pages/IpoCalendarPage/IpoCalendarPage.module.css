@@ -1,0 +1,30 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+}
+
+.loading {
+  margin: 0;
+  color: var(--text);
+  text-align: center;
+  padding: 48px 0;
+}
+
+.error {
+  margin: 0;
+  color: #d32f2f;
+  text-align: center;
+  padding: 48px 0;
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+}

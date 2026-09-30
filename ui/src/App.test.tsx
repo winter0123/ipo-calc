@@ -35,9 +35,12 @@ vi.mock('./pages/ProfitViewPage/ProfitViewPage.tsx', () => ({
 vi.mock('./pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx', () => ({
   default: () => <div>InvestmentHistoryPage</div>,
 }))
+vi.mock('./pages/IpoCalendarPage/IpoCalendarPage.tsx', () => ({
+  default: () => <div>IpoCalendarPage</div>,
+}))
 
 describe('App 랜드마크', () => {
-  it.each(['/', '/login', '/dashboard', '/investments', '/profits/view'])(
+  it.each(['/', '/login', '/dashboard', '/investments', '/profits/view', '/ipo-calendar'])(
     '%s 경로는 main 랜드마크를 정확히 1개 가진다',
     (path) => {
       render(
