@@ -678,6 +678,39 @@ class DashboardAggregationServiceTest {
   }
 
   @Test
+  void missingSecuritiesFirmRowDoesNotFailAndIsExcludedFromFirmAggregation() {
+    Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
+    Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);
+    Allocation allocation1 = createAllocation(100L, 1000L, 50L, 10000L);
+    Allocation allocation2 = createAllocation(200L, 2000L, 100L, 12000L);
+    Subscription subscription1 = createSubscription(1000L, 10L, 1L, 1L, 100L);
+    Subscription subscription2 = createSubscription(2000L, 20L, 2L, 2L, 100L);
+    Investor investor1 = createInvestor(10L, 1L, "투자자 김철수");
+    Investor investor2 = createInvestor(20L, 1L, "투자자 이영희");
+    // 계좌 1의 증권사(999)는 증권사 테이블에 행이 없다
+    SecuritiesAccount securitiesAccount1 = createSecuritiesAccount(1L, 999L);
+    SecuritiesAccount securitiesAccount2 = createSecuritiesAccount(2L, 200L);
+    SecuritiesFirm securitiesFirm2 = createSecuritiesFirm(200L, "테스트 증권사 B");
+
+    setupMocksWithSales(
+        List.of(sale1, sale2),
+        List.of(allocation1, allocation2),
+        List.of(subscription1, subscription2),
+        List.of(investor1, investor2),
+        List.of(securitiesAccount1, securitiesAccount2),
+        List.of(securitiesFirm2),
+        Collections.emptyList(),
+        List.of(createIpo(1L, 9000L), createIpo(2L, 9500L)));
+
+    List<SecuritiesFirmAggregationDto> byFirm = dashboardAggregationService.getBySecuritiesFirm();
+    SummaryDto summary = dashboardAggregationService.getSummary();
+
+    assertThat(byFirm).hasSize(1);
+    assertThat(byFirm.get(0).getSecuritiesFirmId()).isEqualTo(200L);
+    assertThat(summary.getParticipationCount()).isEqualTo(2);
+  }
+
+  @Test
   void getByPeriodGroupsByMonthAndSortsAscending() {
     // Given: 3개월(2024-01, 2024-02, 2024-03)에 각각 Sale 데이터
     LocalDateTime jan = LocalDateTime.of(2024, 1, 15, 10, 0);
