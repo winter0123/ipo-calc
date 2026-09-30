@@ -5,8 +5,7 @@ import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.dashboard.exception.DashboardForbiddenException;
 import com.vibeaiteam.dashboard.exception.DashboardNotFoundException;
-import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
@@ -27,25 +26,19 @@ public class DashboardOwnershipVerifier {
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
   private final SubscriptionRepository subscriptionRepository;
-  private final InvestorRepository investorRepository;
+  private final OwnershipGuard ownershipGuard;
 
   /** Sale ID를 통한 소유권 검증 Sale → Allocation → Subscription → Investor 경유로 현재 계정 소유 확인. */
   public void verifySaleOwnership(Long saleId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
     Sale sale =
         saleRepository
             .findByIdAndDeletedAtIsNull(saleId)
             .orElseThrow(() -> new DashboardNotFoundException("해당 매도 기록을 찾을 수 없습니다."));
 
-    Long investorId = getInvestorIdFromSale(sale);
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new DashboardNotFoundException("해당 투자자를 찾을 수 없습니다."));
-
-    if (!investor.getAccountId().equals(currentAccountId)) {
-      throw new DashboardForbiddenException("해당 데이터에 접근 권한이 없습니다.");
-    }
+    ownershipGuard.requireOwnedInvestor(
+        getInvestorIdFromSale(sale),
+        () -> new DashboardNotFoundException("해당 투자자를 찾을 수 없습니다."),
+        () -> new DashboardForbiddenException("해당 데이터에 접근 권한이 없습니다."));
   }
 
   /** 현재 계정 소유의 ACTIVE Sale만 조회하도록 필터링 loadCalculatedSales()에서 호출하여 계정 스코프 강제. */

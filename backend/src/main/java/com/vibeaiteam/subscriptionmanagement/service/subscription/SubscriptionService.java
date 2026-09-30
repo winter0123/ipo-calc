@@ -1,9 +1,7 @@
 package com.vibeaiteam.subscriptionmanagement.service.subscription;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
-import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
-import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
@@ -32,10 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class SubscriptionService {
 
   private final SubscriptionRepository subscriptionRepository;
-  private final InvestorRepository investorRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final IpoRepository ipoRepository;
-  private final SecurityUtils securityUtils;
+  private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
   /**
@@ -230,30 +227,22 @@ public class SubscriptionService {
 
   // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)
   private void validateInvestorOwnership(Long investorId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new SubscriptionNotFoundException("투자자를 찾을 수 없습니다."));
-    if (!currentAccountId.equals(investor.getAccountId())) {
-      throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwnedInvestor(
+        investorId,
+        () -> new SubscriptionNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new SubscriptionForbiddenException("계정 소유권이 없습니다."));
   }
 
   // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)
   private void validateSecuritiesAccountOwnership(Long securitiesAccountId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
     SecuritiesAccount account =
         securitiesAccountRepository
             .findByIdAndDeletedAtIsNull(securitiesAccountId)
             .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
-    Investor accountInvestor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."));
-    if (!currentAccountId.equals(accountInvestor.getAccountId())) {
-      throw new SubscriptionForbiddenException("계정 소유권이 없습니다.");
-    }
+    ownershipGuard.requireOwnedInvestor(
+        account.getInvestorId(),
+        () -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."),
+        () -> new SubscriptionForbiddenException("계정 소유권이 없습니다."));
   }
 
   // IPO 존재 검증만 수행(전역 기준정보 — 계정과 무관, 삭제되지 않은 IPO만 허용)

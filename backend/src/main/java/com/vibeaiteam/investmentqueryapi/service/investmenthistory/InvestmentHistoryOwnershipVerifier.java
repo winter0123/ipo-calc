@@ -3,8 +3,7 @@ package com.vibeaiteam.investmentqueryapi.service.investmenthistory;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryForbiddenException;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryNotFoundException;
-import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
@@ -21,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvestmentHistoryOwnershipVerifier {
 
   private final SecurityUtils securityUtils;
-  private final InvestorRepository investorRepository;
+  private final OwnershipGuard ownershipGuard;
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final SubscriptionRepository subscriptionRepository;
 
@@ -30,14 +29,7 @@ public class InvestmentHistoryOwnershipVerifier {
    * currentAccountId면 403.
    */
   public void verifyInvestorIdOwnership(Long investorId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 투자자를 찾을 수 없습니다."));
-    if (!investor.getAccountId().equals(currentAccountId)) {
-      throw new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다.");
-    }
+    requireOwnedInvestor(investorId);
   }
 
   /**
@@ -46,18 +38,11 @@ public class InvestmentHistoryOwnershipVerifier {
    * investorRepository.findById(securitiesAccount.getInvestorId()).accountId와 currentAccountId 비교.
    */
   public void verifySecuritiesAccountIdOwnership(Long securitiesAccountId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
     SecuritiesAccount securitiesAccount =
         securitiesAccountRepository
             .findById(securitiesAccountId)
             .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 증권 계좌를 찾을 수 없습니다."));
-    Investor investor =
-        investorRepository
-            .findById(securitiesAccount.getInvestorId())
-            .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 투자자를 찾을 수 없습니다."));
-    if (!investor.getAccountId().equals(currentAccountId)) {
-      throw new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다.");
-    }
+    requireOwnedInvestor(securitiesAccount.getInvestorId());
   }
 
   /**
@@ -75,13 +60,13 @@ public class InvestmentHistoryOwnershipVerifier {
 
   /** 단건 조회 시 Subscription의 소유권 검증 Subscription의 Investor의 accountId와 비교. */
   public void verifySubscriptionOwnership(Long subscriptionInvestorId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
-    Investor investor =
-        investorRepository
-            .findById(subscriptionInvestorId)
-            .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 투자자를 찾을 수 없습니다."));
-    if (!investor.getAccountId().equals(currentAccountId)) {
-      throw new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다.");
-    }
+    requireOwnedInvestor(subscriptionInvestorId);
+  }
+
+  private void requireOwnedInvestor(Long investorId) {
+    ownershipGuard.requireOwnedInvestor(
+        investorId,
+        () -> new InvestmentQueryNotFoundException("해당 투자자를 찾을 수 없습니다."),
+        () -> new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다."));
   }
 }
