@@ -70,14 +70,15 @@ public class IpoSyncScheduler {
     // 결과 요약 로그
     log.info(
         "IPO 동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, "
-            + "failures={}, aborted={}, retryable={}",
+            + "failures={}, aborted={}, retryable={}, scheduleMerged={}",
         result.getCreated(),
         result.getUpdated(),
         result.getSkippedManual(),
         result.getSkippedNonIpo(),
         result.getFailureCount(),
         result.isAborted(),
-        result.isRetryable());
+        result.isRetryable(),
+        result.getScheduleMerged());
 
     // 건별 실패 로그 (API 키, URI 절대 로그에 남기지 않음)
     for (IpoSyncFailure failure : result.getFailures()) {
