@@ -24,7 +24,8 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 ## 워커 운영
 
 - 한 SF = 한 워커, **한 worktree = 한 워커**. 같은 트리에 둘을 붙이지 않는다.
-- 워커는 OpenCode + OpenRouter 무료 모델로 띄운다. **같은 시간대에 같은 모델을 두 워커에 배정하지 않는다**(`docs/ai-free-model.md` 참고). watchdog이 각 워커의 실제 모델명을 찍어주므로 대조할 수 있다.
+- 워커는 OpenCode + OpenRouter 무료 모델로 띄운다. OpenRouter 일일 한도가 소진되면 OpenCode Zen 무료 모델로 전환하되, 후보를 한 요청씩 먼저 시험한다. 사용자가 특정 모델 계열을 빼라고 하면 그 지시를 따른다(AGENTS.md 9장). **같은 시간대에 같은 모델을 두 워커에 배정하지 않는다**(`docs/ai-free-model.md` 참고). 터미널을 띄운 직후 `Build · <모델명>` 줄을 읽어 지정한 모델이 맞는지 확인하고, watchdog 상태 파일의 모델명으로도 대조한다.
+- backend spec의 [하지 말 것]에는 `docs/guide-backend.md` 5절(지뢰 목록)을 그대로 붙인다. 같은 패키지에서 이어지는 SF는 앞 SF 병합 뒤 같은 터미널에 이어 시킬 수 있다(`docs/worker-spec-template.md`).
 - 워커에게는 대화가 아니라 `docs/worker-spec-template.md` 형식의 **자기완결적 spec**을 준다. 무료 모델은 범위와 사실관계에서 실수하므로, spec에 토큰을 쓰는 게 나중에 교정 라운드를 도는 것보다 싸다.
 - 기다릴 때는 `check --wait --timeout-ms 3600000` 같은 **긴 blocking 하나**로 기다린다. 5분짜리 짧은 타임아웃으로 재시도를 반복하지 않는다 — 재시도마다 턴이 열려 토큰이 나간다.
 - 워커가 끝나면 `worker-release --dispatch <id>`로 정리하고, `task-list --status ready`에서 다음 일을 당겨와 바로 다음 워커를 배정한다.
@@ -33,7 +34,7 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 
 - 워커 터미널 원문을 주기적으로 읽지 않는다. `cat /tmp/orca-worker-status.txt`로 watchdog 요약만 본다.
 - 상태 파일에 `ERROR`/`STALL`이 찍힌 워커만 실제 터미널을 열어 확인한다.
-- 멈춘 워커 복구: `worker-abandon` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 무료 모델로 `terminal create` → `worker-start --retry-of <이전 dispatch>`.
+- 멈춘 워커 복구: `worker-abandon` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 무료 모델로 `terminal create` → `Build · <모델명>` 줄 확인 → `worker-start --retry-of <이전 dispatch>` → spec에 재개 문구 덧붙임.
 
 ## 검증과 병합
 

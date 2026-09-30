@@ -19,15 +19,19 @@
 ```bash
 cd backend
 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q
 DB_PASSWORD=vibe_local_password ./gradlew build
 ```
+
+**`--rerun`은 바로 앞 task 하나에만 적용된다.** `checkstyleMain checkstyleTest --rerun`처럼 task 여러 개에 쓰면 마지막 task만 다시 돌고 나머지는 캐시된 결과가 나온다(2026-09-30에 이 때문에 checkstyle 위반 수를 잘못 판단한 적이 있다). `test` 하나에는 `--rerun`으로 충분하고, task를 여러 개 검증할 때는 `--rerun-tasks`를 쓴다. 검증 결과를 PASS로 기록하기 전에 캐시된 결과가 아닌지 출력에서 `UP-TO-DATE`/`FROM-CACHE` 표시를 확인한다.
 
 로컬 환경·Docker·DB 복구 절차와 실제 환경 변수 이름은 `docs/setup-history.md`를 진실 소스로 사용한다. 시크릿 값은 이 문서, 커밋, work-log 어디에도 쓰지 않는다.
 
 ## 3. 백엔드 구현 규칙
 
 - 들여쓰기는 4칸, 탭 금지다.
-- Google Java Style Checkstyle을 엄격하게 적용하며, 실제 플러그인 구성 뒤 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
+- Google Java Style Checkstyle(`build.gradle.kts`에 설정돼 있다, 위반은 WARN 수준이지만 **위반 0건**이 검증 통과 기준이다)을 적용하며 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
+- public 클래스·메서드·record에는 **한국어 Javadoc**을 달고 첫 문장 끝에 마침표를 붙인다. star import 금지.
 - Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
 - 모든 조회·변경 API는 계정 소유권 또는 글로벌 기준정보 여부를 명확히 구분한다. 개인정보·인증정보·계좌번호 평문을 로그에 남기지 않는다.
 - PostgreSQL 문법만 쓴다. `AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`를 쓰지 않는다. PK는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 작성한다.
@@ -45,3 +49,14 @@ DB_PASSWORD=vibe_local_password ./gradlew build
 - 2단계 소유권 검증 패턴 — 대상 리소스가 `Investor`를 거쳐야 소유 계정을 알 수 있는 하위 리소스(예: SecuritiesAccount)에 재사용.
 - partial unique index + `DataIntegrityViolationException` 방어 코드 — 명시적 락 없이 "그룹 내 유일 플래그" 처리(개인용 도구라 동시 요청 경쟁이 실질적으로 없음).
 - 누적 수량 검증(Σ ACTIVE quantity ≤ 상한)을 Service 계층 `@Transactional` 경계 안에서 수행하는 패턴 — 동시성 제어(락) 없이도 충분.
+
+## 5. 워커가 자주 밟는 지뢰
+
+같은 실수가 워커가 바뀔 때마다 반복돼서 적어둔다. **Master는 backend spec의 [하지 말 것]에 이 절을 그대로 붙여 넣는다.**
+
+- **`./gradlew spotlessApply`를 실행하지 않는다.** 작업공간의 추적 파일 전체를 다시 포맷해 diff가 수백 파일로 부풀어 오른다. 실수로 실행했다면 곧바로 `git checkout -- backend`로 되돌리고 자기 변경만 다시 적용한다. 포맷 확인이 필요하면 `spotlessCheck`만 쓴다.
+- **공유 로컬 DB(`localhost:5433`) 하나를 모든 작업공간이 같이 쓴다.** Flyway 마이그레이션이 든 브랜치가 한 번이라도 테스트를 돌리면 그 버전이 공유 DB에 적용되고, 병합되지 않은 상태에서 다른 작업공간이 테스트를 돌리면 `applied migration not resolved locally`로 Flyway 검증이 깨진다. 그래서 **마이그레이션이 든 SF는 한 번에 하나만 진행**하고, 마이그레이션이 없는 SF 워커는 대상 클래스만 `--tests`로 돌린다(전체 테스트는 Master가 병합 전에 한다). 이미 적용된 마이그레이션 파일의 이름·내용은 바꾸지 않는다(체크섬 불일치).
+- **Javadoc 첫 문장은 마침표로 끝낸다.** `SummaryJavadoc` 위반의 대부분이 이것이다. record 컴포넌트·compact constructor에도 필요하다.
+- **테스트가 남긴 행은 정리한다.** 공유 DB라 `@Transactional` 롤백을 우선하고, 불가능하면 `@AfterEach`에서 직접 지운다. 다른 테스트가 지워서 시드 데이터가 사라지는 경우도 있으니, 시드에 의존하는 테스트는 스스로 필요한 데이터를 만든다.
+- **시크릿은 어디에도 남기지 않는다.** 키·토큰·앱시크릿은 로그, 예외 메시지, 테스트 출력, 보고서에 쓰지 않고 테스트에는 더미 값만 쓴다. `@ToString`은 시크릿 필드를 제외한다.
+- **모델 ID를 잘못 쓰면 조용히 다른 모델로 폴백된다.** 워커 터미널을 만들 때는 화면의 `Build · <모델명>` 줄이 지정한 모델과 같은지 확인한 뒤 배정한다.

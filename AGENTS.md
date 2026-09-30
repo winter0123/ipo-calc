@@ -122,7 +122,7 @@ Master Lead는 요구사항 이해, 범위 통제, 워커 조율, 결과 검증,
 
 - **구조**: Master(Claude 코디네이터, depth 0) → 워커(OpenCode + OpenRouter 무료 모델, depth 1) N개. 상시 팀장 세션을 두지 않는다. 동시에 살아있는 Claude 세션은 Master 하나뿐이다.
 - **작업공간**: 역할 고정 worktree 3~5개(7.2절). **한 트리에 워커는 하나만** 붙인다 — 두 워커가 같은 트리를 고치면 중간 충돌이 난다. 병렬 처리량은 팀장 계층이 아니라 이 작업공간 분리에서 나온다(2026-09-28 실측).
-- **워커 배정**: 한 SF = 한 워커. 워커에게는 대화가 아니라 **자기완결적 spec**을 던진다(`docs/worker-spec-template.md`). 무료 모델은 범위·사실관계에서 실수하므로, 좋은 spec 한 장이 나중의 교정 라운드보다 훨씬 싸다.
+- **워커 배정**: 한 SF = 한 워커. 단 같은 패키지에서 앞 SF 코드를 이어 쓰는 후속 SF는 앞 SF가 병합된 뒤 **같은 워커 터미널에 이어 시킬 수 있다**(조건은 `docs/worker-spec-template.md`의 "이어 쓰기 세션"). 워커에게는 대화가 아니라 **자기완결적 spec**을 던진다(`docs/worker-spec-template.md`). 무료 모델은 범위·사실관계에서 실수하므로, 좋은 spec 한 장이 나중의 교정 라운드보다 훨씬 싸다.
 - **의존성**: 세션 시작 때 `task-create --deps`로 로드맵 의존성을 한 번에 DAG로 정의한다. 선행 task가 `completed`가 되면 후속 task가 자동으로 `ready`가 되므로, "이제 시작해도 된다"를 매번 말로 전달하지 않는다.
 - **대기**: `check --wait --timeout-ms 3600000`처럼 **긴 blocking 하나**로 기다린다. 5분짜리 짧은 타임아웃으로 재시도를 반복하면 그때마다 reasoning 턴이 열려 토큰이 계속 나간다(2026-09-28 실측된 주요 낭비 원인).
 - **감시**: `scripts/orca-worker-watchdog.py --loop 120`을 별도 터미널에서 띄워둔다. Master는 워커 터미널 원문(회당 수천 토큰) 대신 상태 파일(`/tmp/orca-worker-status.txt`, 수십 토큰)만 읽는다. watchdog은 감지만 하고 재배정은 Master가 판단한다.
@@ -318,6 +318,10 @@ orca diagnostics memory --json
 
 세 기본 작업공간에는 각각 `orca terminal list --worktree path:<작업공간-절대경로> --json`을 실행한다. 활성 워커는 마지막 트랜스크립트와 파일 변경까지 확인하고, 비어 있는 작업공간은 7.1의 준비 작업·선행 planning 큐를 다시 계산해 같은 턴에 배정하거나 예외 사유를 기록한다.
 
+watchdog의 감지 규칙은 실제로 놓친 사고에서 늘려 간다. 2026-09-30에는 ① 504 `Timeout Occurred`·`server_error` 문구가 ERROR 목록에 없었고, ② 스피너 재그리기로 `lastOutputAt`이 계속 갱신돼 무출력 정지에 도달하지 못했다. 그래서 ERROR 패턴에 504 계열을 추가하고, 하단 상태줄의 `esc interrupt` 문구가 stall 기준 시간 이상 보이지 않으면 STALL로 판정한다. 새 사고가 나면 그 문구를 selftest와 함께 추가한다.
+
+멈춘 워커 복구 절차(재배정은 여전히 코디네이터가 판단한다): `worker-abandon --dispatch <id>` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 모델로 `terminal create` → 화면의 `Build · <모델명>` 줄이 지정한 모델인지 확인 → `worker-start --retry-of <이전 dispatch>` → spec 끝에 재개 문구(`docs/worker-spec-template.md`)를 덧붙인다.
+
 오류·무응답이 보이면 먼저 파일 변경과 마지막 트랜스크립트를 확인한다. 컨텍스트 초과가 명확할 때만 `/compact` 후 같은 태스크를 재주입한다. 같은 범위에서 세 번 이상 재개 실패하면 더 작은 SF로 분해하거나 `BLOCKED`로 전환한다. 이미 생성된 파일은 원인 확인 전 삭제하지 않는다.
 
 ```bash
@@ -344,6 +348,9 @@ orca orchestration gate-resolve --id <gate_id> --resolution "<선택>" --json
 - 모델은 실행 직전에 현재 무료 여부와 도구 호출 가능 여부를 확인한다.
 - 일일 무료 한도·일시 장애·역할 부적합을 구분한다. 단순 429/5xx와 영구 비호환을 같은 실패로 기록하지 않는다.
 - 모델을 바꾸면 이전 모델, 새 모델, 사유, 영향 작업을 work-log에 남긴다.
+- **OpenRouter 일일 한도 소진**(`Rate limit exceeded: free-models-per-day-high-balance`)은 시간이 지나도 풀리지 않으므로 재시도하지 않고 OpenCode Zen 무료 모델(`opencode models`의 `opencode/*-free` 등)로 전환한다. 전환 전에 후보마다 한 요청(`opencode run --model <id> "OK만 답해"`)으로 실제 작동을 확인한다 — Zen 모델도 `Endpoint is unavailable`로 죽어 있을 수 있다.
+- **사용자가 모델 계열이나 경로를 제외하라고 지시하면 그 지시가 위 자동 전환보다 우선한다**(예: 2026-09-30 "오늘은 네모트론 라인은 빼고"). 지시가 이전 결정과 달라져도 최신 지시를 따르고 work-log에 남긴다.
+- **잘못된 모델 ID는 오류 없이 다른 모델(Laguna 등)로 폴백된다.** `opencode models`로 ID를 확인하고, 터미널을 띄운 뒤 `Build · <모델명>` 줄이 지정한 모델인지 확인한 다음 worker-start 한다. 같은 시간대에 같은 모델을 두 워커에 배정하지 않는다.
 - 한 프로젝트에서 검증된 모델 목록도 시간이 지나면 오래될 수 있다. 최신 카탈로그를 확인한 뒤 사용한다.
 - 유료 모델·서비스 전환은 사용자 명시 승인 없이는 하지 않는다.
 
