@@ -9,7 +9,7 @@ export interface Ipo {
   fixedPrice: number
   subscriptionStartDate: string
   subscriptionEndDate: string
-  listingDate: string
+  listingDate: string | null
   offeringShareCount: number
   status: string
   createdAt: string
