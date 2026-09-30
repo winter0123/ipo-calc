@@ -50,4 +50,21 @@ public class SecuritiesFirm {
 
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
+
+  @Column(name = "api_supported", nullable = false)
+  @Builder.Default
+  private Boolean apiSupported = false;
+
+  @Column(name = "api_provider", length = 50)
+  private String apiProvider;
+
+  @Column(name = "api_auth_type", length = 50)
+  private String apiAuthType;
+
+  @Column(name = "api_readonly_only", nullable = false)
+  @Builder.Default
+  private Boolean apiReadonlyOnly = true;
+
+  @Column(name = "api_external_code", length = 255)
+  private String apiExternalCode;
 }
