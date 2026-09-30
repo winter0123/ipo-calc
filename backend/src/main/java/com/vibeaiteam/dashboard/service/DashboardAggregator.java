@@ -21,18 +21,22 @@ public final class DashboardAggregator {
       double profitRate,
       int count) {
 
+    private static long allocationAmount(CalculatedSale cs) {
+      Long price = cs.allocationPrice();
+      Long qty = cs.allocatedQuantity();
+      return (price == null || qty == null) ? 0L : price * qty;
+    }
+
+    /** 총투자금은 그룹 안에서 같은 배정(allocationId)의 배정금액을 한 번만 더한다(D-D-001). */
     static Totals of(List<CalculatedSale> group) {
       long investmentAmount =
           group.stream()
-              .mapToLong(
-                  cs -> {
-                    Long price = cs.allocationPrice();
-                    Long qty = cs.allocatedQuantity();
-                    if (price == null || qty == null) {
-                      return 0L;
-                    }
-                    return price * qty;
-                  })
+              .collect(
+                  Collectors.toMap(
+                      CalculatedSale::allocationId, Totals::allocationAmount, (a, b) -> a))
+              .values()
+              .stream()
+              .mapToLong(Long::longValue)
               .sum();
       long preTaxProfit = group.stream().mapToLong(CalculatedSale::preTaxProfit).sum();
       long afterTaxProfit = group.stream().mapToLong(CalculatedSale::afterTaxProfit).sum();

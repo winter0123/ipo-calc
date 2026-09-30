@@ -12,11 +12,25 @@ import org.junit.jupiter.api.Test;
 /** DashboardAggregator 순수 집계 단위 테스트 (Spring·DB 없음). */
 class DashboardAggregatorTest {
 
+  private static long nextAllocationId = 1;
+
   private static CalculatedSale row(
       long investorId, Long firmId, String month, long pre, long after, Long qty, Long price) {
+    return rowOf(nextAllocationId++, investorId, firmId, month, pre, after, qty, price);
+  }
+
+  private static CalculatedSale rowOf(
+      long allocationId,
+      long investorId,
+      Long firmId,
+      String month,
+      long pre,
+      long after,
+      Long qty,
+      Long price) {
     return new CalculatedSale(
         null, pre, after, investorId, firmId, month, "inv" + investorId,
-        firmId == null ? null : "firm" + firmId, qty, price);
+        firmId == null ? null : "firm" + firmId, qty, price, allocationId);
   }
 
   private final List<CalculatedSale> rows =
@@ -87,5 +101,52 @@ class DashboardAggregatorTest {
     assertThat(DashboardAggregator.byInvestor(List.of())).isEmpty();
     assertThat(DashboardAggregator.bySecuritiesFirm(List.of())).isEmpty();
     assertThat(DashboardAggregator.byPeriod(List.of(), "month")).isEmpty();
+  }
+
+  @Test
+  void splitSalesOfOneAllocationCountInvestmentOncePerGroup() {
+    List<CalculatedSale> split =
+        List.of(
+            rowOf(7, 1, 10L, "2025-03", 60, 50, 10L, 1_000L),
+            rowOf(7, 1, 10L, "2025-03", 40, 30, 10L, 1_000L));
+
+    SummaryDto summary = DashboardAggregator.summarize(split);
+
+    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(10_000L);
+    assertThat(summary.getTotalAfterTaxProfit()).isEqualTo(80L);
+    assertThat(summary.getTotalProfitRate()).isEqualTo(80 * 100.0 / 10_000);
+    assertThat(summary.getParticipationCount()).isEqualTo(2);
+    assertThat(DashboardAggregator.byInvestor(split).get(0).getTotalInvestmentAmount())
+        .isEqualTo(10_000L);
+    assertThat(DashboardAggregator.bySecuritiesFirm(split).get(0).getTotalInvestmentAmount())
+        .isEqualTo(10_000L);
+  }
+
+  @Test
+  void differentAllocationsStillAddUp() {
+    List<CalculatedSale> two =
+        List.of(
+            rowOf(7, 1, 10L, "2025-03", 60, 50, 10L, 1_000L),
+            rowOf(8, 1, 10L, "2025-03", 40, 30, 10L, 1_000L));
+
+    assertThat(DashboardAggregator.summarize(two).getTotalInvestmentAmount()).isEqualTo(20_000L);
+  }
+
+  @Test
+  void allocationSplitAcrossMonthsCountsOncePerPeriodGroupButOnceInTotal() {
+    List<CalculatedSale> acrossMonths =
+        List.of(
+            rowOf(7, 1, 10L, "2025-03", 60, 50, 10L, 1_000L),
+            rowOf(7, 1, 10L, "2025-04", 40, 30, 10L, 1_000L));
+
+    List<PeriodAggregationDto> byMonth = DashboardAggregator.byPeriod(acrossMonths, "month");
+    assertThat(byMonth).extracting(PeriodAggregationDto::getTotalInvestmentAmount)
+        .containsExactly(10_000L, 10_000L);
+
+    List<PeriodAggregationDto> byYear = DashboardAggregator.byPeriod(acrossMonths, "year");
+    assertThat(byYear).hasSize(1);
+    assertThat(byYear.get(0).getTotalInvestmentAmount()).isEqualTo(10_000L);
+    assertThat(DashboardAggregator.summarize(acrossMonths).getTotalInvestmentAmount())
+        .isEqualTo(10_000L);
   }
 }
