@@ -118,15 +118,15 @@ orca terminal show --terminal <handle> --json
 
 요약하면:
 
-| 항목 | 방식 |
-|---|---|
-| Claude 세션 수 | 1개(Master)만 상시 유지 |
-| 워커 | worktree당 1개, OpenCode + OpenRouter 무료 모델, 동일 시간대 모델 중복 배정 금지 |
-| 일감 순서 | 세션 시작 때 `task-create --deps`로 DAG 정의 → `ready`가 되는 대로 pull |
-| 대기 | `check --wait --timeout-ms 3600000` 긴 blocking 하나 (짧은 폴링 금지) |
-| 정지 감지 | `scripts/orca-worker-watchdog.py --loop 120` (셸), Master는 상태 파일만 읽음 |
-| 검증 | Master가 테스트·lint·build를 직접 실행, 워커의 산문 보고는 증거 아님 |
-| 병합 | Master가 검증 후 병합, 이어서 task를 `completed`로 닫아 후속 의존성 해제 |
+| 항목          | 방식                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Claude 세션 수 | 1개(Master)만 상시 유지                                                                                                                          |
+| 워커          | worktree당 1개, OpenCode + OpenRouter 무료 모델, 동일 시간대 모델 중복 배정 금지                                                                              |
+| 일감 순서       | 세션 시작 때 `task-create --deps`로 DAG 정의 → `ready`가 되는 대로 pull                                                                                 |
+| 대기          | `check --wait --timeout-ms 3600000` 긴 blocking 하나로 대기. watchdog이 떠 있는 동안에는 짧은 타임아웃 재시도와 5분 주기 수동 터미널 점검을 하지 않는다 (watchdog이 없을 때만 6.1.1 적용) |
+| 정지 감지       | `scripts/orca-worker-watchdog.py --loop 120` (셸), Master는 상태 파일만 읽음                                                                        |
+| 검증          | Master가 테스트·lint·build를 직접 실행, 워커의 산문 보고는 증거 아님                                                                                            |
+| 병합          | Master가 검증 후 병합, 이어서 task를 `completed`로 닫아 후속 의존성 해제                                                                                       |
 
 2026-09-28에 팀장 계층을 하루 운영해본 결과와 그 구조를 언제 쓰는지는 AGENTS.md 6.0.2절에 정리돼 있다.
 
