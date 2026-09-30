@@ -8,8 +8,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +32,9 @@ class IpoSyncSchedulerTest {
   @Captor private ArgumentCaptor<Runnable> runnableCaptor;
   @Captor private ArgumentCaptor<Instant> instantCaptor;
 
+  private static final Instant NOW = Instant.parse("2026-10-15T00:00:00Z");
+  private static final Clock FIXED_CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+
   private IpoSyncScheduler scheduler;
   private AutoCloseable mockitoCloseable;
   private final List<Runnable> capturedRunnables = new ArrayList<>();
@@ -37,7 +42,7 @@ class IpoSyncSchedulerTest {
   @BeforeEach
   void setUp() {
     mockitoCloseable = MockitoAnnotations.openMocks(this);
-    scheduler = new IpoSyncScheduler(ipoSyncService, taskScheduler);
+    scheduler = new IpoSyncScheduler(ipoSyncService, taskScheduler, FIXED_CLOCK);
     // daysBack 필드는 @Value로 주입되므로 리플렉션으로 설정
     setField(scheduler, "daysBack", 90);
     capturedRunnables.clear();
@@ -132,9 +137,7 @@ class IpoSyncSchedulerTest {
     // then: taskScheduler.schedule 1회 호출, Instant가 now+5분 근처
     verify(taskScheduler).schedule(runnableCaptor.capture(), instantCaptor.capture());
     Instant scheduledTime = instantCaptor.getValue();
-    Instant expectedMin = Instant.now().plus(Duration.ofMinutes(5)).minusSeconds(5);
-    Instant expectedMax = Instant.now().plus(Duration.ofMinutes(5)).plusSeconds(5);
-    assertThat(scheduledTime).isBetween(expectedMin, expectedMax);
+    assertThat(scheduledTime).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
 
     // 캡처된 Runnable 실행 시 attempt=1로 다시 sync 호출 → 성공 결과 반환
     Runnable retryTask = runnableCaptor.getValue();
@@ -191,9 +194,7 @@ class IpoSyncSchedulerTest {
     // then: 재시도 예약됨 (스케줄러 메서드 자체는 예외를 밖으로 던지지 않음)
     verify(taskScheduler).schedule(runnableCaptor.capture(), instantCaptor.capture());
     Instant scheduledTime = instantCaptor.getValue();
-    Instant expectedMin = Instant.now().plus(Duration.ofMinutes(5)).minusSeconds(5);
-    Instant expectedMax = Instant.now().plus(Duration.ofMinutes(5)).plusSeconds(5);
-    assertThat(scheduledTime).isBetween(expectedMin, expectedMax);
+    assertThat(scheduledTime).isEqualTo(NOW.plus(Duration.ofMinutes(5)));
 
     // 재시도 실행 시 성공
     runnableCaptor.getValue().run();
@@ -250,10 +251,11 @@ class IpoSyncSchedulerTest {
 
     verify(ipoSyncService, times(4)).sync(90);
     verify(taskScheduler, times(3)).schedule(any(Runnable.class), any(Instant.class));
-    Instant now = Instant.now();
-    assertThat(Duration.between(now, scheduledTimes.get(0)).toMinutes()).isBetween(4L, 5L);
-    assertThat(Duration.between(now, scheduledTimes.get(1)).toMinutes()).isBetween(9L, 10L);
-    assertThat(Duration.between(now, scheduledTimes.get(2)).toMinutes()).isBetween(19L, 20L);
+    assertThat(scheduledTimes)
+        .containsExactly(
+            NOW.plus(Duration.ofMinutes(5)),
+            NOW.plus(Duration.ofMinutes(10)),
+            NOW.plus(Duration.ofMinutes(20)));
   }
 
   private void setField(Object target, String fieldName, Object value) {

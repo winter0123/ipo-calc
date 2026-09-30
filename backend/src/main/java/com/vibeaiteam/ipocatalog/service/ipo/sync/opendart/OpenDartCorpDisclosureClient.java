@@ -1,6 +1,7 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -29,24 +30,28 @@ public class OpenDartCorpDisclosureClient {
 
   private final RestClient restClient;
   private final OpenDartApiProperties properties;
+  private final Clock clock;
   private long lastRequestTimeMs = 0;
 
   /** 생성자 (테스트용 - RestClient 직접 주입). */
-  public OpenDartCorpDisclosureClient(RestClient restClient, OpenDartApiProperties properties) {
+  public OpenDartCorpDisclosureClient(
+      RestClient restClient, OpenDartApiProperties properties, Clock clock) {
     this.restClient = restClient;
     this.properties = properties;
+    this.clock = clock;
   }
 
   /** 생성자 (운영용 - RestClient.Builder로 생성, 타임아웃 설정 포함). */
   public OpenDartCorpDisclosureClient(
-      RestClient.Builder restClientBuilder, OpenDartApiProperties properties) {
+      RestClient.Builder restClientBuilder, OpenDartApiProperties properties, Clock clock) {
     this(
         restClientBuilder
             .baseUrl(properties.getBaseUrl())
             .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
             .requestFactory(createRequestFactory())
             .build(),
-        properties);
+        properties,
+        clock);
   }
 
   private static SimpleClientHttpRequestFactory createRequestFactory() {
@@ -67,7 +72,7 @@ public class OpenDartCorpDisclosureClient {
    */
   public List<OpenDartDisclosureItem> searchRecentEquitySecuritiesCompanies(int daysBack) {
     validateApiKey();
-    LocalDate endDate = LocalDate.now();
+    LocalDate endDate = LocalDate.now(clock);
     LocalDate startDate = endDate.minusDays(daysBack);
     return searchByDateRange(startDate, endDate);
   }

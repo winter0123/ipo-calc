@@ -8,6 +8,7 @@ import com.vibeaiteam.ipocatalog.exception.IpoConflictException;
 import com.vibeaiteam.ipocatalog.exception.IpoNotFoundException;
 import com.vibeaiteam.ipocatalog.exception.IpoValidationException;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,6 +29,7 @@ public class IpoService {
   private static final String STATUS_INACTIVE = "INACTIVE";
 
   private final IpoRepository ipoRepository;
+  private final Clock clock;
 
   /**
    * 공모주 목록을 조회한다.
@@ -61,8 +63,8 @@ public class IpoService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
     ipo.setStatus(STATUS_INACTIVE);
-    ipo.setDeletedAt(LocalDateTime.now());
-    ipo.setUpdatedAt(LocalDateTime.now());
+    ipo.setDeletedAt(LocalDateTime.now(clock));
+    ipo.setUpdatedAt(LocalDateTime.now(clock));
     ipoRepository.save(ipo);
   }
 
@@ -181,7 +183,7 @@ public class IpoService {
       ipo.setOfferingShareCount(computedOfferingShareCount);
     }
 
-    ipo.setUpdatedAt(LocalDateTime.now());
+    ipo.setUpdatedAt(LocalDateTime.now(clock));
     try {
       Ipo saved = ipoRepository.save(ipo);
       return IpoResponse.from(saved);
@@ -206,7 +208,7 @@ public class IpoService {
 
     checkDuplicate(stockCode, ipoName, subscriptionStartDate, null);
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Ipo ipo =
         Ipo.builder()
             .companyName(companyName)

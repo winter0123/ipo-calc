@@ -10,6 +10,7 @@ import com.vibeaiteam.investormanagement.exception.InvestorForbiddenException;
 import com.vibeaiteam.investormanagement.exception.InvestorNotFoundException;
 import com.vibeaiteam.investormanagement.exception.InvestorValidationException;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ public class InvestorService {
 
   private final InvestorRepository investorRepository;
   private final SecurityUtils securityUtils;
+  private final Clock clock;
 
   /**
    * 투자자를 등록한다.
@@ -37,7 +39,7 @@ public class InvestorService {
     Long accountId = securityUtils.getCurrentAccountId();
     String displayName = validateDisplayName(request.getDisplayName());
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     Investor investor =
         Investor.builder()
             .accountId(accountId)
@@ -86,7 +88,7 @@ public class InvestorService {
     if (request.getRelationship() != null) {
       investor.setRelationship(normalizeRelationship(request.getRelationship()));
     }
-    investor.setUpdatedAt(LocalDateTime.now());
+    investor.setUpdatedAt(LocalDateTime.now(clock));
 
     Investor saved = investorRepository.save(investor);
     return InvestorResponse.from(saved);
@@ -98,7 +100,7 @@ public class InvestorService {
   public SuccessResponse deactivate(Long id) {
     Investor investor = findOwnedInvestor(id);
     if (!"INACTIVE".equals(investor.getStatus())) {
-      LocalDateTime now = LocalDateTime.now();
+      LocalDateTime now = LocalDateTime.now(clock);
       investor.setStatus("INACTIVE");
       investor.setDeletedAt(now);
       investor.setUpdatedAt(now);

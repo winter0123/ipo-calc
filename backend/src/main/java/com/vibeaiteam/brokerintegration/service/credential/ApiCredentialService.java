@@ -16,6 +16,7 @@ import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class ApiCredentialService {
   private final BrokerSecretEncryptor brokerSecretEncryptor;
   private final AccountNumberEncryptor accountNumberEncryptor;
   private final SecurityUtils securityUtils;
+  private final Clock clock;
 
   /**
    * 증권계좌에 브로커 API 인증정보를 등록한다.
@@ -86,7 +88,7 @@ public class ApiCredentialService {
       throw new ApiCredentialConflictException("이미 등록된 브로커 API 인증정보가 있습니다.");
     }
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     SecuritiesAccountApiCredential credential =
         SecuritiesAccountApiCredential.builder()
             .securitiesAccountId(securitiesAccountId)
@@ -160,7 +162,7 @@ public class ApiCredentialService {
       return;
     }
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     for (SecuritiesAccountApiCredential credential : activeCredentials) {
       credential.setStatus(STATUS_INACTIVE);
       credential.setDeletedAt(now);
@@ -209,7 +211,7 @@ public class ApiCredentialService {
       return CONNECTION_ERROR;
     }
     if (credential.getTokenExpiresAt() != null
-        && credential.getTokenExpiresAt().isBefore(LocalDateTime.now())) {
+        && credential.getTokenExpiresAt().isBefore(LocalDateTime.now(clock))) {
       return CONNECTION_EXPIRED;
     }
     return CONNECTION_CONNECTED;

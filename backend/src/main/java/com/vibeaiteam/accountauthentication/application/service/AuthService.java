@@ -8,6 +8,7 @@ import com.vibeaiteam.accountauthentication.repository.account.AccountRepository
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContext;
@@ -33,6 +34,7 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final FailedLoginService failedLoginService;
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
+  private final Clock clock;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -58,15 +60,15 @@ public class AuthService {
     }
 
     // 계정 잠금 상태 확인
-    if (account.isAccountLocked()) {
+    if (account.isAccountLocked(LocalDateTime.now(clock))) {
       throw new AccountLockedException("계정이 잠겼습니다. 관리자에게 문의하세요");
     }
 
     // 로그인 성공 - 실패 횟수 리셋, last_login_at 업데이트
     account.resetFailedLoginAttempts();
     account.setLockedUntil(null);
-    account.setLastLoginAt(LocalDateTime.now());
-    account.setUpdatedAt(LocalDateTime.now());
+    account.setLastLoginAt(LocalDateTime.now(clock));
+    account.setUpdatedAt(LocalDateTime.now(clock));
     accountRepository.saveAndFlush(account);
 
     createSession(httpServletRequest, httpServletResponse, account);

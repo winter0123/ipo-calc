@@ -8,6 +8,7 @@ import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmDuplicateExc
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmNotFoundException;
 import com.vibeaiteam.securitiesfirmcatalog.exception.SecuritiesFirmValidationException;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class SecuritiesFirmService {
   private static final String STATUS_INACTIVE = "INACTIVE";
 
   private final SecuritiesFirmRepository securitiesFirmRepository;
+  private final Clock clock;
 
   /**
    * 증권사를 등록한다.
@@ -39,7 +41,7 @@ public class SecuritiesFirmService {
               throw new SecuritiesFirmDuplicateException("이미 등록된 증권사명입니다.");
             });
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     SecuritiesFirm securitiesFirm =
         SecuritiesFirm.builder()
             .name(name)
@@ -103,7 +105,7 @@ public class SecuritiesFirmService {
       firm.setBusinessRegistrationNumber(request.getBusinessRegistrationNumber());
     }
 
-    firm.setUpdatedAt(LocalDateTime.now());
+    firm.setUpdatedAt(LocalDateTime.now(clock));
     SecuritiesFirm saved = securitiesFirmRepository.save(firm);
     return SecuritiesFirmResponse.from(saved);
   }
@@ -117,7 +119,7 @@ public class SecuritiesFirmService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
 
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(clock);
     firm.setStatus(STATUS_INACTIVE);
     firm.setDeletedAt(now);
     firm.setUpdatedAt(now);
