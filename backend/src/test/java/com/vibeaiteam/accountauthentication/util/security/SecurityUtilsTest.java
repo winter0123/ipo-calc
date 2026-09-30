@@ -22,7 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
  * 사용자의 email(username)로 AccountRepository.findByEmail → Account.getId()를 반환한다 -
  * CustomUserDetailsService가 username = email로 설정하므로, SecurityContextHolder의
  * Authentication.getName()이 email이다 - Account가 null이면 IllegalStateException("인증된 계정을 찾을 수 없습니다")을
- * 던진다 - 인증 정보가 없는 상태에서 호출하면 예외가 발생해야 한다 (방어 코드)
+ * 던진다 - 인증 정보가 없는 상태에서 호출하면 예외가 발생해야 한다 (방어 코드).
  */
 @SpringBootTest
 @ActiveProfiles("test")

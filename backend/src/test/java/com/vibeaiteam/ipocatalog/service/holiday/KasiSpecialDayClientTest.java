@@ -202,7 +202,8 @@ class KasiSpecialDayClientTest {
           "response": {
             "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
             "body": {
-              "items": {"item": [{"dateKind": "01", "dateName": "테스트", "isHoliday": "Y", "locdate": "20260101", "seq": 1}]},
+              "items": {"item": [{"dateKind": "01", "dateName": "테스트", "isHoliday": "Y",
+                "locdate": "20260101", "seq": 1}]},
               "numOfRows": 100,
               "pageNo": 1,
               "totalCount": 1

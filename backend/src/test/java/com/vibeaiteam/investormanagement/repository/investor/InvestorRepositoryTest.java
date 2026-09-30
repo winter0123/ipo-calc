@@ -20,7 +20,7 @@ import org.springframework.test.context.ContextConfiguration;
 /**
  * AC 인용: docs/spec/investor-management.md - AC-001: 투자자 등록 성공 — 신규 투자자 레코드가 생성되고 status=ACTIVE,
  * deleted_at=null 반환 - AC-004: 투자자 목록 조회 (본인 계정 소유만) — 해당 계정 소유 투자자 목록 반환 - D-I-003: 소프트 삭제는 status
- * + deleted_at 모두 사용 - D-I-004: 이름 중복 완전 허용, 유니크 제약 없음
+ * + deleted_at 모두 사용 - D-I-004: 이름 중복 완전 허용, 유니크 제약 없음.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

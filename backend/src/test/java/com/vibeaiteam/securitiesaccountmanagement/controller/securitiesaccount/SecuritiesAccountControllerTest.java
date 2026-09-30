@@ -48,7 +48,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * 미생성 - AC-003: 증권계좌 등록 실패 (존재하지 않는 투자자) — 400 Bad Request, 레코드 미생성 - AC-004: 증권계좌 등록 실패 (존재하지 않는
  * 증권사) — 400 Bad Request, 레코드 미생성 - AC-005: 증권계좌 등록 실패 (계정 소유권 없음) — 계정 A가 계정 B의 투자자 ID로 요청 시 403
  * Forbidden + FORBIDDEN - D-SA-003: 투자자의 첫 계좌 등록 시 isDefault=true 자동 설정 (요청의 isDefault와 무관하게 강제) -
- * SF-2: 등록 성공 시 accountNumber는 AES 암호화되어 DB에 저장되고, 응답에는 원본 평문이 아닌 마스킹된 값(뒷 4자리만 노출)이 포함된다
+ * SF-2: 등록 성공 시 accountNumber는 AES 암호화되어 DB에 저장되고, 응답에는 원본 평문이 아닌 마스킹된 값(뒷 4자리만 노출)이 포함된다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 /**
  * AC 인용: docs/spec/securities-account-management.md (엣지케이스 #9),
  * docs/architecture/securities-account-management.md (마스킹 규칙) - 계좌번호 뒷 4자리만 평문 노출, 나머지는 '*'로 마스킹
- * (하이픈 포함 전체 길이 기준) - 4자리 미만인 계좌번호는 전체 마스킹
+ * (하이픈 포함 전체 길이 기준) - 4자리 미만인 계좌번호는 전체 마스킹.
  */
 class AccountNumberMaskerTest {
 

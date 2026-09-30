@@ -168,8 +168,7 @@ class InvestmentHistoryOwnershipVerifierTest {
   }
 
   @Test
-  void
-      verifySecuritiesAccountIdOwnershipThrowsForbiddenWhenSecuritiesAccountBelongsToOtherAccount() {
+  void verifySecuritiesAccountIdOwnershipThrowsForbiddenWhenOtherAccountOwnsIt() {
     // Given: securitiesAccountId가 타 계정 소유의 증권계좌임 (2홉 경유)
     when(securitiesAccountRepository.findById(SECURITIES_ACCOUNT_ID))
         .thenReturn(Optional.of(otherAccountSecuritiesAccount));

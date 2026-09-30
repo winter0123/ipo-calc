@@ -42,7 +42,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * 403 Forbidden, 계정 B의 투자자 정보를 반환하지 않음 - AC-006: 투자자 상세 조회 성공 — 본인 소유 투자자의 GET /investors/{id} 요청 시
  * 200 OK + 상세 정보 반환 - AC-007: 투자자 수정 성공 — PATCH /investors/{id} 요청 시 200 OK + 수정된 표시 이름과 updatedAt
  * 반영 - AC-008: 투자자 수정 실패 (빈 이름) — displayName이 빈 문자열이면 400 Bad Request + VALIDATION_ERROR, 투자자 정보
- * 변경되지 않음
+ * 변경되지 않음.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

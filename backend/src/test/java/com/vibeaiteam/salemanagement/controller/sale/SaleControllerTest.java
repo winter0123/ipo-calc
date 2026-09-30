@@ -51,7 +51,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * - AC-004: 등록 실패 (Allocation 미존재) — 존재하지 않는 allocationId → 404 - AC-005: 등록 실패 (누적 매도수량 초과) — 기존
  * ACTIVE 매도량 합계 + 신규 quantity > allocatedQuantity → 400 - AC-006: 분할 매도 등록 성공 — 기존 ACTIVE 매도량 합계 +
  * 신규 quantity ≤ allocatedQuantity면 여러 건 등록 가능 - 소유권 검증: Sale은 글로벌 기준정보로 계정 소유권 검증을 수행하지
- * 않는다(breakdown 결정표)
+ * 않는다(breakdown 결정표).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -551,7 +551,9 @@ class SaleControllerTest {
     StringBuilder url = new StringBuilder("/sales?");
     boolean first = true;
     for (Map.Entry<String, Object> entry : params.entrySet()) {
-      if (!first) url.append("&");
+      if (!first) {
+        url.append("&");
+      }
       first = false;
       url.append(entry.getKey()).append("=").append(entry.getValue());
     }

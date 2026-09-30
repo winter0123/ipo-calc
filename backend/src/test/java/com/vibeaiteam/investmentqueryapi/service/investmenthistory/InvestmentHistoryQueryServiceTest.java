@@ -1,7 +1,18 @@
 package com.vibeaiteam.investmentqueryapi.service.investmenthistory;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.anySet;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
@@ -22,7 +33,8 @@ import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.Securities
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +53,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 /**
  * InvestmentHistoryQueryService 단위 테스트 InvestmentHistoryOwnershipVerifierTest 패턴
  * 따르기: @SpringBootTest + @ActiveProfiles("test") + 실제 Repository 빈 사용 Mocked 빈은 테스트 대상이 필요한 것까지만,
- * DB는 실제 embeded DB 사용
+ * DB는 실제 embeded DB 사용.
  */
 @ExtendWith(SpringExtension.class)
 @SpringBootTest

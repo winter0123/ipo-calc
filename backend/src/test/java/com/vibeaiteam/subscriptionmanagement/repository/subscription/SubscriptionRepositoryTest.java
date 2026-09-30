@@ -21,7 +21,7 @@ import org.springframework.test.context.ContextConfiguration;
  * status=ACTIVE, deleted_at=null - AC-005: 동일 (investorId, securitiesAccountId, ipoId) 조합의 ACTIVE
  * 기록 중복은 DB partial unique index로 방지 - AC-006: CANCELLED 기록이 있어도 동일 조합 재등록 허용 (중복 검사는 ACTIVE 기준) -
  * AC-007/008/009: 목록 조회(전체/투자자별/계좌별)는 deletedAt IS NULL만 노출, createdAt 내림차순 - AC-011/017/018:
- * 취소(CANCELLED + deletedAt)된 기록은 상세/목록에서 노출하지 않음
+ * 취소(CANCELLED + deletedAt)된 기록은 상세/목록에서 노출하지 않음.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
