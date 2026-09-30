@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.xsd">
+
+<!--
+    테스트 코드는 가독성을 위해 한글 BDD 스타일 메서드명(예: getHistory_필터없는기본조회_200)을
+    관례로 쓴다. MethodName의 @Test 예외 SuppressionXpathSingleFilter가 checkstyle 10.19.0에서
+    동작하지 않아(체크스타일 XPath 매칭 이슈), 테스트 소스 전체에서 이름 규칙 검사를 끈다.
+    프로덕션 코드(src/main)에는 영향 없음.
+-->
+<suppressions>
+  <suppress checks="MethodName" files="[\\/]src[\\/]test[\\/].*Test\.java$"/>
+  <suppress checks="AbbreviationAsWordInName" files="[\\/]src[\\/]test[\\/].*Test\.java$"/>
+  <!-- 테스트는 가독성을 위해 여러 id를 앞에 모아 선언하는 경우가 많아 이 규칙의 실효성이 낮다 -->
+  <suppress checks="VariableDeclarationUsageDistance" files="[\\/]src[\\/]test[\\/].*Test\.java$"/>
+</suppressions>

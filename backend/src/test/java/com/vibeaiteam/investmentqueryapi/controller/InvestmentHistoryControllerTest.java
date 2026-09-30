@@ -1,8 +1,14 @@
 package com.vibeaiteam.investmentqueryapi.controller;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vibeaiteam.investmentqueryapi.dto.investmenthistory.InvestmentHistoryDto;
 import com.vibeaiteam.investmentqueryapi.exception.InvestmentQueryForbiddenException;
@@ -27,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * InvestmentHistoryController REST API 테스트 SaleControllerTest과 동일한 테스트 패턴 사용: @SpringBootTest
- * + @AutoConfigureMockMvc + 실제 DB 저장 후 HTTP 요청 검증
+ * + @AutoConfigureMockMvc + 실제 DB 저장 후 HTTP 요청 검증.
  */
 @ExtendWith(SpringExtension.class)
 @SpringBootTest

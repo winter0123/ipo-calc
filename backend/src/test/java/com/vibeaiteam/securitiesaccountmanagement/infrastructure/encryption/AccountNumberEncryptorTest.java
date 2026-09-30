@@ -12,7 +12,7 @@ import org.springframework.test.context.ContextConfiguration;
 /**
  * AC 인용: docs/architecture/securities-account-management.md (계좌번호 암호화 저장) - D-SA-001: AES-256-GCM,
  * JDK 내장 javax.crypto 사용 - encrypt()는 계좌번호를 암호화하고, decrypt()는 원문을 복원한다 - 매 encrypt()마다 랜덤 IV를 생성해
- * 같은 평문도 서로 다른 암호문이 나온다
+ * 같은 평문도 서로 다른 암호문이 나온다.
  */
 @SpringBootTest
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)

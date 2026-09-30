@@ -229,8 +229,10 @@ class OpenDartEquitySecuritiesClientTest {
     String fixture =
         """
         {"status":"000","message":"정상","group":[
-          {"title":"일반사항","list":[{"corp_code":"01658035","corp_name":"테스트","sbd":"-","pymd":"-","sband":"-","asand":"-","asstd":"-"}]},
-          {"title":"증권의종류","list":[{"corp_code":"01658035","corp_name":"테스트","stksen":"-","stkcnt":"-","slprc":"-","slta":"-"}]},
+          {"title":"일반사항","list":[{"corp_code":"01658035","corp_name":"테스트","sbd":"-",
+            "pymd":"-","sband":"-","asand":"-","asstd":"-"}]},
+          {"title":"증권의종류","list":[{"corp_code":"01658035","corp_name":"테스트","stksen":"-",
+            "stkcnt":"-","slprc":"-","slta":"-"}]},
           {"title":"인수인정보","list":[{"corp_code":"01658035","corp_name":"테스트","actnmn":"-"}]}
         ]}
         """;

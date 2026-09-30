@@ -19,7 +19,7 @@ import org.springframework.test.context.ContextConfiguration;
 /**
  * AC 인용: docs/spec/securities-firm-catalog.md, docs/work-log/securities-firm-catalog.md - AC-001:
  * 증권사 등록 성공 — 신규 SecuritiesFirm 생성 시 status=ACTIVE, deleted_at=null - D-SF-001: (name, status) 복합
- * 유니크 제약으로 활성 증권사 간 이름 중복만 방지 - D-SF-003: 목록/상세 조회는 deletedAt IS NULL(=ACTIVE)만 노출
+ * 유니크 제약으로 활성 증권사 간 이름 중복만 방지 - D-SF-003: 목록/상세 조회는 deletedAt IS NULL(=ACTIVE)만 노출.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

@@ -28,7 +28,7 @@ import org.springframework.test.context.ContextConfiguration;
  * - AC-001: 증권계좌 등록 성공 — 저장 시 status=ACTIVE, is_default=false, deleted_at=null 기본값 - AC-006: 계좌 목록은
  * 투자자 + status 기준으로 조회된다 (ACTIVE 필터) - AC-017: 투자자당 기본 계좌는 정확히 1개 — partial unique
  * index(uk_securities_account_default)로 2개 이상 불가 - D-SA-003~007: 엔티티/Repository는 암호화·마스킹·논리삭제 처리 없이
- * 순수 도메인 값만 보관한다
+ * 순수 도메인 값만 보관한다.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

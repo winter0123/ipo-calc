@@ -61,7 +61,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * AC-018: 취소된 청약은 목록 조회에서 제외 - 소유권 검증: 다른 계정 소유의 investorId/securitiesAccountId로 등록 시도 → 403
  * FORBIDDEN - 수정 시 새로 제공된 investorId/securitiesAccountId는 소유권 재검증(403), ipoId는 존재 재검증(404) - 엣지케이스:
  * 이미 CANCELLED된 기록 수정 시도 → 404 - 조회(목록/상세)는 소유권 필터를 적용하지 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어
- * 있지 않음
+ * 있지 않음.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

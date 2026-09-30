@@ -49,7 +49,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * Sale.quantity) - AC-004: 분할 매도 시 Cost 안분 계산 (ROUND(Σ(ACTIVE Cost.amount) × r)) - AC-005:
  * allocationPrice가 없는 경우 fixedPrice 대체 (IPO.fixedPrice) - AC-006: Cost가 없는 경우 계산 (matchedCostAmount
  * = 0) - AC-007: 잔여 허용 (각 매도 건 독립 반올림, 재분배 안 함) - AC-008: 취소(CANCELLED) 데이터 제외 (CANCELLED Sale →
- * 404, CANCELLED Cost 제외) - AC-009: 존재하지 않는 Sale 조회 실패 (404) - AC-013: 읽기 전용·저장 없음 (조회 후 DB 변경 없음)
+ * 404, CANCELLED Cost 제외) - AC-009: 존재하지 않는 Sale 조회 실패 (404) - AC-013: 읽기 전용·저장 없음 (조회 후 DB 변경 없음).
  */
 @SpringBootTest
 @AutoConfigureMockMvc

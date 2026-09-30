@@ -47,7 +47,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * 활성(ACTIVE) 증권사와 동일한 이름으로 수정 시 409 + DUPLICATE_NAME (자기 자신과 동일한 현재 이름은 중복 아님 — 변경 없는 수정 허용) -
  * AC-010: 증권사 수정 실패 (존재하지 않는 ID) — 존재하지 않는 id로 PATCH 시 404 + NOT_FOUND - D-SF-003: deletedAt IS
  * NULL(=ACTIVE)만 목록/상세 조회에 노출 — 논리 삭제된 증권사는 둘 다에서 제외 - 글로벌 기준정보: 계정 소유권 검증 불필요(SecurityUtils 미사용)하나
- * 인증은 필요 (anyRequest().authenticated())
+ * 인증은 필요 (anyRequest().authenticated()).
  */
 @SpringBootTest
 @AutoConfigureMockMvc

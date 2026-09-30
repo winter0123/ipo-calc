@@ -47,6 +47,10 @@ tasks.test {
 checkstyle {
     toolVersion = "10.19.0"
     configFile = file("config/checkstyle/checkstyle.xml")
+    configProperties = mapOf(
+        "org.checkstyle.google.suppressionfilter.config" to
+            file("config/checkstyle/checkstyle-suppressions.xml").absolutePath
+    )
 }
 
 spotless {

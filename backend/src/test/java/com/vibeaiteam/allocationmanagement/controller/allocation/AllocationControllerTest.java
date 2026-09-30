@@ -50,7 +50,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * allocatedQuantity < 0 또는 청약수량 초과 시 400 - AC-004: 배정 등록 실패 (Subscription 미존재) — 존재하지 않는
  * subscriptionId → 404 - AC-005: 배정 등록 실패 (중복, 1:1 제약) — 동일 subscriptionId에 이미 ACTIVE 배정 기록 존재 시
  * 409 - AC-006: 취소된 배정이 있으면 재등록 성공 — 동일 subscriptionId에 CANCELLED 배정만 있으면 201 - 소유권 검증: Allocation은
- * 글로벌 기준정보로 계정 소유권 검증을 수행하지 않는다(SecurityUtils 미사용, breakdown 결정표)
+ * 글로벌 기준정보로 계정 소유권 검증을 수행하지 않는다(SecurityUtils 미사용, breakdown 결정표).
  */
 @SpringBootTest
 @AutoConfigureMockMvc

@@ -20,7 +20,7 @@ import org.springframework.test.context.ContextConfiguration;
 /**
  * AC 인용: docs/spec/ipo-catalog.md, docs/work-log/ipo-catalog.md - AC-001: IPO 등록 성공 — 신규 Ipo 생성 시
  * status=ACTIVE, deleted_at=null - D-IPO-001: DB partial unique index로 활성 IPO 간 중복 방지 (stock_code /
- * ipo_name+subscription_start_date) - D-IPO-004: 목록/상세 조회는 deletedAt IS NULL(=존재하는 레코드)만 노출
+ * ipo_name+subscription_start_date) - D-IPO-004: 목록/상세 조회는 deletedAt IS NULL(=존재하는 레코드)만 노출.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

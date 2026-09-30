@@ -52,7 +52,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * AC-005: 동일 청약 다건 등록 성공 (1:N) — 하나의 Subscription에 여러 비용 등록 가능 - 소유권 검증: 다른 계정 소유의 subscriptionId로
  * 등록 시도 → 403 FORBIDDEN - 엣지케이스: 취소된 Subscription(CANCELLED) 참조 시 404 - 엣지케이스: memo 255자 초과 시 400
  * VALIDATION_ERROR - 엣지케이스: memo null 허용 - 엣지케이스: incurredAt 미래/과거 무관 허용 - 엣지케이스: status 필드 허용값 외
- * 입력 시 400 (Controller에서 검증)
+ * 입력 시 400 (Controller에서 검증).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
