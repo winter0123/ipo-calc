@@ -45,10 +45,7 @@ public class IpoService {
    */
   @Transactional(readOnly = true)
   public IpoResponse getById(Long id) {
-    Ipo ipo =
-        ipoRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+    Ipo ipo = findActive(id);
     return IpoResponse.from(ipo);
   }
 
@@ -57,10 +54,7 @@ public class IpoService {
    */
   @Transactional
   public void deactivate(Long id) {
-    Ipo ipo =
-        ipoRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+    Ipo ipo = findActive(id);
     ipo.setStatus(RecordStatus.INACTIVE);
     ipo.setDeletedAt(LocalDateTime.now(clock));
     ipo.setUpdatedAt(LocalDateTime.now(clock));
@@ -72,22 +66,18 @@ public class IpoService {
    */
   @Transactional
   public IpoResponse update(Long id, IpoUpdateRequest request) {
-    Ipo ipo =
-        ipoRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+    Ipo ipo = findActive(id);
 
-    String updatedCompanyName = request.getCompanyName();
-    String updatedIpoName = request.getIpoName();
-    String updatedStockCodeRaw = request.getStockCode();
-    String updatedRoundLabel = request.getRoundLabel();
-    Long updatedLowerBandPrice = request.getLowerBandPrice();
-    Long updatedUpperBandPrice = request.getUpperBandPrice();
-    Long updatedFixedPrice = request.getFixedPrice();
-    LocalDate updatedSubscriptionStartDate = request.getSubscriptionStartDate();
-    LocalDate updatedSubscriptionEndDate = request.getSubscriptionEndDate();
-    final LocalDate updatedListingDate = request.getListingDate();
-    Long updatedOfferingShareCount = request.getOfferingShareCount();
+    final String updatedCompanyName = request.getCompanyName();
+    final String updatedIpoName = request.getIpoName();
+    final String updatedStockCodeRaw = request.getStockCode();
+    final String updatedRoundLabel = request.getRoundLabel();
+    final Long updatedLowerBandPrice = request.getLowerBandPrice();
+    final Long updatedUpperBandPrice = request.getUpperBandPrice();
+    final Long updatedFixedPrice = request.getFixedPrice();
+    final LocalDate updatedSubscriptionStartDate = request.getSubscriptionStartDate();
+    final LocalDate updatedSubscriptionEndDate = request.getSubscriptionEndDate();
+    final Long updatedOfferingShareCount = request.getOfferingShareCount();
 
     final String computedCompanyName =
         updatedCompanyName != null ? updatedCompanyName.trim() : ipo.getCompanyName();
@@ -97,22 +87,12 @@ public class IpoService {
         updatedStockCodeRaw != null ? normalizeOptional(updatedStockCodeRaw) : ipo.getStockCode();
     final String computedRoundLabel =
         updatedRoundLabel != null ? normalizeOptional(updatedRoundLabel) : ipo.getRoundLabel();
-    LocalDate computedSubscriptionStartDate =
-        updatedSubscriptionStartDate != null
-            ? updatedSubscriptionStartDate
-            : ipo.getSubscriptionStartDate();
-    LocalDate computedSubscriptionEndDate =
-        updatedSubscriptionEndDate != null
-            ? updatedSubscriptionEndDate
-            : ipo.getSubscriptionEndDate();
-    final Long computedLowerBandPrice =
-        updatedLowerBandPrice != null ? updatedLowerBandPrice : ipo.getLowerBandPrice();
-    final Long computedUpperBandPrice =
-        updatedUpperBandPrice != null ? updatedUpperBandPrice : ipo.getUpperBandPrice();
-    final Long computedFixedPrice =
-        updatedFixedPrice != null ? updatedFixedPrice : ipo.getFixedPrice();
-    final Long computedOfferingShareCount =
-        updatedOfferingShareCount != null ? updatedOfferingShareCount : ipo.getOfferingShareCount();
+    final LocalDate computedSubscriptionStartDate =
+        pick(updatedSubscriptionStartDate, ipo.getSubscriptionStartDate());
+    final LocalDate computedSubscriptionEndDate =
+        pick(updatedSubscriptionEndDate, ipo.getSubscriptionEndDate());
+    final Long computedLowerBandPrice = pick(updatedLowerBandPrice, ipo.getLowerBandPrice());
+    final Long computedUpperBandPrice = pick(updatedUpperBandPrice, ipo.getUpperBandPrice());
 
     if (updatedCompanyName != null) {
       validateRequiredName("companyName", updatedCompanyName);
@@ -150,37 +130,18 @@ public class IpoService {
 
     checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
 
-    if (updatedCompanyName != null) {
-      ipo.setCompanyName(computedCompanyName);
-    }
-    if (updatedIpoName != null) {
-      ipo.setIpoName(computedIpoName);
-    }
-    if (updatedStockCodeRaw != null) {
-      ipo.setStockCode(computedStockCode);
-    }
-    if (updatedRoundLabel != null) {
-      ipo.setRoundLabel(computedRoundLabel);
-    }
-    if (updatedSubscriptionStartDate != null || updatedSubscriptionEndDate != null) {
-      ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
-      ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
-    }
-    if (updatedLowerBandPrice != null) {
-      ipo.setLowerBandPrice(computedLowerBandPrice);
-    }
-    if (updatedUpperBandPrice != null) {
-      ipo.setUpperBandPrice(computedUpperBandPrice);
-    }
-    if (updatedFixedPrice != null) {
-      ipo.setFixedPrice(computedFixedPrice);
-    }
-    if (updatedListingDate != null) {
-      ipo.setListingDate(updatedListingDate);
-    }
-    if (updatedOfferingShareCount != null) {
-      ipo.setOfferingShareCount(computedOfferingShareCount);
-    }
+    // 미입력 필드는 현재 값을 그대로 다시 설정하므로 변경이 없다
+    ipo.setCompanyName(computedCompanyName);
+    ipo.setIpoName(computedIpoName);
+    ipo.setStockCode(computedStockCode);
+    ipo.setRoundLabel(computedRoundLabel);
+    ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
+    ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
+    ipo.setLowerBandPrice(computedLowerBandPrice);
+    ipo.setUpperBandPrice(computedUpperBandPrice);
+    ipo.setFixedPrice(pick(updatedFixedPrice, ipo.getFixedPrice()));
+    ipo.setListingDate(pick(request.getListingDate(), ipo.getListingDate()));
+    ipo.setOfferingShareCount(pick(updatedOfferingShareCount, ipo.getOfferingShareCount()));
 
     ipo.setUpdatedAt(LocalDateTime.now(clock));
     try {
@@ -233,6 +194,16 @@ public class IpoService {
     } catch (DataIntegrityViolationException ex) {
       throw new IpoConflictException("이미 등록된 IPO입니다.");
     }
+  }
+
+  private Ipo findActive(Long id) {
+    return ipoRepository
+        .findByIdAndDeletedAtIsNull(id)
+        .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
+  }
+
+  private static <T> T pick(T updated, T current) {
+    return updated != null ? updated : current;
   }
 
   private void validateRequest(IpoRegisterRequest request) {
