@@ -299,6 +299,8 @@ public class OpenDartApiProperties {
 
 ## 8. SF-5: 프론트 연동 — 개요
 
+> **폐기(2026-09-30)**: `GET /ipo-schedule`는 만들지 않는다. 자동 동기화된 공모주는 `ipos` 테이블에 저장되므로 기존 `GET /ipos`를 청약 등록 폼과 달력(Epic 19 SF-2, 병합 완료)이 그대로 쓴다. 아래 내용은 초기 설계 기록이다.
+
 - **입력**: `GET /ipo-schedule?start=YYYY-MM-DD&end=YYYY-MM-DD` (전역 데이터, 계정 소유권 검증 불필요).
 - **출력**: 향후 N개월치 IPO 일정 목록(JSON 배열). `IpoResponse` + 신규 필드(`allotmentDate`, `refundDate` 등) 포함.
 - **의존 SF**: SF-4 (스케줄러 → DB 저장 → 조회 가능). Epic 19 SF-2(달력 뷰)도 동일 엔드포인트 재사용.

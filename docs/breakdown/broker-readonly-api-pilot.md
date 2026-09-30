@@ -9,30 +9,18 @@
 
 ---
 
-## 착수 전 Master 확인 필요 (구현 게이트) — 이 Epic은 반드시 이 절부터 읽는다
+## 구현 게이트 조사 결과 (2026-09-30) — 이 Epic은 이 절부터 읽는다
 
-research 6절이 "높음" 영향도로 표시한 4개 항목은 **미확인 상태로는 SF를 설계할 수 없다.** 아래 게이트가 전부 통과하기 전까지 SF-3(어댑터 구현) 이후는 착수하지 않는다.
+KIS 공식 GitHub(`koreainvestment/open-trading-api`) 샘플 코드·README 기준 조사 결과다. 포털 화면은 동적이라 API 명세 본문은 읽지 못했다.
 
-```
-[게이트 1] 체결내역 응답의 수수료·세금 등 구체적 필드명 확인
-    출처: github.com/koreainvestment/open-trading-api 원문 열람
-    ─ 완료 → SF-3·SF-4 필드 매핑 확정 가능
-    ─ 미완료 → SF-1·SF-2(스키마·조회 전용 강제장치)까지만 착수, 이후 대기
+| 게이트 | 결과 | 확정 내용 |
+|---|---|---|
+| 1. 수수료·세금 필드 | 부분 확인 | 체결내역 조회에는 건별 수수료·세금이 없다. 기간별매매손익현황 조회(`TTTC8715R`)에 `fee`·`tl_tax`가 있으나 **일자×종목 집계 단위**라 Sale 1건과 1:1이 아닐 수 있다. `prsm_tlex_smtl`(추정제비용합계)의 의미와 공모주 배정분 표시·`pdno` 형식은 실계좌 1회 조회로만 확인된다. **SF-4 필드 매핑 방식은 사용자 결정 대기.** |
+| 2. 조회 전용 권한 옵션 | **해소(사용자 결정)** | "조회 전용"은 읽기전용 키를 뜻하지 않고 **쓰기·주문 기능을 코드에 만들지 않는다**는 뜻이다(2026-09-30). 키 권한 확인은 필요 없다. 방어는 코드 수준(아래 SF-3)으로 하고, 키가 주문 가능한 권한일 수 있다는 한계를 사용자 고지 문구에 명시한다. |
+| 3. 접근토큰 | 확인됨 | 유효기간 1일, 만료시각이 응답에 온다. 재발급은 1분에 1회로 제한되고 refresh 토큰은 없다. **"매 호출 재발급" 전략은 폐기하고 만료 시각까지 암호화 캐시한다.** |
+| 4. 계좌번호 파라미터 | 확인됨 | 앞 8자리(`CANO`)와 뒤 2자리(`ACNT_PRDT_CD`, 일반 주식은 "01")를 쿼리 파라미터로 보낸다. |
 
-[게이트 2] 앱키 발급 단계 조회 전용/주문 권한 분리 옵션 존재 여부 확인
-    ─ 있음 → 사용자 안내 문구에 "조회 전용 앱키 발급을 권장" 추가
-    ─ 없음(or 미확인 지속) → "코드 레벨 차단이 유일한 방어"임을 SF-3 설계·사용자 고지 문구에 명시(그대로도 착수는 가능)
-
-[게이트 3] 접근토큰 유효기간·갱신 방법·재인증 필요 여부 확인
-    ─ 완료 → SF-3 토큰 저장/재발급 전략 확정
-    ─ 미완료 → SF-3은 "매 호출 재발급" 전략으로 보수적으로 시작(research 4.8-1 기본값 권고)
-
-[게이트 4] 조회 엔드포인트의 계좌번호 파라미터 요구 여부·형식 확인
-    ─ 완료 → SF-4 요청 파라미터 설계 확정
-    ─ 미완료 → SF-4 착수 불가(요청 자체를 만들 수 없음)
-```
-
-**권고 진행 방식**: 게이트 1·4가 가장 치명적(없으면 SF-4를 아예 설계할 수 없음)이므로, **Master가 SF-1·SF-2 착수를 지시함과 동시에 GitHub 원문 열람을 병행**한다. SF-1·SF-2는 게이트와 무관하게 지금 착수 가능하다(스키마 확장, 조회 전용 강제 장치는 브로커 응답 필드와 무관).
+**진행 방식**: SF-1·SF-2·SF-3은 착수 가능하다. SF-4는 게이트 1의 사용자 결정(집계 단위 매핑 규칙)과 실계좌 1회 조회 결과가 나온 뒤 필드 매핑을 확정한다.
 
 ---
 
@@ -55,9 +43,9 @@ research 6절이 "높음" 영향도로 표시한 4개 항목은 **미확인 상�
 SF-1 (securities_firms API 메타데이터 컬럼 + 시드)
 SF-2 (securities_account_api_credentials 테이블 + 암호화 키 분리) ─ SF-1과 병렬 가능
        ↓
-SF-3 (KIS 조회 전용 어댑터 — 인증·잔고·체결내역, ArchUnit 방어장치 포함) ─ 게이트 1~3 필요
+SF-3 (KIS 조회 전용 어댑터 — 인증·잔고·체결내역, ArchUnit 방어장치 포함)
        ↓
-SF-4 (브로커 거래 ↔ allocation 매칭 서비스 + 중복 판정) ─ 게이트 1·4 필요
+SF-4 (브로커 거래 ↔ allocation 매칭 서비스 + 중복 판정) ─ 게이트 1 결정 필요
        ↓
 SF-5 (미리보기 → 사용자 확정 → Sale 생성 API)
        ↓
@@ -68,8 +56,8 @@ SF-6 (프론트 — 계좌 연결 화면 + 동기화 미리보기 화면)
 |---|---|---|---|
 | SF-1 | `securities_firms` API 메타데이터 컬럼 + idempotent 시드 | 없음 | 없음 |
 | SF-2 | `securities_account_api_credentials` 테이블 + 키 분리 | 없음, SF-1과 병렬 | 없음 |
-| SF-3 | KIS 조회 전용 어댑터(인증·잔고·체결내역) + 조회 전용 강제 테스트 | SF-1, SF-2 | 게이트 2·3 (1은 필드 매핑에만 필요) |
-| SF-4 | 매칭 서비스(브로커 거래 → `allocation_id`) + 중복 판정 | SF-3 | 게이트 1·4 (필수) |
+| SF-3 | KIS 조회 전용 어댑터(인증·잔고·체결내역) + 조회 전용 강제 테스트 | SF-1, SF-2 | 없음(게이트 2·3 해소, 1은 필드 매핑에만 필요) |
+| SF-4 | 매칭 서비스(브로커 거래 → `allocation_id`) + 중복 판정 | SF-3 | 게이트 1(사용자 결정 대기, 게이트 4는 해소) |
 | SF-5 | 미리보기·확정 API (Sale 생성) | SF-4 | 없음 |
 | SF-6 | 프론트 — 계좌 연결 + 동기화 미리보기 UI | SF-5 | 없음 |
 
@@ -110,7 +98,7 @@ SF-6 (프론트 — 계좌 연결 화면 + 동기화 미리보기 화면)
 
 **특이사항**:
 - **계정 소유권 검증 필수**: `SecuritiesAccount`를 거치는 2단계 검증(대상의 `securitiesAccountId` → 그 `Investor.accountId` → 현재 계정 비교, CLAUDE.md에 명시된 기존 패턴 그대로).
-- 토큰은 **기본적으로 미저장, 호출 시마다 재발급**을 기본 전략으로 한다(research 4.8-1 권고, 게이트 3 확인 후 필요시 저장 전략으로 전환).
+- 토큰은 유효기간이 1일이고 재발급이 분당 1회로 제한되므로 **`access_token_encrypted`·`token_expires_at`에 암호화해 캐시하고 만료 시각 전에는 재사용**한다(게이트 3 확정). 만료 시 1회 재발급하며 동시 요청은 재발급을 한 번만 하도록 직렬화한다.
 - 기존 `AccountNumberEncryptor`를 그대로 재사용하지 않고 별도 클래스로 분리하는 이유: research 4.8-2 "클래스 이름이 부정확해짐" — `AccountNumberEncryptor`의 핵심 암복호화 로직(AES-256-GCM, 랜덤 IV, `Base64(IV+ciphertext)`)을 공용 유틸로 추출하고 두 곳에서 각자의 키로 인스턴스화하는 방식을 권장(코드 중복 없이 키만 분리).
 - `APP_ENCRYPTION_BROKER_KEY` 미설정 시 브로커 연결 기능 자체가 비활성화되도록 한다(research 4.8-2 — 계좌번호 암호화와 달리 "키 미설정 상태로 기동은 허용하되 연결 기능만 막는" 정책 권장).
 
@@ -128,13 +116,13 @@ SF-6 (프론트 — 계좌 연결 화면 + 동기화 미리보기 화면)
 **범위**: `brokerintegration.adapter.kis` 하위에 한국투자증권 조회 전용 클라이언트를 만든다. **이 SF의 산출물에는 어떤 형태로도 주문(매수/매도/정정/취소) 메서드가 존재하지 않는다.**
 
 **산출물 파일 경로**:
-- `brokerintegration.adapter.kis.KisAuthClient` — 앱키/앱시크릿으로 접근토큰 발급(POST, 유일하게 허용되는 예외 — **토큰 발급 자체는 OAuth 성격이라 POST가 불가피**하나 이후 모든 호출은 GET)
+- `brokerintegration.adapter.kis.KisAuthClient` — 앱키/앱시크릿으로 접근토큰 발급(`oauth2/tokenP` POST 1개 경로만 예외 — **토큰 발급은 POST가 불가피**하나 이후 모든 호출은 GET). 발급한 토큰은 SF-2 저장소에 만료 시각과 함께 캐시한다
 - `brokerintegration.adapter.kis.KisBalanceClient` — 잔고 조회(GET)
 - `brokerintegration.adapter.kis.KisTransactionHistoryClient` — 체결내역 조회(GET)
 - `brokerintegration.adapter.BrokerQueryPort` — **공개 인터페이스에 조회 메서드만 선언**(research 4.3-A). 모든 어댑터(향후 확장 포함)가 이 인터페이스만 구현.
 - `brokerintegration.infrastructure.config.KisApiProperties` — base URL 고정값(설정 파일에서만, 사용자 입력 불가)
 - `brokerintegration.exception.BrokerApiException` — 브로커 스펙 변화가 도메인으로 새지 않도록 격리(research R5)
-- **`backend/src/test/java/.../brokerintegration/architecture/BrokerReadOnlyArchitectureTest.java`** — ArchUnit(또는 이미 있는 정적 검사 도구)로 `brokerintegration.adapter` 패키지 내 `post()`/`put()`/`patch()`/`delete()` 호출이 **KisAuthClient의 토큰 발급 1건을 제외하고 0건**임을 강제. 이 테스트가 없으면 SF-3은 완료로 보지 않는다.
+- **`backend/src/test/java/.../brokerintegration/architecture/BrokerReadOnlyArchitectureTest.java`** — ArchUnit(또는 이미 있는 정적 검사 도구)로 `brokerintegration.adapter` 패키지 내 `post()`/`put()`/`patch()`/`delete()` 호출이 **KisAuthClient의 토큰 발급 1건을 제외하고 0건**임을 강제하고, 추가로 소스 전체에 주문 경로 문자열(`order-cash`, `order-rvsecncl` 등 KIS 주문 엔드포인트)이 0건임을 검사한다. 이 테스트가 없으면 SF-3은 완료로 보지 않는다.
 
 **특이사항**:
 - `RestClient`(Spring 6.1 기본, `spring-boot-starter-web`에 이미 포함) 사용. `WebClient` 추가 의존성 도입 안 함(research 7-2).

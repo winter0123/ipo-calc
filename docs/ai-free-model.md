@@ -142,6 +142,8 @@ PR별 실제 사용 기록 표는 다음과 같다.
 | 2026-09-30 | #197 | 접근성 color-contrast 색상 교정 | Implementation | (Master 직접) | 워커 없이 Master가 수행 — CSS 색상 값만 16개 파일에서 교체 | 결정 불필요한 소규모 기계적 수정이라 워커 위임 대신 직접 처리 |
 | 2026-09-30 | #198 | Epic 17 SF-3: OpenDART 동기화 서비스 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 빌드 통과를 보고했으나 `@DataJpaTest` 58건 실패(`RestClient.Builder` 빈 의존), 경고 메서드 정의만 하고 미호출 | 지시 불명확이 아닌 모델 검증 누락. 워커의 빌드 보고를 믿지 말고 `--rerun-tasks`로 직접 재검증 필요. 슬라이스 테스트에 없는 빈 의존 금지를 스펙에 명시 |
 | 2026-09-30 | #199 | Epic 17 KRX 휴장일 DB 테이블 + 월간 KASI 배치 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 예외 메시지로 서비스 키가 샐 수 있었고, 서비스가 `RestClient.Builder`에 의존, 서비스에 `@ConditionalOnProperty`, 테스트에 우회용 `@MockBean` | 보안 요건(키 로깅·예외 금지)을 스펙에 적었는데도 누락. 같은 결함이 SF-3에서도 있었으므로 워커 지시서에 "예외 메시지에 URL 금지"와 "슬라이스 호환 빈"을 체크리스트로 고정 |
+| 2026-09-30 | #200 | Epic 17 SF-4: OpenDART 일일 스케줄러 + 재시도 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 재시도 테스트 3건 실패, 범위 밖 `syncManual` 추가, 예외 메시지·스택트레이스 로깅, 빌드 중 동시 gradle 실행 | 스펙에 없는 메서드를 임의로 추가하는 경향. 로그에는 예외 클래스명만 남기라는 규칙을 반복 명시하고, 워커가 살아있는 동안 Master는 같은 워크트리에서 빌드하지 않는다 |
+| 2026-09-30 | #201 | Epic 19 SF-2: 공모주 일정 달력 | Implementation | nvidia/nemotron-3-ultra-550b-a55b:free | Master 보정 후 통과 — 상태 업데이터 내 부수효과, 시스템 시간 미고정 테스트, `listingDate` null 타입 누락, 들여쓰기 훼손 | 날짜 의존 테스트는 시간 고정을 스펙에 명시. 타입은 백엔드 응답의 null 가능 필드까지 대조하게 한다 |
 
 이후 Master가 각 PR을 병합·검증할 때마다 한 줄씩 추가한다. 기록에는 모델명뿐 아니라 역할, 실제 결과, 재작업 여부, 실패 원인 분류(모델 문제/인프라 문제/지시 문제)를 포함한다. 과거 PR의 모델은 추측하지 않는다.
 
