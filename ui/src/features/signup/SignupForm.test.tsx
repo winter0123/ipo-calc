@@ -83,6 +83,15 @@ describe('SignupForm', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  it('백엔드 409 메시지("이미 사용 중인 이메일입니다")도 마침표가 붙은 메시지로 표시', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('이미 사용 중인 이메일입니다'))
+    renderSignupForm()
+
+    fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
+
+    expect(await screen.findByText('이미 사용 중인 이메일입니다.')).toBeInTheDocument()
+  })
+
   it('400 오류 시 API 메시지 매핑', async () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
       Object.assign(new Error('Bad Request: 400'), { message: '이름은 2자 이상이어야 합니다.' }),

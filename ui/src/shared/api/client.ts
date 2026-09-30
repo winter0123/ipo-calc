@@ -40,10 +40,7 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
     throw new Error(errorMessage)
   }
 
-  // 204 No Content 같은 경우
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
+  // 204 또는 본문 없는 200(예: POST /auth/login)은 undefined로 처리
+  const text = await response.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }

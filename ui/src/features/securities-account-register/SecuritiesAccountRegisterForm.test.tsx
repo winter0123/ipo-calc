@@ -160,6 +160,22 @@ describe('SecuritiesAccountRegisterForm', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/dashboard')
   })
 
+  it('백엔드 400 "존재하지 않는 투자자입니다"도 투자자 없음 메시지로 표시', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('존재하지 않는 투자자입니다'))
+
+    renderForm()
+    await waitForFirmsLoaded()
+
+    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('계좌번호'), {
+      target: { value: '1234567890123456' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+
+    expect(await screen.findByText('투자자 정보를 찾을 수 없습니다.')).toBeInTheDocument()
+  })
+
   it('존재하지 않는 증권사로 등록 시 에러 메시지 표시 (404)', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
     vi.mocked(apiFetch).mockRejectedValueOnce(
