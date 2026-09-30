@@ -67,7 +67,7 @@ PeriodAggregationDto = SummaryDto 필드 + period (String, "YYYY-MM" | "YYYY")
 Step 1: 현재 계정 소유 ACTIVE Sale 조회 — saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", currentAccountId) (SecurityUtils.getCurrentAccountId() 기준, Master 수정)
 Step 2: Sale→Allocation 연관 데이터를 배치 조회로 구성 (N+1 방지)
 Step 3: 각 Sale에 대해 Epic 10 ProfitCalculator 호출 → 세전/세후순수익 산출
-Step 4: 집계 대상 Allocation의 배정금액 합산(총투자금) 계산
+Step 4: 집계 대상 Sale별 안분 투자금(`allocationPrice × Sale.quantity`) 합산(총투자금) 계산
 Step 5: 그룹핑(누락 시 "단일 그룹") → 그룹별 집계값 산출 → DTO 구성
 ```
 
@@ -79,7 +79,7 @@ private List<CalculatedSale> loadCalculatedSales()
   // 반환: Sale + 세전순수익 + 세후순수익 + investKey(투자자/증권사/기간)가 포함된 계산용 기록 목록
 
 private AggregationValue aggregate(List<CalculatedSale> sales, Function<CalculatedSale, Long> investorKey)
-  // 그룹 내 집계 5필드 계산 (배정금액 합, 수익 합, 수익률, 참여건수)
+  // 그룹 내 집계 5필드 계산 (안분 투자금 합, 수익 합, 수익률, 참여건수=서로 다른 배정 수)
 ```
 
 `loadCalculatedSales()`가 전체 ACTIVE Sale을 한 번만 로드하므로, 4개 메서드가 각각 중복 조회를 하지 않는다.
@@ -93,7 +93,7 @@ private AggregationValue aggregate(List<CalculatedSale> sales, Function<Calculat
 
 **집계 절차:**
 - `loadCalculatedSales()`로 계산 목록 구성 (전체 Sale이 단일 그룹)
-- `totalInvestmentAmount` = Σ(집계 대상 Allocation의 `allocatedQuantity × allocationPrice`) (D-D-001, 신규 대체 단가 룰은 ProfitCalculator에 위임)
+- `totalInvestmentAmount` = Σ(집계 대상 Sale의 `allocationPrice × Sale.quantity`, 배정금액의 매도 수량 안분) (D-D-001, 신규 대체 단가 룰은 ProfitCalculator에 위임)
 - `totalPreTaxProfit` = Σ(각 Sale의 세전순수익), `totalAfterTaxProfit` = Σ(세후순수익) (D-D-003, 잔차 재분배 없음)
 - `totalProfitRate` = `totalAfterTaxProfit / totalInvestmentAmount × 100`, 총투자금 0이면 `0.0` (AC-007)
 - `participationCount` = ACTIVE Sale 건수
@@ -148,7 +148,7 @@ Epic 10의 `ProfitCalculator`는 매도 건 하나에 대해 아래 항목을 �
 | CANCELLED Sale 제외 | `findAllByStatusAndInvestorAccountId("ACTIVE", currentAccountId)` + ProfitCalculator 일관 규칙 |
 
 - `loadCalculatedSales()`는 각 Sale에 대해 `profitCalculator.calculate(...)`를 호출해 세전/세후순수익을 얻고, 계산 결과와 함께 Sale을 보관한다.
-- 총투자금은 spec(D-D-001)에 따라 `Allocation.allocatedQuantity × allocationPrice` 배정금액 기준이므로, ProfitCalculator 출력에 총투자금이 없으면 Service에서 직접 합산한다(단가 대체 규칙은 Epic 10의 대응취득가액 룰을 따르되, 배정금액 자체는 Allocation.allocationPrice 기준). 단, **신규 공식 설계 금지** 원칙 위에 누적.
+- 총투자금은 spec(D-D-001)에 따라 배정금액을 매도 수량 비율로 안분한 몫(`allocationPrice × Sale.quantity`) 기준이므로, ProfitCalculator 출력에 총투자금이 없으면 Service에서 직접 합산한다(단가 대체 규칙은 Epic 10의 대응취득가액 룰을 따르되, 배정금액 자체는 Allocation.allocationPrice 기준). 단, **신규 공식 설계 금지** 원칙 위에 누적.
 
 ---
 
@@ -284,7 +284,7 @@ SQL에서 `GROUP BY`로 그룹 키(투자자/증권사/기간)별 `SUM`을 직�
 
 1. **전체 조회 메모리 부하**: 모든 엔드포인트가 전체 ACTIVE Sale + 연관 데이터를 메모리에 로드한다. 판매 기록 수가 몇만 건까지는 문제없으나, 데이터가 크게 늘어나면 배치 조회 최적화 또는 DB GROUP BY 전환을 재평가한다. MVP·개인용 규모에서는 허용 가능.
 2. **ProfitCalculator 의존성(계약 안정성)**: 이 Epic의 정확성은 Epic 10 계산기가 전부 좌우한다. Epic 10에서 메서드 시그니처·반환값이 바뀌면 이 Epic의 `loadCalculatedSales()`가 깨진다. Epic 10과의 계약(입력 Sale, 출력 세전/세후순수익)을 명확히 고정하고, 단위 테스트 시 Epic 10 계산 경로와 동일 입력을 사용한다.
-3. **총투자금 기준 정의 보존**: spec D-D-001(배정금액 단일 기준)과 ProfitCalculator의 대응취득가액 규칙(allocationPrice null → fixedPrice 대체)이 섞여 혼동 가능. 총투자금은 배정금액 기준, 매도 건별 손익은 ProfitCalculator 기준임을 DTO·테스트에서 명시적으로 고정한다.
+3. **총투자금 기준 정의 보존**: spec D-D-001(배정금액 단일 기준)과 ProfitCalculator의 대응취득가액 규칙(allocationPrice null → fixedPrice 대체)이 섞여 혼동 가능. 총투자금은 배정금액의 매도 수량 안분 기준, 매도 건별 손익은 ProfitCalculator 기준임을 DTO·테스트에서 명시적으로 고정한다.
 4. **증권사/투자자 그룹핑 키 불일치**: 증권사 귀속은 Investor의 소속(SecuritiesAccount.securitiesFirmId) 기준. Investor와 SecuritiesAccount가 1:1이 아니게 되는 미래 변경이 생기면 그룹 키 정의가 모호해질 수 있어, 그 시점에 귀속 규칙을 재확정해야 한다.
 5. **배치 조회 준비 누락**: 그룹핑·이름 매핑을 배치로 처리하지 않고 Sale마다 개별 조회하면 N+1 문제가 발생한다. `loadCalculatedSales()` 공통 헬퍼가 배치 조회를 강제하도록 구현하고 QA에서 쿼리 수를 확인한다.
 6. **읽기 전용 보장(AC-010)**: GET만 제공하고 계산 결과를 저장·캐시하지 않는다. 향후 엔드포인트 확장 시 읽기 전용 원칙을 유지하도록 문서에 명시한다. 동시성 제어·락은 도입하지 않는다.

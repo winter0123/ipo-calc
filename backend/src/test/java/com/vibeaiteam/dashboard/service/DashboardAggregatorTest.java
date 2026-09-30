@@ -104,22 +104,22 @@ class DashboardAggregatorTest {
   }
 
   @Test
-  void splitSalesOfOneAllocationCountInvestmentOncePerGroup() {
+  void splitSalesOfOneAllocationSumToAllocationAmount() {
     List<CalculatedSale> split =
         List.of(
-            rowOf(7, 1, 10L, "2025-03", 60, 50, 10L, 1_000L),
-            rowOf(7, 1, 10L, "2025-03", 40, 30, 10L, 1_000L));
+            rowOf(7, 1, 10L, "2025-03", 60, 50, 30L, 10_000L),
+            rowOf(7, 1, 10L, "2025-03", 40, 30, 70L, 10_000L));
 
     SummaryDto summary = DashboardAggregator.summarize(split);
 
-    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(10_000L);
+    assertThat(summary.getTotalInvestmentAmount()).isEqualTo(1_000_000L);
     assertThat(summary.getTotalAfterTaxProfit()).isEqualTo(80L);
-    assertThat(summary.getTotalProfitRate()).isEqualTo(80 * 100.0 / 10_000);
-    assertThat(summary.getParticipationCount()).isEqualTo(2);
+    assertThat(summary.getTotalProfitRate()).isEqualTo(80 * 100.0 / 1_000_000);
+    assertThat(summary.getParticipationCount()).isEqualTo(1);
     assertThat(DashboardAggregator.byInvestor(split).get(0).getTotalInvestmentAmount())
-        .isEqualTo(10_000L);
+        .isEqualTo(1_000_000L);
     assertThat(DashboardAggregator.bySecuritiesFirm(split).get(0).getTotalInvestmentAmount())
-        .isEqualTo(10_000L);
+        .isEqualTo(1_000_000L);
   }
 
   @Test
@@ -133,20 +133,46 @@ class DashboardAggregatorTest {
   }
 
   @Test
-  void allocationSplitAcrossMonthsCountsOncePerPeriodGroupButOnceInTotal() {
+  void allocationSplitAcrossMonthsProratesInvestmentByQuantitySold() {
     List<CalculatedSale> acrossMonths =
         List.of(
-            rowOf(7, 1, 10L, "2025-03", 60, 50, 10L, 1_000L),
-            rowOf(7, 1, 10L, "2025-04", 40, 30, 10L, 1_000L));
+            rowOf(7, 1, 10L, "2025-03", 60, 50, 30L, 10_000L),
+            rowOf(7, 1, 10L, "2025-04", 40, 30, 70L, 10_000L));
 
     List<PeriodAggregationDto> byMonth = DashboardAggregator.byPeriod(acrossMonths, "month");
     assertThat(byMonth).extracting(PeriodAggregationDto::getTotalInvestmentAmount)
-        .containsExactly(10_000L, 10_000L);
+        .containsExactly(300_000L, 700_000L);
 
     List<PeriodAggregationDto> byYear = DashboardAggregator.byPeriod(acrossMonths, "year");
     assertThat(byYear).hasSize(1);
-    assertThat(byYear.get(0).getTotalInvestmentAmount()).isEqualTo(10_000L);
+    assertThat(byYear.get(0).getTotalInvestmentAmount()).isEqualTo(1_000_000L);
     assertThat(DashboardAggregator.summarize(acrossMonths).getTotalInvestmentAmount())
-        .isEqualTo(10_000L);
+        .isEqualTo(1_000_000L);
+    assertThat(byMonth).extracting(PeriodAggregationDto::getParticipationCount).containsExactly(1, 1);
+    assertThat(byYear.get(0).getParticipationCount()).isEqualTo(1);
+    assertThat(DashboardAggregator.summarize(acrossMonths).getParticipationCount()).isEqualTo(1);
+  }
+
+  @Test
+  void partiallySoldAllocationCountsOnlyTheSoldShare() {
+    List<CalculatedSale> partial = List.of(rowOf(7, 1, 10L, "2025-03", 60, 50, 30L, 10_000L));
+
+    assertThat(DashboardAggregator.summarize(partial).getTotalInvestmentAmount())
+        .isEqualTo(300_000L);
+  }
+
+  @Test
+  void prorationOfIndivisibleAllocationAmountSumsExactly() {
+    List<CalculatedSale> thirds =
+        List.of(
+            rowOf(7, 1, 10L, "2025-03", 1, 1, 1L, 3_333L),
+            rowOf(7, 1, 10L, "2025-04", 1, 1, 1L, 3_333L),
+            rowOf(7, 1, 10L, "2025-05", 1, 1, 1L, 3_333L));
+
+    assertThat(DashboardAggregator.byPeriod(thirds, "month"))
+        .extracting(PeriodAggregationDto::getTotalInvestmentAmount)
+        .containsExactly(3_333L, 3_333L, 3_333L);
+    assertThat(DashboardAggregator.summarize(thirds).getTotalInvestmentAmount())
+        .isEqualTo(3 * 3_333L);
   }
 }

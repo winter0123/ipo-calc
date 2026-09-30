@@ -12,7 +12,7 @@
 
 | 결정 | 내용 |
 |------|------|
-| D-D-001 | 총투자금은 `배정금액(allocatedQuantity × allocationPrice)` 단일 기준 |
+| D-D-001 | 총투자금은 `배정금액(allocatedQuantity × allocationPrice)`을 **매도 수량 비율로 안분**한 몫의 합. 매도 건의 투자금 = 배정금액 × 매도수량 / 배정수량 = `allocationPrice × 매도수량`(항상 정수, 오차 없음). 배정을 다 팔면 배정금액과 같고, 일부만 팔면 판 몫만 계상한다. 모든 집계(전체·투자자별·증권사별·월별·연도별)가 같은 기준이라 그룹 합이 전체와 일치한다. (2026-10-01 사용자 결정으로 "배정 전체"에서 개정) |
 | D-D-002 | 집계는 저장하지 않는 파생값. 별도 이력/메타데이터 테이블 불필요 |
 | D-D-003 | 안분 잔차 재분배 없음. 각 매도 건 값을 그대로 합산 |
 | D-D-004 | 미매도 주식/미실현손익은 범위 밖. 실현수익만 집계 |
@@ -23,11 +23,11 @@
 ### 1.3 용어 정의
 
 - **집계(Aggregation)**: 여러 Sale/Allocation/Cost 레코드를 그룹화해 합산한 파생값. 저장하지 않으며 on-demand 계산(D-D-002).
-- **총투자금**: 집계 대상 Allocation의 `allocatedQuantity × allocationPrice` 합계 (D-D-001).
+- **총투자금**: 집계 대상 ACTIVE Sale마다 `allocationPrice × Sale.quantity`(배정금액의 매도 수량 안분 몫)를 합한 값 (D-D-001).
 - **총세전수익**: 집계 대상 모든 Sale의 세전순수익 합산 (Epic 10 공식 재사용).
 - **총세후수익**: 집계 대상 모든 Sale의 세후순수익 합산 (Epic 10 공식 재사용).
 - **총수익률**: `총세후수익 / 총투자금 × 100` (단위: %, 소수점 둘째 자리까지).
-- **참여건수**: 집계 대상 ACTIVE Sale 건수.
+- **참여건수**: 집계 대상 ACTIVE Sale이 속한 서로 다른 Allocation 수(한 배정을 나눠 팔아도 1회).
 - **기간별 귀속**: `Sale.saleDate`의 연-월/연 단위로 그룹화 (D-D-005).
 - **집계 범위**: 전체, 투자자별, 증권사별, 월별, 연도별 5종만 제공 (D-D-007). 계좌별/공모주별은 제외.
 - **ID**: 모든 엔티티 ID는 `Long` 타입 사용.
@@ -66,11 +66,11 @@ Epic 10 계산 공식 (재사용):
 }
 ```
 
-- `totalInvestmentAmount`: Long. 모든 집계 대상 Allocation의 배정금액 합계 (D-D-001)
+- `totalInvestmentAmount`: Long. 집계 대상 Sale의 안분 투자금(`allocationPrice × Sale.quantity`) 합계 (D-D-001)
 - `totalPreTaxProfit`: Long. 전체 ACTIVE Sale의 세전순수익 합산 (잔차 허용, 각 매도 건 단순 합산)
 - `totalAfterTaxProfit`: Long. 전체 ACTIVE Sale의 세후순수익 합산
 - `totalProfitRate`: Double. `총세후수익 / 총투자금 × 100`. 총투자금이 0이면 0.0
-- `participationCount`: Integer. 집계 대상 ACTIVE Sale 건수
+- `participationCount`: Integer. 집계 대상 ACTIVE Sale이 속한 서로 다른 Allocation 수
 
 **응답 (실패):** 없음. 항상 200 OK (데이터가 없으면 모든 값이 0인 빈 집계 반환)
 
@@ -288,12 +288,12 @@ Investor (1) <---- (N) Subscription (1) <---- (1:1) Allocation (1) <---- (N) Sal
    b. Allocation → Subscription → ACTIVE Cost 조회 → 대응취득비용 계산
    c. 세전순수익 = Sale.amount − 대응취득가액 − 대응취득비용 − Sale.fee − Sale.otherCost
    d. 세후순수익 = 세전순수익 − Sale.tax
-3. 총투자금 = Σ(Allocation.allocatedQuantity × Allocation.allocationPrice)
-   (집계 대상 Allocation: ACTIVE Sale이 존재하는 Allocation만)
+3. 총투자금 = Σ(Allocation.allocationPrice × Sale.quantity)
+   (각 ACTIVE Sale마다 배정금액을 매도 수량 비율로 안분한 몫, D-D-001)
 4. 총세전수익 = Σ(각 Sale의 세전순수익)
 5. 총세후수익 = Σ(각 Sale의 세후순수익)
 6. 총수익률 = 총세후수익 / 총투자금 × 100 (총투자금 0이면 0.0)
-7. 참여건수 = ACTIVE Sale 건수
+7. 참여건수 = ACTIVE Sale이 속한 서로 다른 Allocation 수
 8. 결과 DTO 응답 (저장 없음)
 ```
 

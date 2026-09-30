@@ -19,7 +19,7 @@ public record CalculatedSale(
     String saleDateKey, // "YYYY-MM"
     String investorName,
     String securitiesFirmName,
-    Long allocatedQuantity,
+    Long soldQuantity,
     Long allocationPrice,
     Long allocationId) {
 
@@ -68,7 +68,7 @@ public record CalculatedSale(
         sale.getSaleDate().format(MONTH_FORMATTER),
         investor.getDisplayName(),
         securitiesFirmName,
-        allocation.getAllocatedQuantity(),
+        sale.getQuantity(),
         allocation.getAllocationPrice(),
         allocation.getId());
   }
