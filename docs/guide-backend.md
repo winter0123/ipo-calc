@@ -39,6 +39,7 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 - Google Java Style Checkstyle(`build.gradle.kts`에 설정돼 있다, 위반은 WARN 수준이지만 **위반 0건**이 검증 통과 기준이다)을 적용하며 `checkstyleMain`, `checkstyleTest`를 검증 게이트에 포함한다.
 - public 클래스·메서드·record에는 **한국어 Javadoc**을 달고 첫 문장 끝에 마침표를 붙인다. star import 금지.
 - Controller는 요청 검증·응답 매핑·Service 호출만 담당한다. 업무 규칙과 트랜잭션은 Service, 상태와 불변식은 Domain/Entity, 외부 계약은 DTO에 둔다.
+- 공용 카탈로그(IPO·증권사) 쓰기(POST/PATCH/DELETE·import)는 `accounts.role = 'ADMIN'`만 가능하다(그 외 403 `FORBIDDEN`, `SecurityConfig`). 읽기는 로그인 사용자 전체. ADMIN은 가입 API로 만들 수 없고 DB에서 직접 지정한다: `UPDATE accounts SET role = 'ADMIN' WHERE email = '...';` (역할은 로그인 시점에 세션에 담기므로 재로그인 필요).
 - 모든 조회·변경 API는 계정 소유권 또는 글로벌 기준정보 여부를 명확히 구분한다. 개인정보·인증정보·계좌번호 평문을 로그에 남기지 않는다.
 - PostgreSQL 문법만 쓴다. `AUTO_INCREMENT`, `ENGINE=InnoDB`, `ON UPDATE CURRENT_TIMESTAMP`를 쓰지 않는다. PK는 `GENERATED ALWAYS AS IDENTITY`, 조건부 유니크는 별도 `CREATE UNIQUE INDEX ... WHERE ...` 문으로 작성한다.
 - Flyway에서 테이블을 만들 때는 테이블 목적, 각 컬럼의 의미, 인덱스·제약조건의 이유를 한글 SQL 주석으로 남긴다.
