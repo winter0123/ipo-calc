@@ -106,7 +106,7 @@ public class AuthService {
         User.builder()
             .username(account.getEmail())
             .password(account.getPasswordHash())
-            .authorities("ROLE_USER")
+            .authorities("ROLE_" + account.getRole().name())
             .build();
 
     var authentication =

@@ -4,7 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.session.SessionRegistry;
@@ -41,6 +43,16 @@ public class SecurityConfig {
                         "/js/**",
                         "/error")
                     .permitAll()
+                    // 공용 카탈로그 쓰기는 ADMIN만. 스케줄러·동기화는 서비스를 직접 호출하므로 영향 없음.
+                    .requestMatchers(
+                        HttpMethod.POST, "/ipos/**", "/securities-firms/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers(
+                        HttpMethod.PATCH, "/ipos/**", "/securities-firms/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers(
+                        HttpMethod.DELETE, "/ipos/**", "/securities-firms/**")
+                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         // D-I-006 (2026-09-21): CSRF 전역 비활성. 프로젝트 전체 로드맵(16개 Epic)에 브라우저 폼 제출 플로우가 없고
@@ -50,7 +62,17 @@ public class SecurityConfig {
         // D-I-006 (2026-09-21): 미인증 요청은 401 Unauthorized 반환 (기존 formLogin 기본 302 리다이렉트 대체).
         // spec AC-003(투자자 등록 미인증 401) 및 Epics 전반의 JSON API 계약에 부합.
         .exceptionHandling(
-            ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            ex ->
+                ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                    .accessDeniedHandler(
+                        (request, response, denied) -> {
+                          response.setStatus(HttpStatus.FORBIDDEN.value());
+                          response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                          response.setCharacterEncoding("UTF-8");
+                          response
+                              .getWriter()
+                              .write("{\"error\":\"FORBIDDEN\",\"message\":\"관리자 권한이 필요합니다\"}");
+                        }))
         .formLogin(form -> form.loginPage("/login").permitAll())
         .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").permitAll())
         .sessionManagement(

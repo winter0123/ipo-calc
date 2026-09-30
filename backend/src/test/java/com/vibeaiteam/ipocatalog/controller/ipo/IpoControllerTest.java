@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
+import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
@@ -674,6 +675,10 @@ class IpoControllerTest {
                             "password", testPassword,
                             "name", testName))))
         .andReturn();
+
+    Account admin = accountRepository.findByEmail(testEmail);
+    admin.setRole(AccountRole.ADMIN);
+    accountRepository.save(admin);
 
     mockMvc
         .perform(
