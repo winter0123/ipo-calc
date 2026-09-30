@@ -29,14 +29,12 @@ export default function SignupForm() {
           state: { accountId: (res as { accountId?: number }).accountId },
         })
       },
-      onError: () => {
-        // 에러 메시지는 error 상태로 처리
-      },
     })
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, { byStatus: { 409: '이미 사용 중인 이메일입니다.' } })
+  const formErrorMessage = toErrorMessage(error, {
+    byStatus: { 409: '이미 사용 중인 이메일입니다.' },
+  })
 
   return (
     <form
@@ -105,9 +103,9 @@ export default function SignupForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 

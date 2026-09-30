@@ -21,14 +21,10 @@ export default function CostRegisterForm() {
   } = useForm<CostRegisterRequest>({ mode: 'onSubmit' })
 
   const onSubmit = (data: CostRegisterRequest) => {
-    mutate(data, {
-      onSuccess: () => {},
-      onError: () => {},
-    })
+    mutate(data)
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, { byStatus: { 404: '청약을 찾을 수 없습니다.' } })
+  const formErrorMessage = toErrorMessage(error, { byStatus: { 404: '청약을 찾을 수 없습니다.' } })
 
   const validatePositiveInteger = (v: unknown) =>
     v === undefined ||
@@ -69,7 +65,7 @@ export default function CostRegisterForm() {
             required: '청약을 선택해 주세요.',
             valueAsNumber: true,
           })}
-          disabled={isPending || subscriptionsLoading}
+          disabled={isPending}
         >
           <option value="">청약 선택</option>
           {subscriptions.map((item) => (
@@ -164,9 +160,9 @@ export default function CostRegisterForm() {
         )}
       </div>
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 

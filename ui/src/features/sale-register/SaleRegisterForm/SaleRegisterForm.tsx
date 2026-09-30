@@ -53,10 +53,9 @@ export default function SaleRegisterForm() {
     mutate(data)
   }
 
-  const getFormErrorMessage = () =>
-    toErrorMessage(error, {
-      byStatus: { 404: '배정을 찾을 수 없습니다.', 409: (e) => e.message },
-    })
+  const formErrorMessage = toErrorMessage(error, {
+    byStatus: { 404: '배정을 찾을 수 없습니다.', 409: (e) => e.message },
+  })
 
   const handleInvestorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value ? Number(e.target.value) : undefined
@@ -245,9 +244,9 @@ export default function SaleRegisterForm() {
 
       {renderOptionalNumberField('otherCost', '기타비용 (선택)')}
 
-      {getFormErrorMessage() && (
+      {formErrorMessage && (
         <div className={styles.formError} aria-live="polite">
-          {getFormErrorMessage()}
+          {formErrorMessage}
         </div>
       )}
 
