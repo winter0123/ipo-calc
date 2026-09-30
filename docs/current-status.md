@@ -15,7 +15,7 @@
 
 **야간 후속**: E19 SF-3(#195), SF-4(#196), 접근성 color-contrast 교정(#197)을 2026-09-30 사용자 승인 후 병합했다. E17 SF-2는 ustockplus가 헤더를 붙여도 로그인 필요(`LOGIN_REQUIRED`)로 응답해 착수 게이트 (c)가 충족되지 않아 건너뛰었다. axe 재스캔 결과 12개 화면 위반 0건(부채 2번 참고).
 
-**다음 착수 후보**: Epic 17 SF-3(동기화 서비스)는 아래 미결정 항목을 사용자와 정한 뒤 시작한다.
+**후속(2026-09-30)**: E17 SF-3(#198, 동기화 서비스)과 KRX 휴장일 DB+월간 배치(#199, 결정 D-6)를 병합했다. 다음은 SF-4(일 1회 OpenDART 스케줄러). SF-2(ustockplus)는 건너뛴 상태이며 폐기 여부 사용자 결정 대기. `DATA_GO_KR_SERVICE_KEY`는 실응답 확인 완료.
 
 ## 세션 요약 (2026-09-29, 4차 재개 후속 — 스코프 확장: Epic 17~19)
 
@@ -62,7 +62,7 @@
 
 ## 워크스페이스 상태 (2026-09-29 세션 종료 시점)
 
-- `backend-4`: 마지막 브랜치 `winter0123/e17-ipo-corp-code`(병합 완료, PR #194). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
+- `backend-4`: 마지막 브랜치 `winter0123/e17-holiday-batch`(병합 완료, PR #199, 현재 `origin/main` detached). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
 - `frontend-4`: 마지막 브랜치 `winter0123/e19-sf4-main-layout`(병합 완료, PR #196). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
 - `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
 - 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
