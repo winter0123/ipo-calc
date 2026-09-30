@@ -115,7 +115,7 @@ class DashboardAggregatorTest {
     assertThat(summary.getTotalInvestmentAmount()).isEqualTo(1_000_000L);
     assertThat(summary.getTotalAfterTaxProfit()).isEqualTo(80L);
     assertThat(summary.getTotalProfitRate()).isEqualTo(80 * 100.0 / 1_000_000);
-    assertThat(summary.getParticipationCount()).isEqualTo(2);
+    assertThat(summary.getParticipationCount()).isEqualTo(1);
     assertThat(DashboardAggregator.byInvestor(split).get(0).getTotalInvestmentAmount())
         .isEqualTo(1_000_000L);
     assertThat(DashboardAggregator.bySecuritiesFirm(split).get(0).getTotalInvestmentAmount())
@@ -148,6 +148,9 @@ class DashboardAggregatorTest {
     assertThat(byYear.get(0).getTotalInvestmentAmount()).isEqualTo(1_000_000L);
     assertThat(DashboardAggregator.summarize(acrossMonths).getTotalInvestmentAmount())
         .isEqualTo(1_000_000L);
+    assertThat(byMonth).extracting(PeriodAggregationDto::getParticipationCount).containsExactly(1, 1);
+    assertThat(byYear.get(0).getParticipationCount()).isEqualTo(1);
+    assertThat(DashboardAggregator.summarize(acrossMonths).getParticipationCount()).isEqualTo(1);
   }
 
   @Test

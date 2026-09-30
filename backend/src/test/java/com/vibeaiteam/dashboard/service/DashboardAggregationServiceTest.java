@@ -697,7 +697,7 @@ class DashboardAggregationServiceTest {
 
     // 매도 10주 + 20주 × 10000 = 300000 (배정 50주 중 판 30주 몫만 투자금)
     assertThat(summary.getTotalInvestmentAmount()).isEqualTo(300000L);
-    assertThat(summary.getParticipationCount()).isEqualTo(2);
+    assertThat(summary.getParticipationCount()).isEqualTo(1);
     assertThat(dashboardAggregationService.getByInvestor().get(0).getTotalInvestmentAmount())
         .isEqualTo(300000L);
   }

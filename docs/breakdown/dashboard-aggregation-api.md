@@ -111,10 +111,10 @@ SF-1 (기반 계층: 응답 DTO 4종, 에러 프레임워크, 소유권 검증 �
 
 **산출물 파일 경로**:
 - `controller/dashboard/DashboardController.java` — `GET /dashboard/summary` 메서드 추가 (클래스 주석 + 메서드 주석 한글 — AGENTS.md 15장)
-- `service/dashboard/DashboardAggregationService.java` — `getSummary(): SummaryDto` 메서드 추가. `loadCalculatedSales()` 호출 후 전체를 단일 그룹으로 집계. `totalInvestmentAmount` = Σ(Allocation.allocationQuantity × allocationPrice), `totalPreTaxProfit` = Σ(세전순수익), `totalAfterTaxProfit` = Σ(세후순수익), `totalProfitRate` = totalAfterTaxProfit / totalInvestmentAmount × 100 (총투자금 0이면 0.0), `participationCount` = ACTIVE Sale 건수
+- `service/dashboard/DashboardAggregationService.java` — `getSummary(): SummaryDto` 메서드 추가. `loadCalculatedSales()` 호출 후 전체를 단일 그룹으로 집계. `totalInvestmentAmount` = Σ(allocationPrice × Sale.quantity)(배정금액의 매도 수량 안분), `totalPreTaxProfit` = Σ(세전순수익), `totalAfterTaxProfit` = Σ(세후순수익), `totalProfitRate` = totalAfterTaxProfit / totalInvestmentAmount × 100 (총투자금 0이면 0.0), `participationCount` = ACTIVE Sale이 속한 서로 다른 Allocation 수
 
 **특이사항**:
-- **totalInvestment금 기준**: spec D-D-001에 따라 `Allocation.allocatedQuantity × allocationPrice` 배정금액 기준. 단, allocationPrice가 null이면 Epic 10의 대응취득가액 룰(IPO.fixedPrice 대체)에 따라 ProfitCalculator가 처리. 총투자금과 매도 건별 손익의 기준이 다를 수 있으므로 DTO·테스트에서 명확히 구분
+- **totalInvestment금 기준**: spec D-D-001에 따라 배정금액(`allocatedQuantity × allocationPrice`)을 매도 수량 비율로 안분한 몫(= `allocationPrice × Sale.quantity`) 기준. 단, allocationPrice가 null이면 Epic 10의 대응취득가액 룰(IPO.fixedPrice 대체)에 따라 ProfitCalculator가 처리. 총투자금과 매도 건별 손익의 기준이 다를 수 있으므로 DTO·테스트에서 명확히 구분
 - **데이터 무존재 시**: 모든 필드 0인 SummaryDto 반환 (AC-006). 별도의 404 없음
 - **`@Transactional(readOnly = true)`**: Service 메서드에 선언
 

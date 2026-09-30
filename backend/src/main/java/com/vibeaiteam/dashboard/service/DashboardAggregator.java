@@ -34,7 +34,9 @@ public final class DashboardAggregator {
       long afterTaxProfit = group.stream().mapToLong(CalculatedSale::afterTaxProfit).sum();
       double profitRate =
           (investmentAmount == 0L) ? 0.0 : (afterTaxProfit * 100.0) / investmentAmount;
-      return new Totals(investmentAmount, preTaxProfit, afterTaxProfit, profitRate, group.size());
+      // 참여 횟수는 분할 매도를 한 번으로 세도록 서로 다른 배정 수로 센다.
+      int participation = (int) group.stream().map(CalculatedSale::allocationId).distinct().count();
+      return new Totals(investmentAmount, preTaxProfit, afterTaxProfit, profitRate, participation);
     }
   }
 
