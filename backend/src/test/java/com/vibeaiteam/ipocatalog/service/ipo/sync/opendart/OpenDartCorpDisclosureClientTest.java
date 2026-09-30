@@ -171,15 +171,83 @@ class OpenDartCorpDisclosureClientTest {
   }
 
   @Test
-  void searchRecentEquitySecuritiesCompanies_statusOther_throwsApiException() throws IOException {
-    // given - 알 수 없는 상태 코드 (예: 010)
-    String errorResponse = "{\"status\":\"010\",\"message\":\"사용량 초과\"}";
+  void searchRecentEquitySecuritiesCompanies_status010_throwsAuthenticationException()
+      throws IOException {
+    // given - 010: 미등록 키
+    String errorResponse = "{\"status\":\"010\",\"message\":\"미등록 키입니다.\"}";
+    expectListRequest(errorResponse);
+
+    // when & then
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartAuthenticationException.class)
+        .hasMessageContaining("미등록 키입니다");
+    mockServer.verify();
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_status012_throwsAuthenticationException()
+      throws IOException {
+    // given - 012: 사용할 수 없는 키
+    String errorResponse = "{\"status\":\"012\",\"message\":\"사용할 수 없는 키입니다.\"}";
+    expectListRequest(errorResponse);
+
+    // when & then
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartAuthenticationException.class)
+        .hasMessageContaining("사용할 수 없는 키입니다");
+    mockServer.verify();
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_status901_throwsAuthenticationException()
+      throws IOException {
+    // given - 901: 계정 개인정보 보유기간 만료
+    String errorResponse = "{\"status\":\"901\",\"message\":\"계정 개인정보 보유기간이 만료되었습니다.\"}";
+    expectListRequest(errorResponse);
+
+    // when & then
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartAuthenticationException.class)
+        .hasMessageContaining("계정 개인정보 보유기간이 만료되었습니다");
+    mockServer.verify();
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_status020_throwsApiException() throws IOException {
+    // given - 020: 요청 제한 초과
+    String errorResponse = "{\"status\":\"020\",\"message\":\"요청 제한을 초과했습니다.\"}";
     expectListRequest(errorResponse);
 
     // when & then
     assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
         .isInstanceOf(OpenDartApiException.class)
-        .hasMessageContaining("사용량 초과");
+        .hasMessageContaining("요청 제한을 초과했습니다");
+    mockServer.verify();
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_status800_throwsApiException() throws IOException {
+    // given - 800: 시스템 점검
+    String errorResponse = "{\"status\":\"800\",\"message\":\"시스템 점검 중입니다.\"}";
+    expectListRequest(errorResponse);
+
+    // when & then
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartApiException.class)
+        .hasMessageContaining("시스템 점검 중입니다");
+    mockServer.verify();
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_status021_throwsApiException() throws IOException {
+    // given - 021: 기타 오류
+    String errorResponse = "{\"status\":\"021\",\"message\":\"기타 오류입니다.\"}";
+    expectListRequest(errorResponse);
+
+    // when & then
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartApiException.class)
+        .hasMessageContaining("기타 오류입니다");
     mockServer.verify();
   }
 

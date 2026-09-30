@@ -67,6 +67,12 @@ public class Ipo {
   @Builder.Default
   private String status = "ACTIVE";
 
+  @Column(name = "sync_source", length = 20)
+  private String syncSource;
+
+  @Column(name = "last_synced_at")
+  private LocalDateTime lastSyncedAt;
+
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
