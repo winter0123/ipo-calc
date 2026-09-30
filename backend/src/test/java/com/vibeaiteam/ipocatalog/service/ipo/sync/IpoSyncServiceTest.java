@@ -533,4 +533,50 @@ class IpoSyncServiceTest {
     assertThat(result.getFailureCount()).isEqualTo(1);
     assertThat(result.getFailures().get(0).getReason()).contains("DS006 상세 정보 없음");
   }
+
+  @Test
+  void sync_abortsWithRetryableTrue_onGeneralApiExceptionInDs001() {
+    // given: DS001에서 일반 API 오류 (예: status 800 시스템 점검)
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenThrow(new OpenDartApiException("800", "시스템 점검 중입니다."));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 중단되고 재시도 가능으로 표시
+    assertThat(result.isAborted()).isTrue();
+    assertThat(result.isRetryable()).isTrue();
+    assertThat(result.getAbortReason()).contains("API 오류");
+    assertThat(result.getCreated()).isEqualTo(0);
+  }
+
+  @Test
+  void sync_abortsWithRetryableFalse_onAuthenticationExceptionInDs001() {
+    // given: DS001에서 인증 예외
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenThrow(new OpenDartAuthenticationException("010", "미등록 키입니다."));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 중단되고 재시도 불가로 표시
+    assertThat(result.isAborted()).isTrue();
+    assertThat(result.isRetryable()).isFalse();
+    assertThat(result.getAbortReason()).contains("인증 오류");
+  }
+
+  @Test
+  void sync_abortsWithRetryableFalse_onRateLimit020InDs001() {
+    // given: DS001에서 rate limit 020
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenThrow(new OpenDartApiException("020", "요청 제한을 초과했습니다."));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 중단되고 재시도 불가로 표시 (그날 중단)
+    assertThat(result.isAborted()).isTrue();
+    assertThat(result.isRetryable()).isFalse();
+    assertThat(result.getAbortReason()).contains("요청 제한 초과");
+  }
 }

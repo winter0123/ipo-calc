@@ -43,6 +43,9 @@ app:
     base-url: https://apis.data.go.kr
   holiday-sync:
     enabled: true
+  ipo-sync:
+    enabled: true
+    days-back: 90
 
 server:
   port: 8080

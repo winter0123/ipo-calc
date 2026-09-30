@@ -24,6 +24,8 @@ app:
     base-url: https://apis.data.go.kr
   holiday-sync:
     enabled: false
+  ipo-sync:
+    enabled: false
 
 logging:
   level:
