@@ -38,8 +38,8 @@ public class InvestmentHistoryController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
 
-    if (size > 100) {
-      throw new InvestmentQueryValidationException("size는 최대 100까지 허용됩니다.");
+    if (size < 1 || size > 100) {
+      throw new InvestmentQueryValidationException("size는 1 이상 100 이하여야 합니다.");
     }
     if (page < 0) {
       throw new InvestmentQueryValidationException("page는 0 이상이어야 합니다.");

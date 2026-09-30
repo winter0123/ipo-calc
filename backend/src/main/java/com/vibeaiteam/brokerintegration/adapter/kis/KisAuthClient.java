@@ -113,7 +113,10 @@ public class KisAuthClient {
       throw e;
     } catch (RuntimeException e) {
       // 예외 메시지에 앱키/앱시크릿이 실리지 않도록 원인 예외의 타입만 남긴다.
-      log.error("KIS 접근토큰 발급 중 오류: method=POST, path={}", TOKEN_PATH, e);
+      log.error(
+          "KIS 접근토큰 발급 중 오류: method=POST, path={}, cause={}",
+          TOKEN_PATH,
+          e.getClass().getSimpleName());
       throw new BrokerApiException(
           "token_issue_failed",
           "KIS 토큰 발급 중 오류 발생: " + e.getClass().getSimpleName(),
