@@ -41,11 +41,11 @@ class UstockPlusCalendarClientTest {
             builder, new UstockPlusApiProperties("https://api.ustockplus.com"));
   }
 
-  private static String item(String code, String type, String date) {
+  private static String item(String code, String name, String type, String date) {
     return """
-        {"stockCode":"%s","stockName":"n","isAvail":true,"logoUrl":"","calendarStockType":"%s",
+        {"stockCode":"%s","stockName":"%s","isAvail":true,"logoUrl":"","calendarStockType":"%s",
          "startDate":"%s","endDate":"%s","extraInfo":{"finalOfferPrice":1}}"""
-        .formatted(code, type, date, date);
+        .formatted(code, name, type, date, date);
   }
 
   private static String body(String... items) {
@@ -59,11 +59,11 @@ class UstockPlusCalendarClientTest {
         .andRespond(
             withSuccess(
                 body(
-                    item("250030", "TO_BE_LISTED", "2026-10-02"),
-                    item("250030", "ALLOTMENT_DATE", "2026-10-06"),
-                    item("250030", "REFUND_DATE", "2026-10-10"),
-                    item("250030", "SUBMIT_REPORT", "2026-08-27"),
-                    item("170190", "UNKNOWN_TYPE", "2026-10-03")),
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-02"),
+                    item("250030", "진코스텍", "ALLOTMENT_DATE", "2026-10-06"),
+                    item("250030", "진코스텍", "REFUND_DATE", "2026-10-10"),
+                    item("250030", "진코스텍", "SUBMIT_REPORT", "2026-08-27"),
+                    item("170190", "기타", "UNKNOWN_TYPE", "2026-10-03")),
                 MediaType.APPLICATION_JSON));
 
     List<UstockPlusScheduleDates> result = client.fetchScheduleDates(START, END);
@@ -72,6 +72,7 @@ class UstockPlusCalendarClientTest {
         .containsExactly(
             new UstockPlusScheduleDates(
                 "250030",
+                "진코스텍",
                 LocalDate.of(2026, 10, 2),
                 LocalDate.of(2026, 10, 6),
                 LocalDate.of(2026, 10, 10)));
@@ -84,15 +85,15 @@ class UstockPlusCalendarClientTest {
         .andRespond(
             withSuccess(
                 body(
-                    item("250030", "TO_BE_LISTED", "2026-10-02"),
-                    item("250030", "TO_BE_LISTED", "2026-10-09"),
-                    item("250030", "TO_BE_LISTED", "2026-10-05"),
-                    item("", "TO_BE_LISTED", "2026-10-02")),
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-02"),
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-09"),
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-05"),
+                    item("", "빈종목", "TO_BE_LISTED", "2026-10-02")),
                 MediaType.APPLICATION_JSON));
 
     assertThat(client.fetchScheduleDates(START, END))
         .containsExactly(
-            new UstockPlusScheduleDates("250030", LocalDate.of(2026, 10, 9), null, null));
+            new UstockPlusScheduleDates("250030", "진코스텍", LocalDate.of(2026, 10, 9), null, null));
   }
 
   @Test

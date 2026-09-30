@@ -63,6 +63,12 @@ public class Ipo {
   @Column(name = "listing_date")
   private LocalDate listingDate;
 
+  @Column(name = "allotment_date")
+  private LocalDate allotmentDate;
+
+  @Column(name = "refund_date")
+  private LocalDate refundDate;
+
   @Column(name = "offering_share_count")
   private Long offeringShareCount;
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosur
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +48,10 @@ class IpoSyncServiceTest {
 
   @MockBean private BusinessDayCalculator businessDayCalculator;
 
+  @MockBean private IpoScheduleMergeService ipoScheduleMergeService;
+
+  @MockBean private UstockPlusCalendarClient ustockPlusCalendarClient;
+
   // TransactionTemplate은 실제 빈 사용 (Mock으로 람다 인자 캡처 시 타입 문제 발생)
   @Autowired private TransactionTemplate transactionTemplate;
 
@@ -61,7 +67,8 @@ class IpoSyncServiceTest {
             equitySecuritiesClient,
             ipoRepository,
             businessDayCalculator,
-            transactionTemplate);
+            transactionTemplate,
+            ipoScheduleMergeService);
   }
 
   private OpenDartDisclosureItem createCompany(String corpCode, String corpName, String stockCode) {
@@ -578,5 +585,50 @@ class IpoSyncServiceTest {
     assertThat(result.isAborted()).isTrue();
     assertThat(result.isRetryable()).isFalse();
     assertThat(result.getAbortReason()).contains("요청 제한 초과");
+  }
+
+  @Test
+  void sync_recordsScheduleMerged_whenOpendartLoopCompletes() {
+    // given: DS001 빈 결과(신규 공시 없음) + ustockplus 병합 3건
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of());
+    when(ipoScheduleMergeService.merge(any(LocalDate.class))).thenReturn(3);
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then
+    assertThat(result.isAborted()).isFalse();
+    assertThat(result.getScheduleMerged()).isEqualTo(3);
+  }
+
+  @Test
+  void sync_skipsScheduleMerge_whenAborted() {
+    // given: DS001 인증 예외로 중단
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenThrow(new OpenDartAuthenticationException("010", "미등록 키입니다."));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 중단 시에는 병합을 호출하지 않음
+    assertThat(result.isAborted()).isTrue();
+    assertThat(result.getScheduleMerged()).isEqualTo(0);
+    verify(ipoScheduleMergeService, never()).merge(any(LocalDate.class));
+  }
+
+  @Test
+  void sync_keepsOpendartResult_whenScheduleMergeThrows() {
+    // given: DS001 정상(빈 결과) + 병합 중 예외
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of());
+    when(ipoScheduleMergeService.merge(any(LocalDate.class)))
+        .thenThrow(new RuntimeException("ustockplus 장애"));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: OpenDART 결과는 그대로 유지되고 병합 건수는 0
+    assertThat(result.isAborted()).isFalse();
+    assertThat(result.getScheduleMerged()).isEqualTo(0);
+    assertThat(result.getFailureCount()).isEqualTo(0);
   }
 }

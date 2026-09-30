@@ -22,7 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * IPO 자동 동기화 서비스.
  *
  * <p>OpenDART DS001(공시검색)으로 최근 공시 회사 목록을 조회하고, DS006(지분증권 상세)으로 각 회사의 상세 정보를 조회하여 {@code ipos} 테이블에
- * upsert한다. 주요 규칙:
+ * upsert한다. OpenDART 루프가 중단 없이 끝나면 ustockplus 일정(상장예정일·배정일·환불일)을 병합한다. 주요 규칙:
  *
  * <ul>
  *   <li>DS001 응답의 {@code stock_code}가 null/빈 문자열인 건만 IPO로 동기화 (값 있으면 유상증자로 보고 skippedNonIpo++)
@@ -50,6 +50,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>{@code OpenDartAuthenticationException} 또는 statusCode {@code "020"}의 {@code
  *       OpenDartApiException}이면 즉시 중단하고 그때까지의 결과 반환 ({@code aborted=true})
  *   <li>그 외 {@code OpenDartApiException}은 그 건만 failures에 기록
+ *   <li>OpenDART 루프가 중단(aborted) 없이 완료되면 {@code IpoScheduleMergeService.merge(LocalDate.now())}를
+ *       호출해 ustockplus 일정을 병합한다. 병합 중 예외가 나도 OpenDART 결과는 그대로 반환한다 (try-catch, WARN 로그).
+ *       병합 건수는 {@code IpoSyncResult.scheduleMerged}에 기록한다.
  *   <li>로그에 API 키를 절대 남기지 않음 (키는 URL 쿼리 파라미터)
  * </ul>
  */
@@ -66,6 +69,7 @@ public class IpoSyncService {
   private final IpoRepository ipoRepository;
   private final BusinessDayCalculator businessDayCalculator;
   private final TransactionTemplate transactionTemplate;
+  private final IpoScheduleMergeService ipoScheduleMergeService;
 
   /**
    * 최근 지정된 일수 내 IPO 정보를 동기화한다.
@@ -222,6 +226,22 @@ public class IpoSyncService {
         result.getSkippedNonIpo(),
         result.getFailureCount(),
         result.isAborted());
+
+    // OpenDART 루프가 중단 없이 완료된 경우에만 ustockplus 일정 병합 시도
+    if (!result.isAborted()) {
+      try {
+        int merged = ipoScheduleMergeService.merge(LocalDate.now());
+        result.setScheduleMerged(merged);
+        log.info("ustockplus 일정 병합 완료: merged={}", merged);
+      } catch (Exception e) {
+        // 병합 중 예외가 나도 OpenDART 결과는 그대로 반환 (WARN 로그만)
+        log.warn("ustockplus 일정 병합 중 예외 발생 (OpenDART 결과 유지): {}", e.getMessage());
+        result.setScheduleMerged(0);
+      }
+    } else {
+      result.setScheduleMerged(0);
+    }
+
     return result;
   }
 

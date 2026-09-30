@@ -101,6 +101,7 @@ public class UstockPlusCalendarClient {
 
   private static List<UstockPlusScheduleDates> group(List<UstockPlusCalendarItem> items) {
     Map<String, LocalDate[]> byStock = new LinkedHashMap<>();
+    Map<String, String> stockNames = new LinkedHashMap<>();
     for (UstockPlusCalendarItem item : items) {
       if (item == null
           || item.stockCode() == null
@@ -108,6 +109,10 @@ public class UstockPlusCalendarClient {
           || item.calendarStockType() == null
           || item.startDate() == null) {
         continue;
+      }
+      // 첫 번째로 발견된 비어있지 않은 stockName 저장
+      if (item.stockName() != null && !item.stockName().isBlank()) {
+        stockNames.putIfAbsent(item.stockCode(), item.stockName());
       }
       Integer slot = SLOTS.get(item.calendarStockType());
       if (slot == null) {
@@ -122,7 +127,11 @@ public class UstockPlusCalendarClient {
         .map(
             e ->
                 new UstockPlusScheduleDates(
-                    e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2]))
+                    e.getKey(),
+                    stockNames.get(e.getKey()),
+                    e.getValue()[0],
+                    e.getValue()[1],
+                    e.getValue()[2]))
         .toList();
   }
 
