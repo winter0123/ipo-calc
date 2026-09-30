@@ -23,6 +23,7 @@
 
 [범위 밖 — 건드리지 말 것]
 - <이미 병합된 기능, 공용 설정, 다른 Epic 패키지 등>
+- (backend) `docs/guide-backend.md` 5절 "워커가 자주 밟는 지뢰"를 그대로 복사해 붙인다 — spotlessApply 금지, 공유 DB·Flyway 규칙, Javadoc 마침표 등
 
 [해야 할 일]
 1. <구체적 단계>
@@ -38,6 +39,7 @@
 [검증 — 반드시 이 명령을 그대로 실행하고 출력을 보고에 붙인다]
 <guide-<role>.md에서 복사한 실제 명령>
 예) DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+예) DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q   (task를 여러 개 쓸 때 `--rerun`은 마지막 task에만 적용되므로 `--rerun-tasks`)
 예) pnpm run test && pnpm run lint && pnpm run typecheck && pnpm run build
 
 [완료 조건]
@@ -58,3 +60,19 @@
 - **검증 명령은 실제 파일에서 복사한다**: 기억으로 쓰지 말고 `docs/guide-<role>.md`나 `build.gradle.kts`/`package.json`을 확인해서 쓴다. 없는 task(예: 이 저장소에 아직 없는 `checkstyleMain`)를 적으면 워커가 거기서 막힌다.
 - **커밋은 시키지 않는다**: 코디네이터가 검증한 뒤 커밋·PR을 만든다. 워커가 커밋까지 하면 잘못된 변경을 되돌리기 번거로워진다.
 - **한 spec = 한 SF**: 여러 SF를 한 워커에 묶으면 diff가 커져 검증 비용이 올라가고, 실패 시 롤백 단위가 뭉개진다.
+
+## 이어받는 워커와 이어 쓰기 세션
+
+**재개 spec**: 이전 워커가 멈춰서 같은 SF를 다른 워커에게 넘길 때는, 작업공간에 남은 부분 진행분을 버리지 않는다. spec 끝에 다음 문장을 덧붙인다.
+
+```
+[재개] 작업공간에는 이전 워커가 만든 진행분이 이미 있다. 먼저 `git status --short`와 `git diff`로 현재 상태를 확인하고,
+처음부터 다시 만들지 말고 이어서 완성한다. 이미 있는 파일이 이 spec의 [범위]와 다르면 임의로 지우지 말고 보고한다.
+```
+
+**이어 쓰기 세션(예외)**: 같은 패키지에서 앞 SF의 코드를 뒤 SF가 이어 쓰는 경우(AGENTS.md 7.1.1절의 "순차가 필수인 경우")에 한해, 앞 SF를 끝낸 워커의 터미널을 닫지 않고 뒤 SF spec을 같은 터미널에 이어서 줄 수 있다. 코드를 이미 읽은 상태라 콜드스타트 비용이 사라진다. 조건은 다음과 같다.
+
+- 뒤 SF도 위 형식의 자기완결적 spec으로 준다("아까 하던 것 이어서"라고 말로 넘기지 않는다).
+- 앞 SF는 **Master 검증과 병합이 끝난 뒤**에 이어 준다. 병합 전 코드 위에 다음 SF를 쌓지 않는다.
+- 터미널 화면의 컨텍스트 사용률이 50%를 넘었거나, 워커가 한 번이라도 실패·정체했거나, 모델이 바뀌면 그 터미널을 버리고 새 워커로 시작한다.
+- worktree와 브랜치는 SF마다 새로 만드는 원칙(AGENTS.md 7.2절)을 그대로 지킨다. 재사용하는 것은 터미널(워커 세션)뿐이다.
