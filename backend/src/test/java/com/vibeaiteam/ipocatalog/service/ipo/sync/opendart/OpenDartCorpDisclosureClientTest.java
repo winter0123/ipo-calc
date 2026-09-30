@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -126,6 +127,18 @@ class OpenDartCorpDisclosureClientTest {
     assertThat(melcon.getRceptDt()).isEqualTo("20260929"); // 발행조건확정이 더 최신
     assertThat(melcon.isCorrectionOrFinalized()).isTrue();
     assertThat(melcon.getNormalizedReportName()).isEqualTo("증권신고서(지분증권)");
+  }
+
+  @Test
+  void searchRecentEquitySecuritiesCompanies_ioError_exceptionDoesNotExposeApiKey() {
+    mockServer
+        .expect(requestTo(containsString("/api/list.json")))
+        .andRespond(withException(new IOException("connection reset")));
+
+    assertThatThrownBy(() -> client.searchRecentEquitySecuritiesCompanies(7))
+        .isInstanceOf(OpenDartApiException.class)
+        .hasMessageNotContaining("test-api-key")
+        .hasNoCause();
   }
 
   @Test

@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * OpenDART DS006 증권신고서-지분증권 상세 조회 클라이언트.
@@ -63,18 +64,25 @@ public class OpenDartEquitySecuritiesClient {
     validateApiKey();
     enforceRateLimit();
 
-    OpenDartEstkRsResponse response =
-        restClient
-            .get()
-            .uri(
-                uriBuilder ->
-                    uriBuilder
-                        .path(ENDPOINT_PATH)
-                        .queryParam("crtfc_key", properties.getApiKey())
-                        .queryParam("corp_code", corpCode)
-                        .build())
-            .retrieve()
-            .body(OpenDartEstkRsResponse.class);
+    OpenDartEstkRsResponse response;
+    try {
+      response =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder ->
+                      uriBuilder
+                          .path(ENDPOINT_PATH)
+                          .queryParam("crtfc_key", properties.getApiKey())
+                          .queryParam("corp_code", corpCode)
+                          .build())
+              .retrieve()
+              .body(OpenDartEstkRsResponse.class);
+    } catch (RestClientException e) {
+      // 예외 메시지에는 crtfc_key가 담긴 요청 URL이 들어가므로 원인 예외를 잇지 않고 클래스명만 남긴다.
+      throw new OpenDartApiException(
+          "http_error", "OpenDART API 호출 실패: " + e.getClass().getSimpleName());
+    }
 
     if (response == null) {
       throw new OpenDartApiException("null", "OpenDART API 응답이 null입니다.");

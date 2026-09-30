@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +51,18 @@ class OpenDartEquitySecuritiesClientTest {
         .expect(requestTo(containsString("/api/estkRs.json")))
         .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
+  }
+
+  @Test
+  void getEquitySecurityDetail_ioError_exceptionDoesNotExposeApiKey() {
+    mockServer
+        .expect(requestTo(containsString("/api/estkRs.json")))
+        .andRespond(withException(new IOException("connection reset")));
+
+    assertThatThrownBy(() -> client.getEquitySecurityDetail("01658035"))
+        .isInstanceOf(OpenDartApiException.class)
+        .hasMessageNotContaining("test-api-key")
+        .hasNoCause();
   }
 
   @Test
