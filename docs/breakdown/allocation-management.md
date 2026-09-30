@@ -51,7 +51,7 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록 API, Subscriptio
 
 **특이사항 — Subscription 존재 검증 (가장 중요)**:
 - POST 요청의 `subscriptionId`가 실제 존재하는 Subscription을 참조하는지 Service 계층에서 반드시 확인한다 (존재하지 않으면 404)
-- **계정 소유권 검증 여부**: **필요 없음**. Allocation은 SecuritiesFirm/Ipo와 동일한 글로벌 기준정보로, Account 소유 엔티티가 아니다. `SecurityUtils.getCurrentAccountId()` 기반 소유권 검증을 적용하지 않는다 (architecture.md 명시). Subscription 존재 여부 확인(404)만으로 참조 무결성을 보장한다.
+- **계정 소유권 검증 여부**: **필요함 (403, 보안 점검 후 정정)**. Allocation은 Subscription → Investor.accountId 체인으로 계정 소유 데이터다. 등록·조회·수정·취소 모두 소유권을 검증하고 목록은 현재 계정으로 한정한다. Subscription 존재 여부 확인(404)만으로 참조 무결성을 보장한다.
 - **참조 경로 단계 수**: Allocation → Subscription (1단계 FK). investorId 쿼리 파라미터로 필터링할 때만 Allocation → Subscription → Investor (3단계 JOIN)이 필요하지만, 이는 조회 시의 참조 경로이지 등록 시의 검증 단계가 아니다.
 - 중복 검사는 Service 계층 헬퍼(1차 방어) + DB 부분 유니크 인덱스(보조 방어) 이중으로 수행한다 (architecture.md "이중 방어" 원칙, Epic 5 D-IPO-001 패턴)
 - CANCELLED 기록이 있어도 재등록은 허용 (AC-006)
@@ -117,11 +117,11 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록 API, Subscriptio
 
 | 항목 | 결정 | 근거 |
 |------|------|------|
-| Account 소유권 검증 필요 여부 | **불필요** | Allocation은 SecuritiesFirm/Ipo와 동일한 글로벌 기준정보로, Account 소유 엔티티가 아님 (architecture.md) |
+| Account 소유권 검증 필요 여부 | **필요 (403)** | Allocation → Subscription → Investor.accountId 체인으로 계정 소유 데이터 (보안 점검 정정) |
 | Subscription 존재 검증 | **필수** | POST/PATCH 시 subscriptionId가 실제 존재하는지 확인, 미존재 시 404 |
 | 참조 경로 단계 수 | **1단계 (등록/수정 시)** | Allocation → Subscription FK 직접 참조 |
 | investorId 조회 시 참조 경로 | **3단계 (조회 시)** | Allocation → Subscription → Investor JOIN |
-| `SecurityUtils.getCurrentAccountId()` 사용 여부 | **사용하지 않음** | 글로벌 기준정보이므로 소유권 필터 적용 불필요 |
+| `SecurityUtils.getCurrentAccountId()` 사용 여부 | **사용함** | 목록 조회를 현재 계정으로 한정하고 OwnershipGuard로 단건을 검증 |
 
 ---
 

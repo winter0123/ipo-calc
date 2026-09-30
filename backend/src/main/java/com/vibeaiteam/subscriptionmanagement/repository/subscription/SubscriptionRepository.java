@@ -39,6 +39,22 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
       Long securitiesAccountId);
 
   /**
+   * 현재 계정 소유 투자자의 청약만 목록 조회한다(생성일 내림차순). investorId/securitiesAccountId는 null이면 무시한다.
+   */
+  @Query(
+      "SELECT s FROM Subscription s "
+          + "JOIN Investor i ON s.investorId = i.id "
+          + "WHERE i.accountId = :accountId "
+          + "AND (:investorId IS NULL OR i.id = :investorId) "
+          + "AND (:securitiesAccountId IS NULL OR s.securitiesAccountId = :securitiesAccountId) "
+          + "AND s.deletedAt IS NULL "
+          + "ORDER BY s.createdAt DESC")
+  List<Subscription> findAllByAccountWithFilters(
+      @Param("accountId") Long accountId,
+      @Param("investorId") Long investorId,
+      @Param("securitiesAccountId") Long securitiesAccountId);
+
+  /**
    * 투자자 ID · 증권계좌 ID · 공모주 ID · 상태 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다.
    */
   Optional<Subscription> findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(

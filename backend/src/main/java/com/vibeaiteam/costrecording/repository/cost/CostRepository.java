@@ -32,7 +32,7 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
       Long subscriptionId);
 
   /**
-   * 청약 ID·투자자 ID·투자자명 필터로 ACTIVE 비용을 조회한다(발생일·생성일 내림차순).
+   * 현재 계정(accountId) 소유 투자자의 ACTIVE 비용을 청약 ID·투자자 ID·투자자명 필터로 조회한다(발생일·생성일 내림차순).
    */
   @Query(
       "SELECT c FROM Cost c "
@@ -41,11 +41,13 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
           + "WHERE c.deletedAt IS NULL AND c.status = "
           + RecordStatus.ACTIVE_HQL
           + " "
+          + "AND i.accountId = :accountId "
           + "AND (:subscriptionId IS NULL OR c.subscriptionId = :subscriptionId) "
           + "AND (:investorId IS NULL OR i.id = :investorId) "
           + "AND (:investorName IS NULL OR i.displayName LIKE :investorName) "
           + "ORDER BY c.incurredAt DESC, c.createdAt DESC")
   List<Cost> findActiveWithFilters(
+      @Param("accountId") Long accountId,
       @Param("subscriptionId") Long subscriptionId,
       @Param("investorId") Long investorId,
       @Param("investorName") String investorName);

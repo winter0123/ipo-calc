@@ -1,6 +1,7 @@
 package com.vibeaiteam.costrecording.service.cost;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostRegisterRequest;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostResponse;
 import com.vibeaiteam.costrecording.controller.cost.dto.CostUpdateRequest;
@@ -29,6 +30,7 @@ public class CostService {
   private final CostRepository costRepository;
   private final SubscriptionRepository subscriptionRepository;
   private final OwnershipGuard ownershipGuard;
+  private final SecurityUtils securityUtils;
   private final Clock clock;
 
   /**
@@ -71,7 +73,7 @@ public class CostService {
 
   /**
    * 비용을 부분 수정한다. 제공된 필드(costType/amount/incurredAt/memo)만 갱신하며,
-   * subscriptionId는 요청에 없으므로 소유권/존재 재검증은 하지 않는다.
+   * subscriptionId는 요청에 없으므로 기존 청약의 소유권만 검증한다.
    * CANCELLED(deletedAt IS NOT NULL) 대상이면 404, amount 0 미만/memo 255자 초과는 400을 반환한다.
    * updatedAt을 갱신한다.
    */
@@ -79,11 +81,8 @@ public class CostService {
   public CostResponse update(Long id, CostUpdateRequest request) {
     validateUpdateRequest(request);
 
-    // 대상 Cost 조회 — 없거나 CANCELLED이면 404 (findByIdAndDeletedAtIsNull 사용)
-    Cost cost =
-        costRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+    // 대상 Cost 조회 — 없거나 CANCELLED이면 404, 타 계정 소유면 403
+    Cost cost = findOwnedCost(id);
 
     // 필드 업데이트 (제공된 필드만)
     if (request.getCostType() != null) {
@@ -113,22 +112,19 @@ public class CostService {
   public List<CostResponse> list(Long subscriptionId, Long investorId, String investorName) {
     String investorNamePattern = (investorName != null) ? investorName + "%" : null;
     List<Cost> costs =
-        costRepository.findActiveWithFilters(subscriptionId, investorId, investorNamePattern);
+        costRepository.findActiveWithFilters(
+            securityUtils.getCurrentAccountId(), subscriptionId, investorId, investorNamePattern);
     return costs.stream().map(CostResponse::from).toList();
   }
 
   /**
    * 비용 ID로 단건 조회한다. deletedAt이 NULL인 ACTIVE 기록만 조회되며,
    * 존재하지 않거나 취소된 비용은 404 CostNotFoundException을 던진다.
-   * 조회 시 계정 소유권 검증은 수행하지 않는다(등록 시에만 검증).
+   * 타 계정 소유면 403을 던진다.
    */
   @Transactional(readOnly = true)
   public CostResponse getById(Long id) {
-    Cost cost =
-        costRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
-    return CostResponse.from(cost);
+    return CostResponse.from(findOwnedCost(id));
   }
 
   // 요청 필수값 검증: subscriptionId, costType, amount, incurredAt 누락 시 400
@@ -152,6 +148,20 @@ public class CostService {
     if (request.getMemo() != null && request.getMemo().length() > 255) {
       throw new CostValidationException("memo는 255자 이하여야 합니다.");
     }
+  }
+
+  // 미삭제 비용 조회 + 소유권 검증(비용 → 청약 → 투자자) — 없으면 404, 타 계정 소유면 403
+  private Cost findOwnedCost(Long id) {
+    Cost cost =
+        costRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+    Subscription subscription =
+        subscriptionRepository
+            .findById(cost.getSubscriptionId())
+            .orElseThrow(() -> new CostNotFoundException("청약 기록을 찾을 수 없습니다."));
+    validateSubscriptionOwnership(subscription);
+    return cost;
   }
 
   // Subscription 소유권 검증: Subscription → Investor(accountId) → 현재 계정 ID 비교
@@ -184,10 +194,7 @@ public class CostService {
    */
   @Transactional
   public void cancel(Long id) {
-    Cost cost =
-        costRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
+    Cost cost = findOwnedCost(id);
     LocalDateTime now = LocalDateTime.now(clock);
     cost.setStatus(RecordStatus.CANCELLED);
     cost.setDeletedAt(now);

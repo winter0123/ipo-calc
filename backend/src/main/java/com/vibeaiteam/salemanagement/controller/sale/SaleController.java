@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 분할 매도 기록(Sale)에 대한 등록/조회 API를 제공한다. Sale은 Allocation을 FK로 참조하며,
- * Allocation과 동일한 글로벌 기준정보로 취급되어 계정 소유권 검증을 적용하지 않는다(architecture.md 명시).
+ * Allocation → Subscription → Investor 체인으로 계정 소유 데이터이므로 타 계정 접근은 403으로 거부한다.
  */
 @RestController
 @RequestMapping("/sales")

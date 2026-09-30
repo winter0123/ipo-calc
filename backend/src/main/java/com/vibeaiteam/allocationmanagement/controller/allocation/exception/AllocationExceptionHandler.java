@@ -41,6 +41,14 @@ public class AllocationExceptionHandler {
     return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
+  /**
+   * AllocationForbiddenException을 HTTP 403 응답으로 변환한다.
+   */
+  @ExceptionHandler(AllocationForbiddenException.class)
+  public ResponseEntity<ErrorResponse> handleForbidden(AllocationForbiddenException ex) {
+    return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+  }
+
   private ResponseEntity<ErrorResponse> response(
       HttpStatus status, String errorCode, String message) {
     ErrorResponse response = ErrorResponse.builder().error(errorCode).message(message).build();

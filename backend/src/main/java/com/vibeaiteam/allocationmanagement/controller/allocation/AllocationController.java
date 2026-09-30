@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 배정(Allocation) 결과 기록에 대한 등록 API를 제공한다. 이미 증권사를 통해 확정된 배정 결과를
- * 사용자가 사후에 수동으로 입력·기록하는 기능이며, Allocation은 SecuritiesFirm/Ipo와 동일한 글로벌
- * 기준정보로 취급되어 계정 소유권 검증을 적용하지 않는다(architecture.md 명시).
+ * 사용자가 사후에 수동으로 입력·기록하는 기능이며, Allocation은 Subscription → Investor 체인으로
+ * 계정 소유 데이터이므로 타 계정 접근은 403으로 거부한다.
  */
 @RestController
 @RequestMapping("/allocations")

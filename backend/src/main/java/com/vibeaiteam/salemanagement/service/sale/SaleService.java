@@ -1,16 +1,21 @@
 package com.vibeaiteam.salemanagement.service.sale;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleRegisterRequest;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleResponse;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleUpdateRequest;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleAllocationExceededException;
+import com.vibeaiteam.salemanagement.controller.sale.exception.SaleForbiddenException;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleNotFoundException;
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleValidationException;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
+import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
+import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +32,9 @@ public class SaleService {
 
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
+  private final SubscriptionRepository subscriptionRepository;
+  private final OwnershipGuard ownershipGuard;
+  private final SecurityUtils securityUtils;
   private final Clock clock;
 
   /**
@@ -36,11 +44,12 @@ public class SaleService {
   public SaleResponse register(SaleRegisterRequest request) {
     validateRequest(request);
 
-    // (1) Allocation 조회 — 존재하지 않으면 404
+    // (1) Allocation 조회 — 존재하지 않으면 404, 타 계정 소유면 403
     Allocation allocation =
         allocationRepository
             .findByIdAndDeletedAtIsNull(request.getAllocationId())
             .orElseThrow(() -> new SaleNotFoundException("배정 기록을 찾을 수 없습니다."));
+    requireOwnedAllocation(allocation);
 
     // (2) 기존 ACTIVE Sale들의 quantity 합계 조회
     Long existingQuantitySum = saleRepository.sumActiveQuantityByAllocationId(allocation.getId());
@@ -86,7 +95,9 @@ public class SaleService {
    */
   @Transactional(readOnly = true)
   public List<SaleResponse> list(Long allocationId, Long investorId, String investorName) {
-    List<Sale> sales = saleRepository.findActiveWithFilters(allocationId, investorId, investorName);
+    List<Sale> sales =
+        saleRepository.findActiveWithFilters(
+            securityUtils.getCurrentAccountId(), allocationId, investorId, investorName);
     return sales.stream().map(SaleResponse::from).toList();
   }
 
@@ -95,11 +106,7 @@ public class SaleService {
    */
   @Transactional(readOnly = true)
   public SaleResponse getById(Long id) {
-    Sale sale =
-        saleRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
-    return SaleResponse.from(sale);
+    return SaleResponse.from(findOwnedSale(id));
   }
 
   /**
@@ -114,11 +121,8 @@ public class SaleService {
   public SaleResponse update(Long id, SaleUpdateRequest request) {
     validateUpdateRequest(request);
 
-    // (1) 대상 Sale 조회 — 없거나 CANCELLED이면 404
-    Sale sale =
-        saleRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
+    // (1) 대상 Sale 조회 — 없거나 CANCELLED이면 404, 타 계정 소유면 403
+    Sale sale = findOwnedSale(id);
 
     // (2) Allocation 조회
     Allocation allocation =
@@ -241,14 +245,36 @@ public class SaleService {
    */
   @Transactional
   public void cancel(Long id) {
-    Sale sale =
-        saleRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
+    Sale sale = findOwnedSale(id);
     LocalDateTime now = LocalDateTime.now(clock);
     sale.setStatus(RecordStatus.CANCELLED);
     sale.setDeletedAt(now);
     sale.setUpdatedAt(now);
     saleRepository.save(sale);
+  }
+
+  // 미삭제 매도 조회 + 소유권 검증(매도 → 배정 → 청약 → 투자자) — 없으면 404, 타 계정 소유면 403
+  private Sale findOwnedSale(Long id) {
+    Sale sale =
+        saleRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
+    Allocation allocation =
+        allocationRepository
+            .findById(sale.getAllocationId())
+            .orElseThrow(() -> new SaleNotFoundException("배정 기록을 찾을 수 없습니다."));
+    requireOwnedAllocation(allocation);
+    return sale;
+  }
+
+  private void requireOwnedAllocation(Allocation allocation) {
+    Subscription subscription =
+        subscriptionRepository
+            .findById(allocation.getSubscriptionId())
+            .orElseThrow(() -> new SaleNotFoundException("청약 기록을 찾을 수 없습니다."));
+    ownershipGuard.requireOwnedInvestor(
+        subscription.getInvestorId(),
+        () -> new SaleNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new SaleForbiddenException("계정 소유권이 없습니다."));
   }
 }

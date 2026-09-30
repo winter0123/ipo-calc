@@ -1,6 +1,7 @@
 package com.vibeaiteam.subscriptionmanagement.service.subscription;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
@@ -33,6 +34,7 @@ public class SubscriptionService {
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final IpoRepository ipoRepository;
   private final OwnershipGuard ownershipGuard;
+  private final SecurityUtils securityUtils;
   private final Clock clock;
 
   /**
@@ -84,49 +86,26 @@ public class SubscriptionService {
   }
 
   /**
-   * 등록된 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면 해당 조건으로
-   * 필터링하고(둘 다 null이면 전체), 삭제되지 않은(ACTIVE) 기록만 반환한다. 둘 다 주어진 경우 investorId 우선
-   * 조회 후 그 결과 안에서 securitiesAccountId를 다시 필터링한다. 조회 시 계정 소유권 검증은 수행하지 않는다.
-   * (AC-007/008/009/018 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않음)
+   * 현재 계정 소유 투자자의 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면
+   * 해당 조건으로 필터링하고, 삭제되지 않은(ACTIVE) 기록만 반환한다. 타 계정 소유 ID를 필터로 주면 빈 목록이다.
    */
   @Transactional(readOnly = true)
   public List<SubscriptionResponse> list(Long investorId, Long securitiesAccountId) {
-    List<Subscription> subscriptions;
-    if (investorId != null) {
-      subscriptions =
-          subscriptionRepository.findAllByInvestorIdAndDeletedAtIsNullOrderByCreatedAtDesc(
-              investorId);
-      if (securitiesAccountId != null) {
-        subscriptions =
-            subscriptions.stream()
-                .filter(
-                    subscription ->
-                        securitiesAccountId.equals(subscription.getSecuritiesAccountId()))
-                .toList();
-      }
-    } else if (securitiesAccountId != null) {
-      subscriptions =
-          subscriptionRepository.findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc(
-              securitiesAccountId);
-    } else {
-      subscriptions = subscriptionRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
-    }
-    return subscriptions.stream().map(SubscriptionResponse::from).toList();
+    return subscriptionRepository
+        .findAllByAccountWithFilters(
+            securityUtils.getCurrentAccountId(), investorId, securitiesAccountId)
+        .stream()
+        .map(SubscriptionResponse::from)
+        .toList();
   }
 
   /**
    * 청약 ID로 단건 청약을 조회한다. 삭제되지 않은(ACTIVE) 기록만 반환하고, 존재하지 않거나 취소된
-   * 기록이면 404 SubscriptionNotFoundException을 던진다(AC-010/011). 조회 시 계정 소유권 검증은 수행하지
-   * 않는다 — spec/architecture에 조회 시 소유권 검증이 명시되어 있지 않고, 등록(SF-2) 시에만 소유권을
-   * 이미 강제했으므로 중복 검증하지 않는다. (IpoService.getById 패턴)
+   * 기록이면 404, 타 계정 소유면 403을 던진다.
    */
   @Transactional(readOnly = true)
   public SubscriptionResponse getById(Long id) {
-    Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
-    return SubscriptionResponse.from(subscription);
+    return SubscriptionResponse.from(findOwnedSubscription(id));
   }
 
   /**
@@ -137,10 +116,7 @@ public class SubscriptionService {
    */
   @Transactional
   public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
-    final Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
+    final Subscription subscription = findOwnedSubscription(id);
 
     Long updatedInvestorId = request.getInvestorId();
     final Long updatedSecuritiesAccountId = request.getSecuritiesAccountId();
@@ -214,15 +190,22 @@ public class SubscriptionService {
    */
   @Transactional
   public void cancel(Long id) {
-    Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
+    Subscription subscription = findOwnedSubscription(id);
     LocalDateTime now = LocalDateTime.now(clock);
     subscription.setStatus(RecordStatus.CANCELLED);
     subscription.setDeletedAt(now);
     subscription.setUpdatedAt(now);
     subscriptionRepository.save(subscription);
+  }
+
+  // 미삭제 청약 조회 + 소유 투자자 검증 — 없으면 404, 타 계정 소유면 403
+  private Subscription findOwnedSubscription(Long id) {
+    Subscription subscription =
+        subscriptionRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
+    validateInvestorOwnership(subscription.getInvestorId());
+    return subscription;
   }
 
   // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)

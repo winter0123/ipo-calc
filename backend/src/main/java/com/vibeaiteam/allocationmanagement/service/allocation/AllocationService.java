@@ -1,14 +1,17 @@
 package com.vibeaiteam.allocationmanagement.service.allocation;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationResponse;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationUpdateRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.exception.AllocationConflictException;
+import com.vibeaiteam.allocationmanagement.controller.allocation.exception.AllocationForbiddenException;
 import com.vibeaiteam.allocationmanagement.controller.allocation.exception.AllocationNotFoundException;
 import com.vibeaiteam.allocationmanagement.controller.allocation.exception.AllocationValidationException;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
@@ -28,6 +31,8 @@ public class AllocationService {
 
   private final AllocationRepository allocationRepository;
   private final SubscriptionRepository subscriptionRepository;
+  private final OwnershipGuard ownershipGuard;
+  private final SecurityUtils securityUtils;
   private final Clock clock;
 
   /**
@@ -37,12 +42,8 @@ public class AllocationService {
   public AllocationResponse register(AllocationRegisterRequest request) {
     validateRequest(request);
 
-    // Subscription 존재 검증(소유권 검증 불필요 — Allocation은 SecuritiesFirm/Ipo와 동일한 글로벌 기준정보,
-    // architecture.md "계정 소유권 검증 관련 결정" 참고). 없으면 404.
-    Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(request.getSubscriptionId())
-            .orElseThrow(() -> new AllocationNotFoundException("청약 기록을 찾을 수 없습니다."));
+    // Subscription 존재(404) + 소유권(403) 검증
+    Subscription subscription = findOwnedSubscription(request.getSubscriptionId());
 
     validateQuantity(request.getAllocatedQuantity(), subscription.getQuantity());
 
@@ -106,33 +107,24 @@ public class AllocationService {
   }
 
   /**
-   * 배정 목록을 조회한다.
+   * 현재 계정 소유 투자자의 배정 목록을 조회한다. 타 계정 소유 ID를 필터로 주면 빈 목록이다.
    */
   @Transactional(readOnly = true)
   public List<AllocationResponse> list(Long subscriptionId, Long investorId) {
-    List<Allocation> allocations;
-    if (subscriptionId != null) {
-      allocations =
-          allocationRepository.findBySubscriptionIdAndDeletedAtIsNullOrderByCreatedAtDesc(
-              subscriptionId);
-    } else if (investorId != null) {
-      allocations = allocationRepository.findByInvestorId(investorId);
-    } else {
-      allocations = allocationRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
-    }
-    return allocations.stream().map(AllocationResponse::from).toList();
+    return allocationRepository
+        .findAllByAccountWithFilters(
+            securityUtils.getCurrentAccountId(), subscriptionId, investorId)
+        .stream()
+        .map(AllocationResponse::from)
+        .toList();
   }
 
   /**
-   * ID로 배정을 조회한다.
+   * ID로 배정을 조회한다. 없으면 404, 타 계정 소유면 403.
    */
   @Transactional(readOnly = true)
   public AllocationResponse getById(Long id) {
-    Allocation allocation =
-        allocationRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
-    return AllocationResponse.from(allocation);
+    return AllocationResponse.from(findOwnedAllocation(id));
   }
 
   /**
@@ -143,10 +135,7 @@ public class AllocationService {
    */
   @Transactional
   public AllocationResponse update(Long id, AllocationUpdateRequest request) {
-    Allocation allocation =
-        allocationRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
+    Allocation allocation = findOwnedAllocation(id);
 
     Long updatedSubscriptionId = request.getSubscriptionId();
     Long updatedAllocatedQuantity = request.getAllocatedQuantity();
@@ -164,10 +153,7 @@ public class AllocationService {
 
     // subscriptionId가 새로 제공된 경우에만 존재 여부 재검증 (미제공 시 기존값 유지, 재검증하지 않음)
     if (updatedSubscriptionId != null) {
-      Subscription subscription =
-          subscriptionRepository
-              .findByIdAndDeletedAtIsNull(updatedSubscriptionId)
-              .orElseThrow(() -> new AllocationNotFoundException("청약 기록을 찾을 수 없습니다."));
+      Subscription subscription = findOwnedSubscription(updatedSubscriptionId);
       if (updatedAllocatedQuantity != null
           && updatedAllocatedQuantity > subscription.getQuantity()) {
         throw new AllocationValidationException("allocatedQuantity는 청약수량을 초과할 수 없습니다.");
@@ -222,14 +208,41 @@ public class AllocationService {
    */
   @Transactional
   public void cancel(Long id) {
-    Allocation allocation =
-        allocationRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
+    Allocation allocation = findOwnedAllocation(id);
     LocalDateTime now = LocalDateTime.now(clock);
     allocation.setStatus(RecordStatus.CANCELLED);
     allocation.setDeletedAt(now);
     allocation.setUpdatedAt(now);
     allocationRepository.save(allocation);
+  }
+
+  // 미삭제 청약 조회 + 소유 투자자 검증 — 없으면 404, 타 계정 소유면 403
+  private Subscription findOwnedSubscription(Long subscriptionId) {
+    Subscription subscription =
+        subscriptionRepository
+            .findByIdAndDeletedAtIsNull(subscriptionId)
+            .orElseThrow(() -> new AllocationNotFoundException("청약 기록을 찾을 수 없습니다."));
+    ownershipGuard.requireOwnedInvestor(
+        subscription.getInvestorId(),
+        () -> new AllocationNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new AllocationForbiddenException("계정 소유권이 없습니다."));
+    return subscription;
+  }
+
+  // 미삭제 배정 조회 + 소유권 검증(배정 → 청약 → 투자자) — 없으면 404, 타 계정 소유면 403
+  private Allocation findOwnedAllocation(Long id) {
+    Allocation allocation =
+        allocationRepository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new AllocationNotFoundException("배정 기록을 찾을 수 없습니다."));
+    Subscription subscription =
+        subscriptionRepository
+            .findById(allocation.getSubscriptionId())
+            .orElseThrow(() -> new AllocationNotFoundException("청약 기록을 찾을 수 없습니다."));
+    ownershipGuard.requireOwnedInvestor(
+        subscription.getInvestorId(),
+        () -> new AllocationNotFoundException("투자자를 찾을 수 없습니다."),
+        () -> new AllocationForbiddenException("계정 소유권이 없습니다."));
+    return allocation;
   }
 }

@@ -5,9 +5,11 @@ import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
 import com.vibeaiteam.costrecording.repository.cost.CostRepository;
-import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.profitcalculation.controller.profit.exception.ProfitForbiddenException;
 import com.vibeaiteam.profitcalculation.controller.profit.exception.ProfitNotFoundException;
 import com.vibeaiteam.profitcalculation.dto.profit.InvestorProfitDto;
 import com.vibeaiteam.profitcalculation.dto.profit.ProfitDto;
@@ -39,7 +41,7 @@ public class ProfitCalculationService {
   private final SubscriptionRepository subscriptionRepository;
   private final CostRepository costRepository;
   private final IpoRepository ipoRepository;
-  private final InvestorRepository investorRepository;
+  private final OwnershipGuard ownershipGuard;
 
   /**
    * 단일 매도건의 순수익을 계산한다.
@@ -67,6 +69,10 @@ public class ProfitCalculationService {
         subscriptionRepository
             .findById(allocation.getSubscriptionId())
             .orElseThrow(() -> new ProfitNotFoundException("청약 기록을 찾을 수 없습니다."));
+    ownershipGuard.requireOwnedInvestor(
+        subscription.getInvestorId(),
+        () -> new ProfitNotFoundException("해당 투자자를 찾을 수 없습니다."),
+        () -> new ProfitForbiddenException("계정 소유권이 없습니다."));
 
     // 4. IPO 조건부 조회 — allocationPrice가 null이면 fixedPrice 사용
     Long fixedPrice = null;
@@ -93,13 +99,16 @@ public class ProfitCalculationService {
    */
   @Transactional(readOnly = true)
   public InvestorProfitDto calculateForInvestor(Long investorId) {
-    // 1. Investor 조회 — 없으면 404
-    investorRepository
-        .findById(investorId)
-        .orElseThrow(() -> new ProfitNotFoundException("해당 투자자를 찾을 수 없습니다."));
+    // 1. Investor 조회 — 없으면 404, 타 계정 소유면 403
+    Investor investor =
+        ownershipGuard.requireOwnedInvestor(
+            investorId,
+            () -> new ProfitNotFoundException("해당 투자자를 찾을 수 없습니다."),
+            () -> new ProfitForbiddenException("계정 소유권이 없습니다."));
 
     // 2. ACTIVE Sale 목록 조회 (Sale → Allocation → Subscription → Investor 조인)
-    List<Sale> sales = saleRepository.findActiveWithFilters(null, investorId, null);
+    List<Sale> sales =
+        saleRepository.findActiveWithFilters(investor.getAccountId(), null, investorId, null);
     if (sales.isEmpty()) {
       return InvestorProfitDto.builder()
           .investorId(investorId)

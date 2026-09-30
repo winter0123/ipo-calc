@@ -32,20 +32,20 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
       Long subscriptionId, RecordStatus status);
 
   /**
-   * 청약 ID 조건(삭제되지 않은 건만)으로 배정을 목록 조회한다(생성일 내림차순).
-   */
-  List<Allocation> findBySubscriptionIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long subscriptionId);
-
-  /**
-   * 투자자 ID 조건으로 배정을 목록 조회한다.
+   * 현재 계정 소유 투자자의 배정만 목록 조회한다(생성일 내림차순). subscriptionId/investorId는 null이면 무시한다.
    */
   @Query(
       "SELECT a FROM Allocation a "
           + "JOIN Subscription s ON a.subscriptionId = s.id "
           + "JOIN Investor i ON s.investorId = i.id "
-          + "WHERE a.deletedAt IS NULL AND i.id = :investorId "
+          + "WHERE a.deletedAt IS NULL AND i.accountId = :accountId "
+          + "AND (:subscriptionId IS NULL OR a.subscriptionId = :subscriptionId) "
+          + "AND (:investorId IS NULL OR i.id = :investorId) "
           + "ORDER BY a.createdAt DESC")
-  List<Allocation> findByInvestorId(@Param("investorId") Long investorId);
+  List<Allocation> findAllByAccountWithFilters(
+      @Param("accountId") Long accountId,
+      @Param("subscriptionId") Long subscriptionId,
+      @Param("investorId") Long investorId);
 
   /** 배치 조회: subscriptionId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함. */
   @Query(

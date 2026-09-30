@@ -130,10 +130,10 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록 API, 누적 수�
 | 등록 시 검증 시점 | **SAVE 전에 검증, 실패 시 400 + 트랜잭션 롤백** | `(기존 ACTIVE 합계 + 신규 quantity) ≤ allocatedQuantity` |
 | 수정 시 검증 시점 | **SAVE 전에 재검증, 실패 시 400 + 트랜잭션 롤백** | `(기존 합계 - 자기자신 + 수정 quantity) ≤ allocatedQuantity` |
 | 동시성 제어 | **불필요** | 개인 사용자의 순차 입력 서비스이므로 락 불필요 (D-SL-004) |
-| 계정 소유권 검증 여부 | **불필요** | Sale은 글로벌 기준정보(사후 기록)로, Account 소유 엔티티가 아님 |
+| 계정 소유권 검증 여부 | **필요 (403, 보안 점검 후 정정)** | Sale → Allocation → Subscription → Investor.accountId 체인으로 계정 소유 데이터 |
 | 참조 경로 단계 수 | **1단계 (등록/수정 시)** | Sale → Allocation FK 직접 참조 |
 | investorId 조회 시 참조 경로 | **3단계 (조회 시)** | Sale → Allocation → Subscription → Investor JOIN |
-| `SecurityUtils.getCurrentAccountId()` 사용 여부 | **사용하지 않음** | 글로벌 기준정보이므로 소유권 필터 적용 불필요 |
+| `SecurityUtils.getCurrentAccountId()` 사용 여부 | **사용함** | 목록 조회를 현재 계정으로 한정 |
 
 ---
 

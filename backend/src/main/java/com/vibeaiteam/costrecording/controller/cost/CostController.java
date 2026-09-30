@@ -58,7 +58,7 @@ public class CostController {
 
   /**
    * 비용 ID로 단건 비용 정보를 조회한다. 존재하지 않거나 취소된 기록이면 404를 반환한다.
-   * 조회 시 계정 소유권 검증은 수행하지 않는다.
+   * 다른 계정의 기록이면 403을 반환한다.
    */
   @GetMapping("/{id}")
   public ResponseEntity<CostResponse> getById(@PathVariable Long id) {
