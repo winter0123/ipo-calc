@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
@@ -46,7 +47,7 @@ class AllocationRepositoryTest {
             .quantity(100L)
             .depositAmount(1000000L)
             .subscribedAt(createdAt)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -61,7 +62,7 @@ class AllocationRepositoryTest {
         .allocationMethod("균등배정")
         .allocationPrice(10000L)
         .note(note)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
         .build();
@@ -88,7 +89,7 @@ class AllocationRepositoryTest {
     assertThat(found.get().getAllocationMethod()).isEqualTo("균등배정");
     assertThat(found.get().getAllocationPrice()).isEqualTo(10000L);
     assertThat(found.get().getNote()).isEqualTo("비고");
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -108,7 +109,7 @@ class AllocationRepositoryTest {
     allocationRepository.save(buildAllocation(subscriptionB, "배정B", now.plusDays(1)));
 
     Allocation cancelled = buildAllocation(subscriptionC, "취소된 배정", now.minusDays(1));
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     allocationRepository.saveAndFlush(cancelled);
 
@@ -133,7 +134,7 @@ class AllocationRepositoryTest {
     Allocation active = allocationRepository.save(buildAllocation(subscriptionA, null, now));
 
     Allocation cancelled = buildAllocation(subscriptionB, null, now);
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     Allocation savedCancelled = allocationRepository.saveAndFlush(cancelled);
 
@@ -161,12 +162,12 @@ class AllocationRepositoryTest {
     // When: 동일 subscriptionId + status='ACTIVE' + deletedAt IS NULL 조건으로 조회
     Optional<Allocation> found =
         allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            subscriptionId, "ACTIVE");
+            subscriptionId, RecordStatus.ACTIVE);
 
     // Then: 등록 시 중복 검사에 사용할 ACTIVE 기록이 반환된다
     assertThat(found).isPresent();
     assertThat(found.get().getSubscriptionId()).isEqualTo(subscriptionId);
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -194,7 +195,7 @@ class AllocationRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     Long subscriptionId = createSubscription(1L, now);
     Allocation existing = allocationRepository.save(buildAllocation(subscriptionId, "기존 배정", now));
-    existing.setStatus("CANCELLED");
+    existing.setStatus(RecordStatus.CANCELLED);
     existing.setDeletedAt(now);
     allocationRepository.saveAndFlush(existing);
 
@@ -205,6 +206,6 @@ class AllocationRepositoryTest {
 
     // Then: 유니크 위반 없이 저장된다 (ACTIVE 기록 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
-    assertThat(reRegistered.getStatus()).isEqualTo("ACTIVE");
+    assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 }

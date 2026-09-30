@@ -1,7 +1,10 @@
 package com.vibeaiteam.investormanagement.domain.model.investor;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -40,7 +43,8 @@ public class Investor {
 
   @Column(name = "status", nullable = false, length = 10)
   @Builder.Default
-  private String status = "ACTIVE";
+  @Enumerated(EnumType.STRING)
+  private RecordStatus status = RecordStatus.ACTIVE;
 
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;

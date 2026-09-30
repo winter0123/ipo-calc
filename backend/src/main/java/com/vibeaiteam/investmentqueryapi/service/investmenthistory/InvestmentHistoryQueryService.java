@@ -1,5 +1,6 @@
 package com.vibeaiteam.investmentqueryapi.service.investmenthistory;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
@@ -66,7 +67,7 @@ public class InvestmentHistoryQueryService {
     // c. Allocation 조회 (없으면 null)
     Allocation allocation =
         allocationRepository
-            .findBySubscriptionIdAndStatusAndDeletedAtIsNull(subscriptionId, "ACTIVE")
+            .findBySubscriptionIdAndStatusAndDeletedAtIsNull(subscriptionId, RecordStatus.ACTIVE)
             .orElse(null);
 
     // d. ACTIVE Sale 조회 (Allocation이 있으면, 없으면 빈 리스트)
@@ -75,7 +76,7 @@ public class InvestmentHistoryQueryService {
       activeSales =
           saleRepository
               .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-                  allocation.getId(), "ACTIVE");
+                  allocation.getId(), RecordStatus.ACTIVE);
     }
 
     // e. IpoMap 구성 (단건이므로 Map.of)
@@ -173,7 +174,7 @@ public class InvestmentHistoryQueryService {
     Map<Long, List<Sale>> saleMapByAllocationId;
     if (!allocationIds.isEmpty()) {
       saleMapByAllocationId =
-          saleRepository.findByAllocationIdInAndStatus(allocationIds, "ACTIVE").stream()
+          saleRepository.findByAllocationIdInAndStatus(allocationIds, RecordStatus.ACTIVE).stream()
               .collect(Collectors.groupingBy(Sale::getAllocationId));
     } else {
       saleMapByAllocationId = Map.of();

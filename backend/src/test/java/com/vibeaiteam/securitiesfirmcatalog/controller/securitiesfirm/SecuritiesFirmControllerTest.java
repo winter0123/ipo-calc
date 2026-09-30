@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
@@ -56,7 +57,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
 class SecuritiesFirmControllerTest {
 
-  private static final String STATUS_ACTIVE = "ACTIVE";
+  private static final RecordStatus STATUS_ACTIVE = RecordStatus.ACTIVE;
 
   @Autowired private MockMvc mockMvc;
 
@@ -194,7 +195,9 @@ class SecuritiesFirmControllerTest {
     assertThat(response.get("name")).as("응답에 증권사명이 포함되어야 합니다 (AC-001)").isEqualTo(firmName);
     assertThat(response.get("externalCode")).isEqualTo("SC-0001");
     assertThat(response.get("businessRegistrationNumber")).isEqualTo("123-45-67890");
-    assertThat(response.get("status")).as("status는 ACTIVE여야 합니다 (AC-001)").isEqualTo(STATUS_ACTIVE);
+    assertThat(response.get("status"))
+        .as("status는 ACTIVE여야 합니다 (AC-001)")
+        .isEqualTo(STATUS_ACTIVE.name());
     assertThat(response.get("createdAt")).as("createdAt이 포함되어야 합니다 (AC-001)").isNotNull();
     assertThat(response.get("updatedAt")).as("updatedAt이 포함되어야 합니다 (AC-001)").isNotNull();
 
@@ -335,7 +338,7 @@ class SecuritiesFirmControllerTest {
     for (Map<String, Object> firm : body) {
       assertThat(firm.get("status"))
           .as("목록 응답의 status는 ACTIVE여야 합니다 (AC-004)")
-          .isEqualTo(STATUS_ACTIVE);
+          .isEqualTo(STATUS_ACTIVE.name());
     }
   }
 
@@ -356,7 +359,7 @@ class SecuritiesFirmControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(deletedName)
-                .status("INACTIVE")
+                .status(RecordStatus.INACTIVE)
                 .deletedAt(now)
                 .createdAt(now)
                 .updatedAt(now)
@@ -407,7 +410,7 @@ class SecuritiesFirmControllerTest {
     assertThat(body.get("name")).isEqualTo(firmName);
     assertThat(body.get("externalCode")).isEqualTo("SC-0003");
     assertThat(body.get("businessRegistrationNumber")).isEqualTo("111-22-33333");
-    assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
+    assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE.name());
     assertThat(body.get("createdAt")).isNotNull();
     assertThat(body.get("updatedAt")).isNotNull();
   }
@@ -440,7 +443,7 @@ class SecuritiesFirmControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(uniqueFirmName("OLD증권"))
-                .status("INACTIVE")
+                .status(RecordStatus.INACTIVE)
                 .deletedAt(now)
                 .createdAt(now)
                 .updatedAt(now)
@@ -504,7 +507,7 @@ class SecuritiesFirmControllerTest {
     assertThat(body.get("name")).isEqualTo(newName);
     assertThat(body.get("externalCode")).isEqualTo("SC-0099");
     assertThat(body.get("businessRegistrationNumber")).isEqualTo("999-88-77777");
-    assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE);
+    assertThat(body.get("status")).isEqualTo(STATUS_ACTIVE.name());
     assertThat(body.get("updatedAt")).as("수정 응답에 갱신된 updatedAt이 포함되어야 합니다 (AC-007)").isNotNull();
 
     // And: DB에 수정된 필드와 갱신된 updatedAt이 반영됨 (AC-007)
@@ -729,7 +732,9 @@ class SecuritiesFirmControllerTest {
 
     // And: DB에서 status=INACTIVE, deletedAt 설정, updatedAt 갱신 확인 (AC-011)
     SecuritiesFirm inDb = securitiesFirmRepository.findById(firmId).orElseThrow();
-    assertThat(inDb.getStatus()).as("비활성화 후 status는 INACTIVE여야 합니다 (AC-011)").isEqualTo("INACTIVE");
+    assertThat(inDb.getStatus())
+        .as("비활성화 후 status는 INACTIVE여야 합니다 (AC-011)")
+        .isEqualTo(RecordStatus.INACTIVE);
     assertThat(inDb.getDeletedAt()).as("비활성화 후 deletedAt이 설정되어야 합니다 (AC-011)").isNotNull();
     assertThat(inDb.getUpdatedAt())
         .as("비활성화 후 updatedAt이 현재 시각으로 갱신되어야 합니다 (AC-011)")

@@ -35,7 +35,7 @@ public class SecuritiesFirmResponse {
         .name(securitiesFirm.getName())
         .externalCode(securitiesFirm.getExternalCode())
         .businessRegistrationNumber(securitiesFirm.getBusinessRegistrationNumber())
-        .status(securitiesFirm.getStatus())
+        .status(securitiesFirm.getStatus().name())
         .createdAt(securitiesFirm.getCreatedAt())
         .updatedAt(securitiesFirm.getUpdatedAt())
         .build();

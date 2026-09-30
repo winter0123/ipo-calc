@@ -1,5 +1,6 @@
 package com.vibeaiteam.costrecording.repository.cost;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +38,9 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
       "SELECT c FROM Cost c "
           + "JOIN Subscription s ON c.subscriptionId = s.id "
           + "JOIN Investor i ON s.investorId = i.id "
-          + "WHERE c.deletedAt IS NULL AND c.status = 'ACTIVE' "
+          + "WHERE c.deletedAt IS NULL AND c.status = "
+          + RecordStatus.ACTIVE_HQL
+          + " "
           + "AND (:subscriptionId IS NULL OR c.subscriptionId = :subscriptionId) "
           + "AND (:investorId IS NULL OR i.id = :investorId) "
           + "AND (:investorName IS NULL OR i.displayName LIKE :investorName) "
@@ -50,9 +53,10 @@ public interface CostRepository extends JpaRepository<Cost, Long> {
   /**
    * 청약 ID · 상태 조건(삭제되지 않은 건만)으로 비용을 목록 조회한다.
    */
-  List<Cost> findBySubscriptionIdAndStatusAndDeletedAtIsNull(Long subscriptionId, String status);
+  List<Cost> findBySubscriptionIdAndStatusAndDeletedAtIsNull(
+      Long subscriptionId, RecordStatus status);
 
   /** 배치 조회: subscriptionId 목록으로 ACTIVE Cost 일괄 조회 (N+1 방지용). */
   List<Cost> findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
-      List<Long> subscriptionIds, String status);
+      List<Long> subscriptionIds, RecordStatus status);
 }

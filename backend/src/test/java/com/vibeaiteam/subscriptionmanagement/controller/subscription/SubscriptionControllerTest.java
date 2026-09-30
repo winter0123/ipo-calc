@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
@@ -195,7 +196,7 @@ class SubscriptionControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -243,7 +244,7 @@ class SubscriptionControllerTest {
                 .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
                 .listingDate(java.time.LocalDate.of(2026, 10, 15))
                 .offeringShareCount(1000000L)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -272,7 +273,7 @@ class SubscriptionControllerTest {
                 .accountId(other.getId())
                 .displayName("다른계정투자자")
                 .relationship("OTHER")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -286,7 +287,7 @@ class SubscriptionControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -381,7 +382,7 @@ class SubscriptionControllerTest {
 
     Subscription saved =
         subscriptionRepository.findById(((Number) response.get("id")).longValue()).orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
     assertThat(saved.getCreatedAt()).isNotNull();
     assertThat(saved.getUpdatedAt()).isNotNull();
@@ -547,7 +548,7 @@ class SubscriptionControllerTest {
             .findById(((Number) readBody(first).get("id")).longValue())
             .orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    existing.setStatus("CANCELLED");
+    existing.setStatus(RecordStatus.CANCELLED);
     existing.setDeletedAt(now);
     existing.setUpdatedAt(now);
     subscriptionRepository.saveAndFlush(existing);
@@ -585,7 +586,7 @@ class SubscriptionControllerTest {
 
     Subscription cancelled = subscriptionRepository.findById(cancelledId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     subscriptionRepository.saveAndFlush(cancelled);
@@ -787,7 +788,7 @@ class SubscriptionControllerTest {
     assertThat(updated.getMemo()).isEqualTo("수정된 메모");
     assertThat(updated.getQuantity()).isEqualTo(50L);
     assertThat(updated.getDepositAmount()).isEqualTo(1000000L);
-    assertThat(updated.getStatus()).isEqualTo("ACTIVE");
+    assertThat(updated.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(updated.getDeletedAt()).isNull();
   }
 
@@ -857,7 +858,7 @@ class SubscriptionControllerTest {
 
     Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     subscriptionRepository.saveAndFlush(cancelled);
@@ -990,7 +991,7 @@ class SubscriptionControllerTest {
         .as("유효한 청약 취소 요청 시 204 No Content를 반환해야 합니다 (AC-016)")
         .isEqualTo(204);
     Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
-    assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+    assertThat(cancelled.getStatus()).isEqualTo(RecordStatus.CANCELLED);
     assertThat(cancelled.getDeletedAt()).isNotNull();
     assertThat(cancelled.getUpdatedAt()).isNotNull();
   }

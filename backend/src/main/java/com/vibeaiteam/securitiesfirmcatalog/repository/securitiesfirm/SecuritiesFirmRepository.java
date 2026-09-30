@@ -1,5 +1,6 @@
 package com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +16,7 @@ public interface SecuritiesFirmRepository extends JpaRepository<SecuritiesFirm, 
   /**
    * 이름 · 상태 조건으로 증권사를 단건 조회한다.
    */
-  Optional<SecuritiesFirm> findByNameAndStatus(String name, String status);
+  Optional<SecuritiesFirm> findByNameAndStatus(String name, RecordStatus status);
 
   /**
    * 삭제되지 않은 증권사를 목록 조회한다.

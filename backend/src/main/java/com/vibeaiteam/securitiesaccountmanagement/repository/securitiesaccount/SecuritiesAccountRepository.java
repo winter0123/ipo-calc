@@ -1,5 +1,6 @@
 package com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +16,7 @@ public interface SecuritiesAccountRepository extends JpaRepository<SecuritiesAcc
   /**
    * 투자자 ID · 상태 조건으로 증권계좌를 목록 조회한다.
    */
-  List<SecuritiesAccount> findByInvestorIdAndStatus(Long investorId, String status);
+  List<SecuritiesAccount> findByInvestorIdAndStatus(Long investorId, RecordStatus status);
 
   /**
    * 투자자 ID 조건으로 증권계좌를 목록 조회한다.

@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
@@ -25,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class IpoService {
 
   private static final int NAME_MAX_LENGTH = 255;
-  private static final String STATUS_ACTIVE = "ACTIVE";
-  private static final String STATUS_INACTIVE = "INACTIVE";
 
   private final IpoRepository ipoRepository;
   private final Clock clock;
@@ -62,7 +61,7 @@ public class IpoService {
         ipoRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new IpoNotFoundException("IPO를 찾을 수 없습니다."));
-    ipo.setStatus(STATUS_INACTIVE);
+    ipo.setStatus(RecordStatus.INACTIVE);
     ipo.setDeletedAt(LocalDateTime.now(clock));
     ipo.setUpdatedAt(LocalDateTime.now(clock));
     ipoRepository.save(ipo);
@@ -222,7 +221,7 @@ public class IpoService {
             .subscriptionEndDate(subscriptionEndDate)
             .listingDate(request.getListingDate())
             .offeringShareCount(request.getOfferingShareCount())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -297,14 +296,14 @@ public class IpoService {
     if (stockCode != null) {
       duplicate =
           ipoRepository
-              .findByStockCodeAndStatusAndDeletedAtIsNull(stockCode, STATUS_ACTIVE)
+              .findByStockCodeAndStatusAndDeletedAtIsNull(stockCode, RecordStatus.ACTIVE)
               .filter(existing -> !existing.getId().equals(excludeId))
               .isPresent();
     } else {
       duplicate =
           ipoRepository
               .findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-                  ipoName, startDate, STATUS_ACTIVE)
+                  ipoName, startDate, RecordStatus.ACTIVE)
               .filter(existing -> !existing.getId().equals(excludeId))
               .isPresent();
     }

@@ -1,5 +1,6 @@
 package com.vibeaiteam.investormanagement.repository.investor;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +15,7 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
   /**
    * 계정 ID · 상태 조건으로 투자자를 목록 조회한다.
    */
-  List<Investor> findByAccountIdAndStatus(Long accountId, String status);
+  List<Investor> findByAccountIdAndStatus(Long accountId, RecordStatus status);
 
   /**
    * 계정 ID 조건으로 투자자를 목록 조회한다.

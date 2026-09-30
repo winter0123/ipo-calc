@@ -3,6 +3,7 @@ package com.vibeaiteam.salemanagement.repository.sale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
@@ -68,7 +69,7 @@ class SaleRepositoryTest {
             .quantity(100L)
             .depositAmount(1000000L)
             .subscribedAt(createdAt)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -84,7 +85,7 @@ class SaleRepositoryTest {
             .allocatedAt(createdAt)
             .allocationMethod("균등배정")
             .allocationPrice(10000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -102,7 +103,7 @@ class SaleRepositoryTest {
         .fee(1500L)
         .tax(0L)
         .otherCost(null)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
         .build();
@@ -124,7 +125,7 @@ class SaleRepositoryTest {
     SecuritiesFirm securitiesFirm =
         SecuritiesFirm.builder()
             .name("테스트 증권사")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -137,7 +138,7 @@ class SaleRepositoryTest {
             .accountId(accountId)
             .displayName(displayName)
             .relationship("SELF")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -153,7 +154,7 @@ class SaleRepositoryTest {
             .accountNumber("12345678")
             .accountName("테스트 계좌")
             .isDefault(true)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
             .build();
@@ -169,7 +170,7 @@ class SaleRepositoryTest {
         .quantity(100L)
         .depositAmount(5000000L)
         .subscribedAt(createdAt)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
         .build();
@@ -183,7 +184,7 @@ class SaleRepositoryTest {
         .allocatedAt(createdAt)
         .allocationMethod("PROPORTIONAL")
         .allocationPrice(allocationPrice)
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
         .build();
@@ -214,7 +215,7 @@ class SaleRepositoryTest {
     assertThat(found.get().getFee()).isEqualTo(1500L);
     assertThat(found.get().getTax()).isEqualTo(0L);
     assertThat(found.get().getOtherCost()).isNull();
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -233,7 +234,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 40L, now.plusDays(1), now.plusDays(1)));
 
     Sale cancelled = buildSale(allocationId, 20L, now.minusDays(1), now.minusDays(1));
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     saleRepository.saveAndFlush(cancelled);
 
@@ -258,7 +259,7 @@ class SaleRepositoryTest {
     Sale active = saleRepository.save(buildSale(allocationId, 30L, now, now));
 
     Sale cancelled = buildSale(allocationId, 20L, now, now);
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     Sale savedCancelled = saleRepository.saveAndFlush(cancelled);
 
@@ -316,7 +317,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 40L, now.plusHours(1), now.plusHours(1)));
 
     Sale cancelled = buildSale(allocationId, 20L, now.minusHours(1), now.minusHours(1));
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     saleRepository.saveAndFlush(cancelled);
 
@@ -324,11 +325,11 @@ class SaleRepositoryTest {
     List<Sale> activeSales =
         saleRepository
             .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-                allocationId, "ACTIVE");
+                allocationId, RecordStatus.ACTIVE);
 
     // Then: ACTIVE 상태인 2건만 반환됨
     assertThat(activeSales).hasSize(2);
-    assertThat(activeSales).allMatch(s -> "ACTIVE".equals(s.getStatus()));
+    assertThat(activeSales).allMatch(s -> s.getStatus() == RecordStatus.ACTIVE);
   }
 
   @Test
@@ -344,7 +345,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 20L, now.plusHours(2), now.plusHours(2)));
 
     Sale cancelled = buildSale(allocationId, 50L, now.minusHours(1), now.minusHours(1));
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     saleRepository.saveAndFlush(cancelled);
 
@@ -396,7 +397,7 @@ class SaleRepositoryTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(now)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -407,7 +408,7 @@ class SaleRepositoryTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(now)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -418,7 +419,7 @@ class SaleRepositoryTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(now)
-            .status("CANCELLED")
+            .status(RecordStatus.CANCELLED)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -429,7 +430,7 @@ class SaleRepositoryTest {
             .quantity(20L)
             .amount(200000L)
             .saleDate(now)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -441,14 +442,14 @@ class SaleRepositoryTest {
 
     // When: 계정 1의 ACTIVE Sale만 조회
     List<Sale> account1ActiveSales =
-        saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", account1Id);
+        saleRepository.findAllByStatusAndInvestorAccountId(RecordStatus.ACTIVE, account1Id);
 
     // Then: 계정 1의 ACTIVE Sale 2건만 조회됨 (CANCELLED 제외, 계정 2 데이터 제외)
     assertThat(account1ActiveSales).hasSize(2);
     assertThat(account1ActiveSales)
         .extracting(Sale::getId)
         .containsExactlyInAnyOrder(sale1.getId(), sale2.getId());
-    assertThat(account1ActiveSales).allMatch(s -> "ACTIVE".equals(s.getStatus()));
+    assertThat(account1ActiveSales).allMatch(s -> s.getStatus() == RecordStatus.ACTIVE);
   }
 
   @Test
@@ -456,7 +457,8 @@ class SaleRepositoryTest {
     // Given: 데이터 없음
 
     // When
-    List<Sale> result = saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", 999L);
+    List<Sale> result =
+        saleRepository.findAllByStatusAndInvestorAccountId(RecordStatus.ACTIVE, 999L);
 
     // Then: 빈 리스트 반환
     assertThat(result).isEmpty();
@@ -485,7 +487,7 @@ class SaleRepositoryTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(now)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -496,7 +498,7 @@ class SaleRepositoryTest {
             .quantity(10L)
             .amount(100000L)
             .saleDate(now)
-            .status("CANCELLED")
+            .status(RecordStatus.CANCELLED)
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -505,11 +507,12 @@ class SaleRepositoryTest {
     entityManager.persistAndFlush(cancelledSale);
 
     // When
-    List<Sale> result = saleRepository.findAllByStatusAndInvestorAccountId("ACTIVE", accountId);
+    List<Sale> result =
+        saleRepository.findAllByStatusAndInvestorAccountId(RecordStatus.ACTIVE, accountId);
 
     // Then: ACTIVE만 조회됨
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).getStatus()).isEqualTo("ACTIVE");
+    assertThat(result.get(0).getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(result.get(0).getId()).isEqualTo(activeSale.getId());
   }
 }

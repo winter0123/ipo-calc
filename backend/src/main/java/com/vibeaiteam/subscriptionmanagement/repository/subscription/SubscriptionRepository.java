@@ -1,5 +1,6 @@
 package com.vibeaiteam.subscriptionmanagement.repository.subscription;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import java.util.List;
 import java.util.Optional;
@@ -41,7 +42,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
    * 투자자 ID · 증권계좌 ID · 공모주 ID · 상태 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다.
    */
   Optional<Subscription> findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
-      Long investorId, Long securitiesAccountId, Long ipoId, String status);
+      Long investorId, Long securitiesAccountId, Long ipoId, RecordStatus status);
 
   /**
    * ipoId 필터 소유권 재검증용: 현재 계정이 소유한 청약 중 해당 IPO 건이 존재하는지 확인 Subscription → Investor(accountId) 조인으로

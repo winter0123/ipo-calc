@@ -34,7 +34,7 @@ public class InvestorResponse {
         .id(investor.getId())
         .displayName(investor.getDisplayName())
         .accountId(investor.getAccountId())
-        .status(investor.getStatus())
+        .status(investor.getStatus().name())
         .deletedAt(investor.getDeletedAt())
         .createdAt(investor.getCreatedAt())
         .updatedAt(investor.getUpdatedAt())

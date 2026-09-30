@@ -3,6 +3,7 @@ package com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -71,7 +72,7 @@ class SecuritiesFirmApiColumnsMigrationTest {
     // Given: 신규 행을 builder로 저장해 스키마 기본값(false/true)이 적용되는지 검증
     SecuritiesFirm newFirm = SecuritiesFirm.builder()
         .name("테스트증권")
-        .status("ACTIVE")
+        .status(RecordStatus.ACTIVE)
         .createdAt(java.time.LocalDateTime.now())
         .updatedAt(java.time.LocalDateTime.now())
         .build();
@@ -163,11 +164,11 @@ class SecuritiesFirmApiColumnsMigrationTest {
     String testName = "메리츠증권";
     securitiesFirmRepository.deleteAll(
         securitiesFirmRepository.findAll().stream()
-            .filter(f -> testName.equals(f.getName()) && "ACTIVE".equals(f.getStatus()))
+            .filter(f -> testName.equals(f.getName()) && f.getStatus() == RecordStatus.ACTIVE)
             .toList());
     SecuritiesFirm inactiveFirm = SecuritiesFirm.builder()
         .name(testName)
-        .status("INACTIVE")
+        .status(RecordStatus.INACTIVE)
         .deletedAt(java.time.LocalDateTime.now())
         .createdAt(java.time.LocalDateTime.now())
         .updatedAt(java.time.LocalDateTime.now())
@@ -186,14 +187,14 @@ class SecuritiesFirmApiColumnsMigrationTest {
         .toList();
     assertThat(firms).as("INACTIVE 1건 + ACTIVE 1건 = 총 2건").hasSize(2);
 
-    long activeCount = firms.stream().filter(f -> "ACTIVE".equals(f.getStatus())).count();
-    long inactiveCount = firms.stream().filter(f -> "INACTIVE".equals(f.getStatus())).count();
+    long activeCount = firms.stream().filter(f -> f.getStatus() == RecordStatus.ACTIVE).count();
+    long inactiveCount = firms.stream().filter(f -> f.getStatus() == RecordStatus.INACTIVE).count();
     assertThat(activeCount).as("ACTIVE 행은 1건").isEqualTo(1);
     assertThat(inactiveCount).as("INACTIVE 행은 1건").isEqualTo(1);
 
     // And: 생성된 ACTIVE 행의 api_supported가 FALSE (메리츠증권은 시드에서 FALSE)
     SecuritiesFirm activeFirm = firms.stream()
-        .filter(f -> "ACTIVE".equals(f.getStatus()))
+        .filter(f -> f.getStatus() == RecordStatus.ACTIVE)
         .findFirst()
         .orElseThrow();
     assertThat(activeFirm.getApiSupported())

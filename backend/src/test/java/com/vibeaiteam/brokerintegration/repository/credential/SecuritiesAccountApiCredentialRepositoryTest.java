@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
@@ -67,7 +68,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 .accountId(account.getId())
                 .displayName("홍길동")
                 .relationship("SELF")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -77,7 +78,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name(uniqueFirmName())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -90,7 +91,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 .accountNumber("encrypted-account-number")
                 .accountName("개인 MTS 계좌")
                 .isDefault(false)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -115,7 +116,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
       String appSecretEncrypted,
       String accessTokenEncrypted,
       LocalDateTime tokenExpiresAt,
-      String status,
+      RecordStatus status,
       LocalDateTime deletedAt) {
     LocalDateTime now = LocalDateTime.now();
     return SecuritiesAccountApiCredential.builder()
@@ -145,7 +146,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "encrypted-app-secret",
             "encrypted-access-token",
             LocalDateTime.now().plusDays(1),
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null);
 
     // When: 인증정보 저장 후 findByIdAndDeletedAtIsNull로 조회
@@ -162,7 +163,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
     assertThat(found.get().getAppSecretEncrypted()).isEqualTo("encrypted-app-secret");
     assertThat(found.get().getAccessTokenEncrypted()).isEqualTo("encrypted-access-token");
     assertThat(found.get().getTokenExpiresAt()).isNotNull();
-    assertThat(found.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
     assertThat(found.get().getUpdatedAt()).isNotNull();
@@ -180,7 +181,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-active",
             "enc-token-active",
             LocalDateTime.now().plusDays(1),
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null));
 
     credentialRepository.saveAndFlush(
@@ -191,7 +192,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-inactive",
             null,
             null,
-            "INACTIVE",
+            RecordStatus.INACTIVE,
             LocalDateTime.now()));
 
     // When: 계좌 ID + KIS + deletedAt IS NULL로 조회
@@ -202,7 +203,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
     // Then: ACTIVE 인증정보만 반환됨
     assertThat(result).isPresent();
     assertThat(result.get().getAppKeyEncrypted()).isEqualTo("enc-key-active");
-    assertThat(result.get().getStatus()).isEqualTo("ACTIVE");
+    assertThat(result.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
@@ -217,7 +218,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null));
 
     // When: 존재 여부 확인
@@ -241,7 +242,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret",
             null,
             null,
-            "INACTIVE",
+            RecordStatus.INACTIVE,
             LocalDateTime.now()));
 
     // When: 존재 여부 확인
@@ -267,7 +268,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-1",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null));
 
     SecuritiesAccountApiCredential secondCredential =
@@ -278,7 +279,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-2",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null);
 
     // When & Then: 같은 계좌·같은 provider ACTIVE 2건 저장 시 데이터 무결성 위반 예외 발생
@@ -301,11 +302,11 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 "enc-secret-1",
                 null,
                 null,
-                "ACTIVE",
+                RecordStatus.ACTIVE,
                 null));
 
     // 소프트 삭제
-    first.setStatus("INACTIVE");
+    first.setStatus(RecordStatus.INACTIVE);
     first.setDeletedAt(LocalDateTime.now());
     credentialRepository.saveAndFlush(first);
 
@@ -318,7 +319,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-2",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null);
 
     SecuritiesAccountApiCredential saved = credentialRepository.saveAndFlush(second);
@@ -347,7 +348,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-kis",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null));
 
     // When: 같은 계좌의 다른 provider(예: 미래 확장용) ACTIVE 인증정보 저장
@@ -359,7 +360,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
             "enc-secret-other",
             null,
             null,
-            "ACTIVE",
+            RecordStatus.ACTIVE,
             null);
 
     SecuritiesAccountApiCredential saved = credentialRepository.saveAndFlush(otherProvider);
@@ -382,7 +383,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 "enc-secret-active",
                 null,
                 null,
-                "ACTIVE",
+                RecordStatus.ACTIVE,
                 null));
 
     SecuritiesAccountApiCredential deleted =
@@ -394,7 +395,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 "enc-secret-deleted",
                 null,
                 null,
-                "INACTIVE",
+                RecordStatus.INACTIVE,
                 LocalDateTime.now()));
 
     // When: 각각 findByIdAndDeletedAtIsNull 호출

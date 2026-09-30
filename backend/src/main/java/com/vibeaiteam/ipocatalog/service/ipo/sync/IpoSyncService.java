@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
@@ -32,7 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  *       BusinessDayCalculator.nextBusinessDay(start)}
  *   <li>Upsert 규칙:
  *       <ol>
- *         <li>{@code findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, "ACTIVE")} 존재 시:
+ *         <li>{@code findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, ACTIVE)} 존재 시:
  *             <ul>
  *               <li>{@code syncSource == null} (수동 등록) → 절대 수정하지 않고 skippedManual++
  *               <li>그 외 → 가격 밴드·수량·청약일·회사명 갱신, {@code lastSyncedAt} 갱신, updated++
@@ -61,8 +62,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 @Slf4j
 public class IpoSyncService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
   private static final String SYNC_SOURCE_OPENDART = "OPENDART";
 
   private final OpenDartCorpDisclosureClient corpDisclosureClient;
@@ -269,7 +268,7 @@ public class IpoSyncService {
 
     // 1) corpCode로 기존 자동 동기화 레코드 조회
     var existingByCorpCode =
-        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, STATUS_ACTIVE);
+        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
     if (existingByCorpCode.isPresent()) {
       Ipo existing = existingByCorpCode.get();
       if (existing.getSyncSource() == null) {
@@ -288,7 +287,7 @@ public class IpoSyncService {
     // 2) (ipoName, subscriptionStartDate)로 수동 등록 레코드 등 조회
     var existingByNameAndDate =
         ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            corpName, startDate, STATUS_ACTIVE);
+            corpName, startDate, RecordStatus.ACTIVE);
     if (existingByNameAndDate.isPresent()) {
       // 수동 등록 또는 다른 경로로 생성된 레코드 → 수정하지 않음
       result.setSkippedManual(result.getSkippedManual() + 1);
@@ -311,7 +310,7 @@ public class IpoSyncService {
             .subscriptionEndDate(endDate)
             .listingDate(null) // 동기화가 절대 설정하지 않음
             .offeringShareCount(offeringShareCount)
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
             .lastSyncedAt(now)
             .createdAt(now)

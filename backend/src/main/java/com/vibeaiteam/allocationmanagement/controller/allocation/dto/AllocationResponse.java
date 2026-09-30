@@ -52,7 +52,7 @@ public class AllocationResponse {
         .allocationMethod(allocation.getAllocationMethod())
         .allocationPrice(allocation.getAllocationPrice())
         .note(allocation.getNote())
-        .status(allocation.getStatus())
+        .status(allocation.getStatus().name())
         .deletedAt(allocation.getDeletedAt())
         .createdAt(allocation.getCreatedAt())
         .updatedAt(allocation.getUpdatedAt())

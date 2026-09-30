@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
@@ -198,7 +199,7 @@ class CostControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -246,7 +247,7 @@ class CostControllerTest {
                 .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
                 .listingDate(java.time.LocalDate.of(2026, 10, 15))
                 .offeringShareCount(1000000L)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -267,7 +268,7 @@ class CostControllerTest {
                 .depositAmount(1000000L)
                 .subscribedAt(LocalDateTime.of(2026, 10, 1, 9, 0))
                 .memo("테스트 청약")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -295,7 +296,7 @@ class CostControllerTest {
                 .accountId(other.getId())
                 .displayName("다른계정투자자")
                 .relationship("OTHER")
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -309,7 +310,7 @@ class CostControllerTest {
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
                 .isDefault(true)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -396,7 +397,7 @@ class CostControllerTest {
     assertThat(response.get("updatedAt")).isNotNull();
 
     Cost saved = costRepository.findById(((Number) response.get("id")).longValue()).orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
     assertThat(saved.getCreatedAt()).isNotNull();
     assertThat(saved.getUpdatedAt()).isNotNull();
@@ -497,7 +498,7 @@ class CostControllerTest {
     // Subscription을 CANCELLED로 변경
     Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     subscriptionRepository.saveAndFlush(cancelled);
@@ -715,7 +716,7 @@ class CostControllerTest {
     // 첫 번째 비용을 취소(CANCELLED)
     Cost cancelled = costRepository.findById(costId1).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     costRepository.saveAndFlush(cancelled);
@@ -994,7 +995,7 @@ class CostControllerTest {
 
     Cost cancelled = costRepository.findById(costId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     costRepository.saveAndFlush(cancelled);
@@ -1026,7 +1027,7 @@ class CostControllerTest {
     // Subscription을 CANCELLED로 변경 (Cost는 여전히 ACTIVE)
     Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     subscriptionRepository.saveAndFlush(cancelled);
@@ -1092,7 +1093,7 @@ class CostControllerTest {
     assertThat(updated.getIncurredAt())
         .isEqualTo(java.time.LocalDateTime.parse("2026-09-10T10:00:00"));
     assertThat(updated.getMemo()).isEqualTo("OO증권 청약수수료");
-    assertThat(updated.getStatus()).isEqualTo("ACTIVE");
+    assertThat(updated.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(updated.getDeletedAt()).isNull();
   }
 
@@ -1179,7 +1180,7 @@ class CostControllerTest {
 
     Cost cancelled = costRepository.findById(costId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus("CANCELLED");
+    cancelled.setStatus(RecordStatus.CANCELLED);
     cancelled.setDeletedAt(now);
     cancelled.setUpdatedAt(now);
     costRepository.saveAndFlush(cancelled);
@@ -1306,7 +1307,7 @@ class CostControllerTest {
         .as("유효한 비용 취소 요청 시 204 No Content를 반환해야 합니다 (AC-014)")
         .isEqualTo(204);
     Cost cancelled = costRepository.findById(costId).orElseThrow();
-    assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+    assertThat(cancelled.getStatus()).isEqualTo(RecordStatus.CANCELLED);
     assertThat(cancelled.getDeletedAt()).isNotNull();
     assertThat(cancelled.getUpdatedAt()).isNotNull();
   }

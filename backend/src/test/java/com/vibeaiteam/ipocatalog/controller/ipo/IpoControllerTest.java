@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
@@ -97,7 +98,7 @@ class IpoControllerTest {
     assertThat(response.get("updatedAt")).isNotNull();
 
     Ipo saved = ipoRepository.findById(((Number) response.get("id")).longValue()).orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
     assertThat(saved.getCreatedAt()).isNotNull();
     assertThat(saved.getUpdatedAt()).isNotNull();
@@ -581,7 +582,7 @@ class IpoControllerTest {
 
     assertThat(result.getResponse().getStatus()).isEqualTo(204);
     Ipo deleted = ipoRepository.findById(id).orElseThrow();
-    assertThat(deleted.getStatus()).isEqualTo("INACTIVE");
+    assertThat(deleted.getStatus()).isEqualTo(RecordStatus.INACTIVE);
     assertThat(deleted.getDeletedAt()).isNotNull();
   }
 

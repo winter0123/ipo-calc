@@ -49,7 +49,7 @@ public class CostResponse {
         .amount(cost.getAmount())
         .incurredAt(cost.getIncurredAt())
         .memo(cost.getMemo())
-        .status(cost.getStatus())
+        .status(cost.getStatus().name())
         .deletedAt(cost.getDeletedAt())
         .createdAt(cost.getCreatedAt())
         .updatedAt(cost.getUpdatedAt())

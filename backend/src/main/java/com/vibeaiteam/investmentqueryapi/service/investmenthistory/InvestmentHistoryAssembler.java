@@ -42,7 +42,7 @@ public class InvestmentHistoryAssembler {
             ? ipoMap.get(subscription.getIpoId()).getFixedPrice()
             : null);
     dto.setSubscriptionQuantity(subscription.getQuantity());
-    dto.setSubscriptionStatus(subscription.getStatus());
+    dto.setSubscriptionStatus(subscription.getStatus().name());
     dto.setInvestorName(investorName);
     dto.setSecuritiesFirmName(securitiesFirmName);
 
@@ -51,7 +51,7 @@ public class InvestmentHistoryAssembler {
       allocationDto.setId(allocation.getId());
       allocationDto.setAllocatedQuantity(allocation.getAllocatedQuantity());
       allocationDto.setAllocationPrice(allocation.getAllocationPrice());
-      allocationDto.setAllocationStatus(allocation.getStatus());
+      allocationDto.setAllocationStatus(allocation.getStatus().name());
       dto.setAllocation(allocationDto);
     } else {
       dto.setAllocation(null);
@@ -68,7 +68,7 @@ public class InvestmentHistoryAssembler {
                   saleDto.setFee(sale.getFee());
                   saleDto.setTax(sale.getTax());
                   saleDto.setOtherCost(sale.getOtherCost());
-                  saleDto.setStatus(sale.getStatus());
+                  saleDto.setStatus(sale.getStatus().name());
                   saleDto.setSoldAt(sale.getSaleDate().toString());
                   return saleDto;
                 })

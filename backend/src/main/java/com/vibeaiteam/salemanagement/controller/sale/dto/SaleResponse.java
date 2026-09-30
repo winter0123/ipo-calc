@@ -58,7 +58,7 @@ public class SaleResponse {
         .fee(sale.getFee())
         .tax(sale.getTax())
         .otherCost(sale.getOtherCost())
-        .status(sale.getStatus())
+        .status(sale.getStatus().name())
         .deletedAt(sale.getDeletedAt())
         .createdAt(sale.getCreatedAt())
         .updatedAt(sale.getUpdatedAt())

@@ -66,7 +66,7 @@ public class IpoResponse {
         .subscriptionEndDate(ipo.getSubscriptionEndDate())
         .listingDate(ipo.getListingDate())
         .offeringShareCount(ipo.getOfferingShareCount())
-        .status(ipo.getStatus())
+        .status(ipo.getStatus().name())
         .createdAt(ipo.getCreatedAt())
         .updatedAt(ipo.getUpdatedAt())
         .build();

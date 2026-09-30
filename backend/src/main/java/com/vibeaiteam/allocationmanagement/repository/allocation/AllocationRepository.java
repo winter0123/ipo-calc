@@ -1,5 +1,6 @@
 package com.vibeaiteam.allocationmanagement.repository.allocation;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,7 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
    * 청약 ID · 상태 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다.
    */
   Optional<Allocation> findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-      Long subscriptionId, String status);
+      Long subscriptionId, RecordStatus status);
 
   /**
    * 청약 ID 조건(삭제되지 않은 건만)으로 배정을 목록 조회한다(생성일 내림차순).

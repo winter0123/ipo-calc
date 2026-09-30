@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
@@ -116,7 +117,7 @@ class InvestmentHistoryQueryServiceTest {
             .accountId(CURRENT_ACCOUNT_ID)
             .displayName("테스트 투자자")
             .relationship("SELF")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
 
     // Other account investor
@@ -126,7 +127,7 @@ class InvestmentHistoryQueryServiceTest {
             .accountId(OTHER_ACCOUNT_ID)
             .displayName("타인 투자자")
             .relationship("FAMILY")
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
 
     // Securities account
@@ -138,11 +139,12 @@ class InvestmentHistoryQueryServiceTest {
             .accountNumber("123-456-789")
             .accountName("테스트 계좌")
             .isDefault(true)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
 
     // Securities firm
-    securitiesFirm = SecuritiesFirm.builder().id(1L).name("테스트 증권사").status("ACTIVE").build();
+    securitiesFirm =
+        SecuritiesFirm.builder().id(1L).name("테스트 증권사").status(RecordStatus.ACTIVE).build();
 
     // Test IPO
     testIpo =
@@ -151,7 +153,7 @@ class InvestmentHistoryQueryServiceTest {
             .ipoName("샘플테크")
             .stockCode("ST001")
             .fixedPrice(12000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
 
     // Test subscription
@@ -162,7 +164,7 @@ class InvestmentHistoryQueryServiceTest {
             .securitiesAccountId(SECURITIES_ACCOUNT_ID)
             .ipoId(IPO_ID)
             .quantity(100L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .subscribedAt(LocalDateTime.now())
             .build();
 
@@ -173,7 +175,7 @@ class InvestmentHistoryQueryServiceTest {
             .subscriptionId(SUBSCRIPTION_ID)
             .allocatedQuantity(100L)
             .allocationPrice(12000L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .build();
 
     // Test sale
@@ -186,7 +188,7 @@ class InvestmentHistoryQueryServiceTest {
             .fee(1500L)
             .tax(0L)
             .otherCost(0L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .saleDate(LocalDateTime.now())
             .build();
   }
@@ -321,7 +323,7 @@ class InvestmentHistoryQueryServiceTest {
         .thenReturn(new PageImpl<>(List.of(testSubscription)));
     when(allocationRepository.findBySubscriptionIdIn(anyList()))
         .thenReturn(List.of(testAllocation));
-    when(saleRepository.findByAllocationIdInAndStatus(any(), eq("ACTIVE")))
+    when(saleRepository.findByAllocationIdInAndStatus(any(), eq(RecordStatus.ACTIVE)))
         .thenReturn(Collections.emptyList());
     when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
     when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
@@ -346,7 +348,7 @@ class InvestmentHistoryQueryServiceTest {
         .thenReturn(new PageImpl<>(List.of(testSubscription)));
     when(allocationRepository.findBySubscriptionIdIn(anyList()))
         .thenReturn(List.of(testAllocation));
-    when(saleRepository.findByAllocationIdInAndStatus(anyList(), eq("ACTIVE")))
+    when(saleRepository.findByAllocationIdInAndStatus(anyList(), eq(RecordStatus.ACTIVE)))
         .thenReturn(List.of(testSale));
     when(ipoRepository.findAllById(anyList())).thenReturn(List.of(testIpo));
     when(investorRepository.findAllById(anySet())).thenReturn(List.of(currentAccountInvestor));
@@ -408,7 +410,7 @@ class InvestmentHistoryQueryServiceTest {
             .securitiesAccountId(SECURITIES_ACCOUNT_ID)
             .ipoId(IPO_ID)
             .quantity(100L)
-            .status("ACTIVE")
+            .status(RecordStatus.ACTIVE)
             .subscribedAt(LocalDateTime.now())
             .build();
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
@@ -429,11 +431,11 @@ class InvestmentHistoryQueryServiceTest {
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
         .thenReturn(java.util.Optional.of(testSubscription));
     when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            SUBSCRIPTION_ID, "ACTIVE"))
+            SUBSCRIPTION_ID, RecordStatus.ACTIVE))
         .thenReturn(java.util.Optional.of(testAllocation));
     when(saleRepository
             .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-                testAllocation.getId(), "ACTIVE"))
+                testAllocation.getId(), RecordStatus.ACTIVE))
         .thenReturn(List.of(testSale));
     when(ipoRepository.findById(IPO_ID)).thenReturn(java.util.Optional.of(testIpo));
     when(investorRepository.findById(INVESTOR_ID))
@@ -458,10 +460,10 @@ class InvestmentHistoryQueryServiceTest {
     assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
     assertThat(result.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
     verify(allocationRepository)
-        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
+        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, RecordStatus.ACTIVE);
     verify(saleRepository)
         .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-            testAllocation.getId(), "ACTIVE");
+            testAllocation.getId(), RecordStatus.ACTIVE);
   }
 
   @Test
@@ -470,7 +472,7 @@ class InvestmentHistoryQueryServiceTest {
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
         .thenReturn(java.util.Optional.of(testSubscription));
     when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            SUBSCRIPTION_ID, "ACTIVE"))
+            SUBSCRIPTION_ID, RecordStatus.ACTIVE))
         .thenReturn(java.util.Optional.empty());
     when(ipoRepository.findById(IPO_ID)).thenReturn(java.util.Optional.of(testIpo));
     when(investorRepository.findById(INVESTOR_ID))
@@ -494,10 +496,10 @@ class InvestmentHistoryQueryServiceTest {
     assertThat(result.getInvestorName()).isEqualTo("테스트 투자자");
     assertThat(result.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
     verify(allocationRepository)
-        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, "ACTIVE");
+        .findBySubscriptionIdAndStatusAndDeletedAtIsNull(SUBSCRIPTION_ID, RecordStatus.ACTIVE);
     verify(saleRepository, never())
         .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-            anyLong(), eq("ACTIVE"));
+            anyLong(), eq(RecordStatus.ACTIVE));
   }
 
   // ===========================================
@@ -602,7 +604,7 @@ class InvestmentHistoryQueryServiceTest {
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
         .thenReturn(java.util.Optional.of(testSubscription));
     when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            SUBSCRIPTION_ID, "ACTIVE"))
+            SUBSCRIPTION_ID, RecordStatus.ACTIVE))
         .thenReturn(java.util.Optional.empty());
     when(ipoRepository.findById(IPO_ID)).thenReturn(java.util.Optional.of(testIpo));
     when(investorRepository.findById(INVESTOR_ID)).thenReturn(java.util.Optional.empty());
@@ -626,7 +628,7 @@ class InvestmentHistoryQueryServiceTest {
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
         .thenReturn(java.util.Optional.of(testSubscription));
     when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            SUBSCRIPTION_ID, "ACTIVE"))
+            SUBSCRIPTION_ID, RecordStatus.ACTIVE))
         .thenReturn(java.util.Optional.empty());
     when(ipoRepository.findById(IPO_ID)).thenReturn(java.util.Optional.of(testIpo));
     when(investorRepository.findById(INVESTOR_ID))
@@ -651,7 +653,7 @@ class InvestmentHistoryQueryServiceTest {
     when(subscriptionRepository.findByIdAndDeletedAtIsNull(SUBSCRIPTION_ID))
         .thenReturn(java.util.Optional.of(testSubscription));
     when(allocationRepository.findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-            SUBSCRIPTION_ID, "ACTIVE"))
+            SUBSCRIPTION_ID, RecordStatus.ACTIVE))
         .thenReturn(java.util.Optional.empty());
     when(ipoRepository.findById(IPO_ID)).thenReturn(java.util.Optional.of(testIpo));
     when(investorRepository.findById(INVESTOR_ID))

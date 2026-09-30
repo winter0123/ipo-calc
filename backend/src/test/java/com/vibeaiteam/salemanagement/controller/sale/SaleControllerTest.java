@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
@@ -190,7 +191,7 @@ class SaleControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -235,7 +236,7 @@ class SaleControllerTest {
                 .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
                 .listingDate(java.time.LocalDate.of(2026, 10, 15))
                 .offeringShareCount(1000000L)
-                .status("ACTIVE")
+                .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -390,7 +391,7 @@ class SaleControllerTest {
     assertThat(response.get("updatedAt")).isNotNull();
 
     Sale saved = saleRepository.findById(((Number) response.get("id")).longValue()).orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo("ACTIVE");
+    assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(saved.getDeletedAt()).isNull();
   }
 
@@ -507,10 +508,10 @@ class SaleControllerTest {
     List<Sale> sales =
         saleRepository
             .findByAllocationIdAndDeletedAtIsNullAndStatusOrderBySaleDateDescCreatedAtDesc(
-                allocationId, "ACTIVE");
+                allocationId, RecordStatus.ACTIVE);
     assertThat(sales).hasSize(3);
     for (Sale sale : sales) {
-      assertThat(sale.getStatus()).isEqualTo("ACTIVE");
+      assertThat(sale.getStatus()).isEqualTo(RecordStatus.ACTIVE);
       assertThat(sale.getDeletedAt()).isNull();
     }
   }
@@ -608,7 +609,7 @@ class SaleControllerTest {
         .findById(thirdId)
         .ifPresent(
             sale -> {
-              sale.setStatus("CANCELLED");
+              sale.setStatus(RecordStatus.CANCELLED);
               sale.setDeletedAt(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
@@ -997,7 +998,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus("CANCELLED");
+              sale.setStatus(RecordStatus.CANCELLED);
               sale.setDeletedAt(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
@@ -1278,7 +1279,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus("CANCELLED");
+              sale.setStatus(RecordStatus.CANCELLED);
               sale.setDeletedAt(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
@@ -1326,7 +1327,7 @@ class SaleControllerTest {
 
     // And: status가 CANCELLED로 변경되고 deletedAt이 설정됨 (물리 삭제하지 않음 — D-SL-005)
     Sale cancelled = saleRepository.findById(saleId).orElseThrow();
-    assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+    assertThat(cancelled.getStatus()).isEqualTo(RecordStatus.CANCELLED);
     assertThat(cancelled.getDeletedAt()).isNotNull();
     assertThat(cancelled.getUpdatedAt()).isNotNull();
   }
@@ -1364,7 +1365,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus("CANCELLED");
+              sale.setStatus(RecordStatus.CANCELLED);
               sale.setDeletedAt(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
@@ -1380,7 +1381,7 @@ class SaleControllerTest {
 
     // And: 상태는 여전히 CANCELLED 유지 (ACTIVE로 되돌아가지 않음)
     Sale stillCancelled = saleRepository.findById(saleId).orElseThrow();
-    assertThat(stillCancelled.getStatus()).isEqualTo("CANCELLED");
+    assertThat(stillCancelled.getStatus()).isEqualTo(RecordStatus.CANCELLED);
   }
 
   @Test

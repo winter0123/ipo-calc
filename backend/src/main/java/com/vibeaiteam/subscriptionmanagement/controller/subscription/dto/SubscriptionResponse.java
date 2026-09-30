@@ -53,7 +53,7 @@ public class SubscriptionResponse {
         .depositAmount(subscription.getDepositAmount())
         .subscribedAt(subscription.getSubscribedAt())
         .memo(subscription.getMemo())
-        .status(subscription.getStatus())
+        .status(subscription.getStatus().name())
         .createdAt(subscription.getCreatedAt())
         .updatedAt(subscription.getUpdatedAt())
         .build();

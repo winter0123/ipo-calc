@@ -1,5 +1,6 @@
 package com.vibeaiteam.salemanagement.service.sale;
 
+import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleRegisterRequest;
@@ -23,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class SaleService {
-
-  private static final String STATUS_ACTIVE = "ACTIVE";
 
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
@@ -72,7 +71,7 @@ public class SaleService {
             .fee(request.getFee())
             .tax(request.getTax())
             .otherCost(request.getOtherCost())
-            .status(STATUS_ACTIVE)
+            .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
@@ -247,7 +246,7 @@ public class SaleService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
     LocalDateTime now = LocalDateTime.now(clock);
-    sale.setStatus("CANCELLED");
+    sale.setStatus(RecordStatus.CANCELLED);
     sale.setDeletedAt(now);
     sale.setUpdatedAt(now);
     saleRepository.save(sale);
