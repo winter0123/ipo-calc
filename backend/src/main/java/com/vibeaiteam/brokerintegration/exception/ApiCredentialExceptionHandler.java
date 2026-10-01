@@ -76,4 +76,17 @@ public class ApiCredentialExceptionHandler {
         .contentType(JSON_UTF8)
         .body(response);
   }
+
+  /**
+   * BrokerApiException을 HTTP 502 응답으로 변환한다. 증권사 응답 원문·URL은 노출하지 않는다.
+   */
+  @ExceptionHandler(BrokerApiException.class)
+  public ResponseEntity<ErrorResponse> handleBrokerApi(BrokerApiException ex) {
+    ErrorResponse response =
+        ErrorResponse.builder()
+            .error("BROKER_API_ERROR")
+            .message("증권사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.")
+            .build();
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).contentType(JSON_UTF8).body(response);
+  }
 }

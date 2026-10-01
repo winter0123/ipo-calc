@@ -45,3 +45,12 @@ Master가 실계좌로 `TTTC8715R`를 1회 호출했다. 계좌번호·키·토�
 | ID | 항목 | 결정 | 근거 |
 |---|---|---|---|
 | D-B-007 | 매핑 규칙 | `KisTradeProfitMapper`: ① `sll_qty`가 0·빈 값인 행 제외 ② 같은 (`trad_dt`,`pdno` 문자열) 행은 수량·금액·수수료·세금 합산 ③ 금액=`sll_amt`, 수수료=`fee`, 세금=`tl_tax`(빈 값은 0) ④ 매도 행의 일자·`pdno`·수량·금액이 해석 불가면 `BrokerApiException("invalid_response")`(메시지에 필드명만) ⑤ 일자→`pdno` 오름차순 | 응답에 거래 고유 ID가 없으므로 `sales.external_transaction_id` 마이그레이션은 만들지 않고 breakdown의 근사 매칭 경로를 채택한다 |
+
+## 2026-10-01 SF-5 미리보기·확정 API
+
+| ID | 항목 | 결정 | 근거 |
+|---|---|---|---|
+| D-B-008 | 동기화 API | `GET /securities-accounts/{id}/broker-sync/preview`(조회만, 최근 89일)와 `POST .../confirm`(기존 `SaleService.register` 재사용, 한 건이라도 실패하면 전체 롤백). 확정 요청에는 이 증권계좌의 배정만 허용한다 | 자동 채움이지 자동 등록이 아니다(D-B-004). Sale 생성 경로를 이원화하지 않는다 |
+| D-B-009 | 계좌번호 분할 | 저장된 계좌번호에서 숫자만 뽑아 10자리일 때 앞 8자리=`CANO`, 뒤 2자리=`ACNT_PRDT_CD`. 아니면 400 | 게이트 4 결과. 형식이 다르면 잘못된 계좌를 조회하지 않도록 막는다 |
+| D-B-010 | 증권사 호출 실패 | `BrokerApiException`을 502(`BROKER_API_ERROR`)로 변환하고 원문·URL은 노출하지 않는다 | 키·계좌번호 노출 차단(#244) |
+| D-B-011 | 미리보기 단가 | 금액÷수량 반올림 근사값. 사용자가 확정 전에 고칠 수 있다 | 매퍼가 증권사 평균단가를 합산하지 않는다(`ponytail:` 주석) |
