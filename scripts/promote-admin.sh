@@ -13,7 +13,8 @@ if ! [[ "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
 fi
 LOWER="$(printf '%s' "$EMAIL" | tr '[:upper:]' '[:lower:]')"
 
-UPDATED="$(docker exec vibe-ai-team-postgres psql -U vibe -d "$DB" -At \
+# psql은 UPDATE 뒤에 "UPDATE n" 상태 줄도 출력하므로 -q로 끄고 RETURNING 값만 받는다.
+UPDATED="$(docker exec vibe-ai-team-postgres psql -U vibe -d "$DB" -Atq \
   -c "UPDATE accounts SET role='ADMIN', approved=TRUE WHERE email='$LOWER' RETURNING id")"
 if [ -z "$UPDATED" ]; then
   echo "해당 이메일의 계정이 없습니다: $LOWER" >&2
