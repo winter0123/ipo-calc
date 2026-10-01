@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoCalendarPage from './IpoCalendarPage.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
@@ -33,6 +33,10 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   }
 }
 
+function LocationSearch() {
+  return <div data-testid="search">{useLocation().search}</div>
+}
+
 function renderPage(initialEntries = ['/ipo-calendar']) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -41,6 +45,7 @@ function renderPage(initialEntries = ['/ipo-calendar']) {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
         <IpoCalendarPage />
+        <LocationSearch />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -182,6 +187,29 @@ describe('IpoCalendarPage', () => {
         expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
       })
       expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+    })
+
+    it('두 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 하나를 켜면 값이 생기고 모두 켜면 사라진다', async () => {
+      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      renderPage(['/ipo-calendar'])
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '청약' })).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('search')).toHaveTextContent('')
+
+      await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      expect(screen.getByTestId('search')).toHaveTextContent('?types=LISTING')
+
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
+      expect(screen.getByTestId('search').textContent).toBe('?types=')
+      expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '모두 보기' })).not.toBeDisabled()
+
+      await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      expect(screen.getByTestId('search')).toHaveTextContent('?types=SUBSCRIPTION')
+
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
+      expect(screen.getByTestId('search').textContent).toBe('')
     })
   })
 })
