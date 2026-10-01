@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 1. 오후 2:02:51
+검사 일시: 2026. 10. 1. 오후 2:17:30
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:49529
+대상 URL: http://127.0.0.1:51424
 
 ## 요약
 
-- 검사한 화면: 16개
+- 검사한 화면: 18개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -65,17 +65,25 @@
 
 ✅ **위반 0건** (passes: 30, incomplete: 0, inapplicable: 59)
 
-### broker-sync-connected (/broker-sync?investorId=4&securitiesAccountId=4)
+### broker-sync-connected (/broker-sync?investorId=1&securitiesAccountId=1)
 
 ✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
-### broker-sync-replace-form (/broker-sync?investorId=4&securitiesAccountId=4)
+### broker-sync-replace-form (/broker-sync?investorId=1&securitiesAccountId=1)
 
 ✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
 
-### broker-sync-register-form (/broker-sync?investorId=4&securitiesAccountId=5)
+### broker-sync-register-form (/broker-sync?investorId=1&securitiesAccountId=2)
 
 ✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
+
+### admin-accounts-pending (/admin/accounts)
+
+✅ **위반 0건** (passes: 36, incomplete: 0, inapplicable: 53)
+
+### admin-accounts-all (/admin/accounts)
+
+✅ **위반 0건** (passes: 36, incomplete: 0, inapplicable: 53)
 
 ---
 

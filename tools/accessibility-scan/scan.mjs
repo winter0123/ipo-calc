@@ -1,4 +1,5 @@
 import { chromium } from 'playwright'
+import { execFileSync } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { writeFile } from 'node:fs/promises'
@@ -8,6 +9,10 @@ const root = resolve(import.meta.dirname, '../..')
 const baseUrl = process.env.BASE_URL ?? 'http://127.0.0.1:5173'
 const outputRoot = resolve(root, 'docs/qa')
 const apiPrefix = process.env.E2E_API_PREFIX ?? '/api-proxy'
+const dbName = process.env.E2E_DB_NAME ?? process.env.DB_NAME
+const dbContainer = process.env.E2E_DB_CONTAINER ?? 'vibe-ai-team-postgres'
+const dbUser = process.env.E2E_DB_USER ?? 'vibe'
+let scanEmail = null
 
 const pages = [
   { name: 'login', path: '/login', needsAuth: false },
@@ -42,6 +47,7 @@ async function login(page, context) {
   try {
     await page.waitForURL('**/dashboard', { timeout: 10000 })
     console.log('Login successful')
+    scanEmail = 'test@example.com'
     return true
   } catch {
     console.log('Login failed, trying signup...')
@@ -57,6 +63,7 @@ async function login(page, context) {
     try {
       // After signup, it redirects to /investors/register with accountId in state
       await page.waitForURL('**/investors/register*', { timeout: 15000 })
+      scanEmail = testEmail
       console.log('Signup successful, redirected to investor register')
       // Now we're logged in, navigate to dashboard
       await page.goto(`${baseUrl}/dashboard`, { waitUntil: 'networkidle' })
@@ -129,6 +136,52 @@ async function setupBrokerStates(context) {
   }
 }
 
+// 가입 승인 화면 스캔: 스캔 계정을 DB에서 ADMIN으로 승격하고 승인 대기 계정을 하나 만든 뒤 다시 로그인한다.
+// DB 접근(E2E_DB_NAME 또는 DB_NAME)이 없으면 건너뛴다. 백엔드는 APP_SIGNUP_MODE=OPEN이어야 한다.
+async function setupAdminStates(browser, page) {
+  if (!dbName || !scanEmail) {
+    console.log('관리자 화면 스캔 건너뜀: DB 이름(E2E_DB_NAME/DB_NAME) 또는 스캔 계정이 없음')
+    return []
+  }
+  try {
+    const memberEmail = `testpending${Date.now()}@example.com`
+    const memberContext = await browser.newContext()
+    const created = await memberContext.request.fetch(`${baseUrl}${apiPrefix}/accounts`, {
+      method: 'POST',
+      data: { email: memberEmail, password: 'testpassword123!', name: 'Scan Pending' },
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await memberContext.close()
+    if (!created.ok()) throw new Error(`대기 계정 가입 실패: ${created.status()}`)
+    const sql = (statement) =>
+      execFileSync('docker', ['exec', dbContainer, 'psql', '-U', dbUser, '-d', dbName, '-c', statement])
+    sql(`UPDATE accounts SET approved=false WHERE email='${memberEmail}'`)
+    sql(`UPDATE accounts SET role='ADMIN' WHERE email='${scanEmail}'`)
+
+    // 역할은 로그인 시점의 세션에 담기므로 다시 로그인한다.
+    await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' })
+    await page.fill('#email', scanEmail)
+    await page.fill('#password', 'testpassword123!')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    return [
+      { name: 'admin-accounts-pending', path: '/admin/accounts', needsAuth: true },
+      {
+        name: 'admin-accounts-all',
+        path: '/admin/accounts',
+        needsAuth: true,
+        prepare: async (p) => {
+          await p.getByLabel('승인 대기만 보기').uncheck()
+          await p.getByRole('table').waitFor()
+        },
+      },
+    ]
+  } catch (error) {
+    console.log(`관리자 화면 스캔 준비 실패(건너뜀): ${error.message}`)
+    return []
+  }
+}
+
 async function scanPage(page, pageInfo) {
   console.log(`Scanning ${pageInfo.name} at ${pageInfo.path}...`)
   
@@ -197,6 +250,7 @@ async function main() {
   
   const results = []
   if (loggedIn) pages.push(...(await setupBrokerStates(context)))
+  if (loggedIn) pages.push(...(await setupAdminStates(browser, page)))
 
   for (const pageInfo of pages) {
     if (pageInfo.needsAuth && !loggedIn) {
