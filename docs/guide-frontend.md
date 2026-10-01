@@ -60,6 +60,7 @@ pnpm run build
 
 - 쿼리 키는 엔티티별 `queryKeys.ts` factory(`investorKeys`, `investmentHistoryKeys`, `profitKeys`, `dashboardKeys` …)만 쓴다. 네임스페이스는 kebab-case이고 하위 키는 상위 키의 prefix다. 문자열 키를 컴포넌트·훅에 직접 쓰지 않는다.
 - 조회 훅은 엔티티에 하나만 둔다(`useInvestors`, `useInvestmentHistory`, `useIpos` …). feature에 복제 훅을 만들지 않는다. 모든 GET `api-client` 함수는 선택 인자 `signal?: AbortSignal`을 받고 `queryFn: ({ signal }) => …`로 넘긴다.
+- 사용자가 `조회` 버튼으로 명시 제출하는 검색은 입력 중 값(draft)과 제출된 값(submitted)을 분리한다. `queryKey`와 `enabled`는 제출된 값에만 의존시켜 입력 도중 요청이 시작되거나 로딩 때문에 입력이 잠기지 않게 한다. 제출값을 바꾸면 이전 결과가 새 입력에 잘못 대응해 보이지 않도록 처리한다. 반대로 typeahead처럼 입력 중 조회가 의도된 경우에는 debounce·취소 동작을 명시한다. `user-event` 테스트로 입력만 했을 때와 제출했을 때의 요청 동작을 고정한다.
 - 등록 mutation 성공 시 `investmentHistoryKeys.all`, `profitKeys.all`, `dashboardKeys.all`을 prefix invalidate한다(`app/mutation-invalidation.test.tsx`).
 - 재시도 정책은 `app/queryClient.ts`: 4xx(`ApiError.status`)와 응답 스키마 불일치(`ZodError`)는 즉시 실패, 그 외(네트워크·5xx)는 최대 3회 미만 재시도. mutation 자동 재시도는 중복 제출 방지를 위해 끈 채(기본 0) 유지한다. `staleTime`은 기본값(0)을 유지한다.
 - 401은 `apiFetch`가 `ApiError(401)`로 던지고, `app/AppProviders`가 쿼리·mutation 캐시 `onError`에서 한 번에 처리한다: 캐시를 비우고 `/login`으로 `replace` 이동하며 `state.from`에 복귀 경로를 남긴다(`/login`·`/signup`에서는 이동하지 않음). 로그인 요청 자체의 401(잘못된 자격 증명)은 `useLogin`의 `meta.skipUnauthorizedRedirect`로 제외한다. `LoginForm`은 성공 후 `state.from`이 앱 내부 경로(`/`로 시작, `//` 제외)일 때만 그곳으로 복귀한다.
