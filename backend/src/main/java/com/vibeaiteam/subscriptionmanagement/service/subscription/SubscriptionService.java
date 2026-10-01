@@ -2,6 +2,7 @@ package com.vibeaiteam.subscriptionmanagement.service.subscription;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipErrors;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
@@ -15,6 +16,7 @@ import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionForbiddenExce
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionNotFoundException;
 import com.vibeaiteam.subscriptionmanagement.exception.SubscriptionValidationException;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.vibeaiteam.subscriptionmanagement.service.ownership.SubscriptionOwnership;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,10 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SubscriptionService {
 
+  private static final OwnershipErrors OWNERSHIP_ERRORS =
+      new OwnershipErrors(SubscriptionNotFoundException::new, SubscriptionForbiddenException::new);
+
   private final SubscriptionRepository subscriptionRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final IpoRepository ipoRepository;
   private final OwnershipGuard ownershipGuard;
+  private final SubscriptionOwnership subscriptionOwnership;
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
@@ -200,20 +206,12 @@ public class SubscriptionService {
 
   // 미삭제 청약 조회 + 소유 투자자 검증 — 없으면 404, 타 계정 소유면 403
   private Subscription findOwnedSubscription(Long id) {
-    Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new SubscriptionNotFoundException("청약 기록을 찾을 수 없습니다."));
-    validateInvestorOwnership(subscription.getInvestorId());
-    return subscription;
+    return subscriptionOwnership.requireOwnedActive(id, OWNERSHIP_ERRORS);
   }
 
   // Investor 존재/소유권 검증 — InvestorService.findOwnedInvestor와 동일 패턴(없으면 404, 타 계정 소유면 403)
   private void validateInvestorOwnership(Long investorId) {
-    ownershipGuard.requireOwnedInvestor(
-        investorId,
-        () -> new SubscriptionNotFoundException("투자자를 찾을 수 없습니다."),
-        () -> new SubscriptionForbiddenException("계정 소유권이 없습니다."));
+    ownershipGuard.requireOwnedInvestor(investorId, OWNERSHIP_ERRORS);
   }
 
   // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)

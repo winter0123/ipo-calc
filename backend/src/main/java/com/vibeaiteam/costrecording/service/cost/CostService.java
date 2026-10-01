@@ -10,9 +10,9 @@ import com.vibeaiteam.costrecording.controller.cost.exception.CostNotFoundExcept
 import com.vibeaiteam.costrecording.controller.cost.exception.CostValidationException;
 import com.vibeaiteam.costrecording.domain.model.cost.Cost;
 import com.vibeaiteam.costrecording.repository.cost.CostRepository;
-import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipErrors;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
-import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.vibeaiteam.subscriptionmanagement.service.ownership.SubscriptionOwnership;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,9 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CostService {
 
+  private static final OwnershipErrors OWNERSHIP_ERRORS =
+      new OwnershipErrors(CostNotFoundException::new, CostForbiddenException::new);
+
   private final CostRepository costRepository;
-  private final SubscriptionRepository subscriptionRepository;
-  private final OwnershipGuard ownershipGuard;
+  private final SubscriptionOwnership subscriptionOwnership;
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
@@ -43,14 +45,8 @@ public class CostService {
 
     Long subscriptionId = request.getSubscriptionId();
 
-    // 1. Subscription 존재 검증 (deletedAt IS NULL, CANCELLED 제외) — 404
-    Subscription subscription =
-        subscriptionRepository
-            .findByIdAndDeletedAtIsNull(subscriptionId)
-            .orElseThrow(() -> new CostNotFoundException("청약 기록을 찾을 수 없습니다."));
-
-    // 2. 계정 소유권 검증 — Subscription → Investor → Account 체인으로 확인 — 403
-    validateSubscriptionOwnership(subscription);
+    // 1~2. Subscription 존재(deletedAt IS NULL) 404 + 소유권(Subscription → Investor → Account) 403
+    subscriptionOwnership.requireOwnedActive(subscriptionId, OWNERSHIP_ERRORS);
 
     // 3. Cost 생성 및 저장 (status=ACTIVE)
     LocalDateTime now = LocalDateTime.now(clock);
@@ -156,20 +152,8 @@ public class CostService {
         costRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new CostNotFoundException("비용 기록을 찾을 수 없습니다."));
-    Subscription subscription =
-        subscriptionRepository
-            .findById(cost.getSubscriptionId())
-            .orElseThrow(() -> new CostNotFoundException("청약 기록을 찾을 수 없습니다."));
-    validateSubscriptionOwnership(subscription);
+    subscriptionOwnership.requireOwnedIncludingDeleted(cost.getSubscriptionId(), OWNERSHIP_ERRORS);
     return cost;
-  }
-
-  // Subscription 소유권 검증: Subscription → Investor(accountId) → 현재 계정 ID 비교
-  private void validateSubscriptionOwnership(Subscription subscription) {
-    ownershipGuard.requireOwnedInvestor(
-        subscription.getInvestorId(),
-        () -> new CostNotFoundException("투자자를 찾을 수 없습니다."),
-        () -> new CostForbiddenException("계정 소유권이 없습니다."));
   }
 
   // 수정 요청 검증: amount 0 미만 시 400, memo 255자 초과 시 400

@@ -32,6 +32,20 @@ public class OwnershipGuard {
   }
 
   /**
+   * 투자자를 조회한 뒤 현재 계정 소유인지 검증한다. 표준 메시지로 도메인 예외를 던진다.
+   *
+   * @param investorId 투자자 ID
+   * @param errors 도메인 예외(없음 404, 타 계정 403)
+   * @return 소유가 확인된 투자자
+   */
+  public Investor requireOwnedInvestor(Long investorId, OwnershipErrors errors) {
+    return requireOwnedInvestor(
+        investorId,
+        () -> errors.notFound(OwnershipErrors.INVESTOR_NOT_FOUND),
+        () -> errors.forbidden(OwnershipErrors.NOT_OWNER));
+  }
+
+  /**
    * 투자자를 조회한 뒤 현재 계정 소유인지 검증한다. 없으면 notFound, 타 계정 소유면 forbidden 예외.
    */
   public Investor requireOwnedInvestor(
