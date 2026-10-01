@@ -18,8 +18,10 @@ import com.vibeaiteam.brokerintegration.exception.ApiCredentialForbiddenExceptio
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialNotFoundException;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationException;
 import com.vibeaiteam.brokerintegration.exception.BrokerConnectionUnavailableException;
+import com.vibeaiteam.brokerintegration.exception.RateLimitExceededException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
+import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
@@ -88,7 +90,9 @@ class ApiCredentialServiceTest {
             brokerSecretEncryptor,
             accountNumberEncryptor,
             new OwnershipGuard(securityUtils, investorRepository),
-            Clock.systemDefaultZone());
+            Clock.systemDefaultZone(),
+            securityUtils,
+            new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
   }
 
   private String newRandomKey() {
@@ -105,7 +109,9 @@ class ApiCredentialServiceTest {
         new BrokerSecretEncryptor(""),
         accountNumberEncryptor,
         new OwnershipGuard(securityUtils, investorRepository),
-        Clock.systemDefaultZone());
+        Clock.systemDefaultZone(),
+        securityUtils,
+        new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
   }
 
   private void stubOwnedSecuritiesAccount() {
@@ -420,6 +426,28 @@ class ApiCredentialServiceTest {
     assertThat(credential.getTokenExpiresAt()).isNull();
     assertThat(response.keyIssuedOn()).isEqualTo(LocalDate.now());
     assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+  }
+
+  @Test
+  void keyWritesAreLimitedToFivePerTenMinutesPerLoginAccount() {
+    // 같은 로그인 계정의 등록·교체는 합쳐서 10분에 5회까지만 허용한다.
+    stubOwnedSecuritiesAccount();
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
+        .thenReturn(List.of());
+
+    for (int i = 0; i < 5; i++) {
+      assertThrows(
+          ApiCredentialNotFoundException.class,
+          () -> service.replace(ACCOUNT_ID, DUMMY_APP_KEY, DUMMY_APP_SECRET, null));
+    }
+
+    assertThrows(
+        RateLimitExceededException.class,
+        () -> service.replace(ACCOUNT_ID, DUMMY_APP_KEY, DUMMY_APP_SECRET, null));
+    assertThrows(
+        RateLimitExceededException.class,
+        () -> service.register(ACCOUNT_ID, "KIS", DUMMY_APP_KEY, DUMMY_APP_SECRET));
   }
 
   @Test

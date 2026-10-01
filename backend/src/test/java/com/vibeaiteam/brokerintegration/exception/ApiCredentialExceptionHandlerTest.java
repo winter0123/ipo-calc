@@ -44,6 +44,33 @@ class ApiCredentialExceptionHandlerTest {
   }
 
   @Test
+  void rateLimitExceptionMapsTo429WithRetryAfterHeader() {
+    ResponseEntity<ErrorResponse> response =
+        handler.handleRateLimited(new RateLimitExceededException(42));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("42");
+    assertThat(response.getBody().getError()).isEqualTo("RATE_LIMITED");
+  }
+
+  @Test
+  void brokerAuthFailureMapsTo424AndPerMinuteLimitTo429WithoutLeakingDetails() {
+    ResponseEntity<ErrorResponse> auth =
+        handler.handleBrokerApi(new BrokerApiException("auth_failed", "HTTP 403 secret-detail"));
+    ResponseEntity<ErrorResponse> limited =
+        handler.handleBrokerApi(new BrokerApiException("rate_limited", "HTTP 403"));
+    ResponseEntity<ErrorResponse> other =
+        handler.handleBrokerApi(new BrokerApiException("kis_api_error", "msg1=secret-detail"));
+
+    assertThat(auth.getStatusCode()).isEqualTo(HttpStatus.FAILED_DEPENDENCY);
+    assertThat(auth.getBody().getError()).isEqualTo("BROKER_AUTH_FAILED");
+    assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    assertThat(other.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+    assertThat(auth.getBody().getMessage()).doesNotContain("secret-detail");
+    assertThat(other.getBody().getMessage()).doesNotContain("secret-detail");
+  }
+
+  @Test
   void conflictExceptionMapsTo409() {
     ResponseEntity<ErrorResponse> response =
         handler.handleApiCredentialConflict(
