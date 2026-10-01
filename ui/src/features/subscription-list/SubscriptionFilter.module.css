@@ -6,10 +6,10 @@
 
 .button {
   padding: 8px 16px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background-color: #fff;
-  color: #374151;
+  background-color: var(--surface);
+  color: var(--ink);
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
@@ -20,11 +20,13 @@
 }
 
 .button:hover {
-  border-color: #93c5fd;
+  border-color: var(--sea);
 }
 
 .button[aria-pressed='true'] {
-  background-color: #2563eb;
-  border-color: #3b82f6;
-  color: #fff;
+  background-color: var(--primary);
+  border-color: var(--link);
+  color: var(--on-primary);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }

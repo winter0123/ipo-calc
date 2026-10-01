@@ -1,14 +1,15 @@
 .container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 24px 16px;
+  --page-max: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .title {
   margin: 0 0 24px;
   font-size: 24px;
   font-weight: 600;
-  color: #333;
+  color: var(--ink);
 }
 
 /* 반응형 */

@@ -1,104 +1,219 @@
+/*
+ * 바다 테마 디자인 토큰.
+ * 브랜드 4색(#439BF5 바다 파랑, #ABF7EE 아쿠아, #FFFFFF 흰색, #B9E68B 라임)은 면·강조에 쓴다.
+ * 브랜드 파랑 위의 흰 글자는 대비가 2.9:1이라 AA(4.5:1)에 못 미치므로, 글자·링크·테두리에는 같은 계열의
+ * 진한 파생색을 쓴다(대비는 WCAG 계산값, 값 옆 주석).
+ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* 브랜드 */
+  --sea: #439bf5;
+  --aqua: #abf7ee;
+  --white: #ffffff;
+  --lime: #b9e68b;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* 글자·링크 (파생색) */
+  --ink: #0b2a4a; /* 흰 배경 14.5:1, 브랜드 파랑 5.0:1 */
+  --ink-muted: #3e5a75; /* 흰 배경 7.2:1 */
+  --link: #1f6bc0; /* 흰 배경 5.4:1 */
+  --link-hover: #185aa3; /* 흰 배경 6.9:1 */
+
+  /* 면 */
+  --surface: #ffffff;
+  --surface-soft: #f3fbff;
+  --surface-aqua: #e8fefb;
+  --surface-sea: #eaf4fe;
+  --surface-lime: #eef9dc;
+
+  /* 선 */
+  --border: #d5e7f4;
+  --border-strong: #5f8db8; /* 입력창 등 UI 경계, 흰 배경 3.5:1 */
+
+  /* 기본 동작(버튼 등) */
+  --primary: var(--sea);
+  --primary-hover: #6ab1f8;
+  --primary-active: #5aa6f7;
+  --on-primary: var(--ink);
+
+  /* 상태 */
+  --success-bg: #e9f8d4;
+  --success-border: var(--lime);
+  --success-ink: #2e5a0b;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
+  --danger-border: #f2b8b5;
+  --warning-bg: #fff3d1;
+  --warning-border: #f0c24b;
+  --warning-ink: #6b4300;
+  --info-bg: var(--surface-aqua);
+
+  /* 모양 */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-card: 0 1px 2px rgba(11, 42, 74, 0.06), 0 10px 28px rgba(67, 155, 245, 0.14);
+  --shadow-pop: 0 18px 48px rgba(11, 42, 74, 0.24);
+  --focus-ring: 0 0 0 3px rgba(67, 155, 245, 0.45);
+
+  /* 글꼴 */
+  --sans: 'Pretendard Variable', Pretendard, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: var(--sans);
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  /* 기존 이름 호환(일부 모듈이 아직 사용) */
+  --text: var(--ink-muted);
+  --text-h: var(--ink);
+  --bg: var(--surface);
+  --accent: var(--link);
+  --code-bg: var(--surface-sea);
+
+  font: 16px/1.6 var(--sans);
+  letter-spacing: -0.01em;
+  color-scheme: light;
+  color: var(--ink);
+  background: var(--surface);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+* {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  min-height: 100svh;
+  background:
+    radial-gradient(900px 340px at 85% -80px, rgba(171, 247, 238, 0.7), transparent 70%),
+    radial-gradient(700px 300px at 5% -60px, rgba(67, 155, 245, 0.16), transparent 70%),
+    var(--surface);
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+  color: var(--ink);
+  letter-spacing: -0.02em;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 8px 0 20px;
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.3;
   margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
 }
+
+h3 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0 0 8px;
+}
+
 p {
   margin: 0;
 }
 
-code {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+a {
+  color: var(--link);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: 6px;
   background: var(--code-bg);
+  color: var(--ink);
+}
+
+/* 폼 컨트롤 공통 */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input:not([type='checkbox']):not([type='radio']):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--link);
+  box-shadow: var(--focus-ring);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface-sea);
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--link);
+}
+
+label {
+  color: var(--ink);
+}
+
+/* 표 공통 */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  background: var(--surface-sea);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 26px;
+    margin: 4px 0 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

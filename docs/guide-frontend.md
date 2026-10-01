@@ -78,3 +78,21 @@ pnpm run build
 - React Compiler가 켜져 있다(`vite.config.ts`, Vitest도 상속). react-hook-form의 `formState`는 제자리 변경 객체라 메모이제이션과 충돌하므로 `useForm`을 쓰는 컴포넌트는 함수 첫 줄에 `'use no memo'`를 둔다. 수동 `useMemo`/`useCallback`은 새로 추가하지 않는다.
 - 페이지는 `app/App.tsx`에서 `React.lazy`로 불러오고, `Suspense`는 `MainLayout`의 `<Outlet />` 주변에 둔다(페이지 전환 중에도 레이아웃 유지). 새 페이지도 같은 방식으로 추가하고, 라우트 테스트는 `findBy*`로 기다린다.
 - 폼 오류 영역은 `role="alert"`로 표시한다. E2E·접근성 스캔 선택자(`tools/e2e/e2e.mjs`의 `errorTexts`)도 이에 맞춰져 있으므로 마크업을 바꾸면 `pnpm run e2e`를 함께 돌린다.
+
+## 8. 디자인 토큰·바다 테마 (2026-10-01)
+
+사용자가 정한 브랜드 4색을 전체 UI에 적용했다. 토큰은 `ui/src/app/styles/index.css`에만 있고, **CSS 모듈에는 색 hex를 직접 쓰지 않는다**(`var(--...)`만 쓴다).
+
+| 토큰 | 값 | 쓰임 |
+|---|---|---|
+| `--sea` | `#439BF5` | 기본 버튼 면, 탭 선택, 강조선, 스피너 |
+| `--aqua` | `#ABF7EE` | 헤더 그라디언트 끝, 정보 상자 테두리, 보조 카드 면(`--surface-aqua`) |
+| `--white` / `--surface` | `#FFFFFF` | 카드·입력창 면 |
+| `--lime` | `#B9E68B` | 수익 카드 강조, 성공 상태(`--success-*`) |
+
+- **브랜드색만으로는 글자 대비가 모자란다.** 흰 글자는 `#439BF5` 위에서 2.90:1(AA 4.5:1 미달)이라, **브랜드 파랑 위의 글자는 `--ink`(#0B2A4A, 5.0:1)**를 쓴다. 글자·링크는 `--ink`(14.5:1)·`--ink-muted`(#3E5A75, 7.2:1)·`--link`(#1F6BC0, 5.4:1)·`--link-hover`(#185AA3, 6.9:1)로 쓰고, 입력창 테두리는 `--border-strong`(#5F8DB8, 3.5:1)이다. 새 색 조합을 만들면 접근성 스캔(`tools/accessibility-scan`)으로 대비를 확인한다.
+- 오류(`--danger` #B3261E)·경고(`--warning-*`)는 팔레트와 별개의 의미색이다.
+- **다크 모드는 지원하지 않는다**(`color-scheme: light`). 이전 구현은 루트 글자색만 어두워지고 카드 면은 흰색이라 깨졌다.
+- **레이아웃**: `MainLayout`이 모든 화면의 루트를 같은 카드로 감싼다(`.main > *`). 화면은 CSS 변수 `--page-max`로 폭만 정한다(예: 로그인 480px, 폼 640px, 대시보드 1200px). 화면 루트에 자체 패딩·`max-width`·`margin: auto`를 넣지 않는다.
+- **글꼴·아이콘**: Pretendard Variable(`pretendard` 패키지, 동적 서브셋, 외부 CDN 없음)과 `lucide-react`(사용하는 아이콘만 import, 장식용은 `aria-hidden`).
+- **내비게이션**은 로그인한 계정에만 보인다(`/auth/me`).

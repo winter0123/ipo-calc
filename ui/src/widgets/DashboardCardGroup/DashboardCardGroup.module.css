@@ -18,3 +18,24 @@
     grid-template-columns: repeat(5, 1fr);
   }
 }
+
+/* 카드마다 브랜드 색으로 구분한다: 투자금=바다 파랑, 수익=라임, 수익률·참여=아쿠아 */
+.grid > :nth-child(1) {
+  background: var(--surface-sea);
+  border-color: var(--sea);
+  border-top-width: 4px;
+}
+
+.grid > :nth-child(2),
+.grid > :nth-child(3) {
+  background: var(--surface-lime);
+  border-color: var(--lime);
+  border-top-width: 4px;
+}
+
+.grid > :nth-child(4),
+.grid > :nth-child(5) {
+  background: var(--surface-aqua);
+  border-color: var(--aqua);
+  border-top-width: 4px;
+}

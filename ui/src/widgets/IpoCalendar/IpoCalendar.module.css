@@ -4,6 +4,7 @@
   gap: 16px;
   max-width: 800px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .header {
@@ -91,11 +92,11 @@
 }
 
 .weekday:first-child {
-  color: #d32f2f;
+  color: var(--danger);
 }
 
 .weekday:last-child {
-  color: #1976d2;
+  color: var(--link);
 }
 
 .grid {
@@ -171,19 +172,19 @@
 
 .eventSubscriptionStart {
   background: rgba(25, 118, 210, 0.15);
-  color: #1976d2;
+  color: var(--link);
   border: 1px solid rgba(25, 118, 210, 0.3);
 }
 
 .eventSubscriptionEnd {
   background: rgba(211, 47, 47, 0.15);
-  color: #d32f2f;
+  color: var(--danger);
   border: 1px solid rgba(211, 47, 47, 0.3);
 }
 
 .eventListing {
   background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  color: var(--success-ink);
   border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
@@ -233,19 +234,19 @@
 
 .eventSubscriptionStart {
   background: rgba(25, 118, 210, 0.15);
-  color: #1976d2;
+  color: var(--link);
   border: 1px solid rgba(25, 118, 210, 0.3);
 }
 
 .eventSubscriptionEnd {
   background: rgba(211, 47, 47, 0.15);
-  color: #d32f2f;
+  color: var(--danger);
   border: 1px solid rgba(211, 47, 47, 0.3);
 }
 
 .eventListing {
   background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  color: var(--success-ink);
   border: 1px solid rgba(76, 175, 80, 0.3);
 }
 

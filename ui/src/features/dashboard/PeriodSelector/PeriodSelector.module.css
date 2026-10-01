@@ -3,8 +3,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border);
   border-radius: 8px;
   flex-wrap: wrap;
 }
@@ -25,7 +25,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
   text-align: center;
 }
 
@@ -45,55 +45,55 @@
 
 .label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ink-muted);
   font-weight: 500;
 }
 
 .input {
   width: 100px;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--ink);
   text-align: center;
 }
 
 .input:focus {
   outline: none;
-  border-color: #1976d2;
+  border-color: var(--link);
   box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
 }
 
 .select {
   width: 100px;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
-  color: #1f2937;
-  background-color: #fff;
+  color: var(--ink);
+  background-color: var(--surface);
   cursor: pointer;
 }
 
 .select:focus {
   outline: none;
-  border-color: #1976d2;
+  border-color: var(--link);
   box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
 }
 
 .inputError {
-  border-color: #dc2626;
+  border-color: var(--danger);
 }
 
 .inputError:focus {
-  border-color: #dc2626;
+  border-color: var(--danger);
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
 .error {
   font-size: 12px;
-  color: #dc2626;
+  color: var(--danger);
   white-space: nowrap;
 }
 
@@ -102,9 +102,9 @@
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  background-color: #fff;
-  color: #1976d2;
-  border: 1px solid #1976d2;
+  background-color: var(--surface);
+  color: var(--link);
+  border: 1px solid var(--link);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -119,8 +119,8 @@
 }
 
 .navButton:hover:not(:disabled) {
-  background-color: #1976d2;
-  color: #fff;
+  background-color: var(--primary-hover);
+  color: var(--on-primary);
 }
 
 .navButton:focus:not(:disabled) {
@@ -131,25 +131,26 @@
 .navButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  color: #9ca3af;
-  border-color: #d1d5db;
+  color: var(--ink-muted);
+  border-color: var(--border);
 }
 
 .button {
   padding: 8px 16px;
-  background-color: #1976d2;
-  color: #fff;
+  background-color: var(--primary);
+  color: var(--on-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 650;
   cursor: pointer;
   transition: background-color 0.2s;
   white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .button:hover {
-  background-color: #1565c0;
+  background-color: var(--primary-hover);
 }
 
 .button:focus {

@@ -1,8 +1,8 @@
 .card {
   padding: 16px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -11,14 +11,14 @@
 
 .label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ink-muted);
   font-weight: 500;
 }
 
 .value {
   font-size: 20px;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* 모바일 */

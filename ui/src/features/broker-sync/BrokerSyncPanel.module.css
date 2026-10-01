@@ -16,14 +16,17 @@
 
 .notice {
   margin: 0;
-  padding: 8px 12px;
-  background: #e3f2fd;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background: var(--info-bg);
+  border: 1px solid var(--aqua);
+  border-left: 4px solid var(--sea);
+  border-radius: var(--radius-sm);
   font-size: 14px;
+  color: var(--ink);
 }
 
 .error {
-  color: #d32f2f;
+  color: var(--danger);
   font-size: 14px;
 }
 
@@ -53,7 +56,7 @@
 .table th,
 .table td {
   padding: 6px 8px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
 }
@@ -62,7 +65,7 @@
   width: 96px;
   min-height: 44px;
   padding: 4px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
 }
 
@@ -81,6 +84,6 @@
 .range input {
   min-height: 44px;
   padding: 4px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
 }

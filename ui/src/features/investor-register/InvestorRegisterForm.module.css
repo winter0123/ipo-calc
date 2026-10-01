@@ -15,17 +15,17 @@
 .field label {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--ink);
 }
 
 .field input,
 .field select {
   padding: 12px 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 16px;
   font-family: inherit;
-  background-color: #fff;
+  background-color: var(--surface);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -34,13 +34,13 @@
 .field input:focus,
 .field select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--link);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .field input[aria-invalid='true'],
 .field select[aria-invalid='true'] {
-  border-color: #ef4444;
+  border-color: var(--danger);
 }
 
 .field input[aria-invalid='true']:focus,
@@ -50,38 +50,39 @@
 
 .error {
   font-size: 13px;
-  color: #ef4444;
+  color: var(--danger);
 }
 
 .formError {
   padding: 10px 12px;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger-border);
   border-radius: 6px;
   font-size: 14px;
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .submitButton {
   margin-top: 8px;
   padding: 14px 20px;
-  background-color: #2563eb;
-  color: #fff;
+  background-color: var(--primary);
+  color: var(--on-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 650;
   font-family: inherit;
   cursor: pointer;
   transition: background-color 0.2s;
+  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #1d4ed8;
+  background-color: var(--primary-hover);
 }
 
 .submitButton:disabled {
-  background-color: #93c5fd;
+  background-color: var(--surface-sea);
   cursor: not-allowed;
 }
 

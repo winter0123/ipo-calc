@@ -14,9 +14,9 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background-color: #fff;
+  background-color: var(--surface);
 }
 
 .cardHeader {
@@ -29,7 +29,7 @@
 .ipoName {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .badgeUnallocated,
@@ -42,13 +42,13 @@
 }
 
 .badgeUnallocated {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .badgeAllocated {
-  background-color: #dcfce7;
-  color: #166534;
+  background-color: var(--success-bg);
+  color: var(--success-ink);
 }
 
 .cardBody {
@@ -62,39 +62,40 @@
   display: flex;
   justify-content: space-between;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--ink-muted);
 }
 
 .cardRow dt {
-  color: #6b7280;
+  color: var(--ink-muted);
 }
 
 .cardRow dd {
   margin: 0;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .allocateButton {
   align-self: flex-start;
   padding: 8px 16px;
-  background-color: #2563eb;
-  color: #fff;
+  background-color: var(--primary);
+  color: var(--on-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 650;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .allocateButton:hover {
-  background-color: #1d4ed8;
+  background-color: var(--primary-hover);
 }
 
 .empty {
   padding: 24px;
   text-align: center;
-  color: #6b7280;
+  color: var(--ink-muted);
 }
 
 @media (min-width: 640px) {
