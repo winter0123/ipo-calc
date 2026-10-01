@@ -11,6 +11,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfit;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -261,6 +263,62 @@ class KisPeriodTradeProfitClientTest {
                 client.queryPeriodTradeProfit(
                     1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .isInstanceOf(BrokerApiException.class);
+  }
+
+  private static final String PER_SECOND_LIMIT_BODY =
+      "{\"rt_cd\":\"1\",\"msg_cd\":\"EGW00201\",\"msg1\":\"초당 거래건수를 초과하였습니다.\"}";
+
+  @Test
+  void queryPeriodTradeProfit_retriesAfterPerSecondLimitAndSucceeds() {
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(
+            withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PER_SECOND_LIMIT_BODY));
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(withSuccess(pageBody("20260115", "", ""), MediaType.APPLICATION_JSON));
+
+    KisPeriodTradeProfit result =
+        client.queryPeriodTradeProfit(
+            1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+    assertThat(result.details()).hasSize(1);
+    mockServer.verify();
+  }
+
+  @Test
+  void queryPeriodTradeProfit_givesUpAsRateLimitedAfterRepeatedPerSecondLimit() {
+    mockServer
+        .expect(times(3), requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(
+            withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PER_SECOND_LIMIT_BODY));
+
+    assertThatThrownBy(
+            () ->
+                client.queryPeriodTradeProfit(
+                    1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo("rate_limited"));
+    mockServer.verify();
+  }
+
+  @Test
+  void queryPeriodTradeProfit_otherServerErrorsAreNotRetried() {
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(withServerError());
+
+    assertThatThrownBy(
+            () ->
+                client.queryPeriodTradeProfit(
+                    1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        .isInstanceOf(BrokerApiException.class);
+    mockServer.verify();
   }
 
   private String pageBody(String tradeDate, String fk100, String nk100) {

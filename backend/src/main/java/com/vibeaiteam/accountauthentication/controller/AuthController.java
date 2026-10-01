@@ -1,12 +1,14 @@
 package com.vibeaiteam.accountauthentication.controller;
 
 import com.vibeaiteam.accountauthentication.application.service.AuthService;
+import com.vibeaiteam.accountauthentication.controller.dto.CurrentAccountResponse;
 import com.vibeaiteam.accountauthentication.controller.dto.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +34,14 @@ public class AuthController {
       HttpServletResponse httpServletResponse) {
     authService.login(request, httpServletRequest, httpServletResponse);
     return ResponseEntity.ok().build();
+  }
+
+  /**
+   * 현재 로그인한 계정의 ID·이메일·이름·역할을 반환한다. 로그인하지 않았으면 401이다.
+   */
+  @GetMapping("/me")
+  public ResponseEntity<CurrentAccountResponse> me() {
+    return ResponseEntity.ok(authService.currentAccount());
   }
 
   /**
