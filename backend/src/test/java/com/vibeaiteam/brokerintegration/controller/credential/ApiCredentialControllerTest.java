@@ -21,6 +21,7 @@ import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.Acco
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -146,28 +147,8 @@ class ApiCredentialControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", "securePass123!",
-                            "name", "인증정보테스터")))
-                .session(session))
-        .andReturn();
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of("email", testEmail, "password", "securePass123!")))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, session, testEmail, "securePass123!", "인증정보테스터");
   }
 
   private Long registerFirm() {

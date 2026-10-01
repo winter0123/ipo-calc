@@ -24,6 +24,7 @@ import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.Securiti
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -142,30 +143,8 @@ class SaleControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", testName)))
-                .session(session))
-        .andReturn();
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword)))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, session, testEmail, testPassword, testName);
   }
 
   private Long registerInvestorAndGetId() throws Exception {

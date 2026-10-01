@@ -19,6 +19,7 @@ import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.Acco
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -131,33 +132,9 @@ class SecuritiesAccountControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", testName)))
-                .session(session))
-        .andReturn();
-
-    Account account = accountRepository.findByEmail(testEmail);
-    accountId = account.getId();
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword)))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
+    accountId = accountRepository.findByEmail(testEmail).getId();
+    AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
 
   private Long registerFirm() throws Exception {

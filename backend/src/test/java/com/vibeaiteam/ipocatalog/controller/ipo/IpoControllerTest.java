@@ -15,6 +15,7 @@ import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -663,34 +664,11 @@ class IpoControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", testName))))
-        .andReturn();
-
+    AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
     Account admin = accountRepository.findByEmail(testEmail);
     admin.setRole(AccountRole.ADMIN);
     accountRepository.save(admin);
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword))))
-        .andReturn();
+    AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
 
   private Map<String, Object> readBody(MvcResult result) throws Exception {

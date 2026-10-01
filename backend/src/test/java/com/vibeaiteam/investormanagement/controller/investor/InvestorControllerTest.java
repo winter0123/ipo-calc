@@ -13,6 +13,7 @@ import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -98,34 +99,9 @@ class InvestorControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    // 회원가입(/accounts) → 자동 로그인 세션 생성 후 로그인(/auth/login)으로 세션 확정
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", testName)))
-                .session(session))
-        .andReturn();
-
-    Account account = accountRepository.findByEmail(testEmail);
-    accountId = account.getId();
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword)))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
+    accountId = accountRepository.findByEmail(testEmail).getId();
+    AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
 
   private List<Investor> investorsOfAccount() {
