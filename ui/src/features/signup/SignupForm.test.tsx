@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SignupForm from './SignupForm.tsx'
@@ -32,17 +34,17 @@ function renderSignupForm() {
   )
 }
 
-function fillAndSubmit(email: string, password: string, name: string) {
+async function fillAndSubmit(email: string, password: string, name: string) {
   if (email !== undefined) {
-    fireEvent.change(screen.getByLabelText('이메일'), { target: { value: email } })
+    await fill(screen.getByLabelText('이메일'), email)
   }
   if (password !== undefined) {
-    fireEvent.change(screen.getByLabelText('비밀번호'), { target: { value: password } })
+    await fill(screen.getByLabelText('비밀번호'), password)
   }
   if (name !== undefined) {
-    fireEvent.change(screen.getByLabelText('이름'), { target: { value: name } })
+    await fill(screen.getByLabelText('이름'), name)
   }
-  fireEvent.click(screen.getByRole('button', { name: /가입/i }))
+  await userEvent.click(screen.getByRole('button', { name: /가입/i }))
 }
 
 describe('SignupForm', () => {
@@ -54,7 +56,7 @@ describe('SignupForm', () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'test@example.com' })
     renderSignupForm()
 
-    fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
+    await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -78,7 +80,7 @@ describe('SignupForm', () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
     renderSignupForm()
 
-    fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
+    await fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
 
     expect(await screen.findByText('이미 사용 중인 이메일입니다.')).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
@@ -90,7 +92,7 @@ describe('SignupForm', () => {
     )
     renderSignupForm()
 
-    fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
+    await fillAndSubmit('dup@example.com', 'passw0rd!', '홍길동')
 
     expect(await screen.findByText('이미 사용 중인 이메일입니다.')).toBeInTheDocument()
   })
@@ -101,7 +103,7 @@ describe('SignupForm', () => {
     )
     renderSignupForm()
 
-    fillAndSubmit('bad@example.com', 'passw0rd!', '홍길동')
+    await fillAndSubmit('bad@example.com', 'passw0rd!', '홍길동')
 
     await waitFor(() => {
       expect(screen.queryByText('이름은 2자 이상이어야 합니다.')).toBeInTheDocument()
@@ -111,7 +113,7 @@ describe('SignupForm', () => {
   it('이메일 형식 오류 시 클라이언트 검증 메시지', async () => {
     renderSignupForm()
 
-    fillAndSubmit('not-email', 'passw0rd!', '홍길동')
+    await fillAndSubmit('not-email', 'passw0rd!', '홍길동')
 
     expect(await screen.findByText('올바른 이메일 형식을 입력해 주세요.')).toBeInTheDocument()
     expect(apiFetch).not.toHaveBeenCalled()
@@ -120,7 +122,7 @@ describe('SignupForm', () => {
   it('비밀번호 조건 미충족 시 메시지', async () => {
     renderSignupForm()
 
-    fillAndSubmit('test@example.com', 'short', '홍길동')
+    await fillAndSubmit('test@example.com', 'short', '홍길동')
 
     expect(await screen.findByText('비밀번호는 최소 8자 이상이어야 합니다.')).toBeInTheDocument()
     expect(apiFetch).not.toHaveBeenCalled()
@@ -129,7 +131,7 @@ describe('SignupForm', () => {
   it('필수값 누락 시 검증 메시지', async () => {
     renderSignupForm()
 
-    fillAndSubmit('', '', '')
+    await fillAndSubmit('', '', '')
 
     const messages = await screen.findAllByText('필수 입력 항목입니다.')
     expect(messages.length).toBeGreaterThanOrEqual(1)

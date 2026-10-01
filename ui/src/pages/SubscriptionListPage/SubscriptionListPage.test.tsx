@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SubscriptionListPage from './SubscriptionListPage.tsx'
@@ -115,7 +116,7 @@ describe('SubscriptionListPage', () => {
     renderPage()
     await waitForListLoaded()
 
-    fireEvent.click(screen.getByRole('button', { name: '미배정' }))
+    await userEvent.click(screen.getByRole('button', { name: '미배정' }))
 
     expect(screen.getByText('카카오뱅크')).toBeInTheDocument()
     expect(screen.queryByText('삼성바이오로직스')).not.toBeInTheDocument()
@@ -126,7 +127,7 @@ describe('SubscriptionListPage', () => {
     renderPage()
     await waitForListLoaded()
 
-    fireEvent.click(screen.getByRole('button', { name: '배정완료' }))
+    await userEvent.click(screen.getByRole('button', { name: '배정완료' }))
 
     expect(screen.getByText('삼성바이오로직스')).toBeInTheDocument()
     expect(screen.queryByText('카카오뱅크')).not.toBeInTheDocument()
@@ -139,15 +140,15 @@ describe('SubscriptionListPage', () => {
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
 
-    fireEvent.click(screen.getByRole('button', { name: '미배정' }))
+    await userEvent.click(screen.getByRole('button', { name: '미배정' }))
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getByText('카카오뱅크')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '배정완료' }))
+    await userEvent.click(screen.getByRole('button', { name: '배정완료' }))
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getByText('삼성바이오로직스')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '전체' }))
+    await userEvent.click(screen.getByRole('button', { name: '전체' }))
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
@@ -221,10 +222,10 @@ describe('SubscriptionListPage', () => {
       ),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '전체' }))
+    await userEvent.click(screen.getByRole('button', { name: '전체' }))
     await waitFor(() => expect(screen.getByTestId('search')).toBeEmptyDOMElement())
 
-    fireEvent.click(screen.getByRole('button', { name: '미배정' }))
+    await userEvent.click(screen.getByRole('button', { name: '미배정' }))
     await waitFor(() =>
       expect(screen.getByTestId('search')).toHaveTextContent('?status=unallocated'),
     )

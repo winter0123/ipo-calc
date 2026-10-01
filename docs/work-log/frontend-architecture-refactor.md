@@ -29,7 +29,7 @@
 
 ### D-E20-004: 의도적으로 남긴 것
 - `SaleRegisterForm`의 `useEffect`(배정 조회 결과를 RHF 값에 동기화)와 `AllocationRegisterPage`의 redirect effect는 외부 데이터/내비게이션 부수효과라 유지.
-- `fireEvent`→`user-event` 이전은 LoginForm만 수행, 나머지는 점진 이전.
+- `fireEvent`→`user-event` 이전은 D-E20-010에서 전부 완료.
 
 ### 검증(`ui/`, 2026-10-01)
 - test 313 passed(기준선 266), lint·typecheck·format:check·build PASS. axe·E2E는 NOT_RUN(별도 승인 전, 운영/공유 데이터 대상 실행 금지).
@@ -50,3 +50,9 @@
 - **E2E·axe 재실측**: E2E 10/10, axe 12개 화면 위반 0건(상세 `docs/qa/e2e-report.md`). 첫 실행의 E2E-3·4·6 실패는 E2E 스크립트가 `[aria-live="polite"]`만 찾는데 E20이 폼 오류를 `role="alert"`로 바꿨기 때문이었다(제품은 정상). 스크립트 선택자를 보강했다.
 - **Zod 확대(D-E20-008, 2026-10-01 "묻지말고 계속 진행")**: DB NOT NULL 대조(V2~V10, V14)와 백엔드 DTO 매핑을 확인한 뒤 GET 읽기 모델 6개(`ipo`, `investor`, `securities-account`, `securities-firm`, `subscription`(투자 내역 목록·상세), `profit`)에 확대했다. 대조 결과 UI 타입이 non-null이라 적었지만 실제로 null이 올 수 있는 곳: IPO의 `stockCode`·`roundLabel`·`lower/upperBandPrice`·`fixedPrice`·`offeringShareCount`, 투자 내역의 `ipoName`·`ipoFixedPrice`·매도 `amount/fee/tax/otherCost`, 수익의 `saleAmount`, 증권사의 `externalCode`·`businessRegistrationNumber`, 증권계좌의 `securitiesFirmName`·`accountName`. 타입 체크가 드러낸 null 취약 지점(`InvestmentHistoryDetail`의 `fee.toLocaleString()` 등, `ProfitRow`, 캘린더 가격 표기)은 `-`/생략 표시로 고쳤다(수수료 없는 매도 상세에서 크래시하던 잠재 버그). 테스트 fixture 4개 파일은 실제 DTO와 달라 고쳤다(`investorName`·`securitiesFirmName` 누락, 매도 폼 fixture의 `allocation`이 `AllocationSummaryDto`가 아니라 배정 엔티티 모양이었음). 이전 판단("확대 보류"): 백엔드 응답 DTO가 전부 박싱 타입(`Long` 등)이고, IPO 같은 데이터는 외부 동기화(OpenDART 등)로 채워져 UI 타입이 non-null로 적어 둔 필드(`fixedPrice`, `stockCode` 등)에 실제로 null이 올 수 있다. 엄격한 스키마를 실응답에 걸면 멀쩡한 화면이 ZodError로 깨질 수 있어, DB의 NOT NULL 제약(Flyway)을 먼저 대조해 스키마를 만들어야 한다. 대시보드 파일럿은 백엔드가 원시 `double`/비-null 합계를 만드는 것을 확인한 뒤 적용했다. 후속 후보는 청구 금액 계산이 있는 `entities/profit`, `entities/subscription`(투자 내역).
 - **staleTime**: 현행 유지(0). 금융 수치 갱신 지연 위험이 이득보다 크다고 판단해 바꾸지 않았다.
+
+### D-E20-010: `fireEvent` → `user-event` 전면 이전 (2026-10-01)
+- 테스트 18개 파일의 `fireEvent` 215건(click 118·change 89·keyDown 8)을 `userEvent`로 이전해 0건이 됐다. 입력은 `src/test/fill.ts`의 `fill`(select는 `selectOptions`, 그 외 `clear`+`type`)로 통일했다. 새 의존성 없음, 제품 코드 변경 없음.
+- `IpoCalendar.test`는 `vi.useFakeTimers()` 전체 모킹이 RTL/user-event 비동기를 멈춰 `toFake: ['Date']`로 좁혔다.
+- **발견(제품 동작, 미변경)**: `ProfitViewPage`의 매도건 ID는 값이 한 글자라도 있으면 `enabled`가 켜져 조회가 즉시 실행되고, 조회 중에는 입력칸이 `disabled`가 된다. 실제로 여러 자리 ID를 타이핑하면 첫 글자에서 조회가 나가고 입력이 잘린다. `fireEvent.change`가 값을 한 번에 넣어 가려졌던 문제다. 해당 테스트는 `paste`로 입력하게 했다. 개선(조회 버튼 클릭 시에만 조회)은 동작 변경이라 후속 제안.
+- 검증(`ui/`): test 339 PASS, lint·typecheck·format:check·build PASS.

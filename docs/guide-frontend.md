@@ -70,7 +70,7 @@ pnpm run build
 - `aria-describedby`는 가리키는 요소가 실제로 렌더될 때만 지정한다.
 - 폼 단위 오류 메시지는 `role="alert"`로 렌더한다.
 - 상태 코드 분기는 문자열 매칭이 아니라 `toErrorMessage(error, { byStatus, fallback })`를 쓴다.
-- `jsx-a11y/no-static-element-interactions`, `click-events-have-key-events`는 error다. 새 테스트는 `fireEvent`보다 `@testing-library/user-event`를 쓴다(기존 테스트는 점진 이전).
+- `jsx-a11y/no-static-element-interactions`, `click-events-have-key-events`는 error다. 테스트의 사용자 입력은 `@testing-library/user-event`로 한다(`fireEvent` 사용 0건). 입력칸 채우기는 `src/test/fill.ts`의 `fill`을 쓴다. `vi.useFakeTimers()` 전체 모킹은 RTL/user-event를 멈추게 하므로 `toFake: ['Date']`만 쓴다.
 - 존재하지 않는 경로는 `NotFoundPage`(MainLayout 안), 렌더 중 예외는 `app/ErrorBoundary`가 처리한다. `/`는 `Hello`를 유지하고 redirect하지 않는다.
 - 목록 필터는 URL 쿼리가 단일 출처다(`InvestmentHistoryPage`: `investorId`·`securitiesAccountId`·`ipoId`, `SubscriptionListPage`: `status`). `useSearchParams`로 읽고 쓰며 변경은 `replace`로 history를 쌓지 않는다. 한 번의 사용자 동작에서 여러 키를 바꿀 때는 `setSearchParams`를 연속 호출하지 말고 한 번에(패치 객체로) 바꾼다 — React Router는 함수형 갱신을 큐잉하지 않는다.
 - 서버 응답 런타임 검증은 Zod로 한다(`features/dashboard` + `entities/{ipo,investor,securities-account,securities-firm,subscription,profit}`의 GET 응답). 스키마를 단일 출처로 두고 타입은 `z.infer`로 파생하며, `api-client`에서 `schema.parse`로 경계에서 검증한다. 계약과 다르면 `ZodError`로 실패해 TanStack Query의 error 상태로 흐른다. 다른 feature로 넓힐 때도 같은 모양(`types.ts`에 스키마, `api-client.ts`에서 parse)을 따른다. 공통 헬퍼는 `shared/api/parsed.ts`의 `apiGetParsed`다. 스키마는 DB NOT NULL 제약(Flyway)과 백엔드 DTO 매핑에 맞춘다 — DB가 nullable이거나 DTO가 그대로 넘기는 필드(IPO 가격·코드, 매도 금액·수수료·세금, 증권사명·계좌명 등)는 `.nullable()`이고, 화면은 `null`을 `-`로 표시하거나 가격 표기를 생략한다. 테스트 fixture는 실제 DTO 모양(모든 키 존재, 없으면 `null`)을 따른다.

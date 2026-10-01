@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SubscriptionRegisterForm from './SubscriptionRegisterForm.tsx'
@@ -101,13 +103,13 @@ async function waitForDropdownsLoaded() {
 }
 
 async function fillValidForm() {
-  fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+  await fill(screen.getByLabelText('투자자'), '1')
   await screen.findByRole('option', { name: '미래에셋증권' })
-  fireEvent.change(screen.getByLabelText('증권계좌'), { target: { value: '1' } })
-  fireEvent.change(screen.getByLabelText('공모주'), { target: { value: '1' } })
-  fireEvent.change(screen.getByLabelText('청약수량'), { target: { value: '100' } })
-  fireEvent.change(screen.getByLabelText('증거금'), { target: { value: '0' } })
-  fireEvent.change(screen.getByLabelText('청약일시'), { target: { value: '2026-09-21T10:00' } })
+  await fill(screen.getByLabelText('증권계좌'), '1')
+  await fill(screen.getByLabelText('공모주'), '1')
+  await fill(screen.getByLabelText('청약수량'), '100')
+  await fill(screen.getByLabelText('증거금'), '0')
+  await fill(screen.getByLabelText('청약일시'), '2026-09-21T10:00')
 }
 
 describe('SubscriptionRegisterForm', () => {
@@ -149,7 +151,7 @@ describe('SubscriptionRegisterForm', () => {
       expect.anything(),
     )
 
-    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+    await fill(screen.getByLabelText('투자자'), '1')
 
     expect(await screen.findByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
     expect(screen.getByLabelText('증권계좌')).toBeEnabled()
@@ -169,18 +171,18 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
+    await fill(screen.getByLabelText('투자자'), '1')
     await screen.findByRole('option', { name: '미래에셋증권' })
-    fireEvent.change(screen.getByLabelText('증권계좌'), { target: { value: '1' } })
+    await fill(screen.getByLabelText('증권계좌'), '1')
     expect(screen.getByLabelText('증권계좌')).toHaveValue('1')
 
-    fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '2' } })
+    await fill(screen.getByLabelText('투자자'), '2')
 
     await waitFor(() => {
       expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
     })
     expect(screen.getByLabelText('증권계좌')).toHaveValue('')
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
     expect(await screen.findByText('증권계좌를 선택해 주세요.')).toBeInTheDocument()
   })
 
@@ -204,7 +206,7 @@ describe('SubscriptionRegisterForm', () => {
       createdAt: '2026-09-21T00:00:00Z',
       updatedAt: '2026-09-21T00:00:00Z',
     })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -231,7 +233,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('투자자를 선택해 주세요.')).toBeInTheDocument()
@@ -250,8 +252,8 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
 
     await fillValidForm()
-    fireEvent.change(screen.getByLabelText('청약수량'), { target: { value: '0' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('청약수량'), '0')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('0 초과 정수를 입력해 주세요.')).toBeInTheDocument()
@@ -268,8 +270,8 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
 
     await fillValidForm()
-    fireEvent.change(screen.getByLabelText('증거금'), { target: { value: '-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증거금'), '-1')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('0 이상 정수를 입력해 주세요.')).toBeInTheDocument()
@@ -290,7 +292,7 @@ describe('SubscriptionRegisterForm', () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
       new ApiError(404, '존재하지 않는 투자자입니다', '존재하지 않는 투자자입니다'),
     )
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('투자자를 찾을 수 없습니다.')).toBeInTheDocument()
@@ -308,7 +310,7 @@ describe('SubscriptionRegisterForm', () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(
       new ApiError(404, '존재하지 않는 공모주입니다', '존재하지 않는 공모주입니다'),
     )
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('공모주를 찾을 수 없습니다.')).toBeInTheDocument()
@@ -324,7 +326,7 @@ describe('SubscriptionRegisterForm', () => {
     await fillValidForm()
 
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, 'Request failed: 409'))
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('이미 동일한 조건의 청약이 존재합니다.')).toBeInTheDocument()
@@ -340,7 +342,7 @@ describe('SubscriptionRegisterForm', () => {
     await fillValidForm()
 
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(400, 'Request failed: 400'))
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
@@ -356,7 +358,7 @@ describe('SubscriptionRegisterForm', () => {
     await fillValidForm()
 
     vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Failed to fetch'))
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()

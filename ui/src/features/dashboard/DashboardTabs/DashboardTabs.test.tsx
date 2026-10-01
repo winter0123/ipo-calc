@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { DashboardTab } from '../tabs.ts'
 import DashboardTabs from './DashboardTabs.tsx'
 
@@ -14,7 +15,7 @@ describe('DashboardTabs', () => {
     vi.resetAllMocks()
   })
 
-  it('모든 탭이 렌더링됨', () => {
+  it('모든 탭이 렌더링됨', async () => {
     renderDashboardTabs()
 
     expect(screen.getByRole('tab', { name: '전체' })).toBeInTheDocument()
@@ -24,14 +25,14 @@ describe('DashboardTabs', () => {
     expect(screen.getByRole('tab', { name: '연도별' })).toBeInTheDocument()
   })
 
-  it('현재 탭이 aria-selected=true로 표시됨', () => {
+  it('현재 탭이 aria-selected=true로 표시됨', async () => {
     renderDashboardTabs('month')
 
     expect(screen.getByRole('tab', { name: '월별', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '전체', selected: false })).toBeInTheDocument()
   })
 
-  it('aria-valid-attr-value 수정: aria-controls 속성이 없음 (critical 위반 해결)', () => {
+  it('aria-valid-attr-value 수정: aria-controls 속성이 없음 (critical 위반 해결)', async () => {
     renderDashboardTabs()
 
     const tabs = screen.getAllByRole('tab')
@@ -40,7 +41,7 @@ describe('DashboardTabs', () => {
     })
   })
 
-  it('각 탭에 고유한 id가 있음', () => {
+  it('각 탭에 고유한 id가 있음', async () => {
     renderDashboardTabs()
 
     expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('id', 'tab-all')
@@ -53,76 +54,82 @@ describe('DashboardTabs', () => {
     expect(screen.getByRole('tab', { name: '연도별' })).toHaveAttribute('id', 'tab-year')
   })
 
-  it('탭 클릭 시 onTabChange 호출됨', () => {
+  it('탭 클릭 시 onTabChange 호출됨', async () => {
     renderDashboardTabs()
 
-    fireEvent.click(screen.getByRole('tab', { name: '월별' }))
+    await userEvent.click(screen.getByRole('tab', { name: '월별' }))
 
     expect(mockOnTabChange).toHaveBeenCalledWith('month')
   })
 
-  it('키보드 네비게이션: ArrowRight로 다음 탭 이동', () => {
+  it('키보드 네비게이션: ArrowRight로 다음 탭 이동', async () => {
     renderDashboardTabs('all')
 
     const allTab = screen.getByRole('tab', { name: '전체' })
-    fireEvent.keyDown(allTab, { key: 'ArrowRight', code: 'ArrowRight' })
+    allTab.focus()
+    await userEvent.keyboard('{ArrowRight}')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('investor')
   })
 
-  it('키보드 네비게이션: ArrowLeft로 이전 탭 이동', () => {
+  it('키보드 네비게이션: ArrowLeft로 이전 탭 이동', async () => {
     renderDashboardTabs('investor')
 
     const investorTab = screen.getByRole('tab', { name: '투자자별' })
-    fireEvent.keyDown(investorTab, { key: 'ArrowLeft', code: 'ArrowLeft' })
+    investorTab.focus()
+    await userEvent.keyboard('{ArrowLeft}')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('all')
   })
 
-  it('키보드 네비게이션: Home으로 첫 탭 이동', () => {
+  it('키보드 네비게이션: Home으로 첫 탭 이동', async () => {
     renderDashboardTabs('year')
 
     const yearTab = screen.getByRole('tab', { name: '연도별' })
-    fireEvent.keyDown(yearTab, { key: 'Home', code: 'Home' })
+    yearTab.focus()
+    await userEvent.keyboard('{Home}')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('all')
   })
 
-  it('키보드 네비게이션: End로 마지막 탭 이동', () => {
+  it('키보드 네비게이션: End로 마지막 탭 이동', async () => {
     renderDashboardTabs('all')
 
     const allTab = screen.getByRole('tab', { name: '전체' })
-    fireEvent.keyDown(allTab, { key: 'End', code: 'End' })
+    allTab.focus()
+    await userEvent.keyboard('{End}')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('year')
   })
 
-  it('Enter로 탭 선택', () => {
+  it('Enter로 탭 선택', async () => {
     renderDashboardTabs('all')
 
     const allTab = screen.getByRole('tab', { name: '전체' })
-    fireEvent.keyDown(allTab, { key: 'Enter', code: 'Enter' })
+    allTab.focus()
+    await userEvent.keyboard('{Enter}')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('all')
   })
 
-  it('Space로 탭 선택', () => {
+  it('Space로 탭 선택', async () => {
     renderDashboardTabs('all')
 
     const allTab = screen.getByRole('tab', { name: '전체' })
-    fireEvent.keyDown(allTab, { key: ' ', code: 'Space' })
+    allTab.focus()
+    await userEvent.keyboard('[Space]')
 
     expect(mockOnTabChange).toHaveBeenCalledWith('all')
   })
 
-  it('비활성 탭은 tabIndex=-1, 활성 탭은 tabIndex=0', () => {
+  it('비활성 탭은 tabIndex=-1, 활성 탭은 tabIndex=0', async () => {
     renderDashboardTabs('month')
 
     expect(screen.getByRole('tab', { name: '월별' })).toHaveAttribute('tabIndex', '0')
     expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('tabIndex', '-1')
   })
 
-  it('tablist에 aria-label이 있음', () => {
+  it('tablist에 aria-label이 있음', async () => {
     renderDashboardTabs()
 
     expect(screen.getByRole('tablist')).toHaveAttribute('aria-label', '대시보드 탭')

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ConfirmDialog from './ConfirmDialog.tsx'
 
 describe('ConfirmDialog', () => {
-  it('isOpen이 false이면 아무것도 렌더링하지 않음', () => {
+  it('isOpen이 false이면 아무것도 렌더링하지 않음', async () => {
     render(
       <ConfirmDialog
         isOpen={false}
@@ -17,7 +18,7 @@ describe('ConfirmDialog', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
-  it('isOpen이 true이면 제목/메시지와 함께 렌더링되고 aria-modal이 적용됨', () => {
+  it('isOpen이 true이면 제목/메시지와 함께 렌더링되고 aria-modal이 적용됨', async () => {
     render(
       <ConfirmDialog
         isOpen={true}
@@ -34,7 +35,7 @@ describe('ConfirmDialog', () => {
     expect(screen.getByText('정말로 삭제하시겠습니까?')).toBeInTheDocument()
   })
 
-  it('확인 버튼 클릭 시 onConfirm 호출', () => {
+  it('확인 버튼 클릭 시 onConfirm 호출', async () => {
     const onConfirm = vi.fn()
     render(
       <ConfirmDialog
@@ -46,11 +47,11 @@ describe('ConfirmDialog', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '확인' }))
+    await userEvent.click(screen.getByRole('button', { name: '확인' }))
     expect(onConfirm).toHaveBeenCalled()
   })
 
-  it('취소 버튼 클릭 시 onCancel 호출', () => {
+  it('취소 버튼 클릭 시 onCancel 호출', async () => {
     const onCancel = vi.fn()
     render(
       <ConfirmDialog
@@ -62,11 +63,11 @@ describe('ConfirmDialog', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('Escape 키 입력 시 onCancel 호출', () => {
+  it('Escape 키 입력 시 onCancel 호출', async () => {
     const onCancel = vi.fn()
     render(
       <ConfirmDialog
@@ -78,11 +79,11 @@ describe('ConfirmDialog', () => {
       />,
     )
 
-    fireEvent.keyDown(document, { key: 'Escape' })
+    await userEvent.keyboard('{Escape}')
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('열리면 확인 버튼에 포커스가 이동함', () => {
+  it('열리면 확인 버튼에 포커스가 이동함', async () => {
     render(
       <ConfirmDialog
         isOpen={true}

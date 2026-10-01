@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SecuritiesAccountRegisterForm from './SecuritiesAccountRegisterForm.tsx'
@@ -96,12 +98,10 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.change(screen.getByLabelText('계좌명 (선택)'), { target: { value: '주력 계좌' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await fill(screen.getByLabelText('계좌명 (선택)'), '주력 계좌')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -132,11 +132,11 @@ describe('SecuritiesAccountRegisterForm', () => {
     await waitForFirmsLoaded()
 
     const input = screen.getByLabelText('계좌번호') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '123456789' } })
+    await fill(input, '123456789')
 
     expect(input.value).toBe('1234-5678-9')
 
-    fireEvent.change(input, { target: { value: '1234567890123456' } })
+    await fill(input, '1234567890123456')
     expect(input.value).toBe('1234-5678-9012-3456')
   })
 
@@ -149,11 +149,9 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('투자자 정보를 찾을 수 없습니다.')).toBeInTheDocument()
@@ -170,11 +168,9 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     expect(await screen.findByText('투자자 정보를 찾을 수 없습니다.')).toBeInTheDocument()
   })
@@ -188,11 +184,9 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('선택한 증권사를 찾을 수 없습니다.')).toBeInTheDocument()
@@ -207,11 +201,9 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
@@ -226,11 +218,9 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.change(screen.getByLabelText('증권사'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('계좌번호'), {
-      target: { value: '1234567890123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890123456')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
@@ -243,7 +233,7 @@ describe('SecuritiesAccountRegisterForm', () => {
     renderForm()
     await waitForFirmsLoaded()
 
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('증권사를 선택해 주세요.')).toBeInTheDocument()
