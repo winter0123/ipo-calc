@@ -15,14 +15,17 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
 
   return (
     <div className={styles.detail}>
-      <button
-        type="button"
-        className={styles.closeButton}
-        onClick={onClose}
-        aria-label="상세 정보 닫기"
-      >
-        ✕
-      </button>
+      <header className={styles.header}>
+        <h2 className={styles.title}>청약 상세</h2>
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={onClose}
+          aria-label="상세 정보 닫기"
+        >
+          ✕
+        </button>
+      </header>
 
       <dl className={styles.dl}>
         <div className={styles.dlRow}>

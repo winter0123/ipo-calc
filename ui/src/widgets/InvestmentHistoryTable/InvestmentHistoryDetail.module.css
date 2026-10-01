@@ -1,12 +1,18 @@
-.detail {
+.header {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .closeButton {
-  align-self: flex-end;
   background: none;
   border: none;
   font-size: 18px;
@@ -28,23 +34,25 @@
 
 .dlRow {
   display: flex;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-1);
   font-size: 14px;
 }
 
 .dlRow dt {
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-muted);
-  min-width: 120px;
 }
 
 .dlRow dd {
   margin: 0;
+  font-size: 15px;
   color: var(--ink);
 }
 
 .nestedGroup {
-  border: 1px solid var(--border);
+  background: var(--surface-soft);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
   display: flex;
@@ -80,16 +88,11 @@
 /* 모바일 */
 @media (max-width: 640px) {
   .detail {
-    padding: var(--space-3);
+    padding: var(--space-4);
   }
 
-  .dlRow {
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .dlRow dt {
-    min-width: auto;
+  .dl {
+    gap: var(--space-2);
   }
 
   .salesTable {
@@ -104,16 +107,34 @@
   }
 }
 
+/* 641px 이상: 2열 그리드 */
+@media (min-width: 641px) {
+  .dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .dlRow {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .detail {
+    padding: var(--space-5);
+  }
+}
+
 /* 태블릿 */
 @media (min-width: 641px) and (max-width: 1023px) {
   .detail {
-    padding: var(--space-4);
+    padding: var(--space-5);
   }
 }
 
 /* 데스크톱 */
 @media (min-width: 1024px) {
   .detail {
-    padding: var(--space-4);
+    padding: var(--space-5);
   }
 }
