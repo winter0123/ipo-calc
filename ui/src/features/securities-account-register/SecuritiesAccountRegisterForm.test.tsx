@@ -242,4 +242,79 @@ describe('SecuritiesAccountRegisterForm', () => {
     expect(apiFetch).toHaveBeenCalledTimes(1)
     expect(mockNavigate).not.toHaveBeenCalled()
   })
+
+  it('계좌번호 10자리 입력 시 등록 성공 (한국투자증권 10자리)', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      id: 1,
+      investorId: 42,
+      securitiesFirmId: 1,
+      securitiesFirmName: '미래에셋증권',
+      accountNumber: '****-****-90',
+      accountName: '주력 계좌',
+      isDefault: false,
+      status: 'ACTIVE',
+      deletedAt: null,
+      createdAt: '2026-09-21T00:00:00Z',
+      updatedAt: '2026-09-21T00:00:00Z',
+    })
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    renderForm()
+    await waitForFirmsLoaded()
+
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '1234567890')
+    await fill(screen.getByLabelText('계좌명 (선택)'), '주력 계좌')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith(
+        '/securities-accounts',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    const call = vi.mocked(apiFetch).mock.calls.find(([path]) => path === '/securities-accounts')!
+    const body = JSON.parse((call[1] as RequestInit).body as string)
+    expect(body.accountNumber).toBe('1234-5678-90')
+    expect(body.securitiesFirmId).toBe(1)
+    expect(body.investorId).toBe(42)
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('****-****-90'))
+    })
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+    })
+
+    alertSpy.mockRestore()
+  })
+
+  it('계좌번호 9자리 입력 시 새 오류 문구 표시', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
+    renderForm()
+    await waitForFirmsLoaded()
+
+    await fill(screen.getByLabelText('증권사'), '1')
+    await fill(screen.getByLabelText('계좌번호'), '123456789')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('계좌번호는 10~16자리 숫자여야 합니다.')).toBeInTheDocument()
+    })
+    expect(apiFetch).toHaveBeenCalledTimes(1)
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('계좌번호 17자리 입력 시 16자리로 잘림', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(FIRMS)
+    renderForm()
+    await waitForFirmsLoaded()
+
+    const input = screen.getByLabelText('계좌번호') as HTMLInputElement
+    await fill(input, '12345678901234567')
+
+    expect(input.value).toBe('1234-5678-9012-3456')
+  })
 })
