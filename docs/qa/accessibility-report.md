@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 1. 오전 9:31:42
+검사 일시: 2026. 10. 1. 오후 12:20:20
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:49578
+대상 URL: http://127.0.0.1:61505
 
 ## 요약
 
-- 검사한 화면: 12개
+- 검사한 화면: 13개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -60,6 +60,10 @@
 ### dashboard (/dashboard)
 
 ✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
+
+### broker-sync (/broker-sync)
+
+✅ **위반 0건** (passes: 30, incomplete: 0, inapplicable: 59)
 
 ---
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import MainLayout from './MainLayout.tsx'
@@ -53,6 +53,17 @@ describe('MainLayout', () => {
     const main = screen.getByRole('main')
     expect(screen.getByTestId('child-content')).toBeInTheDocument()
     expect(main).toContainElement(screen.getByTestId('child-content'))
+  })
+
+  it('주요 메뉴에서 증권사 연동 화면으로 이동할 수 있음', () => {
+    renderLayout()
+
+    const nav = screen.getByRole('navigation', { name: '주요 메뉴' })
+    expect(within(nav).getByRole('link', { name: '증권사 연동' })).toHaveAttribute(
+      'href',
+      '/broker-sync',
+    )
+    expect(screen.getByRole('banner')).toContainElement(nav)
   })
 
   it('스킵 링크가 존재하고 href="#main-content"를 가리킴', () => {

@@ -5,6 +5,7 @@ import {
   syncPreviewSchema,
   type BrokerCredential,
   type BrokerCredentialRegisterRequest,
+  type BrokerCredentialReplaceRequest,
   type SyncConfirmSale,
   type SyncPreview,
 } from './types.ts'
@@ -24,6 +25,16 @@ export function registerBrokerCredential(
 ): Promise<BrokerCredential> {
   return apiFetch<BrokerCredential>(`${base(securitiesAccountId)}/api-credential`, {
     method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export function replaceBrokerCredential(
+  securitiesAccountId: number,
+  data: BrokerCredentialReplaceRequest,
+): Promise<BrokerCredential> {
+  return apiFetch<BrokerCredential>(`${base(securitiesAccountId)}/api-credential`, {
+    method: 'PUT',
     body: JSON.stringify(data),
   })
 }

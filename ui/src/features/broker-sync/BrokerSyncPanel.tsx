@@ -30,6 +30,8 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
   const queryError = toErrorMessage(preview.error, {
     byStatus: {
       404: '연결된 증권사 API가 없습니다. 먼저 연결해 주세요.',
+      424: (e) => e.serverMessage,
+      429: (e) => e.serverMessage,
       502: '증권사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.',
       503: '서버에 증권사 연동 설정이 없어 지금은 조회할 수 없습니다.',
     },

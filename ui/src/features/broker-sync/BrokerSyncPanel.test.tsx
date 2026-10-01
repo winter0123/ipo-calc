@@ -120,6 +120,13 @@ describe('BrokerSyncPanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('먼저 연결해 주세요')
   })
 
+  it('증권사 인증 실패(424)면 서버가 준 키 갱신 안내를 보여준다', async () => {
+    setup(new ApiError(424, 'Failed Dependency', '증권사 인증에 실패했습니다. 키를 갱신해 주세요.'))
+    await clickQuery()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('키를 갱신해 주세요')
+  })
+
   it('조회된 내역이 없으면 빈 상태를 보여준다', async () => {
     setup({ matched: [], unmatched: [], allocationsWithoutStockCode: [] })
     await clickQuery()
