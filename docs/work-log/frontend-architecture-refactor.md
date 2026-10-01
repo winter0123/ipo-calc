@@ -7,7 +7,7 @@
 ### D-E20-001: 결정과 범위
 - `/`는 `Hello` 유지(redirect 없음). 새 의존성 0건, 백엔드 변경 0건.
 - 승인에 따라 포함: A-4 NotFound, A-5 ErrorBoundary, D-8(b) EmptyState CSS 모듈 스타일, D-19 invalidation 확장, D-17 재배치, D-12 `lang="ko"`·title "투자 관리 시스템".
-- 보류: D-4 401 중앙 redirect, D-7 Zod, D-9 by-period 백엔드 수정, D-11 필터 URL 동기화, D-14 `@/` alias, D-15 React Compiler.
+- 1차 보류였던 D-4·D-7·D-9·D-11·D-14·D-15는 "다 진행" 지시로 후속 구현했다(아래 D-E20-006). D-10 staleTime은 현행 유지.
 
 ### D-E20-002: FSD 판단 변경
 - 대시보드: 조회 모델·API·훅은 `entities/dashboard` → `features/dashboard`로 이동(소비자가 feature뿐). 쿼리 키(`dashboardKeys`)만 `entities/dashboard`에 남겨 mutation feature들이 invalidate에 쓴다.
@@ -33,3 +33,13 @@
 
 ### 검증(`ui/`, 2026-10-01)
 - test 313 passed(기준선 266), lint·typecheck·format:check·build PASS. axe·E2E는 NOT_RUN(별도 승인 전, 운영/공유 데이터 대상 실행 금지).
+
+### D-E20-006: 보류 항목 후속 구현 (사용자 "다 진행", 새 의존성·백엔드 변경 승인으로 간주)
+항목별로 별도 커밋했다.
+- **D-14 `@/` alias**: tsconfig `paths` + Vite `resolve.alias`(Vitest는 `mergeConfig`로 상속). 상위 레이어 경계는 FSD 경계 테스트가 `@/`도 해석해 검사한다.
+- **D-4 401 중앙 처리**: `QueryCache`·`MutationCache`의 `onError`가 `ApiError(401)`을 잡아 캐시를 비우고 `/login`으로 `replace` 이동(`state.from`에 복귀 경로). `/login`·`/signup`에서는 동작하지 않고, 로그인 실패 401은 `mutation.meta.skipUnauthorizedRedirect`로 제외한다. 복귀 경로는 `/` 시작·`//` 거부로 오픈 리다이렉트를 막는다. 뮤테이션 자동 재시도는 0 유지.
+- **D-11 필터 URL 동기화**: 투자 내역(`investorId`·`securitiesAccountId`·`ipoId`)과 청약 목록(`status`) 필터를 URL 쿼리가 단일 출처. 변경은 `replace`. `setSearchParams` 함수형 갱신은 같은 틱에서 큐잉되지 않아 패치 객체 한 번 호출로 처리한다.
+- **D-9 by-period 백엔드**: `GET /dashboard/by-period`가 선택 파라미터 `year`(1900~9999)·`month`(1~12)를 반영한다. `year`만 있으면 그 해 매도만, `unit=month`+`month`이면 그 달만, `unit=year`에서 `month`는 무시, 둘 다 없으면 기존과 동일(전체). 잘못된 값은 400. 필터는 순수 함수 `DashboardAggregator.byPeriod(sales, unit, year, month)`에 두고 단위 테스트를 추가했다. **동작 변화**: 대시보드 월별/연도별 탭이 선택한 기간만 보여준다(이전엔 선택과 무관하게 전체 기간).
+- **D-7 Zod(파일럿)**: `features/dashboard`의 4개 응답을 `types.ts` 스키마(단일 출처)로 정의하고 `api-client.ts`에서 `parse`한다. 계약 위반은 `ZodError` → Query error 상태. 다른 feature는 이 모양으로 점진 확대(미적용).
+- **D-15 React Compiler**: `babel-plugin-react-compiler` + `@rolldown/plugin-babel`(plugin-react v6의 `reactCompilerPreset`). Vitest도 같은 설정을 상속해 컴파일된 코드로 테스트한다. 전체 적용 시 `SaleRegisterForm` 테스트 1건이 실패했다 — react-hook-form의 `formState`가 제자리 변경 객체라 메모이제이션과 충돌. RHF를 쓰는 폼 8개에 `'use no memo'`를 붙여 제외했다. 번들은 약 +48kB(486→535kB)이고 Vite의 500kB 청크 경고가 새로 뜬다(코드 스플리팅은 미적용).
+- **검증**: 프런트 `test` 329 PASS, `lint`·`typecheck`·`format:check`·`build` PASS. 백엔드 `./gradlew test checkstyleMain checkstyleTest --rerun-tasks` PASS(로컬 Postgres). axe/E2E는 NOT_RUN.

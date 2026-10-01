@@ -8,6 +8,7 @@ import styles from './AllocationRegisterForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function AllocationRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const [searchParams] = useSearchParams()
   const subscriptionId = Number(searchParams.get('subscriptionId'))
   const navigate = useNavigate()

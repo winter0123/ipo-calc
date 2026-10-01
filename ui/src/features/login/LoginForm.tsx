@@ -15,6 +15,7 @@ function returnPathFrom(state: unknown): string {
 }
 
 export default function LoginForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
   const location = useLocation()
   const { mutate, isPending, error } = useLogin()

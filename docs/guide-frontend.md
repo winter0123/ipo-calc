@@ -74,3 +74,4 @@ pnpm run build
 - 존재하지 않는 경로는 `NotFoundPage`(MainLayout 안), 렌더 중 예외는 `app/ErrorBoundary`가 처리한다. `/`는 `Hello`를 유지하고 redirect하지 않는다.
 - 목록 필터는 URL 쿼리가 단일 출처다(`InvestmentHistoryPage`: `investorId`·`securitiesAccountId`·`ipoId`, `SubscriptionListPage`: `status`). `useSearchParams`로 읽고 쓰며 변경은 `replace`로 history를 쌓지 않는다. 한 번의 사용자 동작에서 여러 키를 바꿀 때는 `setSearchParams`를 연속 호출하지 말고 한 번에(패치 객체로) 바꾼다 — React Router는 함수형 갱신을 큐잉하지 않는다.
 - 서버 응답 런타임 검증은 Zod로 한다(파일럿: `features/dashboard`). 스키마를 단일 출처로 두고 타입은 `z.infer`로 파생하며, `api-client`에서 `schema.parse`로 경계에서 검증한다. 계약과 다르면 `ZodError`로 실패해 TanStack Query의 error 상태로 흐른다. 다른 feature로 넓힐 때도 같은 모양(`types.ts`에 스키마, `api-client.ts`에서 parse)을 따른다. 백엔드가 null을 줄 수 있는 필드는 `.nullable()`로 명시한다.
+- React Compiler가 켜져 있다(`vite.config.ts`, Vitest도 상속). react-hook-form의 `formState`는 제자리 변경 객체라 메모이제이션과 충돌하므로 `useForm`을 쓰는 컴포넌트는 함수 첫 줄에 `'use no memo'`를 둔다. 수동 `useMemo`/`useCallback`은 새로 추가하지 않는다.

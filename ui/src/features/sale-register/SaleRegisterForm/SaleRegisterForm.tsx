@@ -11,6 +11,7 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 type OptionalNumberField = 'price' | 'amount' | 'fee' | 'tax' | 'otherCost'
 
 export default function SaleRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const [selectedInvestorId, setSelectedInvestorId] = useState<number | undefined>()
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | undefined>()
 
