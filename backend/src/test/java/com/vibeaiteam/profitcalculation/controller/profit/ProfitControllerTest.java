@@ -2,7 +2,6 @@ package com.vibeaiteam.profitcalculation.controller.profit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
@@ -23,6 +22,7 @@ import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.Securiti
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -126,30 +126,8 @@ class ProfitControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", "수익테스터")))
-                .session(session))
-        .andReturn();
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword)))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, session, testEmail, testPassword, "수익테스터");
   }
 
   private Long setupFoundation(Long allocationPrice) {

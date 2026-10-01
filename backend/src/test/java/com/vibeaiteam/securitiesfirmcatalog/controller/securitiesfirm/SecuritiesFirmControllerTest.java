@@ -14,6 +14,7 @@ import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -117,34 +118,11 @@ class SecuritiesFirmControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword,
-                            "name", testName)))
-                .session(session))
-        .andReturn();
-
+    AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
     Account admin = accountRepository.findByEmail(testEmail);
     admin.setRole(AccountRole.ADMIN);
     accountRepository.save(admin);
-
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    objectMapper.writeValueAsString(
-                        Map.of(
-                            "email", testEmail,
-                            "password", testPassword)))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
 
   private MvcResult registerRequest(Map<String, ?> request) throws Exception {

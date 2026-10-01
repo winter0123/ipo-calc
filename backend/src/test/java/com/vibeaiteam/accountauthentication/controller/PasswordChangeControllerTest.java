@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
+import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,32 +72,8 @@ class PasswordChangeControllerTest {
   }
 
   private void signupAndLogin() throws Exception {
-    // 회원가입
-    var signupRequest =
-        Map.of(
-            "email", testEmail,
-            "password", testPassword,
-            "name", testName);
-    mockMvc
-        .perform(
-            post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(signupRequest))
-                .session(session))
-        .andReturn();
-
-    // 로그인 (세션 유지)
-    var loginRequest =
-        Map.of(
-            "email", testEmail,
-            "password", testPassword);
-    mockMvc
-        .perform(
-            post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginRequest))
-                .session(session))
-        .andReturn();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, session, testEmail, testPassword, testName);
   }
 
   @Test
