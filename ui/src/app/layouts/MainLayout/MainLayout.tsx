@@ -1,7 +1,8 @@
 import { Suspense, useState } from 'react'
-import { Menu, Waves, X } from 'lucide-react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Menu, Waves, X, LogOut } from 'lucide-react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
+import { useLogout } from '@/features/login/index.ts'
 import styles from './MainLayout.module.css'
 
 const NAV_ITEMS = [
@@ -27,6 +28,8 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export default function MainLayout() {
   const { data: currentAccount } = useCurrentAccount()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const logoutMutation = useLogout()
   // 메뉴를 연 경로를 기억해 두면 페이지가 바뀔 때 자동으로 닫힌다
   const [openedAt, setOpenedAt] = useState<string | null>(null)
   const menuOpen = openedAt === pathname
@@ -83,6 +86,19 @@ export default function MainLayout() {
                   가입 승인
                 </NavLink>
               )}
+              <button
+                type="button"
+                className={styles.logout}
+                onClick={() => {
+                  logoutMutation.mutate(undefined, {
+                    onSettled: () => navigate('/login', { replace: true }),
+                  })
+                }}
+                disabled={logoutMutation.isPending}
+              >
+                <LogOut aria-hidden="true" size={16} />
+                로그아웃
+              </button>
             </nav>
           </>
         )}

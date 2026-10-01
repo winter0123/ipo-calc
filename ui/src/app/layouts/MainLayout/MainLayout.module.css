@@ -74,10 +74,12 @@
 }
 
 .link,
-.nav summary {
+.nav summary,
+.logout {
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
   height: 100%;
   padding: 0 var(--space-3);
   color: var(--ink-muted);
@@ -87,6 +89,9 @@
   white-space: nowrap;
   cursor: pointer;
   list-style: none;
+  border: 0;
+  background: none;
+  font-family: inherit;
 }
 
 .nav summary::-webkit-details-marker {
@@ -94,15 +99,22 @@
 }
 
 .link:hover,
-.nav summary:hover {
+.nav summary:hover,
+.logout:hover {
   color: var(--ink);
 }
 
 .link:focus-visible,
-.nav summary:focus-visible {
+.nav summary:focus-visible,
+.logout:focus-visible {
   outline: 2px solid var(--link);
   outline-offset: -2px;
   border-radius: var(--radius-sm);
+}
+
+.logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .active {
@@ -216,9 +228,10 @@
   }
 
   .link,
-  .nav summary {
+  .nav summary,
+  .logout {
     height: 48px;
-    padding: 0;
+    padding: 0 var(--space-3);
   }
 
   .active::after {
