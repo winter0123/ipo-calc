@@ -6,8 +6,8 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryPage from './InvestmentHistoryPage.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
-import type { InvestmentHistoryResponse } from '@/entities/subscription/types.ts'
-import type { InvestorResponse } from '@/entities/investor/types.ts'
+import type { InvestmentHistoryResponse } from '@/entities/subscription/index.ts'
+import type { InvestorResponse } from '@/entities/investor/index.ts'
 import { ApiError } from '@/shared/api/apiError.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({

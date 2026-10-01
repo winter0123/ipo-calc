@@ -60,4 +60,11 @@
 ### D-E20-011: 사후 점검 후속 (2026-10-01, 사용자 승인)
 - `ProfitViewPage`: 매도건 ID 조회를 `조회` 버튼 클릭 시에만 실행(제출 ID 상태 분리, 입력 변경 시 결과 초기화). 테스트의 `paste` 우회를 `fill`로 되돌리고 "입력만으로는 조회하지 않음" 테스트 추가.
 - `ProfitTable`: `as InvestorProfit` 단언 제거(`'sales' in data` 좁히기).
-- 검증(`ui/`): test 340 PASS, lint·typecheck·format:check·build PASS. 커밋·PR은 미수행.
+- 검증(`ui/`): test 340 PASS, lint·typecheck·format:check·build PASS. #263으로 병합됨.
+
+### D-E20-012: 리뷰 지적 반영 (2026-10-01, 사용자 승인)
+- `fsd-boundaries.test.ts`: 테스트 파일의 공개 API 면제를 `api-client.ts`로 좁혔다. 이 때문에 드러난 위반(테스트의 `queryKeys.ts`·`types.ts`·훅 직접 import 28건)은 해당 슬라이스 `index.ts`가 `investorKeys`·`securitiesAccountKeys`·`InvestmentHistoryResponse`·등록 훅 4종을 노출하고 테스트가 `index.ts`로 import하도록 바꿔 해소했다.
+- `queryClient.shouldRetryQuery`: `ZodError`는 재시도하지 않는다(요청을 반복해도 해결되지 않음). 테스트로 고정.
+- `ErrorBoundary`: 새로고침 외에 대시보드 이동 링크를 추가했다(Router 바깥이라 일반 `<a>`, 전체 이동으로 오류 상태 초기화).
+- `entities/dashboard`는 쿼리 키만 두는 캐시 키 공유용 절충 구조임을 가이드에 명시했다.
+- 검증(`ui/`): test 341 PASS, lint·typecheck·format:check·build PASS, E2E 11/11(슬롯 DB 4).

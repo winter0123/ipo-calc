@@ -53,8 +53,9 @@ function violations(): string[] {
         found.push(`${where}: 같은 레이어의 다른 슬라이스 ${to.slice} 를 import (${spec})`)
         continue
       }
-      // 테스트는 목(mock) 핸들을 얻으려고 내부 api-client 모듈을 직접 import할 수 있다.
-      if (isTest || !PUBLIC_API_LAYERS.includes(to.layer)) continue
+      // 테스트는 목(mock) 핸들을 얻으려고 내부 api-client 모듈만 직접 import할 수 있다.
+      if (isTest && /\/api-client\.ts$/.test(target)) continue
+      if (!PUBLIC_API_LAYERS.includes(to.layer)) continue
       if (!/^\/src\/[\w-]+\/[\w-]+\/index(\.ts)?$/.test(target)) {
         found.push(
           `${where}: ${to.layer}/${to.slice} 의 index.ts 를 거치지 않고 내부 모듈을 import (${spec})`,

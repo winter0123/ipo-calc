@@ -27,7 +27,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
         <p>잠시 후 다시 시도해 주세요.</p>
         <button type="button" onClick={() => window.location.reload()}>
           새로고침
-        </button>
+        </button>{' '}
+        {/* Router 바깥이라 Link 대신 <a>를 쓴다. 전체 이동이라 오류 상태도 초기화된다. */}
+        <a href="/dashboard">대시보드로 이동</a>
       </div>
     )
   }
