@@ -7,6 +7,7 @@ export interface CalendarEvent {
   type: CalendarEventType
   companyName: string
   ipoName: string
+  ipoId: number
   price?: string
 }
 
@@ -49,6 +50,7 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
         type: 'SUBSCRIPTION_START',
         companyName: ipo.companyName,
         ipoName: ipo.ipoName,
+        ipoId: ipo.id,
         price: getPriceDisplay(ipo),
       })
     }
@@ -59,6 +61,7 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
         type: 'SUBSCRIPTION_END',
         companyName: ipo.companyName,
         ipoName: ipo.ipoName,
+        ipoId: ipo.id,
         price: getPriceDisplay(ipo),
       })
     }
@@ -71,6 +74,7 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
           type: 'LISTING',
           companyName: ipo.companyName,
           ipoName: ipo.ipoName,
+          ipoId: ipo.id,
           price: getPriceDisplay(ipo),
         })
       }

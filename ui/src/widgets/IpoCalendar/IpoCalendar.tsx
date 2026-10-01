@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { buildCalendarEvents, type CalendarEvent } from '@/features/ipo-calendar/index.ts'
 import { type Ipo } from '@/entities/ipo/index.ts'
 import styles from './IpoCalendar.module.css'
@@ -168,12 +169,21 @@ export default function IpoCalendar({ ipos, initialYear, initialMonth }: IpoCale
           <ul className={styles.eventList}>
             {selectedDateEvents.map((event, idx) => (
               <li key={idx} className={styles.eventItem}>
-                <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
-                  {EVENT_TYPE_LABELS[event.type]}
-                </span>
-                <span className={styles.eventCompany}>{event.companyName}</span>
-                <span className={styles.eventIpo}>({event.ipoName})</span>
-                {event.price && <span className={styles.eventPrice}>{event.price}</span>}
+                <Link
+                  to={`/ipos/${event.ipoId}`}
+                  className={styles.eventLink}
+                  aria-label={`${event.companyName} ${event.ipoName} 상세 보기`}
+                >
+                  <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
+                    {EVENT_TYPE_LABELS[event.type]}
+                  </span>
+                  <span className={styles.eventCompany}>{event.companyName}</span>
+                  <span className={styles.eventIpo}>({event.ipoName})</span>
+                  {event.price && <span className={styles.eventPrice}>{event.price}</span>}
+                  <span className={styles.eventArrow} aria-hidden="true">
+                    ›
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
