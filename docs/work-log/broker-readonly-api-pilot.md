@@ -21,3 +21,27 @@ SF-1(#204) → SF-2a(#205) → SF-3a(#210) → SF-3b(#212) → SF-4a(#207) → S
 
 - SF-4b(실제 응답 필드 매핑, 필요 시 `sales.external_transaction_id` 마이그레이션), SF-5(미리보기→확정 API), SF-6(프론트 두 화면)은 KIS 키와 실계좌 1회 호출 결과가 있어야 필드 매핑을 확정할 수 있다.
 - 알려진 사소한 부정확: V16 SQL 주석의 "1:1"이 실제와 다르나 Flyway 체크섬 때문에 고치지 않는다.
+
+## 2026-10-01 실계좌 1회 조회 결과(SF-4b)
+
+Master가 실계좌로 `TTTC8715R`를 1회 호출했다. 계좌번호·키·토큰·실제 금액·종목명은 기록하지 않는다(형태만).
+
+### 확정된 응답 형태
+
+| 항목 | 확인 결과 |
+|---|---|
+| 결과 코드 | `rt_cd="0"`, `msg_cd="KIOK0510"` |
+| 최상위 키 | `rt_cd`, `msg_cd`, `msg1`, `output1`(배열), `output2`(객체), `ctx_area_fk100`, `ctx_area_nk100` |
+| `output1` 한 행 | (`trad_dt`, `pdno`) 하루×종목 집계 1건 |
+| `output1` 필드 | `trad_dt`(yyyyMMdd), `pdno`, `prdt_name`, `trad_dvsn_name`, `loan_dt`(빈 문자열), `hldg_qty`, `pchs_unpr`, `buy_qty`, `buy_amt`, `sll_pric`, `sll_qty`, `sll_amt`, `rlzt_pfls`, `pfls_rt`(소수 8자리 문자열), `fee`, `tl_tax`, `loan_int` |
+| 값 타입 | 전부 JSON 문자열. 수량·금액·`fee`·`tl_tax`는 부호·소수점 없는 정수 문자열(`"0"` 포함) |
+| `pdno` | 6자리이나 숫자만이 아니다(숫자 5개+영문 1개 같은 영숫자 코드 존재). `ipos.stock_code`와 문자열 그대로 비교 |
+| 매수·매도 | 한 행에 `buy_*`와 `sll_*`가 함께 있다. 매도가 있는 행은 `sll_qty > 0` |
+| `output2` | `prsm_tlex_smtl` 필드가 없다(DTO에는 있으나 항상 null). 매핑에서 쓰지 않는다 |
+| 수수료·세금 | `fee`·`tl_tax`가 `output1` 행마다 있다 |
+
+### 결정
+
+| ID | 항목 | 결정 | 근거 |
+|---|---|---|---|
+| D-B-007 | 매핑 규칙 | `KisTradeProfitMapper`: ① `sll_qty`가 0·빈 값인 행 제외 ② 같은 (`trad_dt`,`pdno` 문자열) 행은 수량·금액·수수료·세금 합산 ③ 금액=`sll_amt`, 수수료=`fee`, 세금=`tl_tax`(빈 값은 0) ④ 매도 행의 일자·`pdno`·수량·금액이 해석 불가면 `BrokerApiException("invalid_response")`(메시지에 필드명만) ⑤ 일자→`pdno` 오름차순 | 응답에 거래 고유 ID가 없으므로 `sales.external_transaction_id` 마이그레이션은 만들지 않고 breakdown의 근사 매칭 경로를 채택한다 |
