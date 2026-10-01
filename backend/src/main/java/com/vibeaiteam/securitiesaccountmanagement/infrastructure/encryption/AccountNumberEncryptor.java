@@ -1,99 +1,93 @@
 package com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption;
 
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.Base64;
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
+import com.vibeaiteam.accountauthentication.util.encryption.VersionedKeyring;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * 계좌번호 암호화 유틸리티 (AES-256-GCM, JDK 내장 javax.crypto만 사용).
+ * 계좌번호 암호화 유틸리티 (AES-256-GCM, JDK 내장 javax.crypto만 사용, D-SA-001).
  *
- * <p>- D-SA-001: AES-256-GCM, 외부 라이브러리 추가 없음 - encrypt(): 매 호출마다 랜덤 12바이트 IV를 생성하고, 결과는 Base64(IV +
- * ciphertext) 형태로 self-contained하게 반환한다 (decrypt 시 IV와 암호문을 분리해 복호화). - 키: 32바이트(256비트) 키를 Base64로
- * 인코딩한 값을 application.yml(app.encryption.key, 환경변수 APP_ENCRYPTION_KEY)에서 주입받는다. 키가 미설정 상태여도 빈 생성은
- * 허용하고, 실제 encrypt()/decrypt() 호출 시점에 명확한 오류로 실패시킨다 (application.yml 의존 테스트의 컨텍스트 기동 방해 방지).
+ * <p>키는 버전 관리된다({@link VersionedKeyring}): 기존 단일 키(app.encryption.key / APP_ENCRYPTION_KEY)는 v1이고,
+ * {@code APP_ENCRYPTION_KEYS}(v2:Base64,...)로 새 키를 추가하면 새 키로 암호화하면서 예전 암호문도 읽는다.
+ * 키가 미설정 상태여도 빈 생성은 허용하고, 실제 encrypt()/decrypt() 호출 시점에 명확한
+ * 오류로 실패시킨다. 예외 메시지에 평문·키 값을 넣지 않는다.
  */
 @Component
 public class AccountNumberEncryptor {
 
-  private static final String ALGORITHM = "AES";
-  private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-  private static final int IV_LENGTH_BYTES = 12;
-  private static final int GCM_TAG_LENGTH_BITS = 128;
-
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
-  private final SecretKey secretKey;
-
-  /**
-   * Base64로 인코딩된 암호화 키를 주입받아 생성한다.
-   */
-  public AccountNumberEncryptor(@Value("${app.encryption.key:}") String base64Key) {
-    this.secretKey = (base64Key == null || base64Key.isBlank()) ? null : decodeKey(base64Key);
-  }
-
-  private static SecretKey decodeKey(String base64Key) {
-    byte[] keyBytes = Base64.getDecoder().decode(base64Key);
-    if (keyBytes.length != 32) {
-      throw new IllegalArgumentException(
-          "암호화 키(app.encryption.key/APP_ENCRYPTION_KEY)는 32바이트(256비트) 키를 Base64로 인코딩한 값이어야 합니다.");
-    }
-    return new SecretKeySpec(keyBytes, ALGORITHM);
-  }
-
-  private SecretKey getSecretKey() {
-    if (secretKey == null) {
-      throw new IllegalStateException(
+  private static final VersionedKeyring.Messages MESSAGES =
+      new VersionedKeyring.Messages(
           "암호화 키가 설정되지 않았습니다. "
-              + "APP_ENCRYPTION_KEY(또는 app.encryption.key)에 32바이트 키의 Base64 값을 지정하세요.");
-    }
-    return secretKey;
+              + "APP_ENCRYPTION_KEY(또는 app.encryption.key)에 32바이트 키의 Base64 값을 지정하세요.",
+          "암호화 키(app.encryption.key/APP_ENCRYPTION_KEY)는 32바이트(256비트) 키를 Base64로 인코딩한 값이어야 합니다.",
+          "계좌번호 암호화에 실패했습니다.",
+          "계좌번호 복호화에 실패했습니다.");
+
+  private final VersionedKeyring keyring;
+
+  /**
+   * 키 설정을 주입받아 생성한다.
+   *
+   * @param legacyKey 기존 단일 키(v1, Base64)
+   * @param keys 추가 키 목록(v2:Base64,...)
+   * @param current 암호화에 쓸 버전(없으면 가장 큰 번호)
+   */
+  @Autowired
+  public AccountNumberEncryptor(
+      @Value("${app.encryption.key:}") String legacyKey,
+      @Value("${app.encryption.keys:}") String keys,
+      @Value("${app.encryption.key-current:}") String current) {
+    this.keyring = new VersionedKeyring(legacyKey, keys, current, MESSAGES);
   }
 
   /**
-   * 평문을 AES-GCM으로 암호화해 Base64 문자열로 반환한다.
+   * 단일 키(v1)만으로 생성한다.
+   *
+   * @param base64Key Base64로 인코딩한 32바이트 키(없으면 빈 값)
+   */
+  public AccountNumberEncryptor(String base64Key) {
+    this(base64Key, "", "");
+  }
+
+  /**
+   * 평문을 현재 키로 암호화한다.
+   *
+   * @param plainText 평문 계좌번호
+   * @return {@code v<번호>:Base64(IV + ciphertext)} 형태의 암호문
+   * @throws IllegalStateException 키가 설정되지 않았을 때
    */
   public String encrypt(String plainText) {
-    try {
-      byte[] iv = new byte[IV_LENGTH_BYTES];
-      SECURE_RANDOM.nextBytes(iv);
-      Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-      cipher.init(
-          Cipher.ENCRYPT_MODE, getSecretKey(), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
-      byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-
-      byte[] combined = new byte[iv.length + cipherText.length];
-      System.arraycopy(iv, 0, combined, 0, iv.length);
-      System.arraycopy(cipherText, 0, combined, iv.length, cipherText.length);
-      return Base64.getEncoder().encodeToString(combined);
-    } catch (GeneralSecurityException e) {
-      throw new IllegalStateException("계좌번호 암호화에 실패했습니다.", e);
-    }
+    return keyring.encrypt(plainText);
   }
 
   /**
-   * Base64 암호문을 복호화해 평문을 반환한다.
+   * 암호문을 버전에 맞는 키로 복호화한다.
+   *
+   * @param encryptedText 암호문(접두사 없는 예전 암호문은 v1)
+   * @return 복호화된 평문
+   * @throws IllegalStateException 키가 설정되지 않았거나 복호화에 실패했을 때
    */
   public String decrypt(String encryptedText) {
-    try {
-      byte[] combined = Base64.getDecoder().decode(encryptedText);
-      byte[] iv = Arrays.copyOfRange(combined, 0, IV_LENGTH_BYTES);
-      byte[] cipherText = Arrays.copyOfRange(combined, IV_LENGTH_BYTES, combined.length);
+    return keyring.decrypt(encryptedText);
+  }
 
-      Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-      cipher.init(
-          Cipher.DECRYPT_MODE, getSecretKey(), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
-      byte[] plainText = cipher.doFinal(cipherText);
-      return new String(plainText, StandardCharsets.UTF_8);
-    } catch (GeneralSecurityException e) {
-      throw new IllegalStateException("계좌번호 복호화에 실패했습니다.", e);
-    }
+  /**
+   * 암호화 키가 설정되어 있는지 확인한다.
+   *
+   * @return 키가 설정되어 있으면 true, 아니면 false
+   */
+  public boolean isConfigured() {
+    return keyring.isConfigured();
+  }
+
+  /**
+   * 암호문이 현재 키 버전으로 암호화된 것인지 확인한다.
+   *
+   * @param encryptedText 암호문
+   * @return 현재 버전이면 true
+   */
+  public boolean isCurrent(String encryptedText) {
+    return keyring.isCurrent(encryptedText);
   }
 }

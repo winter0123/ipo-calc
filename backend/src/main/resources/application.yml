@@ -37,7 +37,12 @@ app:
     key: ${APP_REMEMBER_ME_KEY:}
   encryption:
     key: ${APP_ENCRYPTION_KEY:}
+    keys: ${APP_ENCRYPTION_KEYS:}
+    key-current: ${APP_ENCRYPTION_KEY_CURRENT:}
     broker-key: ${APP_ENCRYPTION_BROKER_KEY:}
+    broker-keys: ${APP_ENCRYPTION_BROKER_KEYS:}
+    broker-key-current: ${APP_ENCRYPTION_BROKER_KEY_CURRENT:}
+    rotate-on-startup: ${APP_ENCRYPTION_ROTATE_ON_STARTUP:false}
   opendart:
     api-key: ${OPENDART_API_KEY:}
     base-url: https://opendart.fss.or.kr
