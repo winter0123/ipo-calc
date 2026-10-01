@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 1. 오후 3:14:26
+검사 일시: 2026. 10. 1. 오후 5:16:51
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:60826
+대상 URL: http://127.0.0.1:54245
 
 ## 요약
 
-- 검사한 화면: 18개
+- 검사한 화면: 19개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -15,11 +15,11 @@
 
 ### login (/login)
 
-✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### signup (/signup)
 
-✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### investor-register (/investors/register)
 
@@ -63,17 +63,17 @@
 
 ### broker-sync (/broker-sync)
 
-✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
+✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
 
-### broker-sync-connected (/broker-sync?investorId=5&securitiesAccountId=6)
+### broker-sync-connected (/broker-sync?investorId=6&securitiesAccountId=8)
 
 ✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
-### broker-sync-replace-form (/broker-sync?investorId=5&securitiesAccountId=6)
+### broker-sync-replace-form (/broker-sync?investorId=6&securitiesAccountId=8)
 
 ✅ **위반 0건** (passes: 35, incomplete: 0, inapplicable: 54)
 
-### broker-sync-register-form (/broker-sync?investorId=5&securitiesAccountId=7)
+### broker-sync-register-form (/broker-sync?investorId=6&securitiesAccountId=9)
 
 ✅ **위반 0건** (passes: 35, incomplete: 0, inapplicable: 54)
 
@@ -84,6 +84,10 @@
 ### admin-accounts-all (/admin/accounts)
 
 ✅ **위반 0건** (passes: 38, incomplete: 0, inapplicable: 51)
+
+### admin-ipo-register (/admin/ipos)
+
+✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
 
 ---
 
