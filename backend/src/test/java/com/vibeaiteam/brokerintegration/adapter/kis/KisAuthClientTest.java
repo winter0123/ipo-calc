@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -168,6 +170,38 @@ class KisAuthClientTest {
     assertThatThrownBy(() -> client.issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET))
         .isInstanceOf(BrokerApiException.class);
     mockServer.verify();
+  }
+
+  @Test
+  void issueToken_http403InvalidKey_isClassifiedAsAuthFailed() {
+    mockServer
+        .expect(requestTo(TOKEN_URL))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(
+            withStatus(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error_code\":\"EGW00103\"}"));
+
+    assertThatThrownBy(() -> client.issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class, e -> assertThat(e.getStatusCode()).isEqualTo("auth_failed"))
+        .hasMessageNotContaining(DUMMY_APP_KEY)
+        .hasMessageNotContaining(DUMMY_APP_SECRET);
+  }
+
+  @Test
+  void issueToken_perMinuteLimit_isClassifiedAsRateLimitedNotAuthFailed() {
+    mockServer
+        .expect(requestTo(TOKEN_URL))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(
+            withStatus(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error_code\":\"EGW00133\"}"));
+
+    assertThatThrownBy(() -> client.issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class, e -> assertThat(e.getStatusCode()).isEqualTo("rate_limited"));
   }
 
   private void expectTokenRequest(String responseBody) {

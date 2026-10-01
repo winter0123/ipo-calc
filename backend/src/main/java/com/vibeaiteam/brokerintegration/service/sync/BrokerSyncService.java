@@ -56,7 +56,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BrokerSyncService {
 
-  /** KIS 기간별매매손익 조회는 최대 89일이다(E17 SF-2와 같은 제한). */
+  /**
+   * 조회 기간(일). KIS 공식 한도는 확인하지 못했고 89일로 실호출이 성공한 것만 확인했다(E17 SF-2의 ustockplus 한도와는 별개).
+   */
   private static final int LOOKBACK_DAYS = 89;
 
   private static final int CANO_LENGTH = 8;

@@ -62,4 +62,11 @@ public interface SecuritiesAccountApiCredentialRepository
    */
   List<SecuritiesAccountApiCredential> findBySecuritiesAccountIdAndDeletedAtIsNull(
       Long securitiesAccountId);
+
+  /**
+   * 증권계좌의 인증정보를 모두 물리 삭제한다. 비밀키 암호문을 남기지 않기 위해 연결 해제 때 쓴다.
+   *
+   * @param securitiesAccountId 대상 증권계좌 ID
+   */
+  void deleteBySecuritiesAccountId(Long securitiesAccountId);
 }

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * KIS 인증 클라이언트 — 접근토큰 발급({@code /oauth2/tokenP}) 전담.
@@ -111,6 +112,19 @@ public class KisAuthClient {
     } catch (BrokerApiException e) {
       log.warn("KIS 접근토큰 발급 실패: method=POST, path={}, reason={}", TOKEN_PATH, e.getMessage());
       throw e;
+    } catch (RestClientResponseException e) {
+      // 응답 본문은 로그·예외 메시지에 싣지 않는다. 분당 1회 제한(EGW00133)과 인증 거부(4xx)만 구분한다.
+      boolean rateLimited = e.getResponseBodyAsString().contains("EGW00133");
+      boolean authRejected = e.getStatusCode().is4xxClientError() && !rateLimited;
+      log.warn(
+          "KIS 접근토큰 발급 거절: method=POST, path={}, status={}, rateLimited={}",
+          TOKEN_PATH,
+          e.getStatusCode().value(),
+          rateLimited);
+      throw new BrokerApiException(
+          rateLimited ? "rate_limited" : authRejected ? "auth_failed" : "token_issue_failed",
+          "KIS 토큰 발급이 거절되었습니다: HTTP " + e.getStatusCode().value(),
+          e);
     } catch (RuntimeException e) {
       // 예외 메시지에 앱키/앱시크릿이 실리지 않도록 원인 예외의 타입만 남긴다.
       log.error(

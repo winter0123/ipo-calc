@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,9 +27,12 @@ import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
+import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
+import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import java.lang.reflect.RecordComponent;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
@@ -54,6 +58,7 @@ class ApiCredentialServiceTest {
 
   private static final Long ACCOUNT_ID = 1L;
   private static final Long INVESTOR_ID = 9L;
+  private static final Long FIRM_ID = 3L;
   private static final Long OWNER_ACCOUNT_ID = 100L;
   private static final String PLAIN_ACCOUNT_NUMBER = "123-456-789012";
   private static final String DUMMY_APP_KEY = "dummy-app-key";
@@ -61,6 +66,7 @@ class ApiCredentialServiceTest {
 
   @Mock private SecuritiesAccountApiCredentialRepository credentialRepository;
   @Mock private SecuritiesAccountRepository securitiesAccountRepository;
+  @Mock private SecuritiesFirmRepository securitiesFirmRepository;
   @Mock private InvestorRepository investorRepository;
   @Mock private SecurityUtils securityUtils;
 
@@ -78,6 +84,7 @@ class ApiCredentialServiceTest {
         new ApiCredentialService(
             credentialRepository,
             securitiesAccountRepository,
+            securitiesFirmRepository,
             brokerSecretEncryptor,
             accountNumberEncryptor,
             new OwnershipGuard(securityUtils, investorRepository),
@@ -94,6 +101,7 @@ class ApiCredentialServiceTest {
     return new ApiCredentialService(
         credentialRepository,
         securitiesAccountRepository,
+        securitiesFirmRepository,
         new BrokerSecretEncryptor(""),
         accountNumberEncryptor,
         new OwnershipGuard(securityUtils, investorRepository),
@@ -109,12 +117,22 @@ class ApiCredentialServiceTest {
         SecuritiesAccount.builder()
             .id(ACCOUNT_ID)
             .investorId(INVESTOR_ID)
+            .securitiesFirmId(FIRM_ID)
             .accountNumber(accountNumberEncryptor.encrypt(PLAIN_ACCOUNT_NUMBER))
             .accountName("개인 MTS 계좌")
             .status(RecordStatus.ACTIVE)
             .build();
     when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(ACCOUNT_ID))
         .thenReturn(Optional.of(account));
+    lenient()
+        .when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(FIRM_ID))
+        .thenReturn(
+            Optional.of(
+                SecuritiesFirm.builder()
+                    .id(FIRM_ID)
+                    .apiSupported(true)
+                    .apiProvider("KIS")
+                    .build()));
     when(investorRepository.findById(INVESTOR_ID))
         .thenReturn(
             Optional.of(Investor.builder().id(INVESTOR_ID).accountId(ownerAccountId).build()));
@@ -142,6 +160,7 @@ class ApiCredentialServiceTest {
         .appSecretEncrypted("encrypted-app-secret")
         .accessTokenEncrypted(accessTokenEncrypted)
         .tokenExpiresAt(tokenExpiresAt)
+        .keyIssuedOn(LocalDate.now())
         .status(RecordStatus.ACTIVE)
         .deletedAt(null)
         .createdAt(updatedAt)
@@ -307,20 +326,121 @@ class ApiCredentialServiceTest {
   }
 
   @Test
-  void getStatusReturnsExpiredWhenCachedTokenExpired() {
-    // Given: 접근토큰 만료 시각이 지난 인증정보가 있음
+  void getStatusReturnsExpiredWhenBrokerServicePeriodPassed() {
+    // Given: 키 발급일이 1년을 넘긴 인증정보(접근토큰 만료는 자동 갱신이라 상태에 영향이 없다)
     stubOwnedSecuritiesAccount();
     LocalDateTime updatedAt = LocalDateTime.now().minusDays(2);
+    SecuritiesAccountApiCredential credential =
+        activeCredential(updatedAt, "encrypted-token", LocalDateTime.now().minusHours(1));
+    credential.setKeyIssuedOn(LocalDate.now().minusYears(1).minusDays(1));
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
+        .thenReturn(List.of(credential));
+
+    // When & Then: EXPIRED 상태와 만료일이 반환됨
+    ApiCredentialResponse response = service.getStatus(ACCOUNT_ID);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_EXPIRED);
+    assertThat(response.keyExpiresOn()).isEqualTo(LocalDate.now().minusDays(1));
+    assertThat(response.lastSyncedAt()).isEqualTo(updatedAt);
+  }
+
+  @Test
+  void getStatusStaysConnectedWhenOnlyCachedTokenExpired() {
+    // Given: 접근토큰만 만료됨. 서버가 다음 조회 때 자동 재발급하므로 사용자 조치는 필요 없다.
+    stubOwnedSecuritiesAccount();
     when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
             ACCOUNT_ID))
         .thenReturn(
             List.of(
-                activeCredential(updatedAt, "encrypted-token", LocalDateTime.now().minusHours(1))));
+                activeCredential(
+                    LocalDateTime.now().minusDays(2),
+                    "encrypted-token",
+                    LocalDateTime.now().minusHours(1))));
 
-    // When & Then: EXPIRED 상태가 반환됨
-    ApiCredentialResponse response = service.getStatus(ACCOUNT_ID);
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_EXPIRED);
-    assertThat(response.lastSyncedAt()).isEqualTo(updatedAt);
+    assertThat(service.getStatus(ACCOUNT_ID).connectionStatus())
+        .isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+  }
+
+  @Test
+  void registerForFirmWithoutApiSupportThrowsValidation() {
+    stubOwnedSecuritiesAccount();
+    when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(FIRM_ID))
+        .thenReturn(Optional.of(SecuritiesFirm.builder().id(FIRM_ID).apiSupported(false).build()));
+
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () -> service.register(ACCOUNT_ID, "KIS", DUMMY_APP_KEY, DUMMY_APP_SECRET));
+    verify(credentialRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void registerWithFutureIssueDateThrowsValidation() {
+    stubOwnedSecuritiesAccount();
+
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () ->
+            service.register(
+                ACCOUNT_ID, "KIS", DUMMY_APP_KEY, DUMMY_APP_SECRET, LocalDate.now().plusDays(1)));
+  }
+
+  @Test
+  void registerStoresIssueDateAndReportsExpiry() {
+    stubOwnedSecuritiesAccount();
+    stubSaveAndFlushAssignsId();
+    LocalDate issuedOn = LocalDate.now().minusMonths(3);
+
+    ApiCredentialResponse response =
+        service.register(ACCOUNT_ID, "KIS", DUMMY_APP_KEY, DUMMY_APP_SECRET, issuedOn);
+
+    assertThat(response.keyIssuedOn()).isEqualTo(issuedOn);
+    assertThat(response.keyExpiresOn()).isEqualTo(issuedOn.plusYears(1));
+    assertThat(response.supportedProvider()).isEqualTo("KIS");
+  }
+
+  @Test
+  void replaceEncryptsNewKeyClearsCachedTokenAndResetsIssueDate() {
+    stubOwnedSecuritiesAccount();
+    SecuritiesAccountApiCredential credential =
+        activeCredential(LocalDateTime.now(), "encrypted-token", LocalDateTime.now().plusDays(1));
+    credential.setKeyIssuedOn(LocalDate.now().minusYears(2));
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
+        .thenReturn(List.of(credential));
+    when(credentialRepository.save(credential)).thenReturn(credential);
+
+    ApiCredentialResponse response =
+        service.replace(ACCOUNT_ID, "new-app-key", "new-app-secret", null);
+
+    assertThat(brokerSecretEncryptor.decrypt(credential.getAppKeyEncrypted()))
+        .isEqualTo("new-app-key");
+    assertThat(brokerSecretEncryptor.decrypt(credential.getAppSecretEncrypted()))
+        .isEqualTo("new-app-secret");
+    assertThat(credential.getAccessTokenEncrypted()).isNull();
+    assertThat(credential.getTokenExpiresAt()).isNull();
+    assertThat(response.keyIssuedOn()).isEqualTo(LocalDate.now());
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+  }
+
+  @Test
+  void replaceWithoutCredentialThrowsNotFound() {
+    stubOwnedSecuritiesAccount();
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
+        .thenReturn(List.of());
+
+    assertThrows(
+        ApiCredentialNotFoundException.class,
+        () -> service.replace(ACCOUNT_ID, DUMMY_APP_KEY, DUMMY_APP_SECRET, null));
+  }
+
+  @Test
+  void replaceForOtherAccountsSecuritiesAccountThrowsForbidden() {
+    stubOwnedSecuritiesAccount(200L);
+
+    assertThrows(
+        ApiCredentialForbiddenException.class,
+        () -> service.replace(ACCOUNT_ID, DUMMY_APP_KEY, DUMMY_APP_SECRET, null));
   }
 
   @Test
@@ -354,36 +474,15 @@ class ApiCredentialServiceTest {
   }
 
   @Test
-  void disconnectSoftDeletesActiveCredentialWithoutPhysicalDelete() {
-    // Given: 활성 인증정보가 1건 존재함
+  void disconnectPhysicallyDeletesCredentialsSoNoCiphertextRemains() {
+    // Given: 소유한 증권계좌
     stubOwnedSecuritiesAccount();
-    SecuritiesAccountApiCredential credential =
-        activeCredential(LocalDateTime.now(), "encrypted-token", LocalDateTime.now().plusDays(1));
-    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNull(ACCOUNT_ID))
-        .thenReturn(List.of(credential));
 
     // When: 연결 해제함
     service.disconnect(ACCOUNT_ID);
 
-    // Then: 물리 삭제 없이 status/deletedAt으로 소프트 삭제됨
-    verify(credentialRepository, never()).delete(any(SecuritiesAccountApiCredential.class));
-    verify(credentialRepository, never()).deleteAll(anyList());
-    verify(credentialRepository).saveAll(List.of(credential));
-    assertThat(credential.getStatus()).isEqualTo(RecordStatus.INACTIVE);
-    assertThat(credential.getDeletedAt()).as("소프트 삭제 시각이 설정되어야 합니다").isNotNull();
-    assertThat(credential.getUpdatedAt()).isNotNull();
-  }
-
-  @Test
-  void disconnectWithoutCredentialDoesNothing() {
-    // Given: 이미 연결 해제된 증권계좌
-    stubOwnedSecuritiesAccount();
-    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNull(ACCOUNT_ID))
-        .thenReturn(List.of());
-
-    // When & Then: 예외 없이 종료되고 저장도 호출되지 않음
-    service.disconnect(ACCOUNT_ID);
-    verify(credentialRepository, never()).saveAll(anyList());
+    // Then: 비밀키 암호문이 남지 않도록 행을 물리 삭제함(D-B-015)
+    verify(credentialRepository).deleteBySecuritiesAccountId(ACCOUNT_ID);
   }
 
   @Test

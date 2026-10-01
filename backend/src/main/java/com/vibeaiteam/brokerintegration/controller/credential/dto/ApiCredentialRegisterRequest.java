@@ -1,6 +1,8 @@
 package com.vibeaiteam.brokerintegration.controller.credential.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,9 +27,14 @@ public class ApiCredentialRegisterRequest {
 
   /** 브로커 발급 앱키. */
   @NotBlank(message = "appKey는 필수 입력값입니다.")
+  @Size(max = 512, message = "appKey가 너무 깁니다.")
   private String appKey;
 
   /** 브로커 발급 앱시크릿. */
   @NotBlank(message = "appSecret은 필수 입력값입니다.")
+  @Size(max = 512, message = "appSecret이 너무 깁니다.")
   private String appSecret;
+
+  /** 증권사 키 발급일(선택). 없으면 오늘로 본다. */
+  private LocalDate keyIssuedOn;
 }
