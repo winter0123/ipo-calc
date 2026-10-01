@@ -94,6 +94,55 @@ public class IpoService {
     final Long computedLowerBandPrice = pick(updatedLowerBandPrice, ipo.getLowerBandPrice());
     final Long computedUpperBandPrice = pick(updatedUpperBandPrice, ipo.getUpperBandPrice());
 
+    validateUpdate(request, ipo);
+
+    checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
+
+    // 미입력 필드는 현재 값을 그대로 다시 설정하므로 변경이 없다
+    ipo.setCompanyName(computedCompanyName);
+    ipo.setIpoName(computedIpoName);
+    ipo.setStockCode(computedStockCode);
+    ipo.setRoundLabel(computedRoundLabel);
+    ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
+    ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
+    ipo.setLowerBandPrice(computedLowerBandPrice);
+    ipo.setUpperBandPrice(computedUpperBandPrice);
+    ipo.setFixedPrice(pick(updatedFixedPrice, ipo.getFixedPrice()));
+    ipo.setListingDate(pick(request.getListingDate(), ipo.getListingDate()));
+    ipo.setOfferingShareCount(pick(updatedOfferingShareCount, ipo.getOfferingShareCount()));
+
+    ipo.setUpdatedAt(LocalDateTime.now(clock));
+    try {
+      Ipo saved = ipoRepository.save(ipo);
+      return IpoResponse.from(saved);
+    } catch (DataIntegrityViolationException ex) {
+      throw new IpoConflictException("이미 등록된 IPO입니다.");
+    }
+  }
+
+  /**
+   * 수정 요청에 대한 검증을 수행한다. 검증 실패 시 {@link IpoValidationException}을 던진다.
+   *
+   * @param request 수정 요청
+   * @param ipo 기존 IPO 엔티티
+   */
+  private void validateUpdate(IpoUpdateRequest request, Ipo ipo) {
+    final String updatedCompanyName = request.getCompanyName();
+    final String updatedIpoName = request.getIpoName();
+    final LocalDate updatedSubscriptionStartDate = request.getSubscriptionStartDate();
+    final LocalDate updatedSubscriptionEndDate = request.getSubscriptionEndDate();
+    final Long updatedLowerBandPrice = request.getLowerBandPrice();
+    final Long updatedUpperBandPrice = request.getUpperBandPrice();
+    final Long updatedFixedPrice = request.getFixedPrice();
+    final Long updatedOfferingShareCount = request.getOfferingShareCount();
+
+    final LocalDate computedSubscriptionStartDate =
+        pick(updatedSubscriptionStartDate, ipo.getSubscriptionStartDate());
+    final LocalDate computedSubscriptionEndDate =
+        pick(updatedSubscriptionEndDate, ipo.getSubscriptionEndDate());
+    final Long computedLowerBandPrice = pick(updatedLowerBandPrice, ipo.getLowerBandPrice());
+    final Long computedUpperBandPrice = pick(updatedUpperBandPrice, ipo.getUpperBandPrice());
+
     if (updatedCompanyName != null) {
       validateRequiredName("companyName", updatedCompanyName);
     }
@@ -126,29 +175,6 @@ public class IpoService {
       if (updatedOfferingShareCount <= 0) {
         throw new IpoValidationException("offeringShareCount는 0보다 커야 합니다.");
       }
-    }
-
-    checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
-
-    // 미입력 필드는 현재 값을 그대로 다시 설정하므로 변경이 없다
-    ipo.setCompanyName(computedCompanyName);
-    ipo.setIpoName(computedIpoName);
-    ipo.setStockCode(computedStockCode);
-    ipo.setRoundLabel(computedRoundLabel);
-    ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
-    ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
-    ipo.setLowerBandPrice(computedLowerBandPrice);
-    ipo.setUpperBandPrice(computedUpperBandPrice);
-    ipo.setFixedPrice(pick(updatedFixedPrice, ipo.getFixedPrice()));
-    ipo.setListingDate(pick(request.getListingDate(), ipo.getListingDate()));
-    ipo.setOfferingShareCount(pick(updatedOfferingShareCount, ipo.getOfferingShareCount()));
-
-    ipo.setUpdatedAt(LocalDateTime.now(clock));
-    try {
-      Ipo saved = ipoRepository.save(ipo);
-      return IpoResponse.from(saved);
-    } catch (DataIntegrityViolationException ex) {
-      throw new IpoConflictException("이미 등록된 IPO입니다.");
     }
   }
 

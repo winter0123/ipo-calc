@@ -29,7 +29,8 @@
 | 2 | 소유권 검증 중앙화: `OwnershipErrors`(도메인 예외 팩토리)·`OwnershipGuard` 오버로드, `SubscriptionOwnership`·`AllocationOwnership`(청약·배정 경로를 푸는 코드를 한 곳에). Cost·Sale·Allocation·Subscription 서비스의 `findOwnedX`·`requireOwnedAllocation`·`validate*Ownership`를 이것으로 교체(서비스 4개 순삭제 약 35줄, 이전 구현과 같은 조회 방식(`findById` vs 삭제 제외)·예외 클래스·메시지 유지). 패키지 순환이 생기지 않도록 청약·배정 각 패키지 아래에 둠. 두 클래스의 단위 테스트 10건 추가 | 완료 |
 | 3 | 증권사 연동 정리: `ApiCredentialAssembler`(응답 조립·연결 상태·만료일 계산)와 `MatchCandidateAssembler`(청약·배정·매도·공모주를 모아 매칭 후보 생성)를 분리. `ApiCredentialService` 357→279줄, `BrokerSyncService` 281→202줄, 서비스의 `securitiesAccountId` null 검사 4곳을 `requireId`로 통합. 응답·예외·로그·트랜잭션 불변 | 완료 |
 | 5 | 컨트롤러 테스트 공통 도우미: 11개 파일의 `signupAndLogin` 복붙을 `AuthTestSupport`(`signup`/`login`/`signupAndLogin`)로 통합(순삭제 약 240줄). 관리자 승격·계정 ID 조회처럼 가입과 로그인 사이에 끼는 동작은 순서 그대로 | 완료(#299) |
-| 4·6 | 큰 서비스 재평가, 설정 일원화(선택) | 필요 시 |
+| 4 | 큰 서비스 재평가: 250줄 넘는 서비스 대부분(`SecuritiesAccountService`·`IpoService`·`SubscriptionService`·`SaleService`)은 등록·조회·수정·취소를 한 도메인으로 담은 응집된 CRUD라 쪼개지 않는다. 대신 가장 긴 메서드 둘만 같은 클래스 안 private 메서드로 나눴다: `IpoSyncService.sync` 125줄→약 40줄(`fetchCompaniesOrAbort`·`processCompany`), `IpoService.update`의 검증 블록→`validateUpdate`. 새 클래스·테스트 수정 없음 | 완료 |
+| 6 | 설정 일원화(`@Value` → `@ConfigurationProperties`) | **보류(하지 않기로 함)** |
 
 ## 2단계 메모 (2026-10-01)
 
@@ -42,3 +43,9 @@
 - **DTO를 service 쪽으로 옮기는 항목은 하지 않았다.** `controller.dto` 패키지를 옮기면 모든 import와 테스트가 바뀌고 이득은 없다(서비스→컨트롤러 DTO 의존은 12개 파일에 퍼져 있어 증권사 연동만 옮기면 오히려 일관성이 깨진다). 별도 계획이 있을 때 일괄로 한다.
 - **워커 시도와 폐기**: OpenCode 워커(Nemotron 3 Super)에 같은 설계로 맡겼으나 테스트 파일의 `import` 키워드를 지워 컴파일이 깨지고, 조립기를 mock으로 바꿔 테스트가 동작 검증을 하지 않게 됐으며, 주 코드에도 미사용 의존성·Javadoc 오타·불필요한 import가 있었다. 사용자 지시로 코디네이터가 직접 같은 설계로 다시 구현했다(워커 산출물은 폐기).
 - **5단계 구조 판단**: 11개 중 4개만 완전히 같은 본문이고 나머지는 가입 후 계정 조회·관리자 승격이 끼어 있다. 공통 부분(가입 호출, 로그인 호출)만 정적 메서드로 모으고, 끼어드는 동작은 각 테스트에 남겼다.
+
+## 4·6단계 메모 (2026-10-01)
+
+- **4단계는 메서드 추출로 한정**: 서비스가 크다는 이유만으로 클래스를 쪼개면 호출 관계만 늘어난다. 3단계처럼 책임이 둘로 갈리는 경우(응답 조립, 매칭 후보 생성)에만 클래스를 분리했다. `IpoSyncService`는 OpenDART 중단 규칙의 비대칭(DS001 단계의 요청 제한은 `retryable=false`, 일반 오류는 `true`, DS006 단계의 인증·요청 제한은 `retryable` 미설정)을 그대로 옮겼고 중단 경로에서는 병합·완료 로그가 실행되지 않는 흐름도 같다. 기존 테스트 766건을 한 줄도 고치지 않고 통과해 동작 불변을 확인했다.
+- **6단계를 하지 않는 이유**: `OpenDartApiProperties`·`DataGoKrApiProperties`·`UstockPlusApiProperties`는 `@Component` + `@Value` 생성자 주입이고 테스트 7곳이 그 생성자를 직접 호출한다. `@ConfigurationProperties`로 바꾸려면 생성자 바인딩 등록 방식(`@EnableConfigurationProperties`/스캔)을 도입하고 테스트 생성자도 모두 바꿔야 하는데, 기능상 이득이 없고 `app.*` 설정 이름·기본값은 `application.yml` 한 곳에 이미 모여 있다. 암호화 키 클래스의 `@Value`는 레거시 키 호환 로직과 얽혀 있어 더더욱 건드리지 않는다. `OpenDartApiProperties` Javadoc의 "ConfigurationProperties는 사용되지 않는다"는 문장은 `KisApiProperties` 때문에 이미 사실이 아니지만 코드 동작과 무관하다.
+- **워커 운영**: 4단계는 OpenCode 워커(Nemotron 3 Ultra)가 [범위]를 두 파일로 한정하고 "테스트 수정 금지"를 걸어 한 번에 통과했다. 3단계 실패(테스트를 고쳐서 컴파일을 맞추려다 망가뜨림)의 교훈이 그대로 적용된 결과다.
