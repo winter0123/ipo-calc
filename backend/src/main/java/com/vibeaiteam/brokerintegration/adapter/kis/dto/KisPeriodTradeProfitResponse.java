@@ -16,7 +16,9 @@ public record KisPeriodTradeProfitResponse(
     @JsonProperty("msg_cd") String msgCd,
     @JsonProperty("msg1") String msg1,
     @JsonProperty("output1") List<KisPeriodTradeProfitDetail> output1,
-    @JsonProperty("output2") KisPeriodTradeProfitSummary output2) {
+    @JsonProperty("output2") KisPeriodTradeProfitSummary output2,
+    @JsonProperty("ctx_area_fk100") String ctxAreaFk100,
+    @JsonProperty("ctx_area_nk100") String ctxAreaNk100) {
 
   /**
    * 성공 응답인지 확인한다.

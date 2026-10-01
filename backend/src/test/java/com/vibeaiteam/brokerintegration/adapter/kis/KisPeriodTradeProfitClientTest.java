@@ -3,7 +3,9 @@ package com.vibeaiteam.brokerintegration.adapter.kis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.client.ExpectedCount.times;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -179,6 +181,108 @@ class KisPeriodTradeProfitClientTest {
 
   private KisPeriodTradeProfit query(LocalDate from, LocalDate to) {
     return client.queryPeriodTradeProfit(1L, credentials, token, from, to);
+  }
+
+  @Test
+  void queryPeriodTradeProfit_continuesWithHeaderAndContextKeysAndMergesPages() {
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andExpect(headerDoesNotExist("tr_cont"))
+        .andExpect(queryParam("CTX_AREA_FK100", ""))
+        .andExpect(queryParam("CTX_AREA_NK100", ""))
+        .andRespond(
+            withSuccess(pageBody("20260115", "FK-1", "NK-1"), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "M"));
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andExpect(header("tr_cont", "N"))
+        .andExpect(queryParam("CTX_AREA_FK100", "FK-1"))
+        .andExpect(queryParam("CTX_AREA_NK100", "NK-1"))
+        .andRespond(
+            withSuccess(pageBody("20260116", "", ""), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "D"));
+
+    KisPeriodTradeProfit result =
+        client.queryPeriodTradeProfit(
+            1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+    assertThat(result.details()).extracting("tradDt").containsExactly("20260115", "20260116");
+    assertThat(result.summary()).isNotNull();
+    mockServer.verify();
+  }
+
+  @Test
+  void queryPeriodTradeProfit_stopsWhenContinuationKeyIsBlankEvenIfHeaderSaysMore() {
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(
+            withSuccess(pageBody("20260115", "", ""), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "M"));
+
+    KisPeriodTradeProfit result =
+        client.queryPeriodTradeProfit(
+            1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+    assertThat(result.details()).hasSize(1);
+    mockServer.verify();
+  }
+
+  @Test
+  void queryPeriodTradeProfit_failsInsteadOfSilentlyTruncatingAfterMaxPages() {
+    mockServer
+        .expect(times(10), requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(
+            withSuccess(pageBody("20260115", "FK", "NK"), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "M"));
+
+    assertThatThrownBy(
+            () ->
+                client.queryPeriodTradeProfit(
+                    1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo("too_many_pages"));
+    mockServer.verify();
+  }
+
+  @Test
+  void queryPeriodTradeProfit_secondPageFailureIsReportedNotSwallowed() {
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(
+            withSuccess(pageBody("20260115", "FK", "NK"), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "F"));
+    mockServer
+        .expect(requestTo(containsString("inquire-period-trade-profit")))
+        .andRespond(withServerError());
+
+    assertThatThrownBy(
+            () ->
+                client.queryPeriodTradeProfit(
+                    1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+        .isInstanceOf(BrokerApiException.class);
+  }
+
+  private String pageBody(String tradeDate, String fk100, String nk100) {
+    return """
+        {
+          "rt_cd": "0",
+          "msg_cd": "KIOK0510",
+          "msg1": "조회가 완료되었습니다",
+          "ctx_area_fk100": "%s",
+          "ctx_area_nk100": "%s",
+          "output1": [ {
+            "trad_dt": "%s",
+            "pdno": "0123A4",
+            "sll_qty": "1",
+            "sll_amt": "1000",
+            "fee": "0",
+            "tl_tax": "0"
+          } ],
+          "output2": { "sll_qty_smtl": "1" }
+        }
+        """
+        .formatted(fk100, nk100, tradeDate);
   }
 
   private void expectProfitRequest(String startDate, String endDate, String responseBody) {
