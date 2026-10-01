@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
+import { apiFetch } from '@/shared/api/client.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
+
+// MainLayout이 현재 계정(/auth/me)을 조회한다. 이 테스트는 라우팅만 보므로 로그인 전(401)으로 둔다.
+vi.mock('@/shared/api/client.ts', () => ({ apiFetch: vi.fn() }))
 
 vi.mock('../pages/LoginPage/LoginPage.tsx', () => ({ default: () => <div>LoginPage</div> }))
 vi.mock('../pages/SignupPage/SignupPage.tsx', () => ({ default: () => <div>SignupPage</div> }))
@@ -57,10 +63,14 @@ const ROUTES: Array<[string, string]> = [
 ]
 
 function renderAt(path: string) {
+  vi.mocked(apiFetch).mockRejectedValue(new ApiError(401, 'Unauthorized'))
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 

@@ -985,7 +985,11 @@ async function scenario13(browser) {
   try {
     const attempt = await login(page, adminEmail, PASSWORD)
     if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
-    await goto(page, '/admin/accounts')
+    // 관리자에게만 헤더에 `가입 승인` 링크가 보인다.
+    await page
+      .getByRole('navigation', { name: '주요 메뉴' })
+      .getByRole('link', { name: '가입 승인' })
+      .click()
     await page.getByRole('heading', { name: '가입 승인 관리' }).waitFor()
     await page.getByText(memberEmail, { exact: true }).waitFor()
     await page.getByRole('button', { name: `${memberEmail} 승인`, exact: true }).click()
@@ -996,7 +1000,7 @@ async function scenario13(browser) {
 
   const after = await memberLogin()
   if (after.status !== 200) throw new Error(`승인 뒤 로그인 실패: ${after.status} ${after.body}`)
-  return '승인 전 403, 관리자 화면에서 승인, 승인 뒤 로그인 200'
+  return '승인 전 403, 관리자 헤더 링크로 진입해 승인, 승인 뒤 로그인 200'
 }
 
 const SCENARIOS = [

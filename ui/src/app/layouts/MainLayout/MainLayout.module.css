@@ -63,6 +63,12 @@
   }
 }
 
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .nav a {
   display: inline-flex;
   align-items: center;
