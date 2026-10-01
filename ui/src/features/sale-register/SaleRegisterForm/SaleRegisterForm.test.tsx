@@ -61,6 +61,8 @@ const SUBSCRIPTION_HISTORY = {
       allocation: null,
       sales: [],
       remainingQuantity: 50,
+      investorName: null,
+      securitiesFirmName: null,
     },
   ],
   totalElements: 1,
@@ -80,16 +82,13 @@ const ALLOCATION_DETAIL = {
   allocation: {
     id: 1,
     allocatedQuantity: 50,
-    allocatedAt: null,
-    allocationMethod: null,
     allocationPrice: null,
-    note: null,
-    status: 'PENDING',
-    createdAt: '2026-01-01',
-    updatedAt: '2026-01-01',
+    allocationStatus: 'ACTIVE',
   },
   sales: [],
   remainingQuantity: 50,
+  investorName: null,
+  securitiesFirmName: null,
 }
 
 function defaultMock() {

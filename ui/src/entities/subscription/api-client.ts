@@ -1,4 +1,6 @@
 import { apiFetch } from '@/shared/api/client.ts'
+import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { investmentHistoryItemSchema, investmentHistoryResponseSchema } from './types.ts'
 import type {
   InvestmentHistoryFilters,
   InvestmentHistoryResponse,
@@ -32,10 +34,11 @@ export async function getInvestmentHistory(
   if (filters.size !== undefined) params.set('size', String(filters.size))
 
   const query = params.toString()
-  return apiFetch<InvestmentHistoryResponse>(`/investment-history${query ? `?${query}` : ''}`, {
-    method: 'GET',
+  return apiGetParsed(
+    `/investment-history${query ? `?${query}` : ''}`,
+    investmentHistoryResponseSchema,
     signal,
-  })
+  )
 }
 
 /**
@@ -47,8 +50,5 @@ export async function getSubscriptionDetail(
   subscriptionId: number,
   signal?: AbortSignal,
 ): Promise<InvestmentHistoryItem> {
-  return apiFetch<InvestmentHistoryItem>(`/investment-history/${subscriptionId}`, {
-    method: 'GET',
-    signal,
-  })
+  return apiGetParsed(`/investment-history/${subscriptionId}`, investmentHistoryItemSchema, signal)
 }

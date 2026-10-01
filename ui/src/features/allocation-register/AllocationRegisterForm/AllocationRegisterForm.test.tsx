@@ -30,6 +30,8 @@ const SUBSCRIPTION_DETAIL = {
   allocation: null,
   sales: [],
   remainingQuantity: null,
+  investorName: null,
+  securitiesFirmName: null,
 }
 
 function mockSubscriptionDetailFetch() {

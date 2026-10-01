@@ -1,13 +1,17 @@
-export interface SecuritiesAccount {
-  id: number
-  investorId: number
-  securitiesFirmId: number
-  securitiesFirmName?: string
-  accountNumber: string
-  accountName?: string
-  isDefault: boolean
-  status: string
-  deletedAt: string | null
-  createdAt: string
-  updatedAt: string
-}
+import { z } from 'zod'
+
+export const securitiesAccountSchema = z.object({
+  id: z.number(),
+  investorId: z.number(),
+  securitiesFirmId: z.number(),
+  securitiesFirmName: z.string().nullable(),
+  accountNumber: z.string(),
+  accountName: z.string().nullable(),
+  isDefault: z.boolean(),
+  status: z.string(),
+  deletedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export type SecuritiesAccount = z.infer<typeof securitiesAccountSchema>

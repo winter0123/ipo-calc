@@ -5,8 +5,8 @@ interface ProfitRowProps {
   profit: SaleProfit
 }
 
-function formatNumber(value: number): string {
-  return value.toLocaleString()
+function formatNumber(value: number | null): string {
+  return value === null ? '-' : value.toLocaleString()
 }
 
 function getProfitClass(value: number): string {

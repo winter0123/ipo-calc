@@ -1,19 +1,14 @@
-import { apiFetch } from '@/shared/api/client.ts'
+import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { investorProfitSchema, saleProfitSchema } from './types.ts'
 import type { SaleProfit, InvestorProfit } from './types.ts'
 
 export async function getSaleProfit(saleId: number, signal?: AbortSignal): Promise<SaleProfit> {
-  return apiFetch<SaleProfit>(`/sales/${saleId}/profit`, {
-    method: 'GET',
-    signal,
-  })
+  return apiGetParsed(`/sales/${saleId}/profit`, saleProfitSchema, signal)
 }
 
 export async function getInvestorProfits(
   investorId: number,
   signal?: AbortSignal,
 ): Promise<InvestorProfit> {
-  return apiFetch<InvestorProfit>(`/investors/${investorId}/profits`, {
-    method: 'GET',
-    signal,
-  })
+  return apiGetParsed(`/investors/${investorId}/profits`, investorProfitSchema, signal)
 }

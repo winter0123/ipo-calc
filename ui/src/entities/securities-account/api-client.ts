@@ -1,4 +1,6 @@
-import { apiFetch } from '@/shared/api/client.ts'
+import { z } from 'zod'
+import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { securitiesAccountSchema } from './types.ts'
 import type { SecuritiesAccount } from './types.ts'
 
 export async function fetchSecuritiesAccounts(
@@ -9,8 +11,9 @@ export async function fetchSecuritiesAccounts(
   if (investorId !== undefined) params.set('investorId', String(investorId))
 
   const query = params.toString()
-  return apiFetch<SecuritiesAccount[]>(`/securities-accounts${query ? `?${query}` : ''}`, {
-    method: 'GET',
+  return apiGetParsed(
+    `/securities-accounts${query ? `?${query}` : ''}`,
+    z.array(securitiesAccountSchema),
     signal,
-  })
+  )
 }

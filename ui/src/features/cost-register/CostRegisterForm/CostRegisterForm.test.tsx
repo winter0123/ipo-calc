@@ -49,6 +49,8 @@ const SUBSCRIPTION_HISTORY = {
       allocation: null,
       sales: [],
       remainingQuantity: 50,
+      investorName: null,
+      securitiesFirmName: null,
     },
   ],
   totalElements: 1,

@@ -103,6 +103,12 @@ describe('buildCalendarEvents', () => {
     expect(eventsBand[0].price).toBe('15,000~25,000원')
   })
 
+  it('가격 컬럼이 모두 null이면 가격을 표시하지 않는다(DB nullable)', () => {
+    const ipos = [makeIpo({ fixedPrice: null, lowerBandPrice: null, upperBandPrice: null })]
+
+    expect(buildCalendarEvents(ipos, 2026, 10)[0].price).toBeUndefined()
+  })
+
   it('이벤트가 날짜순으로 정렬된다', () => {
     const ipos = [
       makeIpo({

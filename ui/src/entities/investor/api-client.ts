@@ -1,4 +1,7 @@
 import { apiFetch } from '@/shared/api/client.ts'
+import { z } from 'zod'
+import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { investorResponseSchema } from './types.ts'
 import type { InvestorRegisterRequest, InvestorResponse } from './types.ts'
 
 export async function registerInvestor(data: InvestorRegisterRequest): Promise<InvestorResponse> {
@@ -9,8 +12,5 @@ export async function registerInvestor(data: InvestorRegisterRequest): Promise<I
 }
 
 export async function fetchInvestors(signal?: AbortSignal): Promise<InvestorResponse[]> {
-  return apiFetch<InvestorResponse[]>('/investors', {
-    method: 'GET',
-    signal,
-  })
+  return apiGetParsed('/investors', z.array(investorResponseSchema), signal)
 }

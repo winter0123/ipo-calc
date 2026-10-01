@@ -1,11 +1,10 @@
-import { apiFetch } from '@/shared/api/client.ts'
+import { z } from 'zod'
+import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { securitiesFirmResponseSchema } from './types.ts'
 import type { SecuritiesFirmResponse } from './types.ts'
 
 export async function fetchSecuritiesFirms(
   signal?: AbortSignal,
 ): Promise<SecuritiesFirmResponse[]> {
-  return apiFetch<SecuritiesFirmResponse[]>('/securities-firms', {
-    method: 'GET',
-    signal,
-  })
+  return apiGetParsed('/securities-firms', z.array(securitiesFirmResponseSchema), signal)
 }

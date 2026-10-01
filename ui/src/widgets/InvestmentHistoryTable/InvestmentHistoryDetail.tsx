@@ -1,6 +1,10 @@
 import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import styles from './InvestmentHistoryDetail.module.css'
 
+function formatWon(value: number | null): string {
+  return value === null ? '-' : `${value.toLocaleString()}원`
+}
+
 interface InvestmentHistoryDetailProps {
   detail: InvestmentHistoryItem
   onClose: () => void
@@ -47,7 +51,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
         <div className={styles.dlRow}>
           <dt>IPO 고정가</dt>
-          <dd>{detail.ipoFixedPrice.toLocaleString()}원</dd>
+          <dd>{formatWon(detail.ipoFixedPrice)}</dd>
         </div>
         <div className={styles.dlRow}>
           <dt>청약수량</dt>
@@ -112,10 +116,10 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
                 <tr key={sale.id}>
                   <td>{sale.id}</td>
                   <td>{sale.quantity}</td>
-                  <td>{sale.amount.toLocaleString()}원</td>
-                  <td>{sale.fee.toLocaleString()}원</td>
-                  <td>{sale.tax.toLocaleString()}원</td>
-                  <td>{sale.otherCost.toLocaleString()}원</td>
+                  <td>{formatWon(sale.amount)}</td>
+                  <td>{formatWon(sale.fee)}</td>
+                  <td>{formatWon(sale.tax)}</td>
+                  <td>{formatWon(sale.otherCost)}</td>
                   <td>{sale.status}</td>
                   <td>{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
                 </tr>

@@ -57,6 +57,8 @@ describe('AllocationRegisterPage', () => {
       allocation: null,
       sales: [],
       remainingQuantity: null,
+      investorName: null,
+      securitiesFirmName: null,
     })
 
     renderPage(['/allocations/register?subscriptionId=1'])
