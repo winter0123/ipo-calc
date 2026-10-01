@@ -91,7 +91,7 @@ export default function BrokerConnectPanel({
           <ConfirmDialog
             isOpen={confirmOpen}
             title="연결 해제"
-            message="증권사 API 연결을 해제할까요? 저장된 키가 삭제됩니다."
+            message="증권사 API 연결을 해제할까요? 해제하면 조회에 쓰이지 않으며, 다시 쓰려면 키를 새로 입력해야 합니다."
             confirmLabel="해제"
             onCancel={() => setConfirmOpen(false)}
             onConfirm={() => {
