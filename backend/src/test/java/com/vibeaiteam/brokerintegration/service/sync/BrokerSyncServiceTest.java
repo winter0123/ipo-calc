@@ -27,6 +27,7 @@ import com.vibeaiteam.brokerintegration.exception.RateLimitExceededException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
 import com.vibeaiteam.brokerintegration.service.credential.ApiCredentialService;
+import com.vibeaiteam.brokerintegration.service.matching.MatchCandidateAssembler;
 import com.vibeaiteam.brokerintegration.service.matching.UnmatchedReason;
 import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.brokerintegration.service.token.BrokerTokenService;
@@ -92,11 +93,9 @@ class BrokerSyncServiceTest {
             accountEncryptor,
             tokenService,
             port,
-            subscriptionRepository,
-            allocationRepository,
-            ipoRepository,
-            saleRepository,
             saleService,
+            new MatchCandidateAssembler(
+                subscriptionRepository, allocationRepository, ipoRepository, saleRepository),
             Clock.fixed(
                 TODAY.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
             new SlidingWindowRateLimiter(Clock.systemDefaultZone()));

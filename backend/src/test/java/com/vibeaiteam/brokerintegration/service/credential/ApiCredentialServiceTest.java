@@ -86,13 +86,17 @@ class ApiCredentialServiceTest {
         new ApiCredentialService(
             credentialRepository,
             securitiesAccountRepository,
-            securitiesFirmRepository,
             brokerSecretEncryptor,
-            accountNumberEncryptor,
             new OwnershipGuard(securityUtils, investorRepository),
+            assemblerWith(brokerSecretEncryptor),
             Clock.systemDefaultZone(),
             securityUtils,
             new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
+  }
+
+  private ApiCredentialAssembler assemblerWith(BrokerSecretEncryptor encryptor) {
+    return new ApiCredentialAssembler(
+        securitiesFirmRepository, encryptor, accountNumberEncryptor, Clock.systemDefaultZone());
   }
 
   private String newRandomKey() {
@@ -102,13 +106,13 @@ class ApiCredentialServiceTest {
   }
 
   private ApiCredentialService serviceWithoutBrokerKey() {
+    BrokerSecretEncryptor unconfigured = new BrokerSecretEncryptor("");
     return new ApiCredentialService(
         credentialRepository,
         securitiesAccountRepository,
-        securitiesFirmRepository,
-        new BrokerSecretEncryptor(""),
-        accountNumberEncryptor,
+        unconfigured,
         new OwnershipGuard(securityUtils, investorRepository),
+        assemblerWith(unconfigured),
         Clock.systemDefaultZone(),
         securityUtils,
         new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
@@ -204,7 +208,7 @@ class ApiCredentialServiceTest {
     assertThat(saved.getDeletedAt()).isNull();
 
     // And: 응답에는 연결 상태와 마스킹된 계좌번호만 있고 시크릿 필드는 없음 (AC-1811)
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialAssembler.CONNECTION_CONNECTED);
     assertThat(response.accountNumber()).isEqualTo(AccountNumberMasker.mask(PLAIN_ACCOUNT_NUMBER));
     assertThat(response.lastSyncedAt()).isNull();
     List<String> responseFields =
@@ -322,7 +326,7 @@ class ApiCredentialServiceTest {
     ApiCredentialResponse response = service.getStatus(ACCOUNT_ID);
 
     // Then: CONNECTED와 마스킹된 계좌번호가 반환되고 시크릿 필드는 없음 (AC-1811)
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialAssembler.CONNECTION_CONNECTED);
     assertThat(response.apiProvider()).isEqualTo("KIS");
     assertThat(response.accountNumber()).isEqualTo(AccountNumberMasker.mask(PLAIN_ACCOUNT_NUMBER));
     assertThat(response.accountNumber()).isNotEqualTo(PLAIN_ACCOUNT_NUMBER);
@@ -345,7 +349,7 @@ class ApiCredentialServiceTest {
 
     // When & Then: EXPIRED 상태와 만료일이 반환됨
     ApiCredentialResponse response = service.getStatus(ACCOUNT_ID);
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_EXPIRED);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialAssembler.CONNECTION_EXPIRED);
     assertThat(response.keyExpiresOn()).isEqualTo(LocalDate.now().minusDays(1));
     assertThat(response.lastSyncedAt()).isEqualTo(updatedAt);
   }
@@ -364,7 +368,7 @@ class ApiCredentialServiceTest {
                     LocalDateTime.now().minusHours(1))));
 
     assertThat(service.getStatus(ACCOUNT_ID).connectionStatus())
-        .isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+        .isEqualTo(ApiCredentialAssembler.CONNECTION_CONNECTED);
   }
 
   @Test
@@ -425,7 +429,7 @@ class ApiCredentialServiceTest {
     assertThat(credential.getAccessTokenEncrypted()).isNull();
     assertThat(credential.getTokenExpiresAt()).isNull();
     assertThat(response.keyIssuedOn()).isEqualTo(LocalDate.now());
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_CONNECTED);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialAssembler.CONNECTION_CONNECTED);
   }
 
   @Test
@@ -482,7 +486,7 @@ class ApiCredentialServiceTest {
     // When & Then: DISCONNECTED가 반환됨
     ApiCredentialResponse response = service.getStatus(ACCOUNT_ID);
     assertThat(response.connectionStatus())
-        .isEqualTo(ApiCredentialService.CONNECTION_DISCONNECTED);
+        .isEqualTo(ApiCredentialAssembler.CONNECTION_DISCONNECTED);
     assertThat(response.id()).isNull();
     assertThat(response.apiProvider()).isNull();
     assertThat(response.accountNumber()).isEqualTo(AccountNumberMasker.mask(PLAIN_ACCOUNT_NUMBER));
@@ -498,7 +502,7 @@ class ApiCredentialServiceTest {
 
     // When & Then: 저장된 시크릿을 쓸 수 없으므로 ERROR 상태가 반환됨
     ApiCredentialResponse response = serviceWithoutBrokerKey().getStatus(ACCOUNT_ID);
-    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialService.CONNECTION_ERROR);
+    assertThat(response.connectionStatus()).isEqualTo(ApiCredentialAssembler.CONNECTION_ERROR);
   }
 
   @Test

@@ -14,16 +14,11 @@ import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountA
 import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
-import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
-import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberMasker;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
-import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
-import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -43,14 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ApiCredentialService {
 
-  static final String CONNECTION_CONNECTED = "CONNECTED";
-  static final String CONNECTION_EXPIRED = "EXPIRED";
-  static final String CONNECTION_ERROR = "ERROR";
-  static final String CONNECTION_DISCONNECTED = "DISCONNECTED";
-
-  /** 한국투자증권 서비스 사용기간은 신청일부터 1년이다(갱신하면 키가 새로 발급된다). */
-  private static final Period KEY_VALIDITY = Period.ofYears(1);
-
   /** 키 등록·교체는 계정당 10분에 5회까지만 허용한다(탈취된 세션의 연속 시도 방지). */
   private static final SlidingWindowRateLimiter.Limit KEY_WRITE_LIMIT =
       new SlidingWindowRateLimiter.Limit(5, Duration.ofMinutes(10));
@@ -59,10 +46,9 @@ public class ApiCredentialService {
 
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
-  private final SecuritiesFirmRepository securitiesFirmRepository;
   private final BrokerSecretEncryptor brokerSecretEncryptor;
-  private final AccountNumberEncryptor accountNumberEncryptor;
   private final OwnershipGuard ownershipGuard;
+  private final ApiCredentialAssembler assembler;
   private final Clock clock;
   private final SecurityUtils securityUtils;
   private final SlidingWindowRateLimiter rateLimiter;
@@ -104,9 +90,7 @@ public class ApiCredentialService {
       String appKey,
       String appSecret,
       LocalDate keyIssuedOn) {
-    if (securitiesAccountId == null) {
-      throw new ApiCredentialValidationException("securitiesAccountId는 필수 입력값입니다.");
-    }
+    requireId(securitiesAccountId);
     if (isBlank(apiProvider) || isBlank(appKey) || isBlank(appSecret)) {
       throw new ApiCredentialValidationException("apiProvider, appKey, appSecret은 필수 입력값입니다.");
     }
@@ -122,7 +106,7 @@ public class ApiCredentialService {
     }
 
     String normalizedProvider = apiProvider.trim();
-    String supported = supportedProvider(account);
+    String supported = assembler.supportedProvider(account);
     if (supported == null || !supported.equals(normalizedProvider)) {
       throw new ApiCredentialValidationException("이 증권사는 아직 API 연동을 지원하지 않습니다.");
     }
@@ -160,7 +144,7 @@ public class ApiCredentialService {
         "브로커 API 인증정보 등록: securitiesAccountId={}, provider={}",
         securitiesAccountId,
         normalizedProvider);
-    return toResponse(account, saved);
+    return assembler.toResponse(account, saved);
   }
 
   /**
@@ -178,9 +162,7 @@ public class ApiCredentialService {
   @Transactional
   public ApiCredentialResponse replace(
       Long securitiesAccountId, String appKey, String appSecret, LocalDate keyIssuedOn) {
-    if (securitiesAccountId == null) {
-      throw new ApiCredentialValidationException("securitiesAccountId는 필수 입력값입니다.");
-    }
+    requireId(securitiesAccountId);
     if (isBlank(appKey) || isBlank(appSecret)) {
       throw new ApiCredentialValidationException("appKey, appSecret은 필수 입력값입니다.");
     }
@@ -205,7 +187,7 @@ public class ApiCredentialService {
     credential.setUpdatedAt(LocalDateTime.now(clock));
     SecuritiesAccountApiCredential saved = credentialRepository.save(credential);
     log.info("브로커 API 인증정보 교체: securitiesAccountId={}", securitiesAccountId);
-    return toResponse(account, saved);
+    return assembler.toResponse(account, saved);
   }
 
   /**
@@ -219,9 +201,7 @@ public class ApiCredentialService {
    */
   @Transactional(readOnly = true)
   public ApiCredentialResponse getStatus(Long securitiesAccountId) {
-    if (securitiesAccountId == null) {
-      throw new ApiCredentialValidationException("securitiesAccountId는 필수 입력값입니다.");
-    }
+    requireId(securitiesAccountId);
 
     SecuritiesAccount account = requireOwnedSecuritiesAccount(securitiesAccountId);
 
@@ -232,7 +212,7 @@ public class ApiCredentialService {
             .findFirst()
             .orElse(null);
 
-    return toResponse(account, credential);
+    return assembler.toResponse(account, credential);
   }
 
   /**
@@ -244,9 +224,7 @@ public class ApiCredentialService {
    */
   @Transactional
   public void disconnect(Long securitiesAccountId) {
-    if (securitiesAccountId == null) {
-      throw new ApiCredentialValidationException("securitiesAccountId는 필수 입력값입니다.");
-    }
+    requireId(securitiesAccountId);
 
     requireOwnedSecuritiesAccount(securitiesAccountId);
 
@@ -274,63 +252,8 @@ public class ApiCredentialService {
     return account;
   }
 
-  private ApiCredentialResponse toResponse(
-      SecuritiesAccount account, SecuritiesAccountApiCredential credential) {
-    String maskedAccountNumber =
-        AccountNumberMasker.mask(accountNumberEncryptor.decrypt(account.getAccountNumber()));
-    return new ApiCredentialResponse(
-        credential == null ? null : credential.getId(),
-        account.getId(),
-        credential == null ? null : credential.getApiProvider(),
-        resolveConnectionStatus(credential),
-        maskedAccountNumber,
-        lastSyncedAt(credential),
-        supportedProvider(account),
-        credential == null ? null : credential.getKeyIssuedOn(),
-        keyExpiresOn(credential));
-  }
-
-  private String resolveConnectionStatus(SecuritiesAccountApiCredential credential) {
-    if (credential == null) {
-      return CONNECTION_DISCONNECTED;
-    }
-    // 브로커 키가 미설정이면 저장된 시크릿을 쓸 수 없으므로 연결 오류 상태로 표시한다.
-    if (!brokerSecretEncryptor.isConfigured()) {
-      return CONNECTION_ERROR;
-    }
-    // 접근토큰(1일)은 서버가 자동으로 다시 발급하므로 상태에 반영하지 않는다.
-    // 사용자가 조치해야 하는 만료는 증권사 서비스 사용기간이다.
-    LocalDate expiresOn = keyExpiresOn(credential);
-    if (expiresOn != null && expiresOn.isBefore(LocalDate.now(clock))) {
-      return CONNECTION_EXPIRED;
-    }
-    return CONNECTION_CONNECTED;
-  }
-
   private String keyWriteBucket() {
     return "credential-write:" + securityUtils.getCurrentAccountId();
-  }
-
-  private LocalDate keyExpiresOn(SecuritiesAccountApiCredential credential) {
-    if (credential == null || credential.getKeyIssuedOn() == null) {
-      return null;
-    }
-    return credential.getKeyIssuedOn().plus(KEY_VALIDITY);
-  }
-
-  /** 증권계좌의 증권사가 API 연동 대상이면 그 어댑터 식별자를, 아니면 null을 돌려준다. */
-  private String supportedProvider(SecuritiesAccount account) {
-    if (account.getSecuritiesFirmId() == null) {
-      return null;
-    }
-    SecuritiesFirm firm =
-        securitiesFirmRepository
-            .findByIdAndDeletedAtIsNull(account.getSecuritiesFirmId())
-            .orElse(null);
-    if (firm == null || !Boolean.TRUE.equals(firm.getApiSupported())) {
-      return null;
-    }
-    return firm.getApiProvider();
   }
 
   private LocalDate resolveIssuedOn(LocalDate keyIssuedOn) {
@@ -344,11 +267,10 @@ public class ApiCredentialService {
     return keyIssuedOn;
   }
 
-  private LocalDateTime lastSyncedAt(SecuritiesAccountApiCredential credential) {
-    if (credential == null || credential.getAccessTokenEncrypted() == null) {
-      return null;
+  private static void requireId(Long securitiesAccountId) {
+    if (securitiesAccountId == null) {
+      throw new ApiCredentialValidationException("securitiesAccountId는 필수 입력값입니다.");
     }
-    return credential.getUpdatedAt();
   }
 
   private static boolean isBlank(String value) {
