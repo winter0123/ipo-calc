@@ -12,7 +12,7 @@ const stamp = Date.now()
 const admin = `guide-admin-${stamp}@example.com`
 const member = `guide-member-${stamp}@example.com`
 const sql = (q) =>
-  execFileSync('docker', ['exec', 'vibe-ai-team-postgres', 'psql', '-U', 'vibe', '-d', 'vibe_slot_4', '-c', q])
+  execFileSync('docker', ['exec', 'vibe-ai-team-postgres', 'psql', '-U', 'vibe', '-d', process.env.SLOT_DB ?? 'vibe_slot_4', '-c', q])
 
 const browser = await chromium.launch({ headless: true })
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ko-KR' })
@@ -91,7 +91,7 @@ const ipoDefs = [
 const ipos = []
 for (const [i, [name, code, s, e, l, price]] of ipoDefs.entries()) {
   ipos.push(await api('POST', '/ipos', {
-    companyName: name, ipoName: name, stockCode: String(100000 + i * 1111), roundLabel: null,
+    companyName: name, ipoName: name, stockCode: String(100000 + i * 1111 + (stamp % 80) * 10000), roundLabel: null,
     fixedPrice: price, subscriptionStartDate: day(s, ''), subscriptionEndDate: day(e, ''), listingDate: day(l, ''), offeringShareCount: 1000000,
   }))
 }

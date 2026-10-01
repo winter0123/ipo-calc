@@ -26,7 +26,7 @@
   outline-offset: 2px;
 }
 
-/* 상단 바: 흰 배경 + 1px 선, 그림자·그라디언트 없음 */
+/* 상단 바: 바다 파랑 → 아쿠아 그라디언트. 글자는 진한 남색(--ink)만 써서 모든 구간에서 대비 5:1 이상 */
 .header {
   position: sticky;
   top: 0;
@@ -36,8 +36,8 @@
   gap: var(--space-6);
   height: var(--header-h);
   padding: 0 var(--gutter);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+  box-shadow: 0 8px 24px -14px rgba(31, 107, 192, 0.55);
 }
 
 .brand {
@@ -54,8 +54,9 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--sea);
-  color: var(--ink);
+  background: var(--white);
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(11, 42, 74, 0.18);
 }
 
 .siteName {
@@ -67,7 +68,7 @@
 
 .nav {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-1);
   height: 100%;
   margin-left: auto;
@@ -80,9 +81,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 100%;
-  padding: 0 var(--space-3);
-  color: var(--ink-muted);
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--ink);
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
@@ -101,15 +103,14 @@
 .link:hover,
 .nav summary:hover,
 .logout:hover {
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .link:focus-visible,
 .nav summary:focus-visible,
 .logout:focus-visible {
-  outline: 2px solid var(--link);
-  outline-offset: -2px;
-  border-radius: var(--radius-sm);
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .logout:disabled {
@@ -118,18 +119,13 @@
 }
 
 .active {
-  color: var(--ink);
+  background: var(--white);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(11, 42, 74, 0.16);
 }
 
-.active::after {
-  content: '';
-  position: absolute;
-  left: var(--space-3);
-  right: var(--space-3);
-  bottom: 0;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--sea);
+.active:hover {
+  background: var(--white);
 }
 
 .more {
@@ -139,7 +135,7 @@
 
 .morePanel {
   position: absolute;
-  top: calc(100% - var(--space-2));
+  top: calc(100% + var(--space-1));
   right: 0;
   z-index: 30;
   display: flex;
@@ -171,8 +167,8 @@
   min-height: 44px;
   margin-left: auto;
   padding: 0 var(--space-3);
-  background: transparent;
-  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(11, 42, 74, 0.35);
   border-radius: var(--radius-sm);
   color: var(--ink);
   font: inherit;
@@ -189,13 +185,19 @@
   padding: var(--space-7) var(--gutter) var(--space-8);
 }
 
-/* 모든 화면 루트: 같은 폭 규칙, 제목과 본문 사이 같은 간격 */
+/* 모든 화면 루트: 같은 폭 규칙의 흰 카드(가운데 정렬), 제목과 본문 사이 같은 간격 */
 .main > * {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
   width: 100%;
   max-width: var(--page-max, var(--content-max));
+  margin-inline: auto;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
 @media (max-width: 900px) {
@@ -221,6 +223,7 @@
     padding: var(--space-2) var(--gutter) var(--space-4);
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+    box-shadow: 0 16px 32px -20px rgba(11, 42, 74, 0.4);
   }
 
   .navOpen {
@@ -232,20 +235,20 @@
   .logout {
     height: 48px;
     padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
   }
 
-  .active::after {
-    left: 0;
-    right: auto;
-    top: 12px;
-    bottom: 12px;
-    width: 3px;
-    height: auto;
-    border-radius: 3px;
+  .link:hover,
+  .nav summary:hover,
+  .logout:hover {
+    background: var(--surface-sea);
   }
 
-  .active {
-    padding-left: var(--space-3);
+  .active,
+  .active:hover {
+    background: var(--surface-sea);
+    box-shadow: none;
+    color: var(--ink);
   }
 
   .morePanel {
@@ -256,6 +259,12 @@
   }
 
   .main {
-    padding: var(--space-5) var(--gutter) var(--space-7);
+    padding: var(--space-4) var(--gutter) var(--space-7);
+  }
+
+  .main > * {
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-5);
+    border-radius: var(--radius);
   }
 }
