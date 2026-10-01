@@ -11,9 +11,9 @@
 
 .switch a {
   color: var(--link);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 .switch a:hover {
-  text-decoration: underline;
+  color: var(--link-hover);
 }

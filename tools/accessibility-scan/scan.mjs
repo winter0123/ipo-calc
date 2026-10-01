@@ -175,6 +175,7 @@ async function setupAdminStates(browser, page) {
           await p.getByRole('table').waitFor()
         },
       },
+      { name: 'admin-ipo-register', path: '/admin/ipos', needsAuth: true },
     ]
   } catch (error) {
     console.log(`관리자 화면 스캔 준비 실패(건너뜀): ${error.message}`)
