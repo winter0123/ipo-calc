@@ -4,10 +4,10 @@
 
 ## Epic 18 마무리 (2026-10-01) — 최신
 
-KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 호출해 형태만 확인했다(`pdno`는 6자리 영숫자, `prsm_tlex_smtl`은 응답에 없음, `fee`·`tl_tax`는 행마다 존재). SF-4b(#267)와 SF-5(#268)는 병합했고 SF-6(프론트 `/broker-sync`)은 PR 대기 중이다. 사용자 지시로 이번 개발은 워커 없이 Master가 직접 했다. 키·토큰 수명은 `docs/work-log/broker-readonly-api-pilot.md` D-B-012, 다중 사용자 연결은 D-B-013(사용자 결정 대기: 개인용 유지 / 안내 강화 / 제휴 문의).
+KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 호출해 형태만 확인했다(`pdno`는 6자리 영숫자, `prsm_tlex_smtl`은 응답에 없음, `fee`·`tl_tax`는 행마다 존재). SF-4b(#267)와 SF-5(#268)는 병합했고 SF-6(프론트 `/broker-sync`, #269)도 병합했다. 사용자 지시로 이번 개발은 워커 없이 Master가 직접 했다. 키·토큰 수명은 `docs/work-log/broker-readonly-api-pilot.md` D-B-012, 다중 사용자 연결은 D-B-013(사용자 결정 대기: 개인용 유지 / 안내 강화 / 제휴 문의).
 
 - **검증**: 백엔드 test 705건·checkstyle 0건(슬롯 4), UI test 352건·lint·typecheck·format:check·build PASS. 실제 증권사로 미리보기를 끝까지 호출해 보는 검증은 하지 않았다(1회 승인 범위 초과).
-- **남은 것**: SF-6 병합, 실제 계좌로 화면에서 미리보기·확정을 한 번 돌려 보는 수동 확인(사용자 승인 필요).
+- **남은 것**: 실제 계좌로 화면에서 미리보기·확정을 한 번 돌려 보는 수동 확인(사용자 승인 필요).
 
 ## 프런트 구조 리팩토링 Epic 20 (2026-10-01)
 
