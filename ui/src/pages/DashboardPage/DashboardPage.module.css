@@ -1,26 +1,16 @@
 .container {
   --page-max: 1200px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--ink);
 }
 
 .resultsArea {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .loading {
   margin: 0;
-  padding: 32px;
+  padding: var(--space-6);
   text-align: center;
   color: var(--ink-muted);
   font-size: 16px;
@@ -28,10 +18,10 @@
 
 .error {
   margin: 0;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   background-color: var(--danger-bg);
   border: 1px solid var(--danger-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   color: var(--danger);
 }
@@ -39,7 +29,7 @@
 .dataArea {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .list {
@@ -48,20 +38,20 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .list li {
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   background-color: var(--surface-soft);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   color: var(--ink);
 }
 
 .navLink {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .navLink a {
@@ -75,29 +65,5 @@
 }
 
 /* 모바일 */
-@media (max-width: 640px) {
-  .container {
-    padding: 16px;
-    gap: 16px;
-  }
-  .title {
-    font-size: 22px;
-  }
-}
-
 /* 태블릿 */
-@media (min-width: 641px) and (max-width: 1023px) {
-  .container {
-    padding: 24px;
-  }
-}
-
 /* 데스크톱 */
-@media (min-width: 1024px) {
-  .container {
-    padding: 32px;
-  }
-  .title {
-    font-size: 32px;
-  }
-}

@@ -59,8 +59,8 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
 
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent)
     expect(headers).toEqual([
-      '구독 ID',
-      '구독일',
+      '청약 ID',
+      '청약일',
       '공모주명',
       '투자자',
       '청약수량',

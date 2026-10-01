@@ -1,7 +1,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 480px;
   list-style: none;
@@ -12,10 +12,10 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background-color: var(--surface);
 }
 
@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .ipoName {
@@ -34,7 +34,7 @@
 
 .badgeUnallocated,
 .badgeAllocated {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -54,7 +54,7 @@
 .cardBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
 }
 
@@ -76,16 +76,15 @@
 
 .allocateButton {
   align-self: flex-start;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background-color: var(--primary);
   color: var(--on-primary);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 650;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .allocateButton:hover {
@@ -93,7 +92,7 @@
 }
 
 .empty {
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
   color: var(--ink-muted);
 }

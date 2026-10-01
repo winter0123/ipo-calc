@@ -1,8 +1,8 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 1. 오후 2:55:04
+검사 일시: 2026. 10. 1. 오후 3:14:26
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:57031
+대상 URL: http://127.0.0.1:60826
 
 ## 요약
 
@@ -15,75 +15,75 @@
 
 ### login (/login)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
 
 ### signup (/signup)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 33, incomplete: 0, inapplicable: 56)
 
 ### investor-register (/investors/register)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### securities-account-register (/securities-accounts/register/1)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### subscription-register (/subscriptions/register)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### subscription-list (/subscriptions)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### allocation-register (/allocations/register)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### sale-register (/sales/register)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### cost-register (/costs/register)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
 ### profit-view (/profits/view)
 
-✅ **위반 0건** (passes: 36, incomplete: 1, inapplicable: 53)
+✅ **위반 0건** (passes: 37, incomplete: 0, inapplicable: 52)
 
 ### investments (/investments)
 
-✅ **위반 0건** (passes: 38, incomplete: 1, inapplicable: 51)
+✅ **위반 0건** (passes: 39, incomplete: 0, inapplicable: 50)
 
 ### dashboard (/dashboard)
 
-✅ **위반 0건** (passes: 35, incomplete: 1, inapplicable: 54)
+✅ **위반 0건** (passes: 37, incomplete: 0, inapplicable: 52)
 
 ### broker-sync (/broker-sync)
 
-✅ **위반 0건** (passes: 31, incomplete: 1, inapplicable: 58)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
-### broker-sync-connected (/broker-sync?investorId=1&securitiesAccountId=1)
+### broker-sync-connected (/broker-sync?investorId=5&securitiesAccountId=6)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 0, inapplicable: 55)
 
-### broker-sync-replace-form (/broker-sync?investorId=1&securitiesAccountId=1)
+### broker-sync-replace-form (/broker-sync?investorId=5&securitiesAccountId=6)
 
-✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
+✅ **위반 0건** (passes: 35, incomplete: 0, inapplicable: 54)
 
-### broker-sync-register-form (/broker-sync?investorId=1&securitiesAccountId=2)
+### broker-sync-register-form (/broker-sync?investorId=5&securitiesAccountId=7)
 
-✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
+✅ **위반 0건** (passes: 35, incomplete: 0, inapplicable: 54)
 
 ### admin-accounts-pending (/admin/accounts)
 
-✅ **위반 0건** (passes: 37, incomplete: 1, inapplicable: 52)
+✅ **위반 0건** (passes: 38, incomplete: 0, inapplicable: 51)
 
 ### admin-accounts-all (/admin/accounts)
 
-✅ **위반 0건** (passes: 37, incomplete: 1, inapplicable: 52)
+✅ **위반 0건** (passes: 38, incomplete: 0, inapplicable: 51)
 
 ---
 

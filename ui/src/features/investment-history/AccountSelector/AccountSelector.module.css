@@ -1,13 +1,13 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .fieldGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
@@ -18,27 +18,7 @@
   font-size: 14px;
 }
 
-.select {
-  padding: 10px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: var(--surface);
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-  min-height: 44px;
-}
-
-.select:focus {
-  outline: none;
-  border-color: var(--link);
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
-}
-
 .select:disabled {
-  background-color: var(--surface-soft);
-  color: var(--ink-muted);
   cursor: not-allowed;
 }
 
@@ -50,12 +30,11 @@
 /* 반응형: 모바일(~640px) 세로 스택 */
 @media (max-width: 640px) {
   .container {
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .select {
-    padding: 12px;
-    font-size: 16px; /* iOS 줌 방지 */
+    /* iOS 줌 방지 */
   }
 }
 
@@ -64,8 +43,8 @@
   .container {
     flex-direction: row;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 16px;
+    align-items: flex-start;
+    gap: var(--space-4);
   }
 
   .fieldGroup {
@@ -79,8 +58,8 @@
   .container {
     flex-direction: row;
     flex-wrap: nowrap;
-    align-items: flex-end;
-    gap: 24px;
+    align-items: flex-start;
+    gap: var(--space-5);
   }
 
   .fieldGroup {

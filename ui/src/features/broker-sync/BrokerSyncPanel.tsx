@@ -78,22 +78,26 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
         전에는 아무것도 저장되지 않습니다.
       </p>
       <div className={styles.range}>
-        <label htmlFor="broker-sync-from">조회 시작일</label>
-        <input
-          id="broker-sync-from"
-          type="date"
-          max={today}
-          value={draft.from}
-          onChange={(e) => setDraft((prev) => ({ ...prev, from: e.target.value }))}
-        />
-        <label htmlFor="broker-sync-to">조회 종료일</label>
-        <input
-          id="broker-sync-to"
-          type="date"
-          max={today}
-          value={draft.to}
-          onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
-        />
+        <div className={styles.rangeField}>
+          <label htmlFor="broker-sync-from">조회 시작일</label>
+          <input
+            id="broker-sync-from"
+            type="date"
+            max={today}
+            value={draft.from}
+            onChange={(e) => setDraft((prev) => ({ ...prev, from: e.target.value }))}
+          />
+        </div>
+        <div className={styles.rangeField}>
+          <label htmlFor="broker-sync-to">조회 종료일</label>
+          <input
+            id="broker-sync-to"
+            type="date"
+            max={today}
+            value={draft.to}
+            onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
+          />
+        </div>
       </div>
       {draftError && (
         <p role="alert" className={styles.error}>

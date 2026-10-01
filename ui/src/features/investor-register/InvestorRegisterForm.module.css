@@ -1,105 +1,62 @@
-.form {
+/* 폼 공통 규칙: 라벨은 입력창 위, 필드 간격 24px, 제출 버튼은 왼쪽 정렬 */
+.form,
+.container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 400px;
+  gap: var(--space-5);
   width: 100%;
+  max-width: 520px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .field label {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 650;
   color: var(--ink);
 }
 
-.field input,
-.field select {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 16px;
-  font-family: inherit;
-  background-color: var(--surface);
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-
-.field input:focus,
-.field select:focus {
-  outline: none;
-  border-color: var(--link);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-.field input[aria-invalid='true'],
-.field select[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-
-.field input[aria-invalid='true']:focus,
-.field select[aria-invalid='true']:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
-}
-
 .error {
-  font-size: 13px;
   color: var(--danger);
+  font-size: 13px;
 }
 
 .formError {
-  padding: 10px 12px;
-  background-color: var(--danger-bg);
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-bg);
   border: 1px solid var(--danger-border);
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
   color: var(--danger);
+  font-size: 14px;
 }
 
 .submitButton {
-  margin-top: 8px;
-  padding: 14px 20px;
-  background-color: var(--primary);
+  align-self: flex-start;
+  min-height: 44px;
+  min-width: 120px;
+  padding: 0 var(--space-5);
+  background: var(--primary);
   color: var(--on-primary);
-  border: none;
-  border-radius: 999px;
-  font-size: 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 15px;
   font-weight: 650;
-  font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
+  transition: background-color 0.15s;
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: var(--primary-hover);
+  background: var(--primary-hover);
 }
 
 .submitButton:disabled {
-  background-color: var(--surface-sea);
+  background: var(--surface-soft);
+  color: var(--ink-muted);
+  border-color: var(--border);
   cursor: not-allowed;
-}
-
-@media (min-width: 640px) {
-  .form {
-    max-width: 480px;
-  }
-}
-
-@media (min-width: 768px) {
-  .form {
-    max-width: 520px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .form {
-    max-width: 560px;
-  }
 }

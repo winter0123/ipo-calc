@@ -7,45 +7,44 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .dialog {
   background-color: var(--surface);
   border-radius: var(--radius-lg);
-  padding: 28px;
+  padding: var(--space-5);
   max-width: 400px;
   width: 100%;
   box-shadow: var(--shadow-pop);
-  border-top: 6px solid var(--sea);
 }
 
 .title {
   font-size: 18px;
   font-weight: 700;
   color: var(--ink);
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
 }
 
 .message {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--ink-muted);
-  margin: 0 0 24px;
+  margin: 0 0 var(--space-5);
   white-space: pre-wrap;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .cancelButton,
 .confirmButton {
   min-height: 44px;
-  padding: 10px 20px;
-  border-radius: 999px;
-  font-size: 15px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
   font-weight: 650;
   font-family: inherit;
   cursor: pointer;
@@ -54,7 +53,7 @@
 
 .cancelButton {
   background-color: var(--surface);
-  color: var(--link);
+  color: var(--ink);
   border-color: var(--border-strong);
 }
 

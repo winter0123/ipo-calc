@@ -1,7 +1,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .title {
@@ -12,7 +12,7 @@
 .filter {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 44px;
 }
 
@@ -28,13 +28,13 @@
 
 .table caption {
   text-align: left;
-  padding-bottom: 8px;
+  padding-bottom: var(--space-2);
   font-weight: 500;
 }
 
 .table th,
 .table td {
-  padding: 6px 8px;
+  padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;

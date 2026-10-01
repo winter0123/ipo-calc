@@ -1,80 +1,36 @@
 .tabList {
   display: flex;
-  gap: 4px;
-  padding: 8px;
+  gap: var(--space-5);
   overflow-x: auto;
-  background-color: var(--surface-soft);
-  border-radius: 8px;
-  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+
+.tabList::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
   flex-shrink: 0;
-  padding: 8px 16px;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  margin-bottom: -1px;
   background: none;
   border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
   color: var(--ink-muted);
   cursor: pointer;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
   white-space: nowrap;
 }
 
 .tab:hover {
-  background-color: var(--border);
   color: var(--ink);
 }
 
 .activeTab {
-  background-color: var(--primary);
-  color: var(--on-primary);
-  border-radius: 999px;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
-}
-
-.activeTab:hover {
-  background-color: var(--primary-hover);
-}
-
-/* 모바일 */
-@media (max-width: 640px) {
-  .tabList {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .tabList::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab {
-    padding: 10px 14px;
-    font-size: 13px;
-    min-width: 80px;
-  }
-}
-
-/* 태블릿 */
-@media (min-width: 641px) and (max-width: 1023px) {
-  .tab {
-    padding: 10px 16px;
-    font-size: 14px;
-  }
-}
-
-/* 데스크톱 */
-@media (min-width: 1024px) {
-  .tabList {
-    overflow-x: visible;
-  }
-
-  .tab {
-    padding: 10px 20px;
-    font-size: 15px;
-  }
+  color: var(--ink);
+  border-bottom-color: var(--sea);
 }
