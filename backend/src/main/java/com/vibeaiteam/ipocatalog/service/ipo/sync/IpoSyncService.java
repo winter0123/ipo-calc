@@ -91,27 +91,8 @@ public class IpoSyncService {
             .build();
 
     // Step 1: DS001 공시검색으로 최근 지분증권 증권신고서 제출 회사 목록 조회
-    List<OpenDartDisclosureItem> companies;
-    try {
-      companies = corpDisclosureClient.searchRecentEquitySecuritiesCompanies(daysBack);
-    } catch (OpenDartAuthenticationException e) {
-      result.setAborted(true);
-      result.setAbortReason("인증 오류: " + e.getMessage());
-      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getMessage());
-      return result;
-    } catch (OpenDartApiException e) {
-      if ("020".equals(e.getStatusCode())) {
-        result.setAborted(true);
-        result.setRetryable(false);
-        result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
-        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
-        return result;
-      }
-      // 일반 API 오류 (예: 800 시스템 점검) → 재시도 가능으로 표시
-      result.setAborted(true);
-      result.setRetryable(true);
-      result.setAbortReason("API 오류: " + e.getMessage());
-      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
+    List<OpenDartDisclosureItem> companies = fetchCompaniesOrAbort(daysBack, result);
+    if (companies == null) {
       return result;
     }
 
@@ -119,72 +100,9 @@ public class IpoSyncService {
 
     // Step 2: 각 회사별 DS006 상세 조회 및 upsert
     for (OpenDartDisclosureItem company : companies) {
-      String corpCode = company.getCorpCode();
-      String corpName = company.getCorpName();
-      String stockCode = company.getStockCode();
-
-      // D-3: stock_code가 있으면 유상증자로 보고 건너뜀
-      if (stockCode != null && !stockCode.isBlank()) {
-        result.setSkippedNonIpo(result.getSkippedNonIpo() + 1);
-        log.debug(
-            "stock_code 존재로 건너뜀 (유상증자 추정): corpCode={}, corpName={}, stockCode={}",
-            corpCode,
-            corpName,
-            stockCode);
-        continue;
-      }
-
-      // DS006 상세 조회
-      List<OpenDartEquitySecurityDetail> details;
-      try {
-        details = equitySecuritiesClient.getEquitySecurityDetail(corpCode);
-      } catch (OpenDartAuthenticationException e) {
-        result.setAborted(true);
-        result.setAbortReason("인증 오류: " + e.getMessage());
-        log.error("OpenDART 인증 오류로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
+      if (!processCompany(result, company)) {
         return result;
-      } catch (OpenDartApiException e) {
-        if ("020".equals(e.getStatusCode())) {
-          result.setAborted(true);
-          result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
-          log.error("OpenDART 요청 제한 초과로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
-          return result;
-        }
-        // 그 외 API 오류는 해당 건만 실패 처리하고 계속
-        recordFailure(result, corpCode, corpName, "DS006 조회 실패: " + e.getMessage());
-        log.warn("DS006 조회 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
-        continue;
       }
-
-      if (details == null || details.isEmpty()) {
-        recordFailure(result, corpCode, corpName, "DS006 상세 정보 없음 (빈 응답)");
-        log.warn("DS006 빈 응답: corpCode={}, corpName={}", corpCode, corpName);
-        continue;
-      }
-
-      // 보통 1건만 옴, 첫 번째 건 사용
-      OpenDartEquitySecurityDetail detail = details.get(0);
-
-      // subscriptionStartDate가 null이면 실패 처리
-      if (detail.getSubscriptionStartDate() == null) {
-        recordFailure(
-            result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
-        log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
-        continue;
-      }
-
-      // 건별 독립 트랜잭션으로 처리 (한 건 실패가 다른 건에 영향 없도록)
-      transactionTemplate.executeWithoutResult(
-          status -> {
-            try {
-              processSingleIpo(result, corpCode, corpName, detail);
-            } catch (Exception e) {
-              // 트랜잭션 롤백 표시 (이미 롤백됨)
-              status.setRollbackOnly();
-              recordFailure(result, corpCode, corpName, "처리 중 예외: " + e.getMessage());
-              log.warn("IPO 처리 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
-            }
-          });
     }
 
     log.info(
@@ -200,6 +118,117 @@ public class IpoSyncService {
     mergeSchedule(result);
 
     return result;
+  }
+
+  /**
+   * DS001 공시검색을 수행하고, 중단 사유가 있으면 result에 기록 후 null을 반환한다.
+   *
+   * @param daysBack 조회할 과거 일수
+   * @param result 동기화 결과 객체 (중단 시 aborted/abortReason/retryable 설정됨)
+   * @return 회사 목록, 중단 시 null
+   */
+  private List<OpenDartDisclosureItem> fetchCompaniesOrAbort(int daysBack, IpoSyncResult result) {
+    try {
+      return corpDisclosureClient.searchRecentEquitySecuritiesCompanies(daysBack);
+    } catch (OpenDartAuthenticationException e) {
+      result.setAborted(true);
+      result.setAbortReason("인증 오류: " + e.getMessage());
+      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getMessage());
+      return null;
+    } catch (OpenDartApiException e) {
+      if ("020".equals(e.getStatusCode())) {
+        result.setAborted(true);
+        result.setRetryable(false);
+        result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
+        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
+        return null;
+      }
+      // 일반 API 오류 (예: 800 시스템 점검) → 재시도 가능으로 표시
+      result.setAborted(true);
+      result.setRetryable(true);
+      result.setAbortReason("API 오류: " + e.getMessage());
+      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * 한 회사(DS001의 한 건)에 대한 DS006 조회·검증·upsert를 처리한다.
+   * 루프를 중단해야 하면 false, 계속 진행하면 true를 반환한다.
+   *
+   * @param result 동기화 결과 객체
+   * @param company DS001 조회 결과의 한 건
+   * @return 계속 진행하면 true, 중단(인증 오류/요청 제한) 시 false
+   */
+  private boolean processCompany(IpoSyncResult result, OpenDartDisclosureItem company) {
+    String corpCode = company.getCorpCode();
+    String corpName = company.getCorpName();
+    String stockCode = company.getStockCode();
+
+    // D-3: stock_code가 있으면 유상증자로 보고 건너뜀
+    if (stockCode != null && !stockCode.isBlank()) {
+      result.setSkippedNonIpo(result.getSkippedNonIpo() + 1);
+      log.debug(
+          "stock_code 존재로 건너뜀 (유상증자 추정): corpCode={}, corpName={}, stockCode={}",
+          corpCode,
+          corpName,
+          stockCode);
+      return true;
+    }
+
+    // DS006 상세 조회
+    List<OpenDartEquitySecurityDetail> details;
+    try {
+      details = equitySecuritiesClient.getEquitySecurityDetail(corpCode);
+    } catch (OpenDartAuthenticationException e) {
+      result.setAborted(true);
+      result.setAbortReason("인증 오류: " + e.getMessage());
+      log.error("OpenDART 인증 오류로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
+      return false;
+    } catch (OpenDartApiException e) {
+      if ("020".equals(e.getStatusCode())) {
+        result.setAborted(true);
+        result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
+        log.error("OpenDART 요청 제한 초과로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
+        return false;
+      }
+      // 그 외 API 오류는 해당 건만 실패 처리하고 계속
+      recordFailure(result, corpCode, corpName, "DS006 조회 실패: " + e.getMessage());
+      log.warn("DS006 조회 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
+      return true;
+    }
+
+    if (details == null || details.isEmpty()) {
+      recordFailure(result, corpCode, corpName, "DS006 상세 정보 없음 (빈 응답)");
+      log.warn("DS006 빈 응답: corpCode={}, corpName={}", corpCode, corpName);
+      return true;
+    }
+
+    // 보통 1건만 옴, 첫 번째 건 사용
+    OpenDartEquitySecurityDetail detail = details.get(0);
+
+    // subscriptionStartDate가 null이면 실패 처리
+    if (detail.getSubscriptionStartDate() == null) {
+      recordFailure(
+          result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
+      log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
+      return true;
+    }
+
+    // 건별 독립 트랜잭션으로 처리 (한 건 실패가 다른 건에 영향 없도록)
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          try {
+            processSingleIpo(result, corpCode, corpName, detail);
+          } catch (Exception e) {
+            // 트랜잭션 롤백 표시 (이미 롤백됨)
+            status.setRollbackOnly();
+            recordFailure(result, corpCode, corpName, "처리 중 예외: " + e.getMessage());
+            log.warn("IPO 처리 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
+          }
+        });
+
+    return true;
   }
 
   private static void recordFailure(
