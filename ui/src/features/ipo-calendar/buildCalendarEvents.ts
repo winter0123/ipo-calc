@@ -1,4 +1,4 @@
-import type { Ipo } from '../../entities/ipo/types.ts'
+import { type Ipo } from '@/entities/ipo/index.ts'
 
 export type CalendarEventType = 'SUBSCRIPTION_START' | 'SUBSCRIPTION_END' | 'LISTING'
 
@@ -15,11 +15,17 @@ function parseDateOnly(dateStr: string): string {
 }
 
 function getPriceDisplay(ipo: Ipo): string | undefined {
-  if (ipo.fixedPrice > 0) {
-    return `${ipo.fixedPrice.toLocaleString()}원`
+  const { fixedPrice, lowerBandPrice, upperBandPrice } = ipo
+  if (fixedPrice !== null && fixedPrice > 0) {
+    return `${fixedPrice.toLocaleString()}원`
   }
-  if (ipo.lowerBandPrice > 0 && ipo.upperBandPrice > 0) {
-    return `${ipo.lowerBandPrice.toLocaleString()}~${ipo.upperBandPrice.toLocaleString()}원`
+  if (
+    lowerBandPrice !== null &&
+    upperBandPrice !== null &&
+    lowerBandPrice > 0 &&
+    upperBandPrice > 0
+  ) {
+    return `${lowerBandPrice.toLocaleString()}~${upperBandPrice.toLocaleString()}원`
   }
   return undefined
 }

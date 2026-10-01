@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
-import { isValidEmail, isMinLength } from '../../shared/lib/validators.ts'
+import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 function hasTwoCategories(v: string): boolean {
   const hasLetter = /[a-zA-Z]/.test(v)
@@ -14,6 +14,7 @@ function hasTwoCategories(v: string): boolean {
 }
 
 export default function SignupForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
   const { mutate, isPending, error } = useSignup()
   const {
@@ -48,8 +49,8 @@ export default function SignupForm() {
         <input
           id="email"
           type="email"
-          aria-invalid={!!errors.email || !!error}
-          aria-describedby="email-error"
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           {...register('email', {
             required: '필수 입력 항목입니다.',
             validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
@@ -67,8 +68,8 @@ export default function SignupForm() {
         <input
           id="password"
           type="password"
-          aria-invalid={!!errors.password || !!error}
-          aria-describedby="password-error"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
           {...register('password', {
             required: '필수 입력 항목입니다.',
             validate: (v) =>
@@ -88,8 +89,8 @@ export default function SignupForm() {
         <input
           id="name"
           type="text"
-          aria-invalid={!!errors.name || !!error}
-          aria-describedby="name-error"
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? 'name-error' : undefined}
           {...register('name', {
             required: '필수 입력 항목입니다.',
             validate: (v) =>
@@ -104,7 +105,7 @@ export default function SignupForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

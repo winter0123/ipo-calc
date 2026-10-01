@@ -39,12 +39,12 @@ const defaultEmptyQuery = { data: [] as unknown, isLoading: false, error: null }
 const defaultErrorQuery = { data: undefined, isLoading: false, error: new Error('Failed to fetch') }
 
 // Mock the hooks
-vi.mock('../../features/dashboard/useDashboardSummary.ts')
-vi.mock('../../features/dashboard/useDashboardByInvestor.ts')
-vi.mock('../../features/dashboard/useDashboardBySecuritiesFirm.ts')
-vi.mock('../../features/dashboard/useDashboardByPeriod.ts')
-vi.mock('../../features/dashboard/useDashboardTabs.ts')
-vi.mock('../../features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
+vi.mock('@/features/dashboard/useDashboardSummary.ts')
+vi.mock('@/features/dashboard/useDashboardByInvestor.ts')
+vi.mock('@/features/dashboard/useDashboardBySecuritiesFirm.ts')
+vi.mock('@/features/dashboard/useDashboardByPeriod.ts')
+vi.mock('@/features/dashboard/useDashboardTabs.ts')
+vi.mock('@/features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
   default: function MockPeriodSelector(props: {
     unit: string
     initialYear?: number
@@ -156,11 +156,11 @@ vi.mock('../../features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
   },
 }))
 
-import { useDashboardSummary } from '../../features/dashboard/useDashboardSummary.ts'
-import { useDashboardByInvestor } from '../../features/dashboard/useDashboardByInvestor.ts'
-import { useDashboardBySecuritiesFirm } from '../../features/dashboard/useDashboardBySecuritiesFirm.ts'
-import { useDashboardByPeriod } from '../../features/dashboard/useDashboardByPeriod.ts'
-import { useDashboardTabs } from '../../features/dashboard/useDashboardTabs.ts'
+import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary.ts'
+import { useDashboardByInvestor } from '@/features/dashboard/useDashboardByInvestor.ts'
+import { useDashboardBySecuritiesFirm } from '@/features/dashboard/useDashboardBySecuritiesFirm.ts'
+import { useDashboardByPeriod } from '@/features/dashboard/useDashboardByPeriod.ts'
+import { useDashboardTabs } from '@/features/dashboard/useDashboardTabs.ts'
 
 function asResult<T>(value: unknown): T {
   return value as T
@@ -180,7 +180,6 @@ describe('DashboardPage', () => {
       currentTab: 'all',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
   })
 
@@ -221,7 +220,19 @@ describe('DashboardPage', () => {
   })
 
   it('빈 결과 시 EmptyState가 표시됨', async () => {
-    vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardSummary).mockReturnValue(
+      asResult({
+        data: {
+          totalInvestmentAmount: 0,
+          totalPreTaxProfit: 0,
+          totalAfterTaxProfit: 0,
+          totalProfitRate: 0,
+          participationCount: 0,
+        },
+        isLoading: false,
+        error: null,
+      }),
+    )
     vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultEmptyQuery))
@@ -245,7 +256,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -269,7 +279,6 @@ describe('DashboardPage', () => {
       currentTab: 'year',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -313,7 +322,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -347,7 +355,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()

@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createSubscription } from '../../entities/subscription/api-client.ts'
+import { createSubscription, investmentHistoryKeys } from '@/entities/subscription/index.ts'
+import { profitKeys } from '@/entities/profit/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 
 export function useSubscriptionRegister() {
   const queryClient = useQueryClient()
@@ -7,7 +9,9 @@ export function useSubscriptionRegister() {
   return useMutation({
     mutationFn: createSubscription,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
+      queryClient.invalidateQueries({ queryKey: investmentHistoryKeys.all })
+      queryClient.invalidateQueries({ queryKey: profitKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
   })
 }

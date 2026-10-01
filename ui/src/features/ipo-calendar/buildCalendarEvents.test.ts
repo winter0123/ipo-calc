@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildCalendarEvents } from './buildCalendarEvents.ts'
-import type { Ipo } from '../../entities/ipo/types.ts'
+import type { Ipo } from '@/entities/ipo/types.ts'
 
 function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   return {
@@ -101,6 +101,12 @@ describe('buildCalendarEvents', () => {
 
     expect(eventsFixed[0].price).toBe('20,000원')
     expect(eventsBand[0].price).toBe('15,000~25,000원')
+  })
+
+  it('가격 컬럼이 모두 null이면 가격을 표시하지 않는다(DB nullable)', () => {
+    const ipos = [makeIpo({ fixedPrice: null, lowerBandPrice: null, upperBandPrice: null })]
+
+    expect(buildCalendarEvents(ipos, 2026, 10)[0].price).toBeUndefined()
   })
 
   it('이벤트가 날짜순으로 정렬된다', () => {

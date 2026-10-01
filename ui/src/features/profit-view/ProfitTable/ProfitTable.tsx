@@ -1,4 +1,4 @@
-import type { SaleProfit, InvestorProfit } from '../../../entities/profit/types.ts'
+import { type SaleProfit, type InvestorProfit } from '@/entities/profit/index.ts'
 import ProfitRow from './ProfitRow.tsx'
 import ProfitSummaryRow from './ProfitSummaryRow.tsx'
 import styles from './ProfitTable.module.css'

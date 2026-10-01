@@ -1,22 +1,28 @@
-export interface SaleProfit {
-  saleId: number
-  saleDate: string
-  allocationId: number
-  quantity: number
-  saleAmount: number
-  matchedAcquisitionAmount: number
-  matchedCostAmount: number
-  saleFee: number
-  saleTax: number
-  saleOtherCost: number
-  preTaxProfit: number
-  afterTaxProfit: number
-}
+import { z } from 'zod'
 
-export interface InvestorProfit {
-  investorId: number
-  sales: SaleProfit[]
-  totalSaleAmount: number
-  totalPreTaxProfit: number
-  totalAfterTaxProfit: number
-}
+// saleAmount는 매도 금액이 선택 입력(DB nullable)이라 null일 수 있다.
+export const saleProfitSchema = z.object({
+  saleId: z.number(),
+  saleDate: z.string(),
+  allocationId: z.number(),
+  quantity: z.number(),
+  saleAmount: z.number().nullable(),
+  matchedAcquisitionAmount: z.number(),
+  matchedCostAmount: z.number(),
+  saleFee: z.number(),
+  saleTax: z.number(),
+  saleOtherCost: z.number(),
+  preTaxProfit: z.number(),
+  afterTaxProfit: z.number(),
+})
+
+export const investorProfitSchema = z.object({
+  investorId: z.number(),
+  sales: z.array(saleProfitSchema),
+  totalSaleAmount: z.number(),
+  totalPreTaxProfit: z.number(),
+  totalAfterTaxProfit: z.number(),
+})
+
+export type SaleProfit = z.infer<typeof saleProfitSchema>
+export type InvestorProfit = z.infer<typeof investorProfitSchema>

@@ -9,18 +9,17 @@ export interface InvestmentHistoryFilters {
 
 export interface FilterBarProps {
   filters: InvestmentHistoryFilters
-  onFiltersChange: (field: keyof InvestmentHistoryFilters, value: string) => void
+  onFiltersChange: (patch: Partial<InvestmentHistoryFilters>) => void
   onReset: () => void
 }
 
 export default function FilterBar({ filters, onFiltersChange, onReset }: FilterBarProps) {
   const handleInvestorChange = (value: string) => {
-    onFiltersChange('investorId', value)
-    onFiltersChange('securitiesAccountId', '')
+    onFiltersChange({ investorId: value, securitiesAccountId: '' })
   }
 
   const handleSecuritiesAccountChange = (value: string) => {
-    onFiltersChange('securitiesAccountId', value)
+    onFiltersChange({ securitiesAccountId: value })
   }
 
   return (
@@ -41,7 +40,7 @@ export default function FilterBar({ filters, onFiltersChange, onReset }: FilterB
           type="text"
           className={styles.input}
           value={filters.ipoId}
-          onChange={(e) => onFiltersChange('ipoId', e.target.value)}
+          onChange={(e) => onFiltersChange({ ipoId: e.target.value })}
           placeholder="IPO ID 입력"
           aria-describedby="ipoId-hint"
           style={{ minWidth: 44 }}

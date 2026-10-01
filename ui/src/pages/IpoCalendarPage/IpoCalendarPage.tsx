@@ -1,10 +1,10 @@
-import { useIpoSchedule } from '../../features/ipo-calendar/useIpoSchedule.ts'
-import IpoCalendar from '../../widgets/IpoCalendar/IpoCalendar.tsx'
+import { useIpos } from '@/entities/ipo/index.ts'
+import { IpoCalendar } from '@/widgets/IpoCalendar/index.ts'
 import styles from './IpoCalendarPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function IpoCalendarPage() {
-  const { data: ipos, isLoading, error } = useIpoSchedule()
+  const { data: ipos, isLoading, error } = useIpos()
 
   const getErrorMessage = () =>
     toErrorMessage(error, { fallback: '공모주 일정을 불러오는 데 실패했습니다.' })

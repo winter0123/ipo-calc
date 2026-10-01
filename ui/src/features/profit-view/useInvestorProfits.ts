@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getInvestorProfits } from '../../entities/profit/api-client.ts'
-import type { InvestorProfit } from '../../entities/profit/types.ts'
+import { getInvestorProfits, profitKeys, type InvestorProfit } from '@/entities/profit/index.ts'
 
 interface UseInvestorProfitsOptions {
   investorId: number | undefined
@@ -9,8 +8,8 @@ interface UseInvestorProfitsOptions {
 
 export function useInvestorProfits({ investorId, enabled }: UseInvestorProfitsOptions) {
   return useQuery<InvestorProfit, Error>({
-    queryKey: ['investorProfits', investorId],
-    queryFn: () => getInvestorProfits(investorId!),
+    queryKey: profitKeys.investor(investorId),
+    queryFn: ({ signal }) => getInvestorProfits(investorId!, signal),
     enabled: enabled && investorId !== undefined && investorId !== null,
   })
 }

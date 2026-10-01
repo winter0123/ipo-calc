@@ -1,55 +1,31 @@
 import { useState, useCallback } from 'react'
+import type { QueryClient } from '@tanstack/react-query'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
+import type { DashboardTab } from './tabs.ts'
 
-export type DashboardTab = 'all' | 'investor' | 'securities-firm' | 'month' | 'year'
-
-interface TabQueryConfig {
-  queryKey: (string | object)[]
-  enabled: boolean
-}
-
-export const ALL_TABS: DashboardTab[] = ['all', 'investor', 'securities-firm', 'month', 'year']
-
-const TAB_QUERY_KEYS_MAP: Record<string, (string | object)[]> = {
-  'securities-firm': ['dashboardBySecuritiesFirm'],
-}
-
-function getTabKey(tab: DashboardTab): (string | object)[] {
-  if (tab === 'securities-firm') return TAB_QUERY_KEYS_MAP['securities-firm']
-  const keyMap: Record<string, (string | object)[]> = {
-    all: ['dashboardSummary'],
-    investor: ['dashboardByInvestor'],
-    month: ['dashboardByPeriod', { unit: 'month' as const }],
-    year: ['dashboardByPeriod', { unit: 'year' as const }],
+function getTabKey(tab: DashboardTab) {
+  switch (tab) {
+    case 'all':
+      return dashboardKeys.summary()
+    case 'investor':
+      return dashboardKeys.byInvestor()
+    case 'securities-firm':
+      return dashboardKeys.bySecuritiesFirm()
+    case 'month':
+    case 'year':
+      return dashboardKeys.byPeriod(tab)
   }
-  return keyMap[tab]
-}
-
-interface QueryClientLike {
-  invalidateQueries: (options: { queryKey: (string | object)[] }) => void
 }
 
 export function useDashboardTabs() {
   const [currentTab, setCurrentTab] = useState<DashboardTab>('all')
 
   const invalidateCurrentTab = useCallback(
-    (queryClient: QueryClientLike) => {
+    (queryClient: Pick<QueryClient, 'invalidateQueries'>) => {
       queryClient.invalidateQueries({ queryKey: getTabKey(currentTab) })
     },
     [currentTab],
   )
 
-  const getTabQueryConfig = useCallback(
-    (tab: DashboardTab): TabQueryConfig => ({
-      queryKey: getTabKey(tab),
-      enabled: tab === currentTab,
-    }),
-    [currentTab],
-  )
-
-  return {
-    currentTab,
-    setCurrentTab,
-    invalidateCurrentTab,
-    getTabQueryConfig,
-  }
+  return { currentTab, setCurrentTab, invalidateCurrentTab }
 }

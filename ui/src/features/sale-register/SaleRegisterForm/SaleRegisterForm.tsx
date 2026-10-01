@@ -1,35 +1,28 @@
 import { useForm } from 'react-hook-form'
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchInvestors } from '../../../entities/investor/api-client.ts'
-import { getInvestmentHistory } from '../../../entities/subscription/api-client.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
-import { useAllocationOptions } from '../useAllocationOptions.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
-import type { SaleRegisterRequest } from '../../../entities/sale/types.ts'
+import { type SaleRegisterRequest } from '@/entities/sale/index.ts'
 import styles from './SaleRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 type OptionalNumberField = 'price' | 'amount' | 'fee' | 'tax' | 'otherCost'
 
 export default function SaleRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const [selectedInvestorId, setSelectedInvestorId] = useState<number | undefined>()
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | undefined>()
 
-  const {
-    data: investors,
-    isLoading: investorsLoading,
-    error: investorsError,
-  } = useQuery({ queryKey: ['investors'], queryFn: fetchInvestors })
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
 
-  const { data: subscriptionHistory, isLoading: subscriptionsLoading } = useQuery({
-    queryKey: ['investmentHistory', selectedInvestorId],
-    queryFn: () =>
-      getInvestmentHistory(selectedInvestorId ? { investorId: selectedInvestorId } : {}),
-    enabled: !!selectedInvestorId,
-  })
+  const { data: subscriptionHistory, isLoading: subscriptionsLoading } = useInvestmentHistory(
+    selectedInvestorId ? { investorId: selectedInvestorId } : {},
+    { enabled: !!selectedInvestorId },
+  )
 
-  const { data: allocationData, isLoading: allocationLoading } = useAllocationOptions(
+  const { data: allocationData, isLoading: allocationLoading } = useInvestmentHistoryDetail(
     selectedSubscriptionId ?? null,
   )
 
@@ -84,8 +77,8 @@ export default function SaleRegisterForm() {
       <input
         id={name}
         type="number"
-        aria-invalid={!!errors[name] || !!error}
-        aria-describedby={`${name}-error`}
+        aria-invalid={!!errors[name]}
+        aria-describedby={errors[name] ? `${name}-error` : undefined}
         {...register(name, {
           valueAsNumber: true,
           validate: (v) => validateNonNegativeInteger(v),
@@ -125,8 +118,6 @@ export default function SaleRegisterForm() {
         <label htmlFor="investorId">투자자</label>
         <select
           id="investorId"
-          aria-invalid={!!error}
-          aria-describedby="investorId-error"
           value={selectedInvestorId ?? ''}
           onChange={handleInvestorChange}
           disabled={isPending}
@@ -144,8 +135,6 @@ export default function SaleRegisterForm() {
         <label htmlFor="subscriptionId">청약</label>
         <select
           id="subscriptionId"
-          aria-invalid={!!error}
-          aria-describedby="subscriptionId-error"
           value={selectedSubscriptionId ?? ''}
           onChange={handleSubscriptionChange}
           disabled={isPending || !selectedInvestorId || subscriptionsLoading}
@@ -172,8 +161,8 @@ export default function SaleRegisterForm() {
         <label htmlFor="allocationId">배정</label>
         <select
           id="allocationId"
-          aria-invalid={!!errors.allocationId || !!error}
-          aria-describedby="allocationId-error"
+          aria-invalid={!!errors.allocationId}
+          aria-describedby={errors.allocationId ? 'allocationId-error' : undefined}
           {...register('allocationId', {
             required: '배정을 선택해 주세요.',
             valueAsNumber: true,
@@ -199,8 +188,8 @@ export default function SaleRegisterForm() {
         <input
           id="quantity"
           type="number"
-          aria-invalid={!!errors.quantity || !!error}
-          aria-describedby="quantity-error"
+          aria-invalid={!!errors.quantity}
+          aria-describedby={errors.quantity ? 'quantity-error' : undefined}
           {...register('quantity', {
             required: '매도수량을 입력해 주세요.',
             valueAsNumber: true,
@@ -224,8 +213,8 @@ export default function SaleRegisterForm() {
         <input
           id="saleDate"
           type="datetime-local"
-          aria-invalid={!!errors.saleDate || !!error}
-          aria-describedby="saleDate-error"
+          aria-invalid={!!errors.saleDate}
+          aria-describedby={errors.saleDate ? 'saleDate-error' : undefined}
           {...register('saleDate', {
             required: '매도일시를 선택해 주세요.',
           })}
@@ -245,7 +234,7 @@ export default function SaleRegisterForm() {
       {renderOptionalNumberField('otherCost', '기타비용 (선택)')}
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

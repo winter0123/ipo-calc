@@ -1,7 +1,7 @@
 /**
  * fetch 래퍼 — 모든 요청에 credentials: 'include'를 기본으로 포함합니다.
- * 401 응답은 에러를 그대로 throw하며, 라우터를 직접 참조하지 않습니다.
- * (FSD 순환 참조 방지 — 로그인 리다이렉트는 pages/features 레벨에서 처리)
+ * 401 응답은 ApiError(401)를 그대로 throw하며, 라우터를 직접 참조하지 않습니다.
+ * (FSD 순환 참조 방지 — 로그인 리다이렉트는 app/AppProviders의 쿼리 캐시 onError에서 처리)
  */
 
 import { ApiError } from './apiError.ts'

@@ -1,16 +1,19 @@
-import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import FilterBar, {
+import { Link, useSearchParams } from 'react-router-dom'
+import {
+  FilterBar,
   type InvestmentHistoryFilters as FilterInvestmentHistoryFilters,
-} from '../../features/investment-history/FilterBar/FilterBar.tsx'
-import { useInvestmentHistory } from '../../features/investment-history/useInvestmentHistory.ts'
-import { useInvestorList } from '../../features/investment-history/useInvestorList.ts'
-import type { InvestmentHistoryFilters } from '../../entities/subscription/types.ts'
-import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
-import InvestmentHistoryTable from '../../widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx'
+} from '@/features/investment-history/index.ts'
+import {
+  useInvestmentHistory,
+  investmentHistoryKeys,
+  type InvestmentHistoryFilters,
+} from '@/entities/subscription/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { EmptyState } from '@/widgets/EmptyState/index.ts'
+import { InvestmentHistoryTable } from '@/widgets/InvestmentHistoryTable/index.ts'
 import styles from './InvestmentHistoryPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 function filtersToApiParams(filters: FilterInvestmentHistoryFilters): InvestmentHistoryFilters {
   return {
@@ -22,16 +25,20 @@ function filtersToApiParams(filters: FilterInvestmentHistoryFilters): Investment
   }
 }
 
+const FILTER_KEYS = ['investorId', 'securitiesAccountId', 'ipoId'] as const
+
+// 필터는 URL 쿼리 문자열이 단일 출처다(새로고침·링크 공유 시 유지). 변경은 history를 쌓지 않는다.
 export default function InvestmentHistoryPage() {
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState<FilterInvestmentHistoryFilters>({
-    investorId: '',
-    securitiesAccountId: '',
-    ipoId: '',
-  })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filters: FilterInvestmentHistoryFilters = {
+    investorId: searchParams.get('investorId') ?? '',
+    securitiesAccountId: searchParams.get('securitiesAccountId') ?? '',
+    ipoId: searchParams.get('ipoId') ?? '',
+  }
   const apiFilters = filtersToApiParams(filters)
 
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestorList()
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
   const { data, isLoading, error } = useInvestmentHistory(apiFilters)
 
   const getErrorMessage = () =>
@@ -40,17 +47,32 @@ export default function InvestmentHistoryPage() {
       fallback: '투자 내역을 불러오는 데 실패했습니다.',
     })
 
-  const handleChange = (field: keyof FilterInvestmentHistoryFilters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }))
+  const handleChange = (patch: Partial<FilterInvestmentHistoryFilters>) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const key of FILTER_KEYS) {
+          const value = patch[key]
+          if (value === undefined) continue
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        return next
+      },
+      { replace: true },
+    )
   }
 
   const handleReset = () => {
-    setFilters({
-      investorId: '',
-      securitiesAccountId: '',
-      ipoId: '',
-    })
-    queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const key of FILTER_KEYS) next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+    queryClient.invalidateQueries({ queryKey: investmentHistoryKeys.all })
   }
 
   const items = data?.content ?? []

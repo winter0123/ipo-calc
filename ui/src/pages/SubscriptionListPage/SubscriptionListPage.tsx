@@ -1,14 +1,28 @@
-import { useState } from 'react'
-import SubscriptionFilter, {
+import { useSearchParams } from 'react-router-dom'
+import {
+  SubscriptionFilter,
+  SubscriptionList,
+  parseSubscriptionFilter,
   type SubscriptionFilterValue,
-} from '../../features/subscription-list/SubscriptionFilter.tsx'
-import SubscriptionList from '../../features/subscription-list/SubscriptionList/SubscriptionList.tsx'
-import { useInvestmentHistory } from '../../features/subscription-list/useInvestmentHistory.ts'
+} from '@/features/subscription-list/index.ts'
+import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionListPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SubscriptionListPage() {
-  const [filter, setFilter] = useState<SubscriptionFilterValue>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filter = parseSubscriptionFilter(searchParams.get('status'))
+  const setFilter = (value: SubscriptionFilterValue) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value === 'all') next.delete('status')
+        else next.set('status', value)
+        return next
+      },
+      { replace: true },
+    )
+  }
   const { data, isLoading, error } = useInvestmentHistory()
 
   const getErrorMessage = () =>
@@ -21,7 +35,7 @@ export default function SubscriptionListPage() {
     <div className={styles.container}>
       <h1 className={styles.title}>청약 목록</h1>
 
-      <SubscriptionFilter onChange={setFilter} />
+      <SubscriptionFilter value={filter} onChange={setFilter} />
 
       {isLoading && <p className={styles.status}>목록을 불러오는 중...</p>}
 

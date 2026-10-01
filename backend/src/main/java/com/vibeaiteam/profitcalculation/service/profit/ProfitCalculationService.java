@@ -181,7 +181,12 @@ public class ProfitCalculationService {
             .toList();
 
     // 6. 합계 — 단순 합산 (추가 반올림 없음)
-    Long totalSaleAmount = profits.stream().map(ProfitDto::getSaleAmount).reduce(0L, Long::sum);
+    // 매도 금액은 선택 입력(nullable)이라 null은 0으로 합산한다 (ProfitCalculator와 동일 규칙).
+    Long totalSaleAmount =
+        profits.stream()
+            .map(ProfitDto::getSaleAmount)
+            .filter(Objects::nonNull)
+            .reduce(0L, Long::sum);
     Long totalPreTaxProfit = profits.stream().map(ProfitDto::getPreTaxProfit).reduce(0L, Long::sum);
     Long totalAfterTaxProfit =
         profits.stream().map(ProfitDto::getAfterTaxProfit).reduce(0L, Long::sum);

@@ -40,6 +40,27 @@ class DashboardAggregatorTest {
           row(1, null, "2026-01", 30, 20, null, 500L));
 
   @Test
+  void byPeriodNarrowsByYearAndMonth() {
+    List<CalculatedSale> sales =
+        List.of(
+            row(1, 10L, "2025-03", 100, 80, 10L, 1_000L),
+            row(1, 10L, "2025-11", 50, 40, 5L, 2_000L),
+            row(1, 10L, "2026-03", 30, 20, 1L, 500L));
+
+    assertThat(DashboardAggregator.byPeriod(sales, "month", 2025, null))
+        .extracting(PeriodAggregationDto::getPeriod)
+        .containsExactly("2025-03", "2025-11");
+    assertThat(DashboardAggregator.byPeriod(sales, "month", 2025, 3))
+        .extracting(PeriodAggregationDto::getPeriod)
+        .containsExactly("2025-03");
+    assertThat(DashboardAggregator.byPeriod(sales, "year", 2025, 3))
+        .extracting(PeriodAggregationDto::getPeriod, PeriodAggregationDto::getParticipationCount)
+        .containsExactly(org.assertj.core.groups.Tuple.tuple("2025", 2));
+    assertThat(DashboardAggregator.byPeriod(sales, "month", 2024, null)).isEmpty();
+    assertThat(DashboardAggregator.byPeriod(sales, "month", null, 3)).hasSize(3);
+  }
+
+  @Test
   void summarizeOfEmptyListIsAllZero() {
     SummaryDto s = DashboardAggregator.summarize(List.of());
 

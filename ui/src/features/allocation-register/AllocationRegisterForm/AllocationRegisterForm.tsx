@@ -1,13 +1,14 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAllocationRegister } from '../useAllocationRegister.ts'
-import { useSubscriptionDetail } from '../useSubscriptionDetail.ts'
+import { useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
-import type { AllocationRegisterRequest } from '../../../entities/allocation/types.ts'
+import { type AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import styles from './AllocationRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function AllocationRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const [searchParams] = useSearchParams()
   const subscriptionId = Number(searchParams.get('subscriptionId'))
   const navigate = useNavigate()
@@ -16,7 +17,7 @@ export default function AllocationRegisterForm() {
     data: subscriptionDetail,
     isLoading: detailLoading,
     error: detailError,
-  } = useSubscriptionDetail(subscriptionId || null)
+  } = useInvestmentHistoryDetail(subscriptionId || null)
 
   const { mutate, isPending, error } = useAllocationRegister()
 
@@ -74,8 +75,8 @@ export default function AllocationRegisterForm() {
         <input
           id="allocatedQuantity"
           type="number"
-          aria-invalid={!!errors.allocatedQuantity || !!error}
-          aria-describedby="allocatedQuantity-error"
+          aria-invalid={!!errors.allocatedQuantity}
+          aria-describedby={errors.allocatedQuantity ? 'allocatedQuantity-error' : undefined}
           {...register('allocatedQuantity', {
             required: '배정수량을 입력해 주세요.',
             valueAsNumber: true,
@@ -95,8 +96,8 @@ export default function AllocationRegisterForm() {
         <input
           id="allocatedAt"
           type="datetime-local"
-          aria-invalid={!!errors.allocatedAt || !!error}
-          aria-describedby="allocatedAt-error"
+          aria-invalid={!!errors.allocatedAt}
+          aria-describedby={errors.allocatedAt ? 'allocatedAt-error' : undefined}
           {...register('allocatedAt', {
             required: '배정일시를 선택해 주세요.',
           })}
@@ -114,7 +115,7 @@ export default function AllocationRegisterForm() {
         <select
           id="allocationMethod"
           aria-invalid={!!errors.allocationMethod}
-          aria-describedby="allocationMethod-error"
+          aria-describedby={errors.allocationMethod ? 'allocationMethod-error' : undefined}
           {...register('allocationMethod')}
           disabled={isPending}
         >
@@ -135,8 +136,8 @@ export default function AllocationRegisterForm() {
         <input
           id="allocationPrice"
           type="number"
-          aria-invalid={!!errors.allocationPrice || !!error}
-          aria-describedby="allocationPrice-error"
+          aria-invalid={!!errors.allocationPrice}
+          aria-describedby={errors.allocationPrice ? 'allocationPrice-error' : undefined}
           {...register('allocationPrice', {
             valueAsNumber: true,
             validate: (v) => !v || (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.',
@@ -155,7 +156,7 @@ export default function AllocationRegisterForm() {
         <textarea
           id="note"
           aria-invalid={!!errors.note}
-          aria-describedby="note-error"
+          aria-describedby={errors.note ? 'note-error' : undefined}
           {...register('note')}
           disabled={isPending}
         />
@@ -167,7 +168,7 @@ export default function AllocationRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

@@ -1,17 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { getDashboardBySecuritiesFirm } from '../../entities/dashboard/api-client.ts'
-import type { DashboardBySecuritiesFirm } from '../../entities/dashboard/types.ts'
+import { getDashboardBySecuritiesFirm } from './api-client.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
+import type { DashboardBySecuritiesFirm } from './types.ts'
 
-interface UseDashboardBySecuritiesFirmOptions {
-  enabled?: boolean
-}
-
-export function useDashboardBySecuritiesFirm(options?: UseDashboardBySecuritiesFirmOptions) {
+export function useDashboardBySecuritiesFirm({ enabled }: { enabled?: boolean } = {}) {
   return useQuery<DashboardBySecuritiesFirm[], Error>({
-    queryKey: ['dashboardBySecuritiesFirm'],
-    queryFn: getDashboardBySecuritiesFirm,
-    enabled: options?.enabled ?? true,
-    staleTime: 0,
-    select: (data) => data,
+    queryKey: dashboardKeys.bySecuritiesFirm(),
+    queryFn: ({ signal }) => getDashboardBySecuritiesFirm(signal),
+    enabled,
   })
 }

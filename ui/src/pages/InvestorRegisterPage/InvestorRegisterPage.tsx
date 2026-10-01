@@ -1,4 +1,4 @@
-import InvestorRegisterForm from '../../features/investor-register/InvestorRegisterForm.tsx'
+import { InvestorRegisterForm } from '@/features/investor-register/index.ts'
 import styles from './InvestorRegisterPage.module.css'
 
 export default function InvestorRegisterPage() {

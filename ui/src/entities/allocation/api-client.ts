@@ -1,4 +1,4 @@
-import { apiFetch } from '../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 import type { Allocation, AllocationRegisterRequest } from './types.ts'
 
 export async function createAllocation(data: AllocationRegisterRequest): Promise<Allocation> {

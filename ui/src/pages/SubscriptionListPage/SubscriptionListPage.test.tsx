@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SubscriptionListPage from './SubscriptionListPage.tsx'
-import { apiFetch } from '../../shared/api/client.ts'
-import type { InvestmentHistoryResponse } from '../../entities/subscription/types.ts'
-import { ApiError } from '../../shared/api/apiError.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import type { InvestmentHistoryResponse } from '@/entities/subscription/types.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
 
-vi.mock('../../shared/api/client.ts', () => ({
+vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 
@@ -53,14 +53,20 @@ const HISTORY_RESPONSE: InvestmentHistoryResponse = {
   size: 20,
 }
 
-function renderPage() {
+function LocationProbe() {
+  const location = useLocation()
+  return <p data-testid="search">{location.search}</p>
+}
+
+function renderPage(entry = '/subscriptions') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <SubscriptionListPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -203,5 +209,32 @@ describe('SubscriptionListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('청약 목록을 불러오는 데 실패했습니다.')).toBeInTheDocument()
     })
+  })
+
+  it('배정 필터는 URL status 쿼리와 동기화된다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(HISTORY_RESPONSE)
+    renderPage('/subscriptions?status=allocated')
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '배정완료' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '전체' }))
+    await waitFor(() => expect(screen.getByTestId('search')).toBeEmptyDOMElement())
+
+    fireEvent.click(screen.getByRole('button', { name: '미배정' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('search')).toHaveTextContent('?status=unallocated'),
+    )
+  })
+
+  it('알 수 없는 status 값은 전체로 처리한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(HISTORY_RESPONSE)
+    renderPage('/subscriptions?status=bogus')
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '전체' })).toHaveAttribute('aria-pressed', 'true'),
+    )
   })
 })

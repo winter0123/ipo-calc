@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import IpoCalendar from './IpoCalendar.tsx'
-import type { Ipo } from '../../entities/ipo/types.ts'
+import type { Ipo } from '@/entities/ipo/types.ts'
 
 function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   return {

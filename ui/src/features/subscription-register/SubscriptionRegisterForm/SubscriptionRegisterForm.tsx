@@ -1,27 +1,19 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { fetchInvestors } from '../../../entities/investor/api-client.ts'
-import { fetchSecuritiesAccounts } from '../../../entities/securities-account/api-client.ts'
-import { fetchIpos } from '../../../entities/ipo/api-client.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
+import { useIpos } from '@/entities/ipo/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
-import type { SubscriptionRegisterRequest } from '../../../entities/subscription/types.ts'
+import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SubscriptionRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
 
-  const {
-    data: investors,
-    isLoading: investorsLoading,
-    error: investorsError,
-  } = useQuery({ queryKey: ['investors'], queryFn: fetchInvestors })
-  const {
-    data: ipos,
-    isLoading: iposLoading,
-    error: iposError,
-  } = useQuery({ queryKey: ['ipos'], queryFn: fetchIpos })
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
+  const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
 
   const { mutate, isPending, error } = useSubscriptionRegister()
 
@@ -39,11 +31,7 @@ export default function SubscriptionRegisterForm() {
     data: securitiesAccounts,
     isLoading: securitiesAccountsLoading,
     error: securitiesAccountsError,
-  } = useQuery({
-    queryKey: ['securities-accounts', selectedInvestorId],
-    queryFn: () => fetchSecuritiesAccounts(selectedInvestorId),
-    enabled: investorSelected,
-  })
+  } = useSecuritiesAccounts(selectedInvestorId)
 
   const onSubmit = (data: SubscriptionRegisterRequest) => {
     mutate(data, {
@@ -91,8 +79,8 @@ export default function SubscriptionRegisterForm() {
         <label htmlFor="investorId">투자자</label>
         <select
           id="investorId"
-          aria-invalid={!!errors.investorId || !!error}
-          aria-describedby="investorId-error"
+          aria-invalid={!!errors.investorId}
+          aria-describedby={errors.investorId ? 'investorId-error' : undefined}
           {...register('investorId', {
             required: '투자자를 선택해 주세요.',
             valueAsNumber: true,
@@ -118,8 +106,8 @@ export default function SubscriptionRegisterForm() {
         <label htmlFor="securitiesAccountId">증권계좌</label>
         <select
           id="securitiesAccountId"
-          aria-invalid={!!errors.securitiesAccountId || !!error}
-          aria-describedby="securitiesAccountId-error"
+          aria-invalid={!!errors.securitiesAccountId}
+          aria-describedby={errors.securitiesAccountId ? 'securitiesAccountId-error' : undefined}
           {...register('securitiesAccountId', {
             required: '증권계좌를 선택해 주세요.',
             valueAsNumber: true,
@@ -155,8 +143,8 @@ export default function SubscriptionRegisterForm() {
         <label htmlFor="ipoId">공모주</label>
         <select
           id="ipoId"
-          aria-invalid={!!errors.ipoId || !!error}
-          aria-describedby="ipoId-error"
+          aria-invalid={!!errors.ipoId}
+          aria-describedby={errors.ipoId ? 'ipoId-error' : undefined}
           {...register('ipoId', {
             required: '공모주를 선택해 주세요.',
             valueAsNumber: true,
@@ -182,8 +170,8 @@ export default function SubscriptionRegisterForm() {
         <input
           id="quantity"
           type="number"
-          aria-invalid={!!errors.quantity || !!error}
-          aria-describedby="quantity-error"
+          aria-invalid={!!errors.quantity}
+          aria-describedby={errors.quantity ? 'quantity-error' : undefined}
           {...register('quantity', {
             required: '청약수량을 입력해 주세요.',
             valueAsNumber: true,
@@ -203,8 +191,8 @@ export default function SubscriptionRegisterForm() {
         <input
           id="depositAmount"
           type="number"
-          aria-invalid={!!errors.depositAmount || !!error}
-          aria-describedby="depositAmount-error"
+          aria-invalid={!!errors.depositAmount}
+          aria-describedby={errors.depositAmount ? 'depositAmount-error' : undefined}
           {...register('depositAmount', {
             required: '증거금을 입력해 주세요.',
             valueAsNumber: true,
@@ -224,8 +212,8 @@ export default function SubscriptionRegisterForm() {
         <input
           id="subscribedAt"
           type="datetime-local"
-          aria-invalid={!!errors.subscribedAt || !!error}
-          aria-describedby="subscribedAt-error"
+          aria-invalid={!!errors.subscribedAt}
+          aria-describedby={errors.subscribedAt ? 'subscribedAt-error' : undefined}
           {...register('subscribedAt', {
             required: '청약일시를 선택해 주세요.',
           })}
@@ -243,7 +231,7 @@ export default function SubscriptionRegisterForm() {
         <textarea
           id="memo"
           aria-invalid={!!errors.memo}
-          aria-describedby="memo-error"
+          aria-describedby={errors.memo ? 'memo-error' : undefined}
           {...register('memo')}
           disabled={isPending}
         />
@@ -255,7 +243,7 @@ export default function SubscriptionRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

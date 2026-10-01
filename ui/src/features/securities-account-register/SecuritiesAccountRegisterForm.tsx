@@ -7,9 +7,10 @@ import {
   type RegisterSecuritiesAccountResponse,
 } from './useRegisterSecuritiesAccount.ts'
 import styles from './SecuritiesAccountRegisterForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SecuritiesAccountRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
   const params = useParams<{ investorId: string }>()
   const { data: firms, isLoading: firmsLoading, error: firmsError } = useSecuritiesFirms()
@@ -79,8 +80,8 @@ export default function SecuritiesAccountRegisterForm() {
         <label htmlFor="securitiesFirmId">증권사</label>
         <select
           id="securitiesFirmId"
-          aria-invalid={!!errors.securitiesFirmId || !!error}
-          aria-describedby="securitiesFirmId-error"
+          aria-invalid={!!errors.securitiesFirmId}
+          aria-describedby={errors.securitiesFirmId ? 'securitiesFirmId-error' : undefined}
           {...register('securitiesFirmId', {
             required: '증권사를 선택해 주세요.',
             valueAsNumber: true,
@@ -107,8 +108,8 @@ export default function SecuritiesAccountRegisterForm() {
           id="accountNumber"
           type="text"
           placeholder="0000-0000-0000-0000"
-          aria-invalid={!!errors.accountNumber || !!error}
-          aria-describedby="accountNumber-error"
+          aria-invalid={!!errors.accountNumber}
+          aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
           {...register('accountNumber', {
             required: '계좌번호를 입력해 주세요.',
             validate: (v) => {
@@ -139,7 +140,7 @@ export default function SecuritiesAccountRegisterForm() {
           type="text"
           placeholder="예: 주력 계좌"
           aria-invalid={!!errors.accountName}
-          aria-describedby="accountName-error"
+          aria-describedby={errors.accountName ? 'accountName-error' : undefined}
           {...register('accountName')}
           disabled={isPending}
         />
@@ -155,7 +156,7 @@ export default function SecuritiesAccountRegisterForm() {
           <input
             type="checkbox"
             aria-invalid={!!errors.isDefault}
-            aria-describedby="isDefault-error"
+            aria-describedby={errors.isDefault ? 'isDefault-error' : undefined}
             {...register('isDefault')}
             disabled={isPending}
           />
@@ -169,7 +170,7 @@ export default function SecuritiesAccountRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

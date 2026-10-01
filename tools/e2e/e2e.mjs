@@ -74,7 +74,7 @@ async function waitFor(predicate, timeout = 15000) {
 }
 
 async function errorTexts(page) {
-  const locator = page.locator('[aria-live="polite"]')
+  const locator = page.locator('[aria-live="polite"], [role="alert"]')
   const count = await withTimeout(locator.count(), 10000, 'errorTexts count 타임아웃')
   const texts = []
   for (let i = 0; i < count; i += 1) {
@@ -775,6 +775,7 @@ async function scenario9(browser) {
     if (investorText !== line) {
       throw new Error(`투자자별 탭 불일치: 기대="${line}" vs 실제="${investorText}"`)
     }
+    trade.sold = true
     return `매도 ${TRADE.sales.length}건(${TRADE.sales.map((s) => s.quantity).join('+')}주/배정 ${TRADE.allocatedQuantity}주) → ${Object.entries(actual).map(([k, v]) => `${k}=${v}`).join(', ')}, 투자자별="${investorText}"`
   } finally {
     await context.close()
@@ -834,6 +835,58 @@ async function scenario10(browser) {
   }
 }
 
+async function periodLines(page) {
+  await page.waitForSelector('ul li, [role="status"]', { timeout: 10000 })
+  return page.locator('ul li').allInnerTexts()
+}
+
+async function searchPeriod(page, year, month) {
+  await page.fill('#period-year', String(year))
+  if (month !== undefined) await page.selectOption('#period-month', String(month))
+  await page.getByRole('button', { name: '조회' }).click()
+}
+
+// D-9: 월별/연도별 탭이 선택한 기간만 집계한다(기간 밖은 빈 상태).
+async function scenario11(browser) {
+  const trade = shared.trade
+  requirePrevious(trade?.sold, 'E2E-9')
+  const { context, page } = await loginTrader(browser, trade)
+  try {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    const total = `${TRADE.expected.investment.toLocaleString('en-US')}원`
+    const emptyText = '해당 조건에 해당하는 기록이 없습니다.'
+    const notes = []
+
+    await goto(page, '/dashboard')
+    await page.getByRole('tab', { name: '월별' }).click()
+    const key = `${year}-${String(month).padStart(2, '0')}`
+    const inMonth = await waitFor(async () => (await periodLines(page)).includes(`${key}: ${total}`))
+    if (!inMonth) throw new Error(`현재 월(${key}) 집계 불일치: 기대="${key}: ${total}" vs 실제=${JSON.stringify(await periodLines(page))}`)
+    notes.push(`월별 ${key}=${total}`)
+
+    await searchPeriod(page, year - 1, month)
+    const monthEmpty = await waitFor(async () => (await page.locator('body').innerText()).includes(emptyText))
+    if (!monthEmpty) throw new Error(`전년 동월(${year - 1}-${month}) 조회가 빈 상태가 아님: ${JSON.stringify(await periodLines(page))}`)
+    notes.push(`${year - 1}년 ${month}월=빈 상태`)
+
+    await page.getByRole('tab', { name: '연도별' }).click()
+    await searchPeriod(page, year)
+    const inYear = await waitFor(async () => (await periodLines(page)).includes(`${year}: ${total}`))
+    if (!inYear) throw new Error(`현재 연도(${year}) 집계 불일치: 기대="${year}: ${total}" vs 실제=${JSON.stringify(await periodLines(page))}`)
+    notes.push(`연도별 ${year}=${total}`)
+
+    await searchPeriod(page, year - 1)
+    const yearEmpty = await waitFor(async () => (await page.locator('body').innerText()).includes(emptyText))
+    if (!yearEmpty) throw new Error(`전년(${year - 1}) 조회가 빈 상태가 아님: ${JSON.stringify(await periodLines(page))}`)
+    notes.push(`${year - 1}년=빈 상태`)
+    return notes.join(', ')
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -845,6 +898,7 @@ const SCENARIOS = [
   ['E2E-8', '거래흐름2: 배정 등록(수량/단가) → 배정완료 표시', scenario8],
   ['E2E-9', '거래흐름3: 분할 매도 2건 → 대시보드 안분 집계', scenario9],
   ['E2E-10', '거래흐름4: 다른 계정에서 타인 데이터 비노출', scenario10],
+  ['E2E-11', '거래흐름5: 월별/연도별 탭이 선택 기간만 집계(D-9)', scenario11],
 ]
 
 function printResults() {

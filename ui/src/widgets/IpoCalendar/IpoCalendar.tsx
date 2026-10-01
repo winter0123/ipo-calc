@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react'
-import {
-  buildCalendarEvents,
-  type CalendarEvent,
-} from '../../features/ipo-calendar/buildCalendarEvents.ts'
-import type { Ipo } from '../../entities/ipo/types.ts'
+import { buildCalendarEvents, type CalendarEvent } from '@/features/ipo-calendar/index.ts'
+import { type Ipo } from '@/entities/ipo/index.ts'
 import styles from './IpoCalendar.module.css'
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']

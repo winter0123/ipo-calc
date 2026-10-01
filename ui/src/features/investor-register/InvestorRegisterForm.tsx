@@ -1,9 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useRegisterInvestor, type RegisterInvestorRequest } from './useRegisterInvestor.ts'
-import { isValidDisplayName } from '../../shared/lib/validators.ts'
+import { isValidDisplayName } from '@/shared/lib/validators.ts'
 import styles from './InvestorRegisterForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'SELF', label: '본인' },
@@ -14,6 +14,7 @@ const RELATIONSHIP_OPTIONS = [
 ] as const
 
 export default function InvestorRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
   const { mutate, isPending, error } = useRegisterInvestor()
   const {
@@ -44,8 +45,8 @@ export default function InvestorRegisterForm() {
         <input
           id="displayName"
           type="text"
-          aria-invalid={!!errors.displayName || !!error}
-          aria-describedby="displayName-error"
+          aria-invalid={!!errors.displayName}
+          aria-describedby={errors.displayName ? 'displayName-error' : undefined}
           {...register('displayName', {
             required: '표시 이름은 필수입니다.',
             validate: (v) => isValidDisplayName(v) || '표시 이름은 50자 이하여야 합니다.',
@@ -62,8 +63,8 @@ export default function InvestorRegisterForm() {
         <label htmlFor="relationship">관계</label>
         <select
           id="relationship"
-          aria-invalid={!!errors.relationship || !!error}
-          aria-describedby="relationship-error"
+          aria-invalid={!!errors.relationship}
+          aria-describedby={errors.relationship ? 'relationship-error' : undefined}
           {...register('relationship', {
             validate: (v) =>
               !v ||
@@ -86,7 +87,7 @@ export default function InvestorRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

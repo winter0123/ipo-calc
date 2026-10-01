@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import type { DashboardTab } from '../useDashboardTabs.ts'
+import { DASHBOARD_TABS, type DashboardTab } from '../tabs.ts'
 import styles from './DashboardTabs.module.css'
 
 interface DashboardTabsProps {
@@ -7,29 +7,11 @@ interface DashboardTabsProps {
   onTabChange: (tab: DashboardTab) => void
 }
 
-const TAB_LABELS: Partial<Record<DashboardTab, string>> = {
-  all: '전체',
-  investor: '투자자별',
-  month: '월별',
-  year: '연도별',
-}
-
-const TAB_LABELS_MAP: Record<string, string> = {
-  'securities-firm': '증권사별',
-}
-
-const ALL_TAB_KEYS = ['all', 'investor', 'securities-firm', 'month', 'year'] as DashboardTab[]
-
-function getTabLabel(tab: DashboardTab): string {
-  if (tab === 'securities-firm') return TAB_LABELS_MAP['securities-firm']
-  return TAB_LABELS[tab] ?? ''
-}
-
 export default function DashboardTabs({ currentTab, onTabChange }: DashboardTabsProps) {
   const tabRef = useRef<HTMLDivElement>(null)
 
   const handleKeyDown = (e: React.KeyboardEvent, tab: DashboardTab) => {
-    const tabs = ['all', 'investor', 'securities-firm', 'month', 'year'] as DashboardTab[]
+    const tabs = DASHBOARD_TABS.map((t) => t.key)
     const currentIndex = tabs.indexOf(tab)
     let nextIndex = currentIndex
 
@@ -68,7 +50,7 @@ export default function DashboardTabs({ currentTab, onTabChange }: DashboardTabs
 
   return (
     <div className={styles.tabList} role="tablist" aria-label="대시보드 탭" ref={tabRef}>
-      {(ALL_TAB_KEYS as DashboardTab[]).map((tab) => (
+      {DASHBOARD_TABS.map(({ key: tab, label }) => (
         <button
           key={tab}
           type="button"
@@ -80,7 +62,7 @@ export default function DashboardTabs({ currentTab, onTabChange }: DashboardTabs
           onClick={() => onTabChange(tab)}
           onKeyDown={(e) => handleKeyDown(e, tab)}
         >
-          {getTabLabel(tab)}
+          {label}
         </button>
       ))}
     </div>

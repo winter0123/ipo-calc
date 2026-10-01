@@ -15,6 +15,7 @@
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "paths": { "@/*": ["./src/*"] },
     "jsx": "react-jsx",
 
     /* Linting */

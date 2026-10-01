@@ -1,4 +1,4 @@
-import LoginForm from '../../features/login/LoginForm.tsx'
+import { LoginForm } from '@/features/login/index.ts'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {

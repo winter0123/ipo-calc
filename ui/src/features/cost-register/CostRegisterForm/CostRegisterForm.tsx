@@ -1,16 +1,17 @@
 import { useForm } from 'react-hook-form'
-import { useSubscriptionOptions } from '../useSubscriptionOptions.ts'
+import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import { useCostRegister } from '../useCostRegister.ts'
-import type { CostRegisterRequest } from '../../../entities/cost/types.ts'
+import { type CostRegisterRequest } from '@/entities/cost/index.ts'
 import styles from './CostRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function CostRegisterForm() {
+  'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const {
     data: subscriptionHistory,
     isLoading: subscriptionsLoading,
     error: subscriptionsError,
-  } = useSubscriptionOptions()
+  } = useInvestmentHistory()
 
   const { mutate, isPending, error } = useCostRegister()
 
@@ -59,8 +60,8 @@ export default function CostRegisterForm() {
         <label htmlFor="subscriptionId">청약</label>
         <select
           id="subscriptionId"
-          aria-invalid={!!errors.subscriptionId || !!error}
-          aria-describedby="subscriptionId-error"
+          aria-invalid={!!errors.subscriptionId}
+          aria-describedby={errors.subscriptionId ? 'subscriptionId-error' : undefined}
           {...register('subscriptionId', {
             required: '청약을 선택해 주세요.',
             valueAsNumber: true,
@@ -86,8 +87,8 @@ export default function CostRegisterForm() {
         <input
           id="costType"
           type="text"
-          aria-invalid={!!errors.costType || !!error}
-          aria-describedby="costType-error"
+          aria-invalid={!!errors.costType}
+          aria-describedby={errors.costType ? 'costType-error' : undefined}
           {...register('costType', {
             required: '비용종류를 입력해 주세요.',
             maxLength: { value: 255, message: '비용종류는 255자 이하로 입력해 주세요.' },
@@ -106,8 +107,8 @@ export default function CostRegisterForm() {
         <input
           id="amount"
           type="number"
-          aria-invalid={!!errors.amount || !!error}
-          aria-describedby="amount-error"
+          aria-invalid={!!errors.amount}
+          aria-describedby={errors.amount ? 'amount-error' : undefined}
           {...register('amount', {
             required: '금액을 입력해 주세요.',
             valueAsNumber: true,
@@ -127,8 +128,8 @@ export default function CostRegisterForm() {
         <input
           id="incurredAt"
           type="datetime-local"
-          aria-invalid={!!errors.incurredAt || !!error}
-          aria-describedby="incurredAt-error"
+          aria-invalid={!!errors.incurredAt}
+          aria-describedby={errors.incurredAt ? 'incurredAt-error' : undefined}
           {...register('incurredAt', {
             required: '발생일시를 선택해 주세요.',
           })}
@@ -146,8 +147,8 @@ export default function CostRegisterForm() {
         <input
           id="memo"
           type="text"
-          aria-invalid={!!errors.memo || !!error}
-          aria-describedby="memo-error"
+          aria-invalid={!!errors.memo}
+          aria-describedby={errors.memo ? 'memo-error' : undefined}
           {...register('memo', {
             maxLength: { value: 255, message: '메모는 255자 이하로 입력해 주세요.' },
           })}
@@ -161,7 +162,7 @@ export default function CostRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

@@ -1,8 +1,21 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-10-01 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+> 마지막 갱신: 2026-10-01 E20 프런트 리팩토링 반영(위 최신 절), 직전은 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
 
-## 야간 자율 작업 후속 (2026-10-01, #241~#247) — 최신
+## 프런트 구조 리팩토링 Epic 20 (2026-10-01) — 최신
+
+`ui/`를 동작 불변 원칙으로 정리했다. 브랜치 `winter0123/frontend-architecture-refactor`, PR 승인 후 병합 대기. 상세는 `docs/work-log/frontend-architecture-refactor.md`(D-E20-001~006).
+
+- **구조**: 슬라이스마다 `index.ts` 공개 API, 레이어 방향·슬라이스 격리·공개 API를 검사하는 `src/fsd-boundaries.test.ts`, `@/` alias. 대시보드 조회 모델은 `features/dashboard`로 이동, `MainLayout`·`App`은 `app/`으로 이동.
+- **쿼리·인증**: 쿼리 키 팩토리와 접두사 invalidation 확장, 401은 `QueryCache`·`MutationCache` `onError`에서 캐시를 비우고 `/login`으로 이동(복귀 경로 보존, 로그인 실패 401 제외). 뮤테이션 자동 재시도는 0 유지.
+- **UX**: NotFound·ErrorBoundary, `lang="ko"`·title, 필터를 URL 쿼리와 동기화(투자 내역·청약 목록).
+- **백엔드 변경 1건(동작 변화)**: `GET /dashboard/by-period`가 `year`·`month`를 반영한다. 대시보드 월별/연도별 탭이 선택 기간만 보여준다.
+- **도구**: GET 응답 Zod 검증(대시보드 + IPO·투자자·증권사·증권계좌·투자 내역·수익, DB NOT NULL 대조 후 `.nullable()` 반영), React Compiler(RHF 폼 8개는 `'use no memo'`), 라우트 `React.lazy` 코드 스플리팅(메인 번들 535→284kB).
+- **검증**: UI 338 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 11/11(E2E-11 = D-9 기간 필터)·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
+- **추가 백엔드 수정 1건**: `GET /investors/{id}/profits`가 매도 금액이 null인 매도(선택 입력)가 하나라도 있으면 합계 계산에서 NPE(500)가 나던 버그를 고쳤다(null은 0으로 합산, `ProfitCalculator`와 같은 규칙). 재현 테스트 `getInvestorProfitsWithNullSaleAmountTreatsAmountAsZeroInTotals` 추가.
+- **남은 것**: staleTime은 현행 유지. POST 응답·요청은 Zod 미적용(폼은 RHF 검증).
+
+## 야간 자율 작업 후속 (2026-10-01, #241~#247)
 
 아래 "야간 자율 작업 결과"의 미결 항목이 사용자 결정으로 모두 처리됐다.
 

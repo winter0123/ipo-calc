@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchSecuritiesFirms } from '../../entities/securities-firm/api-client.ts'
-import type { SecuritiesFirmResponse } from '../../entities/securities-firm/types.ts'
+import {
+  fetchSecuritiesFirms,
+  securitiesFirmKeys,
+  type SecuritiesFirmResponse,
+} from '@/entities/securities-firm/index.ts'
 
 export function useSecuritiesFirms() {
   return useQuery<SecuritiesFirmResponse[]>({
-    queryKey: ['securities-firms'],
-    queryFn: fetchSecuritiesFirms,
+    queryKey: securitiesFirmKeys.list(),
+    queryFn: ({ signal }) => fetchSecuritiesFirms(signal),
   })
 }

@@ -38,8 +38,8 @@ export default [
       'react/react-in-jsx-scope': 'off',
       'react/react-in-jsx-context': 'off',
       'react/prop-types': 'off',
-      'jsx-a11y/no-static-element-interactions': 'off',
-      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
     },
     settings: {
       react: { version: '19' },
