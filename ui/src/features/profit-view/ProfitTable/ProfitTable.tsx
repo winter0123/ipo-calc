@@ -11,9 +11,8 @@ interface ProfitTableProps {
 export default function ProfitTable({ data, mode }: ProfitTableProps) {
   if (!data) return null
 
-  const isInvestorMode = mode === 'investor'
-  const sales = isInvestorMode ? (data as InvestorProfit).sales : [data as SaleProfit]
-  const showSummary = isInvestorMode
+  const investorData = mode === 'investor' && 'sales' in data ? data : null
+  const sales = investorData ? investorData.sales : 'sales' in data ? [] : [data]
 
   return (
     <div className={styles.tableWrapper}>
@@ -44,11 +43,11 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
           ) : (
             sales.map((profit) => <ProfitRow key={profit.saleId} profit={profit} />)
           )}
-          {showSummary && (
+          {investorData && (
             <ProfitSummaryRow
-              totalSaleAmount={(data as InvestorProfit).totalSaleAmount}
-              totalPreTaxProfit={(data as InvestorProfit).totalPreTaxProfit}
-              totalAfterTaxProfit={(data as InvestorProfit).totalAfterTaxProfit}
+              totalSaleAmount={investorData.totalSaleAmount}
+              totalPreTaxProfit={investorData.totalPreTaxProfit}
+              totalAfterTaxProfit={investorData.totalAfterTaxProfit}
             />
           )}
         </tbody>

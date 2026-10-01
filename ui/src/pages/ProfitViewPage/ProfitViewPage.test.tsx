@@ -184,6 +184,17 @@ describe('ProfitViewPage', () => {
   })
 
   describe('매도건별 조회', () => {
+    it('입력만으로는 조회하지 않고 조회 버튼을 눌러야 조회한다', async () => {
+      renderPage()
+      await waitForInvestorsLoaded()
+      vi.mocked(apiFetch).mockClear()
+
+      await fill(screen.getByLabelText('매도건 ID'), '123')
+
+      expect(screen.getByLabelText('매도건 ID')).toHaveValue(123)
+      expect(apiFetch).not.toHaveBeenCalled()
+    })
+
     it('매도건별 조회 성공 시 수익 행이 표시됨 (AC-013)', async () => {
       renderPage()
       await waitForInvestorsLoaded()
@@ -209,9 +220,7 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      // 한 글자 입력만으로 조회가 시작되고 입력칸이 잠기므로 붙여넣기로 한 번에 입력한다
-      await userEvent.click(screen.getByLabelText('매도건 ID'))
-      await userEvent.paste('999')
+      await fill(screen.getByLabelText('매도건 ID'), '999')
       await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
@@ -381,9 +390,7 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      // 한 글자 입력만으로 조회가 시작되고 입력칸이 잠기므로 붙여넣기로 한 번에 입력한다
-      await userEvent.click(screen.getByLabelText('매도건 ID'))
-      await userEvent.paste('999')
+      await fill(screen.getByLabelText('매도건 ID'), '999')
       await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
