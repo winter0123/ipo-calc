@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
-import { fetchIpos } from './api-client.ts'
+import { fetchIpos, registerIpo } from './api-client.ts'
 
 const stub = (body: unknown) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
@@ -35,5 +35,21 @@ describe('ipo api-client 응답 검증', () => {
   it('필수 컬럼이 없으면 ZodError로 거부한다', async () => {
     stub([{ ...IPO_MIN, companyName: undefined }])
     await expect(fetchIpos()).rejects.toBeInstanceOf(ZodError)
+  })
+})
+
+describe('registerIpo', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('POST /ipos를 호출하고 응답을 반환한다', async () => {
+    const createdIpo = { ...IPO_MIN, id: 2 }
+    stub(createdIpo)
+    const req = {
+      companyName: '테스트',
+      ipoName: '테스트 IPO',
+      subscriptionStartDate: '2026-02-01',
+      subscriptionEndDate: '2026-02-02',
+    }
+    await expect(registerIpo(req)).resolves.toEqual(createdIpo)
   })
 })

@@ -97,6 +97,10 @@ describe('MainLayout', () => {
       'href',
       '/admin/accounts',
     )
+    expect(await screen.findByRole('link', { name: '공모주 등록' })).toHaveAttribute(
+      'href',
+      '/admin/ipos',
+    )
   })
 
   it('일반 계정과 로그인 전에는 가입 승인 링크가 없음', async () => {
@@ -105,12 +109,14 @@ describe('MainLayout', () => {
     await screen.findByRole('link', { name: '증권사 연동' })
     await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
     expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
     unmount()
 
     anonymous()
     renderLayout()
     await vi.waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2))
     expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
   })
 
   it('스킵 링크가 존재하고 href="#main-content"를 가리킴', () => {
