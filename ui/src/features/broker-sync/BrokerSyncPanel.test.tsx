@@ -31,7 +31,17 @@ const PREVIEW = {
   allocationsWithoutStockCode: [77],
 }
 
-const isPreview = (path: unknown) => String(path).endsWith('/broker-sync/preview')
+const isPreview = (path: unknown) => String(path).includes('/broker-sync/preview')
+const previewCalls = () =>
+  vi
+    .mocked(apiFetch)
+    .mock.calls.filter(([path]) => isPreview(path))
+    .map(([path]) => String(path))
+const day = (offset: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toLocaleDateString('en-CA')
+}
 const confirmCalls = () =>
   vi.mocked(apiFetch).mock.calls.filter(([path]) => String(path).endsWith('/broker-sync/confirm'))
 
@@ -61,6 +71,54 @@ describe('BrokerSyncPanel', () => {
     setup()
 
     expect(apiFetch).not.toHaveBeenCalled()
+  })
+
+  it('기본 조회 기간은 오늘까지 최근 1년이고 기간 파라미터로 요청한다', async () => {
+    setup()
+    expect(screen.getByLabelText('조회 시작일')).toHaveValue(day(-365))
+    expect(screen.getByLabelText('조회 종료일')).toHaveValue(day(0))
+    await clickQuery()
+
+    await screen.findByText('0123A4')
+    expect(previewCalls()).toEqual([
+      `/securities-accounts/10/broker-sync/preview?from=${day(-365)}&to=${day(0)}`,
+    ])
+    expect(screen.getByText(`조회 기간: ${day(-365)} ~ ${day(0)}`)).toBeInTheDocument()
+  })
+
+  it('기간을 입력만 해서는 조회하지 않고 조회를 눌러야 새 기간으로 요청한다', async () => {
+    setup()
+    await fill(screen.getByLabelText('조회 시작일'), day(-800))
+    await fill(screen.getByLabelText('조회 종료일'), day(-30))
+    expect(apiFetch).not.toHaveBeenCalled()
+
+    await clickQuery()
+
+    await screen.findByText('0123A4')
+    expect(previewCalls()).toEqual([
+      `/securities-accounts/10/broker-sync/preview?from=${day(-800)}&to=${day(-30)}`,
+    ])
+  })
+
+  it('기간이 잘못되면 안내하고 조회 버튼을 막는다', async () => {
+    setup()
+    await fill(screen.getByLabelText('조회 시작일'), day(-4000))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('최대 10년')
+    expect(screen.getByRole('button', { name: '증권사에서 매도 내역 조회' })).toBeDisabled()
+
+    await fill(screen.getByLabelText('조회 시작일'), day(-10))
+    await fill(screen.getByLabelText('조회 종료일'), day(-20))
+    expect(screen.getByRole('alert')).toHaveTextContent('시작일은 종료일보다')
+  })
+
+  it('요청이 너무 잦으면(429) 서버 안내를 그대로 보여준다', async () => {
+    setup(
+      new ApiError(429, 'Too Many Requests', '요청이 너무 잦습니다. 8초 뒤에 다시 시도해 주세요.'),
+    )
+    await clickQuery()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('8초 뒤에 다시 시도')
   })
 
   it('조회하면 매칭 성공 건과 실패 사유를 보여준다', async () => {

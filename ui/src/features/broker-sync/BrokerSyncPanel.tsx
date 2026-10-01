@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSyncPreview, type UnmatchedReason } from '@/entities/broker/index.ts'
+import { useSyncPreview, type SyncRange, type UnmatchedReason } from '@/entities/broker/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import MatchedTable from './MatchedTable.tsx'
@@ -15,16 +15,42 @@ const REASON_TEXT: Record<UnmatchedReason, string> = {
   QUANTITY_EXCEEDS_ALLOCATION: '매도 수량이 배정 수량을 넘습니다 — 직접 확인해 주세요.',
 }
 
+const DEFAULT_LOOKBACK_DAYS = 365
+const MAX_RANGE_DAYS = 3650
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const toDateInput = (date: Date) => date.toLocaleDateString('en-CA')
+
+function rangeError(range: SyncRange, today: string): string | null {
+  if (!range.from || !range.to) return '조회 기간을 입력해 주세요.'
+  if (range.to > today) return '조회 종료일은 오늘 이후일 수 없습니다.'
+  if (range.from > range.to) return '조회 시작일은 종료일보다 늦을 수 없습니다.'
+  if ((Date.parse(range.to) - Date.parse(range.from)) / DAY_MS > MAX_RANGE_DAYS) {
+    return '조회 기간은 최대 10년까지입니다.'
+  }
+  return null
+}
+
 export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAccountId: number }) {
-  const [requested, setRequested] = useState(false)
+  const today = toDateInput(new Date())
+  // 입력 중 값(draft)과 `조회`로 제출한 값(submitted)을 분리한다. 입력만으로는 증권사를 호출하지 않는다.
+  const [draft, setDraft] = useState<SyncRange>(() => ({
+    from: toDateInput(new Date(Date.now() - DEFAULT_LOOKBACK_DAYS * DAY_MS)),
+    to: today,
+  }))
+  const [submitted, setSubmitted] = useState<SyncRange | null>(null)
   const [savedCount, setSavedCount] = useState<number | null>(null)
-  const preview = useSyncPreview(securitiesAccountId, requested)
+  const preview = useSyncPreview(securitiesAccountId, submitted)
   const confirm = useConfirmSync(securitiesAccountId)
+  const draftError = rangeError(draft, today)
 
   const handleQuery = () => {
     setSavedCount(null)
-    if (requested) void preview.refetch()
-    else setRequested(true)
+    if (submitted && submitted.from === draft.from && submitted.to === draft.to) {
+      void preview.refetch()
+    } else {
+      setSubmitted(draft)
+    }
   }
 
   const queryError = toErrorMessage(preview.error, {
@@ -32,6 +58,7 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
       404: '연결된 증권사 API가 없습니다. 먼저 연결해 주세요.',
       424: (e) => e.serverMessage,
       429: (e) => e.serverMessage,
+      400: (e) => e.serverMessage,
       502: '증권사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.',
       503: '서버에 증권사 연동 설정이 없어 지금은 조회할 수 없습니다.',
     },
@@ -47,10 +74,33 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
         매도 내역 동기화
       </h2>
       <p className={styles.notice}>
-        최근 89일의 증권사 매도 내역을 조회해 채워 줍니다. 확정하기 전에는 아무것도 저장되지
-        않습니다.
+        선택한 기간(기본 최근 1년, 최대 10년)의 증권사 매도 내역을 조회해 채워 줍니다. 확정하기
+        전에는 아무것도 저장되지 않습니다.
       </p>
-      <Button onClick={handleQuery} disabled={preview.isFetching}>
+      <div className={styles.range}>
+        <label htmlFor="broker-sync-from">조회 시작일</label>
+        <input
+          id="broker-sync-from"
+          type="date"
+          max={today}
+          value={draft.from}
+          onChange={(e) => setDraft((prev) => ({ ...prev, from: e.target.value }))}
+        />
+        <label htmlFor="broker-sync-to">조회 종료일</label>
+        <input
+          id="broker-sync-to"
+          type="date"
+          max={today}
+          value={draft.to}
+          onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
+        />
+      </div>
+      {draftError && (
+        <p role="alert" className={styles.error}>
+          {draftError}
+        </p>
+      )}
+      <Button onClick={handleQuery} disabled={preview.isFetching || draftError !== null}>
         {preview.isFetching ? '조회 중...' : '증권사에서 매도 내역 조회'}
       </Button>
 
@@ -61,8 +111,11 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
       )}
       {savedCount !== null && <p role="status">{savedCount}건을 매도로 등록했습니다.</p>}
 
-      {data && !preview.isFetching && (
+      {data && submitted && !preview.isFetching && (
         <>
+          <p>
+            조회 기간: {submitted.from} ~ {submitted.to}
+          </p>
           {data.matched.length === 0 && data.unmatched.length === 0 && (
             <p>조회된 매도 내역이 없습니다.</p>
           )}

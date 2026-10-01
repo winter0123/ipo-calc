@@ -1,8 +1,8 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 1. 오후 12:30:56
+검사 일시: 2026. 10. 1. 오후 1:16:13
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:62468
+대상 URL: http://127.0.0.1:63790
 
 ## 요약
 
@@ -67,7 +67,7 @@
 
 ### broker-sync-connected (/broker-sync?investorId=1&securitiesAccountId=1)
 
-✅ **위반 0건** (passes: 31, incomplete: 0, inapplicable: 58)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### broker-sync-replace-form (/broker-sync?investorId=1&securitiesAccountId=1)
 

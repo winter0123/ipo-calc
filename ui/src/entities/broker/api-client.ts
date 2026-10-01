@@ -8,6 +8,7 @@ import {
   type BrokerCredentialReplaceRequest,
   type SyncConfirmSale,
   type SyncPreview,
+  type SyncRange,
 } from './types.ts'
 
 const base = (securitiesAccountId: number) => `/securities-accounts/${securitiesAccountId}`
@@ -45,9 +46,15 @@ export function disconnectBrokerCredential(securitiesAccountId: number): Promise
 
 export function fetchSyncPreview(
   securitiesAccountId: number,
+  range: SyncRange,
   signal?: AbortSignal,
 ): Promise<SyncPreview> {
-  return apiGetParsed(`${base(securitiesAccountId)}/broker-sync/preview`, syncPreviewSchema, signal)
+  const query = new URLSearchParams({ from: range.from, to: range.to })
+  return apiGetParsed(
+    `${base(securitiesAccountId)}/broker-sync/preview?${query}`,
+    syncPreviewSchema,
+    signal,
+  )
 }
 
 export function confirmSync(securitiesAccountId: number, sales: SyncConfirmSale[]): Promise<void> {
