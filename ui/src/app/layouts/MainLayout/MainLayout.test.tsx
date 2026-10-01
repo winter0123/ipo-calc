@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import userEvent from '@testing-library/user-event'
 import MainLayout from './MainLayout.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
 import { ApiError } from '@/shared/api/apiError.ts'
@@ -16,6 +17,10 @@ function TestChild() {
   return <div data-testid="child-content">Child Page</div>
 }
 
+function LoginPage() {
+  return <div data-testid="login-page">Login Page</div>
+}
+
 function renderLayout() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -27,6 +32,7 @@ function renderLayout() {
           <Route element={<MainLayout />}>
             <Route path="test" element={<TestChild />} />
           </Route>
+          <Route path="login" element={<LoginPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -119,5 +125,52 @@ describe('MainLayout', () => {
     renderLayout()
 
     expect(screen.getByText('투자 관리 시스템')).toBeInTheDocument()
+  })
+
+  describe('로그아웃 버튼', () => {
+    it('로그인한 계정에는 로그아웃 버튼이 보임', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      const logoutButton = await screen.findByRole('button', { name: '로그아웃' })
+      expect(logoutButton).toBeInTheDocument()
+    })
+
+    it('로그인하지 않은 상태에서는 로그아웃 버튼이 없음', async () => {
+      renderLayout()
+
+      await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
+      expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+    })
+
+    it('로그아웃 버튼을 클릭하면 /auth/logout을 호출하고 /login으로 이동함', async () => {
+      const { apiFetch } = await import('@/shared/api/client.ts')
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }) // /auth/me
+        .mockResolvedValueOnce(undefined) // /auth/logout
+      const { unmount } = renderLayout()
+
+      const logoutButton = await screen.findByRole('button', { name: '로그아웃' })
+      await userEvent.click(logoutButton)
+
+      await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/auth/logout', { method: 'POST' }))
+      await waitFor(() => expect(screen.getByTestId('login-page')).toBeInTheDocument())
+      unmount()
+    })
+
+    it('로그아웃 실패해도 /login으로 이동함', async () => {
+      const { apiFetch } = await import('@/shared/api/client.ts')
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }) // /auth/me
+        .mockRejectedValueOnce(new Error('Network error')) // /auth/logout
+      const { unmount } = renderLayout()
+
+      const logoutButton = await screen.findByRole('button', { name: '로그아웃' })
+      await userEvent.click(logoutButton)
+
+      await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/auth/logout', { method: 'POST' }))
+      await waitFor(() => expect(screen.getByTestId('login-page')).toBeInTheDocument())
+      unmount()
+    })
   })
 })
