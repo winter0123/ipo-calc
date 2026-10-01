@@ -4,6 +4,7 @@ import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
 import com.vibeaiteam.accountauthentication.controller.dto.LoginRequest;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.exception.AccountLockedException;
+import com.vibeaiteam.accountauthentication.exception.AccountPendingApprovalException;
 import com.vibeaiteam.accountauthentication.exception.InvalidCredentialsException;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,6 +65,11 @@ public class AuthService {
     // 계정 잠금 상태 확인
     if (account.isAccountLocked(LocalDateTime.now(clock))) {
       throw new AccountLockedException("계정이 잠겼습니다. 관리자에게 문의하세요");
+    }
+
+    // 비밀번호가 맞아도 관리자 승인 전이면 로그인시키지 않는다(실패 횟수에는 넣지 않는다).
+    if (!account.isApproved()) {
+      throw new AccountPendingApprovalException("관리자 승인 대기 중입니다");
     }
 
     // 로그인 성공 - 실패 횟수 리셋, last_login_at 업데이트

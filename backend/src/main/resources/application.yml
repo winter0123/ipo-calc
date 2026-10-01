@@ -35,6 +35,9 @@ spring:
 app:
   remember-me:
     key: ${APP_REMEMBER_ME_KEY:}
+  signup:
+    # OPEN: 누구나 가입, APPROVAL: 관리자 승인 뒤 로그인(기본, 비공개 운영), CLOSED: 가입 중단
+    mode: ${APP_SIGNUP_MODE:APPROVAL}
   encryption:
     key: ${APP_ENCRYPTION_KEY:}
     keys: ${APP_ENCRYPTION_KEYS:}

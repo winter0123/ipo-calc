@@ -70,6 +70,39 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * AccountPendingApprovalException을 HTTP 403 응답으로 변환한다.
+   */
+  @ExceptionHandler(AccountPendingApprovalException.class)
+  public ResponseEntity<ErrorResponse> handleAccountPendingApproval(
+      AccountPendingApprovalException ex, HttpServletRequest request) {
+    ErrorResponse response =
+        ErrorResponse.builder().error("ACCOUNT_PENDING_APPROVAL").message(ex.getMessage()).build();
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+  }
+
+  /**
+   * SignupClosedException을 HTTP 403 응답으로 변환한다.
+   */
+  @ExceptionHandler(SignupClosedException.class)
+  public ResponseEntity<ErrorResponse> handleSignupClosed(
+      SignupClosedException ex, HttpServletRequest request) {
+    ErrorResponse response =
+        ErrorResponse.builder().error("SIGNUP_CLOSED").message(ex.getMessage()).build();
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+  }
+
+  /**
+   * AccountNotFoundException을 HTTP 404 응답으로 변환한다.
+   */
+  @ExceptionHandler(AccountNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleAccountNotFound(
+      AccountNotFoundException ex, HttpServletRequest request) {
+    ErrorResponse response =
+        ErrorResponse.builder().error("NOT_FOUND").message(ex.getMessage()).build();
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(JSON_UTF8).body(response);
+  }
+
+  /**
    * ValidationFailedException을 필드 오류가 담긴 HTTP 400 응답으로 변환한다.
    */
   @ExceptionHandler(ValidationFailedException.class)

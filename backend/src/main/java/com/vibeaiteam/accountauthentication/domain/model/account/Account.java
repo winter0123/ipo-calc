@@ -45,6 +45,10 @@ public class Account {
   @Builder.Default
   private AccountRole role = AccountRole.USER;
 
+  @Column(name = "approved", nullable = false)
+  @Builder.Default
+  private boolean approved = true;
+
   @Column(name = "failed_login_attempts", nullable = false)
   @Builder.Default
   private Integer failedLoginAttempts = 0;

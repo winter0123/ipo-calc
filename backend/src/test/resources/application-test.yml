@@ -17,6 +17,8 @@ spring:
     baseline-on-migrate: true
 
 app:
+  signup:
+    mode: OPEN
   encryption:
     key: pQSZosg8xShWKKLtxE0Yk/fF4GOaG7DPB2fizcRDHnc=
     broker-key: DKN+EauX5IPvKhIvOAlCNtBUTmXV1rm+pY/A+IEeHIQ=
