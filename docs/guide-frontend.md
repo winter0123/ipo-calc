@@ -72,3 +72,4 @@ pnpm run build
 - 상태 코드 분기는 문자열 매칭이 아니라 `toErrorMessage(error, { byStatus, fallback })`를 쓴다.
 - `jsx-a11y/no-static-element-interactions`, `click-events-have-key-events`는 error다. 새 테스트는 `fireEvent`보다 `@testing-library/user-event`를 쓴다(기존 테스트는 점진 이전).
 - 존재하지 않는 경로는 `NotFoundPage`(MainLayout 안), 렌더 중 예외는 `app/ErrorBoundary`가 처리한다. `/`는 `Hello`를 유지하고 redirect하지 않는다.
+- 목록 필터는 URL 쿼리가 단일 출처다(`InvestmentHistoryPage`: `investorId`·`securitiesAccountId`·`ipoId`, `SubscriptionListPage`: `status`). `useSearchParams`로 읽고 쓰며 변경은 `replace`로 history를 쌓지 않는다. 한 번의 사용자 동작에서 여러 키를 바꿀 때는 `setSearchParams`를 연속 호출하지 말고 한 번에(패치 객체로) 바꾼다 — React Router는 함수형 갱신을 큐잉하지 않는다.

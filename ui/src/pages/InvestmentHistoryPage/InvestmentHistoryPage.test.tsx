@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryPage from './InvestmentHistoryPage.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
@@ -128,14 +128,20 @@ const EMPTY_HISTORY_RESPONSE: InvestmentHistoryResponse = {
   size: 20,
 }
 
-function renderPage() {
+function LocationProbe() {
+  const location = useLocation()
+  return <p data-testid="search">{location.search}</p>
+}
+
+function renderPage(entry = '/investments') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/investments']}>
+      <MemoryRouter initialEntries={[entry]}>
         <InvestmentHistoryPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -569,6 +575,59 @@ describe('InvestmentHistoryPage', () => {
     await waitFor(() => {
       expect(accountSelect).toBeDisabled()
       expect(accountSelect).toHaveValue('')
+    })
+  })
+
+  describe('필터 URL 동기화', () => {
+    const mockApi = () =>
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return MOCK_INVESTORS
+        if (pathStr.startsWith('/securities-accounts')) return MOCK_SECURITIES_ACCOUNTS_INVESTOR_1
+        if (pathStr.startsWith('/investment-history')) return HISTORY_RESPONSE
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+
+    it('URL 쿼리로 필터가 복원되고 조회 파라미터에 반영된다', async () => {
+      mockApi()
+      renderPage('/investments?investorId=1&ipoId=7')
+
+      await waitFor(() => expect(screen.getByLabelText('투자자')).toHaveValue('1'))
+      expect(screen.getByLabelText('IPO ID')).toHaveValue('7')
+      await waitFor(() => {
+        const paths = vi.mocked(apiFetch).mock.calls.map((call) => String(call[0]))
+        expect(
+          paths.some(
+            (p) =>
+              p.startsWith('/investment-history') &&
+              p.includes('investorId=1') &&
+              p.includes('ipoId=7'),
+          ),
+        ).toBe(true)
+      })
+    })
+
+    it('필터 변경은 URL에 반영되고 투자자 변경 시 증권계좌 필터가 제거된다', async () => {
+      mockApi()
+      renderPage('/investments?investorId=1&securitiesAccountId=10')
+      await waitFor(() => expect(screen.getByLabelText('투자자')).toHaveValue('1'))
+
+      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '2' } })
+      await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('?investorId=2'))
+      expect(screen.getByTestId('search')).not.toHaveTextContent('securitiesAccountId')
+
+      fireEvent.change(screen.getByLabelText('IPO ID'), { target: { value: '9' } })
+      await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('ipoId=9'))
+    })
+
+    it('초기화하면 필터 쿼리가 모두 제거된다', async () => {
+      mockApi()
+      renderPage('/investments?investorId=1&ipoId=7')
+      await waitFor(() => expect(screen.getByLabelText('투자자')).toHaveValue('1'))
+
+      fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
+      await waitFor(() => expect(screen.getByTestId('search')).toBeEmptyDOMElement())
+      expect(screen.getByLabelText('IPO ID')).toHaveValue('')
     })
   })
 })
