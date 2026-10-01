@@ -4,7 +4,8 @@ import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
-import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
+import com.vibeaiteam.allocationmanagement.service.ownership.AllocationOwnership;
+import com.vibeaiteam.investormanagement.service.ownership.OwnershipErrors;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleRegisterRequest;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleResponse;
 import com.vibeaiteam.salemanagement.controller.sale.dto.SaleUpdateRequest;
@@ -14,8 +15,6 @@ import com.vibeaiteam.salemanagement.controller.sale.exception.SaleNotFoundExcep
 import com.vibeaiteam.salemanagement.controller.sale.exception.SaleValidationException;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
-import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
-import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,10 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SaleService {
 
+  private static final OwnershipErrors OWNERSHIP_ERRORS =
+      new OwnershipErrors(SaleNotFoundException::new, SaleForbiddenException::new);
+
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
-  private final SubscriptionRepository subscriptionRepository;
-  private final OwnershipGuard ownershipGuard;
+  private final AllocationOwnership allocationOwnership;
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
@@ -46,10 +47,7 @@ public class SaleService {
 
     // (1) Allocation 조회 — 존재하지 않으면 404, 타 계정 소유면 403
     Allocation allocation =
-        allocationRepository
-            .findByIdAndDeletedAtIsNull(request.getAllocationId())
-            .orElseThrow(() -> new SaleNotFoundException("배정 기록을 찾을 수 없습니다."));
-    requireOwnedAllocation(allocation);
+        allocationOwnership.requireOwnedActive(request.getAllocationId(), OWNERSHIP_ERRORS);
 
     // (2) 기존 ACTIVE Sale들의 quantity 합계 조회
     Long existingQuantitySum = saleRepository.sumActiveQuantityByAllocationId(allocation.getId());
@@ -259,22 +257,7 @@ public class SaleService {
         saleRepository
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SaleNotFoundException("매도 기록을 찾을 수 없습니다."));
-    Allocation allocation =
-        allocationRepository
-            .findById(sale.getAllocationId())
-            .orElseThrow(() -> new SaleNotFoundException("배정 기록을 찾을 수 없습니다."));
-    requireOwnedAllocation(allocation);
+    allocationOwnership.requireOwnedIncludingDeleted(sale.getAllocationId(), OWNERSHIP_ERRORS);
     return sale;
-  }
-
-  private void requireOwnedAllocation(Allocation allocation) {
-    Subscription subscription =
-        subscriptionRepository
-            .findById(allocation.getSubscriptionId())
-            .orElseThrow(() -> new SaleNotFoundException("청약 기록을 찾을 수 없습니다."));
-    ownershipGuard.requireOwnedInvestor(
-        subscription.getInvestorId(),
-        () -> new SaleNotFoundException("투자자를 찾을 수 없습니다."),
-        () -> new SaleForbiddenException("계정 소유권이 없습니다."));
   }
 }

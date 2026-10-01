@@ -26,7 +26,13 @@
 |---|---|---|
 | 0 | 안전망: 패키지 순환 금지·저장소/엔티티의 controller 비의존을 `PackageStructureTest`로 고정 | 완료 |
 | 1 | 에러 응답 공통화(`ErrorResponses`): 핸들러 13개 파일에서 `JSON_UTF8` 상수 14곳과 `response()` 헬퍼·인라인 빌더를 `ErrorResponses.of`/`validationFailed`로 교체(순삭제 약 134줄), 응답 상태·Content-Type·에러 코드·메시지 불변. 남긴 것: 필드 오류가 없는 `Retry-After` 헤더 응답 1건 | 완료 |
-| 2 | 소유권 검증 중앙화(경로 해석 한 곳, 표 기반 격리 테스트 선행) | 예정 |
+| 2 | 소유권 검증 중앙화: `OwnershipErrors`(도메인 예외 팩토리)·`OwnershipGuard` 오버로드, `SubscriptionOwnership`·`AllocationOwnership`(청약·배정 경로를 푸는 코드를 한 곳에). Cost·Sale·Allocation·Subscription 서비스의 `findOwnedX`·`requireOwnedAllocation`·`validate*Ownership`를 이것으로 교체(서비스 4개 순삭제 약 35줄, 이전 구현과 같은 조회 방식(`findById` vs 삭제 제외)·예외 클래스·메시지 유지). 패키지 순환이 생기지 않도록 청약·배정 각 패키지 아래에 둠. 두 클래스의 단위 테스트 10건 추가 | 완료 |
 | 3 | 증권사 연동 정리(`ApiCredentialService` 분해, `MatchCandidateAssembler`, DTO를 service 쪽으로) | 예정 |
 | 5 | 컨트롤러 테스트 공통 도우미 | 예정 |
 | 4·6 | 큰 서비스 재평가, 설정 일원화(선택) | 필요 시 |
+
+## 2단계 메모 (2026-10-01)
+
+- **계획과 달라진 점**: `DashboardOwnershipVerifier`·`InvestmentHistoryOwnershipVerifier`는 바꾸지 않았다. 이 둘은 "해당 투자자를 찾을 수 없습니다."·"해당 데이터에 접근 권한이 없습니다."처럼 **다른 메시지**를 쓰고 화면에 그대로 보이는 API 응답이라, 통합하면 응답 문구가 바뀐다(동작 불변 원칙 위반). 메시지를 통일하는 것은 별도 승인이 필요한 API 계약 변경이다.
+- **구조 판단**: 소유권 경로를 `OwnershipGuard` 하나에 모으면 `investormanagement`가 청약·배정 저장소에 의존해 패키지 순환이 생긴다(`PackageStructureTest`가 막는다). 그래서 청약·배정 각 패키지 아래에 한 단계씩 둔다.
+- **안전망**: 기존 `OwnershipIsolationTest`와 컨트롤러 테스트(타 계정 403·없음 404)가 그대로 통과했고, 새 단위 테스트가 표준 메시지·삭제 제외 여부를 고정한다.
