@@ -107,14 +107,17 @@ export default function SecuritiesAccountRegisterForm() {
         <input
           id="accountNumber"
           type="text"
-          placeholder="0000-0000-0000-0000"
+          placeholder="예: 1234-5678-90"
           aria-invalid={!!errors.accountNumber}
           aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
           {...register('accountNumber', {
             required: '계좌번호를 입력해 주세요.',
             validate: (v) => {
               const digits = v?.replace(/\D/g, '') ?? ''
-              return digits.length === 16 || '계좌번호는 16자리 숫자여야 합니다.'
+              return (
+                (digits.length >= 10 && digits.length <= 16) ||
+                '계좌번호는 10~16자리 숫자여야 합니다.'
+              )
             },
           })}
           value={formattedAccountNumber ?? ''}
@@ -130,7 +133,9 @@ export default function SecuritiesAccountRegisterForm() {
             {String(errors.accountNumber.message)}
           </span>
         )}
-        <p className={styles.hint}>숫자만 입력하면 자동으로 하이픈이 삽입됩니다.</p>
+        <p className={styles.hint}>
+          숫자만 입력하면 자동으로 하이픈이 삽입됩니다. 한국투자증권은 10자리(8자리+2자리)입니다.
+        </p>
       </div>
 
       <div className={styles.field}>
