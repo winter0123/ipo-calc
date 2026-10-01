@@ -7,6 +7,7 @@ import AxeBuilder from '@axe-core/playwright'
 const root = resolve(import.meta.dirname, '../..')
 const baseUrl = process.env.BASE_URL ?? 'http://127.0.0.1:5173'
 const outputRoot = resolve(root, 'docs/qa')
+const apiPrefix = process.env.E2E_API_PREFIX ?? '/api-proxy'
 
 const pages = [
   { name: 'login', path: '/login', needsAuth: false },
@@ -72,6 +73,62 @@ async function login(page, context) {
   }
 }
 
+// 증권사 연동 화면의 상태별 스캔을 위해 API로 투자자·증권계좌(KIS)를 만들고 한 계좌만 연결해 둔다.
+// 외부 증권사는 호출하지 않는다(더미 키 등록만, 토큰은 동기화 조회 때만 발급).
+async function setupBrokerStates(context) {
+  const call = async (method, path, data) => {
+    const response = await context.request.fetch(`${baseUrl}${apiPrefix}${path}`, {
+      method,
+      data,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok()) throw new Error(`${method} ${path} → ${response.status()}`)
+    const text = await response.text()
+    return text ? JSON.parse(text) : null
+  }
+  try {
+    const firms = await call('GET', '/securities-firms')
+    const kis = firms.find((f) => f.name.includes('한국투자'))
+    if (!kis) throw new Error('한국투자증권 시드 없음')
+    const investor = await call('POST', '/investors', { displayName: 'Scan Broker' })
+    const connected = await call('POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: kis.id,
+      accountNumber: '1111111111',
+      isDefault: true,
+    })
+    const open = await call('POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: kis.id,
+      accountNumber: '2222222222',
+      isDefault: false,
+    })
+    await call('POST', `/securities-accounts/${connected.id}/api-credential`, {
+      apiProvider: 'KIS',
+      appKey: 'scan-dummy-key',
+      appSecret: 'scan-dummy-secret',
+    })
+    const query = (accountId) =>
+      `/broker-sync?investorId=${investor.id}&securitiesAccountId=${accountId}`
+    return [
+      { name: 'broker-sync-connected', path: query(connected.id), needsAuth: true },
+      {
+        name: 'broker-sync-replace-form',
+        path: query(connected.id),
+        needsAuth: true,
+        prepare: async (page) => {
+          await page.getByRole('button', { name: '키 교체' }).click()
+          await page.getByLabel('앱키').waitFor()
+        },
+      },
+      { name: 'broker-sync-register-form', path: query(open.id), needsAuth: true },
+    ]
+  } catch (error) {
+    console.log(`증권사 연동 상태별 스캔 준비 실패(건너뜀): ${error.message}`)
+    return []
+  }
+}
+
 async function scanPage(page, pageInfo) {
   console.log(`Scanning ${pageInfo.name} at ${pageInfo.path}...`)
   
@@ -81,6 +138,7 @@ async function scanPage(page, pageInfo) {
     // Wait for page to be ready
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(1000) // Give time for dynamic content
+    if (pageInfo.prepare) await pageInfo.prepare(page)
     
     // Run axe-core scan
     const results = await new AxeBuilder({ page }).analyze()
@@ -138,7 +196,8 @@ async function main() {
   const loggedIn = await login(page, context)
   
   const results = []
-  
+  if (loggedIn) pages.push(...(await setupBrokerStates(context)))
+
   for (const pageInfo of pages) {
     if (pageInfo.needsAuth && !loggedIn) {
       console.log(`Skipping ${pageInfo.name} - requires authentication`)
