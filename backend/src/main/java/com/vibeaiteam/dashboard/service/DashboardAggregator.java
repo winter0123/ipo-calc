@@ -107,7 +107,24 @@ public final class DashboardAggregator {
    * @param unit "year"이면 연도, 그 외에는 월 단위
    */
   public static List<PeriodAggregationDto> byPeriod(List<CalculatedSale> sales, String unit) {
-    return sales.stream()
+    return byPeriod(sales, unit, null, null);
+  }
+
+  /**
+   * 매도일 기준 연/월로 좁힌 뒤 기간별로 집계한다. year가 null이면 전체. month는 unit이 "month"이고 year가 있을 때만 적용돼 해당 월 한 건만
+   * 남기고, 그 외에는 무시한다.
+   */
+  public static List<PeriodAggregationDto> byPeriod(
+      List<CalculatedSale> sales, String unit, Integer year, Integer month) {
+    List<CalculatedSale> scoped = sales;
+    if (year != null) {
+      String prefix =
+          month != null && !"year".equals(unit)
+              ? String.format("%04d-%02d", year, month)
+              : String.format("%04d", year);
+      scoped = sales.stream().filter(cs -> cs.saleDateKey().startsWith(prefix)).toList();
+    }
+    return scoped.stream()
         .collect(
             Collectors.groupingBy(
                 cs -> "year".equals(unit) ? cs.saleDateKey().substring(0, 4) : cs.saleDateKey()))

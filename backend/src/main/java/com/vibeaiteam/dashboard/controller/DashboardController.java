@@ -65,14 +65,25 @@ public class DashboardController {
    * Request (AC-008). 매도 기록이 없으면 빈 리스트를 반환한다.
    *
    * @param unit 기간 단위 (month: "YYYY-MM", year: "YYYY")
+   * @param year 선택. 지정하면 해당 연도 매도만 집계한다.
+   * @param month 선택(1~12). unit=month이고 year가 있을 때 해당 월 매도만 집계한다.
    * @return 기간별 집계 결과 리스트
    * @throws DashboardValidationException unit이 month/year가 아닌 경우
    */
   @GetMapping("/by-period")
-  public List<PeriodAggregationDto> getByPeriod(@RequestParam String unit) {
+  public List<PeriodAggregationDto> getByPeriod(
+      @RequestParam String unit,
+      @RequestParam(required = false) Integer year,
+      @RequestParam(required = false) Integer month) {
     if (!"month".equals(unit) && !"year".equals(unit)) {
       throw new DashboardValidationException("unit은 month 또는 year여야 합니다.");
     }
-    return dashboardAggregationService.getByPeriod(unit);
+    if (year != null && (year < 1900 || year > 9999)) {
+      throw new DashboardValidationException("year는 1900~9999 범위여야 합니다.");
+    }
+    if (month != null && (month < 1 || month > 12)) {
+      throw new DashboardValidationException("month는 1~12 범위여야 합니다.");
+    }
+    return dashboardAggregationService.getByPeriod(unit, year, month);
   }
 }

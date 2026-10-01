@@ -173,6 +173,11 @@ public class DashboardAggregationService {
    * @param unit "month" 또는 "year" (Controller에서 사전 검증됨)
    */
   public List<PeriodAggregationDto> getByPeriod(String unit) {
-    return DashboardAggregator.byPeriod(loadCalculatedSales(), unit);
+    return getByPeriod(unit, null, null);
+  }
+
+  /** 기간별 집계를 연/월로 좁힌다. {@link DashboardAggregator#byPeriod(List, String, Integer, Integer)} 참고. */
+  public List<PeriodAggregationDto> getByPeriod(String unit, Integer year, Integer month) {
+    return DashboardAggregator.byPeriod(loadCalculatedSales(), unit, year, month);
   }
 }
