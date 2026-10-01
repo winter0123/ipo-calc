@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.controller.credential;
 
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialRegisterRequest;
+import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialReplaceRequest;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.service.credential.ApiCredentialService;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,8 +43,24 @@ public class ApiCredentialController {
             securitiesAccountId,
             request.getApiProvider(),
             request.getAppKey(),
-            request.getAppSecret());
+            request.getAppSecret(),
+            request.getKeyIssuedOn());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  /**
+   * 연결된 증권사 API 키를 새 키로 교체한다. 연결이 없으면 404, 타 계정 계좌는 403, 브로커 암호화 키 미설정은 503이다.
+   */
+  @PutMapping
+  public ResponseEntity<ApiCredentialResponse> replace(
+      @PathVariable Long securitiesAccountId,
+      @Valid @RequestBody ApiCredentialReplaceRequest request) {
+    return ResponseEntity.ok(
+        apiCredentialService.replace(
+            securitiesAccountId,
+            request.getAppKey(),
+            request.getAppSecret(),
+            request.getKeyIssuedOn()));
   }
 
   /**

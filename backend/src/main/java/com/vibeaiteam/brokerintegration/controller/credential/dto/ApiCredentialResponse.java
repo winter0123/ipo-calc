@@ -1,5 +1,6 @@
 package com.vibeaiteam.brokerintegration.controller.credential.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -15,6 +16,9 @@ import java.time.LocalDateTime;
  * @param connectionStatus 연결 상태 (CONNECTED, EXPIRED, ERROR, DISCONNECTED)
  * @param accountNumber 마스킹된 증권계좌번호
  * @param lastSyncedAt 마지막 동기화 시각 (접근토큰이 한 번도 캐시되지 않았으면 null)
+ * @param supportedProvider 이 증권계좌의 증권사가 지원하는 어댑터 식별자 (미지원이면 null)
+ * @param keyIssuedOn 증권사 키 발급일 (연결 전이면 null)
+ * @param keyExpiresOn 증권사 서비스 사용기간 만료일 (발급일 + 1년, 연결 전이면 null)
  */
 public record ApiCredentialResponse(
     Long id,
@@ -22,4 +26,7 @@ public record ApiCredentialResponse(
     String apiProvider,
     String connectionStatus,
     String accountNumber,
-    LocalDateTime lastSyncedAt) {}
+    LocalDateTime lastSyncedAt,
+    String supportedProvider,
+    LocalDate keyIssuedOn,
+    LocalDate keyExpiresOn) {}

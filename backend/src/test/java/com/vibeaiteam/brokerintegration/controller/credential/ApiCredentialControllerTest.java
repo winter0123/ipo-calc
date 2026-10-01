@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
@@ -175,6 +176,8 @@ class ApiCredentialControllerTest {
         securitiesFirmRepository.save(
             SecuritiesFirm.builder()
                 .name("한국투자증권" + ThreadLocalRandom.current().nextLong())
+                .apiSupported(true)
+                .apiProvider("KIS")
                 .status(RecordStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
@@ -281,6 +284,17 @@ class ApiCredentialControllerTest {
     return mockMvc
         .perform(
             post("/securities-accounts/{id}/api-credential", securitiesAccountId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .session(session))
+        .andReturn();
+  }
+
+  private MvcResult putCredential(Long securitiesAccountId, Map<String, ?> request)
+      throws Exception {
+    return mockMvc
+        .perform(
+            put("/securities-accounts/{id}/api-credential", securitiesAccountId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .session(session))
@@ -447,7 +461,42 @@ class ApiCredentialControllerTest {
   }
 
   @Test
-  void disconnectReturns204AndSoftDeletesCredential() throws Exception {
+  void putReplacesKeyAndReturnsNewIssueDateWithoutSecrets() throws Exception {
+    signupAndLogin();
+    Long firmId = registerFirm();
+    Long investorId = registerInvestorAndGetId();
+    Long securitiesAccountId = createSecuritiesAccount(investorId, firmId);
+    assertThat(postCredential(securitiesAccountId, credentialRequest()).getResponse().getStatus())
+        .isEqualTo(201);
+
+    MvcResult result =
+        putCredential(
+            securitiesAccountId,
+            Map.of("appKey", "replaced-app-key", "appSecret", "replaced-app-secret"));
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    String body = utf8Body(result);
+    assertThat(body).doesNotContain("replaced-app-key").doesNotContain("replaced-app-secret");
+    Map<?, ?> json = objectMapper.readValue(body, Map.class);
+    assertThat(json.get("keyIssuedOn")).isEqualTo(java.time.LocalDate.now().toString());
+    assertThat(json.get("supportedProvider")).isEqualTo("KIS");
+  }
+
+  @Test
+  void putWithoutConnectionReturns404() throws Exception {
+    signupAndLogin();
+    Long firmId = registerFirm();
+    Long investorId = registerInvestorAndGetId();
+    Long securitiesAccountId = createSecuritiesAccount(investorId, firmId);
+
+    MvcResult result =
+        putCredential(securitiesAccountId, Map.of("appKey", "k", "appSecret", "s"));
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(404);
+  }
+
+  @Test
+  void disconnectReturns204AndPhysicallyDeletesCredential() throws Exception {
     // Given: 인증된 계정이 소유한 계좌에 인증정보가 등록되어 있음
     signupAndLogin();
     Long firmId = registerFirm();
@@ -456,7 +505,7 @@ class ApiCredentialControllerTest {
     assertThat(postCredential(securitiesAccountId, credentialRequest()).getResponse().getStatus())
         .isEqualTo(201);
 
-    // When: DELETE 요청 (AC: 물리 삭제 없이 소프트 삭제)
+    // When: DELETE 요청 (비밀키 암호문이 남지 않도록 물리 삭제, D-B-015)
     MvcResult result = deleteCredential(securitiesAccountId);
 
     // Then: 204 No Content
@@ -464,15 +513,12 @@ class ApiCredentialControllerTest {
         .as("연결 해제는 204 No Content여야 합니다")
         .isEqualTo(204);
 
-    // And: 행은 물리 삭제되지 않고 status/deletedAt으로 소프트 삭제됨
-    SecuritiesAccountApiCredential saved =
-        credentialRepository.findAll().stream()
-            .filter(c -> securitiesAccountId.equals(c.getSecuritiesAccountId()))
-            .filter(c -> "KIS".equals(c.getApiProvider()))
-            .findFirst()
-            .orElseThrow();
-    assertThat(saved.getStatus()).isEqualTo(RecordStatus.INACTIVE);
-    assertThat(saved.getDeletedAt()).as("소프트 삭제 시각이 설정되어야 합니다").isNotNull();
+    // And: 행이 물리 삭제되어 암호문이 DB에 남지 않음
+    assertThat(
+            credentialRepository.findAll().stream()
+                .anyMatch(c -> securitiesAccountId.equals(c.getSecuritiesAccountId())))
+        .as("연결 해제 후 인증정보 행이 남아 있으면 안 됩니다")
+        .isFalse();
 
     // And: 이후 상태 조회는 DISCONNECTED, 재등록은 201로 허용됨
     Map<String, Object> statusResponse =

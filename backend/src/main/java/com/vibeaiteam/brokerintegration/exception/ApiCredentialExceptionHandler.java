@@ -78,15 +78,25 @@ public class ApiCredentialExceptionHandler {
   }
 
   /**
-   * BrokerApiException을 HTTP 502 응답으로 변환한다. 증권사 응답 원문·URL은 노출하지 않는다.
+   * BrokerApiException을 HTTP 응답으로 변환한다. 인증 거부는 424(키 갱신 안내), 분당 제한은 429, 그 밖은 502다. 증권사 응답
+   * 원문·URL은 노출하지 않는다.
    */
   @ExceptionHandler(BrokerApiException.class)
   public ResponseEntity<ErrorResponse> handleBrokerApi(BrokerApiException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("BROKER_API_ERROR")
-            .message("증권사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.")
-            .build();
-    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).contentType(JSON_UTF8).body(response);
+    String code = String.valueOf(ex.getStatusCode());
+    HttpStatus status = HttpStatus.BAD_GATEWAY;
+    String error = "BROKER_API_ERROR";
+    String message = "증권사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+    if ("auth_failed".equals(code)) {
+      status = HttpStatus.FAILED_DEPENDENCY;
+      error = "BROKER_AUTH_FAILED";
+      message = "증권사 인증에 실패했습니다. 키가 만료됐거나 잘못됐을 수 있으니 키를 갱신해 주세요.";
+    } else if ("rate_limited".equals(code)) {
+      status = HttpStatus.TOO_MANY_REQUESTS;
+      error = "BROKER_RATE_LIMITED";
+      message = "증권사 요청 제한에 걸렸습니다. 1분 뒤 다시 시도해 주세요.";
+    }
+    ErrorResponse response = ErrorResponse.builder().error(error).message(message).build();
+    return ResponseEntity.status(status).contentType(JSON_UTF8).body(response);
   }
 }

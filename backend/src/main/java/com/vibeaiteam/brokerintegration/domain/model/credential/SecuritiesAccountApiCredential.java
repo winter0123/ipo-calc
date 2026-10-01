@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -55,6 +56,10 @@ public class SecuritiesAccountApiCredential {
 
   @Column(name = "token_expires_at")
   private LocalDateTime tokenExpiresAt;
+
+  @Column(name = "key_issued_on", nullable = false)
+  @Builder.Default
+  private LocalDate keyIssuedOn = LocalDate.now();
 
   @Column(name = "status", nullable = false, length = 10)
   @Builder.Default
