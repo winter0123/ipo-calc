@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoCalendarPage from './IpoCalendarPage.tsx'
@@ -32,13 +33,13 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   }
 }
 
-function renderPage() {
+function renderPage(initialEntries = ['/ipo-calendar']) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <IpoCalendarPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -70,18 +71,19 @@ describe('IpoCalendarPage', () => {
 
     resolveIpos([makeIpo()])
 
-    expect(await screen.findByText('청약 시작')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('청약')).toBeInTheDocument()
+    })
     expect(screen.queryByText('일정을 불러오는 중...')).not.toBeInTheDocument()
   })
 
-  it('데이터 있는 달에 이벤트 라벨이 텍스트로 보인다', async () => {
+  it('데이터 있는 달에 청약·상장 막대가 보인다', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('청약 시작')).toBeInTheDocument()
+      expect(screen.getByText('청약')).toBeInTheDocument()
     })
-    expect(screen.getByText('청약 마감')).toBeInTheDocument()
     expect(screen.getByText('상장')).toBeInTheDocument()
   })
 
@@ -120,6 +122,66 @@ describe('IpoCalendarPage', () => {
       const headings = screen.getAllByRole('heading', { level: 1 })
       expect(headings).toHaveLength(1)
       expect(headings[0]).toHaveTextContent('공모주 일정')
+    })
+  })
+
+  describe('URL 쿼리 파라미터 필터', () => {
+    it('초기 엔트리에 types=LISTING이면 상장 막대만 보인다', async () => {
+      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      renderPage(['/ipo-calendar?types=LISTING'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
+      })
+    })
+
+    it('필터 버튼을 누르면 해당 종류의 막대가 사라진다', async () => {
+      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      renderPage(['/ipo-calendar'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      })
+
+      // 청약 끄기
+      await waitFor(() => {
+        const subButton = screen.getByRole('button', { name: '청약' })
+        expect(subButton).not.toBeDisabled()
+      })
+      const subButton = screen.getByRole('button', { name: '청약' })
+      await userEvent.click(subButton)
+
+      // 청약 막대가 사라지고 상장만 남음
+      await waitFor(() => {
+        expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
+      })
+      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+    })
+
+    it('모두 보기 버튼을 누르면 모든 종류가 켜진다', async () => {
+      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      renderPage(['/ipo-calendar?types=LISTING'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      })
+
+      // 모두 보기 버튼으로 청약 켜기
+      const showAllButton = screen.getByRole('button', { name: '모두 보기' })
+      await waitFor(() => {
+        expect(showAllButton).not.toBeDisabled()
+      })
+      await userEvent.click(showAllButton)
+
+      // 청약과 상장 모두 보임
+      await waitFor(() => {
+        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+      })
+      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
     })
   })
 })

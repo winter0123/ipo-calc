@@ -99,7 +99,7 @@ await go('/ipo-calendar')
 await page.getByRole('heading', { name: /공모주 일정/ }).waitFor()
 const pick = new Date()
 pick.setDate(pick.getDate() + 5)
-await page.locator(`button[aria-label^="${pick.getMonth() + 1}월 ${pick.getDate()}일,"]`).click()
+await page.locator(`button[aria-label^="${pick.getMonth() + 1}월 ${pick.getDate()}일,"]`).click({ position: { x: 6, y: 6 } }) // 막대가 칸 가운데를 덮으므로 날짜 숫자 줄(맨 위)을 누른다
 await shot('ipo-calendar')
 await page.locator('a[href^="/ipos/"]').first().click()
 await page.getByRole('heading', { level: 1 }).waitFor()

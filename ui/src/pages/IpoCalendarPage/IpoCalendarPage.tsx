@@ -1,10 +1,35 @@
 import { useIpos } from '@/entities/ipo/index.ts'
 import { IpoCalendar } from '@/widgets/IpoCalendar/index.ts'
+import {
+  parseVisibleTypes,
+  toTypesParam,
+  type VisibleTypes,
+} from '@/features/ipo-calendar/index.ts'
+import { useSearchParams } from 'react-router-dom'
 import styles from './IpoCalendarPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function IpoCalendarPage() {
   const { data: ipos, isLoading, error } = useIpos()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const visibleTypes = parseVisibleTypes(searchParams)
+
+  const handleVisibleTypesChange = (next: VisibleTypes) => {
+    const nextParam = toTypesParam(next)
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev)
+        if (nextParam) {
+          nextParams.set('types', nextParam)
+        } else {
+          nextParams.delete('types')
+        }
+        return nextParams
+      },
+      { replace: true },
+    )
+  }
 
   const getErrorMessage = () =>
     toErrorMessage(error, { fallback: '공모주 일정을 불러오는 데 실패했습니다.' })
@@ -45,7 +70,11 @@ export default function IpoCalendarPage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>공모주 일정</h1>
-      <IpoCalendar ipos={ipos} />
+      <IpoCalendar
+        ipos={ipos}
+        visibleTypes={visibleTypes}
+        onVisibleTypesChange={handleVisibleTypesChange}
+      />
     </div>
   )
 }

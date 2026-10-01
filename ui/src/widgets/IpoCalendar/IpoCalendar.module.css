@@ -1,12 +1,14 @@
-/* 달력(왼쪽) + 선택한 날짜 상세(오른쪽). 1px 선 격자와 파스텔 칩으로 구분한다. */
+/* 달력(왼쪽) + 선택한 날짜 상세(오른쪽). 1px 선 격자와 막대로 구분한다. */
 .calendar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'header'
+    'filter'
     'weekdays'
     'grid'
-    'detail';
+    'detail'
+    'emptyMessage';
   row-gap: 0;
   column-gap: var(--space-6);
   width: 100%;
@@ -58,6 +60,106 @@
   z-index: 1;
 }
 
+.filterGroup {
+  grid-area: filter;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.filterButton:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+.filterDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.filterOn {
+  background: var(--surface-sea);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.filterOn .filterDot {
+  background: currentColor;
+}
+
+.filterOn[class*='barListing'] .filterDot,
+.filterOn.barListing .filterDot {
+  background: var(--success-bg);
+}
+
+.filterOff {
+  background: var(--surface);
+  color: var(--ink-muted);
+  border-color: var(--border-strong);
+}
+
+.filterOff .filterDot {
+  background: var(--border-strong);
+}
+
+.showAllButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.showAllButton:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+
+.showAllButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.showAllButton:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
 .weekdays {
   grid-area: weekdays;
   display: grid;
@@ -86,20 +188,25 @@
 
 .grid {
   grid-area: grid;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 .week {
-  display: contents;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 38px repeat(var(--lanes, 0), 24px) minmax(8px, 1fr);
+  min-height: 96px;
+  position: relative;
 }
 
 .emptyCell,
 .dateCell {
-  min-height: 96px;
+  grid-column: span 1;
+  grid-row: 1 / -1;
   border: 0;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -149,11 +256,14 @@
   font-weight: 700;
 }
 
-/* 일정 칩 */
-.event,
-.eventType {
-  display: block;
-  padding: 2px var(--space-2);
+/* 막대 */
+.bar {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 650;
@@ -161,22 +271,31 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  z-index: 1;
+  transition: filter 0.15s;
 }
 
-.eventSubscriptionStart {
+.bar:hover {
+  filter: brightness(0.96);
+}
+
+.bar:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.barSubscription {
   background: var(--surface-sea);
   color: var(--ink);
 }
 
-.eventSubscriptionEnd {
-  background: var(--warning-bg);
-  color: var(--warning-ink);
-}
-
-.eventListing {
+.barListing {
   background: var(--success-bg);
   color: var(--success-ink);
 }
+
+/* 레인별 행 위치는 grid-row로 제어 (인라인 스타일) */
 
 /* 선택한 날짜 상세 */
 .detail {
@@ -199,6 +318,18 @@
   margin: 0;
   color: var(--ink-muted);
   font-size: 14px;
+}
+
+.noTypesSelected {
+  grid-area: emptyMessage;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  color: var(--ink-muted);
+  font-size: 14px;
+  text-align: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .eventList {
@@ -229,6 +360,11 @@
 .eventIpo {
   color: var(--ink-muted);
   font-size: 14px;
+}
+
+.eventPeriod {
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
 .eventPrice {
@@ -275,14 +411,21 @@
     grid-template-columns: minmax(0, 1fr) 320px;
     grid-template-areas:
       'header detail'
+      'filter detail'
       'weekdays detail'
-      'grid detail';
+      'grid detail'
+      'emptyMessage detail';
     align-items: start;
   }
 
   .detail {
     margin-top: 0;
     align-self: start;
+  }
+
+  .filterGroup {
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
   }
 }
 
@@ -292,8 +435,25 @@
     min-height: 72px;
   }
 
-  .event {
+  .week {
+    min-height: 72px;
+  }
+
+  .bar {
     font-size: 11px;
-    padding: 1px var(--space-1);
+    height: 18px;
+    padding: 0 4px;
+  }
+
+  .filterButton {
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    font-size: 13px;
+  }
+
+  .showAllButton {
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    font-size: 13px;
   }
 }
