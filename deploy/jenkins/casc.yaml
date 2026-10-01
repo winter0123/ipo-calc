@@ -12,7 +12,12 @@ jobs:
       pipelineJob('vibe-deploy') {
         definition {
           cpsScm {
-            scm { git { remote { url('file:///repo') } branches('*/${JOB_BRANCH:-main}') } }
+            scm {
+              git {
+                remote { url('file:///repo') }
+                branches('*/${JOB_BRANCH:-main}')
+              }
+            }
             scriptPath('Jenkinsfile')
           }
         }
