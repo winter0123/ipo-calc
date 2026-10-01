@@ -19,20 +19,33 @@
   }
 }
 
-/* 카드마다 브랜드 색으로 구분한다: 투자금=바다 파랑, 수익=라임, 수익률·참여=아쿠아 */
+/*
+ * 핵심 지표만 브랜드 색 면으로 강조하고 나머지는 흰 카드로 쉬게 한다.
+ * 총 투자금=바다→아쿠아 그라디언트, 세후 수익=라임, 수익률=아쿠아. 색 면 위 글자는 모두 --ink(대비 5:1 이상).
+ */
+.grid > * {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(11, 42, 74, 0.04);
+}
+
 .grid > :nth-child(1) {
-  background: var(--surface-sea);
-  border-color: var(--sea);
+  background: linear-gradient(135deg, var(--sea) 0%, #7ccff3 100%);
+  border-color: transparent;
 }
 
-.grid > :nth-child(2),
 .grid > :nth-child(3) {
-  background: var(--surface-lime);
-  border-color: var(--lime);
+  background: var(--lime);
+  border-color: transparent;
 }
 
-.grid > :nth-child(4),
-.grid > :nth-child(5) {
-  background: var(--surface-aqua);
-  border-color: var(--aqua);
+.grid > :nth-child(4) {
+  background: var(--aqua);
+  border-color: transparent;
+}
+
+.grid > :nth-child(1) > span:first-child,
+.grid > :nth-child(3) > span:first-child,
+.grid > :nth-child(4) > span:first-child {
+  color: var(--ink);
 }

@@ -53,6 +53,7 @@
 
 .searchButton:disabled {
   background-color: var(--surface-sea);
+  color: var(--ink-muted);
   cursor: not-allowed;
 }
 

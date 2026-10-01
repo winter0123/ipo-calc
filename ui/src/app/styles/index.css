@@ -28,11 +28,15 @@
   --border: #d5e7f4;
   --border-strong: #5f8db8; /* 입력창 등 UI 경계, 흰 배경 3.5:1 */
 
-  /* 기본 동작(버튼 등) */
-  --primary: var(--sea);
-  --primary-hover: #6ab1f8;
-  --primary-active: #5aa6f7;
-  --on-primary: var(--ink);
+  /* 기본 동작(버튼 등): 브랜드 파랑을 한 단계 진하게 한 "깊은 바다". 흰 글자 5.0:1 */
+  --primary: #1e6fcb;
+  --primary-hover: #195caa; /* 흰 글자 6.6:1 */
+  --primary-active: #154e92;
+  --on-primary: #ffffff;
+
+  /* 바탕·헤더: 연한 아쿠아 바탕 위에 흰 카드를 올려 깊이를 준다 */
+  --page-bg: #eff9fd;
+  --header-bg: linear-gradient(100deg, #439bf5 0%, #7ccff3 58%, #abf7ee 100%);
 
   /* 상태 */
   --success-bg: #e9f8d4;
@@ -56,10 +60,11 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* 모양: 그림자 없이 1px 선과 면으로 구분한다(팝업만 예외) */
+  /* 모양: 카드는 1px 선과 바다색이 살짝 도는 부드러운 그림자로 띄운다 */
   --radius-sm: 8px; /* 버튼·입력창 */
   --radius: 12px; /* 카드 */
   --radius-lg: 16px;
+  --shadow-card: 0 1px 2px rgba(11, 42, 74, 0.05), 0 14px 32px -18px rgba(31, 107, 192, 0.35);
   --shadow-pop: 0 16px 40px rgba(11, 42, 74, 0.2);
   --focus-ring: 0 0 0 3px rgba(67, 155, 245, 0.45);
 
@@ -76,7 +81,7 @@
   /* 기존 이름 호환(일부 모듈이 아직 사용) */
   --text: var(--ink-muted);
   --text-h: var(--ink);
-  --bg: var(--surface);
+  --bg: var(--page-bg);
   --accent: var(--link);
   --code-bg: var(--surface-sea);
 
@@ -84,7 +89,7 @@
   letter-spacing: -0.01em;
   color-scheme: light;
   color: var(--ink);
-  background: var(--surface);
+  background: var(--page-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -98,7 +103,7 @@
 body {
   margin: 0;
   min-height: 100svh;
-  background: var(--surface);
+  background: var(--page-bg);
 }
 
 #root {
@@ -192,6 +197,12 @@ textarea::placeholder {
   opacity: 0.75;
 }
 
+input:not([type='checkbox']):not([type='radio']):hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--link);
+}
+
 input:not([type='checkbox']):not([type='radio']):focus,
 select:focus,
 textarea:focus {
@@ -203,7 +214,7 @@ textarea:focus {
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--surface-soft);
+  background: var(--surface-sea);
   color: var(--ink-muted);
   cursor: not-allowed;
 }
@@ -237,15 +248,15 @@ td {
 }
 
 th {
-  background: var(--surface-soft);
-  color: var(--ink-muted);
+  background: var(--surface-sea);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
 }
 
 tbody tr:hover td {
-  background: var(--surface-soft);
+  background: var(--surface-aqua);
 }
 
 @media (max-width: 1024px) {
