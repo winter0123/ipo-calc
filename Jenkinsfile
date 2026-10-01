@@ -1,0 +1,47 @@
+pipeline {
+  agent any
+  environment {
+    COMPOSE = 'docker compose -p vibe-prod -f deploy/docker-compose.prod.yml'
+    CI_DB = 'jdbc:postgresql://ci-pg:5432/vibe_ai_team'
+  }
+  stages {
+    stage('Test backend') {
+      steps {
+        sh '''
+          docker rm -f ci-pg || true
+          docker run -d --name ci-pg --network ci-net \
+            -e POSTGRES_DB=vibe_ai_team -e POSTGRES_USER=vibe -e POSTGRES_PASSWORD=vibe_local_password postgres:17
+          until docker exec ci-pg pg_isready -U vibe -d vibe_ai_team; do sleep 1; done
+          cd backend
+          SPRING_DATASOURCE_URL=$CI_DB SPRING_DATASOURCE_PASSWORD=vibe_local_password DB_PASSWORD=vibe_local_password \
+            ./gradlew test --no-daemon
+        '''
+      }
+      post { always { sh 'docker rm -f ci-pg || true' } }
+    }
+    stage('Test ui') {
+      steps {
+        dir('ui') {
+          sh 'pnpm install --frozen-lockfile && pnpm run lint && pnpm run typecheck && pnpm run test'
+        }
+      }
+    }
+    stage('Deploy') {
+      steps { sh '$COMPOSE up -d --build' }
+    }
+    stage('Smoke') {
+      steps {
+        // 비로그인 /auth/me 가 401 이면 backend가 떠서 DB·마이그레이션까지 통과한 것
+        sh '''
+          for i in $(seq 1 30); do
+            if $COMPOSE exec -T backend wget -S -O /dev/null http://localhost:8080/auth/me 2>&1 | grep -q "HTTP/1.1 401"; then
+              echo "smoke OK"; exit 0
+            fi
+            sleep 2
+          done
+          echo "smoke FAILED"; exit 1
+        '''
+      }
+    }
+  }
+}

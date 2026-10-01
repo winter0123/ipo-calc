@@ -1,0 +1,19 @@
+jenkins:
+  systemMessage: "vibe-ai-team CI"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy: loggedInUsersCanDoAnything
+jobs:
+  - script: >
+      pipelineJob('vibe-deploy') {
+        definition {
+          cpsScm {
+            scm { git { remote { url('file:///repo') } branches('*/${JOB_BRANCH:-main}') } }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }
