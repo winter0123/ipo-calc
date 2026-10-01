@@ -48,3 +48,10 @@ coverage/
 
 # Local-only Claude Code guidance (kept as a personal file, not tracked)
 CLAUDE.md
+
+# Terraform (state에 비밀번호 포함)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log

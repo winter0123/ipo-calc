@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vibe_ai_team
+      POSTGRES_USER: vibe
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibe -d vibe_ai_team"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vibe_ai_team
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      APP_REMEMBER_ME_KEY: ${APP_REMEMBER_ME_KEY}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      APP_SIGNUP_MODE: ${APP_SIGNUP_MODE:-APPROVAL}
+
+  web:
+    build: ../ui
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy_data:/data
+
+volumes:
+  pgdata:
+  caddy_data:
