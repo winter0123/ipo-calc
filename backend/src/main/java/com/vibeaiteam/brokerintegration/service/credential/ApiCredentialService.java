@@ -166,7 +166,13 @@ public class ApiCredentialService {
     credentialRepository.saveAll(activeCredentials);
   }
 
-  private SecuritiesAccount requireOwnedSecuritiesAccount(Long securitiesAccountId) {
+  /**
+   * 현재 계정이 소유한 증권계좌를 돌려준다.
+   *
+   * @param securitiesAccountId 대상 증권계좌 ID
+   * @return 증권계좌(없으면 404, 타 계정 소유면 403 예외)
+   */
+  public SecuritiesAccount requireOwnedSecuritiesAccount(Long securitiesAccountId) {
     SecuritiesAccount account =
         securitiesAccountRepository
             .findByIdAndDeletedAtIsNull(securitiesAccountId)
