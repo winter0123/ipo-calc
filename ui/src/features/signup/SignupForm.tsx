@@ -53,81 +53,86 @@ export default function SignupForm() {
   }
 
   return (
-    <form
-      className={styles.form}
-      onSubmit={handleSubmit(onSubmit)}
-      aria-label="회원가입 폼"
-      noValidate
-    >
-      <div className={styles.field}>
-        <label htmlFor="email">이메일</label>
-        <input
-          id="email"
-          type="email"
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? 'email-error' : undefined}
-          {...register('email', {
-            required: '필수 입력 항목입니다.',
-            validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
-          })}
-        />
-        {errors.email && (
-          <span id="email-error" className={styles.error} aria-live="polite">
-            {String(errors.email.message)}
-          </span>
-        )}
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="password">비밀번호</label>
-        <input
-          id="password"
-          type="password"
-          aria-invalid={!!errors.password}
-          aria-describedby={errors.password ? 'password-error' : undefined}
-          {...register('password', {
-            required: '필수 입력 항목입니다.',
-            validate: (v) =>
-              (v.length >= 8 && v.length <= 72 && hasTwoCategories(v)) ||
-              '비밀번호는 최소 8자 이상이어야 합니다.',
-          })}
-        />
-        {errors.password && (
-          <span id="password-error" className={styles.error} aria-live="polite">
-            {String(errors.password.message)}
-          </span>
-        )}
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="name">이름</label>
-        <input
-          id="name"
-          type="text"
-          aria-invalid={!!errors.name}
-          aria-describedby={errors.name ? 'name-error' : undefined}
-          {...register('name', {
-            required: '필수 입력 항목입니다.',
-            validate: (v) =>
-              (isMinLength(v, 2) && v.length <= 50) || '이름은 2자 이상 50자 이하여야 합니다.',
-          })}
-        />
-        {errors.name && (
-          <span id="name-error" className={styles.error} aria-live="polite">
-            {String(errors.name.message)}
-          </span>
-        )}
-      </div>
-
-      {formErrorMessage && (
-        <div className={styles.formError} role="alert">
-          {formErrorMessage}
+    <>
+      <form
+        className={styles.form}
+        onSubmit={handleSubmit(onSubmit)}
+        aria-label="회원가입 폼"
+        noValidate
+      >
+        <div className={styles.field}>
+          <label htmlFor="email">이메일</label>
+          <input
+            id="email"
+            type="email"
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-error' : undefined}
+            {...register('email', {
+              required: '필수 입력 항목입니다.',
+              validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
+            })}
+          />
+          {errors.email && (
+            <span id="email-error" className={styles.error} aria-live="polite">
+              {String(errors.email.message)}
+            </span>
+          )}
         </div>
-      )}
 
-      <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? '가입 중...' : '가입하기'}
-      </button>
-    </form>
+        <div className={styles.field}>
+          <label htmlFor="password">비밀번호</label>
+          <input
+            id="password"
+            type="password"
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? 'password-error' : undefined}
+            {...register('password', {
+              required: '필수 입력 항목입니다.',
+              validate: (v) =>
+                (v.length >= 8 && v.length <= 72 && hasTwoCategories(v)) ||
+                '비밀번호는 최소 8자 이상이어야 합니다.',
+            })}
+          />
+          {errors.password && (
+            <span id="password-error" className={styles.error} aria-live="polite">
+              {String(errors.password.message)}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="name">이름</label>
+          <input
+            id="name"
+            type="text"
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? 'name-error' : undefined}
+            {...register('name', {
+              required: '필수 입력 항목입니다.',
+              validate: (v) =>
+                (isMinLength(v, 2) && v.length <= 50) || '이름은 2자 이상 50자 이하여야 합니다.',
+            })}
+          />
+          {errors.name && (
+            <span id="name-error" className={styles.error} aria-live="polite">
+              {String(errors.name.message)}
+            </span>
+          )}
+        </div>
+
+        {formErrorMessage && (
+          <div className={styles.formError} role="alert">
+            {formErrorMessage}
+          </div>
+        )}
+
+        <button type="submit" disabled={isPending} className={styles.submitButton}>
+          {isPending ? '가입 중...' : '가입하기'}
+        </button>
+      </form>
+      <p className={styles.switch}>
+        이미 계정이 있으신가요? <Link to="/login">로그인</Link>
+      </p>
+    </>
   )
 }
