@@ -255,7 +255,7 @@ E11 + E12 + E13 + E14 + E15 ─→ E16 웹 조회·대시보드
 - **목표**: `ui/`의 FSD 경계(`app` 레이어 포함)·TanStack Query 서버 상태(키 규약·retry·signal)·폼 접근성·타입 안전성을 작은 단계로 정리한다. 사용자가 보는 동작·API 계약·금융 의미는 바꾸지 않는다.
 - **핵심 완료 조건**: ① 대시보드 기간 집계 타입이 백엔드 계약과 일치(`as unknown as` 제거) ② 쿼리 키·중복 훅·invalidation 정합 ③ 폼 `aria-invalid`/`aria-describedby`/오류 role 정리 ④ slice public API와 경계 검사 테스트 ⑤ `docs/guide-frontend.md` 갱신 ⑥ 새 의존성 0건.
 - **1차 명시적 비범위**: 백엔드, 신규 기능, 401 중앙 redirect, Zod·FSD lint 플러그인, `@/` alias, 필터 URL 동기화, by-period `year`/`month` 파라미터 수정(이후 사용자 승인으로 FSD lint 플러그인을 뺀 나머지를 후속 구현). `/`는 `Hello` 유지.
-- **상태(2026-10-01)**: 구현 완료(PR #259 병합, `5813514`). 사용자 결정(2026-10-01)으로 Not Found·ErrorBoundary·EmptyState 모듈 스타일·invalidation 확장·`lang=ko`/title 변경까지 포함했다. **후속 구현(2026-10-01 "다 진행")**: `@/` alias(D-14), 401 중앙 처리(D-4), 필터 URL 동기화(D-11), by-period `year`/`month` 백엔드 반영(D-9, 동작 변화), Zod 파일럿(D-7), React Compiler(D-15, RHF 폼은 `'use no memo'`). 상세는 `docs/work-log/frontend-architecture-refactor.md`.
+- **상태(2026-10-01)**: 구현 완료(PR #259 병합, `5813514`; 테스트 user-event 이전 #261 `9898157`). 사용자 결정(2026-10-01)으로 Not Found·ErrorBoundary·EmptyState 모듈 스타일·invalidation 확장·`lang=ko`/title 변경까지 포함했다. **후속 구현(2026-10-01 "다 진행")**: `@/` alias(D-14), 401 중앙 처리(D-4), 필터 URL 동기화(D-11), by-period `year`/`month` 백엔드 반영(D-9, 동작 변화), Zod 파일럿(D-7), React Compiler(D-15, RHF 폼은 `'use no memo'`). 상세는 `docs/work-log/frontend-architecture-refactor.md`.
 
 ## 7. Epic 착수·완료 게이트
 
