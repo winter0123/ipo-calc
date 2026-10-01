@@ -8,10 +8,10 @@ import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitSumm
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -38,6 +38,8 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
   private static final String CBLC_DVSN = "00";
   private static final String CTX_AREA_FK100 = "";
   private static final String CTX_AREA_NK100 = "";
+  private static final int MAX_PAGES = 10;
+  private static final long PAGE_DELAY_MS = 150;
   private static final int CONNECT_TIMEOUT_MS = 5_000;
   private static final int READ_TIMEOUT_MS = 15_000;
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -87,52 +89,53 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
     String inqrEndDt = to.format(DATE_FORMATTER);
 
     try {
-      ResponseEntity<KisPeriodTradeProfitResponse> entity =
-          restClient
-              .get()
-              .uri(
-                  uriBuilder ->
-                      uriBuilder
-                          .path(PROFIT_PATH)
-                          .queryParam("CANO", credentials.cano())
-                          .queryParam("ACNT_PRDT_CD", credentials.acntPrdtCd())
-                          .queryParam("SORT_DVSN", SORT_DVSN)
-                          .queryParam("INQR_STRT_DT", inqrStrtDt)
-                          .queryParam("INQR_END_DT", inqrEndDt)
-                          .queryParam("PDNO", PDNO)
-                          .queryParam("CBLC_DVSN", CBLC_DVSN)
-                          .queryParam("CTX_AREA_FK100", CTX_AREA_FK100)
-                          .queryParam("CTX_AREA_NK100", CTX_AREA_NK100)
-                          .build())
-              .header("authorization", "Bearer " + token.token())
-              .header("appkey", credentials.appKey())
-              .header("appsecret", credentials.appSecret())
-              .header("tr_id", TR_ID)
-              .header("custtype", CUSTTYPE)
-              .retrieve()
-              .toEntity(KisPeriodTradeProfitResponse.class);
+      List<KisPeriodTradeProfitDetail> details = new ArrayList<>();
+      KisPeriodTradeProfitSummary summary = null;
+      String trCont = null;
+      String fk100 = CTX_AREA_FK100;
+      String nk100 = CTX_AREA_NK100;
 
-      HttpStatusCode status = entity.getStatusCode();
-      KisPeriodTradeProfitResponse response = entity.getBody();
-      logAudit(securitiesAccountId, status.value());
+      for (int page = 1; page <= MAX_PAGES; page++) {
+        ResponseEntity<KisPeriodTradeProfitResponse> entity =
+            fetchPage(credentials, token, inqrStrtDt, inqrEndDt, trCont, fk100, nk100);
+        KisPeriodTradeProfitResponse response = entity.getBody();
+        logAudit(securitiesAccountId, entity.getStatusCode().value());
 
-      if (response == null) {
-        throw new BrokerApiException("null_response", "KIS 기간별 매매손익 조회 응답 본문이 비어 있습니다.");
+        if (response == null) {
+          throw new BrokerApiException("null_response", "KIS 기간별 매매손익 조회 응답 본문이 비어 있습니다.");
+        }
+        if (!response.isSuccess()) {
+          throw new BrokerApiException(
+              "kis_api_error",
+              "KIS 기간별 매매손익 조회 실패: rt_cd="
+                  + response.rtCd()
+                  + ", msg_cd="
+                  + response.msgCd()
+                  + ", msg1="
+                  + response.msg1());
+        }
+        if (response.output1() != null) {
+          details.addAll(response.output1());
+        }
+        if (summary == null) {
+          summary = response.output2();
+        }
+
+        // 공식 샘플은 응답 헤더 tr_cont가 M/F이면 다음 페이지가 있다고 보고, 이전 응답의 ctx_area_fk100/nk100과
+        // 헤더 tr_cont=N으로 다시 부른다. 연속조회 키가 비어 있으면 더 가져올 수 없으므로 여기서 끝낸다.
+        String more = entity.getHeaders().getFirst("tr_cont");
+        boolean hasMore = "M".equals(more) || "F".equals(more);
+        if (!hasMore || isBlank(response.ctxAreaNk100())) {
+          return new KisPeriodTradeProfit(details, summary);
+        }
+        trCont = "N";
+        fk100 = response.ctxAreaFk100() == null ? "" : response.ctxAreaFk100();
+        nk100 = response.ctxAreaNk100();
+        pause();
       }
-      if (!response.isSuccess()) {
-        throw new BrokerApiException(
-            "kis_api_error",
-            "KIS 기간별 매매손익 조회 실패: rt_cd="
-                + response.rtCd()
-                + ", msg_cd="
-                + response.msgCd()
-                + ", msg1="
-                + response.msg1());
-      }
-
-      List<KisPeriodTradeProfitDetail> details =
-          response.output1() == null ? List.of() : response.output1();
-      return new KisPeriodTradeProfit(details, response.output2());
+      // 조용히 잘라내면 매도 내역이 빠진 채 채워지므로 실패로 알린다.
+      throw new BrokerApiException(
+          "too_many_pages", "KIS 기간별 매매손익 조회가 " + MAX_PAGES + "페이지를 넘어 중단했습니다.");
     } catch (BrokerApiException e) {
       throw e;
     } catch (RuntimeException e) {
@@ -155,6 +158,59 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
    * @param securitiesAccountId 증권계좌 ID
    * @param statusCode HTTP 상태코드
    */
+  private ResponseEntity<KisPeriodTradeProfitResponse> fetchPage(
+      KisCredentials credentials,
+      KisAccessToken token,
+      String inqrStrtDt,
+      String inqrEndDt,
+      String trCont,
+      String fk100,
+      String nk100) {
+    return restClient
+        .get()
+        .uri(
+            uriBuilder ->
+                uriBuilder
+                    .path(PROFIT_PATH)
+                    .queryParam("CANO", credentials.cano())
+                    .queryParam("ACNT_PRDT_CD", credentials.acntPrdtCd())
+                    .queryParam("SORT_DVSN", SORT_DVSN)
+                    .queryParam("INQR_STRT_DT", inqrStrtDt)
+                    .queryParam("INQR_END_DT", inqrEndDt)
+                    .queryParam("PDNO", PDNO)
+                    .queryParam("CBLC_DVSN", CBLC_DVSN)
+                    .queryParam("CTX_AREA_FK100", fk100)
+                    .queryParam("CTX_AREA_NK100", nk100)
+                    .build())
+        .headers(
+            headers -> {
+              headers.set("authorization", "Bearer " + token.token());
+              headers.set("appkey", credentials.appKey());
+              headers.set("appsecret", credentials.appSecret());
+              headers.set("tr_id", TR_ID);
+              headers.set("custtype", CUSTTYPE);
+              if (trCont != null) {
+                headers.set("tr_cont", trCont);
+              }
+            })
+        .retrieve()
+        .toEntity(KisPeriodTradeProfitResponse.class);
+  }
+
+  /** 연속조회 사이에 KIS 초당 호출 제한을 넘지 않도록 잠시 쉰다. */
+  private void pause() {
+    try {
+      Thread.sleep(PAGE_DELAY_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new BrokerApiException("interrupted", "KIS 연속조회 대기 중 중단되었습니다.", e);
+    }
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
+  }
+
   private void logAudit(Long securitiesAccountId, int statusCode) {
     log.info(
         "KIS 브로커 조회 감사: securitiesAccountId={}, method=GET, path={}, status={}",
