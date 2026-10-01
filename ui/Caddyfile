@@ -1,0 +1,10 @@
+{$SITE_ADDRESS} {
+	handle_path /api/* {
+		reverse_proxy backend:8080
+	}
+	handle {
+		root * /srv/ui
+		try_files {path} /index.html
+		file_server
+	}
+}
