@@ -83,7 +83,9 @@ public class BrokerSyncService {
    * @param securitiesAccountId 대상 증권계좌 ID
    * @return 매칭 성공·실패 목록과 종목코드 없는 배정 목록
    */
-  @Transactional(readOnly = true)
+  // 트랜잭션을 걸지 않는다. 읽기 전용 트랜잭션 안에서는 BrokerTokenService의 토큰 캐시 저장이 반영되지 않아
+  // 미리보기마다 토큰을 다시 발급하다 KIS 분당 1회 제한(EGW00133)에 걸린다(2026-10-01 실호출로 확인).
+  // 증권사 호출 동안 DB 트랜잭션을 붙잡지 않는 효과도 있다.
   public SyncPreviewResponse preview(Long securitiesAccountId) {
     SecuritiesAccount account =
         apiCredentialService.requireOwnedSecuritiesAccount(securitiesAccountId);

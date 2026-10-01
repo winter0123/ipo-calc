@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 증권사 동기화 미리보기·확정 서비스 단위 테스트.
@@ -153,6 +154,15 @@ class BrokerSyncServiceTest {
   private void stubBrokerRows(KisPeriodTradeProfitDetail... rows) {
     when(port.queryPeriodTradeProfit(any(), any(KisCredentials.class), any(), any(), any()))
         .thenReturn(new KisPeriodTradeProfit(List.of(rows), null));
+  }
+
+  @Test
+  void previewIsNotTransactionalSoTokenCacheSaveIsCommitted() throws Exception {
+    // 읽기 전용 트랜잭션 안에서는 토큰 캐시 저장이 버려져 미리보기마다 토큰을 재발급한다(KIS 분당 1회 제한).
+    var preview = BrokerSyncService.class.getMethod("preview", Long.class);
+
+    assertThat(preview.getAnnotation(Transactional.class)).isNull();
+    assertThat(BrokerSyncService.class.getAnnotation(Transactional.class)).isNull();
   }
 
   @Test
