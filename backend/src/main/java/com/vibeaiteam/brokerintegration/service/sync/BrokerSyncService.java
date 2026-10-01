@@ -22,6 +22,7 @@ import com.vibeaiteam.brokerintegration.service.matching.ExistingSale;
 import com.vibeaiteam.brokerintegration.service.matching.KisTradeProfitMapper;
 import com.vibeaiteam.brokerintegration.service.matching.MatchCandidate;
 import com.vibeaiteam.brokerintegration.service.matching.MatchResult;
+import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.brokerintegration.service.token.BrokerTokenService;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
@@ -35,7 +36,9 @@ import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.Acco
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,10 +59,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BrokerSyncService {
 
+  /** 기간을 주지 않았을 때 조회하는 기간(일). */
+  private static final int DEFAULT_LOOKBACK_DAYS = 365;
+
   /**
-   * 조회 기간(일). KIS 공식 한도는 확인하지 못했고 89일로 실호출이 성공한 것만 확인했다(E17 SF-2의 ustockplus 한도와는 별개).
+   * 한 번에 조회할 수 있는 최대 기간(일). KIS 공식 한도는 문서에서 확인하지 못했고, 2026-10-01 실호출로 365·730·1825·3650일이 모두
+   * 성공했다. 확인한 가장 긴 값(10년)을 보수적 상한으로 둔다.
    */
-  private static final int LOOKBACK_DAYS = 89;
+  private static final int MAX_RANGE_DAYS = 3650;
+
+  /** 미리보기는 증권계좌당 10초에 1회, 1시간에 30회까지만 허용한다(KIS 호출·토큰 제한 보호). */
+  private static final SlidingWindowRateLimiter.Limit[] PREVIEW_LIMITS = {
+    new SlidingWindowRateLimiter.Limit(1, Duration.ofSeconds(10)),
+    new SlidingWindowRateLimiter.Limit(30, Duration.ofHours(1))
+  };
 
   private static final int CANO_LENGTH = 8;
   private static final int ACCOUNT_NUMBER_LENGTH = 10;
@@ -76,17 +89,36 @@ public class BrokerSyncService {
   private final SaleRepository saleRepository;
   private final SaleService saleService;
   private final Clock clock;
+  private final SlidingWindowRateLimiter rateLimiter;
 
   /**
-   * 최근 89일 증권사 매도 내역을 조회해 우리 배정과 매칭한다. 아무것도 저장하지 않는다.
+   * 기본 기간(최근 1년)의 증권사 매도 내역을 조회해 우리 배정과 매칭한다.
    *
    * @param securitiesAccountId 대상 증권계좌 ID
+   * @return 매칭 성공·실패 목록과 종목코드 없는 배정 목록
+   */
+  public SyncPreviewResponse preview(Long securitiesAccountId) {
+    return preview(securitiesAccountId, null, null);
+  }
+
+  /**
+   * 증권사 매도 내역을 조회해 우리 배정과 매칭한다. 아무것도 저장하지 않는다.
+   *
+   * <p>기간을 주지 않으면 오늘까지 최근 1년이고, 시작일이 종료일보다 늦거나 종료일이 오늘 이후이거나 기간이 10년을 넘으면 400이다.
+   *
+   * @param securitiesAccountId 대상 증권계좌 ID
+   * @param from 조회 시작일(선택)
+   * @param to 조회 종료일(선택)
    * @return 매칭 성공·실패 목록과 종목코드 없는 배정 목록
    */
   // 트랜잭션을 걸지 않는다. 읽기 전용 트랜잭션 안에서는 BrokerTokenService의 토큰 캐시 저장이 반영되지 않아
   // 미리보기마다 토큰을 다시 발급하다 KIS 분당 1회 제한(EGW00133)에 걸린다(2026-10-01 실호출로 확인).
   // 증권사 호출 동안 DB 트랜잭션을 붙잡지 않는 효과도 있다.
-  public SyncPreviewResponse preview(Long securitiesAccountId) {
+  public SyncPreviewResponse preview(Long securitiesAccountId, LocalDate from, LocalDate to) {
+    LocalDate today = LocalDate.now(clock);
+    LocalDate end = to == null ? today : to;
+    LocalDate start = from == null ? end.minusDays(DEFAULT_LOOKBACK_DAYS) : from;
+    validateRange(start, end, today);
     SecuritiesAccount account =
         apiCredentialService.requireOwnedSecuritiesAccount(securitiesAccountId);
     SecuritiesAccountApiCredential credential =
@@ -99,15 +131,15 @@ public class BrokerSyncService {
       throw new BrokerConnectionUnavailableException("브로커 API 연동이 설정되지 않았습니다.");
     }
 
-    LocalDate today = LocalDate.now(clock);
+    rateLimiter.acquire("preview:" + securitiesAccountId, PREVIEW_LIMITS);
     List<BrokerSaleSummary> summaries =
         KisTradeProfitMapper.toSaleSummaries(
             brokerQueryPort.queryPeriodTradeProfit(
                 securitiesAccountId,
                 toKisCredentials(account, credential),
                 tokenService.getValidToken(credential),
-                today.minusDays(LOOKBACK_DAYS),
-                today));
+                start,
+                end));
 
     MatchReport report =
         BrokerTransactionMatcher.match(summaries, buildCandidates(securitiesAccountId));
@@ -142,6 +174,18 @@ public class BrokerSyncService {
       }
     }
     return request.sales().stream().map(saleService::register).toList();
+  }
+
+  private static void validateRange(LocalDate start, LocalDate end, LocalDate today) {
+    if (end.isAfter(today)) {
+      throw new ApiCredentialValidationException("조회 종료일은 오늘 이후일 수 없습니다.");
+    }
+    if (start.isAfter(end)) {
+      throw new ApiCredentialValidationException("조회 시작일은 종료일보다 늦을 수 없습니다.");
+    }
+    if (ChronoUnit.DAYS.between(start, end) > MAX_RANGE_DAYS) {
+      throw new ApiCredentialValidationException("조회 기간은 최대 10년까지입니다.");
+    }
   }
 
   private SyncPreviewItem toItem(MatchResult result) {

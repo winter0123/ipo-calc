@@ -23,10 +23,12 @@ import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncConfirmRequest;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationException;
+import com.vibeaiteam.brokerintegration.exception.RateLimitExceededException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
 import com.vibeaiteam.brokerintegration.service.credential.ApiCredentialService;
 import com.vibeaiteam.brokerintegration.service.matching.UnmatchedReason;
+import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.brokerintegration.service.token.BrokerTokenService;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
@@ -96,7 +98,8 @@ class BrokerSyncServiceTest {
             saleRepository,
             saleService,
             Clock.fixed(
-                TODAY.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")));
+                TODAY.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
+            new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
 
     when(apiCredentialService.requireOwnedSecuritiesAccount(ACCOUNT_ID))
         .thenReturn(
@@ -183,15 +186,53 @@ class BrokerSyncServiceTest {
   }
 
   @Test
-  void previewQueriesEightyNineDaysEndingToday() {
+  void previewDefaultsToTheLastYearEndingToday() {
     stubBrokerRows();
 
     service.preview(ACCOUNT_ID);
 
     verify(port)
         .queryPeriodTradeProfit(
-            any(), any(KisCredentials.class), any(), eq(TODAY.minusDays(89)),
-            eq(TODAY));
+            any(), any(KisCredentials.class), any(), eq(TODAY.minusDays(365)), eq(TODAY));
+  }
+
+  @Test
+  void previewUsesTheRequestedRange() {
+    stubBrokerRows();
+
+    service.preview(ACCOUNT_ID, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 6, 30));
+
+    verify(port)
+        .queryPeriodTradeProfit(
+            any(),
+            any(KisCredentials.class),
+            any(),
+            eq(LocalDate.of(2024, 1, 1)),
+            eq(LocalDate.of(2024, 6, 30)));
+  }
+
+  @Test
+  void previewRejectsInvalidRangesWithoutCallingTheBroker() {
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () -> service.preview(ACCOUNT_ID, TODAY, TODAY.minusDays(1)));
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () -> service.preview(ACCOUNT_ID, TODAY.minusDays(10), TODAY.plusDays(1)));
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () -> service.preview(ACCOUNT_ID, TODAY.minusDays(3651), TODAY));
+    verifyNoInteractions(port);
+  }
+
+  @Test
+  void previewIsRateLimitedPerSecuritiesAccountAndSkipsTheBrokerWhenRejected() {
+    stubBrokerRows();
+    service.preview(ACCOUNT_ID);
+
+    assertThrows(RateLimitExceededException.class, () -> service.preview(ACCOUNT_ID));
+    verify(port, org.mockito.Mockito.times(1))
+        .queryPeriodTradeProfit(any(), any(KisCredentials.class), any(), any(), any());
   }
 
   @Test

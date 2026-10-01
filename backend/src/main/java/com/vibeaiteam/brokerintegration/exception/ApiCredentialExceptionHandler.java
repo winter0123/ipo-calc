@@ -78,6 +78,19 @@ public class ApiCredentialExceptionHandler {
   }
 
   /**
+   * RateLimitExceededException을 HTTP 429 응답으로 변환한다. {@code Retry-After} 헤더에 남은 초를 담는다.
+   */
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitExceededException ex) {
+    ErrorResponse response =
+        ErrorResponse.builder().error("RATE_LIMITED").message(ex.getMessage()).build();
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+        .contentType(JSON_UTF8)
+        .body(response);
+  }
+
+  /**
    * BrokerApiException을 HTTP 응답으로 변환한다. 인증 거부는 424(키 갱신 안내), 분당 제한은 429, 그 밖은 502다. 증권사 응답
    * 원문·URL은 노출하지 않는다.
    */

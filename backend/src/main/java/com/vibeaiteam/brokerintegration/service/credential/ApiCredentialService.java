@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.service.credential;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialConflictException;
@@ -10,6 +11,7 @@ import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationExcepti
 import com.vibeaiteam.brokerintegration.exception.BrokerConnectionUnavailableException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
 import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
+import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
@@ -18,6 +20,7 @@ import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.S
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -48,6 +51,10 @@ public class ApiCredentialService {
   /** 한국투자증권 서비스 사용기간은 신청일부터 1년이다(갱신하면 키가 새로 발급된다). */
   private static final Period KEY_VALIDITY = Period.ofYears(1);
 
+  /** 키 등록·교체는 계정당 10분에 5회까지만 허용한다(탈취된 세션의 연속 시도 방지). */
+  private static final SlidingWindowRateLimiter.Limit KEY_WRITE_LIMIT =
+      new SlidingWindowRateLimiter.Limit(5, Duration.ofMinutes(10));
+
   private static final Logger log = LoggerFactory.getLogger(ApiCredentialService.class);
 
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
@@ -57,6 +64,8 @@ public class ApiCredentialService {
   private final AccountNumberEncryptor accountNumberEncryptor;
   private final OwnershipGuard ownershipGuard;
   private final Clock clock;
+  private final SecurityUtils securityUtils;
+  private final SlidingWindowRateLimiter rateLimiter;
 
   /**
    * 증권계좌에 브로커 API 인증정보를 등록한다.
@@ -101,6 +110,7 @@ public class ApiCredentialService {
     if (isBlank(apiProvider) || isBlank(appKey) || isBlank(appSecret)) {
       throw new ApiCredentialValidationException("apiProvider, appKey, appSecret은 필수 입력값입니다.");
     }
+    rateLimiter.acquire(keyWriteBucket(), KEY_WRITE_LIMIT);
 
     final SecuritiesAccount account = requireOwnedSecuritiesAccount(securitiesAccountId);
 
@@ -174,6 +184,7 @@ public class ApiCredentialService {
     if (isBlank(appKey) || isBlank(appSecret)) {
       throw new ApiCredentialValidationException("appKey, appSecret은 필수 입력값입니다.");
     }
+    rateLimiter.acquire(keyWriteBucket(), KEY_WRITE_LIMIT);
     final SecuritiesAccount account = requireOwnedSecuritiesAccount(securitiesAccountId);
     if (!brokerSecretEncryptor.isConfigured()) {
       throw new BrokerConnectionUnavailableException(
@@ -294,6 +305,10 @@ public class ApiCredentialService {
       return CONNECTION_EXPIRED;
     }
     return CONNECTION_CONNECTED;
+  }
+
+  private String keyWriteBucket() {
+    return "credential-write:" + securityUtils.getCurrentAccountId();
   }
 
   private LocalDate keyExpiresOn(SecuritiesAccountApiCredential credential) {
