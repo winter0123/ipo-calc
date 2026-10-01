@@ -1,3 +1,19 @@
 .page {
   --page-max: 480px;
 }
+
+.switch {
+  margin-top: var(--space-4);
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.switch a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.switch a:hover {
+  text-decoration: underline;
+}
