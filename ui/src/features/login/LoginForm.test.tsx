@@ -145,6 +145,18 @@ describe('LoginForm', () => {
     expect(email).toHaveAccessibleDescription('올바른 이메일 형식을 입력해 주세요.')
   })
 
+  it('승인 대기(403)면 서버가 준 안내를 보여준다', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(403, 'Forbidden', '관리자 승인 대기 중입니다'),
+    )
+    renderLoginForm()
+    await fill(screen.getByLabelText('이메일'), 'wait@example.com')
+    await fill(screen.getByLabelText('비밀번호'), 'passw0rd!')
+    await userEvent.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('관리자 승인 대기 중입니다')
+  })
+
   it('401이 아닌 오류는 네트워크 안내 문구를 보여준다', async () => {
     const user = userEvent.setup()
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'Server Error'))

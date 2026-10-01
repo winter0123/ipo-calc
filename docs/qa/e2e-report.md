@@ -6,6 +6,13 @@
 > **BASE_URL**: `http://127.0.0.1:51022` (`tools/e2e/.base-url`)
 > **목적**: 통과시키는 것이 아니라, 지금까지 한 번도 실행되지 않은 시나리오를 실제 브라우저에서 돌려 현재 상태를 실측한다.
 
+## 비공개 운영(가입 승인) 추가 후 재실측 (2026-10-01, Master 직접 실행)
+
+슬롯 DB `vibe_slot_4` reset 직후 빈 포트 스택(`APP_SIGNUP_MODE=OPEN`)으로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.
+
+- **E2E: PASS 13 / FAIL 0**. E2E-13(신규) = 승인 대기 계정(DB로 `approved=false`)의 로그인이 403 `ACCOUNT_PENDING_APPROVAL`로 막힘 → 관리자(DB 승격)가 `/admin/accounts`에서 승인 → 승인 뒤 로그인 200. 백엔드는 가입 직후 로그인하는 기존 시나리오를 위해 `OPEN`으로 띄우고, 대기 상태는 DB로 만든다.
+- **axe: 16개 화면·상태 위반 0건**. `/admin/accounts` 승인 목록 표는 스캔 대상에 넣지 않았다(스캔 계정이 관리자가 아님, 미검증).
+
 ## 증권사 연동 화면 추가 후 재실측 (2026-10-01, Master 직접 실행)
 
 슬롯 DB `vibe_slot_4` reset 직후 빈 포트 백엔드(`APP_ENCRYPTION_BROKER_KEY` 설정)·프론트로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.

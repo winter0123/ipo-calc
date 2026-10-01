@@ -501,23 +501,17 @@ async function apiLogin(context, email) {
   await api(context, 'POST', '/auth/login', { email, password: PASSWORD })
 }
 
-function promoteToAdmin(email) {
+function runSql(statement) {
   if (!DB_NAME) {
     throw new Error(
-      '공모주 등록은 ADMIN 전용(#242)이라 DB 승격이 필요하다: E2E_DB_NAME(예: vibe_slot_2) 환경변수를 지정해야 한다',
+      'DB 직접 수정이 필요한 시나리오라 E2E_DB_NAME(예: vibe_slot_2) 환경변수를 지정해야 한다',
     )
   }
-  execFileSync('docker', [
-    'exec',
-    DB_CONTAINER,
-    'psql',
-    '-U',
-    DB_USER,
-    '-d',
-    DB_NAME,
-    '-c',
-    `UPDATE accounts SET role='ADMIN' WHERE email='${email}'`,
-  ])
+  execFileSync('docker', ['exec', DB_CONTAINER, 'psql', '-U', DB_USER, '-d', DB_NAME, '-c', statement])
+}
+
+function promoteToAdmin(email) {
+  runSql(`UPDATE accounts SET role='ADMIN' WHERE email='${email}'`)
 }
 
 // 거래 흐름 시나리오용 픽스처: 계정·투자자·증권계좌는 API로, 공모주는 ADMIN 승격 후 API로 만든다(UI에 공모주 등록 화면 없음).
@@ -954,6 +948,57 @@ async function scenario12(browser) {
   }
 }
 
+// 비공개 운영: 승인 대기 계정은 로그인되지 않고, 관리자가 `/admin/accounts`에서 승인하면 로그인된다.
+// 백엔드는 APP_SIGNUP_MODE=OPEN으로 띄우므로 대기 상태는 DB로 만든다.
+async function scenario13(browser) {
+  const adminEmail = uniqueEmail()
+  const memberEmail = uniqueEmail()
+  const setup = await browser.newContext()
+  try {
+    await api(setup, 'POST', '/accounts', { email: adminEmail, password: PASSWORD, name: 'E2E Admin' })
+    await api(setup, 'POST', '/accounts', { email: memberEmail, password: PASSWORD, name: 'E2E Waiting' })
+  } finally {
+    await setup.close()
+  }
+  promoteToAdmin(adminEmail)
+  runSql(`UPDATE accounts SET approved=false WHERE email='${memberEmail}'`)
+
+  const memberLogin = async () => {
+    const ctx = await browser.newContext()
+    try {
+      const response = await ctx.request.fetch(`${BASE_URL}${API_PREFIX}/auth/login`, {
+        method: 'POST',
+        data: { email: memberEmail, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+      })
+      return { status: response.status(), body: await response.text() }
+    } finally {
+      await ctx.close()
+    }
+  }
+  const before = await memberLogin()
+  if (before.status !== 403 || !before.body.includes('ACCOUNT_PENDING_APPROVAL')) {
+    throw new Error(`승인 전 로그인이 403 ACCOUNT_PENDING_APPROVAL이 아님: ${before.status} ${before.body}`)
+  }
+
+  const { context, page } = await openContext(browser)
+  try {
+    const attempt = await login(page, adminEmail, PASSWORD)
+    if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
+    await goto(page, '/admin/accounts')
+    await page.getByRole('heading', { name: '가입 승인 관리' }).waitFor()
+    await page.getByText(memberEmail, { exact: true }).waitFor()
+    await page.getByRole('button', { name: `${memberEmail} 승인`, exact: true }).click()
+    await page.getByText(memberEmail, { exact: true }).waitFor({ state: 'detached' })
+  } finally {
+    await context.close()
+  }
+
+  const after = await memberLogin()
+  if (after.status !== 200) throw new Error(`승인 뒤 로그인 실패: ${after.status} ${after.body}`)
+  return '승인 전 403, 관리자 화면에서 승인, 승인 뒤 로그인 200'
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -967,6 +1012,7 @@ const SCENARIOS = [
   ['E2E-10', '거래흐름4: 다른 계정에서 타인 데이터 비노출', scenario10],
   ['E2E-11', '거래흐름5: 월별/연도별 탭이 선택 기간만 집계(D-9)', scenario11],
   ['E2E-12', '증권사 연동: 진입 링크 → 연결 → 키 교체 → 해제', scenario12],
+  ['E2E-13', '비공개 운영: 승인 대기 로그인 차단 → 관리자 승인 → 로그인', scenario13],
 ]
 
 function printResults() {

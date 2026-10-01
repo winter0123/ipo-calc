@@ -1,0 +1,12 @@
+import { z } from 'zod'
+
+export const adminAccountSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  name: z.string().nullable(),
+  role: z.string(),
+  approved: z.boolean(),
+  createdAt: z.string(),
+})
+
+export type AdminAccount = z.infer<typeof adminAccountSchema>

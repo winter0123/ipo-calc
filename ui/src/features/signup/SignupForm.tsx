@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
 import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
@@ -16,6 +17,7 @@ function hasTwoCategories(v: string): boolean {
 export default function SignupForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
+  const [pendingApproval, setPendingApproval] = useState(false)
   const { mutate, isPending, error } = useSignup()
   const {
     register,
@@ -26,16 +28,29 @@ export default function SignupForm() {
   const onSubmit = (data: SignupRequest) => {
     mutate(data, {
       onSuccess: (res) => {
-        navigate('/investors/register', {
-          state: { accountId: (res as { accountId?: number }).accountId },
-        })
+        const body = res as { accountId?: number; approved?: boolean }
+        // 비공개 운영: 관리자 승인 전에는 로그인되지 않으므로 안내만 보여준다.
+        if (body.approved === false) {
+          setPendingApproval(true)
+          return
+        }
+        navigate('/investors/register', { state: { accountId: body.accountId } })
       },
     })
   }
 
   const formErrorMessage = toErrorMessage(error, {
-    byStatus: { 409: '이미 사용 중인 이메일입니다.' },
+    byStatus: { 403: (e) => e.serverMessage, 409: '이미 사용 중인 이메일입니다.' },
   })
+
+  if (pendingApproval) {
+    return (
+      <div role="status" className={styles.form}>
+        <p>가입 신청이 접수되었습니다. 관리자가 승인하면 로그인할 수 있습니다.</p>
+        <Link to="/login">로그인 화면으로</Link>
+      </div>
+    )
+  }
 
   return (
     <form

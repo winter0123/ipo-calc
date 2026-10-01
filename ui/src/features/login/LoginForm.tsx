@@ -79,7 +79,10 @@ export default function LoginForm() {
       {error && (
         <div className={styles.formError} role="alert">
           {toErrorMessage(error, {
-            byStatus: { 401: '이메일 또는 비밀번호가 올바르지 않습니다.' },
+            byStatus: {
+              401: '이메일 또는 비밀번호가 올바르지 않습니다.',
+              403: (e) => e.serverMessage,
+            },
             fallback: NETWORK_ERROR_MESSAGE,
           })}
         </div>

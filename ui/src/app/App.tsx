@@ -27,6 +27,7 @@ const InvestmentHistoryPage = lazy(
   () => import('../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'),
 )
 const BrokerSyncPage = lazy(() => import('../pages/BrokerSyncPage/BrokerSyncPage.tsx'))
+const AdminAccountsPage = lazy(() => import('../pages/AdminAccountsPage/AdminAccountsPage.tsx'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx'))
 const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 
@@ -52,6 +53,7 @@ function App() {
         <Route path="/investments" element={<InvestmentHistoryPage />} />
         <Route path="/ipo-calendar" element={<IpoCalendarPage />} />
         <Route path="/broker-sync" element={<BrokerSyncPage />} />
+        <Route path="/admin/accounts" element={<AdminAccountsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
