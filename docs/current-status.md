@@ -11,7 +11,8 @@
 - **UX**: NotFound·ErrorBoundary, `lang="ko"`·title, 필터를 URL 쿼리와 동기화(투자 내역·청약 목록).
 - **백엔드 변경 1건(동작 변화)**: `GET /dashboard/by-period`가 `year`·`month`를 반영한다. 대시보드 월별/연도별 탭이 선택 기간만 보여준다.
 - **도구**: GET 응답 Zod 검증(대시보드 + IPO·투자자·증권사·증권계좌·투자 내역·수익, DB NOT NULL 대조 후 `.nullable()` 반영), React Compiler(RHF 폼 8개는 `'use no memo'`), 라우트 `React.lazy` 코드 스플리팅(메인 번들 535→284kB).
-- **검증**: UI 338 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 10/10·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
+- **검증**: UI 338 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 11/11(E2E-11 = D-9 기간 필터)·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
+- **추가 백엔드 수정 1건**: `GET /investors/{id}/profits`가 매도 금액이 null인 매도(선택 입력)가 하나라도 있으면 합계 계산에서 NPE(500)가 나던 버그를 고쳤다(null은 0으로 합산, `ProfitCalculator`와 같은 규칙). 재현 테스트 `getInvestorProfitsWithNullSaleAmountTreatsAmountAsZeroInTotals` 추가.
 - **남은 것**: staleTime은 현행 유지. POST 응답·요청은 Zod 미적용(폼은 RHF 검증).
 
 ## 야간 자율 작업 후속 (2026-10-01, #241~#247)

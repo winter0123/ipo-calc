@@ -807,6 +807,34 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(628500L);
   }
 
+  @Test
+  void getInvestorProfitsWithNullSaleAmountTreatsAmountAsZeroInTotals() throws Exception {
+    // Given: 매도 금액(amount)은 선택 입력이라 null인 매도가 있을 수 있다 (D-SL-007)
+    // - Sale 1: amount=null → 합계에서 0으로 간주, preTax = 0 - 360000 - 12000 = -372000
+    // - Sale 2: amount=500000 → preTax = 500000 - 240000 - 8000 = 252000
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
+    createSale(allocationId, 30L, null, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 14, 14, 30));
+    createSale(allocationId, 20L, 500000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
+
+    // When
+    MvcResult result = getInvestorProfits(investorId);
+
+    // Then: 500이 아니라 200, 합계는 null을 0으로 합산
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(500000L);
+    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(-120000L);
+
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> sales = (List<Map<String, Object>>) body.get("sales");
+    assertThat(sales.get(0).get("saleAmount")).isNull();
+  }
+
   // ==================== AC-011: 존재하지 않는 Investor 조회 시 404 ====================
 
   @Test
