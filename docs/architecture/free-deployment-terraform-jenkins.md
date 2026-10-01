@@ -171,14 +171,14 @@
 
 | 단계 | 목적 | 산출물 | 검증 |
 |---|---|---|---|
-| 0 | A | `terraform-local/` — Terraform `docker` provider로 로컬 Postgres 컨테이너 생성 | `init/plan/apply/destroy` 숙달, plan의 create/update/replace 읽기, `tfstate` 내용 확인, 컨테이너를 손으로 지운 뒤 plan(drift) 관찰 |
+| 0 | A | 로컬 실습(Terraform `docker` provider로 Postgres 컨테이너 생성). 학습 후 삭제, 예제는 커밋 `fc85452` 이력에 보존 | `init/plan/apply/destroy` 숙달, plan의 create/update/replace 읽기, `tfstate` 내용 확인, 컨테이너를 손으로 지운 뒤 plan(drift) 관찰 |
 | 1 | B 준비 | `backend/Dockerfile`, `ui/Dockerfile`, `deploy/docker-compose.prod.yml`, Caddyfile | 로컬(맥)에서 compose 기동 후 로그인·화면 동작 확인 |
 | 2 | B 준비 | `deploy/jenkins/Dockerfile`, `Jenkinsfile` — **로컬 Jenkins 컨테이너**로 테스트→빌드→`compose up` 연습 | 수동 빌드로 로컬 배포 성공, 테스트 실패 시 배포 중단, §4.6 함정 4개 해결 |
 | 3 | A·B | `infra/*.tf`, cloud-init (Oracle 가입 후) | `plan`에서 유료 리소스 없음 → `apply` → SSH 접속·Docker 동작. 가입이 막히면 이 단계만 대안 B(집 PC + Cloudflare Tunnel)로 교체 |
 | 4 | B | 2단계 파이프라인을 VM으로 이전, webhook 연결 | 실제 도메인에서 서비스, push 시 자동 배포 |
 | 5 (후속) | B | DB 백업, 모니터링 | 복구 리허설 |
 
-선택 확장: 0단계 이후 `terraform-local/`을 `shared/`(공통 output)와 `env-dev/`(`terraform_remote_state`로 읽음)로 나눠 보면 모듈·환경 분리 구조도 연습할 수 있다.
+선택 확장: 0단계 이후 연습용 폴더를 `shared/`(공통 output)와 `env-dev/`(`terraform_remote_state`로 읽음)로 나눠 보면 모듈·환경 분리 구조도 연습할 수 있다.
 
 ## 9. 범위 밖
 
