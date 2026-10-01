@@ -62,7 +62,7 @@ pnpm run build
 - 조회 훅은 엔티티에 하나만 둔다(`useInvestors`, `useInvestmentHistory`, `useIpos` …). feature에 복제 훅을 만들지 않는다. 모든 GET `api-client` 함수는 선택 인자 `signal?: AbortSignal`을 받고 `queryFn: ({ signal }) => …`로 넘긴다.
 - 등록 mutation 성공 시 `investmentHistoryKeys.all`, `profitKeys.all`, `dashboardKeys.all`을 prefix invalidate한다(`app/mutation-invalidation.test.tsx`).
 - 재시도 정책은 `app/queryClient.ts`: 4xx(`ApiError.status`)는 즉시 실패, 그 외는 최대 3회 미만 재시도. mutation 자동 재시도는 중복 제출 방지를 위해 끈 채(기본 0) 유지한다. `staleTime`은 기본값(0)을 유지한다.
-- 401은 `ApiError(401)`로 던지기만 한다(중앙 redirect 없음 — 별도 정책 결정 필요).
+- 401은 `apiFetch`가 `ApiError(401)`로 던지고, `app/AppProviders`가 쿼리·mutation 캐시 `onError`에서 한 번에 처리한다: 캐시를 비우고 `/login`으로 `replace` 이동하며 `state.from`에 복귀 경로를 남긴다(`/login`·`/signup`에서는 이동하지 않음). 로그인 요청 자체의 401(잘못된 자격 증명)은 `useLogin`의 `meta.skipUnauthorizedRedirect`로 제외한다. `LoginForm`은 성공 후 `state.from`이 앱 내부 경로(`/`로 시작, `//` 제외)일 때만 그곳으로 복귀한다.
 
 ## 7. 폼·접근성 규칙 (Epic 20)
 

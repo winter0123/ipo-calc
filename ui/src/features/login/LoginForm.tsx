@@ -1,13 +1,22 @@
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useLogin } from './useLogin.ts'
 import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { LoginRequest } from './types.ts'
 import { NETWORK_ERROR_MESSAGE, toErrorMessage } from '@/shared/api/apiError.ts'
 import styles from './LoginForm.module.css'
 
+// 외부 사이트로의 open redirect를 막기 위해 앱 내부 경로만 허용한다.
+function returnPathFrom(state: unknown): string {
+  const from = (state as { from?: unknown } | null)?.from
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')
+    ? from
+    : '/dashboard'
+}
+
 export default function LoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { mutate, isPending, error } = useLogin()
   const {
     register,
@@ -18,7 +27,7 @@ export default function LoginForm() {
   const onSubmit = (data: LoginRequest) => {
     mutate(data, {
       onSuccess: () => {
-        navigate('/dashboard')
+        navigate(returnPathFrom(location.state))
       },
     })
   }

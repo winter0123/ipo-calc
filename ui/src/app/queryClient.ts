@@ -1,5 +1,5 @@
-import { QueryClient } from '@tanstack/react-query'
-import { ApiError } from '../shared/api/apiError.ts'
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
+import { ApiError } from '@/shared/api/apiError.ts'
 
 const MAX_QUERY_RETRIES = 3
 
@@ -9,7 +9,29 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
   return failureCount < MAX_QUERY_RETRIES
 }
 
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: { skipUnauthorizedRedirect?: boolean }
+  }
+}
+
+interface QueryClientOptions {
+  onUnauthorized?: (client: QueryClient) => void
+}
+
 // mutations.retry는 설정하지 않는다(기본 0) — 금융 등록 요청의 이중 제출 방지.
-export function createQueryClient(): QueryClient {
-  return new QueryClient({ defaultOptions: { queries: { retry: shouldRetryQuery } } })
+// 로그인 요청 자체의 401(잘못된 자격 증명)은 meta.skipUnauthorizedRedirect로 제외한다.
+export function createQueryClient({ onUnauthorized }: QueryClientOptions = {}): QueryClient {
+  const handle = (error: unknown, skip = false) => {
+    if (!skip && error instanceof ApiError && error.status === 401) onUnauthorized?.(client)
+  }
+  const client = new QueryClient({
+    queryCache: new QueryCache({ onError: (error) => handle(error) }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) =>
+        handle(error, mutation.meta?.skipUnauthorizedRedirect),
+    }),
+    defaultOptions: { queries: { retry: shouldRetryQuery } },
+  })
+  return client
 }

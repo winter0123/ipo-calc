@@ -28,3 +28,30 @@ describe('createQueryClient', () => {
     expect(mutationFn).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('401 처리', () => {
+  const run = (client: ReturnType<typeof createQueryClient>, status: number, meta = {}) =>
+    client
+      .getMutationCache()
+      .build(client, { mutationFn: () => Promise.reject(new ApiError(status, 'x')), meta })
+      .execute(undefined)
+      .catch(() => undefined)
+
+  it('조회·mutation 401은 onUnauthorized를 호출한다', async () => {
+    const onUnauthorized = vi.fn()
+    const client = createQueryClient({ onUnauthorized })
+    await client
+      .fetchQuery({ queryKey: ['x'], queryFn: () => Promise.reject(new ApiError(401, 'x')) })
+      .catch(() => undefined)
+    await run(client, 401)
+    expect(onUnauthorized).toHaveBeenCalledTimes(2)
+  })
+
+  it('401이 아니거나 skipUnauthorizedRedirect meta가 있으면 호출하지 않는다', async () => {
+    const onUnauthorized = vi.fn()
+    const client = createQueryClient({ onUnauthorized })
+    await run(client, 500)
+    await run(client, 401, { skipUnauthorizedRedirect: true })
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+})

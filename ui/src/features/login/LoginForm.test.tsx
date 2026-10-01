@@ -20,13 +20,15 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-function renderLoginForm() {
+function renderLoginForm(from?: unknown) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter
+        initialEntries={[{ pathname: '/login', state: from === undefined ? null : { from } }]}
+      >
         <LoginForm />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -67,6 +69,23 @@ describe('LoginForm', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
     })
   })
+
+  it('세션 만료로 넘어온 경우 로그인 성공 후 원래 경로로 복귀한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({})
+    renderLoginForm('/investments?x=1')
+    fillAndSubmit('test@example.com', 'password123')
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/investments?x=1'))
+  })
+
+  it.each(['https://evil.example', '//evil.example', 42])(
+    '앱 내부 경로가 아닌 복귀 경로(%s)는 무시하고 /dashboard로 이동한다',
+    async (from) => {
+      vi.mocked(apiFetch).mockResolvedValueOnce({})
+      renderLoginForm(from)
+      fillAndSubmit('test@example.com', 'password123')
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'))
+    },
+  )
 
   it('401 시 에러 메시지 표시', async () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(401, 'Unauthorized: 401'))
