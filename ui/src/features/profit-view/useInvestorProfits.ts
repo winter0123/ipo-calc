@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getInvestorProfits, profitKeys, type InvestorProfit } from '../../entities/profit/index.ts'
+import { getInvestorProfits, profitKeys, type InvestorProfit } from '@/entities/profit/index.ts'
 
 interface UseInvestorProfitsOptions {
   investorId: number | undefined

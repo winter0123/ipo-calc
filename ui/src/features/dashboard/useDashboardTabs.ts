@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
-import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 import type { DashboardTab } from './tabs.ts'
 
 function getTabKey(tab: DashboardTab) {

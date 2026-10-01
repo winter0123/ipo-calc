@@ -1,5 +1,5 @@
 import styles from './CostRegisterPage.module.css'
-import { CostRegisterForm } from '../../features/cost-register/index.ts'
+import { CostRegisterForm } from '@/features/cost-register/index.ts'
 
 export default function CostRegisterPage() {
   return (

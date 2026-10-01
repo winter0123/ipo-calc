@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   useInvestmentHistoryDetail,
   type InvestmentHistoryItem,
-} from '../../entities/subscription/index.ts'
+} from '@/entities/subscription/index.ts'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
 import InvestmentHistoryRow from './InvestmentHistoryRow.tsx'
 import styles from './InvestmentHistoryTable.module.css'

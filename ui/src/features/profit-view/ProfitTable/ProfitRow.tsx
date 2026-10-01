@@ -1,4 +1,4 @@
-import { type SaleProfit } from '../../../entities/profit/index.ts'
+import { type SaleProfit } from '@/entities/profit/index.ts'
 import styles from './ProfitRow.module.css'
 
 interface ProfitRowProps {

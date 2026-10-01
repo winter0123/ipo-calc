@@ -1,6 +1,6 @@
 import styles from './DashboardCardGroup.module.css'
 import DashboardCard from './DashboardCard.tsx'
-import type { DashboardSummary } from '../../features/dashboard/index.ts'
+import type { DashboardSummary } from '@/features/dashboard/index.ts'
 
 interface DashboardCardGroupProps {
   summary: DashboardSummary

@@ -1,9 +1,9 @@
 import { useForm } from 'react-hook-form'
-import { useInvestmentHistory } from '../../../entities/subscription/index.ts'
+import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import { useCostRegister } from '../useCostRegister.ts'
-import { type CostRegisterRequest } from '../../../entities/cost/index.ts'
+import { type CostRegisterRequest } from '@/entities/cost/index.ts'
 import styles from './CostRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function CostRegisterForm() {
   const {

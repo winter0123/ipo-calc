@@ -1,4 +1,4 @@
-import { SubscriptionRegisterForm } from '../../features/subscription-register/index.ts'
+import { SubscriptionRegisterForm } from '@/features/subscription-register/index.ts'
 import styles from './SubscriptionRegisterPage.module.css'
 
 export default function SubscriptionRegisterPage() {

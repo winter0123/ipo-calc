@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getSaleProfit, profitKeys, type SaleProfit } from '../../entities/profit/index.ts'
+import { getSaleProfit, profitKeys, type SaleProfit } from '@/entities/profit/index.ts'
 
 interface UseSaleProfitOptions {
   saleId: number | undefined

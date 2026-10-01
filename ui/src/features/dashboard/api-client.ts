@@ -1,4 +1,4 @@
-import { apiFetch } from '../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 import type {
   DashboardSummary,
   DashboardByInvestor,

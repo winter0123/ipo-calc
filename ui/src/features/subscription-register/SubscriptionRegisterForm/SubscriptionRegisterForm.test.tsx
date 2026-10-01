@@ -3,10 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SubscriptionRegisterForm from './SubscriptionRegisterForm.tsx'
-import { apiFetch } from '../../../shared/api/client.ts'
-import { ApiError } from '../../../shared/api/apiError.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
 
-vi.mock('../../../shared/api/client.ts', () => ({
+vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 

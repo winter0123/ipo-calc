@@ -1,4 +1,4 @@
-import { apiFetch } from '../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 import type { SecuritiesFirmResponse } from './types.ts'
 
 export async function fetchSecuritiesFirms(

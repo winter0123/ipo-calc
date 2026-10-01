@@ -1,8 +1,8 @@
-import { useInvestors, type InvestorResponse } from '../../../entities/investor/index.ts'
+import { useInvestors, type InvestorResponse } from '@/entities/investor/index.ts'
 import {
   useSecuritiesAccounts,
   type SecuritiesAccount,
-} from '../../../entities/securities-account/index.ts'
+} from '@/entities/securities-account/index.ts'
 import styles from './AccountSelector.module.css'
 
 export interface AccountSelectorProps {

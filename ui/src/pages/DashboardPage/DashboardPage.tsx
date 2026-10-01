@@ -9,12 +9,12 @@ import {
   useDashboardByInvestor,
   useDashboardBySecuritiesFirm,
   useDashboardByPeriod,
-} from '../../features/dashboard/index.ts'
-import type { DashboardTab } from '../../features/dashboard/index.ts'
-import { EmptyState } from '../../widgets/EmptyState/index.ts'
-import { DashboardCardGroup } from '../../widgets/DashboardCardGroup/index.ts'
+} from '@/features/dashboard/index.ts'
+import type { DashboardTab } from '@/features/dashboard/index.ts'
+import { EmptyState } from '@/widgets/EmptyState/index.ts'
+import { DashboardCardGroup } from '@/widgets/DashboardCardGroup/index.ts'
 import styles from './DashboardPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 interface AmountListItem {
   key: string

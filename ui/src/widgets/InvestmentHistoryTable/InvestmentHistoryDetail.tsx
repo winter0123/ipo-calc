@@ -1,4 +1,4 @@
-import { type InvestmentHistoryItem } from '../../entities/subscription/index.ts'
+import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import styles from './InvestmentHistoryDetail.module.css'
 
 interface InvestmentHistoryDetailProps {

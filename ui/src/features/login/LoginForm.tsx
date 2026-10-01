@@ -1,9 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useLogin } from './useLogin.ts'
-import { isValidEmail, isMinLength } from '../../shared/lib/validators.ts'
+import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { LoginRequest } from './types.ts'
-import { NETWORK_ERROR_MESSAGE, toErrorMessage } from '../../shared/api/apiError.ts'
+import { NETWORK_ERROR_MESSAGE, toErrorMessage } from '@/shared/api/apiError.ts'
 import styles from './LoginForm.module.css'
 
 export default function LoginForm() {

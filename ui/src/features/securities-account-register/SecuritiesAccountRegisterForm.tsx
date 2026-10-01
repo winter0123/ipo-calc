@@ -7,7 +7,7 @@ import {
   type RegisterSecuritiesAccountResponse,
 } from './useRegisterSecuritiesAccount.ts'
 import styles from './SecuritiesAccountRegisterForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SecuritiesAccountRegisterForm() {
   const navigate = useNavigate()

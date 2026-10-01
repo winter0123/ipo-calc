@@ -1,12 +1,12 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { useInvestors } from '../../../entities/investor/index.ts'
-import { useSecuritiesAccounts } from '../../../entities/securities-account/index.ts'
-import { useIpos } from '../../../entities/ipo/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
+import { useIpos } from '@/entities/ipo/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
-import { type SubscriptionRegisterRequest } from '../../../entities/subscription/index.ts'
+import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SubscriptionRegisterForm() {
   const navigate = useNavigate()

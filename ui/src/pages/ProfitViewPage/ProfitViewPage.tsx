@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { useInvestors } from '../../entities/investor/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
 import {
   ProfitQueryToggle,
   useSaleProfit,
   useInvestorProfits,
   ProfitTable,
-} from '../../features/profit-view/index.ts'
+} from '@/features/profit-view/index.ts'
 import styles from './ProfitViewPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 type QueryMode = 'sale' | 'investor'
 

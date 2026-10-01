@@ -3,7 +3,7 @@ import {
   fetchSecuritiesFirms,
   securitiesFirmKeys,
   type SecuritiesFirmResponse,
-} from '../../entities/securities-firm/index.ts'
+} from '@/entities/securities-firm/index.ts'
 
 export function useSecuritiesFirms() {
   return useQuery<SecuritiesFirmResponse[]>({

@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SaleRegisterPage from './SaleRegisterPage.tsx'
-import { apiFetch } from '../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 
-vi.mock('../../shared/api/client.ts', () => ({
+vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 

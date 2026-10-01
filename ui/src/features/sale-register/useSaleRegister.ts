@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createSale } from '../../entities/sale/index.ts'
+import { createSale } from '@/entities/sale/index.ts'
 import { useNavigate } from 'react-router-dom'
-import { investmentHistoryKeys } from '../../entities/subscription/index.ts'
-import { profitKeys } from '../../entities/profit/index.ts'
-import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import { investmentHistoryKeys } from '@/entities/subscription/index.ts'
+import { profitKeys } from '@/entities/profit/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 
 export function useSaleRegister() {
   const queryClient = useQueryClient()

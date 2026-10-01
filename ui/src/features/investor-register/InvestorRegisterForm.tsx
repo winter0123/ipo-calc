@@ -1,9 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useRegisterInvestor, type RegisterInvestorRequest } from './useRegisterInvestor.ts'
-import { isValidDisplayName } from '../../shared/lib/validators.ts'
+import { isValidDisplayName } from '@/shared/lib/validators.ts'
 import styles from './InvestorRegisterForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'SELF', label: '본인' },

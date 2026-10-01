@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { InvestmentHistoryItem } from '../../../entities/subscription/index.ts'
+import type { InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionList.module.css'
 
 interface SubscriptionCardProps {

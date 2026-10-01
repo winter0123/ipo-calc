@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { QueryClient } from '@tanstack/react-query'
-import { dashboardKeys } from '../../entities/dashboard/queryKeys.ts'
+import { dashboardKeys } from '@/entities/dashboard/queryKeys.ts'
 import { useDashboardTabs } from './useDashboardTabs.ts'
 
 function seed(queryClient: QueryClient) {

@@ -4,17 +4,17 @@ import { Link } from 'react-router-dom'
 import {
   FilterBar,
   type InvestmentHistoryFilters as FilterInvestmentHistoryFilters,
-} from '../../features/investment-history/index.ts'
+} from '@/features/investment-history/index.ts'
 import {
   useInvestmentHistory,
   investmentHistoryKeys,
   type InvestmentHistoryFilters,
-} from '../../entities/subscription/index.ts'
-import { useInvestors } from '../../entities/investor/index.ts'
-import { EmptyState } from '../../widgets/EmptyState/index.ts'
-import { InvestmentHistoryTable } from '../../widgets/InvestmentHistoryTable/index.ts'
+} from '@/entities/subscription/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { EmptyState } from '@/widgets/EmptyState/index.ts'
+import { InvestmentHistoryTable } from '@/widgets/InvestmentHistoryTable/index.ts'
 import styles from './InvestmentHistoryPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 function filtersToApiParams(filters: FilterInvestmentHistoryFilters): InvestmentHistoryFilters {
   return {

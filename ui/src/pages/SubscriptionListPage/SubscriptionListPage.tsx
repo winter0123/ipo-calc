@@ -3,10 +3,10 @@ import {
   SubscriptionFilter,
   type SubscriptionFilterValue,
   SubscriptionList,
-} from '../../features/subscription-list/index.ts'
-import { useInvestmentHistory } from '../../entities/subscription/index.ts'
+} from '@/features/subscription-list/index.ts'
+import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionListPage.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function SubscriptionListPage() {
   const [filter, setFilter] = useState<SubscriptionFilterValue>('all')

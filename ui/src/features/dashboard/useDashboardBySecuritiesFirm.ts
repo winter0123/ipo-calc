@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getDashboardBySecuritiesFirm } from './api-client.ts'
-import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 import type { DashboardBySecuritiesFirm } from './types.ts'
 
 export function useDashboardBySecuritiesFirm({ enabled }: { enabled?: boolean } = {}) {

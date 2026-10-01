@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createSubscription, investmentHistoryKeys } from '../../entities/subscription/index.ts'
-import { profitKeys } from '../../entities/profit/index.ts'
-import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import { createSubscription, investmentHistoryKeys } from '@/entities/subscription/index.ts'
+import { profitKeys } from '@/entities/profit/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 
 export function useSubscriptionRegister() {
   const queryClient = useQueryClient()

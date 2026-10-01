@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
-import { isValidEmail, isMinLength } from '../../shared/lib/validators.ts'
+import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
-import { toErrorMessage } from '../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 function hasTwoCategories(v: string): boolean {
   const hasLetter = /[a-zA-Z]/.test(v)

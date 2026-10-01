@@ -1,4 +1,4 @@
-import { apiFetch } from '../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 import type { SaleProfit, InvestorProfit } from './types.ts'
 
 export async function getSaleProfit(saleId: number, signal?: AbortSignal): Promise<SaleProfit> {

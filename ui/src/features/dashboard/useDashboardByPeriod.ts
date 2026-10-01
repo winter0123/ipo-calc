@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getDashboardByPeriod } from './api-client.ts'
-import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import { dashboardKeys } from '@/entities/dashboard/index.ts'
 import type { DashboardByPeriod, PeriodUnit } from './types.ts'
 
 interface UseDashboardByPeriodOptions {

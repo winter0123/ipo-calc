@@ -1,11 +1,11 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAllocationRegister } from '../useAllocationRegister.ts'
-import { useInvestmentHistoryDetail } from '../../../entities/subscription/index.ts'
+import { useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
-import { type AllocationRegisterRequest } from '../../../entities/allocation/index.ts'
+import { type AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import styles from './AllocationRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function AllocationRegisterForm() {
   const [searchParams] = useSearchParams()

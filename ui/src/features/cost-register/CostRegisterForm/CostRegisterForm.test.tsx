@@ -3,9 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import CostRegisterForm from './CostRegisterForm.tsx'
-import { apiFetch } from '../../../shared/api/client.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 
-vi.mock('../../../shared/api/client.ts', () => ({
+vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 
@@ -19,7 +19,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ApiError } from '../../../shared/api/apiError.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
 
 let mutationFnMock: (data: unknown) => Promise<unknown> = () => Promise.resolve({})
 

@@ -1,15 +1,12 @@
 import { useForm } from 'react-hook-form'
 import { useState, useEffect } from 'react'
-import { useInvestors } from '../../../entities/investor/index.ts'
-import {
-  useInvestmentHistory,
-  useInvestmentHistoryDetail,
-} from '../../../entities/subscription/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
+import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
-import { type SaleRegisterRequest } from '../../../entities/sale/index.ts'
+import { type SaleRegisterRequest } from '@/entities/sale/index.ts'
 import styles from './SaleRegisterForm.module.css'
-import { toErrorMessage } from '../../../shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 type OptionalNumberField = 'price' | 'amount' | 'fee' | 'tax' | 'otherCost'
 

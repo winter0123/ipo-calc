@@ -13,6 +13,7 @@ const sources = import.meta.glob<string>('/src/**/*.{ts,tsx}', {
 })
 
 function resolvePath(fromFile: string, spec: string): string {
+  if (spec.startsWith('@/')) return `/src/${spec.slice(2)}`
   const parts = fromFile.split('/').slice(0, -1)
   for (const seg of spec.split('/')) {
     if (seg === '..') parts.pop()
@@ -29,7 +30,7 @@ function locate(path: string) {
 
 function violations(): string[] {
   const found: string[] = []
-  const pattern = /(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g
+  const pattern = /(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+|@\/[^'"]+)['"]/g
 
   for (const [file, source] of Object.entries(sources)) {
     const from = locate(file)
@@ -75,5 +76,8 @@ describe('FSD 경계', () => {
     )
     expect(locate('/src/shared/api/client.ts')).toEqual({ layer: 'shared', slice: '' })
     expect(locate('/src/main.tsx')).toBeNull()
+    expect(resolvePath('/src/features/a/B.tsx', '@/entities/x/index.ts')).toBe(
+      '/src/entities/x/index.ts',
+    )
   })
 })
