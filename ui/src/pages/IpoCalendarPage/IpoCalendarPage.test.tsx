@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoCalendarPage from './IpoCalendarPage.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
-import type { Ipo } from '@/entities/ipo/types.ts'
+import type { Ipo } from '@/entities/ipo/index.ts'
 import { ApiError } from '@/shared/api/apiError.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({

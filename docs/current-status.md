@@ -7,11 +7,11 @@
 `ui/`를 동작 불변 원칙으로 정리했다. 브랜치 `winter0123/frontend-architecture-refactor`, PR #259로 병합 완료(`5813514`). 상세는 `docs/work-log/frontend-architecture-refactor.md`(D-E20-001~010). 후속으로 테스트의 `fireEvent` 215건을 `user-event`로 전면 이전했다(#261, `9898157`, D-E20-010). **후속 완료(2026-10-01, 사용자 승인)**: `ProfitViewPage` 매도건 ID는 `조회` 버튼을 눌렀을 때만 조회한다(입력 중 조회·입력칸 잠김 해소). `ProfitTable` 타입 단언 제거.
 
 - **구조**: 슬라이스마다 `index.ts` 공개 API, 레이어 방향·슬라이스 격리·공개 API를 검사하는 `src/fsd-boundaries.test.ts`, `@/` alias. 대시보드 조회 모델은 `features/dashboard`로 이동, `MainLayout`·`App`은 `app/`으로 이동.
-- **쿼리·인증**: 쿼리 키 팩토리와 접두사 invalidation 확장, 401은 `QueryCache`·`MutationCache` `onError`에서 캐시를 비우고 `/login`으로 이동(복귀 경로 보존, 로그인 실패 401 제외). 뮤테이션 자동 재시도는 0 유지.
-- **UX**: NotFound·ErrorBoundary, `lang="ko"`·title, 필터를 URL 쿼리와 동기화(투자 내역·청약 목록).
+- **쿼리·인증**: 쿼리 키 팩토리와 접두사 invalidation 확장, 401은 `QueryCache`·`MutationCache` `onError`에서 캐시를 비우고 `/login`으로 이동(복귀 경로 보존, 로그인 실패 401 제외). 쿼리 재시도는 4xx·ZodError 즉시 실패, 뮤테이션 자동 재시도는 0 유지.
+- **UX**: NotFound·ErrorBoundary(새로고침·대시보드 링크), `lang="ko"`·title, 필터를 URL 쿼리와 동기화(투자 내역·청약 목록).
 - **백엔드 변경 1건(동작 변화)**: `GET /dashboard/by-period`가 `year`·`month`를 반영한다. 대시보드 월별/연도별 탭이 선택 기간만 보여준다.
 - **도구**: GET 응답 Zod 검증(대시보드 + IPO·투자자·증권사·증권계좌·투자 내역·수익, DB NOT NULL 대조 후 `.nullable()` 반영), React Compiler(RHF 폼 8개는 `'use no memo'`), 라우트 `React.lazy` 코드 스플리팅(메인 번들 535→284kB).
-- **검증**: UI 338 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 11/11(E2E-11 = D-9 기간 필터)·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
+- **검증**: UI 341 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 11/11(E2E-11 = D-9 기간 필터)·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
 - **추가 백엔드 수정 1건**: `GET /investors/{id}/profits`가 매도 금액이 null인 매도(선택 입력)가 하나라도 있으면 합계 계산에서 NPE(500)가 나던 버그를 고쳤다(null은 0으로 합산, `ProfitCalculator`와 같은 규칙). 재현 테스트 `getInvestorProfitsWithNullSaleAmountTreatsAmountAsZeroInTotals` 추가.
 - **남은 것**: staleTime은 현행 유지. POST 응답·요청은 Zod 미적용(폼은 RHF 검증).
 

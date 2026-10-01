@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildCalendarEvents } from './buildCalendarEvents.ts'
-import type { Ipo } from '@/entities/ipo/types.ts'
+import type { Ipo } from '@/entities/ipo/index.ts'
 
 function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   return {

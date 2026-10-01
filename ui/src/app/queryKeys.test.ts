@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { investorKeys } from '../entities/investor/queryKeys.ts'
-import { securitiesAccountKeys } from '../entities/securities-account/queryKeys.ts'
-import { investmentHistoryKeys } from '../entities/subscription/queryKeys.ts'
-import { profitKeys } from '../entities/profit/queryKeys.ts'
-import { dashboardKeys } from '../entities/dashboard/queryKeys.ts'
+import { investorKeys } from '../entities/investor/index.ts'
+import { securitiesAccountKeys } from '../entities/securities-account/index.ts'
+import { investmentHistoryKeys } from '../entities/subscription/index.ts'
+import { profitKeys } from '../entities/profit/index.ts'
+import { dashboardKeys } from '../entities/dashboard/index.ts'
 
 describe('query key factory', () => {
   it('모든 키는 kebab-case 네임스페이스로 시작한다', () => {

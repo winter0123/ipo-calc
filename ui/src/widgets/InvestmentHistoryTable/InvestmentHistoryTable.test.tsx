@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryTable from './InvestmentHistoryTable.tsx'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
-import type { InvestmentHistoryItem } from '@/entities/subscription/types.ts'
+import type { InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 
 function renderTable(items: InvestmentHistoryItem[]) {
   const queryClient = new QueryClient({

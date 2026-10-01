@@ -3,6 +3,7 @@ export { investmentHistoryKeys } from './queryKeys.ts'
 export type {
   InvestmentHistoryFilters,
   InvestmentHistoryItem,
+  InvestmentHistoryResponse,
   SubscriptionRegisterRequest,
 } from './types.ts'
 export { useInvestmentHistory } from './useInvestmentHistory.ts'

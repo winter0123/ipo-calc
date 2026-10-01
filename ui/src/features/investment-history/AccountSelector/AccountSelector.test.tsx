@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import AccountSelector from './AccountSelector.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
-import type { InvestorResponse } from '@/entities/investor/types.ts'
-import type { SecuritiesAccount } from '@/entities/securities-account/types.ts'
+import type { InvestorResponse } from '@/entities/investor/index.ts'
+import type { SecuritiesAccount } from '@/entities/securities-account/index.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),

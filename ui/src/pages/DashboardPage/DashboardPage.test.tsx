@@ -157,11 +157,11 @@ vi.mock('@/features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
   },
 }))
 
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary.ts'
-import { useDashboardByInvestor } from '@/features/dashboard/useDashboardByInvestor.ts'
-import { useDashboardBySecuritiesFirm } from '@/features/dashboard/useDashboardBySecuritiesFirm.ts'
-import { useDashboardByPeriod } from '@/features/dashboard/useDashboardByPeriod.ts'
-import { useDashboardTabs } from '@/features/dashboard/useDashboardTabs.ts'
+import { useDashboardSummary } from '@/features/dashboard/index.ts'
+import { useDashboardByInvestor } from '@/features/dashboard/index.ts'
+import { useDashboardBySecuritiesFirm } from '@/features/dashboard/index.ts'
+import { useDashboardByPeriod } from '@/features/dashboard/index.ts'
+import { useDashboardTabs } from '@/features/dashboard/index.ts'
 
 function asResult<T>(value: unknown): T {
   return value as T
