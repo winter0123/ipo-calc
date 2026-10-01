@@ -1,9 +1,8 @@
 package com.vibeaiteam.salemanagement.controller.sale.exception;
 
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
-import java.nio.charset.StandardCharsets;
+import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponses;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,15 +13,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class SaleExceptionHandler {
 
-  private static final MediaType JSON_UTF8 =
-      new MediaType("application", "json", StandardCharsets.UTF_8);
-
   /**
    * SaleValidationException을 HTTP 400 응답으로 변환한다.
    */
   @ExceptionHandler(SaleValidationException.class)
   public ResponseEntity<ErrorResponse> handleValidation(SaleValidationException ex) {
-    return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
   }
 
   /**
@@ -31,7 +27,7 @@ public class SaleExceptionHandler {
   @ExceptionHandler(SaleAllocationExceededException.class)
   public ResponseEntity<ErrorResponse> handleAllocationExceeded(
       SaleAllocationExceededException ex) {
-    return response(HttpStatus.BAD_REQUEST, "ALLOCATION_EXCEEDED", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "ALLOCATION_EXCEEDED", ex.getMessage());
   }
 
   /**
@@ -39,7 +35,7 @@ public class SaleExceptionHandler {
    */
   @ExceptionHandler(SaleNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(SaleNotFoundException ex) {
-    return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
   /**
@@ -47,12 +43,11 @@ public class SaleExceptionHandler {
    */
   @ExceptionHandler(SaleForbiddenException.class)
   public ResponseEntity<ErrorResponse> handleForbidden(SaleForbiddenException ex) {
-    return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
   private ResponseEntity<ErrorResponse> response(
       HttpStatus status, String errorCode, String message) {
-    ErrorResponse response = ErrorResponse.builder().error(errorCode).message(message).build();
-    return ResponseEntity.status(status).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(status, errorCode, message);
   }
 }

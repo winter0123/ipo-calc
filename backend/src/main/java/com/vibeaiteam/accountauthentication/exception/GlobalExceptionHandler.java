@@ -1,14 +1,13 @@
 package com.vibeaiteam.accountauthentication.exception;
 
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
+import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -22,18 +21,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  private static final MediaType JSON_UTF8 =
-      new MediaType("application", "json", StandardCharsets.UTF_8);
-
   /**
    * DuplicateEmailException을 HTTP 409 응답으로 변환한다.
    */
   @ExceptionHandler(DuplicateEmailException.class)
   public ResponseEntity<ErrorResponse> handleDuplicateEmail(
       DuplicateEmailException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("DUPLICATE_EMAIL").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.CONFLICT).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", ex.getMessage());
   }
 
   /**
@@ -42,9 +36,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(InvalidCredentialsException.class)
   public ResponseEntity<ErrorResponse> handleInvalidCredentials(
       InvalidCredentialsException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("INVALID_CREDENTIALS").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
   }
 
   /**
@@ -53,9 +45,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(InvalidCurrentPasswordException.class)
   public ResponseEntity<ErrorResponse> handleInvalidCurrentPassword(
       InvalidCurrentPasswordException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("INVALID_CURRENT_PASSWORD").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD", ex.getMessage());
   }
 
   /**
@@ -64,9 +54,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccountLockedException.class)
   public ResponseEntity<ErrorResponse> handleAccountLocked(
       AccountLockedException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("ACCOUNT_LOCKED").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", ex.getMessage());
   }
 
   /**
@@ -75,9 +63,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccountPendingApprovalException.class)
   public ResponseEntity<ErrorResponse> handleAccountPendingApproval(
       AccountPendingApprovalException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("ACCOUNT_PENDING_APPROVAL").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "ACCOUNT_PENDING_APPROVAL", ex.getMessage());
   }
 
   /**
@@ -86,9 +72,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(SignupClosedException.class)
   public ResponseEntity<ErrorResponse> handleSignupClosed(
       SignupClosedException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("SIGNUP_CLOSED").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "SIGNUP_CLOSED", ex.getMessage());
   }
 
   /**
@@ -97,9 +81,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccountNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleAccountNotFound(
       AccountNotFoundException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("NOT_FOUND").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
   /**
@@ -108,18 +90,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ValidationFailedException.class)
   public ResponseEntity<ErrorResponse> handleValidationFailed(
       ValidationFailedException ex, HttpServletRequest request) {
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("VALIDATION_FAILED")
-            .message("입력값 검증에 실패했습니다")
-            .fieldErrors(
-                List.of(
+    return ErrorResponses.validationFailed(List.of(
                     ErrorResponse.FieldError.builder()
                         .field(ex.getField())
                         .message(ex.getMessage())
-                        .build()))
-            .build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+                        .build()));
   }
 
   /**
@@ -133,13 +108,7 @@ public class GlobalExceptionHandler {
             .map(this::toFieldError)
             .collect(Collectors.toList());
 
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("VALIDATION_FAILED")
-            .message("입력값 검증에 실패했습니다")
-            .fieldErrors(fieldErrors)
-            .build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.validationFailed(fieldErrors);
   }
 
   /**
@@ -153,13 +122,7 @@ public class GlobalExceptionHandler {
             .map(this::toFieldError)
             .collect(Collectors.toList());
 
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("VALIDATION_FAILED")
-            .message("입력값 검증에 실패했습니다")
-            .fieldErrors(fieldErrors)
-            .build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.validationFailed(fieldErrors);
   }
 
   /**
@@ -171,13 +134,7 @@ public class GlobalExceptionHandler {
     List<ErrorResponse.FieldError> fieldErrors =
         ex.getConstraintViolations().stream().map(this::toFieldError).collect(Collectors.toList());
 
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("VALIDATION_FAILED")
-            .message("입력값 검증에 실패했습니다")
-            .fieldErrors(fieldErrors)
-            .build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.validationFailed(fieldErrors);
   }
 
   private ErrorResponse.FieldError toFieldError(FieldError fieldError) {
