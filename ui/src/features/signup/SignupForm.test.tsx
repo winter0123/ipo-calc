@@ -52,6 +52,30 @@ describe('SignupForm', () => {
     vi.clearAllMocks()
   })
 
+  it('비공개 운영에서 승인 대기 응답이면 이동하지 않고 안내를 보여준다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', approved: false })
+    renderSignupForm()
+
+    await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '관리자가 승인하면 로그인할 수 있습니다',
+    )
+    expect(screen.getByRole('link', { name: '로그인 화면으로' })).toHaveAttribute('href', '/login')
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('가입이 닫혀 있으면(403) 서버 안내를 보여준다', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(
+      new ApiError(403, 'Forbidden', '지금은 가입을 받지 않습니다'),
+    )
+    renderSignupForm()
+
+    await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('지금은 가입을 받지 않습니다')
+  })
+
   it('정상 제출 시 201 응답 후 /investors/register로 이동', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'test@example.com' })
     renderSignupForm()
