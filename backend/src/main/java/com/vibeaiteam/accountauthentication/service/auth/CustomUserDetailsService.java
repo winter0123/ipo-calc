@@ -34,7 +34,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         .username(account.getEmail())
         .password(account.getPasswordHash())
         .roles(account.getRole().name())
-        .disabled(false)
+        .disabled(!account.isApproved())
         .accountExpired(false)
         .accountLocked(false)
         .credentialsExpired(false)

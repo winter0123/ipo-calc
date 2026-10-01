@@ -83,3 +83,13 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 - **연결 해제**: 인증정보 행을 물리 삭제한다(D-B-015, 이 테이블만의 예외). 암호문이 DB에 남지 않는다.
 - **키 교체·만료**: 서비스 사용기간 만료일(발급일+1년)이 지나면 상태가 `EXPIRED`다. 증권사에서 갱신하면 키가 바뀌므로 `PUT /securities-accounts/{id}/api-credential`로 새 키를 넣는다(D-B-018·019). 증권사가 인증을 거절하면 424로 키 갱신을 안내한다(D-B-020).
 - **증권사 쪽 수명**: 접근토큰 24시간은 서버가 자동 갱신한다. 서비스 사용기간은 신청일부터 1년이고 갱신하면 앱키·시크릿이 새로 발급되니 다시 연결해야 한다. 3개월 이상 미거래면 서비스가 해지될 수 있다(D-B-012).
+
+## 7. 가입 운영(비공개) (2026-10-01)
+
+KIS 이용 조건상 일반 배포가 불확실해서(`docs/work-log/broker-readonly-api-pilot.md` D-B-029) 기본을 **비공개 운영**으로 둔다.
+
+- **가입 모드** `APP_SIGNUP_MODE`(기본 `APPROVAL`): `OPEN`=누구나 가입해 바로 로그인, `APPROVAL`=가입은 받되 관리자가 승인하기 전에는 로그인 불가(비밀번호가 맞아도 403 `ACCOUNT_PENDING_APPROVAL`, 실패 횟수에는 넣지 않음), `CLOSED`=가입 중단(403 `SIGNUP_CLOSED`). 값이 틀리면 기동이 실패한다.
+- **로컬 개발·E2E·접근성 스캔은 `APP_SIGNUP_MODE=OPEN`으로 띄운다.** 가입 직후 로그인되는 흐름을 쓰기 때문이다(`tools/accessibility-scan/run-scan.sh`는 이미 지정한다). 테스트 프로파일은 `OPEN`이다.
+- **첫 관리자**: 가입 화면에서 가입한 뒤 DB에서 직접 승격한다. `UPDATE accounts SET role='ADMIN', approved=TRUE WHERE email='<이메일>'` 후 다시 로그인한다.
+- **승인 관리(ADMIN 전용)**: `GET /admin/accounts?approved=false`(승인 대기 목록, 생략하면 전체), `POST /admin/accounts/{id}/approve`, `POST /admin/accounts/{id}/revoke`(승인 취소와 그 계정의 로그인 세션 종료, 본인 계정은 불가). 화면은 `/admin/accounts`.
+- 기존 계정은 마이그레이션(V20)에서 모두 승인된 상태다.

@@ -50,6 +50,9 @@ public class SecurityConfig {
                         "/js/**",
                         "/error")
                     .permitAll()
+                    // 가입 승인 관리는 ADMIN만.
+                    .requestMatchers("/admin/**")
+                    .hasRole("ADMIN")
                     // 공용 카탈로그 쓰기는 ADMIN만. 스케줄러·동기화는 서비스를 직접 호출하므로 영향 없음.
                     .requestMatchers(
                         HttpMethod.POST, "/ipos/**", "/securities-firms/**")

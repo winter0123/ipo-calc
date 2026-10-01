@@ -1,10 +1,13 @@
 package com.vibeaiteam.accountauthentication.application.service;
 
+import com.vibeaiteam.accountauthentication.config.SignupMode;
+import com.vibeaiteam.accountauthentication.config.SignupPolicy;
 import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupRequest;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupResponse;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.exception.DuplicateEmailException;
+import com.vibeaiteam.accountauthentication.exception.SignupClosedException;
 import com.vibeaiteam.accountauthentication.exception.ValidationFailedException;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +39,7 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final Clock clock;
   private final SessionCookieWriter sessionCookieWriter;
+  private final SignupPolicy signupPolicy;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -50,6 +54,10 @@ public class SignupService {
       SignupRequest request,
       HttpServletRequest httpServletRequest,
       HttpServletResponse httpServletResponse) {
+    if (signupPolicy.mode() == SignupMode.CLOSED) {
+      throw new SignupClosedException("지금은 가입을 받지 않습니다");
+    }
+    boolean autoApproved = signupPolicy.mode() == SignupMode.OPEN;
     String email = request.getEmail().toLowerCase();
 
     if (accountRepository.existsByEmail(email)) {
@@ -65,6 +73,7 @@ public class SignupService {
             .email(email)
             .passwordHash(passwordHash)
             .name(request.getName())
+            .approved(autoApproved)
             .failedLoginAttempts(0)
             .lockedUntil(null)
             .createdAt(LocalDateTime.now(clock))
@@ -73,12 +82,15 @@ public class SignupService {
 
     Account savedAccount = accountRepository.saveAndFlush(account);
 
-    createSession(httpServletRequest, httpServletResponse, savedAccount);
+    if (autoApproved) {
+      createSession(httpServletRequest, httpServletResponse, savedAccount);
+    }
 
     return SignupResponse.builder()
         .accountId(savedAccount.getId())
         .email(savedAccount.getEmail())
         .name(savedAccount.getName())
+        .approved(autoApproved)
         .build();
   }
 
