@@ -8,6 +8,8 @@ services:
       - "${DOCKER_GID:-0}"
     environment:
       JENKINS_OPTS: --prefix=/jenkins
+      # 로컬 경로(file:///repo) 체크오웃 허용 — 로컬 연습 전용, 운영(GitHub)에서는 제거
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
       JOB_BRANCH: ${JOB_BRANCH:-main}
     env_file:
