@@ -99,7 +99,7 @@ E11 + E12 + E13 + E14 + E15 ─→ E16 웹 조회·대시보드
 | 17 | 공모주 청약 일정 자동 동기화 | P1 | E5(공모주 기준정보) | 구현 진행 중 | SF-1·3·4 병합, SF-5 폐기(`GET /ipos` 재사용), SF-2(ustockplus)는 클라이언트(#206)만 병합·동기화 편입 보류 |
 | 18 | 증권사 조회 전용 연동(한국투자증권 파일럿) | P1 | E4, E8, E9 | 구현 진행 중 | SF-1·2a·2b·3a·3b·4a 병합. SF-4b·5·6은 KIS 앱키(`.env`)와 Master의 실계좌 1회 호출 이후 |
 | 19 | 사후 등록 UX/UI 전면 개선 | P1 | E6, E7, E8, E9, E11 | 완료 | SF-1~4 병합(#192·#195·#196·#201). 유지보수만 |
-| 20 | 프론트엔드 아키텍처 리팩토링 | P2 | E13~E16, E19 | Phase 0 문서 작성 완료(승인 대기) | spec 승인 → SF-1~4 착수. 제품 코드 변경은 승인 전 없음 |
+| 20 | 프론트엔드 아키텍처 리팩토링 | P2 | E13~E16, E19 | 완료(#259 병합, 2026-10-01) | 후속 항목 6건·Zod 확장까지 반영 |
 
 > E1~E16 상태는 2026-09-29 4차 세션 종료 시점 기준으로 갱신(이전 표는 여러 세션 전 스냅샷이 방치돼 있었음). E17~E19는 2026-09-29 스코프 확장 결정(1.1절)으로 신설.
 
@@ -255,7 +255,7 @@ E11 + E12 + E13 + E14 + E15 ─→ E16 웹 조회·대시보드
 - **목표**: `ui/`의 FSD 경계(`app` 레이어 포함)·TanStack Query 서버 상태(키 규약·retry·signal)·폼 접근성·타입 안전성을 작은 단계로 정리한다. 사용자가 보는 동작·API 계약·금융 의미는 바꾸지 않는다.
 - **핵심 완료 조건**: ① 대시보드 기간 집계 타입이 백엔드 계약과 일치(`as unknown as` 제거) ② 쿼리 키·중복 훅·invalidation 정합 ③ 폼 `aria-invalid`/`aria-describedby`/오류 role 정리 ④ slice public API와 경계 검사 테스트 ⑤ `docs/guide-frontend.md` 갱신 ⑥ 새 의존성 0건.
 - **1차 명시적 비범위**: 백엔드, 신규 기능, 401 중앙 redirect, Zod·FSD lint 플러그인, `@/` alias, 필터 URL 동기화, by-period `year`/`month` 파라미터 수정(이후 사용자 승인으로 FSD lint 플러그인을 뺀 나머지를 후속 구현). `/`는 `Hello` 유지.
-- **상태(2026-10-01)**: 구현 완료(`planning-e20` 작업공간, 로컬 커밋 완료, push·PR 승인 대기). 사용자 결정(2026-10-01)으로 Not Found·ErrorBoundary·EmptyState 모듈 스타일·invalidation 확장·`lang=ko`/title 변경까지 포함했다. **후속 구현(2026-10-01 "다 진행")**: `@/` alias(D-14), 401 중앙 처리(D-4), 필터 URL 동기화(D-11), by-period `year`/`month` 백엔드 반영(D-9, 동작 변화), Zod 파일럿(D-7), React Compiler(D-15, RHF 폼은 `'use no memo'`). 상세는 `docs/work-log/frontend-architecture-refactor.md`.
+- **상태(2026-10-01)**: 구현 완료(PR #259 병합, `5813514`). 사용자 결정(2026-10-01)으로 Not Found·ErrorBoundary·EmptyState 모듈 스타일·invalidation 확장·`lang=ko`/title 변경까지 포함했다. **후속 구현(2026-10-01 "다 진행")**: `@/` alias(D-14), 401 중앙 처리(D-4), 필터 URL 동기화(D-11), by-period `year`/`month` 백엔드 반영(D-9, 동작 변화), Zod 파일럿(D-7), React Compiler(D-15, RHF 폼은 `'use no memo'`). 상세는 `docs/work-log/frontend-architecture-refactor.md`.
 
 ## 7. Epic 착수·완료 게이트
 
