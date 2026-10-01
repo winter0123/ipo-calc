@@ -231,6 +231,7 @@
         <li>달력이 표시되며, 오늘 날짜가 강조되어 보입니다.</li>
         <li>이전 달/다음 달 버튼을 클릭하거나 "오늘" 버튼을 누릅니다.</li>
         <li>날짜를 선택하면 그날의 일정이 달력 오른쪽(모바일에서는 아래)에 자세히 표시됩니다.</li>
+        <li>일정 목록의 공모주를 누르면 그 공모주의 상세 페이지로 이동합니다.</li>
       </ol>
       <div class="table-wrap"><table>
         <thead><tr><th>일정 종류</th><th>설명</th></tr></thead>
@@ -249,6 +250,22 @@
         <img src="screenshots/ipo-calendar-mobile.png" alt="공모주 일정 달력 — 모바일" loading="lazy">
         <figcaption>모바일 뷰의 공모주 일정 달력 화면</figcaption>
       </figure>
+      </div>
+          <h3>공모주 상세 보기</h3>
+      <p>상세 페이지 위쪽에는 공모주명과 회사명, 그리고 <strong>상태</strong>가 표시됩니다. 상태는 오늘 날짜와 일정으로 자동 계산됩니다.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>상태</th><th>기준</th></tr></thead>
+        <tbody>
+          <tr><td>청약 예정</td><td>오늘이 청약 시작일 전입니다.</td></tr>
+          <tr><td>청약 진행 중</td><td>오늘이 청약 시작일과 종료일 사이(당일 포함)입니다.</td></tr>
+          <tr><td>청약 마감</td><td>청약 종료일이 지났고 아직 상장일 전이거나 상장일이 없습니다.</td></tr>
+          <tr><td>상장 완료</td><td>오늘이 상장일이거나 그 이후입니다.</td></tr>
+        </tbody>
+      </table></div>
+      <p>본문에는 종목코드, 회차, 청약 시작일, 청약 종료일, 상장일, 확정 공모가, 희망 공모가(하단~상단), 공모 주식 수가 나옵니다. 아직 정해지지 않은 항목은 "-"로 표시됩니다. 아래의 <strong>청약 등록하기</strong>를 누르면 청약 등록 화면으로, <strong>공모주 일정으로 돌아가기</strong>를 누르면 달력으로 돌아갑니다. 없는 공모주 주소로 들어오면 "공모주를 찾을 수 없습니다."가 표시됩니다.</p>
+      <div class="shots">
+        <figure><img src="screenshots/ipo-detail-desktop.png" alt="공모주 상세 화면 — 데스크톱" loading="lazy"><figcaption>공모주 상세 (데스크톱)</figcaption></figure>
+        <figure><img src="screenshots/ipo-detail-mobile.png" alt="공모주 상세 화면 — 모바일" loading="lazy"><figcaption>공모주 상세 (모바일)</figcaption></figure>
       </div>
     </section>
      <section id="records">
