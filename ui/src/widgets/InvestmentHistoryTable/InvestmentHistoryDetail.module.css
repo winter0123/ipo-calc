@@ -12,12 +12,12 @@
   font-size: 18px;
   cursor: pointer;
   padding: 4px 8px;
-  color: #6b7280;
+  color: var(--ink-muted);
   border-radius: 4px;
 }
 
 .closeButton:hover {
-  background-color: #f3f4f6;
+  background-color: var(--surface-soft);
 }
 
 .dl {
@@ -34,17 +34,17 @@
 
 .dlRow dt {
   font-weight: 600;
-  color: #4b5563;
+  color: var(--ink-muted);
   min-width: 120px;
 }
 
 .dlRow dd {
   margin: 0;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .nestedGroup {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
   display: flex;
@@ -56,7 +56,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .salesTable {
@@ -69,11 +69,11 @@
 .salesTable td {
   padding: 6px 8px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
 .salesTable th {
-  background-color: #f9fafb;
+  background-color: var(--surface-soft);
   font-weight: 600;
 }
 

@@ -4,6 +4,7 @@
   gap: 16px;
   max-width: 400px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .field {
@@ -27,12 +28,12 @@
 }
 
 .error {
-  color: #e11d48;
+  color: var(--danger);
   font-size: 14px;
 }
 
 .formError {
-  color: #e11d48;
+  color: var(--danger);
   font-size: 15px;
   padding: 8px;
   background: rgba(225, 29, 72, 0.05);
@@ -41,13 +42,14 @@
 
 .submitButton {
   padding: 12px;
-  background: #7e22ce;
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 999px;
+  font-weight: 650;
   cursor: pointer;
   font-size: 16px;
+  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .submitButton:disabled {

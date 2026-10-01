@@ -64,15 +64,23 @@ describe('MainLayout', () => {
     expect(main).toContainElement(screen.getByTestId('child-content'))
   })
 
-  it('주요 메뉴에서 증권사 연동 화면으로 이동할 수 있음', () => {
+  it('로그인한 계정에는 주요 메뉴에서 증권사 연동 화면으로 이동할 수 있음', async () => {
+    loggedInAs('USER')
     renderLayout()
 
-    const nav = screen.getByRole('navigation', { name: '주요 메뉴' })
+    const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
     expect(within(nav).getByRole('link', { name: '증권사 연동' })).toHaveAttribute(
       'href',
       '/broker-sync',
     )
     expect(screen.getByRole('banner')).toContainElement(nav)
+  })
+
+  it('로그인 전에는 주요 메뉴를 보이지 않음', async () => {
+    renderLayout()
+
+    await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
+    expect(screen.queryByRole('navigation', { name: '주요 메뉴' })).not.toBeInTheDocument()
   })
 
   it('관리자에게만 가입 승인 링크가 보임', async () => {

@@ -1,11 +1,11 @@
 .summaryRow {
-  background-color: #f9fafb;
+  background-color: var(--surface-soft);
   font-weight: 600;
 }
 
 .summaryRow td {
   padding: 12px 16px;
-  border-top: 2px solid #e0e0e0;
+  border-top: 2px solid var(--border);
   border-bottom: none;
   text-align: left;
 }
@@ -25,7 +25,7 @@
 }
 
 .negative {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 @media (max-width: 640px) {

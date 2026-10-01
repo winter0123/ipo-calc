@@ -1,8 +1,8 @@
 .container {
+  --page-max: 1000px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 900px;
+  gap: 20px;
 }
 
 .title {

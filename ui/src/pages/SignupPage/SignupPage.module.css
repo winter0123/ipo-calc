@@ -1,11 +1,6 @@
 .page {
-  max-width: 480px;
-  margin: 40px auto;
-  padding: 0 16px;
-}
-
-.page h1 {
-  font-size: 24px;
-  margin-bottom: 24px;
-  text-align: center;
+  --page-max: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
