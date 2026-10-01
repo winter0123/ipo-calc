@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ProfitViewPage from './ProfitViewPage.tsx'
@@ -154,10 +156,10 @@ describe('ProfitViewPage', () => {
     renderPage()
     await waitForInvestorsLoaded()
 
-    fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
     expect(screen.getByRole('radio', { name: '투자자별' })).toBeChecked()
 
-    fireEvent.click(screen.getByRole('radio', { name: '매도건별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '매도건별' }))
     expect(screen.getByRole('radio', { name: '매도건별' })).toBeChecked()
   })
 
@@ -165,17 +167,17 @@ describe('ProfitViewPage', () => {
     renderPage()
     await waitForInvestorsLoaded()
 
-    fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '1' } })
-    fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+    await fill(screen.getByLabelText('매도건 ID'), '1')
+    await userEvent.click(screen.getByRole('button', { name: /조회/ }))
     await waitFor(() => {
       expect(screen.getByText('1')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
     await waitForInvestorDropdown()
     expect(screen.getByLabelText('투자자')).toHaveValue('')
 
-    fireEvent.click(screen.getByRole('radio', { name: '매도건별' }))
+    await userEvent.click(screen.getByRole('radio', { name: '매도건별' }))
     const saleIdInput = screen.getByLabelText('매도건 ID') as HTMLInputElement
     // React uncontrolled input may have null or '' value when empty
     expect(saleIdInput.value === '' || saleIdInput.value === null).toBe(true)
@@ -186,8 +188,8 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('매도건 ID'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('1')).toBeInTheDocument()
@@ -198,7 +200,7 @@ describe('ProfitViewPage', () => {
     })
 
     it('존재하지 않는 매도건 404 시 에러 메시지 표시 (AC-015)', async () => {
-      vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
         const p = String(path)
         if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
@@ -207,8 +209,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '999' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      // 한 글자 입력만으로 조회가 시작되고 입력칸이 잠기므로 붙여넣기로 한 번에 입력한다
+      await userEvent.click(screen.getByLabelText('매도건 ID'))
+      await userEvent.paste('999')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('매도건을 찾을 수 없습니다.')).toBeInTheDocument()
@@ -216,7 +220,7 @@ describe('ProfitViewPage', () => {
     })
 
     it('네트워크 오류 시 에러 메시지 표시', async () => {
-      vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
         const p = String(path)
         if (p === '/sales/1/profit') throw new Error('Failed to fetch')
         throw new Error(`unexpected path: ${String(path)}`)
@@ -225,8 +229,8 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('매도건 ID'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
@@ -239,10 +243,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('투자자'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('홍길동')).toBeInTheDocument()
@@ -261,10 +265,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('투자자'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         const negativeProfit = screen.getByText('-5,000')
@@ -273,7 +277,7 @@ describe('ProfitViewPage', () => {
     })
 
     it('존재하지 않는 투자자 404 시 에러 메시지 표시 (AC-016)', async () => {
-      vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
         const p = String(path)
         if (p === '/investors/1/profits') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
@@ -282,10 +286,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('투자자'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('투자자를 찾을 수 없습니다.')).toBeInTheDocument()
@@ -296,10 +300,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '2' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('투자자'), '2')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
@@ -307,7 +311,7 @@ describe('ProfitViewPage', () => {
     })
 
     it('네트워크 오류 시 에러 메시지 표시', async () => {
-      vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
         const p = String(path)
         if (p === '/investors/1/profits') throw new Error('Failed to fetch')
         throw new Error(`unexpected path: ${String(path)}`)
@@ -316,10 +320,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('투자자'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
@@ -340,8 +344,8 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '1' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      await fill(screen.getByLabelText('매도건 ID'), '1')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       expect(screen.getByText('수익 정보를 불러오는 중...')).toBeInTheDocument()
 
@@ -361,14 +365,14 @@ describe('ProfitViewPage', () => {
       const saleIdInput = screen.getByLabelText('매도건 ID')
       expect(saleIdInput).toHaveAttribute('id', 'saleId')
 
-      fireEvent.click(screen.getByRole('radio', { name: '투자자별' }))
+      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
       await waitForInvestorDropdown()
       const investorSelect = screen.getByLabelText('투자자')
       expect(investorSelect).toHaveAttribute('id', 'investorId')
     })
 
     it('에러 영역에 aria-live 속성이 있음', async () => {
-      vi.mocked(apiFetch).mockImplementationOnce(async (path: unknown) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
         const p = String(path)
         if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
         throw new Error(`unexpected path: ${String(path)}`)
@@ -377,8 +381,10 @@ describe('ProfitViewPage', () => {
       renderPage()
       await waitForInvestorsLoaded()
 
-      fireEvent.change(screen.getByLabelText('매도건 ID'), { target: { value: '999' } })
-      fireEvent.click(screen.getByRole('button', { name: /조회/ }))
+      // 한 글자 입력만으로 조회가 시작되고 입력칸이 잠기므로 붙여넣기로 한 번에 입력한다
+      await userEvent.click(screen.getByLabelText('매도건 ID'))
+      await userEvent.paste('999')
+      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument()

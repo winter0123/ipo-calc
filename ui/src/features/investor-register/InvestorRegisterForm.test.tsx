@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestorRegisterForm from './InvestorRegisterForm.tsx'
@@ -32,14 +34,14 @@ function renderInvestorRegisterForm() {
   )
 }
 
-function fillAndSubmit(displayName: string, relationship?: string) {
+async function fillAndSubmit(displayName: string, relationship?: string) {
   if (displayName !== undefined) {
-    fireEvent.change(screen.getByLabelText('표시 이름'), { target: { value: displayName } })
+    await fill(screen.getByLabelText('표시 이름'), displayName)
   }
   if (relationship !== undefined) {
-    fireEvent.change(screen.getByLabelText('관계'), { target: { value: relationship } })
+    await fill(screen.getByLabelText('관계'), relationship)
   }
-  fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+  await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 }
 
 describe('InvestorRegisterForm', () => {
@@ -59,7 +61,7 @@ describe('InvestorRegisterForm', () => {
     })
     renderInvestorRegisterForm()
 
-    fillAndSubmit('홍길동', 'SELF')
+    await fillAndSubmit('홍길동', 'SELF')
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -79,7 +81,7 @@ describe('InvestorRegisterForm', () => {
     // 클라이언트 사이드 검증으로 API 호출 안 함 → 모킹 불필요
     renderInvestorRegisterForm()
 
-    fillAndSubmit('')
+    await fillAndSubmit('')
 
     await waitFor(() => {
       expect(screen.queryByText('표시 이름은 필수입니다.')).toBeInTheDocument()
@@ -93,7 +95,7 @@ describe('InvestorRegisterForm', () => {
     renderInvestorRegisterForm()
 
     const longName = '가'.repeat(51)
-    fillAndSubmit(longName)
+    await fillAndSubmit(longName)
 
     await waitFor(() => {
       expect(screen.queryByText('표시 이름은 50자 이하여야 합니다.')).toBeInTheDocument()
@@ -108,7 +110,7 @@ describe('InvestorRegisterForm', () => {
     )
     renderInvestorRegisterForm()
 
-    fillAndSubmit('홍길동', 'SELF')
+    await fillAndSubmit('홍길동', 'SELF')
 
     await waitFor(() => {
       expect(screen.queryByText('유효한 관계를 선택해 주세요.')).toBeInTheDocument()
@@ -120,7 +122,7 @@ describe('InvestorRegisterForm', () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Network error'))
     renderInvestorRegisterForm()
 
-    fillAndSubmit('홍길동', 'SELF')
+    await fillAndSubmit('홍길동', 'SELF')
 
     await waitFor(() => {
       expect(screen.queryByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
@@ -140,7 +142,7 @@ describe('InvestorRegisterForm', () => {
     })
     renderInvestorRegisterForm()
 
-    fillAndSubmit('김철수')
+    await fillAndSubmit('김철수')
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -166,7 +168,7 @@ describe('InvestorRegisterForm', () => {
     )
     renderInvestorRegisterForm()
 
-    fillAndSubmit('홍길동', 'SELF')
+    await fillAndSubmit('홍길동', 'SELF')
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /등록 중/i })).toBeDisabled()

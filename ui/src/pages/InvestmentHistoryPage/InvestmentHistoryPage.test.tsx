@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryPage from './InvestmentHistoryPage.tsx'
@@ -282,7 +284,7 @@ describe('InvestmentHistoryPage', () => {
 
     // 투자자 선택 변경
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
 
     await waitFor(() => {
       expect(investorSelect).toHaveValue('1')
@@ -306,7 +308,7 @@ describe('InvestmentHistoryPage', () => {
 
     // 투자자 먼저 선택
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
 
     // 증권계좌 로드 완료 대기
     await waitFor(() => {
@@ -326,7 +328,7 @@ describe('InvestmentHistoryPage', () => {
     await waitForResultsLoaded()
 
     const ipoInput = screen.getByLabelText('IPO ID')
-    fireEvent.change(ipoInput, { target: { value: '3' } })
+    await fill(ipoInput, '3')
 
     await waitFor(() => {
       expect(ipoInput).toHaveValue('3')
@@ -341,12 +343,12 @@ describe('InvestmentHistoryPage', () => {
     await waitForResultsLoaded()
 
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
     await waitFor(() => {
       expect(investorSelect).toHaveValue('1')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /초기화/i }))
+    await userEvent.click(screen.getByRole('button', { name: /초기화/i }))
 
     await waitFor(() => {
       expect(investorSelect).toHaveValue('')
@@ -373,7 +375,7 @@ describe('InvestmentHistoryPage', () => {
     await waitForResultsLoaded()
 
     // 빈 결과로 변경
-    fireEvent.click(screen.getByRole('button', { name: /초기화/i }))
+    await userEvent.click(screen.getByRole('button', { name: /초기화/i }))
 
     await waitFor(() => {
       expect(screen.getByText('해당 조건에 해당하는 기록이 없습니다.')).toBeInTheDocument()
@@ -381,7 +383,7 @@ describe('InvestmentHistoryPage', () => {
 
     expect(screen.getByRole('button', { name: '전체 필터 초기화' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '전체 필터 초기화' }))
+    await userEvent.click(screen.getByRole('button', { name: '전체 필터 초기화' }))
   })
 
   it('네트워크 오류 시 에러 메시지 표시', async () => {
@@ -455,7 +457,7 @@ describe('InvestmentHistoryPage', () => {
     await waitForResultsLoaded()
 
     // 빈 결과로 변경
-    fireEvent.click(screen.getByRole('button', { name: /초기화/i }))
+    await userEvent.click(screen.getByRole('button', { name: /초기화/i }))
 
     await waitFor(() => {
       const emptyState = screen
@@ -508,7 +510,7 @@ describe('InvestmentHistoryPage', () => {
 
     // (1) 투자자 A(김철수, id=1) 선택 -> 증권계좌 목록 재조회 -> 증권계좌 X(10) 선택
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
 
     await waitFor(() => {
       expect(investorSelect).toHaveValue('1')
@@ -527,7 +529,7 @@ describe('InvestmentHistoryPage', () => {
 
     // 증권계좌 X(10, 한국투자증권) 선택
     const accountSelect = screen.getByLabelText('증권계좌')
-    fireEvent.change(accountSelect, { target: { value: '10' } })
+    await fill(accountSelect, '10')
 
     await waitFor(() => {
       expect(accountSelect).toHaveValue('10')
@@ -544,7 +546,7 @@ describe('InvestmentHistoryPage', () => {
     })
 
     // (2) 투자자를 B(이영희, id=2)로 변경 -> 증권계좌 선택 초기화('전체'로) -> 조회에 securitiesAccountId가 빠짐
-    fireEvent.change(investorSelect, { target: { value: '2' } })
+    await fill(investorSelect, '2')
 
     await waitFor(() => {
       expect(investorSelect).toHaveValue('2')
@@ -566,7 +568,7 @@ describe('InvestmentHistoryPage', () => {
     })
 
     // (3) 투자자를 '전체'로 되돌리면 증권계좌 드롭다운이 disabled되고 값이 비워짐
-    fireEvent.change(investorSelect, { target: { value: '' } })
+    await fill(investorSelect, '')
 
     await waitFor(() => {
       expect(investorSelect).toHaveValue('')
@@ -612,11 +614,11 @@ describe('InvestmentHistoryPage', () => {
       renderPage('/investments?investorId=1&securitiesAccountId=10')
       await waitFor(() => expect(screen.getByLabelText('투자자')).toHaveValue('1'))
 
-      fireEvent.change(screen.getByLabelText('투자자'), { target: { value: '2' } })
+      await fill(screen.getByLabelText('투자자'), '2')
       await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('?investorId=2'))
       expect(screen.getByTestId('search')).not.toHaveTextContent('securitiesAccountId')
 
-      fireEvent.change(screen.getByLabelText('IPO ID'), { target: { value: '9' } })
+      await fill(screen.getByLabelText('IPO ID'), '9')
       await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('ipoId=9'))
     })
 
@@ -625,7 +627,7 @@ describe('InvestmentHistoryPage', () => {
       renderPage('/investments?investorId=1&ipoId=7')
       await waitFor(() => expect(screen.getByLabelText('투자자')).toHaveValue('1'))
 
-      fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
+      await userEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
       await waitFor(() => expect(screen.getByTestId('search')).toBeEmptyDOMElement())
       expect(screen.getByLabelText('IPO ID')).toHaveValue('')
     })

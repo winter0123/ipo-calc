@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AllocationRegisterForm from './AllocationRegisterForm.tsx'
@@ -65,12 +67,12 @@ async function waitForDetailLoaded() {
   })
 }
 
-function fillValidForm() {
-  fireEvent.change(screen.getByLabelText('배정수량'), { target: { value: '50' } })
-  fireEvent.change(screen.getByLabelText('배정일시'), { target: { value: '2026-09-21T10:00' } })
-  fireEvent.change(screen.getByLabelText('배정방식 (선택)'), { target: { value: 'PROPORTIONAL' } })
-  fireEvent.change(screen.getByLabelText('배정단가 (선택)'), { target: { value: '39000' } })
-  fireEvent.change(screen.getByLabelText('비고 (선택)'), { target: { value: '테스트 배정' } })
+async function fillValidForm() {
+  await fill(screen.getByLabelText('배정수량'), '50')
+  await fill(screen.getByLabelText('배정일시'), '2026-09-21T10:00')
+  await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
+  await fill(screen.getByLabelText('배정단가 (선택)'), '39000')
+  await fill(screen.getByLabelText('비고 (선택)'), '테스트 배정')
 }
 
 describe('AllocationRegisterForm', () => {
@@ -130,8 +132,8 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    fillValidForm()
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -161,7 +163,7 @@ describe('AllocationRegisterForm', () => {
     renderForm()
     await waitForDetailLoaded()
 
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('배정수량을 입력해 주세요.')).toBeInTheDocument()
@@ -178,9 +180,9 @@ describe('AllocationRegisterForm', () => {
     renderForm()
     await waitForDetailLoaded()
 
-    fillValidForm()
-    fireEvent.change(screen.getByLabelText('배정수량'), { target: { value: '0' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await fill(screen.getByLabelText('배정수량'), '0')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('0 초과 정수를 입력해 주세요.')).toBeInTheDocument()
@@ -196,9 +198,9 @@ describe('AllocationRegisterForm', () => {
     renderForm()
     await waitForDetailLoaded()
 
-    fillValidForm()
-    fireEvent.change(screen.getByLabelText('배정단가 (선택)'), { target: { value: '-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await fill(screen.getByLabelText('배정단가 (선택)'), '-1')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('0 초과 정수를 입력해 주세요.')).toBeInTheDocument()
@@ -237,8 +239,8 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    fillValidForm()
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('입력값을 확인해 주세요.')).toBeInTheDocument()
@@ -260,8 +262,8 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    fillValidForm()
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('이미 동일한 청약에 대한 배정이 존재합니다.')).toBeInTheDocument()
@@ -283,8 +285,8 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    fillValidForm()
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('유효하지 않은 입력입니다.')).toBeInTheDocument()
@@ -306,8 +308,8 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    fillValidForm()
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fillValidForm()
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
@@ -341,9 +343,9 @@ describe('AllocationRegisterForm', () => {
     })
 
     // 필수 필드만 입력 (배정방식은 선택하지 않음)
-    fireEvent.change(screen.getByLabelText('배정수량'), { target: { value: '50' } })
-    fireEvent.change(screen.getByLabelText('배정일시'), { target: { value: '2026-09-21T10:00' } })
-    fireEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await fill(screen.getByLabelText('배정수량'), '50')
+    await fill(screen.getByLabelText('배정일시'), '2026-09-21T10:00')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(

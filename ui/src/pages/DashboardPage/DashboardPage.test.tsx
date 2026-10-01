@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -331,7 +332,7 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('period-heading')).toHaveTextContent('2026년 9월')
 
     // "이전 달" 버튼 클릭
-    fireEvent.click(screen.getByTestId('prev-button'))
+    await userEvent.click(screen.getByTestId('prev-button'))
 
     // 제목이 2026년 8월로 변경됨
     expect(screen.getByTestId('period-heading')).toHaveTextContent('2026년 8월')
@@ -364,12 +365,12 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('period-heading')).toHaveTextContent('2026년 9월')
 
     // "다음 달" 버튼 클릭 (9월은 현재 월이므로 비활성화됨, 8월로 먼저 이동)
-    fireEvent.click(screen.getByTestId('prev-button')) // 2026년 8월
+    await userEvent.click(screen.getByTestId('prev-button')) // 2026년 8월
     await waitFor(() => {
       expect(screen.getByTestId('period-heading')).toHaveTextContent('2026년 8월')
     })
 
-    fireEvent.click(screen.getByTestId('next-button')) // 2026년 9월
+    await userEvent.click(screen.getByTestId('next-button')) // 2026년 9월
 
     // 제목이 2026년 9월로 변경됨
     expect(screen.getByTestId('period-heading')).toHaveTextContent('2026년 9월')

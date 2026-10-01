@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { fill } from '@/test/fill'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import AccountSelector from './AccountSelector.tsx'
@@ -178,14 +179,14 @@ describe('AccountSelector', () => {
 
     // 첫 번째 투자자 선택
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
 
     await waitFor(() => {
       expect(onInvestorChange).toHaveBeenCalledWith('1')
     })
 
     // 두 번째 투자자 선택
-    fireEvent.change(investorSelect, { target: { value: '2' } })
+    await fill(investorSelect, '2')
 
     await waitFor(() => {
       expect(onInvestorChange).toHaveBeenCalledWith('2')
@@ -212,7 +213,7 @@ describe('AccountSelector', () => {
     })
 
     const investorSelect = screen.getByLabelText('투자자')
-    fireEvent.change(investorSelect, { target: { value: '1' } })
+    await fill(investorSelect, '1')
 
     await waitFor(() => {
       expect(onInvestorChange).toHaveBeenCalledWith('1')

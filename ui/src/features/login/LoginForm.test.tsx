@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { fill } from '@/test/fill'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -35,14 +36,14 @@ function renderLoginForm(from?: unknown) {
   )
 }
 
-function fillAndSubmit(email: string, password: string) {
+async function fillAndSubmit(email: string, password: string) {
   if (email) {
-    fireEvent.change(screen.getByLabelText('이메일'), { target: { value: email } })
+    await fill(screen.getByLabelText('이메일'), email)
   }
   if (password) {
-    fireEvent.change(screen.getByLabelText('비밀번호'), { target: { value: password } })
+    await fill(screen.getByLabelText('비밀번호'), password)
   }
-  fireEvent.click(screen.getByRole('button', { name: /로그인/i }))
+  await userEvent.click(screen.getByRole('button', { name: /로그인/i }))
 }
 
 describe('LoginForm', () => {
@@ -54,7 +55,7 @@ describe('LoginForm', () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({})
     renderLoginForm()
 
-    fillAndSubmit('test@example.com', 'password123')
+    await fillAndSubmit('test@example.com', 'password123')
 
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith(
@@ -73,7 +74,7 @@ describe('LoginForm', () => {
   it('세션 만료로 넘어온 경우 로그인 성공 후 원래 경로로 복귀한다', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({})
     renderLoginForm('/investments?x=1')
-    fillAndSubmit('test@example.com', 'password123')
+    await fillAndSubmit('test@example.com', 'password123')
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/investments?x=1'))
   })
 
@@ -82,7 +83,7 @@ describe('LoginForm', () => {
     async (from) => {
       vi.mocked(apiFetch).mockResolvedValueOnce({})
       renderLoginForm(from)
-      fillAndSubmit('test@example.com', 'password123')
+      await fillAndSubmit('test@example.com', 'password123')
       await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'))
     },
   )
@@ -91,7 +92,7 @@ describe('LoginForm', () => {
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(401, 'Unauthorized: 401'))
     renderLoginForm()
 
-    fillAndSubmit('test@example.com', 'password123')
+    await fillAndSubmit('test@example.com', 'password123')
 
     expect(await screen.findByText('이메일 또는 비밀번호가 올바르지 않습니다.')).toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
@@ -100,7 +101,7 @@ describe('LoginForm', () => {
   it('이메일 형식 오류 시 클라이언트 검증 메시지', async () => {
     renderLoginForm()
 
-    fillAndSubmit('not-an-email', 'password123')
+    await fillAndSubmit('not-an-email', 'password123')
 
     expect(await screen.findByText('올바른 이메일 형식을 입력해 주세요.')).toBeInTheDocument()
     expect(apiFetch).not.toHaveBeenCalled()
@@ -109,7 +110,7 @@ describe('LoginForm', () => {
   it('필수값 누락 시 검증 메시지', async () => {
     renderLoginForm()
 
-    fillAndSubmit('', '')
+    await fillAndSubmit('', '')
 
     const requiredMessages = await screen.findAllByText('필수 입력 항목입니다.')
     expect(requiredMessages).toHaveLength(2)
