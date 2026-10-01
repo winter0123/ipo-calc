@@ -1,2 +1,13 @@
-export { buildCalendarEvents } from './buildCalendarEvents.ts'
-export type { CalendarEvent } from './buildCalendarEvents.ts'
+export {
+  buildCalendarEvents,
+  eventCoversDate,
+  buildWeekSegments,
+  parseVisibleTypes,
+  toTypesParam,
+} from './buildCalendarEvents.ts'
+export type {
+  CalendarEvent,
+  CalendarEventType,
+  BarSegment,
+  VisibleTypes,
+} from './buildCalendarEvents.ts'
