@@ -82,9 +82,14 @@ export default function MainLayout() {
                 </div>
               </details>
               {currentAccount.role === 'ADMIN' && (
-                <NavLink to="/admin/accounts" className={linkClass}>
-                  가입 승인
-                </NavLink>
+                <>
+                  <NavLink to="/admin/accounts" className={linkClass}>
+                    가입 승인
+                  </NavLink>
+                  <NavLink to="/admin/ipos" className={linkClass}>
+                    공모주 등록
+                  </NavLink>
+                </>
               )}
               <button
                 type="button"

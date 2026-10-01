@@ -1,8 +1,16 @@
 import { z } from 'zod'
 import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { apiFetch } from '@/shared/api/client.ts'
 import { ipoSchema } from './types.ts'
-import type { Ipo } from './types.ts'
+import type { Ipo, IpoRegisterRequest } from './types.ts'
 
 export async function fetchIpos(signal?: AbortSignal): Promise<Ipo[]> {
   return apiGetParsed('/ipos', z.array(ipoSchema), signal)
+}
+
+export async function registerIpo(data: IpoRegisterRequest): Promise<Ipo> {
+  return apiFetch<Ipo>('/ipos', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 }
