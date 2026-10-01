@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryTable from './InvestmentHistoryTable.tsx'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
@@ -125,5 +126,14 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
     expect(screen.getByText('공모주명')).toBeInTheDocument()
     expect(screen.getByText('카카오뱅크')).toBeInTheDocument()
     expect(screen.getByText('IPO 고정가')).toBeInTheDocument()
+  })
+
+  it('제목과 닫기 버튼이 있고 닫기 버튼을 누르면 onClose가 호출됨', async () => {
+    const onClose = vi.fn()
+    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={onClose} />)
+
+    expect(screen.getByRole('heading', { name: '청약 상세' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '상세 정보 닫기' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
