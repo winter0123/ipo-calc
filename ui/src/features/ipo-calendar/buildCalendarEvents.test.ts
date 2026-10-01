@@ -414,9 +414,9 @@ describe('parseVisibleTypes', () => {
 })
 
 describe('toTypesParam', () => {
-  it('2종 모두 켜짐: 빈 문자열(쿼리에서 types 제거)', () => {
+  it('2종 모두 켜짐: null(쿼리에서 types 제거)', () => {
     const visible = new Set<CalendarEventType>(['SUBSCRIPTION', 'LISTING'])
-    expect(toTypesParam(visible)).toBe('')
+    expect(toTypesParam(visible)).toBeNull()
   })
 
   it('1종만 켜짐: 해당 값만', () => {
@@ -424,7 +424,7 @@ describe('toTypesParam', () => {
     expect(toTypesParam(visible)).toBe('LISTING')
   })
 
-  it('0종(모두 꺼짐): 빈 문자열', () => {
+  it('0종(모두 꺼짐): 빈 문자열(types=)이며 모두 켜짐(null)과 구분된다', () => {
     const visible = new Set<CalendarEventType>()
     expect(toTypesParam(visible)).toBe('')
   })

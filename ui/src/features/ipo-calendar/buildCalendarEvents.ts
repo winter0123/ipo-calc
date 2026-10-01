@@ -110,12 +110,13 @@ export function parseVisibleTypes(searchParams: URLSearchParams): VisibleTypes {
   return new Set(types as CalendarEventType[])
 }
 
-export function toTypesParam(visible: VisibleTypes): string {
+/**
+ * 켜진 일정 종류를 `types` 쿼리 값으로 바꾼다. 모두 켜짐이면 null(쿼리에서 지운다),
+ * 모두 꺼짐이면 빈 문자열(`types=`), 그 외에는 쉼표로 이은 값이다.
+ */
+export function toTypesParam(visible: VisibleTypes): string | null {
   if (visible.size === 2) {
-    return ''
-  }
-  if (visible.size === 0) {
-    return ''
+    return null
   }
   return Array.from(visible).join(',')
 }

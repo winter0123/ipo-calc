@@ -20,10 +20,10 @@ export default function IpoCalendarPage() {
     setSearchParams(
       (prev) => {
         const nextParams = new URLSearchParams(prev)
-        if (nextParam) {
-          nextParams.set('types', nextParam)
-        } else {
+        if (nextParam === null) {
           nextParams.delete('types')
+        } else {
+          nextParams.set('types', nextParam)
         }
         return nextParams
       },
