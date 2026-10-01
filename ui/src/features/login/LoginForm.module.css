@@ -1,58 +1,66 @@
-.form {
+/* 폼 공통 규칙: 라벨은 입력창 위, 필드 간격 24px, 제출 버튼은 왼쪽 정렬 */
+.form,
+.container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 400px;
-  margin: 0 auto;
+  gap: var(--space-5);
   width: 100%;
+  max-width: 520px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .field label {
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-.field input {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 16px;
-  background: var(--bg);
-  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
 }
 
 .error {
   color: var(--danger);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .formError {
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
   color: var(--danger);
-  font-size: 15px;
-  padding: 8px;
-  background: rgba(225, 29, 72, 0.05);
-  border-radius: 6px;
+  font-size: 14px;
 }
 
 .submitButton {
-  padding: 12px;
+  align-self: flex-start;
+  min-height: 44px;
+  min-width: 120px;
+  padding: 0 var(--space-5);
   background: var(--primary);
   color: var(--on-primary);
-  border: none;
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 15px;
   font-weight: 650;
   cursor: pointer;
-  font-size: 16px;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
+  transition: background-color 0.15s;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
 .submitButton:disabled {
-  opacity: 0.6;
+  background: var(--surface-soft);
+  color: var(--ink-muted);
+  border-color: var(--border);
   cursor: not-allowed;
+}
+
+.submitButton {
+  align-self: stretch;
 }

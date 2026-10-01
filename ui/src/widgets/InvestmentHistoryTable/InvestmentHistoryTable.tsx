@@ -40,13 +40,17 @@ export default function InvestmentHistoryTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th scope="col">구독 ID</th>
-            <th scope="col">구독일</th>
+            <th scope="col">청약 ID</th>
+            <th scope="col">청약일</th>
             <th scope="col">공모주명</th>
             <th scope="col">투자자</th>
-            <th scope="col">청약수량</th>
+            <th scope="col" className={styles.numeric}>
+              청약수량
+            </th>
             <th scope="col">상태</th>
-            <th scope="col">잔여수량</th>
+            <th scope="col" className={styles.numeric}>
+              잔여수량
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -66,7 +70,7 @@ export default function InvestmentHistoryTable({
           {isDetailLoading && <p>상세 정보를 불러오는 중...</p>}
           {detailError && (
             <p className={styles.error} role="alert" aria-live="polite">
-              해당 구독을 찾을 수 없습니다.
+              해당 청약을 찾을 수 없습니다.
             </p>
           )}
           {detail && <InvestmentHistoryDetail detail={detail} onClose={handleCloseDetail} />}

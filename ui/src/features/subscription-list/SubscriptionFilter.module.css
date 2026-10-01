@@ -1,11 +1,11 @@
 .group {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .button {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--border);
   border-radius: 999px;
   background-color: var(--surface);
@@ -27,6 +27,5 @@
   background-color: var(--primary);
   border-color: var(--link);
   color: var(--on-primary);
-  border-radius: 999px;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
+  border-radius: var(--radius-sm);
 }

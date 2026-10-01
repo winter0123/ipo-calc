@@ -1,6 +1,3 @@
 .page {
   --page-max: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }

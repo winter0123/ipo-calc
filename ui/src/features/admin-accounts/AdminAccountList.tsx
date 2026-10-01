@@ -26,10 +26,7 @@ export default function AdminAccountList() {
   })
 
   return (
-    <section className={styles.panel} aria-labelledby="admin-accounts-title">
-      <h2 id="admin-accounts-title" className={styles.title}>
-        가입 승인 관리
-      </h2>
+    <section className={styles.panel} aria-label="가입 승인 목록">
       <label className={styles.filter}>
         <input
           type="checkbox"

@@ -1,11 +1,11 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-4);
   background-color: var(--surface-soft);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   flex-wrap: wrap;
 }
 
@@ -32,7 +32,7 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -40,46 +40,25 @@
 .inputGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .label {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-muted);
   font-weight: 500;
 }
 
 .input {
   width: 100px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--ink);
-  text-align: center;
-}
 
-.input:focus {
-  outline: none;
-  border-color: var(--link);
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  text-align: center;
 }
 
 .select {
   width: 100px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--ink);
-  background-color: var(--surface);
-  cursor: pointer;
-}
 
-.select:focus {
-  outline: none;
-  border-color: var(--link);
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  cursor: pointer;
 }
 
 .inputError {
@@ -88,7 +67,6 @@
 
 .inputError:focus {
   border-color: var(--danger);
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
 .error {
@@ -101,12 +79,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background-color: var(--surface);
   color: var(--link);
   border: 1px solid var(--link);
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -125,7 +103,6 @@
 
 .navButton:focus:not(:disabled) {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3);
 }
 
 .navButton:disabled {
@@ -136,17 +113,16 @@
 }
 
 .button {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background-color: var(--primary);
   color: var(--on-primary);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 650;
   cursor: pointer;
   transition: background-color 0.2s;
   white-space: nowrap;
-  box-shadow: 0 6px 16px rgba(67, 155, 245, 0.35);
 }
 
 .button:hover {
@@ -155,19 +131,18 @@
 
 .button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3);
 }
 
 /* 모바일 */
 @media (max-width: 640px) {
   .container {
     width: 100%;
-    padding: 12px;
+    padding: var(--space-3);
   }
   .controls {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .inputGroup {
     width: 100%;

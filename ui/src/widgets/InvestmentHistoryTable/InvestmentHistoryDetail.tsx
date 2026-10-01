@@ -26,11 +26,11 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
 
       <dl className={styles.dl}>
         <div className={styles.dlRow}>
-          <dt>구독 ID</dt>
+          <dt>청약 ID</dt>
           <dd>{detail.id}</dd>
         </div>
         <div className={styles.dlRow}>
-          <dt>구독일</dt>
+          <dt>청약일</dt>
           <dd>{formattedDate}</dd>
         </div>
         <div className={styles.dlRow}>
