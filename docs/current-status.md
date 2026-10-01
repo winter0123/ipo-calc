@@ -4,7 +4,7 @@
 
 ## 프런트 구조 리팩토링 Epic 20 (2026-10-01) — 최신
 
-`ui/`를 동작 불변 원칙으로 정리했다. 브랜치 `winter0123/frontend-architecture-refactor`, PR 승인 후 병합 대기. 상세는 `docs/work-log/frontend-architecture-refactor.md`(D-E20-001~006).
+`ui/`를 동작 불변 원칙으로 정리했다. 브랜치 `winter0123/frontend-architecture-refactor`, PR #259로 병합 완료(`5813514`). 상세는 `docs/work-log/frontend-architecture-refactor.md`(D-E20-001~006).
 
 - **구조**: 슬라이스마다 `index.ts` 공개 API, 레이어 방향·슬라이스 격리·공개 API를 검사하는 `src/fsd-boundaries.test.ts`, `@/` alias. 대시보드 조회 모델은 `features/dashboard`로 이동, `MainLayout`·`App`은 `app/`으로 이동.
 - **쿼리·인증**: 쿼리 키 팩토리와 접두사 invalidation 확장, 401은 `QueryCache`·`MutationCache` `onError`에서 캐시를 비우고 `/login`으로 이동(복귀 경로 보존, 로그인 실패 401 제외). 뮤테이션 자동 재시도는 0 유지.
