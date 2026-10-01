@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import IpoCalendar from './IpoCalendar.tsx'
 import type { Ipo } from '@/entities/ipo/index.ts'
 
@@ -25,6 +26,9 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   }
 }
 
+const renderWithRouter = (ui: React.ReactElement) =>
+  render(<MemoryRouter initialEntries={['/']}>{ui}</MemoryRouter>)
+
 describe('IpoCalendar', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -37,7 +41,7 @@ describe('IpoCalendar', () => {
 
   it('데이터 있는 달에 이벤트 라벨이 텍스트로 보인다', async () => {
     const ipos = [makeIpo()]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     expect(screen.getByText('청약 시작')).toBeInTheDocument()
     expect(screen.getByText('청약 마감')).toBeInTheDocument()
@@ -58,7 +62,7 @@ describe('IpoCalendar', () => {
         listingDate: '2026-11-20T09:00:00Z',
       }),
     ]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
     expect(screen.getByText('청약 시작')).toBeInTheDocument()
@@ -83,7 +87,7 @@ describe('IpoCalendar', () => {
         subscriptionStartDate: '2026-09-15T09:00:00Z',
       }),
     ]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
 
@@ -95,7 +99,7 @@ describe('IpoCalendar', () => {
 
   it('오늘 버튼을 누르면 현재 월로 이동한다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={11} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={11} />)
 
     expect(screen.getByText('2026년 11월')).toBeInTheDocument()
 
@@ -108,7 +112,7 @@ describe('IpoCalendar', () => {
     const ipos = [
       makeIpo({ companyName: '테스트기업', subscriptionStartDate: '2026-10-05T09:00:00Z' }),
     ]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const dateButton = screen.getByRole('button', { name: /10월 5일/ })
     await userEvent.click(dateButton)
@@ -120,7 +124,7 @@ describe('IpoCalendar', () => {
 
   it('이벤트 없는 날 클릭 시 "일정 없음"이 표시된다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const dateButton = screen.getByRole('button', { name: /10월 10일/ })
     await userEvent.click(dateButton)
@@ -130,7 +134,7 @@ describe('IpoCalendar', () => {
 
   it('선택된 날짜는 aria-pressed로 표시된다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const dateButton = screen.getByRole('button', { name: /10월 5일/ })
     expect(dateButton).not.toHaveAttribute('aria-pressed', 'true')
@@ -142,7 +146,7 @@ describe('IpoCalendar', () => {
 
   it('오늘 날짜는 aria-current="date"로 표시된다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-10T09:00:00Z' })]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const todayButton = screen.getByRole('button', { name: /10월 10일/ })
     expect(todayButton).toHaveAttribute('aria-current', 'date')
@@ -150,7 +154,7 @@ describe('IpoCalendar', () => {
 
   it('월 제목은 aria-live="polite" 영역에 있다', async () => {
     const ipos = [makeIpo()]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const monthTitle = screen.getByText('2026년 10월')
     expect(monthTitle).toHaveAttribute('aria-live', 'polite')
@@ -163,7 +167,7 @@ describe('IpoCalendar', () => {
         subscriptionEndDate: '2026-10-05T17:00:00Z',
       }),
     ]
-    render(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     const dateButton = screen.getByRole('button', { name: /10월 5일/ })
     expect(dateButton).toHaveTextContent('청약 시작')
@@ -171,7 +175,7 @@ describe('IpoCalendar', () => {
   })
 
   it('월을 이동하면 선택한 날짜가 해제된다', async () => {
-    render(<IpoCalendar ipos={[makeIpo()]} initialYear={2026} initialMonth={10} />)
+    renderWithRouter(<IpoCalendar ipos={[makeIpo()]} initialYear={2026} initialMonth={10} />)
 
     await userEvent.click(screen.getByRole('button', { name: /^10월 1일/ }))
     expect(screen.getByRole('heading', { name: '2026-10-01 일정' })).toBeInTheDocument()
@@ -183,12 +187,25 @@ describe('IpoCalendar', () => {
   })
 
   it('12월에서 다음 달은 다음 해 1월, 1월에서 이전 달은 전년 12월이다', async () => {
-    render(<IpoCalendar ipos={[]} initialYear={2026} initialMonth={12} />)
+    renderWithRouter(<IpoCalendar ipos={[]} initialYear={2026} initialMonth={12} />)
 
     await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
     expect(screen.getByText('2027년 1월')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: '이전 달' }))
     expect(screen.getByText('2026년 12월')).toBeInTheDocument()
+  })
+
+  it('상세 패널의 각 항목이 올바른 상세 페이지 링크(href)를 가진다', async () => {
+    const ipos = [
+      makeIpo({ id: 7, companyName: '테스트기업', subscriptionStartDate: '2026-10-05T09:00:00Z' }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    const dateButton = screen.getByRole('button', { name: /10월 5일/ })
+    await userEvent.click(dateButton)
+
+    const link = screen.getByRole('link', { name: /테스트기업 테스트IPO 상세 보기/ })
+    expect(link).toHaveAttribute('href', '/ipos/7')
   })
 })

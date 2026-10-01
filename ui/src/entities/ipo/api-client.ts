@@ -8,6 +8,10 @@ export async function fetchIpos(signal?: AbortSignal): Promise<Ipo[]> {
   return apiGetParsed('/ipos', z.array(ipoSchema), signal)
 }
 
+export async function fetchIpo(id: number, signal?: AbortSignal): Promise<Ipo> {
+  return apiGetParsed(`/ipos/${id}`, ipoSchema, signal)
+}
+
 export async function registerIpo(data: IpoRegisterRequest): Promise<Ipo> {
   return apiFetch<Ipo>('/ipos', {
     method: 'POST',

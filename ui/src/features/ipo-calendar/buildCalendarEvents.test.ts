@@ -30,6 +30,7 @@ describe('buildCalendarEvents', () => {
 
     const types = events.map((e) => e.type).sort()
     expect(types).toEqual(['LISTING', 'SUBSCRIPTION_END', 'SUBSCRIPTION_START'])
+    events.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('시작일과 마감일이 같은 날이면 두 이벤트를 모두 생성한다', () => {
@@ -44,6 +45,7 @@ describe('buildCalendarEvents', () => {
     const dayEvents = events.filter((e) => e.date === '2026-10-05')
     expect(dayEvents).toHaveLength(2)
     expect(dayEvents.map((e) => e.type).sort()).toEqual(['SUBSCRIPTION_END', 'SUBSCRIPTION_START'])
+    dayEvents.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('listingDate가 null이면 상장 이벤트를 만들지 않는다', () => {
@@ -52,6 +54,7 @@ describe('buildCalendarEvents', () => {
 
     expect(events.find((e) => e.type === 'LISTING')).toBeUndefined()
     expect(events).toHaveLength(2)
+    events.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('표시할 월에 속하지 않는 날짜는 제외한다', () => {
@@ -67,6 +70,7 @@ describe('buildCalendarEvents', () => {
     expect(events).toHaveLength(1)
     expect(events[0].date).toBe('2026-10-01')
     expect(events[0].type).toBe('SUBSCRIPTION_END')
+    expect(events[0].ipoId).toBe(1)
   })
 
   it('2026-10-01이 10월 1일로 남는지 확인(시간대 밀림 없음)', () => {
@@ -74,6 +78,7 @@ describe('buildCalendarEvents', () => {
     const events = buildCalendarEvents(ipos, 2026, 10)
 
     expect(events[0].date).toBe('2026-10-01')
+    expect(events[0].ipoId).toBe(1)
   })
 
   it('월 경계(10/31, 11/1)를 정확히 처리한다', () => {
@@ -90,6 +95,8 @@ describe('buildCalendarEvents', () => {
 
     expect(octEvents.map((e) => e.date).sort()).toEqual(['2026-10-31', '2026-10-31'])
     expect(novEvents.map((e) => e.date)).toEqual(['2026-11-01'])
+    octEvents.forEach((e) => expect(e.ipoId).toBe(1))
+    novEvents.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('고정가가 있으면 고정가를, 없으면 밴드 가격을 표시한다', () => {
@@ -101,12 +108,15 @@ describe('buildCalendarEvents', () => {
 
     expect(eventsFixed[0].price).toBe('20,000원')
     expect(eventsBand[0].price).toBe('15,000~25,000원')
+    eventsFixed.forEach((e) => expect(e.ipoId).toBe(1))
+    eventsBand.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('가격 컬럼이 모두 null이면 가격을 표시하지 않는다(DB nullable)', () => {
     const ipos = [makeIpo({ fixedPrice: null, lowerBandPrice: null, upperBandPrice: null })]
 
     expect(buildCalendarEvents(ipos, 2026, 10)[0].price).toBeUndefined()
+    expect(buildCalendarEvents(ipos, 2026, 10)[0].ipoId).toBe(1)
   })
 
   it('이벤트가 날짜순으로 정렬된다', () => {
@@ -121,10 +131,27 @@ describe('buildCalendarEvents', () => {
     const events = buildCalendarEvents(ipos, 2026, 10)
 
     expect(events.map((e) => e.date)).toEqual(['2026-10-01', '2026-10-05', '2026-10-05'])
+    events.forEach((e) => expect(e.ipoId).toBe(1))
   })
 
   it('빈 배열을 받으면 빈 배열을 반환한다', () => {
     const events = buildCalendarEvents([], 2026, 10)
     expect(events).toEqual([])
+  })
+
+  it('여러 IPO가 있으면 각 이벤트에 올바른 ipoId가 들어간다', () => {
+    const ipos = [
+      makeIpo({ id: 1, subscriptionStartDate: '2026-10-01T09:00:00Z' }),
+      makeIpo({ id: 2, subscriptionStartDate: '2026-10-02T09:00:00Z' }),
+    ]
+    const events = buildCalendarEvents(ipos, 2026, 10)
+
+    expect(events).toHaveLength(6)
+    // id 1의 이벤트들 (시작, 마감, 상장)
+    const ipo1Events = events.filter((e) => e.ipoId === 1)
+    expect(ipo1Events).toHaveLength(3)
+    // id 2의 이벤트들 (시작, 마감, 상장)
+    const ipo2Events = events.filter((e) => e.ipoId === 2)
+    expect(ipo2Events).toHaveLength(3)
   })
 })
