@@ -1,8 +1,8 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 9. 30. 오전 6:59:37
+검사 일시: 2026. 10. 1. 오전 9:31:42
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:5199
+대상 URL: http://127.0.0.1:49578
 
 ## 요약
 
@@ -15,23 +15,23 @@
 
 ### login (/login)
 
-✅ **위반 0건** (passes: 31, incomplete: 1, inapplicable: 58)
+✅ **위반 0건** (passes: 31, incomplete: 0, inapplicable: 58)
 
 ### signup (/signup)
 
-✅ **위반 0건** (passes: 31, incomplete: 1, inapplicable: 58)
+✅ **위반 0건** (passes: 31, incomplete: 0, inapplicable: 58)
 
 ### investor-register (/investors/register)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### securities-account-register (/securities-accounts/register/1)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### subscription-register (/subscriptions/register)
 
-✅ **위반 0건** (passes: 20, incomplete: 0, inapplicable: 69)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### subscription-list (/subscriptions)
 
@@ -43,15 +43,15 @@
 
 ### sale-register (/sales/register)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### cost-register (/costs/register)
 
-✅ **위반 0건** (passes: 32, incomplete: 1, inapplicable: 57)
+✅ **위반 0건** (passes: 32, incomplete: 0, inapplicable: 57)
 
 ### profit-view (/profits/view)
 
-✅ **위반 0건** (passes: 35, incomplete: 1, inapplicable: 54)
+✅ **위반 0건** (passes: 35, incomplete: 0, inapplicable: 54)
 
 ### investments (/investments)
 

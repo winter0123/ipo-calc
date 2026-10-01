@@ -74,7 +74,7 @@ async function waitFor(predicate, timeout = 15000) {
 }
 
 async function errorTexts(page) {
-  const locator = page.locator('[aria-live="polite"]')
+  const locator = page.locator('[aria-live="polite"], [role="alert"]')
   const count = await withTimeout(locator.count(), 10000, 'errorTexts count 타임아웃')
   const texts = []
   for (let i = 0; i < count; i += 1) {
