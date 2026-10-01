@@ -27,7 +27,7 @@
 | 0 | 안전망: 패키지 순환 금지·저장소/엔티티의 controller 비의존을 `PackageStructureTest`로 고정 | 완료 |
 | 1 | 에러 응답 공통화(`ErrorResponses`): 핸들러 13개 파일에서 `JSON_UTF8` 상수 14곳과 `response()` 헬퍼·인라인 빌더를 `ErrorResponses.of`/`validationFailed`로 교체(순삭제 약 134줄), 응답 상태·Content-Type·에러 코드·메시지 불변. 남긴 것: 필드 오류가 없는 `Retry-After` 헤더 응답 1건 | 완료 |
 | 2 | 소유권 검증 중앙화: `OwnershipErrors`(도메인 예외 팩토리)·`OwnershipGuard` 오버로드, `SubscriptionOwnership`·`AllocationOwnership`(청약·배정 경로를 푸는 코드를 한 곳에). Cost·Sale·Allocation·Subscription 서비스의 `findOwnedX`·`requireOwnedAllocation`·`validate*Ownership`를 이것으로 교체(서비스 4개 순삭제 약 35줄, 이전 구현과 같은 조회 방식(`findById` vs 삭제 제외)·예외 클래스·메시지 유지). 패키지 순환이 생기지 않도록 청약·배정 각 패키지 아래에 둠. 두 클래스의 단위 테스트 10건 추가 | 완료 |
-| 3 | 증권사 연동 정리: `ApiCredentialAssembler`(응답 조립·연결 상태·만료일 계산)와 `MatchCandidateAssembler`(청약·배정·매도·공모주를 모아 매칭 후보 생성)를 분리. `ApiCredentialService` 357→약 270줄, `BrokerSyncService` 281→약 190줄, 서비스의 `securitiesAccountId` null 검사 4곳을 `requireId`로 통합. 응답·예외·로그·트랜잭션 불변 | 완료 |
+| 3 | 증권사 연동 정리: `ApiCredentialAssembler`(응답 조립·연결 상태·만료일 계산)와 `MatchCandidateAssembler`(청약·배정·매도·공모주를 모아 매칭 후보 생성)를 분리. `ApiCredentialService` 357→279줄, `BrokerSyncService` 281→202줄, 서비스의 `securitiesAccountId` null 검사 4곳을 `requireId`로 통합. 응답·예외·로그·트랜잭션 불변 | 완료 |
 | 5 | 컨트롤러 테스트 공통 도우미: 11개 파일의 `signupAndLogin` 복붙을 `AuthTestSupport`(`signup`/`login`/`signupAndLogin`)로 통합(순삭제 약 240줄). 관리자 승격·계정 ID 조회처럼 가입과 로그인 사이에 끼는 동작은 순서 그대로 | 완료(#299) |
 | 4·6 | 큰 서비스 재평가, 설정 일원화(선택) | 필요 시 |
 
