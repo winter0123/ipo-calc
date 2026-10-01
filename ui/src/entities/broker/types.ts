@@ -59,6 +59,11 @@ export interface BrokerCredentialReplaceRequest {
   keyIssuedOn?: string
 }
 
+export interface SyncRange {
+  from: string
+  to: string
+}
+
 export interface SyncConfirmSale {
   allocationId: number
   quantity: number

@@ -13,5 +13,6 @@ export type {
   SyncConfirmSale,
   SyncPreview,
   SyncPreviewItem,
+  SyncRange,
   UnmatchedReason,
 } from './types.ts'

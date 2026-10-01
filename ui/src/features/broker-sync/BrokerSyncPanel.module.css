@@ -70,3 +70,17 @@
   width: 24px;
   height: 24px;
 }
+
+.range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.range input {
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
