@@ -1,9 +1,8 @@
 package com.vibeaiteam.profitcalculation.controller.profit.exception;
 
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
-import java.nio.charset.StandardCharsets;
+import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponses;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -15,15 +14,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ProfitExceptionHandler {
 
-  private static final MediaType JSON_UTF8 =
-      new MediaType("application", "json", StandardCharsets.UTF_8);
-
   /**
    * ProfitNotFoundException을 HTTP 404 응답으로 변환한다.
    */
   @ExceptionHandler(ProfitNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(ProfitNotFoundException ex) {
-    return response(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
   /**
@@ -31,12 +27,11 @@ public class ProfitExceptionHandler {
    */
   @ExceptionHandler(ProfitForbiddenException.class)
   public ResponseEntity<ErrorResponse> handleForbidden(ProfitForbiddenException ex) {
-    return response(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
   private ResponseEntity<ErrorResponse> response(
       HttpStatus status, String errorCode, String message) {
-    ErrorResponse response = ErrorResponse.builder().error(errorCode).message(message).build();
-    return ResponseEntity.status(status).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(status, errorCode, message);
   }
 }

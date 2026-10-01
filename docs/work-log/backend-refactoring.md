@@ -25,7 +25,7 @@
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 0 | 안전망: 패키지 순환 금지·저장소/엔티티의 controller 비의존을 `PackageStructureTest`로 고정 | 완료 |
-| 1 | 에러 응답 공통화(`ErrorResponses`) | 예정 |
+| 1 | 에러 응답 공통화(`ErrorResponses`): 핸들러 13개 파일에서 `JSON_UTF8` 상수 14곳과 `response()` 헬퍼·인라인 빌더를 `ErrorResponses.of`/`validationFailed`로 교체(순삭제 약 134줄), 응답 상태·Content-Type·에러 코드·메시지 불변. 남긴 것: 필드 오류가 없는 `Retry-After` 헤더 응답 1건 | 완료 |
 | 2 | 소유권 검증 중앙화(경로 해석 한 곳, 표 기반 격리 테스트 선행) | 예정 |
 | 3 | 증권사 연동 정리(`ApiCredentialService` 분해, `MatchCandidateAssembler`, DTO를 service 쪽으로) | 예정 |
 | 5 | 컨트롤러 테스트 공통 도우미 | 예정 |

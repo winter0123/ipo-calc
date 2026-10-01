@@ -1,9 +1,8 @@
 package com.vibeaiteam.brokerintegration.exception;
 
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
-import java.nio.charset.StandardCharsets;
+import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponses;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,18 +13,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiCredentialExceptionHandler {
 
-  private static final MediaType JSON_UTF8 =
-      new MediaType("application", "json", StandardCharsets.UTF_8);
-
   /**
    * ApiCredentialValidationException을 HTTP 400 응답으로 변환한다.
    */
   @ExceptionHandler(ApiCredentialValidationException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialValidation(
       ApiCredentialValidationException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("VALIDATION_ERROR").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
   }
 
   /**
@@ -34,9 +28,7 @@ public class ApiCredentialExceptionHandler {
   @ExceptionHandler(ApiCredentialNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialNotFound(
       ApiCredentialNotFoundException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("NOT_FOUND").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
   /**
@@ -45,9 +37,7 @@ public class ApiCredentialExceptionHandler {
   @ExceptionHandler(ApiCredentialForbiddenException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialForbidden(
       ApiCredentialForbiddenException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("FORBIDDEN").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
   /**
@@ -56,9 +46,7 @@ public class ApiCredentialExceptionHandler {
   @ExceptionHandler(ApiCredentialConflictException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialConflict(
       ApiCredentialConflictException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder().error("CONFLICT").message(ex.getMessage()).build();
-    return ResponseEntity.status(HttpStatus.CONFLICT).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage());
   }
 
   /**
@@ -67,14 +55,8 @@ public class ApiCredentialExceptionHandler {
   @ExceptionHandler(BrokerConnectionUnavailableException.class)
   public ResponseEntity<ErrorResponse> handleBrokerConnectionUnavailable(
       BrokerConnectionUnavailableException ex) {
-    ErrorResponse response =
-        ErrorResponse.builder()
-            .error("BROKER_CONNECTION_UNAVAILABLE")
-            .message(ex.getMessage())
-            .build();
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-        .contentType(JSON_UTF8)
-        .body(response);
+    return ErrorResponses.of(
+        HttpStatus.SERVICE_UNAVAILABLE, "BROKER_CONNECTION_UNAVAILABLE", ex.getMessage());
   }
 
   /**
@@ -86,7 +68,7 @@ public class ApiCredentialExceptionHandler {
         ErrorResponse.builder().error("RATE_LIMITED").message(ex.getMessage()).build();
     return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
         .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
-        .contentType(JSON_UTF8)
+        .contentType(ErrorResponses.JSON_UTF8)
         .body(response);
   }
 
@@ -109,7 +91,6 @@ public class ApiCredentialExceptionHandler {
       error = "BROKER_RATE_LIMITED";
       message = "증권사 요청 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요.";
     }
-    ErrorResponse response = ErrorResponse.builder().error(error).message(message).build();
-    return ResponseEntity.status(status).contentType(JSON_UTF8).body(response);
+    return ErrorResponses.of(status, error, message);
   }
 }
