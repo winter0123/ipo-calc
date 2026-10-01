@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import LoginForm from './LoginForm.tsx'
@@ -94,5 +95,45 @@ describe('LoginForm', () => {
     const requiredMessages = await screen.findAllByText('필수 입력 항목입니다.')
     expect(requiredMessages).toHaveLength(2)
     expect(apiFetch).not.toHaveBeenCalled()
+  })
+
+  it('서버 오류는 필드의 aria-invalid로 표시하지 않고 폼 수준 role=alert로 알린다', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(401, 'Unauthorized: 401'))
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('이메일'), 'test@example.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'password123')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '이메일 또는 비밀번호가 올바르지 않습니다.',
+    )
+    expect(screen.getByLabelText('이메일')).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByLabelText('이메일')).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('필드 검증 오류가 있을 때만 aria-invalid와 aria-describedby가 연결된다', async () => {
+    const user = userEvent.setup()
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('이메일'), 'not-an-email')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    const email = screen.getByLabelText('이메일')
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+    expect(email).toHaveAccessibleDescription('올바른 이메일 형식을 입력해 주세요.')
+  })
+
+  it('401이 아닌 오류는 네트워크 안내 문구를 보여준다', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'Server Error'))
+    renderLoginForm()
+
+    await user.type(screen.getByLabelText('이메일'), 'test@example.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'password123')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('네트워크 연결을 확인해 주세요.')
   })
 })

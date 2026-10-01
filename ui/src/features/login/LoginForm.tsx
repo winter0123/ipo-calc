@@ -2,7 +2,8 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useLogin } from './useLogin.ts'
 import { isValidEmail, isMinLength } from '../../shared/lib/validators.ts'
-import type { LoginRequest } from '../../entities/auth/types.ts'
+import type { LoginRequest } from './types.ts'
+import { NETWORK_ERROR_MESSAGE, toErrorMessage } from '../../shared/api/apiError.ts'
 import styles from './LoginForm.module.css'
 
 export default function LoginForm() {
@@ -34,8 +35,8 @@ export default function LoginForm() {
         <input
           id="email"
           type="email"
-          aria-invalid={!!errors.email || !!error}
-          aria-describedby="email-error"
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           {...register('email', {
             required: '필수 입력 항목입니다.',
             validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
@@ -52,8 +53,8 @@ export default function LoginForm() {
         <input
           id="password"
           type="password"
-          aria-invalid={!!errors.password || !!error}
-          aria-describedby="password-error"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
           {...register('password', {
             required: '필수 입력 항목입니다.',
             validate: (v) => isMinLength(v, 8) || '비밀번호는 최소 8자 이상이어야 합니다.',
@@ -66,10 +67,11 @@ export default function LoginForm() {
         )}
       </div>
       {error && (
-        <div className={styles.formError} aria-live="polite">
-          {error instanceof Error && error.message?.includes('Unauthorized')
-            ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-            : '네트워크 연결을 확인해 주세요.'}
+        <div className={styles.formError} role="alert">
+          {toErrorMessage(error, {
+            byStatus: { 401: '이메일 또는 비밀번호가 올바르지 않습니다.' },
+            fallback: NETWORK_ERROR_MESSAGE,
+          })}
         </div>
       )}
       <button type="submit" disabled={isPending} className={styles.submitButton}>

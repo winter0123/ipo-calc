@@ -48,8 +48,8 @@ export default function SignupForm() {
         <input
           id="email"
           type="email"
-          aria-invalid={!!errors.email || !!error}
-          aria-describedby="email-error"
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           {...register('email', {
             required: '필수 입력 항목입니다.',
             validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
@@ -67,8 +67,8 @@ export default function SignupForm() {
         <input
           id="password"
           type="password"
-          aria-invalid={!!errors.password || !!error}
-          aria-describedby="password-error"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
           {...register('password', {
             required: '필수 입력 항목입니다.',
             validate: (v) =>
@@ -88,8 +88,8 @@ export default function SignupForm() {
         <input
           id="name"
           type="text"
-          aria-invalid={!!errors.name || !!error}
-          aria-describedby="name-error"
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? 'name-error' : undefined}
           {...register('name', {
             required: '필수 입력 항목입니다.',
             validate: (v) =>
@@ -104,7 +104,7 @@ export default function SignupForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

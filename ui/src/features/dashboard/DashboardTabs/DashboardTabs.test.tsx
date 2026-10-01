@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import type { DashboardTab } from '../useDashboardTabs.ts'
+import type { DashboardTab } from '../tabs.ts'
 import DashboardTabs from './DashboardTabs.tsx'
 
 const mockOnTabChange = vi.fn()

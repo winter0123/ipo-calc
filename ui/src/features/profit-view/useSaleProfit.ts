@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getSaleProfit } from '../../entities/profit/api-client.ts'
-import type { SaleProfit } from '../../entities/profit/types.ts'
+import { getSaleProfit, profitKeys, type SaleProfit } from '../../entities/profit/index.ts'
 
 interface UseSaleProfitOptions {
   saleId: number | undefined
@@ -9,8 +8,8 @@ interface UseSaleProfitOptions {
 
 export function useSaleProfit({ saleId, enabled }: UseSaleProfitOptions) {
   return useQuery<SaleProfit, Error>({
-    queryKey: ['saleProfit', saleId],
-    queryFn: () => getSaleProfit(saleId!),
+    queryKey: profitKeys.sale(saleId),
+    queryFn: ({ signal }) => getSaleProfit(saleId!, signal),
     enabled: enabled && saleId !== undefined && saleId !== null,
   })
 }

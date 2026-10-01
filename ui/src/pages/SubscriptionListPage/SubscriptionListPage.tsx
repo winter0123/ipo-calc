@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import SubscriptionFilter, {
+import {
+  SubscriptionFilter,
   type SubscriptionFilterValue,
-} from '../../features/subscription-list/SubscriptionFilter.tsx'
-import SubscriptionList from '../../features/subscription-list/SubscriptionList/SubscriptionList.tsx'
-import { useInvestmentHistory } from '../../features/subscription-list/useInvestmentHistory.ts'
+  SubscriptionList,
+} from '../../features/subscription-list/index.ts'
+import { useInvestmentHistory } from '../../entities/subscription/index.ts'
 import styles from './SubscriptionListPage.module.css'
 import { toErrorMessage } from '../../shared/api/apiError.ts'
 

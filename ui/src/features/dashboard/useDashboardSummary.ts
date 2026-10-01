@@ -1,17 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { getDashboardSummary } from '../../entities/dashboard/api-client.ts'
-import type { DashboardSummary } from '../../entities/dashboard/types.ts'
+import { getDashboardSummary } from './api-client.ts'
+import { dashboardKeys } from '../../entities/dashboard/index.ts'
+import type { DashboardSummary } from './types.ts'
 
-interface UseDashboardSummaryOptions {
-  enabled?: boolean
-}
-
-export function useDashboardSummary(options?: UseDashboardSummaryOptions) {
+export function useDashboardSummary({ enabled }: { enabled?: boolean } = {}) {
   return useQuery<DashboardSummary, Error>({
-    queryKey: ['dashboardSummary'],
-    queryFn: getDashboardSummary,
-    enabled: options?.enabled ?? true,
-    staleTime: 0,
-    select: (data) => data,
+    queryKey: dashboardKeys.summary(),
+    queryFn: ({ signal }) => getDashboardSummary(signal),
+    enabled,
   })
 }

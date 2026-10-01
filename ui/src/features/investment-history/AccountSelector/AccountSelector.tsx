@@ -1,7 +1,8 @@
-import { useInvestorList } from '../useInvestorList.ts'
-import { useSecuritiesAccountList } from '../useSecuritiesAccountList.ts'
-import type { InvestorResponse } from '../../../entities/investor/types.ts'
-import type { SecuritiesAccount } from '../../../entities/securities-account/types.ts'
+import { useInvestors, type InvestorResponse } from '../../../entities/investor/index.ts'
+import {
+  useSecuritiesAccounts,
+  type SecuritiesAccount,
+} from '../../../entities/securities-account/index.ts'
 import styles from './AccountSelector.module.css'
 
 export interface AccountSelectorProps {
@@ -17,8 +18,8 @@ export default function AccountSelector({
   onInvestorChange,
   onSecuritiesAccountChange,
 }: AccountSelectorProps) {
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestorList()
-  const { data: securitiesAccounts, isLoading: accountsLoading } = useSecuritiesAccountList(
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
+  const { data: securitiesAccounts, isLoading: accountsLoading } = useSecuritiesAccounts(
     investorId ? Number(investorId) : undefined,
   )
 

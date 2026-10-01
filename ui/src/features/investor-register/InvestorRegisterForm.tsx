@@ -44,8 +44,8 @@ export default function InvestorRegisterForm() {
         <input
           id="displayName"
           type="text"
-          aria-invalid={!!errors.displayName || !!error}
-          aria-describedby="displayName-error"
+          aria-invalid={!!errors.displayName}
+          aria-describedby={errors.displayName ? 'displayName-error' : undefined}
           {...register('displayName', {
             required: '표시 이름은 필수입니다.',
             validate: (v) => isValidDisplayName(v) || '표시 이름은 50자 이하여야 합니다.',
@@ -62,8 +62,8 @@ export default function InvestorRegisterForm() {
         <label htmlFor="relationship">관계</label>
         <select
           id="relationship"
-          aria-invalid={!!errors.relationship || !!error}
-          aria-describedby="relationship-error"
+          aria-invalid={!!errors.relationship}
+          aria-describedby={errors.relationship ? 'relationship-error' : undefined}
           {...register('relationship', {
             validate: (v) =>
               !v ||
@@ -86,7 +86,7 @@ export default function InvestorRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

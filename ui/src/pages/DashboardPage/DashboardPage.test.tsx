@@ -180,7 +180,6 @@ describe('DashboardPage', () => {
       currentTab: 'all',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
   })
 
@@ -221,7 +220,19 @@ describe('DashboardPage', () => {
   })
 
   it('빈 결과 시 EmptyState가 표시됨', async () => {
-    vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useDashboardSummary).mockReturnValue(
+      asResult({
+        data: {
+          totalInvestmentAmount: 0,
+          totalPreTaxProfit: 0,
+          totalAfterTaxProfit: 0,
+          totalProfitRate: 0,
+          participationCount: 0,
+        },
+        isLoading: false,
+        error: null,
+      }),
+    )
     vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultEmptyQuery))
@@ -245,7 +256,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -269,7 +279,6 @@ describe('DashboardPage', () => {
       currentTab: 'year',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -313,7 +322,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()
@@ -347,7 +355,6 @@ describe('DashboardPage', () => {
       currentTab: 'month',
       setCurrentTab: vi.fn(),
       invalidateCurrentTab: vi.fn(),
-      getTabQueryConfig: vi.fn(),
     })
 
     renderPage()

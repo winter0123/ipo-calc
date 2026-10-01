@@ -8,8 +8,9 @@ export async function registerInvestor(data: InvestorRegisterRequest): Promise<I
   })
 }
 
-export async function fetchInvestors(): Promise<InvestorResponse[]> {
+export async function fetchInvestors(signal?: AbortSignal): Promise<InvestorResponse[]> {
   return apiFetch<InvestorResponse[]>('/investors', {
     method: 'GET',
+    signal,
   })
 }

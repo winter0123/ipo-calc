@@ -1,4 +1,4 @@
-import type { Ipo } from '../../entities/ipo/types.ts'
+import { type Ipo } from '../../entities/ipo/index.ts'
 
 export type CalendarEventType = 'SUBSCRIPTION_START' | 'SUBSCRIPTION_END' | 'LISTING'
 

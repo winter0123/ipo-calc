@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import FilterBar, {
+import {
+  FilterBar,
   type InvestmentHistoryFilters as FilterInvestmentHistoryFilters,
-} from '../../features/investment-history/FilterBar/FilterBar.tsx'
-import { useInvestmentHistory } from '../../features/investment-history/useInvestmentHistory.ts'
-import { useInvestorList } from '../../features/investment-history/useInvestorList.ts'
-import type { InvestmentHistoryFilters } from '../../entities/subscription/types.ts'
-import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
-import InvestmentHistoryTable from '../../widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx'
+} from '../../features/investment-history/index.ts'
+import {
+  useInvestmentHistory,
+  investmentHistoryKeys,
+  type InvestmentHistoryFilters,
+} from '../../entities/subscription/index.ts'
+import { useInvestors } from '../../entities/investor/index.ts'
+import { EmptyState } from '../../widgets/EmptyState/index.ts'
+import { InvestmentHistoryTable } from '../../widgets/InvestmentHistoryTable/index.ts'
 import styles from './InvestmentHistoryPage.module.css'
 import { toErrorMessage } from '../../shared/api/apiError.ts'
 
@@ -31,7 +35,7 @@ export default function InvestmentHistoryPage() {
   })
   const apiFilters = filtersToApiParams(filters)
 
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestorList()
+  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
   const { data, isLoading, error } = useInvestmentHistory(apiFilters)
 
   const getErrorMessage = () =>
@@ -50,7 +54,7 @@ export default function InvestmentHistoryPage() {
       securitiesAccountId: '',
       ipoId: '',
     })
-    queryClient.invalidateQueries({ queryKey: ['investmentHistory'] })
+    queryClient.invalidateQueries({ queryKey: investmentHistoryKeys.all })
   }
 
   const items = data?.content ?? []

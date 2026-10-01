@@ -1,5 +1,5 @@
 import styles from './SaleRegisterPage.module.css'
-import SaleRegisterForm from '../../features/sale-register/SaleRegisterForm/SaleRegisterForm.tsx'
+import { SaleRegisterForm } from '../../features/sale-register/index.ts'
 
 export default function SaleRegisterPage() {
   return (

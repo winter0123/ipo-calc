@@ -1,4 +1,4 @@
-import type { InvestmentHistoryItem } from '../../../entities/subscription/types.ts'
+import { type InvestmentHistoryItem } from '../../../entities/subscription/index.ts'
 import type { SubscriptionFilterValue } from '../SubscriptionFilter.tsx'
 import SubscriptionCard from './SubscriptionCard.tsx'
 import styles from './SubscriptionList.module.css'

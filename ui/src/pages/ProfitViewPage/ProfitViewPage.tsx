@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchInvestors } from '../../entities/investor/api-client.ts'
-import ProfitQueryToggle from '../../features/profit-view/ProfitQueryToggle.tsx'
-import { useSaleProfit } from '../../features/profit-view/useSaleProfit.ts'
-import { useInvestorProfits } from '../../features/profit-view/useInvestorProfits.ts'
-import ProfitTable from '../../features/profit-view/ProfitTable/ProfitTable.tsx'
+import { useInvestors } from '../../entities/investor/index.ts'
+import {
+  ProfitQueryToggle,
+  useSaleProfit,
+  useInvestorProfits,
+  ProfitTable,
+} from '../../features/profit-view/index.ts'
 import styles from './ProfitViewPage.module.css'
 import { toErrorMessage } from '../../shared/api/apiError.ts'
 
@@ -15,10 +16,7 @@ export default function ProfitViewPage() {
   const [saleId, setSaleId] = useState<string>('')
   const [investorId, setInvestorId] = useState<string>('')
 
-  const { data: investors, isLoading: investorsLoading } = useQuery({
-    queryKey: ['investors'],
-    queryFn: fetchInvestors,
-  })
+  const { data: investors, isLoading: investorsLoading } = useInvestors()
 
   const saleProfitQuery = useSaleProfit({
     saleId: saleId ? Number(saleId) : undefined,
@@ -75,7 +73,6 @@ export default function ProfitViewPage() {
               placeholder="매도건 ID를 입력하세요"
               min="1"
               disabled={activeQuery.isLoading}
-              aria-describedby="saleId-error"
             />
             <button
               type="button"
@@ -102,7 +99,6 @@ export default function ProfitViewPage() {
                 value={investorId}
                 onChange={handleInvestorIdChange}
                 disabled={activeQuery.isLoading}
-                aria-describedby="investorId-error"
               >
                 <option value="">투자자 선택</option>
                 {investors?.map((investor) => (

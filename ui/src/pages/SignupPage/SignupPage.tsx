@@ -1,4 +1,4 @@
-import SignupForm from '../../features/signup/SignupForm.tsx'
+import { SignupForm } from '../../features/signup/index.ts'
 import styles from './SignupPage.module.css'
 
 export default function SignupPage() {

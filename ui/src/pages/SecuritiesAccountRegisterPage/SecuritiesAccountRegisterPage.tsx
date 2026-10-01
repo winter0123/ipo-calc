@@ -1,4 +1,4 @@
-import SecuritiesAccountRegisterForm from '../../features/securities-account-register/SecuritiesAccountRegisterForm.tsx'
+import { SecuritiesAccountRegisterForm } from '../../features/securities-account-register/index.ts'
 import styles from './SecuritiesAccountRegisterPage.module.css'
 
 export default function SecuritiesAccountRegisterPage() {

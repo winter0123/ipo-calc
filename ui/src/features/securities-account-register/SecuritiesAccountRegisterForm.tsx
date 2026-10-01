@@ -79,8 +79,8 @@ export default function SecuritiesAccountRegisterForm() {
         <label htmlFor="securitiesFirmId">증권사</label>
         <select
           id="securitiesFirmId"
-          aria-invalid={!!errors.securitiesFirmId || !!error}
-          aria-describedby="securitiesFirmId-error"
+          aria-invalid={!!errors.securitiesFirmId}
+          aria-describedby={errors.securitiesFirmId ? 'securitiesFirmId-error' : undefined}
           {...register('securitiesFirmId', {
             required: '증권사를 선택해 주세요.',
             valueAsNumber: true,
@@ -107,8 +107,8 @@ export default function SecuritiesAccountRegisterForm() {
           id="accountNumber"
           type="text"
           placeholder="0000-0000-0000-0000"
-          aria-invalid={!!errors.accountNumber || !!error}
-          aria-describedby="accountNumber-error"
+          aria-invalid={!!errors.accountNumber}
+          aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
           {...register('accountNumber', {
             required: '계좌번호를 입력해 주세요.',
             validate: (v) => {
@@ -139,7 +139,7 @@ export default function SecuritiesAccountRegisterForm() {
           type="text"
           placeholder="예: 주력 계좌"
           aria-invalid={!!errors.accountName}
-          aria-describedby="accountName-error"
+          aria-describedby={errors.accountName ? 'accountName-error' : undefined}
           {...register('accountName')}
           disabled={isPending}
         />
@@ -155,7 +155,7 @@ export default function SecuritiesAccountRegisterForm() {
           <input
             type="checkbox"
             aria-invalid={!!errors.isDefault}
-            aria-describedby="isDefault-error"
+            aria-describedby={errors.isDefault ? 'isDefault-error' : undefined}
             {...register('isDefault')}
             disabled={isPending}
           />
@@ -169,7 +169,7 @@ export default function SecuritiesAccountRegisterForm() {
       </div>
 
       {formErrorMessage && (
-        <div className={styles.formError} aria-live="polite">
+        <div className={styles.formError} role="alert">
           {formErrorMessage}
         </div>
       )}

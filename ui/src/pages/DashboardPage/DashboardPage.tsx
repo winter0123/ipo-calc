@@ -1,16 +1,38 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useDashboardTabs } from '../../features/dashboard/useDashboardTabs.ts'
-import { useDashboardSummary } from '../../features/dashboard/useDashboardSummary.ts'
-import { useDashboardByInvestor } from '../../features/dashboard/useDashboardByInvestor.ts'
-import { useDashboardBySecuritiesFirm } from '../../features/dashboard/useDashboardBySecuritiesFirm.ts'
-import { useDashboardByPeriod } from '../../features/dashboard/useDashboardByPeriod.ts'
-import EmptyState from '../../widgets/EmptyState/EmptyState.tsx'
-import DashboardTabs from '../../features/dashboard/DashboardTabs/DashboardTabs.tsx'
-import DashboardCardGroup from '../../widgets/DashboardCardGroup/DashboardCardGroup.tsx'
-import PeriodSelector from '../../features/dashboard/PeriodSelector/PeriodSelector.tsx'
+import {
+  DashboardTabs,
+  PeriodSelector,
+  useDashboardTabs,
+  useDashboardSummary,
+  useDashboardByInvestor,
+  useDashboardBySecuritiesFirm,
+  useDashboardByPeriod,
+} from '../../features/dashboard/index.ts'
+import type { DashboardTab } from '../../features/dashboard/index.ts'
+import { EmptyState } from '../../widgets/EmptyState/index.ts'
+import { DashboardCardGroup } from '../../widgets/DashboardCardGroup/index.ts'
 import styles from './DashboardPage.module.css'
 import { toErrorMessage } from '../../shared/api/apiError.ts'
+
+interface AmountListItem {
+  key: string
+  label: string
+  amount: number
+}
+
+function AmountList({ items }: { items: AmountListItem[] }) {
+  return (
+    <ul className={styles.list}>
+      {items.map((item) => (
+        <li key={item.key}>
+          {item.label}: {item.amount.toLocaleString()}원
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export default function DashboardPage() {
   const { currentTab, setCurrentTab, invalidateCurrentTab } = useDashboardTabs()
@@ -30,22 +52,7 @@ export default function DashboardPage() {
     enabled: currentTab === 'month' || currentTab === 'year',
   })
 
-  const currentQuery = (() => {
-    switch (currentTab) {
-      case 'all':
-        return summaryQuery
-      case 'investor':
-        return investorQuery
-      case 'securities-firm':
-        return securitiesFirmQuery
-      case 'month':
-        return periodQuery
-      case 'year':
-        return periodQuery
-    }
-  })()
-
-  const handleTabChange = (tab: typeof currentTab) => {
+  const handleTabChange = (tab: DashboardTab) => {
     setCurrentTab(tab)
   }
 
@@ -67,18 +74,81 @@ export default function DashboardPage() {
     invalidateCurrentTab(queryClient)
   }
 
-  const isEmpty = (() => {
-    const data = currentQuery.data
-    if (!data) return false
-    if (Array.isArray(data)) return data.length === 0
-    const summary = data as { totalInvestmentAmount: number; participationCount: number }
-    return summary.totalInvestmentAmount === 0 && summary.participationCount === 0
-  })()
-
-  const getErrorMessage = () =>
-    toErrorMessage(currentQuery.error, { fallback: '대시보드 데이터를 불러오는 데 실패했습니다.' })
-
   const hasPeriodSelector = currentTab === 'month' || currentTab === 'year'
+
+  const renderTabData = () => {
+    switch (currentTab) {
+      case 'all': {
+        const summary = summaryQuery.data
+        if (!summary) return null
+        if (summary.totalInvestmentAmount === 0 && summary.participationCount === 0) {
+          return <EmptyState onResetFilters={handleReset} />
+        }
+        return (
+          <div className={styles.dataArea}>
+            <DashboardCardGroup summary={summary} />
+          </div>
+        )
+      }
+      case 'investor': {
+        const data = investorQuery.data
+        if (!data) return null
+        if (data.length === 0) return <EmptyState onResetFilters={handleReset} />
+        return (
+          <div className={styles.dataArea}>
+            <AmountList
+              items={data.map((item) => ({
+                key: item.investorName,
+                label: item.investorName,
+                amount: item.totalInvestmentAmount,
+              }))}
+            />
+          </div>
+        )
+      }
+      case 'securities-firm': {
+        const data = securitiesFirmQuery.data
+        if (!data) return null
+        if (data.length === 0) return <EmptyState onResetFilters={handleReset} />
+        return (
+          <div className={styles.dataArea}>
+            <AmountList
+              items={data.map((item) => ({
+                key: item.securitiesFirmName,
+                label: item.securitiesFirmName,
+                amount: item.totalInvestmentAmount,
+              }))}
+            />
+          </div>
+        )
+      }
+      case 'month':
+      case 'year': {
+        const data = periodQuery.data
+        if (!data) return null
+        if (data.length === 0) return <EmptyState onResetFilters={handleReset} />
+        return (
+          <div className={styles.dataArea}>
+            <AmountList
+              items={data.map((item) => ({
+                key: item.period,
+                label: item.period,
+                amount: item.totalInvestmentAmount,
+              }))}
+            />
+          </div>
+        )
+      }
+    }
+  }
+
+  const currentQuery = {
+    all: summaryQuery,
+    investor: investorQuery,
+    'securities-firm': securitiesFirmQuery,
+    month: periodQuery,
+    year: periodQuery,
+  }[currentTab]
 
   const renderContent = () => {
     if (currentQuery.isLoading) {
@@ -87,66 +157,13 @@ export default function DashboardPage() {
     if (currentQuery.error) {
       return (
         <p className={styles.error} role="alert">
-          {getErrorMessage()}
+          {toErrorMessage(currentQuery.error, {
+            fallback: '대시보드 데이터를 불러오는 데 실패했습니다.',
+          })}
         </p>
       )
     }
-    if (isEmpty) {
-      return <EmptyState onResetFilters={handleReset} />
-    }
-    if (!currentQuery.isLoading && !currentQuery.error && !isEmpty) {
-      return (
-        <div className={styles.dataArea}>
-          {currentTab === 'all' && (
-            <DashboardCardGroup
-              summary={
-                currentQuery.data as {
-                  totalInvestmentAmount: number
-                  totalPreTaxProfit: number
-                  totalAfterTaxProfit: number
-                  totalProfitRate: number
-                  participationCount: number
-                }
-              }
-            />
-          )}
-          {currentTab === 'investor' && (
-            <ul className={styles.list}>
-              {(currentQuery.data as { investorName: string; totalInvestmentAmount: number }[]).map(
-                (item) => (
-                  <li key={item.investorName}>
-                    {item.investorName}: {item.totalInvestmentAmount.toLocaleString()}원
-                  </li>
-                ),
-              )}
-            </ul>
-          )}
-          {currentTab === 'securities-firm' && (
-            <ul className={styles.list}>
-              {(
-                currentQuery.data as { securitiesFirmName: string; totalInvestmentAmount: number }[]
-              ).map((item) => (
-                <li key={item.securitiesFirmName}>
-                  {item.securitiesFirmName}: {item.totalInvestmentAmount.toLocaleString()}원
-                </li>
-              ))}
-            </ul>
-          )}
-          {(currentTab === 'month' || currentTab === 'year') && (
-            <ul className={styles.list}>
-              {(
-                currentQuery.data as unknown as { period: string; totalInvestmentAmount: number }[]
-              ).map((item) => (
-                <li key={item.period}>
-                  {item.period}: {item.totalInvestmentAmount.toLocaleString()}원
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )
-    }
-    return null
+    return renderTabData()
   }
 
   return (
@@ -157,7 +174,7 @@ export default function DashboardPage() {
         {hasPeriodSelector && (
           <PeriodSelector
             key={periodSelectorKey}
-            unit={currentTab === 'month' ? 'month' : 'year'}
+            unit={currentTab}
             initialYear={selectedYear}
             initialMonth={currentTab === 'month' ? selectedMonth : undefined}
             onSearch={handlePeriodChange}
@@ -165,7 +182,7 @@ export default function DashboardPage() {
         )}
         {renderContent()}
         <nav className={styles.navLink}>
-          <a href="/investments">투자 내역 화면으로 이동</a>
+          <Link to="/investments">투자 내역 화면으로 이동</Link>
         </nav>
       </div>
     </div>

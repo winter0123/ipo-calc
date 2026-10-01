@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { useInvestmentHistoryDetail } from '../../features/investment-history/useInvestmentHistoryDetail.ts'
+import {
+  useInvestmentHistoryDetail,
+  type InvestmentHistoryItem,
+} from '../../entities/subscription/index.ts'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
 import InvestmentHistoryRow from './InvestmentHistoryRow.tsx'
-import type { InvestmentHistoryItem } from '../../entities/subscription/types.ts'
 import styles from './InvestmentHistoryTable.module.css'
 
 interface InvestmentHistoryTableProps {
