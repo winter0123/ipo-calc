@@ -90,6 +90,7 @@ KIS 이용 조건상 일반 배포가 불확실해서(`docs/work-log/broker-read
 
 - **가입 모드** `APP_SIGNUP_MODE`(기본 `APPROVAL`): `OPEN`=누구나 가입해 바로 로그인, `APPROVAL`=가입은 받되 관리자가 승인하기 전에는 로그인 불가(비밀번호가 맞아도 403 `ACCOUNT_PENDING_APPROVAL`, 실패 횟수에는 넣지 않음), `CLOSED`=가입 중단(403 `SIGNUP_CLOSED`). 값이 틀리면 기동이 실패한다.
 - **로컬 개발·E2E·접근성 스캔은 `APP_SIGNUP_MODE=OPEN`으로 띄운다.** 가입 직후 로그인되는 흐름을 쓰기 때문이다(`tools/accessibility-scan/run-scan.sh`는 이미 지정한다). 테스트 프로파일은 `OPEN`이다.
-- **첫 관리자**: 가입 화면에서 가입한 뒤 DB에서 직접 승격한다. `UPDATE accounts SET role='ADMIN', approved=TRUE WHERE email='<이메일>'` 후 다시 로그인한다.
+- **첫 관리자**: 가입 화면에서 가입한 뒤 `scripts/promote-admin.sh <이메일> [DB 이름]`으로 승격한다(내부적으로 `UPDATE accounts SET role='ADMIN', approved=TRUE ...`). 승격 뒤 다시 로그인한다. 환경변수(`.envrc`)로 관리자를 지정하는 방식은 쓰지 않는다 — 이메일 인증이 없어 남이 그 이메일로 먼저 가입해 두면 관리자가 될 수 있기 때문이다.
 - **승인 관리(ADMIN 전용)**: `GET /admin/accounts?approved=false`(승인 대기 목록, 생략하면 전체), `POST /admin/accounts/{id}/approve`, `POST /admin/accounts/{id}/revoke`(승인 취소와 그 계정의 로그인 세션 종료, 본인 계정은 불가). 화면은 `/admin/accounts`.
 - 기존 계정은 마이그레이션(V20)에서 모두 승인된 상태다.
+- `GET /auth/me`가 현재 로그인 계정의 `accountId·email·name·role`을 돌려준다(화면의 관리자 메뉴 표시용).

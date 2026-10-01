@@ -1,9 +1,11 @@
 package com.vibeaiteam.accountauthentication.application.service;
 
 import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
+import com.vibeaiteam.accountauthentication.controller.dto.CurrentAccountResponse;
 import com.vibeaiteam.accountauthentication.controller.dto.LoginRequest;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.exception.AccountLockedException;
+import com.vibeaiteam.accountauthentication.exception.AccountNotFoundException;
 import com.vibeaiteam.accountauthentication.exception.AccountPendingApprovalException;
 import com.vibeaiteam.accountauthentication.exception.InvalidCredentialsException;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
@@ -80,6 +82,23 @@ public class AuthService {
     accountRepository.saveAndFlush(account);
 
     createSession(httpServletRequest, httpServletResponse, account);
+  }
+
+  /**
+   * 현재 로그인한 계정의 정보를 돌려준다.
+   *
+   * @return 계정 ID·이메일·이름·역할
+   * @throws AccountNotFoundException 세션의 계정이 더 이상 없을 때
+   */
+  @Transactional(readOnly = true)
+  public CurrentAccountResponse currentAccount() {
+    var authentication = SecurityContextHolder.getContext().getAuthentication();
+    Account account = accountRepository.findByEmail(authentication.getName());
+    if (account == null) {
+      throw new AccountNotFoundException("계정을 찾을 수 없습니다");
+    }
+    return new CurrentAccountResponse(
+        account.getId(), account.getEmail(), account.getName(), account.getRole().name());
   }
 
   /**

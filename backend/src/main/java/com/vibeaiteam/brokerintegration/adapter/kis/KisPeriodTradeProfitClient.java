@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * KIS 기간별 매매손익 현황 조회({@code TTTC8715R}) 클라이언트.
@@ -40,6 +41,8 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
   private static final String CTX_AREA_NK100 = "";
   private static final int MAX_PAGES = 10;
   private static final long PAGE_DELAY_MS = 150;
+  private static final int MAX_RATE_LIMIT_RETRIES = 2;
+  private static final long RATE_LIMIT_BACKOFF_MS = 1_100;
   private static final int CONNECT_TIMEOUT_MS = 5_000;
   private static final int READ_TIMEOUT_MS = 15_000;
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -97,7 +100,7 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
 
       for (int page = 1; page <= MAX_PAGES; page++) {
         ResponseEntity<KisPeriodTradeProfitResponse> entity =
-            fetchPage(credentials, token, inqrStrtDt, inqrEndDt, trCont, fk100, nk100);
+            fetchPageWithRetry(credentials, token, inqrStrtDt, inqrEndDt, trCont, fk100, nk100);
         KisPeriodTradeProfitResponse response = entity.getBody();
         logAudit(securitiesAccountId, entity.getStatusCode().value());
 
@@ -131,7 +134,7 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
         trCont = "N";
         fk100 = response.ctxAreaFk100() == null ? "" : response.ctxAreaFk100();
         nk100 = response.ctxAreaNk100();
-        pause();
+        pause(PAGE_DELAY_MS);
       }
       // 조용히 잘라내면 매도 내역이 빠진 채 채워지므로 실패로 알린다.
       throw new BrokerApiException(
@@ -197,10 +200,40 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
         .toEntity(KisPeriodTradeProfitResponse.class);
   }
 
-  /** 연속조회 사이에 KIS 초당 호출 제한을 넘지 않도록 잠시 쉰다. */
-  private void pause() {
+  /**
+   * 페이지를 가져오되 KIS 초당 거래건수 제한(HTTP 500, {@code EGW00201})이면 잠시 쉬었다가 다시 시도한다.
+   *
+   * <p>2026-10-01 실호출에서 연달아 3번 부른 뒤 4번째부터 이 오류가 났고, 1초 간격으로 부르면 모두 성공했다.
+   */
+  private ResponseEntity<KisPeriodTradeProfitResponse> fetchPageWithRetry(
+      KisCredentials credentials,
+      KisAccessToken token,
+      String inqrStrtDt,
+      String inqrEndDt,
+      String trCont,
+      String fk100,
+      String nk100) {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return fetchPage(credentials, token, inqrStrtDt, inqrEndDt, trCont, fk100, nk100);
+      } catch (RestClientResponseException e) {
+        if (!e.getResponseBodyAsString().contains("EGW00201")) {
+          throw e;
+        }
+        if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+          throw new BrokerApiException(
+              "rate_limited", "KIS 초당 거래건수 제한(EGW00201)이 계속되어 조회를 중단했습니다.", e);
+        }
+        log.warn("KIS 초당 거래건수 제한, 잠시 후 재시도: attempt={}", attempt + 1);
+        pause(RATE_LIMIT_BACKOFF_MS);
+      }
+    }
+  }
+
+  /** KIS 호출 제한을 넘지 않도록 잠시 쉰다. */
+  private void pause(long millis) {
     try {
-      Thread.sleep(PAGE_DELAY_MS);
+      Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new BrokerApiException("interrupted", "KIS 연속조회 대기 중 중단되었습니다.", e);
