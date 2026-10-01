@@ -65,21 +65,26 @@ function renderAt(path: string) {
 }
 
 describe('App 라우트', () => {
-  it.each(ROUTES)('%s 경로는 %s를 렌더링한다', (path, text) => {
+  it.each(ROUTES)('%s 경로는 %s를 렌더링한다', async (path, text) => {
     renderAt(path)
-    expect(screen.getByText(text)).toBeInTheDocument()
+    expect(await screen.findByText(text)).toBeInTheDocument()
   })
 
-  it('정의되지 않은 경로는 NotFound 화면을 MainLayout 안에 보여준다', () => {
+  it('정의되지 않은 경로는 NotFound 화면을 MainLayout 안에 보여준다', async () => {
     renderAt('/no-such-route')
-    expect(screen.getByRole('heading', { name: '페이지를 찾을 수 없습니다' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: '페이지를 찾을 수 없습니다' }),
+    ).toBeInTheDocument()
     expect(screen.getAllByRole('main')).toHaveLength(1)
   })
 })
 
 describe('App 랜드마크', () => {
-  it.each(ROUTES.map(([path]) => path))('%s 경로는 main 랜드마크를 정확히 1개 가진다', (path) => {
-    renderAt(path)
-    expect(screen.getAllByRole('main')).toHaveLength(1)
-  })
+  it.each(ROUTES.map(([path]) => path))(
+    '%s 경로는 main 랜드마크를 정확히 1개 가진다',
+    async (path) => {
+      renderAt(path)
+      expect(await screen.findAllByRole('main')).toHaveLength(1)
+    },
+  )
 })

@@ -41,5 +41,11 @@
 - **D-11 필터 URL 동기화**: 투자 내역(`investorId`·`securitiesAccountId`·`ipoId`)과 청약 목록(`status`) 필터를 URL 쿼리가 단일 출처. 변경은 `replace`. `setSearchParams` 함수형 갱신은 같은 틱에서 큐잉되지 않아 패치 객체 한 번 호출로 처리한다.
 - **D-9 by-period 백엔드**: `GET /dashboard/by-period`가 선택 파라미터 `year`(1900~9999)·`month`(1~12)를 반영한다. `year`만 있으면 그 해 매도만, `unit=month`+`month`이면 그 달만, `unit=year`에서 `month`는 무시, 둘 다 없으면 기존과 동일(전체). 잘못된 값은 400. 필터는 순수 함수 `DashboardAggregator.byPeriod(sales, unit, year, month)`에 두고 단위 테스트를 추가했다. **동작 변화**: 대시보드 월별/연도별 탭이 선택한 기간만 보여준다(이전엔 선택과 무관하게 전체 기간).
 - **D-7 Zod(파일럿)**: `features/dashboard`의 4개 응답을 `types.ts` 스키마(단일 출처)로 정의하고 `api-client.ts`에서 `parse`한다. 계약 위반은 `ZodError` → Query error 상태. 다른 feature는 이 모양으로 점진 확대(미적용).
-- **D-15 React Compiler**: `babel-plugin-react-compiler` + `@rolldown/plugin-babel`(plugin-react v6의 `reactCompilerPreset`). Vitest도 같은 설정을 상속해 컴파일된 코드로 테스트한다. 전체 적용 시 `SaleRegisterForm` 테스트 1건이 실패했다 — react-hook-form의 `formState`가 제자리 변경 객체라 메모이제이션과 충돌. RHF를 쓰는 폼 8개에 `'use no memo'`를 붙여 제외했다. 번들은 약 +48kB(486→535kB)이고 Vite의 500kB 청크 경고가 새로 뜬다(코드 스플리팅은 미적용).
+- **D-15 React Compiler**: `babel-plugin-react-compiler` + `@rolldown/plugin-babel`(plugin-react v6의 `reactCompilerPreset`). Vitest도 같은 설정을 상속해 컴파일된 코드로 테스트한다. 전체 적용 시 `SaleRegisterForm` 테스트 1건이 실패했다 — react-hook-form의 `formState`가 제자리 변경 객체라 메모이제이션과 충돌. RHF를 쓰는 폼 8개에 `'use no memo'`를 붙여 제외했다. 번들은 약 +48kB(486→535kB)로 늘고 Vite의 500kB 청크 경고가 떴으나, 아래 D-E20-007의 라우트 코드 스플리팅으로 해소했다.
 - **검증**: 프런트 `test` 329 PASS, `lint`·`typecheck`·`format:check`·`build` PASS. 백엔드 `./gradlew test checkstyleMain checkstyleTest --rerun-tasks` PASS(로컬 Postgres). axe/E2E는 NOT_RUN.
+
+### D-E20-007: 후속 정리 (2026-10-01)
+- **라우트 코드 스플리팅**: `app/App.tsx`의 페이지를 `React.lazy`로, `MainLayout`의 `<Outlet />`을 `Suspense`(폴백 `role="status"` "불러오는 중...")로 감쌌다. 메인 번들 535→284kB, 청크 경고 해소. 레이아웃은 페이지 전환 중에도 유지된다. `App.test.tsx`는 `findBy*`로 전환.
+- **E2E·axe 재실측**: E2E 10/10, axe 12개 화면 위반 0건(상세 `docs/qa/e2e-report.md`). 첫 실행의 E2E-3·4·6 실패는 E2E 스크립트가 `[aria-live="polite"]`만 찾는데 E20이 폼 오류를 `role="alert"`로 바꿨기 때문이었다(제품은 정상). 스크립트 선택자를 보강했다.
+- **Zod 확대는 하지 않기로 결정**: 백엔드 응답 DTO가 전부 박싱 타입(`Long` 등)이고, IPO 같은 데이터는 외부 동기화(OpenDART 등)로 채워져 UI 타입이 non-null로 적어 둔 필드(`fixedPrice`, `stockCode` 등)에 실제로 null이 올 수 있다. 엄격한 스키마를 실응답에 걸면 멀쩡한 화면이 ZodError로 깨질 수 있어, DB의 NOT NULL 제약(Flyway)을 먼저 대조해 스키마를 만들어야 한다. 대시보드 파일럿은 백엔드가 원시 `double`/비-null 합계를 만드는 것을 확인한 뒤 적용했다. 후속 후보는 청구 금액 계산이 있는 `entities/profit`, `entities/subscription`(투자 내역).
+- **staleTime**: 현행 유지(0). 금융 수치 갱신 지연 위험이 이득보다 크다고 판단해 바꾸지 않았다.

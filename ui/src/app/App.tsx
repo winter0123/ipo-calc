@@ -1,19 +1,33 @@
+import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout/MainLayout.tsx'
-import LoginPage from '../pages/LoginPage/LoginPage.tsx'
-import SignupPage from '../pages/SignupPage/SignupPage.tsx'
-import InvestorRegisterPage from '../pages/InvestorRegisterPage/InvestorRegisterPage.tsx'
-import DashboardPage from '../pages/DashboardPage/DashboardPage.tsx'
-import SecuritiesAccountRegisterPage from '../pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'
-import SubscriptionRegisterPage from '../pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'
-import SubscriptionListPage from '../pages/SubscriptionListPage/SubscriptionListPage.tsx'
-import AllocationRegisterPage from '../pages/AllocationRegisterPage/AllocationRegisterPage.tsx'
-import SaleRegisterPage from '../pages/SaleRegisterPage/SaleRegisterPage.tsx'
-import CostRegisterPage from '../pages/CostRegisterPage/CostRegisterPage.tsx'
-import ProfitViewPage from '../pages/ProfitViewPage/ProfitViewPage.tsx'
-import InvestmentHistoryPage from '../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'
-import NotFoundPage from '../pages/NotFoundPage/NotFoundPage.tsx'
-import IpoCalendarPage from '../pages/IpoCalendarPage/IpoCalendarPage.tsx'
+
+const LoginPage = lazy(() => import('../pages/LoginPage/LoginPage.tsx'))
+const SignupPage = lazy(() => import('../pages/SignupPage/SignupPage.tsx'))
+const InvestorRegisterPage = lazy(
+  () => import('../pages/InvestorRegisterPage/InvestorRegisterPage.tsx'),
+)
+const DashboardPage = lazy(() => import('../pages/DashboardPage/DashboardPage.tsx'))
+const SecuritiesAccountRegisterPage = lazy(
+  () => import('../pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'),
+)
+const SubscriptionRegisterPage = lazy(
+  () => import('../pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'),
+)
+const SubscriptionListPage = lazy(
+  () => import('../pages/SubscriptionListPage/SubscriptionListPage.tsx'),
+)
+const AllocationRegisterPage = lazy(
+  () => import('../pages/AllocationRegisterPage/AllocationRegisterPage.tsx'),
+)
+const SaleRegisterPage = lazy(() => import('../pages/SaleRegisterPage/SaleRegisterPage.tsx'))
+const CostRegisterPage = lazy(() => import('../pages/CostRegisterPage/CostRegisterPage.tsx'))
+const ProfitViewPage = lazy(() => import('../pages/ProfitViewPage/ProfitViewPage.tsx'))
+const InvestmentHistoryPage = lazy(
+  () => import('../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'),
+)
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx'))
+const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 
 function App() {
   return (

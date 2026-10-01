@@ -10,9 +10,9 @@
 - **쿼리·인증**: 쿼리 키 팩토리와 접두사 invalidation 확장, 401은 `QueryCache`·`MutationCache` `onError`에서 캐시를 비우고 `/login`으로 이동(복귀 경로 보존, 로그인 실패 401 제외). 뮤테이션 자동 재시도는 0 유지.
 - **UX**: NotFound·ErrorBoundary, `lang="ko"`·title, 필터를 URL 쿼리와 동기화(투자 내역·청약 목록).
 - **백엔드 변경 1건(동작 변화)**: `GET /dashboard/by-period`가 `year`·`month`를 반영한다. 대시보드 월별/연도별 탭이 선택 기간만 보여준다.
-- **도구**: 대시보드 응답 Zod 검증(파일럿, 다른 feature 미적용), React Compiler(RHF 폼 8개는 `'use no memo'`, 번들 +48kB).
-- **검증**: UI 329 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS. axe·E2E는 NOT_RUN.
-- **남은 것**: staleTime은 현행 유지(제안만), Zod 확대·코드 스플리팅은 후속.
+- **도구**: 대시보드 응답 Zod 검증(파일럿, 확대는 DB NOT NULL 대조 후), React Compiler(RHF 폼 8개는 `'use no memo'`), 라우트 `React.lazy` 코드 스플리팅(메인 번들 535→284kB).
+- **검증**: UI 329 테스트·lint·typecheck·format:check·build PASS, 백엔드 `test`·checkstyle PASS, E2E 10/10·axe 12개 화면 위반 0건(슬롯 DB 4, Master 직접 실행).
+- **남은 것**: staleTime은 현행 유지, Zod 확대는 NOT NULL 대조 후 후속.
 
 ## 야간 자율 작업 후속 (2026-10-01, #241~#247)
 
