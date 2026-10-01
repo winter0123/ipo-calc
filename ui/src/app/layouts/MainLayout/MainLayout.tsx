@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import styles from './MainLayout.module.css'
 
 export default function MainLayout() {
@@ -10,6 +10,9 @@ export default function MainLayout() {
       </a>
       <header className={styles.header}>
         <div className={styles.siteName}>투자 관리 시스템</div>
+        <nav aria-label="주요 메뉴" className={styles.nav}>
+          <Link to="/broker-sync">증권사 연동</Link>
+        </nav>
       </header>
       <main id="main-content" className={styles.main}>
         <Suspense fallback={<p role="status">불러오는 중...</p>}>

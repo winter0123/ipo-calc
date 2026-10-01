@@ -21,6 +21,7 @@ const pages = [
   { name: 'profit-view', path: '/profits/view', needsAuth: true },
   { name: 'investments', path: '/investments', needsAuth: true },
   { name: 'dashboard', path: '/dashboard', needsAuth: true },
+  { name: 'broker-sync', path: '/broker-sync', needsAuth: true },
 ]
 
 const viewports = [

@@ -887,6 +887,73 @@ async function scenario11(browser) {
   }
 }
 
+// 증권사 연동 화면: 외부 증권사를 호출하지 않는다(토큰은 동기화 조회 때만 발급). 연결·키 교체·해제와 진입 링크만 검증한다.
+async function scenario12(browser) {
+  const email = uniqueEmail()
+  const setup = await browser.newContext()
+  try {
+    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Broker' })
+    await apiLogin(setup, email)
+    const firms = await api(setup, 'GET', '/securities-firms')
+    const kis = (firms ?? []).find((f) => f.name.includes('한국투자'))
+    if (!kis) throw new Error('한국투자증권 시드가 없음(V15 확인 필요)')
+    const investor = await api(setup, 'POST', '/investors', { displayName: 'E2E Broker' })
+    await api(setup, 'POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: kis.id,
+      accountNumber: ACCOUNT_NUMBER,
+      isDefault: true,
+    })
+  } finally {
+    await setup.close()
+  }
+
+  const { context, page } = await openContext(browser)
+  try {
+    const attempt = await login(page, email, PASSWORD)
+    if (!attempt.ok) throw new Error(`로그인 실패: 상태=${attempt.status}`)
+    const notes = []
+
+    await page
+      .getByRole('navigation', { name: '주요 메뉴' })
+      .getByRole('link', { name: '증권사 연동' })
+      .click()
+    await page.getByRole('heading', { name: '증권사 연동' }).waitFor()
+    notes.push('헤더 링크로 진입')
+
+    await page.getByLabel('투자자').selectOption({ index: 1 })
+    await waitFor(async () => (await page.getByLabel('증권계좌').locator('option').count()) > 1)
+    await page.getByLabel('증권계좌').selectOption({ index: 1 })
+    await page.getByRole('heading', { name: '증권사 API 연결' }).waitFor()
+    await page.getByText('연결 안 됨', { exact: true }).waitFor()
+
+    await page.getByLabel('앱키').fill('e2e-dummy-key')
+    await page.getByLabel('앱시크릿').fill('e2e-dummy-secret')
+    await page.getByRole('button', { name: '연결', exact: true }).click()
+    await page.getByText('연결됨', { exact: true }).waitFor()
+    const expiry = await page.getByText(/사용기간 만료일 \d{4}-\d{2}-\d{2}/).count()
+    if (expiry === 0) throw new Error('연결 뒤 사용기간 만료일이 표시되지 않음')
+    const leaked = (await page.locator('body').innerText()).includes('e2e-dummy-secret')
+    if (leaked) throw new Error('입력한 앱시크릿이 화면에 다시 노출됨')
+    notes.push('연결됨·만료일 표시·키 비노출')
+
+    await page.getByRole('button', { name: '키 교체' }).click()
+    await page.getByLabel('앱키').fill('e2e-new-key')
+    await page.getByLabel('앱시크릿').fill('e2e-new-secret')
+    await page.getByRole('button', { name: '새 키로 교체' }).click()
+    await page.getByRole('button', { name: '키 교체' }).waitFor()
+    notes.push('키 교체')
+
+    await page.getByRole('button', { name: '연결 해제' }).click()
+    await page.getByRole('button', { name: '해제', exact: true }).click()
+    await page.getByText('연결 안 됨', { exact: true }).waitFor()
+    notes.push('연결 해제')
+    return notes.join(', ')
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -899,6 +966,7 @@ const SCENARIOS = [
   ['E2E-9', '거래흐름3: 분할 매도 2건 → 대시보드 안분 집계', scenario9],
   ['E2E-10', '거래흐름4: 다른 계정에서 타인 데이터 비노출', scenario10],
   ['E2E-11', '거래흐름5: 월별/연도별 탭이 선택 기간만 집계(D-9)', scenario11],
+  ['E2E-12', '증권사 연동: 진입 링크 → 연결 → 키 교체 → 해제', scenario12],
 ]
 
 function printResults() {

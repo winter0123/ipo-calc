@@ -3,7 +3,9 @@ import {
   brokerKeys,
   disconnectBrokerCredential,
   registerBrokerCredential,
+  replaceBrokerCredential,
   type BrokerCredentialRegisterRequest,
+  type BrokerCredentialReplaceRequest,
 } from '@/entities/broker/index.ts'
 
 export function useRegisterBrokerCredential(securitiesAccountId: number) {
@@ -11,6 +13,15 @@ export function useRegisterBrokerCredential(securitiesAccountId: number) {
   return useMutation({
     mutationFn: (data: BrokerCredentialRegisterRequest) =>
       registerBrokerCredential(securitiesAccountId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: brokerKeys.all }),
+  })
+}
+
+export function useReplaceBrokerCredential(securitiesAccountId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: BrokerCredentialReplaceRequest) =>
+      replaceBrokerCredential(securitiesAccountId, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: brokerKeys.all }),
   })
 }

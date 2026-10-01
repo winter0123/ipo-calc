@@ -42,3 +42,18 @@
   color: #d32f2f;
   font-size: 14px;
 }
+
+.warning {
+  margin: 0;
+  padding: 8px 12px;
+  background: #fff3e0;
+  border-left: 4px solid #ef6c00;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -19,17 +19,16 @@ trap cleanup EXIT
 echo "백엔드 포트 $API_PORT, 프론트 포트 $WEB_PORT"
 
 cat > "$UI_DIR/vite.scan.config.ts" <<CFG
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
-export default defineConfig({
-  plugins: [react()],
+import { defineConfig, mergeConfig } from 'vite'
+import base from './vite.config.ts'
+export default mergeConfig(base, defineConfig({
   server: { proxy: { '/api-proxy': { target: 'http://127.0.0.1:${API_PORT}', rewrite: (p) => p.replace(/^\/api-proxy/, '') } } },
-})
+}))
 CFG
 trap 'rm -f "$UI_DIR/vite.scan.config.ts"; cleanup' EXIT
 
 KEY="$(head -c 32 /dev/urandom | base64)"
-(cd "$ROOT/backend" && DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$KEY" SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
+(cd "$ROOT/backend" && DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$(head -c 32 /dev/urandom | base64)" SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
 PIDS+=($!)
 (cd "$UI_DIR" && VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts --host 127.0.0.1 --port "$WEB_PORT" --strictPort >"$TMP/vite.log" 2>&1) &
 PIDS+=($!)

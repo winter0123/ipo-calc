@@ -7,6 +7,9 @@ export const brokerCredentialSchema = z.object({
   connectionStatus: z.enum(['CONNECTED', 'EXPIRED', 'ERROR', 'DISCONNECTED']),
   accountNumber: z.string().nullable(),
   lastSyncedAt: z.string().nullable(),
+  supportedProvider: z.string().nullable(),
+  keyIssuedOn: z.string().nullable(),
+  keyExpiresOn: z.string().nullable(),
 })
 
 export type BrokerCredential = z.infer<typeof brokerCredentialSchema>
@@ -47,6 +50,13 @@ export interface BrokerCredentialRegisterRequest {
   apiProvider: string
   appKey: string
   appSecret: string
+  keyIssuedOn?: string
+}
+
+export interface BrokerCredentialReplaceRequest {
+  appKey: string
+  appSecret: string
+  keyIssuedOn?: string
 }
 
 export interface SyncConfirmSale {
