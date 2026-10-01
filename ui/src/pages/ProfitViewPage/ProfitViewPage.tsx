@@ -14,13 +14,14 @@ type QueryMode = 'sale' | 'investor'
 export default function ProfitViewPage() {
   const [mode, setMode] = useState<QueryMode>('sale')
   const [saleId, setSaleId] = useState<string>('')
+  const [submittedSaleId, setSubmittedSaleId] = useState<string>('')
   const [investorId, setInvestorId] = useState<string>('')
 
   const { data: investors, isLoading: investorsLoading } = useInvestors()
 
   const saleProfitQuery = useSaleProfit({
-    saleId: saleId ? Number(saleId) : undefined,
-    enabled: mode === 'sale' && saleId !== '',
+    saleId: submittedSaleId ? Number(submittedSaleId) : undefined,
+    enabled: mode === 'sale' && submittedSaleId !== '',
   })
 
   const investorProfitsQuery = useInvestorProfits({
@@ -32,6 +33,12 @@ export default function ProfitViewPage() {
 
   const handleSaleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSaleId(e.target.value)
+    setSubmittedSaleId('')
+  }
+
+  const handleSaleSearch = () => {
+    if (saleId === submittedSaleId) void saleProfitQuery.refetch()
+    else setSubmittedSaleId(saleId)
   }
 
   const handleInvestorIdChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -49,6 +56,7 @@ export default function ProfitViewPage() {
   const handleModeChange = (newMode: QueryMode) => {
     setMode(newMode)
     setSaleId('')
+    setSubmittedSaleId('')
     setInvestorId('')
   }
 
@@ -77,7 +85,7 @@ export default function ProfitViewPage() {
             <button
               type="button"
               className={styles.searchButton}
-              onClick={() => saleProfitQuery.refetch()}
+              onClick={handleSaleSearch}
               disabled={activeQuery.isLoading || !saleId}
             >
               {activeQuery.isLoading ? '조회 중...' : '조회'}

@@ -56,3 +56,8 @@
 - `IpoCalendar.test`는 `vi.useFakeTimers()` 전체 모킹이 RTL/user-event 비동기를 멈춰 `toFake: ['Date']`로 좁혔다.
 - **발견(제품 동작, 미변경)**: `ProfitViewPage`의 매도건 ID는 값이 한 글자라도 있으면 `enabled`가 켜져 조회가 즉시 실행되고, 조회 중에는 입력칸이 `disabled`가 된다. 실제로 여러 자리 ID를 타이핑하면 첫 글자에서 조회가 나가고 입력이 잘린다. `fireEvent.change`가 값을 한 번에 넣어 가려졌던 문제다. 해당 테스트는 `paste`로 입력하게 했다. 개선(조회 버튼 클릭 시에만 조회)은 동작 변경이라 후속 제안.
 - 검증(`ui/`): test 339 PASS, lint·typecheck·format:check·build PASS.
+
+### D-E20-011: 사후 점검 후속 (2026-10-01, 사용자 승인)
+- `ProfitViewPage`: 매도건 ID 조회를 `조회` 버튼 클릭 시에만 실행(제출 ID 상태 분리, 입력 변경 시 결과 초기화). 테스트의 `paste` 우회를 `fill`로 되돌리고 "입력만으로는 조회하지 않음" 테스트 추가.
+- `ProfitTable`: `as InvestorProfit` 단언 제거(`'sales' in data` 좁히기).
+- 검증(`ui/`): test 340 PASS, lint·typecheck·format:check·build PASS. 커밋·PR은 미수행.
