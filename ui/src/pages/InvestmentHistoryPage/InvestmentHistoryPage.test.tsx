@@ -182,9 +182,9 @@ describe('InvestmentHistoryPage', () => {
 
     await waitForResultsLoaded()
     const paths = vi.mocked(apiFetch).mock.calls.map((call) => String(call[0]))
-    expect(paths.some((p) => p.startsWith('/investment-history') && p.includes('investorId=1'))).toBe(
-      true,
-    )
+    expect(
+      paths.some((p) => p.startsWith('/investment-history') && p.includes('investorId=1')),
+    ).toBe(true)
     // 투자자 선택은 이 화면이 아니라 상단 전환기가 담당한다.
     expect(screen.queryByLabelText('투자자')).not.toBeInTheDocument()
   })
@@ -199,7 +199,9 @@ describe('InvestmentHistoryPage', () => {
     setupEmptyInvestorsMock()
     renderPage()
 
-    const message = await screen.findByText('등록된 투자자가 없습니다. 투자자를 먼저 등록해 주세요.')
+    const message = await screen.findByText(
+      '등록된 투자자가 없습니다. 투자자를 먼저 등록해 주세요.',
+    )
     expect(message.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite')
     expect(screen.getByRole('link', { name: '투자자 등록하기' })).toHaveAttribute(
       'href',

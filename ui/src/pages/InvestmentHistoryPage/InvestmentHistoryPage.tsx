@@ -32,11 +32,7 @@ export default function InvestmentHistoryPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   // 투자자는 상단 전환기의 현재 투자자로 고정한다(URL로 바꾸지 않는다).
-  const {
-    investors,
-    current,
-    isLoading: investorsLoading,
-  } = useCurrentInvestor()
+  const { investors, current, isLoading: investorsLoading } = useCurrentInvestor()
   const filters: FilterInvestmentHistoryFilters = {
     investorId: current ? String(current.id) : '',
     securitiesAccountId: searchParams.get('securitiesAccountId') ?? '',

@@ -65,7 +65,6 @@ export default function AccountSelector({
               해당 투자자의 증권계좌가 없습니다
             </span>
           )}
-        
       </div>
     </div>
   )

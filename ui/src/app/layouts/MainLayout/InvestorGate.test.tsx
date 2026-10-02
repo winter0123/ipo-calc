@@ -25,7 +25,9 @@ function setup(investors: object[], path = '/investments') {
       : { accountId: 1, email: 'a@b.com', name: '나', role: 'USER' },
   )
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route element={<MainLayout />}>

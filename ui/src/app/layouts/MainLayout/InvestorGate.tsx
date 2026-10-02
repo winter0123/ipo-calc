@@ -23,7 +23,10 @@ export default function InvestorGate() {
   return (
     <section className={styles.gate} aria-labelledby="gate-title">
       <h1 id="gate-title">어느 투자자로 작업할까요?</h1>
-      <p>투자자를 선택하면 청약·배정·매도·수익 화면이 그 투자자 기준으로 열립니다. 상단 메뉴에서 언제든 바꿀 수 있습니다.</p>
+      <p>
+        투자자를 선택하면 청약·배정·매도·수익 화면이 그 투자자 기준으로 열립니다. 상단 메뉴에서
+        언제든 바꿀 수 있습니다.
+      </p>
       <div className={styles.gateButtons}>
         {investors.map((investor) => (
           <button key={investor.id} type="button" onClick={() => select(investor.id)}>

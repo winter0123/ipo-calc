@@ -52,9 +52,7 @@ export function useCurrentInvestor(): CurrentInvestor {
   }, [])
 
   const current =
-    investors.length === 1
-      ? investors[0]
-      : (investors.find((i) => String(i.id) === stored) ?? null)
+    investors.length === 1 ? investors[0] : (investors.find((i) => String(i.id) === stored) ?? null)
 
   return {
     investors,
