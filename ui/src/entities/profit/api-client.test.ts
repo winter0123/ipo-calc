@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
-import { getInvestorProfits, getSaleProfit } from './api-client.ts'
+import { getInvestorProfits } from './api-client.ts'
 
 const stub = (body: unknown) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
@@ -25,8 +25,9 @@ describe('profit api-client 응답 검증', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('매도금액 null을 허용한다', async () => {
-    stub(SALE_PROFIT)
-    await expect(getSaleProfit(1)).resolves.toEqual(SALE_PROFIT)
+    const investor = { investorId: 1, sales: [SALE_PROFIT], totalSaleAmount: 0, totalPreTaxProfit: 0, totalAfterTaxProfit: 0 }
+    stub(investor)
+    await expect(getInvestorProfits(1)).resolves.toEqual(investor)
   })
 
   it('투자자 수익은 합계가 누락되면 거부한다', async () => {

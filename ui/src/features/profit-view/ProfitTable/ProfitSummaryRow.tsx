@@ -2,8 +2,8 @@ import styles from './ProfitSummaryRow.module.css'
 
 interface ProfitSummaryRowProps {
   totalSaleAmount: number
-  totalPreTaxProfit: number
-  totalAfterTaxProfit: number
+  totalRealizedProfit: number
+  totalFinalProfit: number
 }
 
 function formatNumber(value: number): string {
@@ -16,22 +16,23 @@ function getProfitClass(value: number): string {
 
 export default function ProfitSummaryRow({
   totalSaleAmount,
-  totalPreTaxProfit,
-  totalAfterTaxProfit,
+  totalRealizedProfit,
+  totalFinalProfit,
 }: ProfitSummaryRowProps) {
   return (
     <tr className={styles.summaryRow}>
-      <td colSpan={10} className={styles.label}>
+      <td colSpan={3} className={styles.label}>
         합계
       </td>
       <td className={`${styles.number} ${styles.totalSaleAmount}`}>
         {formatNumber(totalSaleAmount)}
       </td>
-      <td className={`${styles.number} ${getProfitClass(totalPreTaxProfit)}`}>
-        {formatNumber(totalPreTaxProfit)}
+      <td colSpan={5} />
+      <td className={`${styles.number} ${getProfitClass(totalRealizedProfit)}`}>
+        {formatNumber(totalRealizedProfit)}
       </td>
-      <td className={`${styles.number} ${getProfitClass(totalAfterTaxProfit)}`}>
-        {formatNumber(totalAfterTaxProfit)}
+      <td className={`${styles.number} ${getProfitClass(totalFinalProfit)}`}>
+        {formatNumber(totalFinalProfit)}
       </td>
     </tr>
   )

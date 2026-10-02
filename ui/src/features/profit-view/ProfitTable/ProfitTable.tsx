@@ -1,27 +1,23 @@
-import { type SaleProfit, type InvestorProfit } from '@/entities/profit/index.ts'
+import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import ProfitRow from './ProfitRow.tsx'
 import ProfitSummaryRow from './ProfitSummaryRow.tsx'
 import styles from './ProfitTable.module.css'
 
 interface ProfitTableProps {
-  data: SaleProfit | InvestorProfit | null
-  mode: 'sale' | 'investor'
+  sales: SaleProfitRow[]
 }
 
-export default function ProfitTable({ data, mode }: ProfitTableProps) {
-  if (!data) return null
-
-  const investorData = mode === 'investor' && 'sales' in data ? data : null
-  const sales = investorData ? investorData.sales : 'sales' in data ? [] : [data]
+export default function ProfitTable({ sales }: ProfitTableProps) {
+  // 실현손익은 공모주수수료를 빼기 전 금액이다.
+  const sum = (pick: (s: SaleProfitRow) => number) => sales.reduce((acc, s) => acc + pick(s), 0)
 
   return (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>매도ID</th>
             <th>매도일</th>
-            <th>배정ID</th>
+            <th>투자자</th>
             <th>수량</th>
             <th>매도금액</th>
             <th>취득금액</th>
@@ -36,18 +32,18 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
         <tbody>
           {sales.length === 0 ? (
             <tr>
-              <td colSpan={12} className={styles.empty}>
+              <td colSpan={11} className={styles.empty}>
                 매도 내역이 없습니다.
               </td>
             </tr>
           ) : (
             sales.map((profit) => <ProfitRow key={profit.saleId} profit={profit} />)
           )}
-          {investorData && (
+          {sales.length > 0 && (
             <ProfitSummaryRow
-              totalSaleAmount={investorData.totalSaleAmount}
-              totalPreTaxProfit={investorData.totalPreTaxProfit}
-              totalAfterTaxProfit={investorData.totalAfterTaxProfit}
+              totalSaleAmount={sum((s) => s.saleAmount ?? 0)}
+              totalRealizedProfit={sum((s) => s.afterTaxProfit + s.saleFee)}
+              totalFinalProfit={sum((s) => s.afterTaxProfit)}
             />
           )}
         </tbody>

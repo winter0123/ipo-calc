@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -42,21 +41,6 @@ const INVESTORS = [
     updatedAt: '2026-01-01',
   },
 ]
-
-const SALE_PROFIT = {
-  saleId: 1,
-  saleDate: '2026-09-21T10:00:00Z',
-  allocationId: 10,
-  quantity: 50,
-  saleAmount: 2000000,
-  matchedAcquisitionAmount: 1500000,
-  matchedCostAmount: 100000,
-  saleFee: 5000,
-  saleTax: 30000,
-  saleOtherCost: 1000,
-  preTaxProfit: 364000,
-  afterTaxProfit: 361000,
-}
 
 const INVESTOR_PROFITS = {
   investorId: 1,
@@ -116,26 +100,13 @@ function renderPage() {
   )
 }
 
-async function waitForInvestorsLoaded() {
-  await waitFor(() => {
-    expect(screen.getByRole('radio', { name: '매도건별' })).toBeInTheDocument()
-  })
-}
-
-async function waitForInvestorDropdown() {
-  await waitFor(() => {
-    expect(screen.getByLabelText('투자자')).toBeInTheDocument()
-  })
-}
-
 function setupDefaultMocks() {
   vi.mocked(fetchInvestors).mockResolvedValue(INVESTORS)
   vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
     const p = String(path)
-    if (p === '/sales/1/profit') return SALE_PROFIT
     if (p === '/investors/1/profits') return INVESTOR_PROFITS
     if (p === '/investors/2/profits') return EMPTY_INVESTOR_PROFITS
-    throw new Error(`unexpected path: ${String(path)}`)
+    throw new Error(`unexpected path: ${p}`)
   })
 }
 
@@ -143,261 +114,69 @@ describe('ProfitViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupDefaultMocks()
+    // 기본 기간(이번 달 1일~오늘)이 테스트 데이터(2026-09-21·22)를 포함하도록 시계를 맞춘다.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-30T12:00:00'))
   })
 
-  it('기본적으로 매도건별 모드로 표시됨', async () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('기간 기본값은 접속한 달 1일부터 오늘까지다', async () => {
     renderPage()
-    await waitForInvestorsLoaded()
-    expect(screen.getByRole('radio', { name: '매도건별' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: '투자자별' })).not.toBeChecked()
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-09-01')
+    expect(screen.getByLabelText('종료일')).toHaveValue('2026-09-30')
   })
 
-  it('모드 토글이 작동함', async () => {
+  it('조회 버튼 없이 기간 안의 매도를 최신순으로 보여주고 합계를 낸다', async () => {
     renderPage()
-    await waitForInvestorsLoaded()
 
-    await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-    expect(screen.getByRole('radio', { name: '투자자별' })).toBeChecked()
-
-    await userEvent.click(screen.getByRole('radio', { name: '매도건별' }))
-    expect(screen.getByRole('radio', { name: '매도건별' })).toBeChecked()
+    await waitFor(() => expect(screen.getAllByText('홍길동').length).toBe(3)) // 드롭다운 1 + 행 2)
+    expect(screen.queryByRole('button', { name: /^조회/ })).not.toBeInTheDocument()
+    const rows = screen.getAllByRole('row')
+    // 헤더, 9/22, 9/21, 합계
+    expect(rows[1]).toHaveTextContent('2026-09-22')
+    expect(rows[2]).toHaveTextContent('2026-09-21')
+    expect(screen.getByText('366,000')).toBeInTheDocument()
+    expect(screen.getByText('3,200,000')).toBeInTheDocument()
+    expect(screen.getAllByText('361,000').length).toBeGreaterThan(0)
+    expect(screen.getByText('353,000')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '실현손익' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '최종수익금' })).toBeInTheDocument()
   })
 
-  it('모드 전환 시 입력 필드가 리셋됨', async () => {
+  it('음수 수익(손실)이 표시된다', async () => {
     renderPage()
-    await waitForInvestorsLoaded()
-
-    await fill(screen.getByLabelText('매도건 ID'), '1')
-    await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-    await waitFor(() => {
-      expect(screen.getByText('1')).toBeInTheDocument()
-    })
-
-    await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-    await waitForInvestorDropdown()
-    expect(screen.getByLabelText('투자자')).toHaveValue('')
-
-    await userEvent.click(screen.getByRole('radio', { name: '매도건별' }))
-    const saleIdInput = screen.getByLabelText('매도건 ID') as HTMLInputElement
-    // React uncontrolled input may have null or '' value when empty
-    expect(saleIdInput.value === '' || saleIdInput.value === null).toBe(true)
+    await waitFor(() => expect(screen.getAllByText('-5,000')).toHaveLength(1))
+    expect(screen.getByText('-8,000')).toBeInTheDocument()
   })
 
-  describe('매도건별 조회', () => {
-    it('입력만으로는 조회하지 않고 조회 버튼을 눌러야 조회한다', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-      vi.mocked(apiFetch).mockClear()
-
-      await fill(screen.getByLabelText('매도건 ID'), '123')
-
-      expect(screen.getByLabelText('매도건 ID')).toHaveValue(123)
-      expect(apiFetch).not.toHaveBeenCalled()
-    })
-
-    it('매도건별 조회 성공 시 수익 행이 표시됨 (AC-013)', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await fill(screen.getByLabelText('매도건 ID'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('1')).toBeInTheDocument()
-      })
-      expect(screen.getByText('2,000,000')).toBeInTheDocument()
-      expect(screen.getByText('366,000')).toBeInTheDocument()
-      expect(screen.getByRole('columnheader', { name: '실현손익' })).toBeInTheDocument()
-      expect(screen.getByRole('columnheader', { name: '최종수익금' })).toBeInTheDocument()
-      expect(screen.getByText('361,000')).toBeInTheDocument()
-    })
-
-    it('존재하지 않는 매도건 404 시 에러 메시지 표시 (AC-015)', async () => {
-      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-        const p = String(path)
-        if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
-        throw new Error(`unexpected path: ${String(path)}`)
-      })
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await fill(screen.getByLabelText('매도건 ID'), '999')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('매도건을 찾을 수 없습니다.')).toBeInTheDocument()
-      })
-    })
-
-    it('네트워크 오류 시 에러 메시지 표시', async () => {
-      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-        const p = String(path)
-        if (p === '/sales/1/profit') throw new Error('Failed to fetch')
-        throw new Error(`unexpected path: ${String(path)}`)
-      })
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await fill(screen.getByLabelText('매도건 ID'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
-      })
-    })
+  it('기간을 좁히면 그 기간의 매도만 보이고 합계도 다시 계산된다', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('366,000')).toBeInTheDocument())
+    await fill(screen.getByLabelText('시작일'), '2026-09-22')
+    expect(screen.queryByText('366,000')).not.toBeInTheDocument()
+    expect(screen.getAllByText('1,200,000')).toHaveLength(2)
   })
 
-  describe('투자자별 조회', () => {
-    it('투자자별 조회 성공 시 테이블과 합계가 표시됨 (AC-014)', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      await fill(screen.getByLabelText('투자자'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('홍길동')).toBeInTheDocument()
-      })
-      await waitFor(() => {
-        expect(screen.getByText('366,000')).toBeInTheDocument()
-      })
-      expect(screen.getByText('-5,000')).toBeInTheDocument()
-      expect(screen.getByText('-8,000')).toBeInTheDocument()
-      expect(screen.getByText('3,200,000')).toBeInTheDocument()
-      expect(screen.getByText('359,000')).toBeInTheDocument()
-      expect(screen.getByText('353,000')).toBeInTheDocument()
-    })
-
-    it('음수 수익(손실)이 빨간색으로 표시됨 (AC-017)', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      await fill(screen.getByLabelText('투자자'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        const negativeProfit = screen.getByText('-5,000')
-        expect(negativeProfit.closest('td')).toHaveClass(/negative/)
-      })
-    })
-
-    it('존재하지 않는 투자자 404 시 에러 메시지 표시 (AC-016)', async () => {
-      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-        const p = String(path)
-        if (p === '/investors/1/profits') throw new ApiError(404, 'Request failed: 404')
-        throw new Error(`unexpected path: ${String(path)}`)
-      })
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      await fill(screen.getByLabelText('투자자'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('투자자를 찾을 수 없습니다.')).toBeInTheDocument()
-      })
-    })
-
-    it('매도 내역이 없을 때 빈 상태 메시지 표시', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      await fill(screen.getByLabelText('투자자'), '2')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
-      })
-    })
-
-    it('네트워크 오류 시 에러 메시지 표시', async () => {
-      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-        const p = String(path)
-        if (p === '/investors/1/profits') throw new Error('Failed to fetch')
-        throw new Error(`unexpected path: ${String(path)}`)
-      })
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      await fill(screen.getByLabelText('투자자'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
-      })
-    })
+  it('기간 안에 매도가 없으면 안내가 보인다', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('366,000')).toBeInTheDocument())
+    await fill(screen.getByLabelText('시작일'), '2026-08-01')
+    await fill(screen.getByLabelText('종료일'), '2026-08-31')
+    expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
   })
 
-  describe('로딩 상태', () => {
-    it('조회 중 로딩 메시지 표시', async () => {
-      let resolveSaleProfit: (value: unknown) => void = () => {}
-      vi.mocked(apiFetch).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveSaleProfit = resolve
-          }),
-      )
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await fill(screen.getByLabelText('매도건 ID'), '1')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      expect(screen.getByText('수익 정보를 불러오는 중...')).toBeInTheDocument()
-
-      resolveSaleProfit(SALE_PROFIT)
-
-      await waitFor(() => {
-        expect(screen.queryByText('수익 정보를 불러오는 중...')).not.toBeInTheDocument()
-      })
-    })
+  it('투자자를 고르면 그 투자자의 매도만 보인다', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('366,000')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('option', { name: '김철수' })).toBeInTheDocument())
+    await fill(screen.getByLabelText('투자자'), '2')
+    expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
   })
 
-  describe('접근성', () => {
-    it('인풋에 label이 연결됨', async () => {
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      const saleIdInput = screen.getByLabelText('매도건 ID')
-      expect(saleIdInput).toHaveAttribute('id', 'saleId')
-
-      await userEvent.click(screen.getByRole('radio', { name: '투자자별' }))
-      await waitForInvestorDropdown()
-      const investorSelect = screen.getByLabelText('투자자')
-      expect(investorSelect).toHaveAttribute('id', 'investorId')
-    })
-
-    it('에러 영역에 aria-live 속성이 있음', async () => {
-      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-        const p = String(path)
-        if (p === '/sales/999/profit') throw new ApiError(404, 'Request failed: 404')
-        throw new Error(`unexpected path: ${String(path)}`)
-      })
-
-      renderPage()
-      await waitForInvestorsLoaded()
-
-      await fill(screen.getByLabelText('매도건 ID'), '999')
-      await userEvent.click(screen.getByRole('button', { name: /조회/ }))
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument()
-      })
-    })
+  it('조회 실패 시 오류 메시지가 보인다', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, 'boom'))
+    renderPage()
+    expect(await screen.findByRole('alert')).toHaveTextContent('수익 조회에 실패했습니다.')
   })
 })
