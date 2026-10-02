@@ -9,6 +9,7 @@ import com.vibeaiteam.ipocatalog.exception.IpoConflictException;
 import com.vibeaiteam.ipocatalog.exception.IpoNotFoundException;
 import com.vibeaiteam.ipocatalog.exception.IpoValidationException;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.ipocatalog.service.ipo.sync.BusinessDayCalculator;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class IpoService {
 
   private final IpoRepository ipoRepository;
   private final Clock clock;
+  private final BusinessDayCalculator businessDayCalculator;
 
   /**
    * 공모주 목록을 조회한다.
@@ -36,7 +38,7 @@ public class IpoService {
   @Transactional(readOnly = true)
   public List<IpoResponse> list() {
     return ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
-        .map(IpoResponse::from)
+        .map(this::toResponse)
         .toList();
   }
 
@@ -46,7 +48,7 @@ public class IpoService {
   @Transactional(readOnly = true)
   public IpoResponse getById(Long id) {
     Ipo ipo = findActive(id);
-    return IpoResponse.from(ipo);
+    return toResponse(ipo);
   }
 
   /**
@@ -114,7 +116,7 @@ public class IpoService {
     ipo.setUpdatedAt(LocalDateTime.now(clock));
     try {
       Ipo saved = ipoRepository.save(ipo);
-      return IpoResponse.from(saved);
+      return toResponse(saved);
     } catch (DataIntegrityViolationException ex) {
       throw new IpoConflictException("이미 등록된 IPO입니다.");
     }
@@ -216,7 +218,7 @@ public class IpoService {
 
     try {
       Ipo saved = ipoRepository.save(ipo);
-      return IpoResponse.from(saved);
+      return toResponse(saved);
     } catch (DataIntegrityViolationException ex) {
       throw new IpoConflictException("이미 등록된 IPO입니다.");
     }
@@ -308,5 +310,22 @@ public class IpoService {
     if (duplicate) {
       throw new IpoConflictException("이미 등록된 IPO입니다.");
     }
+  }
+
+  /**
+   * 엔티티를 응답 DTO로 변환한다. 환불일이 없으면 청약 종료일 + 2영업일로 계산하고
+   * estimated 플래그를 true로 설정한다.
+   */
+  private IpoResponse toResponse(Ipo ipo) {
+    IpoResponse response = IpoResponse.from(ipo);
+    if (ipo.getRefundDate() != null) {
+      response.setRefundDate(ipo.getRefundDate());
+      response.setRefundDateEstimated(false);
+    } else if (ipo.getSubscriptionEndDate() != null) {
+      LocalDate estimated = businessDayCalculator.plusBusinessDays(ipo.getSubscriptionEndDate(), 2);
+      response.setRefundDate(estimated);
+      response.setRefundDateEstimated(true);
+    }
+    return response;
   }
 }

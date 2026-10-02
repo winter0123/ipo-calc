@@ -1,6 +1,7 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
@@ -225,5 +226,78 @@ class BusinessDayCalculatorTest {
 
     // then: 월요일(휴장일) 건너뛰고 화요일
     assertThat(next).isEqualTo(LocalDate.of(2026, 9, 29));
+  }
+
+  @Test
+  void plusBusinessDays_mondayTwoBusinessDays_returnsWednesday() {
+    // given: 2026-09-21 월요일 (평일, 휴장일 없음)
+    LocalDate monday = LocalDate.of(2026, 9, 21);
+
+    // when
+    LocalDate result = calculator.plusBusinessDays(monday, 2);
+
+    // then: 화, 수 (2영업일 후)
+    assertThat(result).isEqualTo(LocalDate.of(2026, 9, 23));
+  }
+
+  @Test
+  void plusBusinessDays_fridayTwoBusinessDays_returnsTuesday() {
+    // given: 2026-09-25 금요일 (추석 연휴 휴장일)
+    LocalDate friday = LocalDate.of(2026, 9, 25);
+
+    // when
+    LocalDate result = calculator.plusBusinessDays(friday, 2);
+
+    // then: 토/일, 월(대체휴일) 건너뛰고 화, 수 -> 2영업일 후는 수요일 9/30
+    // 실제로: 9/26(토), 9/27(일), 9/28(월-휴장일), 9/29(화-1영업일), 9/30(수-2영업일)
+    assertThat(result).isEqualTo(LocalDate.of(2026, 9, 30));
+  }
+
+  @Test
+  void plusBusinessDays_fridayBeforeHolidayTwoBusinessDays_skipsHolidays() {
+    // given: 2026-02-13 금요일 (다음 주 월/화/수 설날 연휴 휴장일)
+    LocalDate friday = LocalDate.of(2026, 2, 13);
+
+    // when
+    LocalDate result = calculator.plusBusinessDays(friday, 2);
+
+    // then: 토/일, 월/화/수(설날 연휴) 건너뛰고 목/금 -> 2영업일 후는 금요일 2/20
+    assertThat(result).isEqualTo(LocalDate.of(2026, 2, 20));
+  }
+
+  @Test
+  void plusBusinessDays_zeroDays_returnsSameDate() {
+    // given: 2026-09-23 수요일
+    LocalDate wednesday = LocalDate.of(2026, 9, 23);
+
+    // when
+    LocalDate result = calculator.plusBusinessDays(wednesday, 0);
+
+    // then: 같은 날짜 반환
+    assertThat(result).isEqualTo(LocalDate.of(2026, 9, 23));
+  }
+
+  @Test
+  void plusBusinessDays_negativeDays_throwsException() {
+    // given: 2026-09-23 수요일
+    LocalDate wednesday = LocalDate.of(2026, 9, 23);
+
+    // when & then
+    assertThatThrownBy(() -> calculator.plusBusinessDays(wednesday, -1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("businessDays는 0 이상이어야 합니다");
+  }
+
+  @Test
+  void plusBusinessDays_nonBusinessDayStart_countsFromNextBusinessDay() {
+    // given: 2026-09-24 목요일 (추석 연휴 휴장일, 영업일 아님)
+    LocalDate holiday = LocalDate.of(2026, 9, 24);
+
+    // when
+    LocalDate result = calculator.plusBusinessDays(holiday, 2);
+
+    // then: date가 영업일이 아니어도 date 다음 영업일부터 센다
+    // 9/24(목-휴장일), 9/25(금-휴장일), 9/26(토), 9/27(일), 9/28(월-휴장일), 9/29(화-1영업일), 9/30(수-2영업일)
+    assertThat(result).isEqualTo(LocalDate.of(2026, 9, 30));
   }
 }

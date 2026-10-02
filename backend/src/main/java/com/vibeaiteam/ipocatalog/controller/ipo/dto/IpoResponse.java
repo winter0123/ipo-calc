@@ -45,6 +45,10 @@ public class IpoResponse {
 
   private String status;
 
+  private LocalDate refundDate;
+
+  private boolean refundDateEstimated;
+
   private LocalDateTime createdAt;
 
   private LocalDateTime updatedAt;
@@ -67,6 +71,8 @@ public class IpoResponse {
         .listingDate(ipo.getListingDate())
         .offeringShareCount(ipo.getOfferingShareCount())
         .status(ipo.getStatus().name())
+        .refundDate(ipo.getRefundDate())
+        .refundDateEstimated(false)
         .createdAt(ipo.getCreatedAt())
         .updatedAt(ipo.getUpdatedAt())
         .build();
