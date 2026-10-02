@@ -113,6 +113,7 @@ function setupDefaultMocks() {
 describe('ProfitViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem('currentInvestorId', '1')
     setupDefaultMocks()
     // 기본 기간(이번 달 1일~오늘)이 테스트 데이터(2026-09-21·22)를 포함하도록 시계를 맞춘다.
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -130,7 +131,7 @@ describe('ProfitViewPage', () => {
   it('조회 버튼 없이 기간 안의 매도를 최신순으로 보여주고 합계를 낸다', async () => {
     renderPage()
 
-    await waitFor(() => expect(screen.getAllByText('홍길동').length).toBe(3)) // 드롭다운 1 + 행 2)
+    await waitFor(() => expect(screen.getAllByText('홍길동').length).toBe(2)) // 드롭다운 1 + 행 2)
     expect(screen.queryByRole('button', { name: /^조회/ })).not.toBeInTheDocument()
     const rows = screen.getAllByRole('row')
     // 헤더, 9/22, 9/21, 합계
@@ -166,12 +167,11 @@ describe('ProfitViewPage', () => {
     expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
   })
 
-  it('투자자를 고르면 그 투자자의 매도만 보인다', async () => {
+  it('현재 투자자의 매도만 보인다', async () => {
+    localStorage.setItem('currentInvestorId', '2')
     renderPage()
-    await waitFor(() => expect(screen.getByText('366,000')).toBeInTheDocument())
-    await waitFor(() => expect(screen.getByRole('option', { name: '김철수' })).toBeInTheDocument())
-    await fill(screen.getByLabelText('투자자'), '2')
-    expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('매도 내역이 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByText('366,000')).not.toBeInTheDocument()
   })
 
   it('조회 실패 시 오류 메시지가 보인다', async () => {

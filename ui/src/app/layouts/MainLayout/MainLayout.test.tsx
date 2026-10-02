@@ -10,8 +10,14 @@ import { ApiError } from '@/shared/api/apiError.ts'
 vi.mock('@/shared/api/client.ts', () => ({ apiFetch: vi.fn() }))
 
 const anonymous = () => vi.mocked(apiFetch).mockRejectedValue(new ApiError(401, 'Unauthorized'))
-const loggedInAs = (role: 'USER' | 'ADMIN') =>
-  vi.mocked(apiFetch).mockResolvedValue({ accountId: 1, email: 'a@b.com', name: '나', role })
+const loggedInAs = (role: 'USER' | 'ADMIN', investors: object[] = []) =>
+  vi
+    .mocked(apiFetch)
+    .mockImplementation(async (path: unknown) =>
+      String(path).startsWith('/investors')
+        ? investors
+        : { accountId: 1, email: 'a@b.com', name: '나', role },
+    )
 
 function TestChild() {
   return <div data-testid="child-content">Child Page</div>
@@ -128,7 +134,7 @@ describe('MainLayout', () => {
 
     anonymous()
     renderLayout()
-    await vi.waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(vi.mocked(apiFetch).mock.calls.length).toBeGreaterThanOrEqual(2))
     expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
   })

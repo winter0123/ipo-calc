@@ -71,3 +71,8 @@
   border-color: var(--border);
   cursor: not-allowed;
 }
+
+.hint {
+  font-size: 14px;
+  color: var(--ink-muted);
+}

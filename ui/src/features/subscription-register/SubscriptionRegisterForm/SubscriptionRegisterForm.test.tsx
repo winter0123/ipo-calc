@@ -97,13 +97,12 @@ function renderForm() {
 
 async function waitForDropdownsLoaded() {
   await waitFor(() => {
-    expect(screen.getByRole('option', { name: '홍길동' })).toBeInTheDocument()
+    expect(screen.getByText('홍길동')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: '테스트기업 공모주' })).toBeInTheDocument()
   })
 }
 
 async function fillValidForm() {
-  await fill(screen.getByLabelText('투자자'), '1')
   await screen.findByRole('option', { name: '미래에셋증권' })
   await fill(screen.getByLabelText('증권계좌'), '1')
   await fill(screen.getByLabelText('공모주'), '1')
@@ -115,6 +114,7 @@ async function fillValidForm() {
 describe('SubscriptionRegisterForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem('currentInvestorId', '1')
   })
 
   it('드롭다운 로딩 상태를 표시한 뒤 응답 수신 후 옵션을 채움', async () => {
@@ -140,50 +140,15 @@ describe('SubscriptionRegisterForm', () => {
     await waitForDropdownsLoaded()
   })
 
-  it('투자자를 고르기 전에는 증권계좌를 조회하지 않고 선택 후 investorId로 조회', async () => {
+  it('현재 투자자의 증권계좌만 조회해 보여 준다', async () => {
     mockDropdownFetches()
     renderForm()
     await waitForDropdownsLoaded()
 
-    expect(screen.getByLabelText('증권계좌')).toBeDisabled()
-    expect(apiFetch).not.toHaveBeenCalledWith(
-      expect.stringContaining('/securities-accounts'),
-      expect.anything(),
-    )
-
-    await fill(screen.getByLabelText('투자자'), '1')
-
     expect(await screen.findByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
     expect(screen.getByLabelText('증권계좌')).toBeEnabled()
+    expect(screen.queryByLabelText('투자자')).not.toBeInTheDocument()
     expect(apiFetch).toHaveBeenCalledWith('/securities-accounts?investorId=1', expect.anything())
-  })
-
-  it('투자자를 바꾸면 선택했던 증권계좌가 초기화됨', async () => {
-    vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
-      const pathStr = String(path)
-      if (pathStr === '/investors')
-        return [...INVESTORS, { ...INVESTORS[0], id: 2, displayName: '김철수' }]
-      if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-      if (pathStr === '/securities-accounts?investorId=2') return []
-      if (pathStr === '/ipos') return IPOS
-      throw new Error(`unexpected path: ${pathStr}`)
-    })
-    renderForm()
-    await waitForDropdownsLoaded()
-
-    await fill(screen.getByLabelText('투자자'), '1')
-    await screen.findByRole('option', { name: '미래에셋증권' })
-    await fill(screen.getByLabelText('증권계좌'), '1')
-    expect(screen.getByLabelText('증권계좌')).toHaveValue('1')
-
-    await fill(screen.getByLabelText('투자자'), '2')
-
-    await waitFor(() => {
-      expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
-    })
-    expect(screen.getByLabelText('증권계좌')).toHaveValue('')
-    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
-    expect(await screen.findByText('증권계좌를 선택해 주세요.')).toBeInTheDocument()
   })
 
   it('정상 등록 성공 시 /subscriptions로 이동', async () => {
@@ -236,12 +201,11 @@ describe('SubscriptionRegisterForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('투자자를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('증권계좌를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('공모주를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('청약수량을 입력해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('증거금을 입력해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('청약일를 선택해 주세요.')).toBeInTheDocument()
+      expect(screen.getByText('청약일을 선택해 주세요.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })

@@ -599,7 +599,6 @@ async function scenario7(browser) {
         `청약 등록 폼 미표시: 기대=투자자·증권계좌·공모주 드롭다운이 채워진 폼 vs 실제 화면="${body.slice(0, 120)}" / 실패한 API=${[...new Set(failedApis)].join(', ') || '(없음)'}`,
       )
     }
-    await page.selectOption('#investorId', { label: trade.investorName })
     await page.selectOption('#securitiesAccountId', { index: 1 })
     await page.selectOption('#ipoId', { label: trade.ipoName })
     await page.fill('#quantity', String(TRADE.allocatedQuantity))
@@ -707,7 +706,6 @@ async function scenario8(browser) {
 async function registerSale(page, trade, sale) {
   await goto(page, '/sales/register')
   await page.waitForSelector('form[aria-label="매도 등록 폼"]')
-  await page.selectOption('#investorId', { label: trade.investorName })
   await waitFor(async () => (await page.locator('#subscriptionId option').count()) > 1)
   await page.selectOption('#subscriptionId', { index: 1 })
   await waitFor(async () => (await page.locator('#allocationId option').count()) > 1)
@@ -915,7 +913,6 @@ async function scenario12(browser) {
     await page.getByRole('heading', { name: '증권사 연동' }).waitFor()
     notes.push('헤더 링크로 진입')
 
-    await page.getByLabel('투자자').selectOption({ index: 1 })
     await waitFor(async () => (await page.getByLabel('증권계좌').locator('option').count()) > 1)
     await page.getByLabel('증권계좌').selectOption({ index: 1 })
     await page.getByRole('heading', { name: '증권사 API 연결' }).waitFor()

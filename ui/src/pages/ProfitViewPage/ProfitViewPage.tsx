@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useInvestors } from '@/entities/investor/index.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { ProfitTable, useAllInvestorProfits } from '@/features/profit-view/index.ts'
 import styles from './ProfitViewPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -15,12 +15,11 @@ function defaultPeriod() {
 
 export default function ProfitViewPage() {
   const [period, setPeriod] = useState(defaultPeriod)
-  const [investorId, setInvestorId] = useState('')
   const periodInvalid = period.from !== '' && period.to !== '' && period.from > period.to
 
-  const { data: investors, isLoading: investorsLoading } = useInvestors()
-  const shown = (investors ?? []).filter((i) => !investorId || String(i.id) === investorId)
-  const { rows, isLoading, error } = useAllInvestorProfits(shown)
+  // 현재 투자자(상단 전환기) 기준으로만 보여 준다.
+  const { current, isLoading: investorsLoading } = useCurrentInvestor()
+  const { rows, isLoading, error } = useAllInvestorProfits(current ? [current] : [])
 
   const sales = periodInvalid
     ? []
@@ -60,25 +59,6 @@ export default function ProfitViewPage() {
               min={period.from || undefined}
               onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
             />
-          </div>
-          <div>
-            <label htmlFor="investorId" className={styles.label}>
-              투자자
-            </label>
-            <select
-              id="investorId"
-              className={styles.select}
-              value={investorId}
-              onChange={(e) => setInvestorId(e.target.value)}
-              disabled={investorsLoading}
-            >
-              <option value="">전체 투자자</option>
-              {investors?.map((investor) => (
-                <option key={investor.id} value={investor.id}>
-                  {investor.displayName}
-                </option>
-              ))}
-            </select>
           </div>
           <button
             type="button"

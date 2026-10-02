@@ -268,3 +268,83 @@
     border-radius: var(--radius);
   }
 }
+
+/* 현재 투자자 전환기 */
+.investorSwitch,
+.investorName {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(11, 42, 74, 0.25);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.investorSwitch select {
+  min-width: 120px;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+}
+
+.gate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 520px;
+  margin: var(--space-7) auto;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+}
+
+.gateButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.gateButtons button {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.gateButtons button:hover {
+  background: var(--primary-hover);
+}
+
+@media (max-width: 900px) {
+  .siteName {
+    display: none;
+  }
+
+  .investorSwitch span,
+  .investorName {
+    font-size: 13px;
+  }
+
+  .investorSwitch select {
+    min-width: 0;
+    max-width: 120px;
+  }
+}
+
+/* 전환기가 들어간 헤더가 1400px 이하에서 넘치지 않도록 사이트 이름 글자는 줄인다(로고는 유지) */
+@media (max-width: 1400px) {
+  .siteName {
+    display: none;
+  }
+}

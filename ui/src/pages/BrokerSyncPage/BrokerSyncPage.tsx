@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { AccountSelector } from '@/features/investment-history/index.ts'
 import { BrokerConnectPanel } from '@/features/broker-connect/index.ts'
 import { BrokerSyncPanel } from '@/features/broker-sync/index.ts'
@@ -6,17 +7,14 @@ import styles from './BrokerSyncPage.module.css'
 
 export default function BrokerSyncPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const investorId = searchParams.get('investorId') ?? ''
+  // 투자자는 상단 전환기의 현재 투자자다.
+  const { current } = useCurrentInvestor()
+  const investorId = current ? String(current.id) : ''
   const securitiesAccountId = searchParams.get('securitiesAccountId') ?? ''
   const selectedAccountId = Number(securitiesAccountId)
 
-  // 투자자가 바뀌면 이전 증권계좌 선택은 무효이므로 한 번에 같이 바꾼다.
-  const handleInvestorChange = (value: string) =>
-    setSearchParams(value ? { investorId: value } : {}, { replace: true })
   const handleAccountChange = (value: string) =>
-    setSearchParams(value ? { investorId, securitiesAccountId: value } : { investorId }, {
-      replace: true,
-    })
+    setSearchParams(value ? { securitiesAccountId: value } : {}, { replace: true })
 
   return (
     <div className={styles.container}>
@@ -24,7 +22,6 @@ export default function BrokerSyncPage() {
       <AccountSelector
         investorId={investorId}
         securitiesAccountId={securitiesAccountId}
-        onInvestorChange={handleInvestorChange}
         onSecuritiesAccountChange={handleAccountChange}
       />
       {Number.isInteger(selectedAccountId) && selectedAccountId > 0 ? (
@@ -39,7 +36,7 @@ export default function BrokerSyncPage() {
           />
         </>
       ) : (
-        <p>투자자와 증권계좌를 선택해 주세요.</p>
+        <p>증권계좌를 선택해 주세요.</p>
       )}
     </div>
   )
