@@ -26,11 +26,11 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
             <th>매도금액</th>
             <th>취득금액</th>
             <th>비용금액</th>
-            <th>수수료</th>
-            <th>세금</th>
+            <th>공모주수수료</th>
+            <th>세금 및 기타</th>
             <th>기타비용</th>
-            <th>세전수익</th>
-            <th>세후수익</th>
+            <th>실현손익</th>
+            <th>최종수익금</th>
           </tr>
         </thead>
         <tbody>
