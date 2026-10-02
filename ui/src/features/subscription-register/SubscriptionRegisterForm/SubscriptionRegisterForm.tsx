@@ -35,11 +35,14 @@ export default function SubscriptionRegisterForm() {
 
   const onSubmit = (data: SubscriptionRegisterRequest) => {
     // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
-    mutate({ ...data, subscribedAt: `${data.subscribedAt}T09:00` }, {
-      onSuccess: () => {
-        navigate('/subscriptions')
+    mutate(
+      { ...data, subscribedAt: `${data.subscribedAt}T09:00` },
+      {
+        onSuccess: () => {
+          navigate('/subscriptions')
+        },
       },
-    })
+    )
   }
 
   const formErrorMessage = toErrorMessage(error, {

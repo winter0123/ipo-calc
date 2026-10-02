@@ -1,8 +1,8 @@
-import { type SaleProfit } from '@/entities/profit/index.ts'
+import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import styles from './ProfitRow.module.css'
 
 interface ProfitRowProps {
-  profit: SaleProfit
+  profit: SaleProfitRow
 }
 
 function formatNumber(value: number | null): string {
@@ -18,9 +18,8 @@ export default function ProfitRow({ profit }: ProfitRowProps) {
   const realizedProfit = profit.afterTaxProfit + profit.saleFee
   return (
     <tr className={styles.row}>
-      <td>{profit.saleId}</td>
       <td>{profit.saleDate.slice(0, 10)}</td>
-      <td>{profit.allocationId}</td>
+      <td>{profit.investorName}</td>
       <td className={styles.number}>{formatNumber(profit.quantity)}</td>
       <td className={styles.number}>{formatNumber(profit.saleAmount)}</td>
       <td className={styles.number}>{formatNumber(profit.matchedAcquisitionAmount)}</td>

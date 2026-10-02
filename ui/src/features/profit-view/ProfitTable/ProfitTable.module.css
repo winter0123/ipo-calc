@@ -13,7 +13,7 @@
 
 .table th {
   background-color: var(--surface-soft);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-2);
   text-align: left;
   font-weight: 600;
   color: var(--ink);
