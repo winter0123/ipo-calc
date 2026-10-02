@@ -754,21 +754,22 @@ async function scenario9(browser) {
       .filter((label) => actual[label] !== expected[label])
       .map((label) => `${label}: 기대=${expected[label]} vs 실제=${actual[label]}`)
     if (mismatches.length > 0) {
-      throw new Error(`대시보드 전체 탭 불일치(안분 규칙 #243): ${mismatches.join(' / ')}`)
+      throw new Error(`대시보드 종합 불일치(안분 규칙 #243): ${mismatches.join(' / ')}`)
     }
 
-    await page.getByRole('tab', { name: '투자자별' }).click()
-    const line = `${trade.investorName}: ${e.investment.toLocaleString('en-US')}원`
-    const shown = await waitFor(
-      async () => (await page.locator('li', { hasText: trade.investorName }).count()) > 0,
-      10000,
-    )
-    const investorText = shown ? (await page.locator('li', { hasText: trade.investorName }).first().innerText()).trim() : '(없음)'
+    // 종합 아래 투자자 섹션의 총 투자금이 합계와 같아야 한다(투자자가 1명이므로)
+    const section = page.getByRole('region', { name: trade.investorName })
+    await section.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+    const investorText =
+      (await section.count()) > 0
+        ? (await section.locator('[aria-label^="총 투자금: "]').first().innerText()).trim()
+        : '(없음)'
+    const line = `${e.investment.toLocaleString('en-US')}원`
     if (investorText !== line) {
-      throw new Error(`투자자별 탭 불일치: 기대="${line}" vs 실제="${investorText}"`)
+      throw new Error(`투자자 섹션 불일치: 기대="${line}" vs 실제="${investorText}"`)
     }
     trade.sold = true
-    return `매도 ${TRADE.sales.length}건(${TRADE.sales.map((s) => s.quantity).join('+')}주/배정 ${TRADE.allocatedQuantity}주) → ${Object.entries(actual).map(([k, v]) => `${k}=${v}`).join(', ')}, 투자자별="${investorText}"`
+    return `매도 ${TRADE.sales.length}건(${TRADE.sales.map((s) => s.quantity).join('+')}주/배정 ${TRADE.allocatedQuantity}주) → ${Object.entries(actual).map(([k, v]) => `${k}=${v}`).join(', ')}, 투자자 섹션 총 투자금="${investorText}"`
   } finally {
     await context.close()
   }

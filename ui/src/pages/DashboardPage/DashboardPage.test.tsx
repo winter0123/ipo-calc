@@ -42,6 +42,7 @@ const defaultErrorQuery = { data: undefined, isLoading: false, error: new Error(
 // Mock the hooks
 vi.mock('@/features/dashboard/useDashboardSummary.ts')
 vi.mock('@/features/dashboard/useDashboardByInvestor.ts')
+vi.mock('@/entities/investor/useInvestors.ts')
 vi.mock('@/features/dashboard/useDashboardBySecuritiesFirm.ts')
 vi.mock('@/features/dashboard/useDashboardByPeriod.ts')
 vi.mock('@/features/dashboard/useDashboardTabs.ts')
@@ -159,6 +160,7 @@ vi.mock('@/features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
 
 import { useDashboardSummary } from '@/features/dashboard/index.ts'
 import { useDashboardByInvestor } from '@/features/dashboard/index.ts'
+import { useInvestors } from '@/entities/investor/index.ts'
 import { useDashboardBySecuritiesFirm } from '@/features/dashboard/index.ts'
 import { useDashboardByPeriod } from '@/features/dashboard/index.ts'
 import { useDashboardTabs } from '@/features/dashboard/index.ts'
@@ -175,6 +177,7 @@ describe('DashboardPage', () => {
 
     vi.mocked(useDashboardSummary).mockReturnValue(asResult(defaultSummaryQuery))
     vi.mocked(useDashboardByInvestor).mockReturnValue(asResult(defaultEmptyQuery))
+    vi.mocked(useInvestors).mockReturnValue(asResult({ data: [] }))
     vi.mocked(useDashboardBySecuritiesFirm).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardByPeriod).mockReturnValue(asResult(defaultEmptyQuery))
     vi.mocked(useDashboardTabs).mockReturnValue({
@@ -188,15 +191,48 @@ describe('DashboardPage', () => {
     vi.useRealTimers()
   })
 
-  it('기본 탭이 전체로 설정되고 탭이 렌더링됨', async () => {
+  it('기본 탭이 종합으로 설정되고 탭이 렌더링됨', async () => {
     renderPage()
     await waitForLoaded()
 
-    expect(screen.getByText('전체')).toBeInTheDocument()
-    expect(screen.getByText('투자자별')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '종합' })).toBeInTheDocument()
     expect(screen.getByText('증권사별')).toBeInTheDocument()
     expect(screen.getByText('월별')).toBeInTheDocument()
     expect(screen.getByText('연도별')).toBeInTheDocument()
+  })
+
+  it('종합 아래에 등록된 투자자별 집계를 쭉 보여 주고 매도 없는 투자자는 0으로 채운다', async () => {
+    const summary = (amount: number) => ({
+      totalInvestmentAmount: amount,
+      totalPreTaxProfit: 0,
+      totalAfterTaxProfit: 0,
+      totalProfitRate: 0,
+      participationCount: amount ? 1 : 0,
+    })
+    vi.mocked(useDashboardSummary).mockReturnValue(
+      asResult({ data: summary(5000000), isLoading: false, error: null }),
+    )
+    vi.mocked(useDashboardByInvestor).mockReturnValue(
+      asResult({
+        data: [{ investorId: 1, investorName: '홍길동', ...summary(5000000) }],
+        isLoading: false,
+        error: null,
+      }),
+    )
+    vi.mocked(useInvestors).mockReturnValue(
+      asResult({
+        data: [
+          { id: 1, displayName: '홍길동' },
+          { id: 2, displayName: '김철수' },
+        ],
+      }),
+    )
+
+    renderPage()
+    await waitForLoaded()
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings).toEqual(['종합', '홍길동', '김철수'])
   })
 
   it('로딩 상태를 표시함', async () => {

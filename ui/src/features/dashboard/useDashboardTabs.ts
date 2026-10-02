@@ -6,9 +6,7 @@ import type { DashboardTab } from './tabs.ts'
 function getTabKey(tab: DashboardTab) {
   switch (tab) {
     case 'all':
-      return dashboardKeys.summary()
-    case 'investor':
-      return dashboardKeys.byInvestor()
+      return dashboardKeys.all
     case 'securities-firm':
       return dashboardKeys.bySecuritiesFirm()
     case 'month':

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { useInvestors } from '@/entities/investor/index.ts'
 import {
   DashboardTabs,
   PeriodSelector,
@@ -15,6 +16,14 @@ import { EmptyState } from '@/widgets/EmptyState/index.ts'
 import { DashboardCardGroup } from '@/widgets/DashboardCardGroup/index.ts'
 import styles from './DashboardPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+
+const EMPTY_SUMMARY = {
+  totalInvestmentAmount: 0,
+  totalPreTaxProfit: 0,
+  totalAfterTaxProfit: 0,
+  totalProfitRate: 0,
+  participationCount: 0,
+}
 
 interface AmountListItem {
   key: string
@@ -41,7 +50,9 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
 
   const summaryQuery = useDashboardSummary({ enabled: currentTab === 'all' })
-  const investorQuery = useDashboardByInvestor({ enabled: currentTab === 'investor' })
+  // 종합 탭은 합계 아래에 계정에 등록된 투자자별 집계를 이어서 보여 준다.
+  const investorQuery = useDashboardByInvestor({ enabled: currentTab === 'all' })
+  const { data: investors } = useInvestors()
   const securitiesFirmQuery = useDashboardBySecuritiesFirm({
     enabled: currentTab === 'securities-firm',
   })
@@ -84,25 +95,33 @@ export default function DashboardPage() {
         if (summary.totalInvestmentAmount === 0 && summary.participationCount === 0) {
           return <EmptyState onResetFilters={handleReset} />
         }
+        // 매도가 없는 투자자는 집계에 없으므로 0으로 채워 모든 투자자를 보여 준다.
+        const byId = new Map((investorQuery.data ?? []).map((item) => [item.investorId, item]))
+        const sections = (investors ?? []).map((investor) => ({
+          id: investor.id,
+          name: investor.displayName,
+          summary: byId.get(investor.id) ?? EMPTY_SUMMARY,
+        }))
         return (
           <div className={styles.dataArea}>
-            <DashboardCardGroup summary={summary} />
-          </div>
-        )
-      }
-      case 'investor': {
-        const data = investorQuery.data
-        if (!data) return null
-        if (data.length === 0) return <EmptyState onResetFilters={handleReset} />
-        return (
-          <div className={styles.dataArea}>
-            <AmountList
-              items={data.map((item) => ({
-                key: item.investorName,
-                label: item.investorName,
-                amount: item.totalInvestmentAmount,
-              }))}
-            />
+            <section aria-labelledby="dash-total" className={styles.section}>
+              <h2 id="dash-total" className={styles.sectionTitle}>
+                종합
+              </h2>
+              <DashboardCardGroup summary={summary} />
+            </section>
+            {sections.map((section) => (
+              <section
+                key={section.id}
+                aria-labelledby={`dash-investor-${section.id}`}
+                className={styles.section}
+              >
+                <h2 id={`dash-investor-${section.id}`} className={styles.sectionTitle}>
+                  {section.name}
+                </h2>
+                <DashboardCardGroup summary={section.summary} />
+              </section>
+            ))}
           </div>
         )
       }
@@ -143,8 +162,10 @@ export default function DashboardPage() {
   }
 
   const currentQuery = {
-    all: summaryQuery,
-    investor: investorQuery,
+    all: {
+      isLoading: summaryQuery.isLoading || investorQuery.isLoading,
+      error: summaryQuery.error ?? investorQuery.error,
+    },
     'securities-firm': securitiesFirmQuery,
     month: periodQuery,
     year: periodQuery,
