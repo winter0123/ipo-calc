@@ -710,6 +710,182 @@ class IpoControllerTest {
     }
   }
 
+  @Test
+  void listIposWithoutLoginReturns200() throws Exception {
+    // given: IPO 1개 등록 (관리자 세션으로)
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // when: 로그인 없이 목록 조회 (새 세션)
+    MockHttpSession newSession = new MockHttpSession();
+    MvcResult result = mockMvc.perform(get("/ipos").session(newSession)).andReturn();
+
+    // then: 200 OK (공개 달력 요구(2026-10-02))
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    List<Map<String, Object>> list =
+        objectMapper.readValue(utf8Body(result), new TypeReference<>() {});
+    assertThat(list).hasSize(1);
+  }
+
+  @Test
+  void getIpoByIdWithoutLoginReturns200() throws Exception {
+    // given: IPO 1개 등록
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // when: 로그인 없이 단건 조회
+    MockHttpSession newSession = new MockHttpSession();
+    MvcResult result = mockMvc.perform(get("/ipos/{id}", id).session(newSession)).andReturn();
+
+    // then: 200 OK (공개 달력 요구(2026-10-02))
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> response = readBody(result);
+    assertThat(((Number) response.get("id")).longValue()).isEqualTo(id);
+  }
+
+  @Test
+  void registerIpoWithoutLoginReturns401() throws Exception {
+    // when: 로그인 없이 등록 시도
+    MockHttpSession newSession = new MockHttpSession();
+    MvcResult result = registerIpo(validRequest(), newSession);
+
+    // then: 401 Unauthorized
+    assertThat(result.getResponse().getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void updateIpoWithoutLoginReturns401() throws Exception {
+    // given: IPO 1개 등록
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // when: 로그인 없이 수정 시도
+    MockHttpSession newSession = new MockHttpSession();
+    Map<String, Object> updateRequest = Map.of("companyName", "변경");
+    MvcResult result =
+        mockMvc
+            .perform(
+                patch("/ipos/{id}", id)
+                    .session(newSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(updateRequest)))
+            .andReturn();
+
+    // then: 401 Unauthorized
+    assertThat(result.getResponse().getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void deactivateIpoWithoutLoginReturns401() throws Exception {
+    // given: IPO 1개 등록
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // when: 로그인 없이 비활성화 시도
+    MockHttpSession newSession = new MockHttpSession();
+    MvcResult result = mockMvc.perform(delete("/ipos/{id}", id).session(newSession)).andReturn();
+
+    // then: 401 Unauthorized
+    assertThat(result.getResponse().getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void registerIpoWithNormalUserReturns403() throws Exception {
+    // given: 일반 사용자 로그인 (ADMIN 아님)
+    String userEmail = "user-" + ThreadLocalRandom.current().nextLong() + "@example.com";
+    String userPassword = "securePass123!";
+    String userName = "일반유저";
+    MockHttpSession userSession = new MockHttpSession();
+    AuthTestSupport.signup(mockMvc, objectMapper, userSession, userEmail, userPassword, userName);
+    AuthTestSupport.login(mockMvc, objectMapper, userSession, userEmail, userPassword);
+
+    // when: 일반 사용자로 등록 시도
+    MvcResult result = registerIpo(validRequest(), userSession);
+
+    // then: 403 Forbidden (ADMIN만 쓰기 가능)
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    Map<String, Object> error = readBody(result);
+    assertThat(error.get("error")).isEqualTo("FORBIDDEN");
+
+    // 정리
+    Account account = accountRepository.findByEmail(userEmail);
+    if (account != null) {
+      accountRepository.delete(account);
+    }
+  }
+
+  @Test
+  void updateIpoWithNormalUserReturns403() throws Exception {
+    // given: 관리자로 IPO 1개 등록
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // given: 일반 사용자 로그인
+    String userEmail = "user-" + ThreadLocalRandom.current().nextLong() + "@example.com";
+    String userPassword = "securePass123!";
+    String userName = "일반유저";
+    MockHttpSession userSession = new MockHttpSession();
+    AuthTestSupport.signup(mockMvc, objectMapper, userSession, userEmail, userPassword, userName);
+    AuthTestSupport.login(mockMvc, objectMapper, userSession, userEmail, userPassword);
+
+    // when: 일반 사용자로 수정 시도
+    Map<String, Object> updateRequest = Map.of("companyName", "변경");
+    MvcResult result =
+        mockMvc
+            .perform(
+                patch("/ipos/{id}", id)
+                    .session(userSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(updateRequest)))
+            .andReturn();
+
+    // then: 403 Forbidden
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    Map<String, Object> error = readBody(result);
+    assertThat(error.get("error")).isEqualTo("FORBIDDEN");
+
+    // 정리
+    Account account = accountRepository.findByEmail(userEmail);
+    if (account != null) {
+      accountRepository.delete(account);
+    }
+  }
+
+  @Test
+  void deactivateIpoWithNormalUserReturns403() throws Exception {
+    // given: 관리자로 IPO 1개 등록
+    signupAndLogin();
+    MvcResult registered = registerIpo(validRequest());
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // given: 일반 사용자 로그인
+    String userEmail = "user-" + ThreadLocalRandom.current().nextLong() + "@example.com";
+    String userPassword = "securePass123!";
+    String userName = "일반유저";
+    MockHttpSession userSession = new MockHttpSession();
+    AuthTestSupport.signup(mockMvc, objectMapper, userSession, userEmail, userPassword, userName);
+    AuthTestSupport.login(mockMvc, objectMapper, userSession, userEmail, userPassword);
+
+    // when: 일반 사용자로 비활성화 시도
+    MvcResult result = mockMvc.perform(delete("/ipos/{id}", id).session(userSession)).andReturn();
+
+    // then: 403 Forbidden
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    Map<String, Object> error = readBody(result);
+    assertThat(error.get("error")).isEqualTo("FORBIDDEN");
+
+    // 정리
+    Account account = accountRepository.findByEmail(userEmail);
+    if (account != null) {
+      accountRepository.delete(account);
+    }
+  }
+
   private Map<String, Object> validRequest() {
     Map<String, Object> request = new java.util.LinkedHashMap<>();
     request.put("companyName", "기업A");
@@ -727,6 +903,11 @@ class IpoControllerTest {
   }
 
   private MvcResult registerIpo(Map<String, Object> request) throws Exception {
+    return registerIpo(request, session);
+  }
+
+  private MvcResult registerIpo(Map<String, Object> request, MockHttpSession session)
+      throws Exception {
     return mockMvc
         .perform(
             post("/ipos")

@@ -50,6 +50,9 @@ public class SecurityConfig {
                         "/js/**",
                         "/error")
                     .permitAll()
+                    // 공개 조회 허용 (공모주 달력·휴장일: 로그인 불필요)
+                    .requestMatchers(HttpMethod.GET, "/ipos", "/ipos/**", "/market-holidays")
+                    .permitAll()
                     // 가입 승인 관리는 ADMIN만.
                     .requestMatchers("/admin/**")
                     .hasRole("ADMIN")

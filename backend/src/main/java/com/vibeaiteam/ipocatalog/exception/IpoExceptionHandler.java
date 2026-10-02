@@ -23,6 +23,15 @@ public class IpoExceptionHandler {
   }
 
   /**
+   * MarketHolidayValidationException을 HTTP 400 응답으로 변환한다.
+   */
+  @ExceptionHandler(MarketHolidayValidationException.class)
+  public ResponseEntity<ErrorResponse> handleMarketHolidayValidation(
+      MarketHolidayValidationException ex) {
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+  }
+
+  /**
    * IpoInvalidCsvException을 HTTP 400 응답으로 변환한다.
    */
   @ExceptionHandler(IpoInvalidCsvException.class)
