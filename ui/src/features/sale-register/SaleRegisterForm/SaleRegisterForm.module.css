@@ -82,3 +82,36 @@
   border-color: var(--border);
   cursor: not-allowed;
 }
+
+.hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* 최종수익금: 입력이 아니라 계산 결과라서 색 면으로 구분한다 */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface-aqua);
+  border: 1px solid var(--aqua);
+  border-radius: var(--radius);
+}
+
+.summaryLabel {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.negative {
+  color: var(--danger);
+}
