@@ -8,6 +8,7 @@ import {
   type BarSegment,
 } from '@/features/ipo-calendar/index.ts'
 import { type Ipo } from '@/entities/ipo/index.ts'
+import { useMarketHolidays } from '@/entities/market-holiday/index.ts'
 import styles from './IpoCalendar.module.css'
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -56,6 +57,9 @@ export default function IpoCalendar({
     month: initialMonth ?? today.getMonth() + 1,
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
+  const { data: holidays = [] } = useMarketHolidays(year)
+  const holidayMap = useMemo(() => new Map(holidays.map((h) => [h.date, h.name])), [holidays])
 
   const allEvents = useMemo(() => buildCalendarEvents(ipos, year, month), [ipos, year, month])
 
@@ -226,24 +230,36 @@ export default function IpoCalendar({
 
                 const dateKey = formatDateKey(day)
                 const dayEvents = events.filter((e) => eventCoversDate(e, dateKey))
+                const holidayName = holidayMap.get(dateKey)
                 const isSelected = selectedDate === dateKey
                 const isToday =
                   day === today.getDate() &&
                   month === today.getMonth() + 1 &&
                   year === today.getFullYear()
 
+                const ariaLabelParts = [`${month}월 ${day}일`]
+                if (holidayName) {
+                  ariaLabelParts.push(holidayName)
+                }
+                if (dayEvents.length > 0) {
+                  ariaLabelParts.push(`일정 ${dayEvents.length}개`)
+                }
+
                 return (
                   <button
                     key={dayIndex}
                     type="button"
-                    className={`${styles.dateCell} ${isSelected ? styles.selected : ''} ${isToday ? styles.today : ''} ${dayEvents.length > 0 ? styles.hasEvents : ''}`}
+                    className={`${styles.dateCell} ${isSelected ? styles.selected : ''} ${isToday ? styles.today : ''} ${dayEvents.length > 0 ? styles.hasEvents : ''} ${holidayName ? styles.hasHoliday : ''}`}
                     style={{ gridColumn: dayIndex + 1 }}
                     onClick={() => handleDateClick(dateKey)}
                     aria-pressed={isSelected}
                     aria-current={isToday ? 'date' : undefined}
-                    aria-label={`${month}월 ${day}일${dayEvents.length > 0 ? `, 일정 ${dayEvents.length}개` : ''}`}
+                    aria-label={ariaLabelParts.join(', ')}
                   >
-                    <span className={styles.dateNumber}>{day}</span>
+                    <span className={styles.dateHead}>
+                      {holidayName && <span className={styles.holidayName}>{holidayName}</span>}
+                      <span className={styles.dateNumber}>{day}</span>
+                    </span>
                   </button>
                 )
               })}
@@ -286,6 +302,9 @@ export default function IpoCalendar({
         <h3 className={styles.detailTitle}>
           {selectedDate ? `${selectedDate} 일정` : '날짜를 선택하세요'}
         </h3>
+        {selectedDate && holidayMap.has(selectedDate) && (
+          <p className={styles.holidayNotice}>휴장일 · {holidayMap.get(selectedDate)}</p>
+        )}
         {selectedDate && selectedDateEvents.length === 0 && (
           <p className={styles.noEvents}>일정 없음</p>
         )}
