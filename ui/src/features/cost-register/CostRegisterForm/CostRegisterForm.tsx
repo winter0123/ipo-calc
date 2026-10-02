@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import { useCostRegister } from '../useCostRegister.ts'
 import { type CostRegisterRequest } from '@/entities/cost/index.ts'
@@ -19,7 +19,11 @@ export default function CostRegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
+    control,
   } = useForm<CostRegisterRequest>({ mode: 'onSubmit' })
+  const costTypeInput = useWatch({ control, name: 'costType' })
+  // 공모주수수료(청약 수수료)는 매도 등록에서 입력한다. 여기에도 넣으면 이중으로 차감되므로 미리 알려 준다.
+  const looksLikeIpoFee = /(청약|공모주)\s*수수료/.test(costTypeInput ?? '')
 
   const onSubmit = (data: CostRegisterRequest) => {
     mutate(data)
@@ -53,9 +57,15 @@ export default function CostRegisterForm() {
     <form
       className={styles.form}
       onSubmit={handleSubmit(onSubmit)}
-      aria-label="비용 등록 폼"
+      aria-label="기타 비용 등록 폼"
       noValidate
     >
+      <div className={styles.notice} role="note">
+        공모주수수료(청약 수수료)는 <strong>매도 등록</strong>에서 입력합니다. 여기에는 그 밖의
+        비용(예: 증거금 이자)만 등록하세요. 등록한 비용은 매도한 수량 비율만큼 최종수익금에서
+        차감됩니다.
+      </div>
+
       <div className={styles.field}>
         <label htmlFor="subscriptionId">청약</label>
         <select
@@ -87,6 +97,7 @@ export default function CostRegisterForm() {
         <input
           id="costType"
           type="text"
+          placeholder="예: 증거금 이자"
           aria-invalid={!!errors.costType}
           aria-describedby={errors.costType ? 'costType-error' : undefined}
           {...register('costType', {
@@ -98,6 +109,11 @@ export default function CostRegisterForm() {
         {errors.costType && (
           <span id="costType-error" className={styles.error} aria-live="polite">
             {String(errors.costType.message)}
+          </span>
+        )}
+        {looksLikeIpoFee && (
+          <span className={styles.warning} role="status">
+            공모주수수료는 매도 등록에서 입력합니다. 여기에도 등록하면 이중으로 차감됩니다.
           </span>
         )}
       </div>

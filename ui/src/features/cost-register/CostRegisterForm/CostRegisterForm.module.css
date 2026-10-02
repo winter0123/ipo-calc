@@ -75,3 +75,23 @@
   border-color: var(--border);
   cursor: not-allowed;
 }
+
+/* 이 화면의 용도 안내와 이중 차감 경고 */
+.notice {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-aqua);
+  border: 1px solid var(--aqua);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.warning {
+  padding: var(--space-2) var(--space-3);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  color: var(--warning-ink);
+  font-size: 13px;
+}

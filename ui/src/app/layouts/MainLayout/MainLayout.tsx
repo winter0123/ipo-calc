@@ -19,7 +19,7 @@ const REGISTER_ITEMS = [
   { to: '/subscriptions/register', label: '청약' },
   { to: '/allocations/register', label: '배정' },
   { to: '/sales/register', label: '매도' },
-  { to: '/costs/register', label: '비용' },
+  { to: '/costs/register', label: '기타 비용' },
 ]
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>

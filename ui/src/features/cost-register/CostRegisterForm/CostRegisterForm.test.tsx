@@ -92,7 +92,7 @@ async function setupForm() {
   await waitFor(() => {
     expect(screen.getByLabelText('비용종류')).not.toBeDisabled()
   })
-  await fill(screen.getByLabelText('비용종류'), '청약수수료')
+  await fill(screen.getByLabelText('비용종류'), '증거금 이자')
   await fill(screen.getByLabelText('금액'), '25000')
   await fill(screen.getByLabelText('발생일시'), '2026-09-10T10:00')
 }
@@ -120,6 +120,23 @@ describe('CostRegisterForm', () => {
     await waitFor(() => {
       expect(screen.getByText('청약을 선택해 주세요.')).toBeInTheDocument()
     })
+  })
+
+  it('이 화면이 공모주수수료가 아닌 기타 비용용임을 안내한다', async () => {
+    await setupForm()
+    expect(screen.getByRole('note')).toHaveTextContent('매도 등록에서 입력합니다')
+    expect(screen.getByLabelText('비용종류')).toHaveAttribute('placeholder', '예: 증거금 이자')
+  })
+
+  it('비용종류에 청약 수수료·공모주수수료를 쓰면 이중 차감 경고가 보인다', async () => {
+    await setupForm()
+    expect(screen.queryByText(/이중으로 차감됩니다/)).not.toBeInTheDocument()
+    await fill(screen.getByLabelText('비용종류'), '청약 수수료')
+    expect(screen.getByRole('status')).toHaveTextContent('이중으로 차감됩니다')
+    await fill(screen.getByLabelText('비용종류'), '공모주수수료')
+    expect(screen.getByRole('status')).toHaveTextContent('이중으로 차감됩니다')
+    await fill(screen.getByLabelText('비용종류'), '증거금 이자')
+    expect(screen.queryByText(/이중으로 차감됩니다/)).not.toBeInTheDocument()
   })
 
   it('비용종류 필수값 검증', async () => {
@@ -176,7 +193,7 @@ describe('CostRegisterForm', () => {
       expect(mutationFnMock).toHaveBeenCalledWith(
         expect.objectContaining({
           subscriptionId: 1,
-          costType: '청약수수료',
+          costType: '증거금 이자',
           amount: 25000,
           incurredAt: '2026-09-10T10:00',
         }),
