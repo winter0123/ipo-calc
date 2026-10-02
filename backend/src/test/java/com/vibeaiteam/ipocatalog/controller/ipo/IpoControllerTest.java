@@ -637,6 +637,79 @@ class IpoControllerTest {
     assertValidationError(result);
   }
 
+  @Test
+  void getIpoWithRefundDateReturnsRefundDateAndEstimatedFalse() throws Exception {
+    signupAndLogin();
+    Map<String, Object> request = validRequest();
+    request.put("ipoName", "공모주A");
+    request.put("subscriptionStartDate", "2027-01-11");
+    request.put("subscriptionEndDate", "2027-01-12");
+    MvcResult registered = registerIpo(request);
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+
+    // 엔티티에 직접 환불일 설정
+    Ipo existing = ipoRepository.findById(id).orElseThrow();
+    existing.setRefundDate(java.time.LocalDate.of(2027, 1, 20));
+    ipoRepository.save(existing);
+
+    MvcResult result = mockMvc.perform(get("/ipos/{id}", id).session(session)).andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> response = readBody(result);
+    assertThat(response.get("refundDate")).isEqualTo("2027-01-20");
+    assertThat(response.get("refundDateEstimated")).isEqualTo(false);
+  }
+
+  @Test
+  void registerIpoWithoutRefundDateCalculatesEstimatedRefundDate() throws Exception {
+    signupAndLogin();
+    // 2027-01-15 금요일 (휴장일 없는 주, 2영업일 후 = 2027-01-19 수요일)
+    Map<String, Object> request = validRequest();
+    request.put("ipoName", "공모주B");
+    request.put("subscriptionStartDate", "2027-01-13");
+    request.put("subscriptionEndDate", "2027-01-15"); // 금요일
+    request.put("stockCode", "999999");
+
+    MvcResult result = registerIpo(request);
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> response = readBody(result);
+    // 청약 종료일(금) + 2영업일 = 수요일 (토/일 제외)
+    assertThat(response.get("refundDate")).isEqualTo("2027-01-19");
+    assertThat(response.get("refundDateEstimated")).isEqualTo(true);
+  }
+
+  @Test
+  void listIposIncludesRefundDateAndEstimatedFlag() throws Exception {
+    signupAndLogin();
+    Map<String, Object> request = validRequest();
+    request.put("ipoName", "공모주A");
+    request.put("subscriptionStartDate", "2027-02-01");
+    request.put("subscriptionEndDate", "2027-02-02");
+    request.put("stockCode", "111111");
+    MvcResult first = registerIpo(request);
+    assertThat(first.getResponse().getStatus()).isEqualTo(201);
+
+    request.put("ipoName", "공모주B");
+    request.put("subscriptionStartDate", "2027-02-08");
+    request.put("subscriptionEndDate", "2027-02-12"); // 금요일
+    request.put("stockCode", "222222");
+    MvcResult second = registerIpo(request);
+    assertThat(second.getResponse().getStatus()).isEqualTo(201);
+
+    MvcResult listResult = mockMvc.perform(get("/ipos").session(session)).andReturn();
+
+    assertThat(listResult.getResponse().getStatus()).isEqualTo(200);
+    List<Map<String, Object>> list =
+        objectMapper.readValue(utf8Body(listResult), new TypeReference<>() {});
+    assertThat(list).hasSize(2);
+    // 목록에도 refundDate, refundDateEstimated 필드가 포함됨
+    for (Map<String, Object> item : list) {
+      assertThat(item.get("refundDate")).isNotNull();
+      assertThat(item.get("refundDateEstimated")).isNotNull();
+    }
+  }
+
   private Map<String, Object> validRequest() {
     Map<String, Object> request = new java.util.LinkedHashMap<>();
     request.put("companyName", "기업A");

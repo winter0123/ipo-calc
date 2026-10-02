@@ -32,13 +32,38 @@ public class BusinessDayCalculator {
 
   /** 주어진 날짜의 다음 영업일을 반환한다 (주말 및 KRX 휴장일 제외). */
   public LocalDate nextBusinessDay(LocalDate date) {
+    return plusBusinessDays(date, 1);
+  }
+
+  /**
+   * 주어진 날짜부터 지정된 영업일 수만큼 더한 날짜를 반환한다.
+   *
+   * <p>date가 영업일이 아니어도 date 다음 영업일부터 센다. businessDays가 0이면 date를 그대로
+   * 반환한다. businessDays가 음수이면 {@link IllegalArgumentException}을 던진다.
+   *
+   * @param date 기준 날짜 (영업일이 아니어도 됨)
+   * @param businessDays 더할 영업일 수 (0 이상)
+   * @return date로부터 businessDays 영업일 후의 날짜
+   * @throws IllegalArgumentException businessDays가 음수인 경우
+   */
+  public LocalDate plusBusinessDays(LocalDate date, int businessDays) {
+    if (businessDays < 0) {
+      throw new IllegalArgumentException("businessDays는 0 이상이어야 합니다.");
+    }
+    if (businessDays == 0) {
+      return date;
+    }
     ensureYearCached(date.getYear());
     warnIfYearEmpty(date);
-    LocalDate next = date.plusDays(1);
-    while (!isBusinessDay(next)) {
-      next = next.plusDays(1);
+    LocalDate current = date;
+    int counted = 0;
+    while (counted < businessDays) {
+      current = current.plusDays(1);
+      if (isBusinessDay(current)) {
+        counted++;
+      }
     }
-    return next;
+    return current;
   }
 
   /** 주어진 날짜가 영업일인지 판별한다 (주말 및 KRX 휴장일 제외). */
