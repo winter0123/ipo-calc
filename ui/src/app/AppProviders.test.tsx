@@ -34,6 +34,17 @@ describe('AppProviders 401 처리', () => {
     expect(screen.getByTestId('from')).toHaveTextContent('/investments?x=1')
   })
 
+  it.each(['/ipo-calendar', '/ipos/7'])('공개 경로 %s의 401은 이동하지 않는다', async (path) => {
+    window.history.pushState({}, '', path)
+    render(
+      <AppProviders>
+        <Probe />
+      </AppProviders>,
+    )
+    await waitFor(() => expect(screen.getByText('failed')).toBeInTheDocument())
+    expect(screen.getByTestId('path')).toHaveTextContent(path)
+  })
+
   it('/login에서는 redirect하지 않는다', async () => {
     window.history.pushState({}, '', '/login')
     render(

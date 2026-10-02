@@ -47,6 +47,19 @@ function createWrapper(initialEntries: string[] = ['/ipos/7']) {
 const stubFetch = (body: unknown, status = 200) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })))
 
+// /auth/me와 /ipos/7을 구분해 응답한다. account가 null이면 로그인 전(401)이다.
+const stubIpoAndAccount = (account: object | null) =>
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) =>
+      Promise.resolve(
+        String(url).includes('/auth/me')
+          ? new Response(JSON.stringify(account), { status: account ? 200 : 401 })
+          : new Response(JSON.stringify(makeIpo()), { status: 200 }),
+      ),
+    ),
+  )
+
 describe('IpoDetailPage', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -217,16 +230,32 @@ describe('IpoDetailPage', () => {
     })
   })
 
-  it('돌아가기 링크는 /ipo-calendar로, 청약 등록 링크는 /subscriptions/register로 간다', async () => {
-    const ipo = makeIpo()
-    stubFetch(ipo)
+  it('로그인한 경우 돌아가기 링크는 /ipo-calendar로, 청약 등록 링크는 /subscriptions/register로 간다', async () => {
+    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' })
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    const backLink = screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })
-    const registerLink = screen.getByRole('link', { name: '청약 등록하기' })
-    expect(backLink).toHaveAttribute('href', '/ipo-calendar')
-    expect(registerLink).toHaveAttribute('href', '/subscriptions/register')
+    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toHaveAttribute(
+      'href',
+      '/ipo-calendar',
+    )
+    expect(await screen.findByRole('link', { name: '청약 등록하기' })).toHaveAttribute(
+      'href',
+      '/subscriptions/register',
+    )
+  })
+
+  it('로그인 전에는 청약 등록 대신 로그인 링크가 보이고 돌아가기는 그대로다', async () => {
+    stubIpoAndAccount(null)
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    expect(await screen.findByRole('link', { name: '로그인하고 청약 등록하기' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
+import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
@@ -11,6 +12,8 @@ export default function IpoDetailPage() {
   const isValidId = !Number.isNaN(id) && id > 0
 
   const { data: ipo, isLoading, error } = useIpo(isValidId ? id : undefined)
+  const { data: account, isPending: accountPending } = useCurrentAccount()
+  const isGuest = !accountPending && !account
 
   const getErrorMessage = () =>
     toErrorMessage(error, {
@@ -151,9 +154,19 @@ export default function IpoDetailPage() {
         <Link to="/ipo-calendar" className={styles.secondaryLink}>
           공모주 일정으로 돌아가기
         </Link>
-        <Link to="/subscriptions/register" className={styles.primaryLink}>
-          청약 등록하기
-        </Link>
+        {isGuest ? (
+          <Link
+            to="/login"
+            state={{ from: '/subscriptions/register' }}
+            className={styles.primaryLink}
+          >
+            로그인하고 청약 등록하기
+          </Link>
+        ) : (
+          <Link to="/subscriptions/register" className={styles.primaryLink}>
+            청약 등록하기
+          </Link>
+        )}
       </nav>
     </div>
   )

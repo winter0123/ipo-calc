@@ -22,11 +22,18 @@ const REGISTER_ITEMS = [
   { to: '/costs/register', label: '기타 비용' },
 ]
 
+const GUEST_ITEMS = [
+  { to: '/ipo-calendar', label: '공모주 일정' },
+  { to: '/login', label: '로그인' },
+  { to: '/signup', label: '가입하기' },
+]
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? `${styles.link} ${styles.active}` : styles.link
 
 export default function MainLayout() {
-  const { data: currentAccount } = useCurrentAccount()
+  const { data: currentAccount, isPending } = useCurrentAccount()
+  const isGuest = !isPending && !currentAccount
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const logoutMutation = useLogout()
@@ -45,7 +52,7 @@ export default function MainLayout() {
           </span>
           <span className={styles.siteName}>투자 관리 시스템</span>
         </div>
-        {currentAccount && (
+        {(currentAccount || isGuest) && (
           <>
             <button
               type="button"
@@ -66,22 +73,24 @@ export default function MainLayout() {
               aria-label="주요 메뉴"
               className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
             >
-              {NAV_ITEMS.map((item) => (
+              {(currentAccount ? NAV_ITEMS : GUEST_ITEMS).map((item) => (
                 <NavLink key={item.to} to={item.to} className={linkClass}>
                   {item.label}
                 </NavLink>
               ))}
-              <details key={pathname} className={styles.more}>
-                <summary className={styles.link}>등록</summary>
-                <div className={styles.morePanel}>
-                  {REGISTER_ITEMS.map((item) => (
-                    <NavLink key={item.to} to={item.to} className={styles.moreLink}>
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
-              </details>
-              {currentAccount.role === 'ADMIN' && (
+              {currentAccount && (
+                <details key={pathname} className={styles.more}>
+                  <summary className={styles.link}>등록</summary>
+                  <div className={styles.morePanel}>
+                    {REGISTER_ITEMS.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={styles.moreLink}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {currentAccount?.role === 'ADMIN' && (
                 <>
                   <NavLink to="/admin/accounts" className={linkClass}>
                     가입 승인
@@ -91,19 +100,21 @@ export default function MainLayout() {
                   </NavLink>
                 </>
               )}
-              <button
-                type="button"
-                className={styles.logout}
-                onClick={() => {
-                  logoutMutation.mutate(undefined, {
-                    onSettled: () => navigate('/login', { replace: true }),
-                  })
-                }}
-                disabled={logoutMutation.isPending}
-              >
-                <LogOut aria-hidden="true" size={16} />
-                로그아웃
-              </button>
+              {currentAccount && (
+                <button
+                  type="button"
+                  className={styles.logout}
+                  onClick={() => {
+                    logoutMutation.mutate(undefined, {
+                      onSettled: () => navigate('/login', { replace: true }),
+                    })
+                  }}
+                  disabled={logoutMutation.isPending}
+                >
+                  <LogOut aria-hidden="true" size={16} />
+                  로그아웃
+                </button>
+              )}
             </nav>
           </>
         )}

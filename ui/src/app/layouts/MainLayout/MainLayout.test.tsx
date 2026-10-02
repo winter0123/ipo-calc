@@ -82,11 +82,25 @@ describe('MainLayout', () => {
     expect(screen.getByRole('banner')).toContainElement(nav)
   })
 
-  it('로그인 전에는 주요 메뉴를 보이지 않음', async () => {
+  it('조회 중에는 주요 메뉴를 보이지 않음', () => {
+    vi.mocked(apiFetch).mockReturnValue(new Promise(() => undefined))
     renderLayout()
 
-    await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
     expect(screen.queryByRole('navigation', { name: '주요 메뉴' })).not.toBeInTheDocument()
+  })
+
+  it('로그인 전에는 공모주 일정·로그인·가입하기만 보이고 로그아웃은 없음', async () => {
+    renderLayout()
+
+    const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
+    expect(within(nav).getByRole('link', { name: '공모주 일정' })).toHaveAttribute(
+      'href',
+      '/ipo-calendar',
+    )
+    expect(within(nav).getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login')
+    expect(within(nav).getByRole('link', { name: '가입하기' })).toHaveAttribute('href', '/signup')
+    expect(within(nav).queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: '대시보드' })).not.toBeInTheDocument()
   })
 
   it('관리자에게만 가입 승인 링크가 보임', async () => {
