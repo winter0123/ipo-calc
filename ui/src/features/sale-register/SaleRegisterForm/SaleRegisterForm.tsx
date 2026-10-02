@@ -65,6 +65,7 @@ export default function SaleRegisterForm() {
     control,
   } = useForm<SaleFormValues>({ mode: 'onSubmit', defaultValues: { ipoFee: DEFAULT_IPO_FEE } })
 
+  const hasPriorSales = allocationData?.sales.some((sale) => sale.status === 'ACTIVE') ?? false
   const ipoPrice = resolveIpoPrice(
     ipo?.fixedPrice ?? allocationData?.ipoFixedPrice,
     allocationData?.allocation?.allocationPrice,
@@ -107,10 +108,13 @@ export default function SaleRegisterForm() {
       allocation.allocationPrice,
     )
     const quantity = allocationData.remainingQuantity ?? allocation.allocatedQuantity
+    const priorSales = allocationData.sales.some((sale) => sale.status === 'ACTIVE')
     const saleDate = listingDateTime(ipo?.listingDate)
     if (!getFieldState('quantity').isDirty && quantity > 0) setValue('quantity', quantity)
     if (!getFieldState('price').isDirty && basis != null) setValue('price', basis)
     if (!getFieldState('saleDate').isDirty && saleDate) setValue('saleDate', saleDate)
+    // 공모주수수료는 배정 1건당 한 번이라, 이미 매도 기록이 있으면 0원으로 시작한다.
+    if (!getFieldState('ipoFee').isDirty && priorSales) setValue('ipoFee', 0)
     syncLinked({ ipoPrice: basis, source: 'fees' })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 청약·공모주 정보가 도착했을 때만 실행한다
   }, [allocationData, ipo, ipoPending, selectedSubscriptionId])
@@ -122,6 +126,7 @@ export default function SaleRegisterForm() {
     resetField('saleDate')
     resetField('otherFees')
     resetField('realizedProfit')
+    resetField('ipoFee')
     setLastEdited('fees')
     prefilledFor.current = undefined
   }
@@ -432,8 +437,10 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="ipoFee-hint" className={styles.hint}>
-            기본 {won(DEFAULT_IPO_FEE)}입니다. 증권사별로 다르면 고치세요. 실현손익에는 포함하지
-            않고 최종수익금에서만 뺍니다.
+            {hasPriorSales
+              ? '이미 매도 기록이 있어 0원으로 시작합니다(공모주수수료는 배정 1건당 한 번). '
+              : `기본 ${won(DEFAULT_IPO_FEE)}입니다. 증권사별로 다르면 고치세요. `}
+            실현손익에는 포함하지 않고 최종수익금에서만 뺍니다.
           </span>
         )}
       </div>

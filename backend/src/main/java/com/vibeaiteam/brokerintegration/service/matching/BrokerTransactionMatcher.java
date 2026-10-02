@@ -88,8 +88,6 @@ public final class BrokerTransactionMatcher {
     // 그 후보의 existingSales 중 saleDate == summary.tradeDate 인 것들의 합계를 구한다
     long totalQuantity = 0;
     long totalAmount = 0;
-    long totalFee = 0;
-    long totalTax = 0;
     boolean hasExistingSaleForDate = false;
 
     for (ExistingSale existingSale : candidate.existingSales()) {
@@ -97,8 +95,6 @@ public final class BrokerTransactionMatcher {
         hasExistingSaleForDate = true;
         totalQuantity += existingSale.quantity();
         totalAmount += existingSale.amount();
-        totalFee += existingSale.fee();
-        totalTax += existingSale.tax();
       }
     }
 
@@ -118,11 +114,10 @@ public final class BrokerTransactionMatcher {
             summary, candidate.allocationId(), UnmatchedReason.QUANTITY_EXCEEDS_ALLOCATION);
       }
     } else {
-      // 그 날짜 기존 Sale 이 있다: 4개 합계가 summary 와 모두 같으면 ALREADY_REGISTERED, 하나라도 다르면 SPLIT_SALE_MISMATCH
-      if (totalQuantity == summary.quantity()
-          && totalAmount == summary.amount()
-          && totalFee == summary.fee()
-          && totalTax == summary.tax()) {
+      // 그 날짜 기존 Sale 이 있다: 수량·금액 합계가 summary 와 같으면 ALREADY_REGISTERED, 다르면 SPLIT_SALE_MISMATCH.
+      // 수수료·세금은 비교하지 않는다. 우리 쪽 fee는 공모주수수료, tax는 세금 및 기타 수수료(증권사 수수료+세금)로
+      // 입력 경로(직접 등록·증권사 가져오기)마다 증권사 값과 일대일로 대응하지 않기 때문이다(2026-10-02).
+      if (totalQuantity == summary.quantity() && totalAmount == summary.amount()) {
         // 중복 등록 방지
         return new MatchResult(
             summary, candidate.allocationId(), UnmatchedReason.ALREADY_REGISTERED);

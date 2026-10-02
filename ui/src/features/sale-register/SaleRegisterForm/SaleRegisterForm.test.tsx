@@ -204,6 +204,29 @@ describe('SaleRegisterForm', () => {
       expect(value('공모주수수료')).toBe('1500')
     })
 
+    it('이미 매도 기록이 있는 배정은 공모주수수료가 0원으로 시작한다(배정 1건당 한 번)', async () => {
+      defaultMock({
+        detail: {
+          ...ALLOCATION_DETAIL,
+          sales: [
+            {
+              id: 5,
+              quantity: 20,
+              amount: 200000,
+              fee: 2000,
+              tax: 0,
+              otherCost: null,
+              status: 'ACTIVE',
+              soldAt: '2026-10-23T09:00:00',
+            },
+          ],
+        },
+      })
+      await setupForm()
+      expect(value('공모주수수료')).toBe('0')
+      expect(screen.getByText(/이미 매도 기록이 있어 0원으로 시작합니다/)).toBeInTheDocument()
+    })
+
     it('상장일이 없으면 매도일시는 비어 있다', async () => {
       defaultMock({ ipo: { ...IPO, listingDate: null } })
       await setupForm()

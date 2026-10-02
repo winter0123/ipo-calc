@@ -135,7 +135,10 @@ describe('BrokerSyncPanel', () => {
   it('고친 값으로 확정하면 그 값으로 저장 요청을 보낸다', async () => {
     setup()
     await clickQuery()
-    await fill(await screen.findByLabelText('2026-09-30 0123A4 수수료'), '200')
+    // 증권사 수수료 150 + 세금 230 = 380이 "세금 및 기타"의 처음 값이다
+    expect(await screen.findByLabelText('2026-09-30 0123A4 세금 및 기타')).toHaveValue('380')
+    expect(screen.getByLabelText('2026-09-30 0123A4 공모주수수료')).toHaveValue('2000')
+    await fill(screen.getByLabelText('2026-09-30 0123A4 세금 및 기타'), '400')
     await userEvent.click(screen.getByRole('button', { name: '선택한 1건 매도로 등록' }))
 
     await waitFor(() => expect(confirmCalls()).toHaveLength(1))
@@ -148,13 +151,31 @@ describe('BrokerSyncPanel', () => {
           quantity: 10,
           price: 10000,
           amount: 100000,
-          fee: 200,
-          tax: 230,
+          fee: 2000,
+          tax: 400,
           saleDate: '2026-09-30T00:00:00',
         },
       ],
     })
     expect(await screen.findByText('1건을 매도로 등록했습니다.')).toBeInTheDocument()
+  })
+
+  it('같은 배정의 매도가 여러 건이면 공모주수수료 기본값은 첫 건에만 2000원이다', async () => {
+    setup({
+      matched: [
+        item({ tradeDate: '2026-09-29' }),
+        item({ tradeDate: '2026-09-30', quantity: 5, amount: 50000 }),
+        item({ tradeDate: '2026-09-30', stockCode: 'ZZZ999', allocationId: 31 }),
+      ],
+      unmatched: [],
+      allocationsWithoutStockCode: [],
+    })
+    await clickQuery()
+
+    expect(await screen.findByLabelText('2026-09-29 0123A4 공모주수수료')).toHaveValue('2000')
+    expect(screen.getByLabelText('2026-09-30 0123A4 공모주수수료')).toHaveValue('0')
+    // 다른 배정의 첫 매도는 다시 2000원
+    expect(screen.getByLabelText('2026-09-30 ZZZ999 공모주수수료')).toHaveValue('2000')
   })
 
   it('선택을 모두 해제하거나 숫자가 아니면 확정할 수 없다', async () => {
