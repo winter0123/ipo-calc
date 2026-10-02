@@ -6,7 +6,6 @@ import type { ReactNode } from 'react'
 import { useSubscriptionRegister } from '../features/subscription-register/index.ts'
 import { useAllocationRegister } from '../features/allocation-register/index.ts'
 import { useSaleRegister } from '../features/sale-register/index.ts'
-import { useCostRegister } from '../features/cost-register/index.ts'
 import { investmentHistoryKeys } from '../entities/subscription/index.ts'
 import { profitKeys } from '../entities/profit/index.ts'
 import { dashboardKeys } from '../entities/dashboard/index.ts'
@@ -18,7 +17,6 @@ vi.mock('../entities/allocation/api-client.ts', () => ({
   createAllocation: vi.fn().mockResolvedValue({}),
 }))
 vi.mock('../entities/sale/api-client.ts', () => ({ createSale: vi.fn().mockResolvedValue({}) }))
-vi.mock('../entities/cost/api-client.ts', () => ({ createCost: vi.fn().mockResolvedValue({}) }))
 
 const EXPECTED_KEYS = [investmentHistoryKeys.all, profitKeys.all, dashboardKeys.all]
 
@@ -26,7 +24,6 @@ describe.each([
   ['청약 등록', useSubscriptionRegister],
   ['배정 등록', useAllocationRegister],
   ['매도 등록', useSaleRegister],
-  ['비용 등록', useCostRegister],
 ])('%s 성공 시 invalidation', (_name, useHook) => {
   it('투자 내역·수익·대시보드 쿼리를 무효화한다', async () => {
     const queryClient = new QueryClient()

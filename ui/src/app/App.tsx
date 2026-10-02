@@ -21,7 +21,6 @@ const AllocationRegisterPage = lazy(
   () => import('../pages/AllocationRegisterPage/AllocationRegisterPage.tsx'),
 )
 const SaleRegisterPage = lazy(() => import('../pages/SaleRegisterPage/SaleRegisterPage.tsx'))
-const CostRegisterPage = lazy(() => import('../pages/CostRegisterPage/CostRegisterPage.tsx'))
 const ProfitViewPage = lazy(() => import('../pages/ProfitViewPage/ProfitViewPage.tsx'))
 const InvestmentHistoryPage = lazy(
   () => import('../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'),
@@ -50,7 +49,6 @@ function App() {
         <Route path="/subscriptions" element={<SubscriptionListPage />} />
         <Route path="/allocations/register" element={<AllocationRegisterPage />} />
         <Route path="/sales/register" element={<SaleRegisterPage />} />
-        <Route path="/costs/register" element={<CostRegisterPage />} />
         <Route path="/profits/view" element={<ProfitViewPage />} />
         <Route path="/investments" element={<InvestmentHistoryPage />} />
         <Route path="/ipo-calendar" element={<IpoCalendarPage />} />
