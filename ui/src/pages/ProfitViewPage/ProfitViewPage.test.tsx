@@ -206,7 +206,9 @@ describe('ProfitViewPage', () => {
         expect(screen.getByText('1')).toBeInTheDocument()
       })
       expect(screen.getByText('2,000,000')).toBeInTheDocument()
-      expect(screen.getByText('364,000')).toBeInTheDocument()
+      expect(screen.getByText('366,000')).toBeInTheDocument()
+      expect(screen.getByRole('columnheader', { name: '실현손익' })).toBeInTheDocument()
+      expect(screen.getByRole('columnheader', { name: '최종수익금' })).toBeInTheDocument()
       expect(screen.getByText('361,000')).toBeInTheDocument()
     })
 
@@ -261,7 +263,7 @@ describe('ProfitViewPage', () => {
         expect(screen.getByText('홍길동')).toBeInTheDocument()
       })
       await waitFor(() => {
-        expect(screen.getByText('364,000')).toBeInTheDocument()
+        expect(screen.getByText('366,000')).toBeInTheDocument()
       })
       expect(screen.getByText('-5,000')).toBeInTheDocument()
       expect(screen.getByText('-8,000')).toBeInTheDocument()

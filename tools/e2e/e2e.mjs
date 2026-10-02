@@ -746,8 +746,7 @@ async function scenario9(browser) {
     const e = TRADE.expected
     const expected = {
       '총 투자금': `${e.investment.toLocaleString('en-US')}원`,
-      '세전 수익': `${e.preTax.toLocaleString('en-US')}원`,
-      '세후 수익': `${e.afterTax.toLocaleString('en-US')}원`,
+      최종수익금: `${e.afterTax.toLocaleString('en-US')}원`,
       수익률: e.rate,
       '참여 건수': `${e.participation}건`,
     }

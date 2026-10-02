@@ -14,6 +14,8 @@ function getProfitClass(value: number): string {
 }
 
 export default function ProfitRow({ profit }: ProfitRowProps) {
+  // 실현손익은 공모주수수료를 빼기 전 금액(증권사 앱 기준), 최종수익금은 그 뒤 금액이다.
+  const realizedProfit = profit.afterTaxProfit + profit.saleFee
   return (
     <tr className={styles.row}>
       <td>{profit.saleId}</td>
@@ -26,8 +28,8 @@ export default function ProfitRow({ profit }: ProfitRowProps) {
       <td className={styles.number}>{formatNumber(profit.saleFee)}</td>
       <td className={styles.number}>{formatNumber(profit.saleTax)}</td>
       <td className={styles.number}>{formatNumber(profit.saleOtherCost)}</td>
-      <td className={`${styles.number} ${getProfitClass(profit.preTaxProfit)}`}>
-        {formatNumber(profit.preTaxProfit)}
+      <td className={`${styles.number} ${getProfitClass(realizedProfit)}`}>
+        {formatNumber(realizedProfit)}
       </td>
       <td className={`${styles.number} ${getProfitClass(profit.afterTaxProfit)}`}>
         {formatNumber(profit.afterTaxProfit)}
