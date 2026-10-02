@@ -22,6 +22,8 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
     subscriptionStartDate: '2026-10-01T09:00:00Z',
     subscriptionEndDate: '2026-10-02T17:00:00Z',
     listingDate: '2026-10-15T09:00:00Z',
+    refundDate: null,
+    refundDateEstimated: null,
     offeringShareCount: 1000000,
     status: 'ACTIVE',
     createdAt: '2026-09-01T00:00:00Z',
@@ -130,19 +132,76 @@ describe('buildCalendarEvents', () => {
     expect(events).toEqual([])
   })
 
-  it('여러 IPO가 있으면 각 이벤트에 올바른 ipoId가 들어간다', () => {
-    const ipos = [
-      makeIpo({ id: 1, subscriptionStartDate: '2026-10-01T09:00:00Z' }),
-      makeIpo({ id: 2, subscriptionStartDate: '2026-10-02T09:00:00Z' }),
-    ]
-    const events = buildCalendarEvents(ipos, 2026, 10)
+   it('여러 IPO가 있으면 각 이벤트에 올바른 ipoId가 들어간다', () => {
+     const ipos = [
+       makeIpo({ id: 1, subscriptionStartDate: '2026-10-01T09:00:00Z' }),
+       makeIpo({ id: 2, subscriptionStartDate: '2026-10-02T09:00:00Z' }),
+     ]
+     const events = buildCalendarEvents(ipos, 2026, 10)
 
-    expect(events).toHaveLength(4)
-    const ipo1Events = events.filter((e) => e.ipoId === 1)
-    expect(ipo1Events).toHaveLength(2)
-    const ipo2Events = events.filter((e) => e.ipoId === 2)
-    expect(ipo2Events).toHaveLength(2)
-  })
+     expect(events).toHaveLength(4)
+     const ipo1Events = events.filter((e) => e.ipoId === 1)
+     expect(ipo1Events).toHaveLength(2)
+     const ipo2Events = events.filter((e) => e.ipoId === 2)
+     expect(ipo2Events).toHaveLength(2)
+   })
+
+   it('환불일이 있으면 REFUND 이벤트를 만든다(estimated 플래그 포함)', () => {
+     const ipos = [makeIpo({ refundDate: '2026-10-10T09:00:00Z', refundDateEstimated: true })]
+     const events = buildCalendarEvents(ipos, 2026, 10)
+
+     const refundEvents = events.filter((e) => e.type === 'REFUND')
+     expect(refundEvents).toHaveLength(1)
+     expect(refundEvents[0].startDate).toBe('2026-10-10')
+     expect(refundEvents[0].endDate).toBe('2026-10-10')
+     expect(refundEvents[0].estimated).toBe(true)
+   })
+
+   it('환불일이 null이면 REFUND 이벤트를 만들지 않는다', () => {
+     const ipos = [makeIpo({ refundDate: null })]
+     const events = buildCalendarEvents(ipos, 2026, 10)
+
+     expect(events.find((e) => e.type === 'REFUND')).toBeUndefined()
+     // Should still have subscription and listing events
+     expect(events).toHaveLength(2)
+   })
+
+   it('환불일 필드가 없는 객체도 통과한다', () => {
+     // Create an Ipo object without refundDate and refundDateEstimated fields
+     const ipos = [
+       {
+         id: 1,
+         companyName: '테스트기업',
+         ipoName: '테스트IPO',
+         stockCode: '123456',
+         roundLabel: '1',
+         lowerBandPrice: 10000,
+         upperBandPrice: 15000,
+         fixedPrice: 0,
+         subscriptionStartDate: '2026-10-01T09:00:00Z',
+         subscriptionEndDate: '2026-10-02T17:00:00Z',
+         listingDate: '2026-10-15T09:00:00Z',
+         offeringShareCount: 1000000,
+         status: 'ACTIVE',
+         createdAt: '2026-09-01T00:00:00Z',
+         updatedAt: '2026-09-01T00:00:00Z',
+       },
+     ]
+     const events = buildCalendarEvents(ipos, 2026, 10)
+
+     // Should not crash and should create subscription and listing events
+     expect(events).toHaveLength(2)
+     const types = events.map((e) => e.type)
+     expect(types).toContain('SUBSCRIPTION')
+     expect(types).toContain('LISTING')
+   })
+
+   it('환불일이 해당 월에 없으면 REFUND 이벤트를 만들지 않는다', () => {
+     const ipos = [makeIpo({ refundDate: '2026-11-10T09:00:00Z' })]
+     const events = buildCalendarEvents(ipos, 2026, 10)
+
+     expect(events.find((e) => e.type === 'REFUND')).toBeUndefined()
+   })
 })
 
 describe('eventCoversDate', () => {
@@ -366,18 +425,20 @@ describe('buildWeekSegments', () => {
 })
 
 describe('parseVisibleTypes', () => {
-  it('쿼리 없음: 2종 모두 켜짐', () => {
+  it('쿼리 없음: 3종 모두 켜짐', () => {
     const params = new URLSearchParams()
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
+    expect(visible.has('REFUND')).toBe(true)
     expect(visible.has('LISTING')).toBe(true)
-    expect(visible.size).toBe(2)
+    expect(visible.size).toBe(3)
   })
 
   it('일부만 지정: 지정된 것만 켜짐', () => {
     const params = new URLSearchParams('types=SUBSCRIPTION')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
+    expect(visible.has('REFUND')).toBe(false)
     expect(visible.has('LISTING')).toBe(false)
     expect(visible.size).toBe(1)
   })
@@ -386,16 +447,18 @@ describe('parseVisibleTypes', () => {
     const params = new URLSearchParams('types=SUBSCRIPTION,UNKNOWN,LISTING')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
+    expect(visible.has('REFUND')).toBe(false)
     expect(visible.has('LISTING')).toBe(true)
     expect(visible.size).toBe(2)
   })
 
-  it('알 수 있는 값이 하나도 없으면(types=foo): 2종 모두 켜짐', () => {
+  it('알 수 있는 값이 하나도 없으면(types=foo): 3종 모두 켜짐', () => {
     const params = new URLSearchParams('types=foo')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
+    expect(visible.has('REFUND')).toBe(true)
     expect(visible.has('LISTING')).toBe(true)
-    expect(visible.size).toBe(2)
+    expect(visible.size).toBe(3)
   })
 
   it('빈 값(types=): 0종(모두 꺼짐)', () => {
@@ -404,18 +467,19 @@ describe('parseVisibleTypes', () => {
     expect(visible.size).toBe(0)
   })
 
-  it('예전 값(SUBSCRIPTION_START 등)은 알 수 없는 값으로 처리되어 모두 켜짐', () => {
+  it('예전 값(SUBSCRIPTION_START 등)은 알 수 없는 값으로 처리되어 3종 모두 켜짐', () => {
     const params = new URLSearchParams('types=SUBSCRIPTION_START,SUBSCRIPTION_END')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
+    expect(visible.has('REFUND')).toBe(true)
     expect(visible.has('LISTING')).toBe(true)
-    expect(visible.size).toBe(2)
+    expect(visible.size).toBe(3)
   })
 })
 
 describe('toTypesParam', () => {
-  it('2종 모두 켜짐: null(쿼리에서 types 제거)', () => {
-    const visible = new Set<CalendarEventType>(['SUBSCRIPTION', 'LISTING'])
+  it('3종 모두 켜짐: null(쿼리에서 types 제거)', () => {
+    const visible = new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING'])
     expect(toTypesParam(visible)).toBeNull()
   })
 

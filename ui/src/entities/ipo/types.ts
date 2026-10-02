@@ -13,6 +13,8 @@ export const ipoSchema = z.object({
   subscriptionStartDate: z.string(),
   subscriptionEndDate: z.string(),
   listingDate: z.string().nullable(),
+  refundDate: z.string().nullish(),
+  refundDateEstimated: z.boolean().nullish(),
   offeringShareCount: z.number().nullable(),
   status: z.string(),
   createdAt: z.string(),

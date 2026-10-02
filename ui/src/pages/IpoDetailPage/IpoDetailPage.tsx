@@ -112,14 +112,25 @@ export default function IpoDetailPage() {
           <dt>청약 시작일</dt>
           <dd>{formatDate(ipo!.subscriptionStartDate)}</dd>
         </div>
-        <div className={styles.detailItem}>
-          <dt>청약 종료일</dt>
-          <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>상장일</dt>
-          <dd>{formatDate(ipo!.listingDate)}</dd>
-        </div>
+         <div className={styles.detailItem}>
+           <dt>청약 종료일</dt>
+           <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
+         </div>
+         <div className={styles.detailItem}>
+           <dt>환불일</dt>
+           <dd>
+             {ipo!.refundDate ? (
+               <>
+                 {formatDate(ipo!.refundDate)}
+                 {ipo!.refundDateEstimated && ' (예상)'}
+               </>
+             ) : '-'}
+           </dd>
+         </div>
+         <div className={styles.detailItem}>
+           <dt>상장일</dt>
+           <dd>{formatDate(ipo!.listingDate)}</dd>
+         </div>
         <div className={styles.detailItem}>
           <dt>확정 공모가</dt>
           <dd>{formatPrice(ipo!.fixedPrice)}</dd>

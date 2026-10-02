@@ -291,9 +291,14 @@
 }
 
 .barListing {
-  background: var(--success-bg);
-  color: var(--success-ink);
-}
+   background: var(--success-bg);
+   color: var(--success-ink);
+ }
+
+.barRefund {
+   background: var(--warning-bg);
+   color: var(--warning-ink);
+ }
 
 /* 레인별 행 위치는 grid-row로 제어 (인라인 스타일) */
 

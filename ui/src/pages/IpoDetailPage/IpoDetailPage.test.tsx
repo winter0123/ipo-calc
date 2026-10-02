@@ -18,6 +18,8 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
     subscriptionStartDate: '2026-10-01T09:00:00Z',
     subscriptionEndDate: '2026-10-02T17:00:00Z',
     listingDate: '2026-10-15T09:00:00Z',
+    refundDate: null,
+    refundDateEstimated: null,
     offeringShareCount: 1000000,
     status: 'ACTIVE',
     createdAt: '2026-09-01T00:00:00Z',
@@ -56,17 +58,40 @@ describe('IpoDetailPage', () => {
     vi.useRealTimers()
   })
 
-  it('정상 조회 시 공모주명, 종목코드, 가격, 주식 수가 보인다', async () => {
-    const ipo = makeIpo()
-    stubFetch(ipo)
+   it('정상 조회 시 공모주명, 종목코드, 가격, 주식 수가 보인다', async () => {
+     const ipo = makeIpo()
+     stubFetch(ipo)
 
-    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
-    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    expect(screen.getByText('123456')).toBeInTheDocument()
-    expect(screen.getByText('25,000원')).toBeInTheDocument()
-    expect(screen.getByText('1,000,000주')).toBeInTheDocument()
-  })
+     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+     expect(screen.getByText('123456')).toBeInTheDocument()
+     expect(screen.getByText('25,000원')).toBeInTheDocument()
+     expect(screen.getByText('1,000,000주')).toBeInTheDocument()
+     expect(screen.getByText('-')).toBeInTheDocument() // refund date
+   })
+
+   it('환불일이 표시된다', async () => {
+     // 환불일이 있고 예상치인 경우
+     const ipoWithRefundEstimated = makeIpo({
+       refundDate: '2026-10-16T00:00:00Z',
+       refundDateEstimated: true,
+     })
+     stubFetch(ipoWithRefundEstimated)
+     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+     await vi.waitFor(() => expect(screen.getByText('2026-10-16 (예상)')).toBeInTheDocument())
+
+     // 환불일이 있고 예상치가 아닌 경우
+     const ipoWithRefundNotEstimated = makeIpo({
+       refundDate: '2026-10-16T00:00:00Z',
+       refundDateEstimated: false,
+     })
+     stubFetch(ipoWithRefundNotEstimated)
+     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+     await vi.waitFor(() => expect(screen.getByText('2026-10-16')).toBeInTheDocument())
+     // Should not contain "(예상)"
+     expect(screen.queryByText('2026-10-16 (예상)')).not.toBeInTheDocument()
+   })
 
   it('상태 칩 4종(청약 예정, 청약 진행 중, 청약 마감, 상장 완료)이 올바르게 표시된다', async () => {
     const ipoBase = makeIpo()
