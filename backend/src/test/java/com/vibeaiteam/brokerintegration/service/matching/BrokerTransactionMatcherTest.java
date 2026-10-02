@@ -75,7 +75,7 @@ class BrokerTransactionMatcherTest {
   }
 
   @Nested
-  @DisplayName("AC-1832: 같은 날 우리 Sale 합계(수량·금액·수수료·세금)가 브로커와 정확히 같음 → ALREADY_REGISTERED")
+  @DisplayName("AC-1832: 같은 날 우리 Sale 합계(수량·금액)가 브로커와 같음 → ALREADY_REGISTERED")
   class Ac1832Tests {
 
     @Test
@@ -211,7 +211,7 @@ class BrokerTransactionMatcherTest {
     }
 
     @Test
-    @DisplayName("수수료만 다르면 SPLIT_SALE_MISMATCH")
+    @DisplayName("수량·금액이 같으면 수수료가 달라도 ALREADY_REGISTERED(수수료는 비교하지 않는다)")
     void onlyFeeDifferent() {
       // Given
       BrokerSaleSummary summary =
@@ -229,11 +229,11 @@ class BrokerTransactionMatcherTest {
       assertThat(report.results()).hasSize(1);
       MatchResult result = report.results().get(0);
       assertThat(result.isMatched()).isFalse();
-      assertThat(result.reason()).isEqualTo(UnmatchedReason.SPLIT_SALE_MISMATCH);
+      assertThat(result.reason()).isEqualTo(UnmatchedReason.ALREADY_REGISTERED);
     }
 
     @Test
-    @DisplayName("세금만 다르면 SPLIT_SALE_MISMATCH")
+    @DisplayName("수량·금액이 같으면 세금이 달라도 ALREADY_REGISTERED(세금은 비교하지 않는다)")
     void onlyTaxDifferent() {
       // Given
       BrokerSaleSummary summary =
@@ -251,7 +251,7 @@ class BrokerTransactionMatcherTest {
       assertThat(report.results()).hasSize(1);
       MatchResult result = report.results().get(0);
       assertThat(result.isMatched()).isFalse();
-      assertThat(result.reason()).isEqualTo(UnmatchedReason.SPLIT_SALE_MISMATCH);
+      assertThat(result.reason()).isEqualTo(UnmatchedReason.ALREADY_REGISTERED);
     }
   }
 
