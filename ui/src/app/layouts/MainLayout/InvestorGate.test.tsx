@@ -49,7 +49,8 @@ describe('현재 투자자 선택', () => {
   it('투자자가 1명이면 자동 선택되어 바로 화면이 열린다', async () => {
     setup([investor(1, '홍길동')])
     expect(await screen.findByText('투자 내역 화면')).toBeInTheDocument()
-    expect(await screen.findByText('투자자: 홍길동')).toBeInTheDocument()
+    expect(await screen.findByText('현재 투자자:')).toBeInTheDocument()
+    expect(screen.getByRole('banner')).toHaveTextContent('홍길동')
   })
 
   it('2명 이상이면 직접 고를 때까지 작업 화면 대신 선택 화면이 나온다', async () => {
