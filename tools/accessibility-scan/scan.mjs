@@ -23,7 +23,6 @@ const pages = [
   { name: 'subscription-list', path: '/subscriptions', needsAuth: true },
   { name: 'allocation-register', path: '/allocations/register', needsAuth: true },
   { name: 'sale-register', path: '/sales/register', needsAuth: true },
-  { name: 'cost-register', path: '/costs/register', needsAuth: true },
   { name: 'profit-view', path: '/profits/view', needsAuth: true },
   { name: 'investments', path: '/investments', needsAuth: true },
   { name: 'dashboard', path: '/dashboard', needsAuth: true },

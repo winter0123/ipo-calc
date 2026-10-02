@@ -32,9 +32,6 @@ vi.mock('../pages/AllocationRegisterPage/AllocationRegisterPage.tsx', () => ({
 vi.mock('../pages/SaleRegisterPage/SaleRegisterPage.tsx', () => ({
   default: () => <div>SaleRegisterPage</div>,
 }))
-vi.mock('../pages/CostRegisterPage/CostRegisterPage.tsx', () => ({
-  default: () => <div>CostRegisterPage</div>,
-}))
 vi.mock('../pages/ProfitViewPage/ProfitViewPage.tsx', () => ({
   default: () => <div>ProfitViewPage</div>,
 }))
@@ -56,7 +53,6 @@ const ROUTES: Array<[string, string]> = [
   ['/subscriptions', 'SubscriptionListPage'],
   ['/allocations/register', 'AllocationRegisterPage'],
   ['/sales/register', 'SaleRegisterPage'],
-  ['/costs/register', 'CostRegisterPage'],
   ['/profits/view', 'ProfitViewPage'],
   ['/investments', 'InvestmentHistoryPage'],
   ['/ipo-calendar', 'IpoCalendarPage'],
