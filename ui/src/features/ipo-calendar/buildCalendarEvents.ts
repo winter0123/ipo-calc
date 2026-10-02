@@ -43,11 +43,7 @@ function getPriceDisplay(ipo: Ipo): string | undefined {
 }
 
 export function eventCoversDate(event: CalendarEvent, date: string): boolean {
-  const result = event.startDate <= date && date <= event.endDate
-  if (event.type === 'LISTING' && date === '2026-10-05') {
-    console.log('eventCoversDate for LISTING:', { eventStart: event.startDate, eventEnd: event.endDate, date, result })
-  }
-  return result
+  return event.startDate <= date && date <= event.endDate
 }
 
 export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): CalendarEvent[] {
@@ -89,7 +85,6 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
     }
 
     if (refundDate && refundDate >= targetStart && refundDate <= targetEnd) {
-      console.log('Adding refund event for ipo', ipo.id, 'refundDate', refundDate)
       events.push({
         ipoId: ipo.id,
         type: 'REFUND',
@@ -117,8 +112,6 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
     }
     return a.ipoId - b.ipoId
   })
-
-  console.log('All events:', events.map(e => ({ipoId: e.ipoId, type: e.type, startDate: e.startDate, estimated: e.estimated})))
 
   return events
 }

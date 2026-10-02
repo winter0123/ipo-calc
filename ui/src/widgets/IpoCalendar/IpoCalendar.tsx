@@ -24,7 +24,11 @@ const EVENT_TYPE_CLASSES: Record<CalendarEventType, string> = {
   LISTING: styles.barListing,
 }
 
-const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set(['SUBSCRIPTION', 'REFUND', 'LISTING'])
+const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
+  'SUBSCRIPTION',
+  'REFUND',
+  'LISTING',
+])
 
 interface IpoCalendarProps {
   ipos: Ipo[]
@@ -53,18 +57,12 @@ export default function IpoCalendar({
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-   const allEvents = useMemo(() => buildCalendarEvents(ipos, year, month), [ipos, year, month])
+  const allEvents = useMemo(() => buildCalendarEvents(ipos, year, month), [ipos, year, month])
 
-   const events = useMemo(
-     () => {
-       const filtered = allEvents.filter((e) => visibleTypes.has(e.type))
-       console.log('visibleTypes:', visibleTypes)
-       console.log('allEvents:', allEvents.map(e => ({ipoId: e.ipoId, type: e.type, startDate: e.startDate})))
-       console.log('filtered events:', filtered.map(e => ({ipoId: e.ipoId, type: e.type, startDate: e.startDate})))
-       return filtered
-     },
-     [allEvents, visibleTypes],
-   )
+  const events = useMemo(
+    () => allEvents.filter((e) => visibleTypes.has(e.type)),
+    [allEvents, visibleTypes],
+  )
 
   const firstDayOfMonth = new Date(year, month - 1, 1)
   const lastDayOfMonth = new Date(year, month, 0)
@@ -132,25 +130,23 @@ export default function IpoCalendar({
     return events.filter((e) => eventCoversDate(e, selectedDate))
   }, [events, selectedDate])
 
-const toggleType = (type: CalendarEventType) => {
-  if (!onVisibleTypesChange) return
-  console.log('toggleType called with type:', type)
-  const next = new Set<CalendarEventType>(visibleTypes)
-  if (next.has(type)) {
-    next.delete(type)
-  } else {
-    next.add(type)
+  const toggleType = (type: CalendarEventType) => {
+    if (!onVisibleTypesChange) return
+    const next = new Set<CalendarEventType>(visibleTypes)
+    if (next.has(type)) {
+      next.delete(type)
+    } else {
+      next.add(type)
+    }
+    onVisibleTypesChange(next)
   }
-  onVisibleTypesChange(next)
-}
 
-const handleShowAll = () => {
-  if (!onVisibleTypesChange) return
-  console.log('handleShowAll called')
-  onVisibleTypesChange(new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']))
-}
+  const handleShowAll = () => {
+    if (!onVisibleTypesChange) return
+    onVisibleTypesChange(new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']))
+  }
 
-   const allTypesVisible = visibleTypes.size === 3
+  const allTypesVisible = visibleTypes.size === 3
 
   return (
     <div className={styles.calendar}>
@@ -169,33 +165,33 @@ const handleShowAll = () => {
         </button>
       </div>
 
-       {onVisibleTypesChange && (
-         <div className={styles.filterGroup} role="group" aria-label="일정 종류 필터">
-           {(['SUBSCRIPTION', 'REFUND', 'LISTING'] as CalendarEventType[]).map((type) => (
-             <button
-               key={type}
-               type="button"
-               className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff}`}
-               onClick={() => toggleType(type)}
-               aria-pressed={visibleTypes.has(type)}
-             >
-               <span
-                 className={`${styles.filterDot} ${EVENT_TYPE_CLASSES[type]}`}
-                 aria-hidden="true"
-               />
-               <span className={styles.filterLabel}>{EVENT_TYPE_LABELS[type]}</span>
-             </button>
-           ))}
-           <button
-             type="button"
-             className={styles.showAllButton}
-             onClick={handleShowAll}
-             disabled={allTypesVisible}
-           >
-             모두 보기
-           </button>
-         </div>
-       )}
+      {onVisibleTypesChange && (
+        <div className={styles.filterGroup} role="group" aria-label="일정 종류 필터">
+          {(['SUBSCRIPTION', 'REFUND', 'LISTING'] as CalendarEventType[]).map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff}`}
+              onClick={() => toggleType(type)}
+              aria-pressed={visibleTypes.has(type)}
+            >
+              <span
+                className={`${styles.filterDot} ${EVENT_TYPE_CLASSES[type]}`}
+                aria-hidden="true"
+              />
+              <span className={styles.filterLabel}>{EVENT_TYPE_LABELS[type]}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={styles.showAllButton}
+            onClick={handleShowAll}
+            disabled={allTypesVisible}
+          >
+            모두 보기
+          </button>
+        </div>
+      )}
 
       <div className={styles.weekdays} aria-hidden="true">
         {DAYS_OF_WEEK.map((day) => (
@@ -228,18 +224,8 @@ const handleShowAll = () => {
                   )
                 }
 
-                 const dateKey = formatDateKey(day)
-                 const dayEvents = events.filter((e) => {
-                   const covers = eventCoversDate(e, dateKey)
-                   if (day === 5 && e.type === 'LISTING') {
-                     console.log('dayEvents filter for LISTING: event=', e, 'covers=', covers)
-                   }
-                   return covers
-                 })
-                 if (day === 5) {
-                   console.log('Day 5: events length=', events.length, 'dayEvents length=', dayEvents.length)
-                   console.log('Day 5:', { dateKey, events: events.map(e => ({ipoId: e.ipoId, type: e.type, startDate: e.startDate, endDate: e.endDate})), dayEvents: dayEvents.map(e => ({ipoId: e.ipoId, type: e.type, startDate: e.startDate, endDate: e.endDate})) })
-                 }
+                const dateKey = formatDateKey(day)
+                const dayEvents = events.filter((e) => eventCoversDate(e, dateKey))
                 const isSelected = selectedDate === dateKey
                 const isToday =
                   day === today.getDate() &&
@@ -265,7 +251,7 @@ const handleShowAll = () => {
                 <Link
                   key={`${segment.event.ipoId}-${segment.startCol}-${segment.endCol}`}
                   to={`/ipos/${segment.event.ipoId}`}
-                  className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]}`}
+                  className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]} ${segment.event.estimated ? styles.barEstimated : ''}`}
                   style={
                     {
                       gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`,
@@ -278,15 +264,15 @@ const handleShowAll = () => {
                       marginRight: segment.continuesAfter ? 0 : '2px',
                     } as React.CSSProperties
                   }
-                   aria-label={
-                     segment.event.type === 'SUBSCRIPTION'
-                       ? `${segment.event.companyName} 청약 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일부터 ${getMonthDay(segment.event.endDate).month}월 ${getMonthDay(segment.event.endDate).day}일까지`
-                       : segment.event.type === 'REFUND'
-                       ? `${segment.event.companyName} 환불 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일${
-                           segment.event.estimated ? ' (예상)' : ''
-                         }`
-                       : `${segment.event.companyName} 상장 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일`
-                   }
+                  aria-label={
+                    segment.event.type === 'SUBSCRIPTION'
+                      ? `${segment.event.companyName} 청약 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일부터 ${getMonthDay(segment.event.endDate).month}월 ${getMonthDay(segment.event.endDate).day}일까지`
+                      : segment.event.type === 'REFUND'
+                        ? `${segment.event.companyName} 환불 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일${
+                            segment.event.estimated ? ' (예상)' : ''
+                          }`
+                        : `${segment.event.companyName} 상장 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일`
+                  }
                 >
                   {segment.event.companyName}
                 </Link>
@@ -305,35 +291,35 @@ const handleShowAll = () => {
         )}
         {selectedDate && selectedDateEvents.length > 0 && (
           <ul className={styles.eventList}>
-             {selectedDateEvents.map((event, idx) => (
-               <li key={idx} className={styles.eventItem}>
-                 <Link
-                   to={`/ipos/${event.ipoId}`}
-                   className={styles.eventLink}
-                   aria-label={`${event.companyName} ${event.ipoName} 상세 보기`}
-                 >
-                   <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
-                     {EVENT_TYPE_LABELS[event.type]}
-                   </span>
-                   <span className={styles.eventCompany}>{event.companyName}</span>
-                   {event.type === 'REFUND' && event.estimated && (
-                     <span className={styles.eventIpo}> (예상)</span>
-                   )}
-                   <span className={styles.eventIpo}>({event.ipoName})</span>
-                   {event.type === 'SUBSCRIPTION' && (
-                     <span className={styles.eventPeriod}>
-                       {event.startDate} ~ {event.endDate}
-                     </span>
-                   )}
-                   <>
-                     {event.price && <span className={styles.eventPrice}>{event.price}</span>}
-                     <span className={styles.eventArrow} aria-hidden="true">
-                       ›
-                     </span>
-                   </>
-                 </Link>
-               </li>
-             ))}
+            {selectedDateEvents.map((event, idx) => (
+              <li key={idx} className={styles.eventItem}>
+                <Link
+                  to={`/ipos/${event.ipoId}`}
+                  className={styles.eventLink}
+                  aria-label={`${event.companyName} ${event.ipoName} 상세 보기`}
+                >
+                  <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
+                    {EVENT_TYPE_LABELS[event.type]}
+                  </span>
+                  <span className={styles.eventCompany}>{event.companyName}</span>
+                  {event.type === 'REFUND' && event.estimated && (
+                    <span className={styles.eventIpo}> (예상)</span>
+                  )}
+                  <span className={styles.eventIpo}>({event.ipoName})</span>
+                  {event.type === 'SUBSCRIPTION' && (
+                    <span className={styles.eventPeriod}>
+                      {event.startDate} ~ {event.endDate}
+                    </span>
+                  )}
+                  <>
+                    {event.price && <span className={styles.eventPrice}>{event.price}</span>}
+                    <span className={styles.eventArrow} aria-hidden="true">
+                      ›
+                    </span>
+                  </>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </section>

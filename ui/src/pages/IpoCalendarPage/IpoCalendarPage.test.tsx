@@ -189,26 +189,34 @@ describe('IpoCalendarPage', () => {
       expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
     })
 
-    it('두 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 하나를 켜면 값이 생기고 모두 켜면 사라진다', async () => {
+    it('세 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 다시 켜면 값이 생기고 모두 켜면 사라진다', async () => {
       vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
       renderPage(['/ipo-calendar'])
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '청약' })).toBeInTheDocument()
       })
-      expect(screen.getByTestId('search')).toHaveTextContent('')
+      expect(screen.getByTestId('search').textContent).toBe('')
 
+      // 청약을 끄면 남은 종류가 환불·상장 순서로 저장된다
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-      expect(screen.getByTestId('search')).toHaveTextContent('?types=LISTING')
+      expect(decodeURIComponent(screen.getByTestId('search').textContent ?? '')).toBe(
+        '?types=REFUND,LISTING',
+      )
 
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      expect(screen.getByTestId('search').textContent).toBe('?types=LISTING')
+
+      // 모두 끄면 빈 값(types=)이며 모두 켜짐(쿼리 없음)과 구분된다
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=')
       expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '모두 보기' })).not.toBeDisabled()
 
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-      expect(screen.getByTestId('search')).toHaveTextContent('?types=SUBSCRIPTION')
+      expect(screen.getByTestId('search').textContent).toBe('?types=SUBSCRIPTION')
 
-      await userEvent.click(screen.getByRole('button', { name: '상장' }))
+      // 모두 보기로 3종이 켜지면 쿼리가 사라진다
+      await userEvent.click(screen.getByRole('button', { name: '모두 보기' }))
       expect(screen.getByTestId('search').textContent).toBe('')
     })
   })

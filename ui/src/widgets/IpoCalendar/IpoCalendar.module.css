@@ -291,14 +291,19 @@
 }
 
 .barListing {
-   background: var(--success-bg);
-   color: var(--success-ink);
- }
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
 
 .barRefund {
-   background: var(--warning-bg);
-   color: var(--warning-ink);
- }
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}
+
+/* 증권사 데이터가 아니라 청약 종료일 + 2영업일로 계산한 환불일은 점선 테두리로 구분한다 */
+.barEstimated {
+  border: 1px dashed var(--warning-border);
+}
 
 /* 레인별 행 위치는 grid-row로 제어 (인라인 스타일) */
 
