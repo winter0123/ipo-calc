@@ -14,15 +14,21 @@ const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
 const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
   SUBSCRIPTION: '청약',
+  REFUND: '환불',
   LISTING: '상장',
 }
 
 const EVENT_TYPE_CLASSES: Record<CalendarEventType, string> = {
   SUBSCRIPTION: styles.barSubscription,
+  REFUND: styles.barRefund,
   LISTING: styles.barListing,
 }
 
-const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set(['SUBSCRIPTION', 'LISTING'])
+const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
+  'SUBSCRIPTION',
+  'REFUND',
+  'LISTING',
+])
 
 interface IpoCalendarProps {
   ipos: Ipo[]
@@ -137,10 +143,10 @@ export default function IpoCalendar({
 
   const handleShowAll = () => {
     if (!onVisibleTypesChange) return
-    onVisibleTypesChange(new Set<CalendarEventType>(['SUBSCRIPTION', 'LISTING']))
+    onVisibleTypesChange(new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']))
   }
 
-  const allTypesVisible = visibleTypes.size === 2
+  const allTypesVisible = visibleTypes.size === 3
 
   return (
     <div className={styles.calendar}>
@@ -161,7 +167,7 @@ export default function IpoCalendar({
 
       {onVisibleTypesChange && (
         <div className={styles.filterGroup} role="group" aria-label="일정 종류 필터">
-          {(['SUBSCRIPTION', 'LISTING'] as CalendarEventType[]).map((type) => (
+          {(['SUBSCRIPTION', 'REFUND', 'LISTING'] as CalendarEventType[]).map((type) => (
             <button
               key={type}
               type="button"
@@ -245,7 +251,7 @@ export default function IpoCalendar({
                 <Link
                   key={`${segment.event.ipoId}-${segment.startCol}-${segment.endCol}`}
                   to={`/ipos/${segment.event.ipoId}`}
-                  className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]}`}
+                  className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]} ${segment.event.estimated ? styles.barEstimated : ''}`}
                   style={
                     {
                       gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`,
@@ -261,7 +267,11 @@ export default function IpoCalendar({
                   aria-label={
                     segment.event.type === 'SUBSCRIPTION'
                       ? `${segment.event.companyName} 청약 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일부터 ${getMonthDay(segment.event.endDate).month}월 ${getMonthDay(segment.event.endDate).day}일까지`
-                      : `${segment.event.companyName} 상장 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일`
+                      : segment.event.type === 'REFUND'
+                        ? `${segment.event.companyName} 환불 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일${
+                            segment.event.estimated ? ' (예상)' : ''
+                          }`
+                        : `${segment.event.companyName} 상장 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일`
                   }
                 >
                   {segment.event.companyName}
@@ -292,6 +302,9 @@ export default function IpoCalendar({
                     {EVENT_TYPE_LABELS[event.type]}
                   </span>
                   <span className={styles.eventCompany}>{event.companyName}</span>
+                  {event.type === 'REFUND' && event.estimated && (
+                    <span className={styles.eventIpo}> (예상)</span>
+                  )}
                   <span className={styles.eventIpo}>({event.ipoName})</span>
                   {event.type === 'SUBSCRIPTION' && (
                     <span className={styles.eventPeriod}>

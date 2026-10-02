@@ -18,6 +18,8 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
     subscriptionStartDate: '2026-10-01T09:00:00Z',
     subscriptionEndDate: '2026-10-02T17:00:00Z',
     listingDate: '2026-10-15T09:00:00Z',
+    refundDate: null,
+    refundDateEstimated: null,
     offeringShareCount: 1000000,
     status: 'ACTIVE',
     createdAt: '2026-09-01T00:00:00Z',
@@ -66,6 +68,20 @@ describe('IpoDetailPage', () => {
     expect(screen.getByText('123456')).toBeInTheDocument()
     expect(screen.getByText('25,000원')).toBeInTheDocument()
     expect(screen.getByText('1,000,000주')).toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument() // refund date
+  })
+
+  it('계산된 환불일은 날짜 뒤에 (예상)이 붙는다', async () => {
+    stubFetch(makeIpo({ refundDate: '2026-10-16T00:00:00Z', refundDateEstimated: true }))
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('2026-10-16 (예상)')).toBeInTheDocument())
+  })
+
+  it('증권사 데이터의 환불일은 (예상) 없이 날짜만 보인다', async () => {
+    stubFetch(makeIpo({ refundDate: '2026-10-16T00:00:00Z', refundDateEstimated: false }))
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('2026-10-16')).toBeInTheDocument())
+    expect(screen.queryByText(/예상/)).not.toBeInTheDocument()
   })
 
   it('상태 칩 4종(청약 예정, 청약 진행 중, 청약 마감, 상장 완료)이 올바르게 표시된다', async () => {

@@ -20,6 +20,8 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
     subscriptionStartDate: '2026-10-01T09:00:00Z',
     subscriptionEndDate: '2026-10-02T17:00:00Z',
     listingDate: '2026-10-15T09:00:00Z',
+    refundDate: null,
+    refundDateEstimated: null,
     offeringShareCount: 1000000,
     status: 'ACTIVE',
     createdAt: '2026-09-01T00:00:00Z',
@@ -44,9 +46,11 @@ function FilterTestWrapper({
   initialVisibleTypes?: ReadonlySet<CalendarEventType>
   onVisibleTypesChange?: (next: ReadonlySet<CalendarEventType>) => void
 }) {
+  console.log('FilterTestWrapper: initialVisibleTypes=', initialVisibleTypes)
   const [visibleTypes, setVisibleTypes] = useState<ReadonlySet<CalendarEventType>>(
-    initialVisibleTypes ?? new Set<CalendarEventType>(['SUBSCRIPTION', 'LISTING']),
+    initialVisibleTypes ?? new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']),
   )
+  console.log('FilterTestWrapper: visibleTypes=', visibleTypes)
   return (
     <IpoCalendar
       ipos={ipos}
@@ -245,11 +249,12 @@ describe('IpoCalendar', () => {
   })
 
   describe('필터', () => {
-    it('필터 버튼 2개가 aria-pressed=true로 시작한다', async () => {
+    it('필터 버튼 3개가 aria-pressed=true로 시작한다', async () => {
       const ipos = [makeIpo()]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       expect(screen.getByRole('button', { name: '청약' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: '환불' })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: '상장' })).toHaveAttribute('aria-pressed', 'true')
     })
 
@@ -271,24 +276,43 @@ describe('IpoCalendar', () => {
       const calledWith = onVisibleTypesChange.mock.calls[0][0]
       expect(calledWith).toBeInstanceOf(Set)
       expect(calledWith.has('SUBSCRIPTION')).toBe(false)
+      expect(calledWith.has('REFUND')).toBe(true)
       expect(calledWith.has('LISTING')).toBe(true)
     })
 
     it('꺼진 종류의 막대가 안 보이고 켜진 종류만 보인다', async () => {
-      const ipos = [makeIpo()]
+      const ipos = [
+        makeIpo({
+          subscriptionStartDate: '2026-10-01T09:00:00Z',
+          subscriptionEndDate: '2026-10-02T17:00:00Z',
+          listingDate: '2026-10-15T09:00:00Z',
+          refundDate: '2026-10-10T09:00:00Z',
+        }),
+      ]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      // Initially, all three types of bars should be visible
+      expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /환불/ })).toBeInTheDocument()
 
       // 청약 끄기
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-
       expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
       expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /환불/ })).toBeInTheDocument()
+
+      // 환불 끄기
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /환불/ })).not.toBeInTheDocument()
 
       // 상장 끄기
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
-
       expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: /상장/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /환불/ })).not.toBeInTheDocument()
     })
 
     it('날짜 칸 aria-label의 일정 개수가 필터를 따른다', async () => {
@@ -296,32 +320,44 @@ describe('IpoCalendar', () => {
         makeIpo({
           subscriptionStartDate: '2026-10-05T09:00:00Z',
           listingDate: '2026-10-05T09:00:00Z',
+          refundDate: '2026-10-05T09:00:00Z',
         }),
       ]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-      // 둘 다 켜짐: 2개
-      const dateButtonBoth = screen.getByRole('button', { name: /10월 5일/ })
-      expect(dateButtonBoth).toHaveAttribute('aria-label', '10월 5일, 일정 2개')
+      // 세 종 모두 켜짐: 3개
+      const dateButtonAll = screen.getByRole('button', { name: /10월 5일/ })
+      expect(dateButtonAll).toHaveAttribute('aria-label', '10월 5일, 일정 3개')
 
       // 청약 끄기
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      const dateButtonTwo = screen.getByRole('button', { name: /10월 5일/ })
+      expect(dateButtonTwo).toHaveAttribute('aria-label', '10월 5일, 일정 2개')
 
+      // 환불 끄기
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
       const dateButtonOne = screen.getByRole('button', { name: /10월 5일/ })
       expect(dateButtonOne).toHaveAttribute('aria-label', '10월 5일, 일정 1개')
+
+      // 상장 끄기
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
+      const dateButtonZero = screen.getByRole('button', { name: /10월 5일/ })
+      // 일정이 없으면 개수 문구를 붙이지 않는다(기존 동작)
+      expect(dateButtonZero).toHaveAttribute('aria-label', '10월 5일')
     })
 
-    it('2종 모두 꺼짐 안내가 보인다', async () => {
+    it('3종 모두 꺼짐 안내가 보인다', async () => {
       const ipos = [makeIpo()]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
 
       expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
     })
 
-    it('모두 보기 버튼은 2종이 모두 켜져 있으면 disabled', async () => {
+    it('모두 보기 버튼은 3종이 모두 켜져 있으면 disabled', async () => {
       const ipos = [makeIpo()]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
@@ -334,6 +370,7 @@ describe('IpoCalendar', () => {
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
 
       const showAllButton = screen.getByRole('button', { name: '모두 보기' })
@@ -343,6 +380,7 @@ describe('IpoCalendar', () => {
 
       // 필터 버튼이 모두 켜진 상태가 됨
       expect(screen.getByRole('button', { name: '청약' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: '환불' })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: '상장' })).toHaveAttribute('aria-pressed', 'true')
     })
 

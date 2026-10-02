@@ -117,6 +117,19 @@ export default function IpoDetailPage() {
           <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
         </div>
         <div className={styles.detailItem}>
+          <dt>환불일</dt>
+          <dd>
+            {ipo!.refundDate ? (
+              <>
+                {formatDate(ipo!.refundDate)}
+                {ipo!.refundDateEstimated && ' (예상)'}
+              </>
+            ) : (
+              '-'
+            )}
+          </dd>
+        </div>
+        <div className={styles.detailItem}>
           <dt>상장일</dt>
           <dd>{formatDate(ipo!.listingDate)}</dd>
         </div>

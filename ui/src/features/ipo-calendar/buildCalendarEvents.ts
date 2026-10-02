@@ -1,6 +1,6 @@
 import { type Ipo } from '@/entities/ipo/index.ts'
 
-export type CalendarEventType = 'SUBSCRIPTION' | 'LISTING'
+export type CalendarEventType = 'SUBSCRIPTION' | 'REFUND' | 'LISTING'
 
 export interface CalendarEvent {
   ipoId: number
@@ -10,6 +10,7 @@ export interface CalendarEvent {
   startDate: string
   endDate: string
   price?: string
+  estimated?: boolean
 }
 
 export interface BarSegment {
@@ -55,6 +56,7 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
     const subStartDate = parseDateOnly(ipo.subscriptionStartDate)
     const subEndDate = parseDateOnly(ipo.subscriptionEndDate)
     const listingDate = ipo.listingDate ? parseDateOnly(ipo.listingDate) : null
+    const refundDate = ipo.refundDate ? parseDateOnly(ipo.refundDate) : null
 
     const actualSubEndDate = subEndDate < subStartDate ? subStartDate : subEndDate
 
@@ -81,12 +83,33 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
         price: getPriceDisplay(ipo),
       })
     }
+
+    if (refundDate && refundDate >= targetStart && refundDate <= targetEnd) {
+      events.push({
+        ipoId: ipo.id,
+        type: 'REFUND',
+        companyName: ipo.companyName,
+        ipoName: ipo.ipoName,
+        startDate: refundDate,
+        endDate: refundDate,
+        price: getPriceDisplay(ipo),
+        estimated: ipo.refundDateEstimated ?? false,
+      })
+    }
   }
 
   events.sort((a, b) => {
     const dateCmp = a.startDate.localeCompare(b.startDate)
     if (dateCmp !== 0) return dateCmp
-    if (a.type !== b.type) return a.type === 'SUBSCRIPTION' ? -1 : 1
+    if (a.type !== b.type) {
+      // Order: SUBSCRIPTION < REFUND < LISTING
+      const typeOrder: Record<CalendarEventType, number> = {
+        SUBSCRIPTION: 0,
+        REFUND: 1,
+        LISTING: 2,
+      }
+      return typeOrder[a.type] - typeOrder[b.type]
+    }
     return a.ipoId - b.ipoId
   })
 
@@ -98,14 +121,16 @@ export type VisibleTypes = ReadonlySet<CalendarEventType>
 export function parseVisibleTypes(searchParams: URLSearchParams): VisibleTypes {
   const typesParam = searchParams.get('types')
   if (typesParam === null) {
-    return new Set(['SUBSCRIPTION', 'LISTING'])
+    return new Set(['SUBSCRIPTION', 'REFUND', 'LISTING'])
   }
   if (typesParam === '') {
     return new Set()
   }
-  const types = typesParam.split(',').filter((t) => t === 'SUBSCRIPTION' || t === 'LISTING')
+  const types = typesParam
+    .split(',')
+    .filter((t) => t === 'SUBSCRIPTION' || t === 'REFUND' || t === 'LISTING')
   if (types.length === 0) {
-    return new Set(['SUBSCRIPTION', 'LISTING'])
+    return new Set(['SUBSCRIPTION', 'REFUND', 'LISTING'])
   }
   return new Set(types as CalendarEventType[])
 }
@@ -115,10 +140,24 @@ export function parseVisibleTypes(searchParams: URLSearchParams): VisibleTypes {
  * 모두 꺼짐이면 빈 문자열(`types=`), 그 외에는 쉼표로 이은 값이다.
  */
 export function toTypesParam(visible: VisibleTypes): string | null {
-  if (visible.size === 2) {
+  if (visible.size === 3) {
     return null
   }
-  return Array.from(visible).join(',')
+  if (visible.size === 0) {
+    return ''
+  }
+  // Ensure consistent order: SUBSCRIPTION, REFUND, LISTING
+  const ordered = Array.from(visible)
+    .sort((a, b) => {
+      const order: Record<CalendarEventType, number> = {
+        SUBSCRIPTION: 0,
+        REFUND: 1,
+        LISTING: 2,
+      }
+      return order[a] - order[b]
+    })
+    .join(',')
+  return ordered
 }
 
 export function buildWeekSegments(
