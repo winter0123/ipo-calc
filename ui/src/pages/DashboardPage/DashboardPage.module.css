@@ -29,7 +29,7 @@
 .dataArea {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 
 .list {
@@ -67,3 +67,15 @@
 /* 모바일 */
 /* 태블릿 */
 /* 데스크톱 */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink);
+}
