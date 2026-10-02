@@ -1,6 +1,6 @@
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { useInvestors } from '@/entities/investor/index.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 import { useIpos } from '@/entities/ipo/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
@@ -12,7 +12,8 @@ export default function SubscriptionRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
 
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
+  // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
+  const { current, isLoading: investorsLoading } = useCurrentInvestor()
   const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
 
   const { mutate, isPending, error } = useSubscriptionRegister()
@@ -20,23 +21,22 @@ export default function SubscriptionRegisterForm() {
   const {
     register,
     handleSubmit,
-    control,
-    resetField,
     formState: { errors },
-  } = useForm<SubscriptionRegisterRequest>({ mode: 'onSubmit' })
+  } = useForm<Omit<SubscriptionRegisterRequest, 'investorId'>>({ mode: 'onSubmit' })
 
-  const selectedInvestorId = useWatch({ control, name: 'investorId' })
-  const investorSelected = Number.isFinite(selectedInvestorId)
+  const selectedInvestorId = current?.id
+  const investorSelected = selectedInvestorId !== undefined
   const {
     data: securitiesAccounts,
     isLoading: securitiesAccountsLoading,
     error: securitiesAccountsError,
   } = useSecuritiesAccounts(selectedInvestorId)
 
-  const onSubmit = (data: SubscriptionRegisterRequest) => {
+  const onSubmit = (data: Omit<SubscriptionRegisterRequest, 'investorId'>) => {
+    if (selectedInvestorId === undefined) return
     // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
     mutate(
-      { ...data, subscribedAt: `${data.subscribedAt}T09:00` },
+      { ...data, investorId: selectedInvestorId, subscribedAt: `${data.subscribedAt}T09:00` },
       {
         onSuccess: () => {
           navigate('/subscriptions')
@@ -58,7 +58,7 @@ export default function SubscriptionRegisterForm() {
   })
 
   const dropdownsLoading = investorsLoading || iposLoading
-  const dropdownsError = investorsError || iposError
+  const dropdownsError = iposError
 
   if (dropdownsLoading) {
     return <div className={styles.loading}>목록을 불러오는 중...</div>
@@ -79,32 +79,9 @@ export default function SubscriptionRegisterForm() {
       aria-label="청약 등록 폼"
       noValidate
     >
-      <div className={styles.field}>
-        <label htmlFor="investorId">투자자</label>
-        <select
-          id="investorId"
-          aria-invalid={!!errors.investorId}
-          aria-describedby={errors.investorId ? 'investorId-error' : undefined}
-          {...register('investorId', {
-            required: '투자자를 선택해 주세요.',
-            valueAsNumber: true,
-            onChange: () => resetField('securitiesAccountId'),
-          })}
-          disabled={isPending}
-        >
-          <option value="">투자자 선택</option>
-          {investors?.map((investor) => (
-            <option key={investor.id} value={investor.id}>
-              {investor.displayName}
-            </option>
-          ))}
-        </select>
-        {errors.investorId && (
-          <span id="investorId-error" className={styles.error} aria-live="polite">
-            {String(errors.investorId.message)}
-          </span>
-        )}
-      </div>
+      <p className={styles.hint}>
+        투자자: <strong>{current?.displayName ?? '선택 안 됨'}</strong>
+      </p>
 
       <div className={styles.field}>
         <label htmlFor="securitiesAccountId">증권계좌</label>
@@ -219,7 +196,7 @@ export default function SubscriptionRegisterForm() {
           aria-invalid={!!errors.subscribedAt}
           aria-describedby={errors.subscribedAt ? 'subscribedAt-error' : undefined}
           {...register('subscribedAt', {
-            required: '청약일를 선택해 주세요.',
+            required: '청약일을 선택해 주세요.',
           })}
           disabled={isPending}
         />

@@ -75,6 +75,8 @@ await shot('investor-register')
 const kis = (await api('GET', '/securities-firms')).find((f) => f.name.includes('한국투자'))
 const inv1 = await api('POST', '/investors', { displayName: '홍길동' })
 const inv2 = await api('POST', '/investors', { displayName: '김가족' })
+// 투자자가 2명이면 직접 골라야 한다. 상단 전환기에서 고르는 것과 같은 효과로 홍길동을 현재 투자자로 둔다.
+await page.evaluate((id) => localStorage.setItem('currentInvestorId', String(id)), inv1.id)
 await go(`/securities-accounts/register/${inv1.id}`)
 await shot('securities-account-register')
 const acc1 = await api('POST', '/securities-accounts', { investorId: inv1.id, securitiesFirmId: kis.id, accountNumber: '1234567890', isDefault: true })
@@ -122,8 +124,7 @@ await shot('subscription-list')
 await go('/allocations/register')
 await shot('allocation-register')
 await go('/sales/register')
-// 공모가·상장일·수량이 미리 채워진 모습을 보여 주려고 투자자와 청약을 고른 뒤 찍는다
-await page.selectOption('#investorId', { label: '홍길동' })
+// 공모가·상장일·수량이 미리 채워진 모습을 보여 주려고 청약을 고른 뒤 찍는다
 await page.waitForFunction(() => document.querySelectorAll('#subscriptionId option').length > 1)
 const subValue = await page.locator('#subscriptionId option', { hasText: '바다전자' }).first().getAttribute('value')
 await page.selectOption('#subscriptionId', subValue)

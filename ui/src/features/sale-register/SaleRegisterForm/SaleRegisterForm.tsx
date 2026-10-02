@@ -1,6 +1,6 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { useEffect, useRef, useState } from 'react'
-import { useInvestors } from '@/entities/investor/index.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
@@ -33,14 +33,15 @@ const isNum = (value: unknown): value is number => typeof value === 'number' && 
 
 export default function SaleRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
-  const [selectedInvestorId, setSelectedInvestorId] = useState<number | undefined>()
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | undefined>()
   // 세금 및 기타 수수료와 실현손익 중 사용자가 마지막으로 고친 쪽(다른 쪽은 공식으로 계산한다)
   const [lastEdited, setLastEdited] = useState<'fees' | 'profit'>('fees')
   // 기본값을 이미 넣은 청약(같은 청약에서 사용자의 입력을 덮어쓰지 않는다)
   const prefilledFor = useRef<number | undefined>(undefined)
 
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
+  // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
+  const { current, isLoading: investorsLoading } = useCurrentInvestor()
+  const selectedInvestorId = current?.id
 
   const { data: subscriptionHistory, isLoading: subscriptionsLoading } = useInvestmentHistory(
     selectedInvestorId ? { investorId: selectedInvestorId } : {},
@@ -147,13 +148,6 @@ export default function SaleRegisterForm() {
     byStatus: { 404: '배정을 찾을 수 없습니다.', 409: (e) => e.message },
   })
 
-  const handleInvestorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value ? Number(e.target.value) : undefined
-    setSelectedInvestorId(id)
-    setSelectedSubscriptionId(undefined)
-    clearSaleFields()
-  }
-
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value ? Number(e.target.value) : undefined
     setSelectedSubscriptionId(id)
@@ -179,14 +173,6 @@ export default function SaleRegisterForm() {
     return <div className={styles.loading}>목록을 불러오는 중...</div>
   }
 
-  if (investorsError) {
-    return (
-      <div className={styles.blockError}>
-        목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
-      </div>
-    )
-  }
-
   const subscriptions = subscriptionHistory?.content ?? []
 
   return (
@@ -196,22 +182,9 @@ export default function SaleRegisterForm() {
       aria-label="매도 등록 폼"
       noValidate
     >
-      <div className={styles.field}>
-        <label htmlFor="investorId">투자자</label>
-        <select
-          id="investorId"
-          value={selectedInvestorId ?? ''}
-          onChange={handleInvestorChange}
-          disabled={isPending}
-        >
-          <option value="">투자자 선택</option>
-          {investors?.map((investor) => (
-            <option key={investor.id} value={investor.id}>
-              {investor.displayName}
-            </option>
-          ))}
-        </select>
-      </div>
+      <p className={styles.hint}>
+        투자자: <strong>{current?.displayName ?? '선택 안 됨'}</strong>
+      </p>
 
       <div className={styles.field}>
         <label htmlFor="subscriptionId">청약</label>
@@ -328,7 +301,7 @@ export default function SaleRegisterForm() {
           aria-invalid={!!errors.saleDate}
           aria-describedby={errors.saleDate ? 'saleDate-error' : 'saleDate-hint'}
           {...register('saleDate', {
-            required: '매도일를 선택해 주세요.',
+            required: '매도일을 선택해 주세요.',
           })}
           disabled={isPending}
         />

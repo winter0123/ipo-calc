@@ -14,10 +14,6 @@ export interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onFiltersChange, onReset }: FilterBarProps) {
-  const handleInvestorChange = (value: string) => {
-    onFiltersChange({ investorId: value, securitiesAccountId: '' })
-  }
-
   const handleSecuritiesAccountChange = (value: string) => {
     onFiltersChange({ securitiesAccountId: value })
   }
@@ -27,7 +23,6 @@ export default function FilterBar({ filters, onFiltersChange, onReset }: FilterB
       <AccountSelector
         investorId={filters.investorId}
         securitiesAccountId={filters.securitiesAccountId}
-        onInvestorChange={handleInvestorChange}
         onSecuritiesAccountChange={handleSecuritiesAccountChange}
       />
 

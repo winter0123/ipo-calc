@@ -3,6 +3,8 @@ import { Menu, Waves, X, LogOut } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
+import { GatedOutlet } from './InvestorGate.tsx'
+import InvestorSwitcher from './InvestorSwitcher.tsx'
 import styles from './MainLayout.module.css'
 
 const NAV_ITEMS = [
@@ -51,6 +53,7 @@ export default function MainLayout() {
           </span>
           <span className={styles.siteName}>투자 관리 시스템</span>
         </div>
+        {currentAccount && <InvestorSwitcher />}
         {(currentAccount || isGuest) && (
           <>
             <button
@@ -120,7 +123,7 @@ export default function MainLayout() {
       </header>
       <main id="main-content" className={styles.main}>
         <Suspense fallback={<p role="status">불러오는 중...</p>}>
-          <Outlet />
+          {currentAccount ? <GatedOutlet /> : <Outlet />}
         </Suspense>
       </main>
     </div>

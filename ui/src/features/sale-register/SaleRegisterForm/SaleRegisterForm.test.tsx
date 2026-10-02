@@ -136,13 +136,12 @@ function renderForm() {
   )
 }
 
-/** 투자자 → 청약 → 배정을 고르고 기본값(공모가·상장일·수량)이 채워질 때까지 기다린다. */
+/** 청약 → 배정 (투자자는 현재 투자자)을 고르고 기본값(공모가·상장일·수량)이 채워질 때까지 기다린다. */
 async function setupForm() {
   renderForm()
   await waitFor(() => {
     expect(screen.getByText('홍길동')).toBeInTheDocument()
   })
-  await fill(screen.getByLabelText('투자자'), '1')
   await waitFor(() => {
     expect(screen.getByLabelText('청약')).not.toBeDisabled()
   })
@@ -163,6 +162,7 @@ const value = (label: string) => (screen.getByLabelText(label) as HTMLInputEleme
 
 describe('SaleRegisterForm', () => {
   beforeEach(() => {
+    localStorage.setItem('currentInvestorId', '1')
     mockNavigate.mockClear()
     mutationFnMock = () => Promise.resolve({})
     defaultMock()
@@ -181,7 +181,7 @@ describe('SaleRegisterForm', () => {
   })
 
   describe('기본값 자동 입력', () => {
-    it('매도일는 해당 공모주 상장일, 매도단가는 공모가, 매도수량은 남은 수량이 먼저 들어간다', async () => {
+    it('매도일은 해당 공모주 상장일, 매도단가는 공모가, 매도수량은 남은 수량이 먼저 들어간다', async () => {
       await setupForm()
       expect(value('매도일')).toBe('2026-10-23')
       expect(value('매도단가')).toBe('10000')
@@ -227,7 +227,7 @@ describe('SaleRegisterForm', () => {
       expect(screen.getByText(/이미 매도 기록이 있어 0원으로 시작합니다/)).toBeInTheDocument()
     })
 
-    it('상장일이 없으면 매도일는 비어 있다', async () => {
+    it('상장일이 없으면 매도일은 비어 있다', async () => {
       defaultMock({ ipo: { ...IPO, listingDate: null } })
       await setupForm()
       expect(value('매도일')).toBe('')
@@ -244,7 +244,6 @@ describe('SaleRegisterForm', () => {
       })
       renderForm()
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-      await fill(screen.getByLabelText('투자자'), '1')
       await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
       await fill(screen.getByLabelText('청약'), '1')
       await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveValue(9500))
@@ -398,7 +397,6 @@ describe('SaleRegisterForm', () => {
       })
       renderForm()
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-      await fill(screen.getByLabelText('투자자'), '1')
       await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
       await fill(screen.getByLabelText('청약'), '1')
       await waitFor(() => expect(screen.getByLabelText('매도수량')).toHaveValue(30))

@@ -9,7 +9,7 @@ import {
   investmentHistoryKeys,
   type InvestmentHistoryFilters,
 } from '@/entities/subscription/index.ts'
-import { useInvestors } from '@/entities/investor/index.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { EmptyState } from '@/widgets/EmptyState/index.ts'
 import { InvestmentHistoryTable } from '@/widgets/InvestmentHistoryTable/index.ts'
 import styles from './InvestmentHistoryPage.module.css'
@@ -25,21 +25,22 @@ function filtersToApiParams(filters: FilterInvestmentHistoryFilters): Investment
   }
 }
 
-const FILTER_KEYS = ['investorId', 'securitiesAccountId', 'ipoId'] as const
+const FILTER_KEYS = ['securitiesAccountId', 'ipoId'] as const
 
 // 필터는 URL 쿼리 문자열이 단일 출처다(새로고침·링크 공유 시 유지). 변경은 history를 쌓지 않는다.
 export default function InvestmentHistoryPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
+  // 투자자는 상단 전환기의 현재 투자자로 고정한다(URL로 바꾸지 않는다).
+  const { investors, current, isLoading: investorsLoading } = useCurrentInvestor()
   const filters: FilterInvestmentHistoryFilters = {
-    investorId: searchParams.get('investorId') ?? '',
+    investorId: current ? String(current.id) : '',
     securitiesAccountId: searchParams.get('securitiesAccountId') ?? '',
     ipoId: searchParams.get('ipoId') ?? '',
   }
   const apiFilters = filtersToApiParams(filters)
 
-  const { data: investors, isLoading: investorsLoading, error: investorsError } = useInvestors()
-  const { data, isLoading, error } = useInvestmentHistory(apiFilters)
+  const { data, isLoading, error } = useInvestmentHistory(apiFilters, { enabled: !!current })
 
   const getErrorMessage = () =>
     toErrorMessage(error, {
@@ -76,24 +77,13 @@ export default function InvestmentHistoryPage() {
   }
 
   const items = data?.content ?? []
-  const hasInvestors = investors && investors.length > 0
+  const hasInvestors = investors.length > 0
 
   if (investorsLoading) {
     return (
       <div className={styles.container}>
         <h1 className={styles.title}>투자 내역</h1>
         <p className={styles.loading}>투자자 목록을 불러오는 중...</p>
-      </div>
-    )
-  }
-
-  if (investorsError) {
-    return (
-      <div className={styles.container}>
-        <h1 className={styles.title}>투자 내역</h1>
-        <p className={styles.error} role="alert">
-          투자자 목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
-        </p>
       </div>
     )
   }
