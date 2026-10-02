@@ -1,9 +1,6 @@
 /** 공모주수수료 기본값(원). 사용자가 고칠 수 있다. */
 export const DEFAULT_IPO_FEE = 2000
 
-/** 상장일 매도의 기본 시각(장 시작). */
-const DEFAULT_SALE_TIME = '09:00'
-
 /** 공모가 대비 매도 차익(수수료 반영 전): (매도단가 − 공모가) × 수량. */
 export function grossGain(price: number, quantity: number, ipoPrice: number): number {
   return (price - ipoPrice) * quantity
@@ -47,8 +44,8 @@ export function resolveIpoPrice(
   return null
 }
 
-/** 상장일('YYYY-MM-DD' 또는 ISO)을 datetime-local 값('YYYY-MM-DDT09:00')으로 바꾼다. */
-export function listingDateTime(listingDate: string | null | undefined): string | undefined {
-  if (!listingDate) return undefined
-  return `${listingDate.slice(0, 10)}T${DEFAULT_SALE_TIME}`
+/** 상장일('YYYY-MM-DD' 또는 ISO)을 date 입력 값('YYYY-MM-DD')으로 바꾼다. */
+export function listingDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  return value.slice(0, 10)
 }

@@ -34,7 +34,8 @@ export default function SubscriptionRegisterForm() {
   } = useSecuritiesAccounts(selectedInvestorId)
 
   const onSubmit = (data: SubscriptionRegisterRequest) => {
-    mutate(data, {
+    // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
+    mutate({ ...data, subscribedAt: `${data.subscribedAt}T09:00` }, {
       onSuccess: () => {
         navigate('/subscriptions')
       },
@@ -208,14 +209,14 @@ export default function SubscriptionRegisterForm() {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="subscribedAt">청약일시</label>
+        <label htmlFor="subscribedAt">청약일</label>
         <input
           id="subscribedAt"
-          type="datetime-local"
+          type="date"
           aria-invalid={!!errors.subscribedAt}
           aria-describedby={errors.subscribedAt ? 'subscribedAt-error' : undefined}
           {...register('subscribedAt', {
-            required: '청약일시를 선택해 주세요.',
+            required: '청약일를 선택해 주세요.',
           })}
           disabled={isPending}
         />

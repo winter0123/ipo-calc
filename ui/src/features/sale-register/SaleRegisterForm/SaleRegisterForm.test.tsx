@@ -181,9 +181,9 @@ describe('SaleRegisterForm', () => {
   })
 
   describe('기본값 자동 입력', () => {
-    it('매도일시는 해당 공모주 상장일 09:00, 매도단가는 공모가, 매도수량은 남은 수량이 먼저 들어간다', async () => {
+    it('매도일는 해당 공모주 상장일, 매도단가는 공모가, 매도수량은 남은 수량이 먼저 들어간다', async () => {
       await setupForm()
-      expect(value('매도일시')).toBe('2026-10-23T09:00')
+      expect(value('매도일')).toBe('2026-10-23')
       expect(value('매도단가')).toBe('10000')
       expect(value('매도수량')).toBe('30')
     })
@@ -196,10 +196,10 @@ describe('SaleRegisterForm', () => {
 
     it('기본값을 넣은 뒤에도 사람이 고칠 수 있다', async () => {
       await setupForm()
-      await fill(screen.getByLabelText('매도일시'), '2026-10-24T10:30')
+      await fill(screen.getByLabelText('매도일'), '2026-10-24')
       await fill(screen.getByLabelText('매도수량'), '20')
       await fill(screen.getByLabelText('공모주수수료'), '1500')
-      expect(value('매도일시')).toBe('2026-10-24T10:30')
+      expect(value('매도일')).toBe('2026-10-24')
       expect(value('매도수량')).toBe('20')
       expect(value('공모주수수료')).toBe('1500')
     })
@@ -227,10 +227,10 @@ describe('SaleRegisterForm', () => {
       expect(screen.getByText(/이미 매도 기록이 있어 0원으로 시작합니다/)).toBeInTheDocument()
     })
 
-    it('상장일이 없으면 매도일시는 비어 있다', async () => {
+    it('상장일이 없으면 매도일는 비어 있다', async () => {
       defaultMock({ ipo: { ...IPO, listingDate: null } })
       await setupForm()
-      expect(value('매도일시')).toBe('')
+      expect(value('매도일')).toBe('')
     })
 
     it('확정 공모가가 없으면 배정단가를 매도단가로 쓴다', async () => {

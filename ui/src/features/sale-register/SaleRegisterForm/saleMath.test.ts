@@ -3,7 +3,7 @@ import {
   DEFAULT_IPO_FEE,
   finalProfit,
   grossGain,
-  listingDateTime,
+  listingDate,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
   resolveIpoPrice,
@@ -49,9 +49,9 @@ describe('saleMath', () => {
   })
 
   it('상장일을 datetime-local 값(09:00)으로 바꾼다', () => {
-    expect(listingDateTime('2026-10-23')).toBe('2026-10-23T09:00')
-    expect(listingDateTime('2026-10-23T00:00:00Z')).toBe('2026-10-23T09:00')
-    expect(listingDateTime(null)).toBeUndefined()
-    expect(listingDateTime(undefined)).toBeUndefined()
+    expect(listingDate('2026-10-23')).toBe('2026-10-23')
+    expect(listingDate('2026-10-23T00:00:00Z')).toBe('2026-10-23')
+    expect(listingDate(null)).toBeUndefined()
+    expect(listingDate(undefined)).toBeUndefined()
   })
 })

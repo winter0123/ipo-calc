@@ -11,7 +11,7 @@ import {
   DEFAULT_IPO_FEE,
   finalProfit,
   grossGain,
-  listingDateTime,
+  listingDate,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
   resolveIpoPrice,
@@ -109,7 +109,7 @@ export default function SaleRegisterForm() {
     )
     const quantity = allocationData.remainingQuantity ?? allocation.allocatedQuantity
     const priorSales = allocationData.sales.some((sale) => sale.status === 'ACTIVE')
-    const saleDate = listingDateTime(ipo?.listingDate)
+    const saleDate = listingDate(ipo?.listingDate)
     if (!getFieldState('quantity').isDirty && quantity > 0) setValue('quantity', quantity)
     if (!getFieldState('price').isDirty && basis != null) setValue('price', basis)
     if (!getFieldState('saleDate').isDirty && saleDate) setValue('saleDate', saleDate)
@@ -137,7 +137,7 @@ export default function SaleRegisterForm() {
       quantity: data.quantity,
       price: data.price,
       amount: data.price * data.quantity,
-      saleDate: data.saleDate,
+      saleDate: `${data.saleDate}T09:00`,
       fee: isNum(data.ipoFee) ? data.ipoFee : 0,
       tax: isNum(data.otherFees) ? data.otherFees : 0,
     })
@@ -321,14 +321,14 @@ export default function SaleRegisterForm() {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="saleDate">매도일시</label>
+        <label htmlFor="saleDate">매도일</label>
         <input
           id="saleDate"
-          type="datetime-local"
+          type="date"
           aria-invalid={!!errors.saleDate}
           aria-describedby={errors.saleDate ? 'saleDate-error' : 'saleDate-hint'}
           {...register('saleDate', {
-            required: '매도일시를 선택해 주세요.',
+            required: '매도일를 선택해 주세요.',
           })}
           disabled={isPending}
         />
@@ -338,7 +338,7 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="saleDate-hint" className={styles.hint}>
-            해당 공모주의 상장일 09:00가 먼저 들어갑니다. 실제 매도일로 고칠 수 있습니다.
+            해당 공모주의 상장일이 먼저 들어갑니다. 실제 매도일로 고칠 수 있습니다.
           </span>
         )}
       </div>
