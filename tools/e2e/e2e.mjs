@@ -712,12 +712,13 @@ async function registerSale(page, trade, sale) {
   await page.selectOption('#subscriptionId', { index: 1 })
   await waitFor(async () => (await page.locator('#allocationId option').count()) > 1)
   await page.selectOption('#allocationId', { index: 1 })
+  // 매도수량·매도단가·매도일시는 공모주 정보로 미리 채워지지만 사용자가 고칠 수 있다(여기서는 직접 입력).
+  // 공모주수수료(#ipoFee)는 저장 시 fee, 세금 및 기타 수수료(#otherFees)는 tax로 간다. 실현손익은 공식으로 자동 계산된다.
   await page.fill('#quantity', String(sale.quantity))
   await page.fill('#price', String(sale.price))
-  await page.fill('#amount', String(sale.amount))
   await page.fill('#saleDate', localDateTime(14))
-  await page.fill('#fee', String(sale.fee))
-  await page.fill('#tax', String(sale.tax))
+  await page.fill('#ipoFee', String(sale.fee))
+  await page.fill('#otherFees', String(sale.tax))
   await submit(page)
   if (!(await waitForUrl(page, '**/investments', 15000))) {
     const texts = await errorTexts(page)
