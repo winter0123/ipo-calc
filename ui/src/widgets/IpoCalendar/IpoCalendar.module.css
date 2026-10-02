@@ -238,8 +238,18 @@
   box-shadow: inset 0 0 0 2px var(--sea);
 }
 
+/* 날짜 숫자와 휴장일 이름을 같은 윗줄에 둔다(이름은 왼쪽, 숫자는 오른쪽) */
+.dateHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .dateNumber {
-  align-self: flex-end;
+  flex: none;
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -254,6 +264,30 @@
   background: var(--sea);
   color: var(--ink);
   font-weight: 700;
+}
+
+/* 공휴일 이름: 날짜 숫자 위(왼쪽 상단)에 작은 글자로 표시 */
+.holidayName {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 5px;
+  line-height: 1.3;
+}
+
+/* 공휴일인 날짜의 숫자 색상을 danger로 변경 */
+.dateCell.hasHoliday .dateNumber {
+  color: var(--danger);
+}
+
+.dateCell.today.hasHoliday .dateNumber {
+  background: var(--sea);
+  color: var(--ink);
 }
 
 /* 막대 */
@@ -322,6 +356,14 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--ink);
+}
+
+/* 휴장일 안내: 제목 바로 아래에 표시 */
+.holidayNotice {
+  margin: 0 0 var(--space-3);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger);
 }
 
 .noEvents {

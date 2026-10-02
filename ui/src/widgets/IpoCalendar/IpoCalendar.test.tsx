@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoCalendar from './IpoCalendar.tsx'
 import type { Ipo } from '@/entities/ipo/index.ts'
 import type { CalendarEventType } from '@/features/ipo-calendar/index.ts'
+import { apiFetch } from '@/shared/api/client.ts'
+import styles from './IpoCalendar.module.css'
+
+vi.mock('@/shared/api/client.ts', () => ({
+  apiFetch: vi.fn(),
+}))
 
 function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   return {
@@ -30,8 +37,19 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
   }
 }
 
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  Wrapper.displayName = 'Wrapper'
+  return Wrapper
+}
+
 const renderWithRouter = (ui: React.ReactElement) =>
-  render(<MemoryRouter initialEntries={['/']}>{ui}</MemoryRouter>)
+  render(<MemoryRouter initialEntries={['/']}>{ui}</MemoryRouter>, { wrapper: createWrapper() })
 
 function FilterTestWrapper({
   ipos,
@@ -63,14 +81,28 @@ function FilterTestWrapper({
 }
 
 describe('IpoCalendar', () => {
+  let holidayResponse: unknown[] = []
+
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
+    holidayResponse = []
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve(holidayResponse)
+      }
+      return Promise.resolve([])
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
+
+  const setHolidays = (holidays: unknown[]) => {
+    holidayResponse = holidays
+  }
 
   it('데이터 있는 달에 청약·상장 막대가 보인다', async () => {
     const ipos = [makeIpo()]
@@ -421,6 +453,135 @@ describe('IpoCalendar', () => {
       // 10/8(목)~10/12(월)은 2주에 걸침
       const bars = screen.getAllByRole('link', { name: /청약/ })
       expect(bars.length).toBe(2)
+    })
+  })
+
+  describe('공휴일·휴장일 표시', () => {
+    it('공휴일 응답이 있으면 해당 칸에 이름이 보이고 날짜 숫자가 붉은색이다', async () => {
+      setHolidays([
+        { date: '2026-10-09', name: '한글날' },
+        { date: '2026-10-03', name: '개천절' },
+      ])
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      // 쿼리 완료 대기
+      await waitFor(() => {
+        const hangulDay = screen.getByRole('button', { name: /10월 9일, 한글날/ })
+        expect(hangulDay).toHaveTextContent('한글날')
+        expect(hangulDay).toHaveClass(styles.hasHoliday)
+      })
+
+      await waitFor(() => {
+        const gaecheonDay = screen.getByRole('button', { name: /10월 3일, 개천절/ })
+        expect(gaecheonDay).toHaveTextContent('개천절')
+      })
+    })
+
+    it('공휴일이 아닌 칸에는 이름이 없고 기존 스타일이다', async () => {
+      setHolidays([{ date: '2026-10-09', name: '한글날' }])
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      await waitFor(() => {
+        const normalDay = screen.getByRole('button', { name: /10월 10일/ })
+        expect(normalDay).not.toHaveTextContent('한글날')
+        expect(normalDay).not.toHaveClass('hasHoliday')
+      })
+    })
+
+    it('공휴일인 날짜를 선택하면 상세 패널에 "휴장일 · 이름"이 보인다', async () => {
+      setHolidays([{ date: '2026-10-09', name: '한글날' }])
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      await waitFor(() => {
+        const dateButton = screen.getByRole('button', { name: /10월 9일, 한글날/ })
+        expect(dateButton).toBeInTheDocument()
+      })
+      await userEvent.click(screen.getByRole('button', { name: /10월 9일, 한글날/ }))
+
+      await waitFor(() => {
+        expect(screen.getByText('휴장일 · 한글날')).toBeInTheDocument()
+      })
+    })
+
+    it('일정이 없는 공휴일을 선택하면 "휴장일 · 이름"과 "일정 없음"이 모두 보인다', async () => {
+      setHolidays([{ date: '2026-10-09', name: '한글날' }])
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      await waitFor(() => {
+        const dateButton = screen.getByRole('button', { name: /10월 9일, 한글날/ })
+        expect(dateButton).toBeInTheDocument()
+      })
+      await userEvent.click(screen.getByRole('button', { name: /10월 9일, 한글날/ }))
+
+      await waitFor(() => {
+        expect(screen.getByText('휴장일 · 한글날')).toBeInTheDocument()
+        expect(screen.getByText('일정 없음')).toBeInTheDocument()
+      })
+    })
+
+    it('응답 실패(reject)여도 달력은 정상으로 그려지고 오류 문구가 없다', async () => {
+      setHolidays([])
+      vi.mocked(apiFetch).mockImplementation((url) => {
+        if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+          return Promise.reject(new Error('Failed to fetch'))
+        }
+        return Promise.resolve([])
+      })
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      // 달력이 정상 렌더링됨
+      await waitFor(() => {
+        expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+      })
+      // 오류 문구가 없어야 함
+      expect(screen.queryByText(/오류|에러|실패/i)).not.toBeInTheDocument()
+    })
+
+    it('월 이동으로 연도가 바뀌면 새 연도를 요청한다(12월→1월)', async () => {
+      // 2026년 12월 휴장일
+      setHolidays([{ date: '2026-12-25', name: '크리스마스' }])
+      renderWithRouter(<IpoCalendar ipos={[]} initialYear={2026} initialMonth={12} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /12월 25일, 크리스마스/ })).toBeInTheDocument()
+      })
+
+      // 2027년 1월 휴장일로 변경
+      setHolidays([{ date: '2027-01-01', name: '신정' }])
+
+      // 다음 달(2027년 1월)로 이동
+      await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('2027년 1월')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /1월 1일, 신정/ })).toBeInTheDocument()
+      })
+
+      // 2026년 12월, 2027년 1월 순서로 호출되었는지 확인
+      expect(apiFetch).toHaveBeenNthCalledWith(1, '/market-holidays?year=2026', expect.any(Object))
+      expect(apiFetch).toHaveBeenNthCalledWith(2, '/market-holidays?year=2027', expect.any(Object))
+    })
+
+    it('aria-label에 공휴일 이름과 일정 개수가 모두 포함된다', async () => {
+      setHolidays([{ date: '2026-10-09', name: '한글날' }])
+      const ipos = [
+        makeIpo({
+          subscriptionStartDate: '2026-10-09T09:00:00Z',
+          subscriptionEndDate: '2026-10-09T17:00:00Z',
+        }),
+      ]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      await waitFor(() => {
+        const dateButton = screen.getByRole('button', { name: '10월 9일, 한글날, 일정 1개' })
+        expect(dateButton).toBeInTheDocument()
+      })
     })
   })
 })

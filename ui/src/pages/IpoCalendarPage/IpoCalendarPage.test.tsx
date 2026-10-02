@@ -52,24 +52,51 @@ function renderPage(initialEntries = ['/ipo-calendar']) {
 }
 
 describe('IpoCalendarPage', () => {
+  let ipoResponse: unknown[] = []
+  let holidayResponse: unknown[] = []
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
+    ipoResponse = []
+    holidayResponse = []
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve(holidayResponse)
+      }
+      if (typeof url === 'string' && url === '/ipos') {
+        return Promise.resolve(ipoResponse)
+      }
+      return Promise.resolve([])
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
+  const setIpos = (ipos: unknown[]) => {
+    ipoResponse = ipos
+  }
+
+  const setHolidays = (holidays: unknown[]) => {
+    holidayResponse = holidays
+  }
+
   it('로딩 상태를 표시한 뒤 응답 수신 후 달력을 표시한다', async () => {
     let resolveIpos: (value: unknown) => void = () => {}
-    vi.mocked(apiFetch).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve([])
+      }
+      if (typeof url === 'string' && url === '/ipos') {
+        return new Promise((resolve) => {
           resolveIpos = resolve
-        }),
-    )
+        })
+      }
+      return Promise.resolve([])
+    })
     renderPage()
 
     expect(screen.getByText('일정을 불러오는 중...')).toBeInTheDocument()
@@ -83,7 +110,8 @@ describe('IpoCalendarPage', () => {
   })
 
   it('데이터 있는 달에 청약·상장 막대가 보인다', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+    setIpos([makeIpo()])
+    setHolidays([])
     renderPage()
 
     await waitFor(() => {
@@ -93,7 +121,8 @@ describe('IpoCalendarPage', () => {
   })
 
   it('빈 목록일 때 안내 문구를 표시한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce([])
+    setIpos([])
+    setHolidays([])
     renderPage()
 
     await waitFor(() => {
@@ -102,7 +131,15 @@ describe('IpoCalendarPage', () => {
   })
 
   it('네트워크 오류 시 에러 메시지를 표시한다', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Failed to fetch'))
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve([])
+      }
+      if (typeof url === 'string' && url === '/ipos') {
+        return Promise.reject(new Error('Failed to fetch'))
+      }
+      return Promise.resolve([])
+    })
     renderPage()
 
     await waitFor(() => {
@@ -111,7 +148,15 @@ describe('IpoCalendarPage', () => {
   })
 
   it('기타 API 에러 시 공용 에러 메시지를 표시한다', async () => {
-    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'Request failed: 500'))
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve([])
+      }
+      if (typeof url === 'string' && url === '/ipos') {
+        return Promise.reject(new ApiError(500, 'Request failed: 500'))
+      }
+      return Promise.resolve([])
+    })
     renderPage()
 
     await waitFor(() => {
@@ -120,7 +165,8 @@ describe('IpoCalendarPage', () => {
   })
 
   it('h1 제목을 정확히 1개 렌더링한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+    setIpos([makeIpo()])
+    setHolidays([])
     renderPage()
 
     await waitFor(() => {
@@ -132,7 +178,8 @@ describe('IpoCalendarPage', () => {
 
   describe('URL 쿼리 파라미터 필터', () => {
     it('초기 엔트리에 types=LISTING이면 상장 막대만 보인다', async () => {
-      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      setIpos([makeIpo()])
+      setHolidays([])
       renderPage(['/ipo-calendar?types=LISTING'])
 
       await waitFor(() => {
@@ -144,7 +191,8 @@ describe('IpoCalendarPage', () => {
     })
 
     it('필터 버튼을 누르면 해당 종류의 막대가 사라진다', async () => {
-      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      setIpos([makeIpo()])
+      setHolidays([])
       renderPage(['/ipo-calendar'])
 
       await waitFor(() => {
@@ -168,7 +216,8 @@ describe('IpoCalendarPage', () => {
     })
 
     it('모두 보기 버튼을 누르면 모든 종류가 켜진다', async () => {
-      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      setIpos([makeIpo()])
+      setHolidays([])
       renderPage(['/ipo-calendar?types=LISTING'])
 
       await waitFor(() => {
@@ -190,7 +239,8 @@ describe('IpoCalendarPage', () => {
     })
 
     it('세 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 다시 켜면 값이 생기고 모두 켜면 사라진다', async () => {
-      vi.mocked(apiFetch).mockResolvedValueOnce([makeIpo()])
+      setIpos([makeIpo()])
+      setHolidays([])
       renderPage(['/ipo-calendar'])
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '청약' })).toBeInTheDocument()
