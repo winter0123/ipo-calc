@@ -26,8 +26,8 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
           <dd>{item.subscriptionQuantity.toLocaleString()}주</dd>
         </div>
         <div className={styles.cardRow}>
-          <dt>청약일시</dt>
-          <dd>{new Date(item.subscribedAt).toLocaleString()}</dd>
+          <dt>청약일</dt>
+          <dd>{new Date(item.subscribedAt).toLocaleDateString('ko-KR')}</dd>
         </div>
       </dl>
       {!isAllocated && (

@@ -109,7 +109,7 @@ async function fillValidForm() {
   await fill(screen.getByLabelText('공모주'), '1')
   await fill(screen.getByLabelText('청약수량'), '100')
   await fill(screen.getByLabelText('증거금'), '0')
-  await fill(screen.getByLabelText('청약일시'), '2026-09-21T10:00')
+  await fill(screen.getByLabelText('청약일'), '2026-09-21')
 }
 
 describe('SubscriptionRegisterForm', () => {
@@ -241,7 +241,7 @@ describe('SubscriptionRegisterForm', () => {
       expect(screen.getByText('공모주를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('청약수량을 입력해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('증거금을 입력해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('청약일시를 선택해 주세요.')).toBeInTheDocument()
+      expect(screen.getByText('청약일를 선택해 주세요.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })

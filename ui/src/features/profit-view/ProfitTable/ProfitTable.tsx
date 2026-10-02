@@ -20,7 +20,7 @@ export default function ProfitTable({ data, mode }: ProfitTableProps) {
         <thead>
           <tr>
             <th>매도ID</th>
-            <th>매도일시</th>
+            <th>매도일</th>
             <th>배정ID</th>
             <th>수량</th>
             <th>매도금액</th>

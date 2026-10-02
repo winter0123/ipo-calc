@@ -19,7 +19,7 @@ export default function ProfitRow({ profit }: ProfitRowProps) {
   return (
     <tr className={styles.row}>
       <td>{profit.saleId}</td>
-      <td>{profit.saleDate}</td>
+      <td>{profit.saleDate.slice(0, 10)}</td>
       <td>{profit.allocationId}</td>
       <td className={styles.number}>{formatNumber(profit.quantity)}</td>
       <td className={styles.number}>{formatNumber(profit.saleAmount)}</td>
