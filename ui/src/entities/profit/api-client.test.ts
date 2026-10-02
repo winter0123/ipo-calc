@@ -25,7 +25,13 @@ describe('profit api-client 응답 검증', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('매도금액 null을 허용한다', async () => {
-    const investor = { investorId: 1, sales: [SALE_PROFIT], totalSaleAmount: 0, totalPreTaxProfit: 0, totalAfterTaxProfit: 0 }
+    const investor = {
+      investorId: 1,
+      sales: [SALE_PROFIT],
+      totalSaleAmount: 0,
+      totalPreTaxProfit: 0,
+      totalAfterTaxProfit: 0,
+    }
     stub(investor)
     await expect(getInvestorProfits(1)).resolves.toEqual(investor)
   })
