@@ -49,7 +49,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,9 +56,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 증권사 동기화 미리보기·확정 서비스 단위 테스트.
  *
- * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-5) - AC-1840: 미리보기는 저장하지 않는다 -
- * AC-1841: 확정 후에만 매도가 만들어진다 - AC-1842: 사용자가 고친 값이 그대로 저장된다 - AC-1843: 기존 매도
- * 등록 로직(SaleService)을 그대로 호출한다.
+ * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-5) - AC-1840: 미리보기는 저장하지 않는다 - AC-1841:
+ * 확정 후에만 매도가 만들어진다 - AC-1842: 사용자가 고친 값이 그대로 저장된다 - AC-1843: 기존 매도 등록 로직(SaleService)을 그대로 호출한다.
  */
 class BrokerSyncServiceTest {
 
@@ -106,8 +104,8 @@ class BrokerSyncServiceTest {
                 .id(ACCOUNT_ID)
                 .accountNumber(accountEncryptor.encrypt("12345678-01"))
                 .build());
-    when(credentialRepository
-            .findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(ACCOUNT_ID))
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
         .thenReturn(
             List.of(
                 SecuritiesAccountApiCredential.builder()
@@ -118,8 +116,8 @@ class BrokerSyncServiceTest {
                     .build()));
     when(tokenService.getValidToken(any(SecuritiesAccountApiCredential.class)))
         .thenReturn(new KisAccessToken("dummy-token", LocalDateTime.of(2026, 10, 2, 0, 0)));
-    when(subscriptionRepository
-            .findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc(ACCOUNT_ID))
+    when(subscriptionRepository.findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+            ACCOUNT_ID))
         .thenReturn(
             List.of(
                 Subscription.builder()

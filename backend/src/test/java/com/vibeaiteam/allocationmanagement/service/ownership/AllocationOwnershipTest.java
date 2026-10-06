@@ -24,8 +24,7 @@ import org.junit.jupiter.api.Test;
 class AllocationOwnershipTest {
 
   private static final Long ME = 100L;
-  private static final OwnershipErrors ERRORS =
-      new OwnershipErrors(NotFound::new, Forbidden::new);
+  private static final OwnershipErrors ERRORS = new OwnershipErrors(NotFound::new, Forbidden::new);
 
   private final AllocationRepository allocationRepository = mock(AllocationRepository.class);
   private final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);

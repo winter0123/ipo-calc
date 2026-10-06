@@ -31,8 +31,8 @@ public class BrokerSyncController {
   private final BrokerSyncService brokerSyncService;
 
   /**
-   * 증권사 매도 내역을 조회해 우리 배정과 매칭한 결과를 돌려준다(저장 없음). {@code from}·{@code to}(yyyy-MM-dd)를 주지 않으면 최근
-   * 1년이고, 너무 잦은 호출은 429다.
+   * 증권사 매도 내역을 조회해 우리 배정과 매칭한 결과를 돌려준다(저장 없음). {@code from}·{@code to}(yyyy-MM-dd)를 주지 않으면 최근 1년이고,
+   * 너무 잦은 호출은 429다.
    */
   @GetMapping("/preview")
   public ResponseEntity<SyncPreviewResponse> preview(

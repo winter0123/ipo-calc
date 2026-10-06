@@ -26,8 +26,8 @@ import org.springframework.web.client.RestClient;
 /**
  * 브로커 조회 전용 아키텍처 테스트(research 4.3의 장치 A·B·C).
  *
- * <p>AC-1820(비-GET 호출 0건), AC-1821(포트에 조회 메서드만) 을 강제한다. 위반 시 빌드가 실패한다. 이 테스트가 없으면
- * brokerintegration 어댑터는 조회 전용이라고 주장할 수 없다.
+ * <p>AC-1820(비-GET 호출 0건), AC-1821(포트에 조회 메서드만) 을 강제한다. 위반 시 빌드가 실패한다. 이 테스트가 없으면 brokerintegration
+ * 어댑터는 조회 전용이라고 주장할 수 없다.
  */
 class BrokerReadOnlyArchitectureTest {
 
@@ -54,8 +54,8 @@ class BrokerReadOnlyArchitectureTest {
       Paths.get("src/main/java/com/vibeaiteam/brokerintegration");
 
   /**
-   * KIS 주문 엔드포인트 경로 조각. 아래 소스 스캔 테스트는 src/main 하위만 훑기 때문에 이 테스트 파일 자신은 검사 대상이
-   * 아니지만, 스캔 범위가 넓어져도 자기 자신이 걸리지 않도록 문자열을 조각으로 나눠 합친다.
+   * KIS 주문 엔드포인트 경로 조각. 아래 소스 스캔 테스트는 src/main 하위만 훑기 때문에 이 테스트 파일 자신은 검사 대상이 아니지만, 스캔 범위가 넓어져도 자기
+   * 자신이 걸리지 않도록 문자열을 조각으로 나눠 합친다.
    */
   private static final String[] FORBIDDEN_PATH_FRAGMENTS = {
     "trading" + "/" + "order",
@@ -117,8 +117,7 @@ class BrokerReadOnlyArchitectureTest {
             .should()
             .haveNameNotMatching(ORDER_KEYWORD_PATTERN)
             .because(
-                "BrokerQueryPort에는 조회 메서드만 선언되어야 하며 주문 관련 키워드가 메서드명에 들어가면 안 된다"
-                    + "(AC-1821).");
+                "BrokerQueryPort에는 조회 메서드만 선언되어야 하며 주문 관련 키워드가 메서드명에 들어가면 안 된다" + "(AC-1821).");
 
     rule.check(MAIN_CLASSES);
   }
@@ -139,7 +138,8 @@ class BrokerReadOnlyArchitectureTest {
 
     try (Stream<Path> paths = Files.walk(MAIN_SRC_ROOT)) {
       List<Path> javaFiles =
-          paths.filter(Files::isRegularFile)
+          paths
+              .filter(Files::isRegularFile)
               .filter(path -> path.toString().endsWith(".java"))
               .toList();
       assertThat(javaFiles).as("검사 대상 .java 파일이 1개 이상이어야 한다").isNotEmpty();

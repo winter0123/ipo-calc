@@ -10,9 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 로그인 실패 횟수 기록과 계정 잠금을 처리하는 서비스.
- */
+/** 로그인 실패 횟수 기록과 계정 잠금을 처리하는 서비스. */
 @Service
 @RequiredArgsConstructor
 public class FailedLoginService {
@@ -23,9 +21,7 @@ public class FailedLoginService {
   private static final int MAX_FAILED_ATTEMPTS = 5;
   private static final int LOCK_DURATION_MINUTES = 30;
 
-  /**
-   * 로그인 실패 횟수를 늘리고 5회 이상이면 30분간 계정을 잠근다. 호출 측이 롤백돼도 남도록 새 트랜잭션으로 실행한다.
-   */
+  /** 로그인 실패 횟수를 늘리고 5회 이상이면 30분간 계정을 잠근다. 호출 측이 롤백돼도 남도록 새 트랜잭션으로 실행한다. */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordFailedLogin(Account account) {
     // 이미 잠긴 계정인지 확인

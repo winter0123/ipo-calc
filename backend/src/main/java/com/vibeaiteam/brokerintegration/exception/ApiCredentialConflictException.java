@@ -1,8 +1,6 @@
 package com.vibeaiteam.brokerintegration.exception;
 
-/**
- * 브로커 API 인증정보 중복 등록 예외(HTTP 409).
- */
+/** 브로커 API 인증정보 중복 등록 예외(HTTP 409). */
 public class ApiCredentialConflictException extends RuntimeException {
 
   private static final long serialVersionUID = 1L;

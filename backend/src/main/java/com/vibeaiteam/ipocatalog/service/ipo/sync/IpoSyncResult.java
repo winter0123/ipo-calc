@@ -43,6 +43,5 @@ public class IpoSyncResult {
   private boolean retryable;
 
   /** ustockplus 일정 병합 건수 (OpenDART 동기화 완료 후 병합된 건수, 중단 시 0). */
-  @Builder.Default
-  private int scheduleMerged = 0;
+  @Builder.Default private int scheduleMerged = 0;
 }

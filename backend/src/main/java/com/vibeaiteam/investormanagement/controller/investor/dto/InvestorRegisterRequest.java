@@ -6,9 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 투자자 등록 요청 DTO.
- */
+/** 투자자 등록 요청 DTO. */
 @Getter
 @Setter
 @Builder

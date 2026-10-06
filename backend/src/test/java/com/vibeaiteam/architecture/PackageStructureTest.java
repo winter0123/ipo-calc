@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
  *   <li>저장소(repository)와 엔티티(domain.model)는 웹 계층(controller)에 의존하지 않는다.
  * </ul>
  *
- * <p>서비스가 다른 패키지의 {@code controller.dto}에 의존하는 12곳은 알려진 부채라 규칙에 넣지 않았다(리팩토링 3단계에서 증권사 연동
- * 패키지만 정리한다).
+ * <p>서비스가 다른 패키지의 {@code controller.dto}에 의존하는 12곳은 알려진 부채라 규칙에 넣지 않았다(리팩토링 3단계에서 증권사 연동 패키지만
+ * 정리한다).
  */
 class PackageStructureTest {
 
@@ -28,11 +28,7 @@ class PackageStructureTest {
 
   @Test
   void epicPackagesHaveNoCyclicDependencies() {
-    slices()
-        .matching("com.vibeaiteam.(*)..")
-        .should()
-        .beFreeOfCycles()
-        .check(MAIN_CLASSES);
+    slices().matching("com.vibeaiteam.(*)..").should().beFreeOfCycles().check(MAIN_CLASSES);
   }
 
   @Test

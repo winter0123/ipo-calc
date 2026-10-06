@@ -7,9 +7,7 @@ import com.vibeaiteam.subscriptionmanagement.service.ownership.SubscriptionOwner
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * 배정 → 청약 → 투자자 → 계정 소유권 검증을 한 곳에 모은다. 도메인별 예외는 {@link OwnershipErrors}로 넘긴다.
- */
+/** 배정 → 청약 → 투자자 → 계정 소유권 검증을 한 곳에 모은다. 도메인별 예외는 {@link OwnershipErrors}로 넘긴다. */
 @Component
 @RequiredArgsConstructor
 public class AllocationOwnership {
@@ -45,9 +43,7 @@ public class AllocationOwnership {
    */
   public Allocation requireOwnedIncludingDeleted(Long id, OwnershipErrors errors) {
     Allocation allocation =
-        allocationRepository
-            .findById(id)
-            .orElseThrow(() -> errors.notFound(ALLOCATION_NOT_FOUND));
+        allocationRepository.findById(id).orElseThrow(() -> errors.notFound(ALLOCATION_NOT_FOUND));
     subscriptionOwnership.requireOwnedIncludingDeleted(allocation.getSubscriptionId(), errors);
     return allocation;
   }

@@ -38,8 +38,8 @@ public class BusinessDayCalculator {
   /**
    * 주어진 날짜부터 지정된 영업일 수만큼 더한 날짜를 반환한다.
    *
-   * <p>date가 영업일이 아니어도 date 다음 영업일부터 센다. businessDays가 0이면 date를 그대로
-   * 반환한다. businessDays가 음수이면 {@link IllegalArgumentException}을 던진다.
+   * <p>date가 영업일이 아니어도 date 다음 영업일부터 센다. businessDays가 0이면 date를 그대로 반환한다. businessDays가 음수이면
+   * {@link IllegalArgumentException}을 던진다.
    *
    * @param date 기준 날짜 (영업일이 아니어도 됨)
    * @param businessDays 더할 영업일 수 (0 이상)

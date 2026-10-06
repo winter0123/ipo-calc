@@ -8,9 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 증권계좌 응답 DTO.
- */
+/** 증권계좌 응답 DTO. */
 @Getter
 @Setter
 @Builder
@@ -30,17 +28,13 @@ public class SecuritiesAccountResponse {
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 
-  /**
-   * 엔티티를 응답 DTO로 변환한다.
-   */
+  /** 엔티티를 응답 DTO로 변환한다. */
   public static SecuritiesAccountResponse from(
       SecuritiesAccount account, String maskedAccountNumber) {
     return from(account, maskedAccountNumber, null);
   }
 
-  /**
-   * 엔티티를 응답 DTO로 변환한다.
-   */
+  /** 엔티티를 응답 DTO로 변환한다. */
   public static SecuritiesAccountResponse from(
       SecuritiesAccount account, String maskedAccountNumber, String securitiesFirmName) {
     return SecuritiesAccountResponse.builder()

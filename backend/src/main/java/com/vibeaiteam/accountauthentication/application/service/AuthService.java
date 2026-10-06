@@ -27,9 +27,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 로그인·로그아웃을 처리하는 세션 기반 인증 서비스.
- */
+/** 로그인·로그아웃을 처리하는 세션 기반 인증 서비스. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -43,9 +41,7 @@ public class AuthService {
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
-  /**
-   * 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다.
-   */
+  /** 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다. */
   @Transactional
   public void login(
       LoginRequest request,
@@ -101,9 +97,7 @@ public class AuthService {
         account.getId(), account.getEmail(), account.getName(), account.getRole().name());
   }
 
-  /**
-   * 현재 세션을 무효화하고 인증 정보를 비운다.
-   */
+  /** 현재 세션을 무효화하고 인증 정보를 비운다. */
   @Transactional
   public void logout(
       HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {

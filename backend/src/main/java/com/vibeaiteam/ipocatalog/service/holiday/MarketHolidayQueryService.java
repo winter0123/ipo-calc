@@ -5,7 +5,6 @@ import com.vibeaiteam.ipocatalog.domain.model.holiday.MarketHoliday;
 import com.vibeaiteam.ipocatalog.exception.MarketHolidayValidationException;
 import com.vibeaiteam.ipocatalog.repository.holiday.MarketHolidayRepository;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.Year;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

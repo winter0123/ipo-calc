@@ -7,9 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-/**
- * ApiCredentialExceptionHandler가 각 예외를 올바른 HTTP 상태와 에러 코드로 변환하는지 검증한다.
- */
+/** ApiCredentialExceptionHandler가 각 예외를 올바른 HTTP 상태와 에러 코드로 변환하는지 검증한다. */
 class ApiCredentialExceptionHandlerTest {
 
   private final ApiCredentialExceptionHandler handler = new ApiCredentialExceptionHandler();

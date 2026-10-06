@@ -27,9 +27,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 회원가입 서비스.
- */
+/** 회원가입 서비스. */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -47,9 +45,7 @@ public class SignupService {
       Pattern.compile(
           "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,}$");
 
-  /**
-   * 이메일 중복을 확인하고 계정을 생성한다.
-   */
+  /** 이메일 중복을 확인하고 계정을 생성한다. */
   public SignupResponse signup(
       SignupRequest request,
       HttpServletRequest httpServletRequest,

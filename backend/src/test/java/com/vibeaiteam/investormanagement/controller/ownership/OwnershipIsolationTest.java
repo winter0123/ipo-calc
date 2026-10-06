@@ -9,12 +9,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
-import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
-import com.vibeaiteam.costrecording.domain.model.cost.Cost;
-import com.vibeaiteam.costrecording.repository.cost.CostRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
@@ -42,8 +39,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * 청약·배정·매도·비용·수익 API의 계정 간 소유권 격리 검증. 계정 A 소유 데이터를 계정 B가 조회·수정·취소·참조하면 403이고, 목록에는 A의 데이터가
- * 나오지 않으며, A 본인은 정상 접근한다.
+ * 청약·배정·매도·비용·수익 API의 계정 간 소유권 격리 검증. 계정 A 소유 데이터를 계정 B가 조회·수정·취소·참조하면 403이고, 목록에는 A의 데이터가 나오지 않으며,
+ * A 본인은 정상 접근한다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -61,7 +58,6 @@ class OwnershipIsolationTest {
   @Autowired private SubscriptionRepository subscriptionRepository;
   @Autowired private AllocationRepository allocationRepository;
   @Autowired private SaleRepository saleRepository;
-  @Autowired private CostRepository costRepository;
 
   private final MockHttpSession ownerSession = new MockHttpSession();
   private final MockHttpSession intruderSession = new MockHttpSession();
@@ -71,7 +67,6 @@ class OwnershipIsolationTest {
   private Subscription subscription;
   private Allocation allocation;
   private Sale sale;
-  private Cost cost;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -127,22 +122,10 @@ class OwnershipIsolationTest {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    cost =
-        costRepository.save(
-            Cost.builder()
-                .subscriptionId(subscription.getId())
-                .costType("취득비용")
-                .amount(1000L)
-                .incurredAt(now)
-                .status(RecordStatus.ACTIVE)
-                .createdAt(now)
-                .updatedAt(now)
-                .build());
   }
 
   @AfterEach
   void tearDown() {
-    costRepository.delete(cost);
     saleRepository.delete(sale);
     allocationRepository.delete(allocation);
     subscriptionRepository.delete(subscription);
@@ -156,8 +139,7 @@ class OwnershipIsolationTest {
     String[] paths = {
       "/subscriptions/" + subscription.getId(),
       "/allocations/" + allocation.getId(),
-      "/sales/" + sale.getId(),
-      "/costs/" + cost.getId()
+      "/sales/" + sale.getId()
     };
     for (String path : paths) {
       assertStatus(get(path), intruderSession, 403);
@@ -176,27 +158,16 @@ class OwnershipIsolationTest {
         intruderSession,
         403);
     assertStatus(json(post("/sales"), saleBody(allocation.getId(), now)), intruderSession, 403);
-    assertStatus(
-        json(
-            post("/costs"),
-            "{\"subscriptionId\":"
-                + subscription.getId()
-                + ",\"costType\":\"취득비용\",\"amount\":1,\"incurredAt\":\""
-                + now
-                + "\"}"),
-        intruderSession,
-        403);
   }
 
   @Test
   void listsOnlyContainOwnRecords() throws Exception {
-    for (String path : List.of("/subscriptions", "/allocations", "/sales", "/costs")) {
+    for (String path : List.of("/subscriptions", "/allocations", "/sales")) {
       assertThat(listIds(path, intruderSession)).as(path + " (타 계정)").isEmpty();
     }
     assertThat(listIds("/subscriptions", ownerSession)).contains(subscription.getId());
     assertThat(listIds("/allocations", ownerSession)).contains(allocation.getId());
     assertThat(listIds("/sales", ownerSession)).contains(sale.getId());
-    assertThat(listIds("/costs", ownerSession)).contains(cost.getId());
   }
 
   @Test
@@ -204,14 +175,16 @@ class OwnershipIsolationTest {
     assertStatus(get("/subscriptions/" + subscription.getId()), ownerSession, 200);
     assertStatus(get("/allocations/" + allocation.getId()), ownerSession, 200);
     assertStatus(get("/sales/" + sale.getId()), ownerSession, 200);
-    assertStatus(get("/costs/" + cost.getId()), ownerSession, 200);
     assertStatus(get("/sales/" + sale.getId() + "/profit"), ownerSession, 200);
     assertStatus(get("/investors/" + investor.getId() + "/profits"), ownerSession, 200);
   }
 
   private String allocationBody(Long subscriptionId, String at) {
-    return "{\"subscriptionId\":" + subscriptionId + ",\"allocatedQuantity\":1,\"allocatedAt\":\""
-        + at + "\"}";
+    return "{\"subscriptionId\":"
+        + subscriptionId
+        + ",\"allocatedQuantity\":1,\"allocatedAt\":\""
+        + at
+        + "\"}";
   }
 
   private String saleBody(Long allocationId, String at) {

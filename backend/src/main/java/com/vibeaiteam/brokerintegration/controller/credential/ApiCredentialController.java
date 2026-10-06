@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 증권계좌별 브로커 API 인증정보의 등록/조회/연결해제 API를 제공한다.
  *
- * <p>모든 요청은 인증이 필요하며, 대상 계좌의 소유권은 서비스 계층의 2단계 검증(SecuritiesAccount → Investor → Account)에서
- * 확인한다. 응답에는 연결 상태·마스킹된 계좌번호·마지막 동기화 시각만 담는다.
+ * <p>모든 요청은 인증이 필요하며, 대상 계좌의 소유권은 서비스 계층의 2단계 검증(SecuritiesAccount → Investor → Account)에서 확인한다.
+ * 응답에는 연결 상태·마스킹된 계좌번호·마지막 동기화 시각만 담는다.
  */
 @RestController
 @RequestMapping("/securities-accounts/{securitiesAccountId}/api-credential")
@@ -31,8 +31,8 @@ public class ApiCredentialController {
   private final ApiCredentialService apiCredentialService;
 
   /**
-   * 브로커 API 인증정보를 등록하고 201 Created와 함께 연결 상태를 반환한다. 타 계정 계좌는 403, 같은 provider 중복 등록은
-   * 409, 브로커 암호화 키 미설정은 503을 반환한다.
+   * 브로커 API 인증정보를 등록하고 201 Created와 함께 연결 상태를 반환한다. 타 계정 계좌는 403, 같은 provider 중복 등록은 409, 브로커 암호화 키
+   * 미설정은 503을 반환한다.
    */
   @PostMapping
   public ResponseEntity<ApiCredentialResponse> register(
@@ -48,9 +48,7 @@ public class ApiCredentialController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  /**
-   * 연결된 증권사 API 키를 새 키로 교체한다. 연결이 없으면 404, 타 계정 계좌는 403, 브로커 암호화 키 미설정은 503이다.
-   */
+  /** 연결된 증권사 API 키를 새 키로 교체한다. 연결이 없으면 404, 타 계정 계좌는 403, 브로커 암호화 키 미설정은 503이다. */
   @PutMapping
   public ResponseEntity<ApiCredentialResponse> replace(
       @PathVariable Long securitiesAccountId,
@@ -63,18 +61,14 @@ public class ApiCredentialController {
             request.getKeyIssuedOn()));
   }
 
-  /**
-   * 증권계좌의 브로커 API 인증정보 연결 상태를 조회한다. 연결 전이면 DISCONNECTED, 존재하지 않는 계좌는 404, 타 계정 계좌는
-   * 403을 반환한다.
-   */
+  /** 증권계좌의 브로커 API 인증정보 연결 상태를 조회한다. 연결 전이면 DISCONNECTED, 존재하지 않는 계좌는 404, 타 계정 계좌는 403을 반환한다. */
   @GetMapping
   public ResponseEntity<ApiCredentialResponse> getStatus(@PathVariable Long securitiesAccountId) {
     return ResponseEntity.ok(apiCredentialService.getStatus(securitiesAccountId));
   }
 
   /**
-   * 증권계좌의 브로커 API 인증정보를 연결 해제(소프트 삭제)하고 204 No Content를 반환한다. 존재하지 않는 계좌는 404, 타 계정
-   * 계좌는 403을 반환한다.
+   * 증권계좌의 브로커 API 인증정보를 연결 해제(소프트 삭제)하고 204 No Content를 반환한다. 존재하지 않는 계좌는 404, 타 계정 계좌는 403을 반환한다.
    */
   @DeleteMapping
   public ResponseEntity<Void> disconnect(@PathVariable Long securitiesAccountId) {

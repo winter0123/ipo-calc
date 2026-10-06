@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 공통 에러 응답 DTO.
- */
+/** 공통 에러 응답 DTO. */
 @Getter
 @Setter
 @Builder
@@ -21,9 +19,7 @@ public class ErrorResponse {
   private String message;
   private List<FieldError> fieldErrors;
 
-  /**
-   * 필드별 검증 오류 항목.
-   */
+  /** 필드별 검증 오류 항목. */
   @Getter
   @Setter
   @Builder

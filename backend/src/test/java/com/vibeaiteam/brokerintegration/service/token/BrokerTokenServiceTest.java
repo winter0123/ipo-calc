@@ -43,8 +43,8 @@ import org.slf4j.LoggerFactory;
 /**
  * {@link BrokerTokenService} 테스트.
  *
- * <p>네트워크 호출 없이 {@link KisAuthClient}는 Mockito 목, 리포지터리는 "저장된 엔티티를 그대로 돌려주는" 목으로 검증한다. DB에도
- * 네트워크에도 닿지 않으므로 공유 로컬 DB에 남는 행이 없다. 시크릿은 전부 더미 값이다.
+ * <p>네트워크 호출 없이 {@link KisAuthClient}는 Mockito 목, 리포지터리는 "저장된 엔티티를 그대로 돌려주는" 목으로 검증한다. DB에도 네트워크에도
+ * 닿지 않으므로 공유 로컬 DB에 남는 행이 없다. 시크릿은 전부 더미 값이다.
  */
 class BrokerTokenServiceTest {
 

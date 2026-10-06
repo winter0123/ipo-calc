@@ -21,9 +21,8 @@ import lombok.ToString;
 /**
  * 증권계좌 API 인증정보 JPA 엔티티.
  *
- * <p>증권사 조회 전용 API 연동에 필요한 앱키/앱시크릿/접근토큰을 계좌별로 암호화 저장한다.
- * securities_accounts와 1:1 관계(계좌당 앱키 1세트라는 외부 제약과 정합).
- * 계정 소유권 검증이 필수인 계정 소유 엔티티다.
+ * <p>증권사 조회 전용 API 연동에 필요한 앱키/앱시크릿/접근토큰을 계좌별로 암호화 저장한다. securities_accounts와 1:1 관계(계좌당 앱키 1세트라는 외부
+ * 제약과 정합). 계정 소유권 검증이 필수인 계정 소유 엔티티다.
  */
 @Entity
 @Table(name = "securities_account_api_credentials")

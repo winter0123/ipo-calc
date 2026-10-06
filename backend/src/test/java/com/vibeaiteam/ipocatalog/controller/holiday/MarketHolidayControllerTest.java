@@ -48,8 +48,9 @@ class MarketHolidayControllerTest {
     assertThat(holidays.get(0).get("name")).isEqualTo("신정");
 
     // 2026-10-09 한글날이 포함되어 있는지 확인
-    boolean hasHangeulDay = holidays.stream()
-        .anyMatch(h -> "2026-10-09".equals(h.get("date")) && "한글날".equals(h.get("name")));
+    boolean hasHangeulDay =
+        holidays.stream()
+            .anyMatch(h -> "2026-10-09".equals(h.get("date")) && "한글날".equals(h.get("name")));
     assertThat(hasHangeulDay).isTrue();
 
     // 응답에 source, id 키가 없는지 확인

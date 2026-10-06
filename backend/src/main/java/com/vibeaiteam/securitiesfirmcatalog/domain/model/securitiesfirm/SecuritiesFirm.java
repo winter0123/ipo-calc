@@ -16,9 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 증권사 JPA 엔티티.
- */
+/** 증권사 JPA 엔티티. */
 @Entity
 @Table(name = "securities_firms")
 @Getter

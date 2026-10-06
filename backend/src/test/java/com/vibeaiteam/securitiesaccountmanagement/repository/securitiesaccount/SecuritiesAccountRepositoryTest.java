@@ -293,8 +293,12 @@ class SecuritiesAccountRepositoryTest {
     SecuritiesAccount otherDefault =
         securitiesAccountRepository.saveAndFlush(
             buildAccount(
-                otherInvestor.getId(
-                    ), securitiesFirmId, true, RecordStatus.ACTIVE, null, "enc-B-default"));
+                otherInvestor.getId(),
+                securitiesFirmId,
+                true,
+                RecordStatus.ACTIVE,
+                null,
+                "enc-B-default"));
 
     // Then: 유니크 위반 없이 저장된다
     assertThat(otherDefault.getId()).isNotNull();

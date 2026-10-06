@@ -20,33 +20,31 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * ustockplus 일정(상장예정일·배정일·환불일)을 기존 IPO 레코드에 병합하는 서비스.
  *
- * <p>OpenDART로 생성된 IPO 레코드는 stockCode가 null인 상태로 저장된다(신규 상장 회사는 공시
- * 시점에 종목코드가 없기 때문). 이 서비스는 ustockplus에서 조회한 종목코드·종목명·일정을 이용해
- * 기존 레코드를 찾아 stockCode와 세 날짜를 채운다.
+ * <p>OpenDART로 생성된 IPO 레코드는 stockCode가 null인 상태로 저장된다(신규 상장 회사는 공시 시점에 종목코드가 없기 때문). 이 서비스는
+ * ustockplus에서 조회한 종목코드·종목명·일정을 이용해 기존 레코드를 찾아 stockCode와 세 날짜를 채운다.
  *
  * <p>주요 규칙:
+ *
  * <ul>
- *   <li>종목코드 우선 매칭: {@code findByStockCodeAndStatusAndDeletedAtIsNull}으로 정확히 1건
- *       매칭되면 해당 레코드를 대상으로 함
+ *   <li>종목코드 우선 매칭: {@code findByStockCodeAndStatusAndDeletedAtIsNull}으로 정확히 1건 매칭되면 해당 레코드를 대상으로 함
  *   <li>회사명 정규화 매칭: 종목코드 매칭 실패 시 {@code
- *       findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull} 후보들 중 정규화한
- *       ipoName이 정규화한 ustockplus stockName과 같은 것이 <b>정확히 1건</b>일 때만 대상으로 함.
- *       0건 또는 2건 이상이면 건너뜀(DEBUG 로그)
+ *       findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull} 후보들 중 정규화한 ipoName이
+ *       정규화한 ustockplus stockName과 같은 것이 <b>정확히 1건</b>일 때만 대상으로 함. 0건 또는 2건 이상이면 건너뜀(DEBUG 로그)
  *   <li>수동 등록 보호: syncSource가 null인 레코드는 절대 수정하지 않음 (종목코드 매칭 경우도 동일)
  *   <li>채우기 규칙:
  *       <ul>
  *         <li>allotmentDate, refundDate: ustockplus 값이 null이 아니면 덮어씀
- *         <li>listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움(이미 값이 있으면
- *             수동 입력으로 간주해 보존). ustockplus 값이 null이면 해당 필드는 건드리지 않음
+ *         <li>listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움(이미 값이 있으면 수동 입력으로 간주해 보존).
+ *             ustockplus 값이 null이면 해당 필드는 건드리지 않음
  *       </ul>
- *   <li>갱신 시: {@code syncSource="OPENDART+USTOCKPLUS"}, {@code lastSyncedAt=now},
- *       {@code updatedAt=now}로 설정하고 saveAndFlush. 변경된 게 없으면 저장하지 않음
+ *   <li>갱신 시: {@code syncSource="OPENDART+USTOCKPLUS"}, {@code lastSyncedAt=now}, {@code
+ *       updatedAt=now}로 설정하고 saveAndFlush. 변경된 게 없으면 저장하지 않음
  *   <li>건별 독립 트랜잭션(TransactionTemplate): 한 종목 예외가 다음 종목에 영향 없음
  *   <li>예외 발생 시 WARN 로그만 남기고 건수에 미포함, 다음 종목으로 계속
  * </ul>
  *
- * <p>이름 정규화 규칙: "(주)", "㈜", "주식회사" 제거, 모든 공백 제거, 소문자화.
- * 예: "(주)진코스텍", "주식회사 진코스텍", "진코스텍" → 모두 "진코스텍"으로 정규화됨.
+ * <p>이름 정규화 규칙: "(주)", "㈜", "주식회사" 제거, 모든 공백 제거, 소문자화. 예: "(주)진코스텍", "주식회사 진코스텍", "진코스텍" → 모두
+ * "진코스텍"으로 정규화됨.
  */
 @Service
 @RequiredArgsConstructor

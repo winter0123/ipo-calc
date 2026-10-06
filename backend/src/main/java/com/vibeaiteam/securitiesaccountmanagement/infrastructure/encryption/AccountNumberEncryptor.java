@@ -9,9 +9,8 @@ import org.springframework.stereotype.Component;
  * 계좌번호 암호화 유틸리티 (AES-256-GCM, JDK 내장 javax.crypto만 사용, D-SA-001).
  *
  * <p>키는 버전 관리된다({@link VersionedKeyring}): 기존 단일 키(app.encryption.key / APP_ENCRYPTION_KEY)는 v1이고,
- * {@code APP_ENCRYPTION_KEYS}(v2:Base64,...)로 새 키를 추가하면 새 키로 암호화하면서 예전 암호문도 읽는다.
- * 키가 미설정 상태여도 빈 생성은 허용하고, 실제 encrypt()/decrypt() 호출 시점에 명확한
- * 오류로 실패시킨다. 예외 메시지에 평문·키 값을 넣지 않는다.
+ * {@code APP_ENCRYPTION_KEYS}(v2:Base64,...)로 새 키를 추가하면 새 키로 암호화하면서 예전 암호문도 읽는다. 키가 미설정 상태여도 빈 생성은
+ * 허용하고, 실제 encrypt()/decrypt() 호출 시점에 명확한 오류로 실패시킨다. 예외 메시지에 평문·키 값을 넣지 않는다.
  */
 @Component
 public class AccountNumberEncryptor {

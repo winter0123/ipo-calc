@@ -51,9 +51,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 /**
  * ApiCredentialService 단위 테스트.
  *
- * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 평문이
- * 남지 않는다 - AC-1811: 응답 DTO에 시크릿·토큰 필드가 존재하지 않는다 - AC-1812: 타 계정 소유 계좌 접근은 403 -
- * AC-1813: 같은 계좌·provider 중복 등록은 409 - AC-1814: 브로커 암호화 키 미설정 시 등록이 명확한 오류로 실패한다.
+ * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 평문이 남지
+ * 않는다 - AC-1811: 응답 DTO에 시크릿·토큰 필드가 존재하지 않는다 - AC-1812: 타 계정 소유 계좌 접근은 403 - AC-1813: 같은
+ * 계좌·provider 중복 등록은 409 - AC-1814: 브로커 암호화 키 미설정 시 등록이 명확한 오류로 실패한다.
  */
 @ExtendWith(MockitoExtension.class)
 class ApiCredentialServiceTest {
@@ -330,9 +330,7 @@ class ApiCredentialServiceTest {
     assertThat(response.apiProvider()).isEqualTo("KIS");
     assertThat(response.accountNumber()).isEqualTo(AccountNumberMasker.mask(PLAIN_ACCOUNT_NUMBER));
     assertThat(response.accountNumber()).isNotEqualTo(PLAIN_ACCOUNT_NUMBER);
-    assertThat(response.lastSyncedAt())
-        .as("토큰이 캐시되지 않았으면 마지막 동기화 시각은 null이어야 합니다")
-        .isNull();
+    assertThat(response.lastSyncedAt()).as("토큰이 캐시되지 않았으면 마지막 동기화 시각은 null이어야 합니다").isNull();
   }
 
   @Test

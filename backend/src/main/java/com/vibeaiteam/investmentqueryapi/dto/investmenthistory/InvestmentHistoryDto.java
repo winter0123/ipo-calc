@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 청약 단위 투자 이력 DTO. 배정·매도 요약을 포함한다.
- */
+/** 청약 단위 투자 이력 DTO. 배정·매도 요약을 포함한다. */
 @Getter
 @Setter
 @Builder

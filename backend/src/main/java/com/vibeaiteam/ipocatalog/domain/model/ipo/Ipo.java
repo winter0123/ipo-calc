@@ -17,9 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 공모주 JPA 엔티티.
- */
+/** 공모주 JPA 엔티티. */
 @Entity
 @Table(name = "ipos")
 @Getter

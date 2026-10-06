@@ -9,8 +9,8 @@ import org.springframework.http.ResponseEntity;
 /**
  * 예외 핸들러가 공통으로 쓰는 에러 응답 생성기.
  *
- * <p>모든 핸들러가 같은 모양(상태 코드 + {@code application/json;charset=UTF-8} +
- * {@link ErrorResponse})으로 응답하도록 한 곳에서 만든다.
+ * <p>모든 핸들러가 같은 모양(상태 코드 + {@code application/json;charset=UTF-8} + {@link ErrorResponse})으로 응답하도록
+ * 한 곳에서 만든다.
  */
 public final class ErrorResponses {
 

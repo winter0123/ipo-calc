@@ -53,8 +53,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *       OpenDartApiException}이면 즉시 중단하고 그때까지의 결과 반환 ({@code aborted=true})
  *   <li>그 외 {@code OpenDartApiException}은 그 건만 failures에 기록
  *   <li>OpenDART 루프가 중단(aborted) 없이 완료되면 {@code IpoScheduleMergeService.merge(LocalDate.now())}를
- *       호출해 ustockplus 일정을 병합한다. 병합 중 예외가 나도 OpenDART 결과는 그대로 반환한다 (try-catch, WARN 로그).
- *       병합 건수는 {@code IpoSyncResult.scheduleMerged}에 기록한다.
+ *       호출해 ustockplus 일정을 병합한다. 병합 중 예외가 나도 OpenDART 결과는 그대로 반환한다 (try-catch, WARN 로그). 병합 건수는
+ *       {@code IpoSyncResult.scheduleMerged}에 기록한다.
  *   <li>로그에 API 키를 절대 남기지 않음 (키는 URL 쿼리 파라미터)
  * </ul>
  */
@@ -153,8 +153,7 @@ public class IpoSyncService {
   }
 
   /**
-   * 한 회사(DS001의 한 건)에 대한 DS006 조회·검증·upsert를 처리한다.
-   * 루프를 중단해야 하면 false, 계속 진행하면 true를 반환한다.
+   * 한 회사(DS001의 한 건)에 대한 DS006 조회·검증·upsert를 처리한다. 루프를 중단해야 하면 false, 계속 진행하면 true를 반환한다.
    *
    * @param result 동기화 결과 객체
    * @param company DS001 조회 결과의 한 건
@@ -209,8 +208,7 @@ public class IpoSyncService {
 
     // subscriptionStartDate가 null이면 실패 처리
     if (detail.getSubscriptionStartDate() == null) {
-      recordFailure(
-          result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
+      recordFailure(result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }

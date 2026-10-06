@@ -1,13 +1,9 @@
 package com.vibeaiteam.ipocatalog.exception;
 
-/**
- * 시장 휴장일 검증 실패 예외(HTTP 400).
- */
+/** 시장 휴장일 검증 실패 예외(HTTP 400). */
 public class MarketHolidayValidationException extends RuntimeException {
 
-  /**
-   * 메시지를 담아 예외를 생성한다.
-   */
+  /** 메시지를 담아 예외를 생성한다. */
   public MarketHolidayValidationException(String message) {
     super(message);
   }

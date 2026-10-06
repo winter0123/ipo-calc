@@ -16,9 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 배정 JPA 엔티티.
- */
+/** 배정 JPA 엔티티. */
 @Entity
 @Table(name = "allocations")
 @Getter

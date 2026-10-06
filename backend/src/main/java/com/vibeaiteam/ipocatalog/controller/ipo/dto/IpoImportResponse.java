@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 공모주 응답 DTO.
- */
+/** 공모주 응답 DTO. */
 @Getter
 @Setter
 @Builder

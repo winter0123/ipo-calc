@@ -27,9 +27,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
- * AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 DB
- * 직접 조회해도 평문이 보이지 않는다. - AC-1813: 계좌 1개에 동일 api_provider ACTIVE 인증정보가 2건 이상 생성되지
- * 않는다 - 소프트 삭제(INACTIVE) 후 같은 조합 재생성 가능
+ * AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 DB 직접 조회해도
+ * 평문이 보이지 않는다. - AC-1813: 계좌 1개에 동일 api_provider ACTIVE 인증정보가 2건 이상 생성되지 않는다 - 소프트 삭제(INACTIVE) 후
+ * 같은 조합 재생성 가능
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -102,8 +102,8 @@ class SecuritiesAccountApiCredentialRepositoryTest {
   /**
    * 시드(V15)에 없는 고유 증권사명을 만든다.
    *
-   * <p>securities_firms의 (name, status) 유니크 제약 때문에 시드와 같은 이름을 쓰면 저장이 실패한다. @DataJpaTest의
-   * 롤백으로 행은 남지 않지만, 이름은 매번 달라야 기존 행과 충돌하지 않는다.
+   * <p>securities_firms의 (name, status) 유니크 제약 때문에 시드와 같은 이름을 쓰면 저장이 실패한다. @DataJpaTest의 롤백으로 행은 남지
+   * 않지만, 이름은 매번 달라야 기존 행과 충돌하지 않는다.
    */
   private String uniqueFirmName() {
     return "자격증명테스트증권-" + Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 16);

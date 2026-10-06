@@ -3,8 +3,7 @@ package com.vibeaiteam.brokerintegration.exception;
 /**
  * 브로커 API 오류를 격리하는 예외(research 4.3-R5).
  *
- * <p>브로커 스펙이 도메인으로 새지 않게 하는 경계다. 앱키·앱시크릿·토큰·계좌번호 같은 시크릿은 상태 코드나 메시지에 담기지
- * 않는다.
+ * <p>브로커 스펙이 도메인으로 새지 않게 하는 경계다. 앱키·앱시크릿·토큰·계좌번호 같은 시크릿은 상태 코드나 메시지에 담기지 않는다.
  */
 public class BrokerApiException extends RuntimeException {
 

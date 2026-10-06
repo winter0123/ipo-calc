@@ -57,8 +57,7 @@ public class KisApiProperties {
     }
     String host = uri.getHost();
     if (host == null) {
-      throw new IllegalStateException(
-          "KIS API base-url 형식이 올바르지 않습니다 (호스트가 없음): " + baseUrl);
+      throw new IllegalStateException("KIS API base-url 형식이 올바르지 않습니다 (호스트가 없음): " + baseUrl);
     }
     if (!ALLOWED_HOSTS.contains(host)) {
       throw new IllegalStateException(
@@ -66,10 +65,7 @@ public class KisApiProperties {
     }
     if (!REQUIRED_SCHEME.equalsIgnoreCase(uri.getScheme())) {
       throw new IllegalStateException(
-          "KIS API base-url은 "
-              + REQUIRED_SCHEME
-              + "만 허용됩니다. 현재 스킴: "
-              + uri.getScheme());
+          "KIS API base-url은 " + REQUIRED_SCHEME + "만 허용됩니다. 현재 스킴: " + uri.getScheme());
     }
   }
 }

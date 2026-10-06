@@ -7,51 +7,39 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/**
- * 브로커 API 인증정보 예외를 HTTP 에러 응답으로 변환한다.
- */
+/** 브로커 API 인증정보 예외를 HTTP 에러 응답으로 변환한다. */
 @RestControllerAdvice
 public class ApiCredentialExceptionHandler {
 
-  /**
-   * ApiCredentialValidationException을 HTTP 400 응답으로 변환한다.
-   */
+  /** ApiCredentialValidationException을 HTTP 400 응답으로 변환한다. */
   @ExceptionHandler(ApiCredentialValidationException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialValidation(
       ApiCredentialValidationException ex) {
     return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
   }
 
-  /**
-   * ApiCredentialNotFoundException을 HTTP 404 응답으로 변환한다.
-   */
+  /** ApiCredentialNotFoundException을 HTTP 404 응답으로 변환한다. */
   @ExceptionHandler(ApiCredentialNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialNotFound(
       ApiCredentialNotFoundException ex) {
     return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
   }
 
-  /**
-   * ApiCredentialForbiddenException을 HTTP 403 응답으로 변환한다.
-   */
+  /** ApiCredentialForbiddenException을 HTTP 403 응답으로 변환한다. */
   @ExceptionHandler(ApiCredentialForbiddenException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialForbidden(
       ApiCredentialForbiddenException ex) {
     return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
-  /**
-   * ApiCredentialConflictException을 HTTP 409 응답으로 변환한다.
-   */
+  /** ApiCredentialConflictException을 HTTP 409 응답으로 변환한다. */
   @ExceptionHandler(ApiCredentialConflictException.class)
   public ResponseEntity<ErrorResponse> handleApiCredentialConflict(
       ApiCredentialConflictException ex) {
     return ErrorResponses.of(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage());
   }
 
-  /**
-   * BrokerConnectionUnavailableException을 HTTP 503 응답으로 변환한다.
-   */
+  /** BrokerConnectionUnavailableException을 HTTP 503 응답으로 변환한다. */
   @ExceptionHandler(BrokerConnectionUnavailableException.class)
   public ResponseEntity<ErrorResponse> handleBrokerConnectionUnavailable(
       BrokerConnectionUnavailableException ex) {
@@ -59,9 +47,7 @@ public class ApiCredentialExceptionHandler {
         HttpStatus.SERVICE_UNAVAILABLE, "BROKER_CONNECTION_UNAVAILABLE", ex.getMessage());
   }
 
-  /**
-   * RateLimitExceededException을 HTTP 429 응답으로 변환한다. {@code Retry-After} 헤더에 남은 초를 담는다.
-   */
+  /** RateLimitExceededException을 HTTP 429 응답으로 변환한다. {@code Retry-After} 헤더에 남은 초를 담는다. */
   @ExceptionHandler(RateLimitExceededException.class)
   public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitExceededException ex) {
     ErrorResponse response =
@@ -73,8 +59,8 @@ public class ApiCredentialExceptionHandler {
   }
 
   /**
-   * BrokerApiException을 HTTP 응답으로 변환한다. 인증 거부는 424(키 갱신 안내), 분당 제한은 429, 그 밖은 502다. 증권사 응답
-   * 원문·URL은 노출하지 않는다.
+   * BrokerApiException을 HTTP 응답으로 변환한다. 인증 거부는 424(키 갱신 안내), 분당 제한은 429, 그 밖은 502다. 증권사 응답 원문·URL은
+   * 노출하지 않는다.
    */
   @ExceptionHandler(BrokerApiException.class)
   public ResponseEntity<ErrorResponse> handleBrokerApi(BrokerApiException ex) {

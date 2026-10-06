@@ -10,8 +10,6 @@ import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
-import com.vibeaiteam.costrecording.domain.model.cost.Cost;
-import com.vibeaiteam.costrecording.repository.cost.CostRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
@@ -45,12 +43,11 @@ import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * AC 인용: docs/spec/profit-calculation.md - AC-001: 단일 매도건 수익 계산 성공 — Valid
- * Sale/Allocation/Subscription/Cost/IPO 조합 시 200 + 정상 계산 - AC-002: 세금 차감 계산 (Sale.tax 반영) —
+ * Sale/Allocation/Subscription/IPO 조합 시 200 + 정상 계산 - AC-002: 세금 차감 계산 (Sale.tax 반영) —
  * afterTaxProfit = preTaxProfit − Sale.tax - AC-003: 분할 매도 시 취득가액 안분 계산 (allocationPrice ×
- * Sale.quantity) - AC-004: 분할 매도 시 Cost 안분 계산 (ROUND(Σ(ACTIVE Cost.amount) × r)) - AC-005:
- * allocationPrice가 없는 경우 fixedPrice 대체 (IPO.fixedPrice) - AC-006: Cost가 없는 경우 계산 (matchedCostAmount
- * = 0) - AC-007: 잔여 허용 (각 매도 건 독립 반올림, 재분배 안 함) - AC-008: 취소(CANCELLED) 데이터 제외 (CANCELLED Sale →
- * 404, CANCELLED Cost 제외) - AC-009: 존재하지 않는 Sale 조회 실패 (404) - AC-013: 읽기 전용·저장 없음 (조회 후 DB 변경 없음).
+ * Sale.quantity) - AC-005: allocationPrice가 없는 경우 fixedPrice 대체 (IPO.fixedPrice) - AC-008:
+ * 취소(CANCELLED) 데이터 제외 (CANCELLED Sale → 404) - AC-009: 존재하지 않는 Sale 조회 실패 (404) - AC-013: 읽기 전용·저장
+ * 없음 (조회 후 DB 변경 없음).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -77,8 +74,6 @@ class ProfitControllerTest {
 
   @Autowired private SubscriptionRepository subscriptionRepository;
 
-  @Autowired private CostRepository costRepository;
-
   @Autowired private IpoRepository ipoRepository;
 
   private String testEmail;
@@ -90,7 +85,6 @@ class ProfitControllerTest {
   private final List<Subscription> createdSubscriptions = new ArrayList<>();
   private final List<Allocation> createdAllocations = new ArrayList<>();
   private final List<Sale> createdSales = new ArrayList<>();
-  private final List<Cost> createdCosts = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
@@ -102,10 +96,9 @@ class ProfitControllerTest {
 
   @AfterEach
   void tearDown() {
-    // FK 제약 순서에 맞게 삭제: Sale → Cost → Allocation → Subscription → Investor → SecuritiesAccount →
+    // FK 제약 순서에 맞게 삭제: Sale → Allocation → Subscription → Investor → SecuritiesAccount →
     // Firm → Account
     saleRepository.deleteAll(createdSales);
-    costRepository.deleteAll(createdCosts);
     allocationRepository.deleteAll(createdAllocations);
     subscriptionRepository.deleteAll(createdSubscriptions);
     investorRepository.deleteAll(createdInvestors);
@@ -117,7 +110,6 @@ class ProfitControllerTest {
     createdSubscriptions.clear();
     createdAllocations.clear();
     createdSales.clear();
-    createdCosts.clear();
 
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
@@ -261,25 +253,6 @@ class ProfitControllerTest {
     return saved.getId();
   }
 
-  private Cost createCost(Long subscriptionId, Long amount, RecordStatus status) {
-    LocalDateTime now = LocalDateTime.now();
-    Cost cost =
-        Cost.builder()
-            .subscriptionId(subscriptionId)
-            .costType("취득비용")
-            .amount(amount)
-            .incurredAt(now)
-            .memo("테스트 비용")
-            .status(status)
-            .deletedAt(null)
-            .createdAt(now)
-            .updatedAt(now)
-            .build();
-    Cost saved = costRepository.saveAndFlush(cost);
-    createdCosts.add(saved);
-    return saved;
-  }
-
   private MvcResult getSaleProfit(Long saleId) throws Exception {
     return mockMvc
         .perform(
@@ -329,7 +302,6 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -348,12 +320,11 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("quantity")).longValue()).isEqualTo(30L);
     assertThat(((Number) body.get("saleAmount")).longValue()).isEqualTo(750000L);
     assertThat(((Number) body.get("matchedAcquisitionAmount")).longValue()).isEqualTo(360000L);
-    assertThat(((Number) body.get("matchedCostAmount")).longValue()).isEqualTo(12000L);
     assertThat(((Number) body.get("saleFee")).longValue()).isEqualTo(1500L);
     assertThat(((Number) body.get("saleTax")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("saleOtherCost")).longValue()).isEqualTo(0L);
-    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(376500L);
-    assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(376500L);
+    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(388500L);
+    assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(388500L);
   }
 
   // ==================== AC-002: 세금 차감 계산 (Sale.tax 반영) ====================
@@ -367,7 +338,6 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 5000L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -379,10 +349,10 @@ class ProfitControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = readBody(result);
     assertThat(((Number) body.get("saleTax")).longValue()).isEqualTo(5000L);
-    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(376500L);
+    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(388500L);
     assertThat(((Number) body.get("afterTaxProfit")).longValue())
         .as("세후순수익 = 세전순수익 - 세금 (AC-002)")
-        .isEqualTo(371500L);
+        .isEqualTo(383500L);
   }
 
   // ==================== AC-003: 분할 매도 시 취득가액 안분 계산 ====================
@@ -403,29 +373,6 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("matchedAcquisitionAmount")).longValue())
         .as("분할 매도 시 취득가액 = allocationPrice × quantity (AC-003)")
         .isEqualTo(360000L);
-  }
-
-  // ==================== AC-004: 분할 매도 시 Cost 안분 계산 ====================
-
-  @Test
-  void calculateProfitWithCostsComputesCorrectMatchedCost() throws Exception {
-    // Given: 대응 청약에 ACTIVE Cost 합계 40000원, 배정수량 100에 대한 매도 30주 (AC-004)
-    // - matchedCostAmount = ROUND(40000 × 30/100) = 12000
-    signupAndLogin();
-    Long allocationId = setupFoundation(12000L);
-    Long subscriptionId =
-        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
-    Long saleId =
-        createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
-
-    // When/Then: matchedCostAmount = ROUND(40000 × 30/100) = 12000 (AC-004)
-    MvcResult result = getSaleProfit(saleId);
-    assertThat(result.getResponse().getStatus()).isEqualTo(200);
-    Map<String, Object> body = readBody(result);
-    assertThat(((Number) body.get("matchedCostAmount")).longValue())
-        .as("분할 매도 시 Cost 안분 = ROUND(Σ ACTIVE Cost × r) (AC-004)")
-        .isEqualTo(12000L);
   }
 
   // ==================== AC-005: allocationPrice가 없는 경우 fixedPrice 대체 ====================
@@ -516,84 +463,6 @@ class ProfitControllerTest {
         .isEqualTo(330000L);
   }
 
-  // ==================== AC-006: Cost가 없는 경우 계산 ====================
-
-  @Test
-  void calculateProfitWithoutCostsReturnsZeroMatchedCost() throws Exception {
-    // Given: 대응 청약에 등록된 Cost가 없는 Sale이 존재함 (AC-006)
-    signupAndLogin();
-    Long allocationId = setupFoundation(12000L);
-    // Cost 생성하지 않음
-    Long saleId =
-        createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
-
-    // When: GET /sales/{saleId}/profit 요청이 전송됨
-    MvcResult result = getSaleProfit(saleId);
-
-    // Then: matchedCostAmount = 0 (AC-006)
-    assertThat(result.getResponse().getStatus()).isEqualTo(200);
-    Map<String, Object> body = readBody(result);
-    assertThat(((Number) body.get("matchedCostAmount")).longValue())
-        .as("Cost가 없는 경우 matchedCostAmount = 0 (AC-006)")
-        .isEqualTo(0L);
-    // 손익 계산에 영향: preTaxProfit = 750000 - 360000 - 0 - 0 - 0 = 390000
-    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(390000L);
-  }
-
-  // ==================== AC-007: 잔여 허용 (각 매도 건 독립 반올림) ====================
-
-  @Test
-  void calculateProfitForSplitSalesEachRoundedIndependently() throws Exception {
-    // Given: 배정수량 100인 Allocation에 두 건의 매도(30주, 70주), allocationPrice=12000
-    // - ACTIVE Cost 합계 100원
-    // - 매도1(30주): matchedCost = ROUND(100 × 30/100) = ROUND(30) = 30
-    // - 매도2(70주): matchedCost = ROUND(100 × 70/100) = ROUND(70) = 70
-    // - 잔여: 30 + 70 = 100 = total cost, 이 경우는 정확히 나뉨
-    // - 더 나은 잔여 테스트: totalActiveCost=100, 매도 1주(1/3)...
-    //   배정수량 3, 매도 1주: ROUND(100 × 1/3) = ROUND(33.33) = 33
-    //   매도 2주: ROUND(100 × 2/3) = ROUND(66.67) = 67
-    //   잔여: 33 + 67 = 100 ≠ 100... actually 33+67=100, so let's use a different example
-    //   배정수량 3, 매도 1주: matchedCost = ROUND(100 × 1/3) = 33
-    //   잔여 = 100 - 33 = 67, 재분배 안 함
-    signupAndLogin();
-
-    // 배정수량 3인 Allocation 생성
-    Long allocationId = setupFoundationWithAllocatedQuantity(12000L, 3L);
-    Long subscriptionId =
-        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-
-    // ACTIVE Cost 100원
-    createCost(subscriptionId, 100L, RecordStatus.ACTIVE);
-
-    // 매도 1주 (33.33 → 33)
-    Long saleId1 =
-        createSale(allocationId, 1L, 50000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
-
-    // 매도 2주 (66.67 → 67)
-    Long saleId2 =
-        createSale(allocationId, 2L, 50000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 16, 14, 30));
-
-    // When: 각 매도 건의 수익을 개별 계산함
-    MvcResult result1 = getSaleProfit(saleId1);
-    MvcResult result2 = getSaleProfit(saleId2);
-
-    // Then: 잔여를 재분배/보정하지 않고 각 매도 건의 계산값을 그대로 반환함 (AC-007)
-    // 매도1: matchedCost = ROUND(100 × 1/3) = 33, 잔여 67
-    // 매도2: matchedCost = ROUND(100 × 2/3) = 67, 잔여 0
-    // 33 + 67 = 100 = total cost (이 경우는 딱 맞지만 개념적으로는 재분배 안 한다는 것을 검증)
-    Map<String, Object> body1 = readBody(result1);
-    Map<String, Object> body2 = readBody(result2);
-    assertThat(((Number) body1.get("matchedCostAmount")).longValue()).isEqualTo(33L);
-    assertThat(((Number) body2.get("matchedCostAmount")).longValue()).isEqualTo(67L);
-
-    // 잔여 검증: 두 매도의 matchedCost 합계(100) = total cost(100)
-    // (잔여가 발생하는 시나리오는 분할 정수가 맞지 않을 때, 여기서는 반올림으로 인해 개별 값이 다를 수 있음을 확인)
-    // 매도1: preTaxProfit = 50000 - 12000 - 33 - 0 - 0 = 37967
-    // 매도2: preTaxProfit = 50000 - 24000 - 67 - 0 - 0 = 25933
-    assertThat(((Number) body1.get("preTaxProfit")).longValue()).isEqualTo(37967L);
-    assertThat(((Number) body2.get("preTaxProfit")).longValue()).isEqualTo(25933L);
-  }
-
   // ==================== AC-008: CANCELLED Sale → 404 ====================
 
   @Test
@@ -619,32 +488,6 @@ class ProfitControllerTest {
     assertNotFoundError(result);
   }
 
-  // ==================== AC-008: CANCELLED Cost 제외 ====================
-
-  @Test
-  void calculateProfitExcludesCancelledCostsFromMatchedCost() throws Exception {
-    // Given: ACTIVE Cost 10000원 + CANCELLED Cost 30000원이 존재함 (AC-008)
-    // - matchedCostAmount = ROUND(10000 × 30/100) = 3000 (CANCELLED Cost 제외)
-    signupAndLogin();
-    Long allocationId = setupFoundation(12000L);
-    Long subscriptionId =
-        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 10000L, RecordStatus.ACTIVE);
-    createCost(subscriptionId, 30000L, RecordStatus.CANCELLED);
-    Long saleId =
-        createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
-
-    // When: GET /sales/{saleId}/profit 요청이 전송됨
-    MvcResult result = getSaleProfit(saleId);
-
-    // Then: CANCELLED Cost가 제외되고 matchedCostAmount = 3000 (AC-008)
-    assertThat(result.getResponse().getStatus()).isEqualTo(200);
-    Map<String, Object> body = readBody(result);
-    assertThat(((Number) body.get("matchedCostAmount")).longValue())
-        .as("CANCELLED Cost는 matchedCostAmount에 포함되지 않음 (AC-008)")
-        .isEqualTo(3000L);
-  }
-
   // ==================== AC-009: 존재하지 않는 Sale 조회 실패 (404) ====================
 
   @Test
@@ -668,13 +511,11 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
     // DB 상태 스냅샷 (응답 전)
     long saleCountBefore = saleRepository.count();
-    long costCountBefore = costRepository.count();
     long allocationCountBefore = allocationRepository.count();
     long subscriptionCountBefore = subscriptionRepository.count();
     Sale saleBefore = saleRepository.findById(saleId).orElseThrow();
@@ -686,7 +527,6 @@ class ProfitControllerTest {
     // Then: 응답 후 데이터베이스에 추가·변경되는 레코드가 없음 (AC-013)
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     assertThat(saleRepository.count()).isEqualTo(saleCountBefore);
-    assertThat(costRepository.count()).isEqualTo(costCountBefore);
     assertThat(allocationRepository.count()).isEqualTo(allocationCountBefore);
     assertThat(subscriptionRepository.count()).isEqualTo(subscriptionCountBefore);
     Sale saleAfter = saleRepository.findById(saleId).orElseThrow();
@@ -705,7 +545,6 @@ class ProfitControllerTest {
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, null, null, null, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -720,9 +559,9 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("saleTax")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("saleOtherCost")).longValue()).isEqualTo(0L);
     // preTaxProfit = 750000 - 360000 - 12000 - 0(null→0) - 0(null→0) = 378000
-    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(378000L);
+    assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(390000L);
     // afterTaxProfit = 378000 - 0(null→0) = 378000
-    assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(378000L);
+    assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(390000L);
   }
 
   // ==================== AC-010: 투자자별 수익 목록 조회 성공 ====================
@@ -741,7 +580,6 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
 
     // saleDate가 10/14인 Sale을 나중에 생성해도 id가 더 작으므로 정렬 검증에 영향 없음
     Long saleId2 =
@@ -775,14 +613,13 @@ class ProfitControllerTest {
     assertThat(((Number) sales.get(0).get("saleAmount")).longValue()).isEqualTo(750000L);
     assertThat(((Number) sales.get(0).get("matchedAcquisitionAmount")).longValue())
         .isEqualTo(360000L);
-    assertThat(((Number) sales.get(0).get("matchedCostAmount")).longValue()).isEqualTo(12000L);
-    assertThat(((Number) sales.get(0).get("preTaxProfit")).longValue()).isEqualTo(376500L);
-    assertThat(((Number) sales.get(0).get("afterTaxProfit")).longValue()).isEqualTo(376500L);
+    assertThat(((Number) sales.get(0).get("preTaxProfit")).longValue()).isEqualTo(388500L);
+    assertThat(((Number) sales.get(0).get("afterTaxProfit")).longValue()).isEqualTo(388500L);
 
     // 합계 3종 필드 검증
     assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(1250000L);
-    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(628500L);
-    assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(628500L);
+    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(648500L);
+    assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(648500L);
   }
 
   @Test
@@ -795,7 +632,6 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
     createSale(allocationId, 30L, null, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 14, 14, 30));
     createSale(allocationId, 20L, 500000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
@@ -806,7 +642,7 @@ class ProfitControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = readBody(result);
     assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(500000L);
-    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(-120000L);
+    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(-100000L);
 
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> sales = (List<Map<String, Object>>) body.get("sales");
@@ -864,7 +700,6 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    createCost(subscriptionId, 40000L, RecordStatus.ACTIVE);
 
     Long activeSaleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -903,18 +738,15 @@ class ProfitControllerTest {
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
-    Long costId = createCost(subscriptionId, 40000L, RecordStatus.ACTIVE).getId();
     Long saleId =
         createSale(
             allocationId, 30L, 750000L, 1500L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
     // DB 상태 스냅샷 (응답 전)
     long saleCountBefore = saleRepository.count();
-    long costCountBefore = costRepository.count();
     long allocationCountBefore = allocationRepository.count();
     long subscriptionCountBefore = subscriptionRepository.count();
     Sale saleBefore = saleRepository.findById(saleId).orElseThrow();
-    Cost costBefore = costRepository.findById(costId).orElseThrow();
 
     // When: GET /investors/{investorId}/profits
     MvcResult result = getInvestorProfits(investorId);
@@ -922,15 +754,12 @@ class ProfitControllerTest {
     // Then: 응답 후 데이터베이스에 추가·변경되는 레코드가 없음 (AC-013)
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     assertThat(saleRepository.count()).isEqualTo(saleCountBefore);
-    assertThat(costRepository.count()).isEqualTo(costCountBefore);
     assertThat(allocationRepository.count()).isEqualTo(allocationCountBefore);
     assertThat(subscriptionRepository.count()).isEqualTo(subscriptionCountBefore);
     Sale saleAfter = saleRepository.findById(saleId).orElseThrow();
     assertThat(saleAfter.getUpdatedAt()).isEqualTo(saleBefore.getUpdatedAt());
     assertThat(saleAfter.getAmount()).isEqualTo(saleBefore.getAmount());
     assertThat(saleAfter.getQuantity()).isEqualTo(saleBefore.getQuantity());
-    Cost costAfter = costRepository.findById(costId).orElseThrow();
-    assertThat(costAfter.getAmount()).isEqualTo(costBefore.getAmount());
   }
 
   // ==================== 헬퍼: 배정수량 커스텀 ====================

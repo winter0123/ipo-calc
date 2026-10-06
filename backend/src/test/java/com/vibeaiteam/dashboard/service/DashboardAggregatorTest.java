@@ -29,8 +29,17 @@ class DashboardAggregatorTest {
       Long qty,
       Long price) {
     return new CalculatedSale(
-        null, pre, after, investorId, firmId, month, "inv" + investorId,
-        firmId == null ? null : "firm" + firmId, qty, price, allocationId);
+        null,
+        pre,
+        after,
+        investorId,
+        firmId,
+        month,
+        "inv" + investorId,
+        firmId == null ? null : "firm" + firmId,
+        qty,
+        price,
+        allocationId);
   }
 
   private final List<CalculatedSale> rows =
@@ -161,7 +170,8 @@ class DashboardAggregatorTest {
             rowOf(7, 1, 10L, "2025-04", 40, 30, 70L, 10_000L));
 
     List<PeriodAggregationDto> byMonth = DashboardAggregator.byPeriod(acrossMonths, "month");
-    assertThat(byMonth).extracting(PeriodAggregationDto::getTotalInvestmentAmount)
+    assertThat(byMonth)
+        .extracting(PeriodAggregationDto::getTotalInvestmentAmount)
         .containsExactly(300_000L, 700_000L);
 
     List<PeriodAggregationDto> byYear = DashboardAggregator.byPeriod(acrossMonths, "year");

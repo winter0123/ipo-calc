@@ -21,7 +21,6 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
             <th>수량</th>
             <th>매도금액</th>
             <th>취득금액</th>
-            <th>비용금액</th>
             <th>공모주수수료</th>
             <th>세금 및 기타</th>
             <th>기타비용</th>
@@ -32,7 +31,7 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
         <tbody>
           {sales.length === 0 ? (
             <tr>
-              <td colSpan={11} className={styles.empty}>
+              <td colSpan={10} className={styles.empty}>
                 매도 내역이 없습니다.
               </td>
             </tr>

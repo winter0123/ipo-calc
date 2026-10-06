@@ -7,10 +7,7 @@ import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * 투자자가 현재 로그인 계정 소유인지 검증하는 공통 뼈대.
- * 예외 타입과 메시지는 Epic마다 다르므로 호출부가 Supplier로 넘긴다.
- */
+/** 투자자가 현재 로그인 계정 소유인지 검증하는 공통 뼈대. 예외 타입과 메시지는 Epic마다 다르므로 호출부가 Supplier로 넘긴다. */
 @Component
 @RequiredArgsConstructor
 public class OwnershipGuard {
@@ -45,9 +42,7 @@ public class OwnershipGuard {
         () -> errors.forbidden(OwnershipErrors.NOT_OWNER));
   }
 
-  /**
-   * 투자자를 조회한 뒤 현재 계정 소유인지 검증한다. 없으면 notFound, 타 계정 소유면 forbidden 예외.
-   */
+  /** 투자자를 조회한 뒤 현재 계정 소유인지 검증한다. 없으면 notFound, 타 계정 소유면 forbidden 예외. */
   public Investor requireOwnedInvestor(
       Long investorId,
       Supplier<? extends RuntimeException> notFound,

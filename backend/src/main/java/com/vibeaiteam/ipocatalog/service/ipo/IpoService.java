@@ -19,9 +19,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 공모주 관리 서비스.
- */
+/** 공모주 관리 서비스. */
 @Service
 @RequiredArgsConstructor
 public class IpoService {
@@ -32,9 +30,7 @@ public class IpoService {
   private final Clock clock;
   private final BusinessDayCalculator businessDayCalculator;
 
-  /**
-   * 공모주 목록을 조회한다.
-   */
+  /** 공모주 목록을 조회한다. */
   @Transactional(readOnly = true)
   public List<IpoResponse> list() {
     return ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
@@ -42,18 +38,14 @@ public class IpoService {
         .toList();
   }
 
-  /**
-   * ID로 공모주를 조회한다.
-   */
+  /** ID로 공모주를 조회한다. */
   @Transactional(readOnly = true)
   public IpoResponse getById(Long id) {
     Ipo ipo = findActive(id);
     return toResponse(ipo);
   }
 
-  /**
-   * 공모주를 비활성화(소프트 삭제)한다.
-   */
+  /** 공모주를 비활성화(소프트 삭제)한다. */
   @Transactional
   public void deactivate(Long id) {
     Ipo ipo = findActive(id);
@@ -63,9 +55,7 @@ public class IpoService {
     ipoRepository.save(ipo);
   }
 
-  /**
-   * 공모주 정보를 수정한다.
-   */
+  /** 공모주 정보를 수정한다. */
   @Transactional
   public IpoResponse update(Long id, IpoUpdateRequest request) {
     Ipo ipo = findActive(id);
@@ -180,9 +170,7 @@ public class IpoService {
     }
   }
 
-  /**
-   * 공모주를 등록한다.
-   */
+  /** 공모주를 등록한다. */
   @Transactional
   public IpoResponse register(IpoRegisterRequest request) {
     validateRequest(request);
@@ -312,10 +300,7 @@ public class IpoService {
     }
   }
 
-  /**
-   * 엔티티를 응답 DTO로 변환한다. 환불일이 없으면 청약 종료일 + 2영업일로 계산하고
-   * estimated 플래그를 true로 설정한다.
-   */
+  /** 엔티티를 응답 DTO로 변환한다. 환불일이 없으면 청약 종료일 + 2영업일로 계산하고 estimated 플래그를 true로 설정한다. */
   private IpoResponse toResponse(Ipo ipo) {
     IpoResponse response = IpoResponse.from(ipo);
     if (ipo.getRefundDate() != null) {

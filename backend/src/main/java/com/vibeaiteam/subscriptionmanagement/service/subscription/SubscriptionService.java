@@ -25,9 +25,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 청약 관리 서비스.
- */
+/** 청약 관리 서비스. */
 @Service
 @RequiredArgsConstructor
 public class SubscriptionService {
@@ -43,9 +41,7 @@ public class SubscriptionService {
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
-  /**
-   * 청약을 등록한다.
-   */
+  /** 청약을 등록한다. */
   @Transactional
   public SubscriptionResponse register(SubscriptionRegisterRequest request) {
     validateRequest(request);
@@ -92,8 +88,8 @@ public class SubscriptionService {
   }
 
   /**
-   * 현재 계정 소유 투자자의 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면
-   * 해당 조건으로 필터링하고, 삭제되지 않은(ACTIVE) 기록만 반환한다. 타 계정 소유 ID를 필터로 주면 빈 목록이다.
+   * 현재 계정 소유 투자자의 청약 목록을 createdAt 내림차순으로 조회한다. investorId/securitiesAccountId가 주어지면 해당 조건으로 필터링하고,
+   * 삭제되지 않은(ACTIVE) 기록만 반환한다. 타 계정 소유 ID를 필터로 주면 빈 목록이다.
    */
   @Transactional(readOnly = true)
   public List<SubscriptionResponse> list(Long investorId, Long securitiesAccountId) {
@@ -105,20 +101,16 @@ public class SubscriptionService {
         .toList();
   }
 
-  /**
-   * 청약 ID로 단건 청약을 조회한다. 삭제되지 않은(ACTIVE) 기록만 반환하고, 존재하지 않거나 취소된
-   * 기록이면 404, 타 계정 소유면 403을 던진다.
-   */
+  /** 청약 ID로 단건 청약을 조회한다. 삭제되지 않은(ACTIVE) 기록만 반환하고, 존재하지 않거나 취소된 기록이면 404, 타 계정 소유면 403을 던진다. */
   @Transactional(readOnly = true)
   public SubscriptionResponse getById(Long id) {
     return SubscriptionResponse.from(findOwnedSubscription(id));
   }
 
   /**
-   * SF-4: 청약 기록의 일부 필드만 부분 수정한다(IpoService.update와 동일한 패턴 — 제공된 필드만 갱신).
-   * 이미 취소(CANCELLED)되었거나 존재하지 않는 기록은 404(엣지케이스). investorId/securitiesAccountId/ipoId가
-   * 새로 제공된 경우에만 존재/소유권을 재검증하고, 최종 조합은 자기 자신을 제외하고 중복 검사한다.
-   * 배정(Allocation) 연결 시 수량 축소 제한은 Epic 7 구현 시 함께 추가할 예정으로 이번 SF에서는 다루지 않는다.
+   * SF-4: 청약 기록의 일부 필드만 부분 수정한다(IpoService.update와 동일한 패턴 — 제공된 필드만 갱신). 이미 취소(CANCELLED)되었거나 존재하지
+   * 않는 기록은 404(엣지케이스). investorId/securitiesAccountId/ipoId가 새로 제공된 경우에만 존재/소유권을 재검증하고, 최종 조합은 자기
+   * 자신을 제외하고 중복 검사한다. 배정(Allocation) 연결 시 수량 축소 제한은 Epic 7 구현 시 함께 추가할 예정으로 이번 SF에서는 다루지 않는다.
    */
   @Transactional
   public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
@@ -191,8 +183,8 @@ public class SubscriptionService {
 
   /**
    * SF-5: 청약 기록을 논리 취소한다(IpoService.deactivate와 동일 패턴). status를 CANCELLED로 변경하고
-   * deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된
-   * 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+   * deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된 기록은
+   * findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
    */
   @Transactional
   public void cancel(Long id) {

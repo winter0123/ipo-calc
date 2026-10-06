@@ -8,17 +8,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-/**
- * 이메일로 계정을 조회해 Spring Security 사용자 정보를 제공한다.
- */
+/** 이메일로 계정을 조회해 Spring Security 사용자 정보를 제공한다. */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
   private final AccountRepository accountRepository;
 
-  /**
-   * 계정 저장소를 주입받아 생성한다.
-   */
+  /** 계정 저장소를 주입받아 생성한다. */
   public CustomUserDetailsService(AccountRepository accountRepository) {
     this.accountRepository = accountRepository;
   }

@@ -243,16 +243,12 @@ public class KasiSpecialDayClient {
 
   /** KASI API 예외. */
   public static class KasiApiException extends RuntimeException {
-    /**
-     * 메시지(와 원인 예외)로 예외를 생성한다.
-     */
+    /** 메시지(와 원인 예외)로 예외를 생성한다. */
     public KasiApiException(String message) {
       super(message);
     }
 
-    /**
-     * 메시지(와 원인 예외)로 예외를 생성한다.
-     */
+    /** 메시지(와 원인 예외)로 예외를 생성한다. */
     public KasiApiException(String message, Throwable cause) {
       super(message, cause);
     }

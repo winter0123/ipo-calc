@@ -22,9 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 매도 관리 서비스.
- */
+/** 매도 관리 서비스. */
 @Service
 @RequiredArgsConstructor
 public class SaleService {
@@ -38,9 +36,7 @@ public class SaleService {
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
-  /**
-   * 매도를 등록한다.
-   */
+  /** 매도를 등록한다. */
   @Transactional
   public SaleResponse register(SaleRegisterRequest request) {
     validateRequest(request);
@@ -88,9 +84,7 @@ public class SaleService {
     return SaleResponse.from(saved);
   }
 
-  /**
-   * 매도 목록을 조회한다.
-   */
+  /** 매도 목록을 조회한다. */
   @Transactional(readOnly = true)
   public List<SaleResponse> list(Long allocationId, Long investorId, String investorName) {
     List<Sale> sales =
@@ -99,21 +93,16 @@ public class SaleService {
     return sales.stream().map(SaleResponse::from).toList();
   }
 
-  /**
-   * ID로 매도를 조회한다.
-   */
+  /** ID로 매도를 조회한다. */
   @Transactional(readOnly = true)
   public SaleResponse getById(Long id) {
     return SaleResponse.from(findOwnedSale(id));
   }
 
   /**
-   * SF-4: 매도 기록을 부분 수정한다. 시점/필드 제약 없이 전체 허용(D-SL-003).
-   * 제공된 필드만 갱신하며, 누적 매도수량 재검증을 수행한다.
-   * (1) 대상 Sale 조회 (CANCELLED면 404)
-   * (2) 참조하는 Allocation의 allocatedQuantity 확인
-   * (3) 기존 ACTIVE Sale들의 quantity 합계 조회 (자기 자신은 제외)
-   * (4) (기존 합계 - 자기자신 quantity + 수정 quantity) ≤ allocatedQuantity 검증
+   * SF-4: 매도 기록을 부분 수정한다. 시점/필드 제약 없이 전체 허용(D-SL-003). 제공된 필드만 갱신하며, 누적 매도수량 재검증을 수행한다. (1) 대상 Sale
+   * 조회 (CANCELLED면 404) (2) 참조하는 Allocation의 allocatedQuantity 확인 (3) 기존 ACTIVE Sale들의 quantity 합계
+   * 조회 (자기 자신은 제외) (4) (기존 합계 - 자기자신 quantity + 수정 quantity) ≤ allocatedQuantity 검증
    */
   @Transactional
   public SaleResponse update(Long id, SaleUpdateRequest request) {
@@ -237,9 +226,9 @@ public class SaleService {
   }
 
   /**
-   * SF-5: 매도 기록을 논리 취소한다 (AllocationService.cancel과 동일 패턴).
-   * status를 CANCELLED로 변경하고 deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016).
-   * 존재하지 않거나 이미 취소된 기록은 findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
+   * SF-5: 매도 기록을 논리 취소한다 (AllocationService.cancel과 동일 패턴). status를 CANCELLED로 변경하고
+   * deletedAt/updatedAt을 갱신하며, 물리 삭제는 수행하지 않는다(AC-016). 존재하지 않거나 이미 취소된 기록은
+   * findByIdAndDeletedAtIsNull이 걸러내 404를 반환한다(AC-017, 재취소는 자연 배제).
    */
   @Transactional
   public void cancel(Long id) {

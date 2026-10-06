@@ -16,7 +16,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfit;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitDetail;
-import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitSummary;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -142,12 +141,9 @@ class KisPeriodTradeProfitClientTest {
   @Test
   void queryPeriodTradeProfit_rtCdNotZero_throwsBrokerApiExceptionWithBrokerMessage() {
     expectProfitRequest(
-        "20260101",
-        "20260131",
-        "{\"rt_cd\":\"1\",\"msg_cd\":\"EGW00123\",\"msg1\":\"조회 조건 오류\"}");
+        "20260101", "20260131", "{\"rt_cd\":\"1\",\"msg_cd\":\"EGW00123\",\"msg1\":\"조회 조건 오류\"}");
 
-    assertThatThrownBy(
-            () -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+    assertThatThrownBy(() -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .isInstanceOf(BrokerApiException.class)
         .hasMessageContaining("조회 조건 오류")
         .hasMessageContaining("EGW00123");
@@ -161,8 +157,7 @@ class KisPeriodTradeProfitClientTest {
         .andExpect(method(HttpMethod.GET))
         .andRespond(withServerError());
 
-    assertThatThrownBy(
-            () -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+    assertThatThrownBy(() -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .isInstanceOf(BrokerApiException.class)
         .hasMessageContaining("KIS 기간별 매매손익 조회");
     mockServer.verify();
@@ -175,8 +170,7 @@ class KisPeriodTradeProfitClientTest {
         .andExpect(method(HttpMethod.GET))
         .andRespond(withException(new java.net.SocketTimeoutException("Read timed out")));
 
-    assertThatThrownBy(
-            () -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+    assertThatThrownBy(() -> query(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .isInstanceOf(BrokerApiException.class);
     mockServer.verify();
   }
@@ -302,8 +296,7 @@ class KisPeriodTradeProfitClientTest {
                 client.queryPeriodTradeProfit(
                     1L, credentials, token, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .isInstanceOfSatisfying(
-            BrokerApiException.class,
-            e -> assertThat(e.getStatusCode()).isEqualTo("rate_limited"));
+            BrokerApiException.class, e -> assertThat(e.getStatusCode()).isEqualTo("rate_limited"));
     mockServer.verify();
   }
 

@@ -16,9 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 청약 JPA 엔티티.
- */
+/** 청약 JPA 엔티티. */
 @Entity
 @Table(name = "subscriptions")
 @Getter
