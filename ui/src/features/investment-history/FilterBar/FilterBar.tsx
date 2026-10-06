@@ -1,3 +1,4 @@
+import { useIpos } from '@/entities/ipo/index.ts'
 import styles from './FilterBar.module.css'
 import AccountSelector from '../AccountSelector/AccountSelector.tsx'
 
@@ -14,6 +15,8 @@ export interface FilterBarProps {
 }
 
 export default function FilterBar({ filters, onFiltersChange, onReset }: FilterBarProps) {
+  const { data: ipos } = useIpos()
+
   const handleSecuritiesAccountChange = (value: string) => {
     onFiltersChange({ securitiesAccountId: value })
   }
@@ -28,21 +31,21 @@ export default function FilterBar({ filters, onFiltersChange, onReset }: FilterB
 
       <div className={styles.fieldGroup}>
         <label htmlFor="ipoId" className={styles.label}>
-          IPO ID
+          공모주
         </label>
-        <input
+        <select
           id="ipoId"
-          type="text"
           className={styles.input}
           value={filters.ipoId}
           onChange={(e) => onFiltersChange({ ipoId: e.target.value })}
-          placeholder="IPO ID 입력"
-          aria-describedby="ipoId-hint"
-          style={{ minWidth: 44 }}
-        />
-        <span id="ipoId-hint" className={styles.hint}>
-          비워두면 전체 조회
-        </span>
+        >
+          <option value="">전체</option>
+          {ipos?.map((ipo) => (
+            <option key={ipo.id} value={String(ipo.id)}>
+              {ipo.ipoName}
+            </option>
+          ))}
+        </select>
       </div>
 
       <button

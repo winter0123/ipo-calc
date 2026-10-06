@@ -5,6 +5,7 @@ import {
   parseSubscriptionFilter,
   type SubscriptionFilterValue,
 } from '@/features/subscription-list/index.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useInvestmentHistory } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionListPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -23,7 +24,12 @@ export default function SubscriptionListPage() {
       { replace: true },
     )
   }
-  const { data, isLoading, error } = useInvestmentHistory()
+  // 현재 투자자(상단 전환기)의 청약만 보여 준다.
+  const { current, isLoading: investorLoading } = useCurrentInvestor()
+  const { data, isLoading, error } = useInvestmentHistory(
+    current ? { investorId: current.id } : {},
+    { enabled: !!current },
+  )
 
   const getErrorMessage = () =>
     toErrorMessage(error, {
@@ -37,7 +43,7 @@ export default function SubscriptionListPage() {
 
       <SubscriptionFilter value={filter} onChange={setFilter} />
 
-      {isLoading && <p className={styles.status}>목록을 불러오는 중...</p>}
+      {(isLoading || investorLoading) && <p className={styles.status}>목록을 불러오는 중...</p>}
 
       {error && (
         <p className={styles.error} role="alert">
