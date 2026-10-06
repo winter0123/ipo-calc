@@ -64,6 +64,26 @@ const MOCK_SECURITIES_ACCOUNTS_INVESTOR_1 = [
   },
 ]
 
+const makeIpo = (id: number, ipoName: string) => ({
+  id,
+  companyName: ipoName,
+  ipoName,
+  stockCode: null,
+  roundLabel: null,
+  lowerBandPrice: null,
+  upperBandPrice: null,
+  fixedPrice: null,
+  subscriptionStartDate: '2026-10-01',
+  subscriptionEndDate: '2026-10-02',
+  listingDate: null,
+  offeringShareCount: null,
+  status: 'ACTIVE',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+})
+
+const IPOS = [makeIpo(7, '바다전자'), makeIpo(9, '하늘바이오')]
+
 const HISTORY_RESPONSE: InvestmentHistoryResponse = {
   content: [
     {
@@ -144,6 +164,7 @@ function setupDefaultMocks() {
     const pathStr = String(path)
     if (pathStr === '/investors') return MOCK_INVESTORS
     if (pathStr.startsWith('/securities-accounts')) return []
+    if (pathStr === '/ipos') return IPOS
     if (pathStr.startsWith('/investment-history')) return HISTORY_RESPONSE
     throw new Error(`unexpected path: ${pathStr}`)
   })
@@ -154,6 +175,7 @@ function setupEmptyInvestorsMock() {
     const pathStr = String(path)
     if (pathStr === '/investors') return []
     if (pathStr.startsWith('/securities-accounts')) return []
+    if (pathStr === '/ipos') return IPOS
     if (pathStr.startsWith('/investment-history')) return HISTORY_RESPONSE
     throw new Error(`unexpected path: ${pathStr}`)
   })
@@ -164,6 +186,7 @@ function setupHistoryErrorMock(error: Error) {
     const pathStr = String(path)
     if (pathStr === '/investors') return MOCK_INVESTORS
     if (pathStr.startsWith('/securities-accounts')) return []
+    if (pathStr === '/ipos') return IPOS
     if (pathStr.startsWith('/investment-history')) throw error
     throw new Error(`unexpected path: ${pathStr}`)
   })
@@ -216,7 +239,7 @@ describe('InvestmentHistoryPage', () => {
 
     expect(screen.getByRole('search')).toBeInTheDocument()
     expect(screen.getByLabelText('증권계좌')).toBeInTheDocument()
-    expect(screen.getByLabelText('IPO ID')).toBeInTheDocument()
+    expect(screen.getByLabelText('공모주')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /초기화/i })).toHaveAttribute(
       'aria-label',
       '필터 초기화',
@@ -229,6 +252,7 @@ describe('InvestmentHistoryPage', () => {
       const pathStr = String(path)
       if (pathStr === '/investors') return MOCK_INVESTORS
       if (pathStr.startsWith('/securities-accounts')) return []
+      if (pathStr === '/ipos') return IPOS
       if (pathStr.startsWith('/investment-history')) {
         historyCallCount++
         return historyCallCount === 1 ? HISTORY_RESPONSE : EMPTY_HISTORY_RESPONSE
@@ -261,6 +285,7 @@ describe('InvestmentHistoryPage', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return MOCK_INVESTORS
         if (pathStr.startsWith('/securities-accounts')) return MOCK_SECURITIES_ACCOUNTS_INVESTOR_1
+        if (pathStr === '/ipos') return IPOS
         if (pathStr.startsWith('/investment-history')) return HISTORY_RESPONSE
         throw new Error(`unexpected path: ${pathStr}`)
       })
@@ -269,7 +294,8 @@ describe('InvestmentHistoryPage', () => {
       mockApi()
       renderPage('/investments?ipoId=7')
 
-      await waitFor(() => expect(screen.getByLabelText('IPO ID')).toHaveValue('7'))
+      await screen.findByRole('option', { name: '바다전자' })
+      await waitFor(() => expect(screen.getByLabelText('공모주')).toHaveValue('7'))
       await waitFor(() => {
         const paths = vi.mocked(apiFetch).mock.calls.map((call) => String(call[0]))
         expect(
@@ -288,18 +314,20 @@ describe('InvestmentHistoryPage', () => {
       renderPage()
       await waitForResultsLoaded()
 
-      await fill(screen.getByLabelText('IPO ID'), '9')
+      await screen.findByRole('option', { name: '하늘바이오' })
+      await fill(screen.getByLabelText('공모주'), '9')
       await waitFor(() => expect(screen.getByTestId('search')).toHaveTextContent('ipoId=9'))
     })
 
     it('초기화하면 필터 쿼리가 모두 제거된다', async () => {
       mockApi()
       renderPage('/investments?securitiesAccountId=10&ipoId=7')
-      await waitFor(() => expect(screen.getByLabelText('IPO ID')).toHaveValue('7'))
+      await screen.findByRole('option', { name: '바다전자' })
+      await waitFor(() => expect(screen.getByLabelText('공모주')).toHaveValue('7'))
 
       await userEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
       await waitFor(() => expect(screen.getByTestId('search')).toBeEmptyDOMElement())
-      expect(screen.getByLabelText('IPO ID')).toHaveValue('')
+      expect(screen.getByLabelText('공모주')).toHaveValue('')
     })
   })
 })
