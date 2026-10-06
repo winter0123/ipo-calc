@@ -78,11 +78,13 @@ class InvestorRepositoryTest {
                 .build());
 
     // When/Then: enum 도입 후에도 DB 컬럼 값은 기존과 같은 문자열이다
-    assertThat(jdbcTemplate.queryForObject(
-            "SELECT status FROM investors WHERE id = ?", String.class, active.getId()))
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT status FROM investors WHERE id = ?", String.class, active.getId()))
         .isEqualTo("ACTIVE");
-    assertThat(jdbcTemplate.queryForObject(
-            "SELECT status FROM investors WHERE id = ?", String.class, inactive.getId()))
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT status FROM investors WHERE id = ?", String.class, inactive.getId()))
         .isEqualTo("INACTIVE");
   }
 

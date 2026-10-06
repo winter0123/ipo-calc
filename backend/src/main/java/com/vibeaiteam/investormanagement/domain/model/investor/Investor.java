@@ -16,9 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 투자자 JPA 엔티티.
- */
+/** 투자자 JPA 엔티티. */
 @Entity
 @Table(name = "investors")
 @Getter

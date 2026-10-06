@@ -1,8 +1,6 @@
 package com.vibeaiteam.brokerintegration.exception;
 
-/**
- * 브로커 API 인증정보 대상 없음 예외(HTTP 404).
- */
+/** 브로커 API 인증정보 대상 없음 예외(HTTP 404). */
 public class ApiCredentialNotFoundException extends RuntimeException {
 
   private static final long serialVersionUID = 1L;

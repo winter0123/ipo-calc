@@ -19,10 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 저장된 암호문을 현재 키 버전으로 다시 암호화한다.
  *
- * <p>서버 암호화 키를 새 버전으로 바꿀 때 한 번 실행한다(기동 시
- * {@code APP_ENCRYPTION_ROTATE_ON_STARTUP=true}). 이미 현재 버전인 값은
- * 건드리지 않고, 복호화에 실패한 행은 건너뛴 채 개수만 센다(행 ID만 로그에 남기고 값은 남기지 않는다). 모든 값이 새 버전이 된 것을 확인한 뒤에
- * 예전 키를 지운다.
+ * <p>서버 암호화 키를 새 버전으로 바꿀 때 한 번 실행한다(기동 시 {@code APP_ENCRYPTION_ROTATE_ON_STARTUP=true}). 이미 현재 버전인
+ * 값은 건드리지 않고, 복호화에 실패한 행은 건너뛴 채 개수만 센다(행 ID만 로그에 남기고 값은 남기지 않는다). 모든 값이 새 버전이 된 것을 확인한 뒤에 예전 키를
+ * 지운다.
  *
  * <p>ponytail: 전체 행을 한 번에 읽는 개인용 규모 기준이다. 행이 수만 건이 되면 페이지 단위로 나눠야 한다.
  */

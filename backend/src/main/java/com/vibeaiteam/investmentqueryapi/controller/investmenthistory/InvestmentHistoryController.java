@@ -11,25 +11,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 투자 이력 조회 API.
- */
+/** 투자 이력 조회 API. */
 @RestController
 @RequestMapping("/investment-history")
 public class InvestmentHistoryController {
 
   private final InvestmentHistoryQueryService queryService;
 
-  /**
-   * 조회 서비스를 주입받아 생성한다.
-   */
+  /** 조회 서비스를 주입받아 생성한다. */
   public InvestmentHistoryController(InvestmentHistoryQueryService queryService) {
     this.queryService = queryService;
   }
 
-  /**
-   * 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 단위로 조회한다.
-   */
+  /** 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 단위로 조회한다. */
   @GetMapping
   public ResponseEntity<Page<InvestmentHistoryDto>> getHistory(
       @RequestParam(required = false) Long investorId,
@@ -50,9 +44,7 @@ public class InvestmentHistoryController {
     return ResponseEntity.ok(pageResult);
   }
 
-  /**
-   * 청약 ID로 투자 이력 상세를 조회한다.
-   */
+  /** 청약 ID로 투자 이력 상세를 조회한다. */
   @GetMapping("/{subscriptionId}")
   public ResponseEntity<InvestmentHistoryDto> getHistoryDetail(@PathVariable Long subscriptionId) {
     InvestmentHistoryDto dto = queryService.getHistoryDetail(subscriptionId);

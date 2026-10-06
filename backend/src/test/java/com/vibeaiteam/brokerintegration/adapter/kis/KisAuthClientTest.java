@@ -135,8 +135,7 @@ class KisAuthClientTest {
     mockServer
         .expect(requestTo(TOKEN_URL))
         .andExpect(method(HttpMethod.POST))
-        .andRespond(
-            withException(new java.net.SocketTimeoutException("Read timed out")));
+        .andRespond(withException(new java.net.SocketTimeoutException("Read timed out")));
 
     assertThatThrownBy(() -> client.issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET))
         .isInstanceOf(BrokerApiException.class);

@@ -19,7 +19,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 증권계좌별 브로커 API 인증정보 서비스.
  *
- * <p>앱키·앱시크릿은 BrokerSecretEncryptor(APP_ENCRYPTION_BROKER_KEY)로 암호화해 저장하며, 응답에는 연결 상태·마스킹된
- * 계좌번호·마지막 동기화 시각만 돌려준다. 접근은 SecuritiesAccount → Investor → Account로 이어지는 2단계 소유권 검증을
- * 거치며, 타 계정 소유 계좌는 403으로 거부한다(AC-1812).
+ * <p>앱키·앱시크릿은 BrokerSecretEncryptor(APP_ENCRYPTION_BROKER_KEY)로 암호화해 저장하며, 응답에는 연결 상태·마스킹된 계좌번호·마지막
+ * 동기화 시각만 돌려준다. 접근은 SecuritiesAccount → Investor → Account로 이어지는 2단계 소유권 검증을 거치며, 타 계정 소유 계좌는 403으로
+ * 거부한다(AC-1812).
  */
 @Service
 @RequiredArgsConstructor
@@ -56,8 +55,8 @@ public class ApiCredentialService {
   /**
    * 증권계좌에 브로커 API 인증정보를 등록한다.
    *
-   * <p>시크릿은 암호화해 저장하고(AC-1810), 같은 계좌에 같은 provider의 활성 인증정보가 이미 있으면 409로 거부한다(AC-1813).
-   * 브로커 암호화 키가 미설정이면 등록을 거부한다(AC-1814).
+   * <p>시크릿은 암호화해 저장하고(AC-1810), 같은 계좌에 같은 provider의 활성 인증정보가 이미 있으면 409로 거부한다(AC-1813). 브로커 암호화 키가
+   * 미설정이면 등록을 거부한다(AC-1814).
    *
    * @param securitiesAccountId 대상 증권계좌 ID
    * @param apiProvider 브로커 어댑터 식별자 (예: KIS)
@@ -73,8 +72,8 @@ public class ApiCredentialService {
   /**
    * 증권계좌에 브로커 API 인증정보를 등록한다(키 발급일 포함).
    *
-   * <p>증권계좌의 증권사가 API 연동 대상이고 그 어댑터 식별자와 {@code apiProvider}가 같을 때만 등록한다. 발급일이 없으면 오늘로
-   * 보고, 미래 날짜는 거부한다.
+   * <p>증권계좌의 증권사가 API 연동 대상이고 그 어댑터 식별자와 {@code apiProvider}가 같을 때만 등록한다. 발급일이 없으면 오늘로 보고, 미래 날짜는
+   * 거부한다.
    *
    * @param securitiesAccountId 대상 증권계좌 ID
    * @param apiProvider 브로커 어댑터 식별자 (예: KIS)
@@ -150,8 +149,8 @@ public class ApiCredentialService {
   /**
    * 연결된 증권사 API 키를 새 키로 교체한다.
    *
-   * <p>증권사에서 서비스를 갱신하면 앱키·앱시크릿이 새로 발급되므로 이 경로로 바꾼다. 캐시된 접근토큰은 버리고 다음 조회 때 새 키로
-   * 다시 발급한다. 연결이 없으면 404다.
+   * <p>증권사에서 서비스를 갱신하면 앱키·앱시크릿이 새로 발급되므로 이 경로로 바꾼다. 캐시된 접근토큰은 버리고 다음 조회 때 새 키로 다시 발급한다. 연결이 없으면
+   * 404다.
    *
    * @param securitiesAccountId 대상 증권계좌 ID
    * @param appKey 새 앱키 (평문, 저장 시 암호화)
@@ -193,8 +192,8 @@ public class ApiCredentialService {
   /**
    * 증권계좌의 브로커 API 인증정보 연결 상태를 조회한다.
    *
-   * <p>연결 정보가 없으면 DISCONNECTED를 반환하며, 같은 계좌에 복수 provider가 있으면 최근 갱신 순 1건을 기준으로 상태를
-   * 돌려준다. 응답에는 시크릿·토큰이 포함되지 않는다(AC-1811).
+   * <p>연결 정보가 없으면 DISCONNECTED를 반환하며, 같은 계좌에 복수 provider가 있으면 최근 갱신 순 1건을 기준으로 상태를 돌려준다. 응답에는
+   * 시크릿·토큰이 포함되지 않는다(AC-1811).
    *
    * @param securitiesAccountId 대상 증권계좌 ID
    * @return 연결 상태·마스킹된 계좌번호·마지막 동기화 시각

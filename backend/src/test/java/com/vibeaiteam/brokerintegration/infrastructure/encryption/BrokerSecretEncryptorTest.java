@@ -12,11 +12,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
- * AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 DB
- * 직접 조회해도 평문이 보이지 않는다 - AC-1814(하위 절반): APP_ENCRYPTION_BROKER_KEY 미설정 시 encrypt가 명확한
- * 오류로 실패한다 - BrokerSecretEncryptor는 AccountNumberEncryptor와 동일한 AES-256-GCM 구현이되, 별도
- * 키(app.encryption.broker-key / APP_ENCRYPTION_BROKER_KEY)를 주입받아 키 분리로 단일 키 유출 시 피해 범위를
- * 제한한다.
+ * AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 시크릿이 암호화되어 저장되고 DB 직접 조회해도
+ * 평문이 보이지 않는다 - AC-1814(하위 절반): APP_ENCRYPTION_BROKER_KEY 미설정 시 encrypt가 명확한 오류로 실패한다 -
+ * BrokerSecretEncryptor는 AccountNumberEncryptor와 동일한 AES-256-GCM 구현이되, 별도
+ * 키(app.encryption.broker-key / APP_ENCRYPTION_BROKER_KEY)를 주입받아 키 분리로 단일 키 유출 시 피해 범위를 제한한다.
  */
 @SpringBootTest
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
@@ -59,7 +58,9 @@ class BrokerSecretEncryptorTest {
   void encryptDecryptHandlesVariousSecretFormats() {
     // Given: 다양한 형식의 시크릿 후보
     String[] samples = {
-      "app-key-1234567890abcdef", "app-secret-abcdefghijklmnopqrstuvwx", "access-token-xyz789",
+      "app-key-1234567890abcdef",
+      "app-secret-abcdefghijklmnopqrstuvwx",
+      "access-token-xyz789",
       "very-long-secret-with-special-chars-!@#$%^&*()_+-=[]{}|;':\",./<>?"
     };
 

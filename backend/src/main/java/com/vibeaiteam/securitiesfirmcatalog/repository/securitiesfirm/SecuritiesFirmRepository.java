@@ -7,24 +7,16 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/**
- * 증권사 JPA 저장소.
- */
+/** 증권사 JPA 저장소. */
 @Repository
 public interface SecuritiesFirmRepository extends JpaRepository<SecuritiesFirm, Long> {
 
-  /**
-   * 이름 · 상태 조건으로 증권사를 단건 조회한다.
-   */
+  /** 이름 · 상태 조건으로 증권사를 단건 조회한다. */
   Optional<SecuritiesFirm> findByNameAndStatus(String name, RecordStatus status);
 
-  /**
-   * 삭제되지 않은 증권사를 목록 조회한다.
-   */
+  /** 삭제되지 않은 증권사를 목록 조회한다. */
   List<SecuritiesFirm> findByDeletedAtIsNull();
 
-  /**
-   * ID 조건(삭제되지 않은 건만)으로 증권사를 단건 조회한다.
-   */
+  /** ID 조건(삭제되지 않은 건만)으로 증권사를 단건 조회한다. */
   Optional<SecuritiesFirm> findByIdAndDeletedAtIsNull(Long id);
 }

@@ -19,9 +19,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/**
- * 투자자 관리 서비스.
- */
+/** 투자자 관리 서비스. */
 @Service
 @RequiredArgsConstructor
 public class InvestorService {
@@ -36,9 +34,7 @@ public class InvestorService {
   private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
-  /**
-   * 투자자를 등록한다.
-   */
+  /** 투자자를 등록한다. */
   public InvestorResponse register(InvestorRegisterRequest request) {
     Long accountId = securityUtils.getCurrentAccountId();
     String displayName = validateDisplayName(request.getDisplayName());
@@ -59,9 +55,7 @@ public class InvestorService {
     return InvestorResponse.from(saved);
   }
 
-  /**
-   * 투자자 목록을 조회한다.
-   */
+  /** 투자자 목록을 조회한다. */
   public List<InvestorResponse> list(String status) {
     Long accountId = securityUtils.getCurrentAccountId();
     String normalized = normalizeStatus(status);
@@ -73,17 +67,13 @@ public class InvestorService {
     return investors.stream().map(InvestorResponse::from).toList();
   }
 
-  /**
-   * ID로 투자자를 조회한다.
-   */
+  /** ID로 투자자를 조회한다. */
   public InvestorResponse getById(Long id) {
     Investor investor = findOwnedInvestor(id);
     return InvestorResponse.from(investor);
   }
 
-  /**
-   * 투자자 정보를 수정한다.
-   */
+  /** 투자자 정보를 수정한다. */
   public InvestorResponse update(Long id, InvestorUpdateRequest request) {
     Investor investor = findOwnedInvestor(id);
 
@@ -99,9 +89,7 @@ public class InvestorService {
     return InvestorResponse.from(saved);
   }
 
-  /**
-   * 투자자를 비활성화(소프트 삭제)한다.
-   */
+  /** 투자자를 비활성화(소프트 삭제)한다. */
   public SuccessResponse deactivate(Long id) {
     Investor investor = findOwnedInvestor(id);
     if (investor.getStatus() != RecordStatus.INACTIVE) {

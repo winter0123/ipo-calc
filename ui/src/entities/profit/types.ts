@@ -8,7 +8,6 @@ export const saleProfitSchema = z.object({
   quantity: z.number(),
   saleAmount: z.number().nullable(),
   matchedAcquisitionAmount: z.number(),
-  matchedCostAmount: z.number(),
   saleFee: z.number(),
   saleTax: z.number(),
   saleOtherCost: z.number(),

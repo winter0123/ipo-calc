@@ -77,9 +77,7 @@ class PrivateSignupApprovalTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(201);
     Map<?, ?> body = objectMapper.readValue(utf8(result), Map.class);
     assertThat(body.get("approved")).isEqualTo(false);
-    assertThat(result.getResponse().getCookie("JSESSIONID"))
-        .as("승인 전에는 세션을 만들지 않는다")
-        .isNull();
+    assertThat(result.getResponse().getCookie("JSESSIONID")).as("승인 전에는 세션을 만들지 않는다").isNull();
     return email;
   }
 
@@ -100,15 +98,13 @@ class PrivateSignupApprovalTest {
     return email;
   }
 
-  private MvcResult login(String email, String password, MockHttpSession session)
-      throws Exception {
+  private MvcResult login(String email, String password, MockHttpSession session) throws Exception {
     return mockMvc
         .perform(
             post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    objectMapper.writeValueAsString(
-                        Map.of("email", email, "password", password)))
+                    objectMapper.writeValueAsString(Map.of("email", email, "password", password)))
                 .session(session))
         .andReturn();
   }

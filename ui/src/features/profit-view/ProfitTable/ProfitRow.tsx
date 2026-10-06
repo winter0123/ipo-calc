@@ -23,7 +23,6 @@ export default function ProfitRow({ profit }: ProfitRowProps) {
       <td className={styles.number}>{formatNumber(profit.quantity)}</td>
       <td className={styles.number}>{formatNumber(profit.saleAmount)}</td>
       <td className={styles.number}>{formatNumber(profit.matchedAcquisitionAmount)}</td>
-      <td className={styles.number}>{formatNumber(profit.matchedCostAmount)}</td>
       <td className={styles.number}>{formatNumber(profit.saleFee)}</td>
       <td className={styles.number}>{formatNumber(profit.saleTax)}</td>
       <td className={styles.number}>{formatNumber(profit.saleOtherCost)}</td>

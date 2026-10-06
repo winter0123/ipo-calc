@@ -11,9 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 투자 이력 조회 대상의 소유권을 검증한다.
- */
+/** 투자 이력 조회 대상의 소유권을 검증한다. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

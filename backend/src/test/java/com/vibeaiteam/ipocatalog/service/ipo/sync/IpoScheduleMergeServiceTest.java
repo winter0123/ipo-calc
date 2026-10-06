@@ -2,9 +2,6 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -131,8 +128,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -153,8 +155,8 @@ class IpoScheduleMergeServiceTest {
   @Test
   void merge_matchesByStockCode_preservesExistingListingDate_updatesAllotmentAndRefund() {
     // given: 종목코드 매칭, listingDate 이미 있음 (수동 입력 보존)
-    Ipo existing = createAutoSyncIpo(1L, "01658035", "진코스텍", "250030",
-                                     LocalDate.of(2026, 11, 25), null, null);
+    Ipo existing =
+        createAutoSyncIpo(1L, "01658035", "진코스텍", "250030", LocalDate.of(2026, 11, 25), null, null);
     when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("250030", STATUS_ACTIVE))
         .thenReturn(Optional.of(existing));
     when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
@@ -162,8 +164,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -192,8 +199,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -216,8 +228,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of(candidate));
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "주식회사 진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "주식회사 진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -245,8 +262,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "존재않는회사", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "존재않는회사",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -270,8 +292,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of(candidate1, candidate2));
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -293,8 +320,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -308,10 +340,15 @@ class IpoScheduleMergeServiceTest {
   @Test
   void merge_doesNotSaveWhenNoFieldChanges() {
     // given: 이미 모든 날짜가 같은 값으로 채워져 있음
-    Ipo existing = createAutoSyncIpo(1L, "01658035", "진코스텍", "250030",
-                                     LocalDate.of(2026, 11, 20),
-                                     LocalDate.of(2026, 11, 10),
-                                     LocalDate.of(2026, 11, 12));
+    Ipo existing =
+        createAutoSyncIpo(
+            1L,
+            "01658035",
+            "진코스텍",
+            "250030",
+            LocalDate.of(2026, 11, 20),
+            LocalDate.of(2026, 11, 10),
+            LocalDate.of(2026, 11, 12));
     when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("250030", STATUS_ACTIVE))
         .thenReturn(Optional.of(existing));
     when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
@@ -319,8 +356,13 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -343,8 +385,9 @@ class IpoScheduleMergeServiceTest {
         .thenReturn(List.of());
 
     List<UstockPlusScheduleDates> schedules =
-        List.of(createSchedule("250030", "진코스텍", null,
-                               LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
+        List.of(
+            createSchedule(
+                "250030", "진코스텍", null, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 
@@ -382,10 +425,18 @@ class IpoScheduleMergeServiceTest {
 
     List<UstockPlusScheduleDates> schedules =
         List.of(
-            createSchedule("250030", "진코스텍", LocalDate.of(2026, 11, 20),
-                           LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)),
-            createSchedule("170190", "멜콘", LocalDate.of(2026, 11, 25),
-                           LocalDate.of(2026, 11, 15), LocalDate.of(2026, 11, 17)));
+            createSchedule(
+                "250030",
+                "진코스텍",
+                LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 10),
+                LocalDate.of(2026, 11, 12)),
+            createSchedule(
+                "170190",
+                "멜콘",
+                LocalDate.of(2026, 11, 25),
+                LocalDate.of(2026, 11, 15),
+                LocalDate.of(2026, 11, 17)));
     when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
         .thenReturn(schedules);
 

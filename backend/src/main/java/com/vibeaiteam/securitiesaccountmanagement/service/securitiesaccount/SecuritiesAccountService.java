@@ -29,9 +29,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 증권계좌 관리 서비스. 계좌번호는 암호화해 저장한다.
- */
+/** 증권계좌 관리 서비스. 계좌번호는 암호화해 저장한다. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,9 +45,7 @@ public class SecuritiesAccountService {
   private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
-  /**
-   * 증권계좌를 등록한다.
-   */
+  /** 증권계좌를 등록한다. */
   @Transactional
   public SecuritiesAccountResponse register(SecuritiesAccountRegisterRequest request) {
     Long investorId = request.getInvestorId();
@@ -90,9 +86,7 @@ public class SecuritiesAccountService {
     return SecuritiesAccountResponse.from(saved, AccountNumberMasker.mask(plainAccountNumber));
   }
 
-  /**
-   * 증권계좌 목록을 조회한다.
-   */
+  /** 증권계좌 목록을 조회한다. */
   @Transactional(readOnly = true)
   public List<SecuritiesAccountResponse> list(Long investorId, String status) {
     if (investorId == null) {
@@ -111,9 +105,7 @@ public class SecuritiesAccountService {
     return accounts.stream().map(this::toMaskedResponse).toList();
   }
 
-  /**
-   * ID로 증권계좌를 조회한다.
-   */
+  /** ID로 증권계좌를 조회한다. */
   @Transactional(readOnly = true)
   public SecuritiesAccountResponse getById(Long id) {
     SecuritiesAccount account = findActive(id);
@@ -122,9 +114,7 @@ public class SecuritiesAccountService {
     return toMaskedResponse(account);
   }
 
-  /**
-   * 복호화한 계좌번호 전체를 반환한다. 소유권을 검증한다.
-   */
+  /** 복호화한 계좌번호 전체를 반환한다. 소유권을 검증한다. */
   @Transactional(readOnly = true)
   public SecuritiesAccountAccountNumberResponse getAccountNumber(Long id) {
     SecuritiesAccount account = findActive(id);
@@ -143,9 +133,7 @@ public class SecuritiesAccountService {
     return SecuritiesAccountAccountNumberResponse.of(id, plainAccountNumber, exposedAt);
   }
 
-  /**
-   * 증권계좌 정보를 수정한다.
-   */
+  /** 증권계좌 정보를 수정한다. */
   @Transactional
   public SecuritiesAccountResponse update(Long id, SecuritiesAccountUpdateRequest request) {
     SecuritiesAccount account = findActive(id);
@@ -172,9 +160,7 @@ public class SecuritiesAccountService {
     return toMaskedResponse(saved);
   }
 
-  /**
-   * 증권계좌를 비활성화(소프트 삭제)한다.
-   */
+  /** 증권계좌를 비활성화(소프트 삭제)한다. */
   @Transactional
   public void deactivate(Long id) {
     SecuritiesAccount account = findActive(id);
@@ -191,9 +177,7 @@ public class SecuritiesAccountService {
     securitiesAccountRepository.save(account);
   }
 
-  /**
-   * 지정한 계좌를 투자자의 기본 계좌로 설정한다.
-   */
+  /** 지정한 계좌를 투자자의 기본 계좌로 설정한다. */
   @Transactional
   public SecuritiesAccountResponse setDefault(Long id) {
     // D-SA-006: findByIdAndDeletedAtIsNull이 아닌 findById를 사용한다 — INACTIVE(soft-deleted) 계좌도

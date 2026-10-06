@@ -14,9 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 계정(사용자) 회원가입 등 계정 관리 API를 제공한다.
- */
+/** 계정(사용자) 회원가입 등 계정 관리 API를 제공한다. */
 @RestController
 @RequestMapping("/accounts")
 @RequiredArgsConstructor
@@ -24,9 +22,7 @@ public class AccountController {
 
   private final SignupService signupService;
 
-  /**
-   * 회원가입 요청을 받아 계정과 세션을 생성하고, 201 Created와 함께 생성된 계정 정보를 반환한다.
-   */
+  /** 회원가입 요청을 받아 계정과 세션을 생성하고, 201 Created와 함께 생성된 계정 정보를 반환한다. */
   @PostMapping
   public ResponseEntity<SignupResponse> signup(
       @Valid @RequestBody SignupRequest request,

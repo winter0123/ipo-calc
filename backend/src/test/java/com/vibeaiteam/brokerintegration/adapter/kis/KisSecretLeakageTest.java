@@ -77,7 +77,9 @@ class KisSecretLeakageTest {
         .andExpect(method(HttpMethod.POST))
         .andRespond(
             withSuccess(
-                "{\"access_token\":\"" + DUMMY_TOKEN + "\","
+                "{\"access_token\":\""
+                    + DUMMY_TOKEN
+                    + "\","
                     + "\"access_token_token_expired\":\"2026-12-31 23:59:59\","
                     + "\"token_type\":\"Bearer\",\"expires_in\":\"86400\"}",
                 MediaType.APPLICATION_JSON));
@@ -175,8 +177,7 @@ class KisSecretLeakageTest {
     // 값을 로그 메시지에 직접 넣지 않고 레코드 참조를 넘겼을 때 마스킹된 문자열이 출력되는지 확인한다.
     KisCredentials credentials =
         new KisCredentials(DUMMY_APP_KEY, DUMMY_APP_SECRET, DUMMY_CANO, DUMMY_PRODT_CD);
-    String rendered =
-        "KIS 브로커 조회 감사: credentials={}".replace("{}", credentials.toString());
+    String rendered = "KIS 브로커 조회 감사: credentials={}".replace("{}", credentials.toString());
 
     assertThat(rendered).doesNotContain(DUMMY_APP_KEY, DUMMY_APP_SECRET, DUMMY_CANO);
   }

@@ -1,13 +1,11 @@
 package com.vibeaiteam.dashboard.service;
 
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
-import com.vibeaiteam.costrecording.domain.model.cost.Cost;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.profitcalculation.service.profit.calculator.ProfitCalculator;
 import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 /** 계산용 내부 레코드: Sale + 세전/세후순수익 + 그룹핑 키 + 추가 정보. */
 public record CalculatedSale(
@@ -31,7 +29,6 @@ public record CalculatedSale(
    * @param ipo 없으면 null (allocationPrice가 null일 때 fixedPrice 대체용)
    * @param securitiesFirmId 증권계좌가 없으면 null
    * @param securitiesFirmName securitiesFirmId가 null이면 null
-   * @param costs 해당 청약의 ACTIVE 비용 목록
    */
   public static CalculatedSale of(
       Sale sale,
@@ -39,23 +36,16 @@ public record CalculatedSale(
       Investor investor,
       Long securitiesFirmId,
       String securitiesFirmName,
-      Ipo ipo,
-      List<Cost> costs) {
-    Long totalActiveCost = costs.stream().mapToLong(Cost::getAmount).sum();
-
+      Ipo ipo) {
     Long acquisitionAmount =
         ProfitCalculator.calculateAcquisitionAmount(
             allocation.getAllocationPrice(),
             ipo != null ? ipo.getFixedPrice() : null,
             sale.getQuantity());
 
-    Long matchedCost =
-        ProfitCalculator.calculateMatchedCost(
-            totalActiveCost, sale.getQuantity(), allocation.getAllocatedQuantity());
-
     Long preTaxProfit =
         ProfitCalculator.calculatePreTaxProfit(
-            sale.getAmount(), acquisitionAmount, matchedCost, sale.getFee(), sale.getOtherCost());
+            sale.getAmount(), acquisitionAmount, sale.getFee(), sale.getOtherCost());
 
     Long afterTaxProfit = ProfitCalculator.calculateAfterTaxProfit(preTaxProfit, sale.getTax());
 

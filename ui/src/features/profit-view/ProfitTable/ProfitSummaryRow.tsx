@@ -27,7 +27,7 @@ export default function ProfitSummaryRow({
       <td className={`${styles.number} ${styles.totalSaleAmount}`}>
         {formatNumber(totalSaleAmount)}
       </td>
-      <td colSpan={5} />
+      <td colSpan={4} />
       <td className={`${styles.number} ${getProfitClass(totalRealizedProfit)}`}>
         {formatNumber(totalRealizedProfit)}
       </td>

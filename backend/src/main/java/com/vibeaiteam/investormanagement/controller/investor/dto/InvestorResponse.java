@@ -8,9 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 투자자 응답 DTO.
- */
+/** 투자자 응답 DTO. */
 @Getter
 @Setter
 @Builder
@@ -26,9 +24,7 @@ public class InvestorResponse {
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 
-  /**
-   * 엔티티를 응답 DTO로 변환한다.
-   */
+  /** 엔티티를 응답 DTO로 변환한다. */
   public static InvestorResponse from(Investor investor) {
     return InvestorResponse.builder()
         .id(investor.getId())

@@ -105,10 +105,7 @@ class CatalogAdminAccessTest {
     login();
 
     var response =
-        mockMvc
-            .perform(delete("/ipos/999999999").session(session))
-            .andReturn()
-            .getResponse();
+        mockMvc.perform(delete("/ipos/999999999").session(session)).andReturn().getResponse();
 
     assertThat(response.getStatus()).as("ADMIN은 권한 검사를 통과해 404를 받는다").isEqualTo(404);
   }

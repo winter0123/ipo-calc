@@ -8,9 +8,8 @@ import java.time.LocalDate;
 /**
  * 브로커 조회 전용 포트(research 4.3-A 장치 A).
  *
- * <p>조회 메서드만 선언한다. 주문(매수/매도/정정/취소) 관련 메서드는 이 인터페이스에 정의하지 않으며, 구현 클래스에도 대응
- * 메서드를 만들지 않는다. {@code BrokerReadOnlyArchitectureTest}가 메서드명에 주문 키워드가 들어가는 것을 빌드 실패로
- * 막는다(AC-1821).
+ * <p>조회 메서드만 선언한다. 주문(매수/매도/정정/취소) 관련 메서드는 이 인터페이스에 정의하지 않으며, 구현 클래스에도 대응 메서드를 만들지 않는다. {@code
+ * BrokerReadOnlyArchitectureTest}가 메서드명에 주문 키워드가 들어가는 것을 빌드 실패로 막는다(AC-1821).
  */
 public interface BrokerQueryPort {
 

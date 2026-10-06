@@ -15,11 +15,7 @@ public final class DashboardAggregator {
 
   /** 그룹 하나의 합계. */
   private record Totals(
-      long investmentAmount,
-      long preTaxProfit,
-      long afterTaxProfit,
-      double profitRate,
-      int count) {
+      long investmentAmount, long preTaxProfit, long afterTaxProfit, double profitRate, int count) {
 
     /** 매도 건의 투자금 = 배정금액을 매도 수량 비율로 안분한 몫. 배정금액이 단가×수량이라 단가×매도수량과 같고 항상 정수다. */
     private static long investmentOf(CalculatedSale cs) {

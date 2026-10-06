@@ -13,7 +13,6 @@ const SALE_PROFIT = {
   quantity: 1,
   saleAmount: null,
   matchedAcquisitionAmount: 0,
-  matchedCostAmount: 0,
   saleFee: 0,
   saleTax: 0,
   saleOtherCost: 0,

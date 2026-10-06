@@ -46,8 +46,7 @@ class BrokerTransactionMatcherTest {
   }
 
   @Nested
-  @DisplayName(
-      "AC-1831: 후보 stockCode null → candidatesWithoutStockCode 에 담기고 예외 없음")
+  @DisplayName("AC-1831: 후보 stockCode null → candidatesWithoutStockCode 에 담기고 예외 없음")
   class Ac1831Tests {
 
     @Test
@@ -131,8 +130,7 @@ class BrokerTransactionMatcherTest {
   }
 
   @Nested
-  @DisplayName(
-      "분할 매도: 합이 같으면 ALREADY_REGISTERED, 하나라도 다르면 SPLIT_SALE_MISMATCH")
+  @DisplayName("분할 매도: 합이 같으면 ALREADY_REGISTERED, 하나라도 다르면 SPLIT_SALE_MISMATCH")
   class SplitSaleTests {
 
     @Test

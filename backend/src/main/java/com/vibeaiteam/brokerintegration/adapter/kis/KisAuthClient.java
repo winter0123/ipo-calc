@@ -15,8 +15,8 @@ import org.springframework.web.client.RestClientResponseException;
  * KIS 인증 클라이언트 — 접근토큰 발급({@code /oauth2/tokenP}) 전담.
  *
  * <p>{@code brokerintegration.adapter} 패키지에서 {@code RestClient.post()}를 호출할 수 있는 유일한 클래스다(ArchUnit
- * {@code BrokerReadOnlyArchitectureTest}가 강제). 이 클래스도 put/patch/delete/method 호출은 금지된다. 재시도는 하지
- * 않는다 — 재발급은 분당 1회로 제한되기 때문이다.
+ * {@code BrokerReadOnlyArchitectureTest}가 강제). 이 클래스도 put/patch/delete/method 호출은 금지된다. 재시도는 하지 않는다
+ * — 재발급은 분당 1회로 제한되기 때문이다.
  */
 public class KisAuthClient {
 
@@ -63,8 +63,8 @@ public class KisAuthClient {
   /**
    * 앱키와 앱시크릿으로 접근토큰을 발급받는다.
    *
-   * <p>재시도하지 않는다. HTTP 오류·응답 필드 누락·만료 시각 파싱 실패·타임아웃은 모두 {@link BrokerApiException}으로
-   * 격리되며 앱키·앱시크릿·토큰 값은 예외 메시지에 담기지 않는다(AC-1822).
+   * <p>재시도하지 않는다. HTTP 오류·응답 필드 누락·만료 시각 파싱 실패·타임아웃은 모두 {@link BrokerApiException}으로 격리되며
+   * 앱키·앱시크릿·토큰 값은 예외 메시지에 담기지 않는다(AC-1822).
    *
    * @param appKey KIS 앱키
    * @param appSecret KIS 앱시크릿
@@ -132,9 +132,7 @@ public class KisAuthClient {
           TOKEN_PATH,
           e.getClass().getSimpleName());
       throw new BrokerApiException(
-          "token_issue_failed",
-          "KIS 토큰 발급 중 오류 발생: " + e.getClass().getSimpleName(),
-          e);
+          "token_issue_failed", "KIS 토큰 발급 중 오류 발생: " + e.getClass().getSimpleName(), e);
     }
   }
 

@@ -12,15 +12,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/**
- * 청약·배정·매도 데이터를 투자 이력 DTO로 조립한다.
- */
+/** 청약·배정·매도 데이터를 투자 이력 DTO로 조립한다. */
 @Component
 public class InvestmentHistoryAssembler {
 
-  /**
-   * 청약 1건과 관련 배정·매도를 투자 이력 DTO로 변환한다.
-   */
+  /** 청약 1건과 관련 배정·매도를 투자 이력 DTO로 변환한다. */
   public InvestmentHistoryDto toDto(
       Subscription subscription,
       Allocation allocation,
@@ -89,9 +85,7 @@ public class InvestmentHistoryAssembler {
     return allocation.getAllocatedQuantity() - totalSoldQuantity;
   }
 
-  /**
-   * 청약 목록을 투자 이력 DTO 목록으로 변환한다.
-   */
+  /** 청약 목록을 투자 이력 DTO 목록으로 변환한다. */
   public List<InvestmentHistoryDto> toDtos(
       List<Subscription> subscriptions,
       Map<Long, Allocation> allocationMap,

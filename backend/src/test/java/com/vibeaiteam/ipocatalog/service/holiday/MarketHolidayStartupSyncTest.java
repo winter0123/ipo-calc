@@ -1,6 +1,5 @@
 package com.vibeaiteam.ipocatalog.service.holiday;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -12,7 +11,6 @@ import com.vibeaiteam.ipocatalog.repository.holiday.MarketHolidayRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.Year;
 import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,8 +34,7 @@ class MarketHolidayStartupSyncTest {
   @BeforeEach
   void setUp() {
     // 2026-07-15 고정 시계 (올해=2026, 내년=2027)
-    fixedClock =
-        Clock.fixed(Instant.parse("2026-07-15T00:00:00Z"), ZoneId.of("Asia/Seoul"));
+    fixedClock = Clock.fixed(Instant.parse("2026-07-15T00:00:00Z"), ZoneId.of("Asia/Seoul"));
     startupSync =
         new MarketHolidayStartupSync(marketHolidaySyncService, marketHolidayRepository, fixedClock);
   }

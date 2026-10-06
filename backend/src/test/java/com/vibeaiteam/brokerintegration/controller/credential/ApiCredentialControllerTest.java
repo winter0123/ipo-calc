@@ -47,10 +47,9 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * 브로커 API 인증정보 API 통합 테스트.
  *
- * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 등록한 시크릿은 DB에 암호화되어
- * 평문이 보이지 않는다 - AC-1811: 응답 JSON에 시크릿·토큰 필드가 존재하지 않는다 - AC-1812: 타 계정 소유
- * 계좌 접근은 403 - AC-1813: 같은 계좌·provider 중복 등록은 409 - AC-1814: 브로커 암호화 키 미설정 시 등록
- * 실패는 서비스 단위 테스트에서 검증한다
+ * <p>AC 인용: docs/breakdown/broker-readonly-api-pilot.md (SF-2) - AC-1810: 등록한 시크릿은 DB에 암호화되어 평문이
+ * 보이지 않는다 - AC-1811: 응답 JSON에 시크릿·토큰 필드가 존재하지 않는다 - AC-1812: 타 계정 소유 계좌 접근은 403 - AC-1813: 같은
+ * 계좌·provider 중복 등록은 409 - AC-1814: 브로커 암호화 키 미설정 시 등록 실패는 서비스 단위 테스트에서 검증한다
  * (ApiCredentialServiceTest.registerWhenBrokerEncryptionKeyMissingThrowsUnavailable).
  */
 @SpringBootTest
@@ -178,9 +177,7 @@ class ApiCredentialControllerTest {
                             Map.of("displayName", "인증정보투자자", "relationship", "SELF")))
                     .session(session))
             .andReturn();
-    assertThat(result.getResponse().getStatus())
-        .as("테스트 사전 준비: 투자자 등록은 201이어야 합니다")
-        .isEqualTo(201);
+    assertThat(result.getResponse().getStatus()).as("테스트 사전 준비: 투자자 등록은 201이어야 합니다").isEqualTo(201);
     return ((Number) objectMapper.readValue(utf8Body(result), Map.class).get("id")).longValue();
   }
 
@@ -256,8 +253,7 @@ class ApiCredentialControllerTest {
   }
 
   private Map<String, Object> credentialRequest() {
-    return Map.of(
-        "apiProvider", "KIS", "appKey", DUMMY_APP_KEY, "appSecret", DUMMY_APP_SECRET);
+    return Map.of("apiProvider", "KIS", "appKey", DUMMY_APP_KEY, "appSecret", DUMMY_APP_SECRET);
   }
 
   private MvcResult postCredential(Long securitiesAccountId, Map<String, ?> request)
@@ -313,9 +309,7 @@ class ApiCredentialControllerTest {
     MvcResult result = postCredential(securitiesAccountId, credentialRequest());
 
     // Then: 201 Created와 함께 연결 상태·마스킹된 계좌번호가 반환됨 (AC-1811)
-    assertThat(result.getResponse().getStatus())
-        .as("유효한 인증정보 등록 요청은 201이어야 합니다")
-        .isEqualTo(201);
+    assertThat(result.getResponse().getStatus()).as("유효한 인증정보 등록 요청은 201이어야 합니다").isEqualTo(201);
     String body = utf8Body(result);
     Map<String, Object> response = objectMapper.readValue(body, Map.class);
     assertThat(response.get("connectionStatus")).isEqualTo("CONNECTED");
@@ -435,9 +429,8 @@ class ApiCredentialControllerTest {
 
     // And: 인증정보가 하나도 생성되지 않음 (AC-1812)
     assertThat(
-            credentialRepository
-                .findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
-                    otherSecuritiesAccountId))
+            credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+                otherSecuritiesAccountId))
         .isEmpty();
   }
 
@@ -470,8 +463,7 @@ class ApiCredentialControllerTest {
     Long investorId = registerInvestorAndGetId();
     Long securitiesAccountId = createSecuritiesAccount(investorId, firmId);
 
-    MvcResult result =
-        putCredential(securitiesAccountId, Map.of("appKey", "k", "appSecret", "s"));
+    MvcResult result = putCredential(securitiesAccountId, Map.of("appKey", "k", "appSecret", "s"));
 
     assertThat(result.getResponse().getStatus()).isEqualTo(404);
   }
@@ -490,9 +482,7 @@ class ApiCredentialControllerTest {
     MvcResult result = deleteCredential(securitiesAccountId);
 
     // Then: 204 No Content
-    assertThat(result.getResponse().getStatus())
-        .as("연결 해제는 204 No Content여야 합니다")
-        .isEqualTo(204);
+    assertThat(result.getResponse().getStatus()).as("연결 해제는 204 No Content여야 합니다").isEqualTo(204);
 
     // And: 행이 물리 삭제되어 암호문이 DB에 남지 않음
     assertThat(
@@ -524,17 +514,14 @@ class ApiCredentialControllerTest {
             securitiesAccountId,
             Map.of("apiProvider", "KIS", "appKey", DUMMY_APP_KEY, "appSecret", " "));
 
-    assertThat(result.getResponse().getStatus())
-        .as("필수값이 빈 등록 요청은 400이어야 합니다")
-        .isEqualTo(400);
+    assertThat(result.getResponse().getStatus()).as("필수값이 빈 등록 요청은 400이어야 합니다").isEqualTo(400);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(body.get("error")).isEqualTo("VALIDATION_FAILED");
 
     // And: 인증정보가 생성되지 않음
     assertThat(
-            credentialRepository
-                .findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
-                    securitiesAccountId))
+            credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+                securitiesAccountId))
         .isEmpty();
   }
 

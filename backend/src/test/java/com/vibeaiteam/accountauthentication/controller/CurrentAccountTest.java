@@ -54,8 +54,7 @@ class CurrentAccountTest {
   }
 
   private MockHttpSession loginAs(AccountRole role) throws Exception {
-    String email =
-        "me-" + Math.abs(ThreadLocalRandom.current().nextLong()) + "@example.com";
+    String email = "me-" + Math.abs(ThreadLocalRandom.current().nextLong()) + "@example.com";
     createdEmails.add(email);
     LocalDateTime now = LocalDateTime.now();
     accountRepository.save(
@@ -92,8 +91,7 @@ class CurrentAccountTest {
             user.getResponse().getContentAsString(StandardCharsets.UTF_8),
             new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
     assertThat(userBody.get("role")).isEqualTo("USER");
-    assertThat(userBody)
-        .containsOnlyKeys("accountId", "email", "name", "role");
+    assertThat(userBody).containsOnlyKeys("accountId", "email", "name", "role");
     String adminJson = admin.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(objectMapper.readValue(adminJson, Map.class).get("role")).isEqualTo("ADMIN");
   }

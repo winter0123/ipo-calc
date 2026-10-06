@@ -115,7 +115,6 @@ const al1 = await api('POST', '/allocations', { subscriptionId: sub1.id, allocat
 await api('POST', '/allocations', { subscriptionId: sub2.id, allocatedQuantity: 10, allocatedAt: day(-3), allocationPrice: 10000 })
 await api('POST', '/subscriptions', { investorId: inv1.id, securitiesAccountId: acc1.id, ipoId: ipos[1].id, quantity: 30, depositAmount: 375000, subscribedAt: day(0) })
 await api('POST', '/sales', { allocationId: al1.id, quantity: 25, price: 16000, amount: 400000, saleDate: day(-1), fee: 600, tax: 920 })
-await api('POST', '/costs', { subscriptionId: sub1.id, costType: '수수료', amount: 2000, incurredAt: day(-5), memo: '청약 수수료' })
 
 await go('/subscriptions/register', () => page.getByRole('heading', { name: /청약/ }).first().waitFor())
 await shot('subscription-register')

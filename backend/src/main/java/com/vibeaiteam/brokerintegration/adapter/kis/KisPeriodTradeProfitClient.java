@@ -21,8 +21,8 @@ import org.springframework.web.client.RestClientResponseException;
 /**
  * KIS 기간별 매매손익 현황 조회({@code TTTC8715R}) 클라이언트.
  *
- * <p>{@link BrokerQueryPort}를 구현하며 GET만 사용한다. 주문 관련 경로·메서드는 존재하지 않는다. 허용 경로는 클래스 상수
- * {@link #PROFIT_PATH} 하나뿐이라 호출자 입력이 URI에 들어가지 않는다(research 4.3-C).
+ * <p>{@link BrokerQueryPort}를 구현하며 GET만 사용한다. 주문 관련 경로·메서드는 존재하지 않는다. 허용 경로는 클래스 상수 {@link
+ * #PROFIT_PATH} 하나뿐이라 호출자 입력이 URI에 들어가지 않는다(research 4.3-C).
  */
 public class KisPeriodTradeProfitClient implements BrokerQueryPort {
 
@@ -148,15 +148,13 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
           securitiesAccountId,
           e.getClass().getSimpleName());
       throw new BrokerApiException(
-          "query_failed",
-          "KIS 기간별 매매손익 조회 중 오류 발생: " + e.getClass().getSimpleName(),
-          e);
+          "query_failed", "KIS 기간별 매매손익 조회 중 오류 발생: " + e.getClass().getSimpleName(), e);
     }
   }
 
   /**
-   * 호출 감사 로그를 남긴다(시각은 로그 프레임워크가 붙인다). 계좌 ID·HTTP 메서드·경로(쿼리스트링 제외)·상태코드만 기록하고
-   * 앱키·앱시크릿·토큰·계좌번호(CANO)는 기록하지 않는다. 쿼리스트링에 CANO가 들어가므로 URI 전체를 남기지 않는다.
+   * 호출 감사 로그를 남긴다(시각은 로그 프레임워크가 붙인다). 계좌 ID·HTTP 메서드·경로(쿼리스트링 제외)·상태코드만 기록하고 앱키·앱시크릿·토큰·계좌번호(CANO)는
+   * 기록하지 않는다. 쿼리스트링에 CANO가 들어가므로 URI 전체를 남기지 않는다.
    *
    * @param securitiesAccountId 증권계좌 ID
    * @param statusCode HTTP 상태코드

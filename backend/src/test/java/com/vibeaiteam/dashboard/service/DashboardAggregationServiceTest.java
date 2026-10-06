@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,8 +11,6 @@ import static org.mockito.Mockito.when;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
-import com.vibeaiteam.costrecording.domain.model.cost.Cost;
-import com.vibeaiteam.costrecording.repository.cost.CostRepository;
 import com.vibeaiteam.dashboard.dto.InvestorAggregationDto;
 import com.vibeaiteam.dashboard.dto.PeriodAggregationDto;
 import com.vibeaiteam.dashboard.dto.SecuritiesFirmAggregationDto;
@@ -68,8 +65,6 @@ class DashboardAggregationServiceTest {
 
   @MockBean private SecuritiesFirmRepository securitiesFirmRepository;
 
-  @MockBean private CostRepository costRepository;
-
   @MockBean private IpoRepository ipoRepository;
 
   private void setupEmptyMocks() {
@@ -81,9 +76,6 @@ class DashboardAggregationServiceTest {
     when(investorRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
     when(securitiesAccountRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
     when(securitiesFirmRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
-    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
-            anyList(), any(RecordStatus.class)))
-        .thenReturn(Collections.emptyList());
     when(ipoRepository.findAllById(anyList())).thenReturn(Collections.emptyList());
   }
 
@@ -94,7 +86,6 @@ class DashboardAggregationServiceTest {
       List<Investor> investors,
       List<SecuritiesAccount> securitiesAccounts,
       List<SecuritiesFirm> securitiesFirms,
-      List<Cost> costs,
       List<Ipo> ipos) {
     when(ownershipVerifier.getCurrentAccountId()).thenReturn(1L);
     when(saleRepository.findAllByStatusAndInvestorAccountId(eq(RecordStatus.ACTIVE), eq(1L)))
@@ -104,9 +95,6 @@ class DashboardAggregationServiceTest {
     when(investorRepository.findAllById(any())).thenReturn(investors);
     when(securitiesAccountRepository.findAllById(any())).thenReturn(securitiesAccounts);
     when(securitiesFirmRepository.findAllById(any())).thenReturn(securitiesFirms);
-    when(costRepository.findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
-            any(), any(RecordStatus.class)))
-        .thenReturn(costs);
     when(ipoRepository.findAllById(any())).thenReturn(ipos);
   }
 
@@ -250,11 +238,9 @@ class DashboardAggregationServiceTest {
     //          allocation: allocatedQuantity=50, allocationPrice=10000
     //          subscription: investorId=10, securitiesAccountId=1, ipoId=1, quantity=100
     //          ipo: fixedPrice=9000
-    //          cost: totalActiveCost=100000
     // Sale 2: quantity=20, amount=300000, fee=2000, tax=10000, otherCost=500
     //          allocation: allocatedQuantity=100, allocationPrice=12000
     //          subscription: investorId=10, securitiesAccountId=1, ipoId=1, quantity=100
-    //          cost: totalActiveCost=100000 (same subscription)
 
     Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
     Sale sale2 = createSale(2L, 200L, 20L, 300000L, 2000L, 10000L, 500L);
@@ -272,17 +258,6 @@ class DashboardAggregationServiceTest {
 
     Ipo ipo = createIpo(1L, 9000L);
 
-    Cost cost =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2),
         List.of(allocation1, allocation2),
@@ -290,7 +265,6 @@ class DashboardAggregationServiceTest {
         List.of(investor),
         List.of(securitiesAccount),
         List.of(securitiesFirm),
-        List.of(cost),
         List.of(ipo));
 
     // When
@@ -303,8 +277,6 @@ class DashboardAggregationServiceTest {
     verify(investorRepository).findAllById(any());
     verify(securitiesAccountRepository).findAllById(any());
     verify(securitiesFirmRepository).findAllById(any());
-    verify(costRepository)
-        .findBySubscriptionIdInAndStatusAndDeletedAtIsNull(any(), any(RecordStatus.class));
     verify(ipoRepository).findAllById(any());
 
     // Then: 집계 검증
@@ -319,22 +291,20 @@ class DashboardAggregationServiceTest {
 
     // totalPreTaxProfit과 totalAfterTaxProfit은 ProfitCalculator 계산 결과 검증 (sale quantity 기준)
     // acquisitionAmount1 = 10000 * 10 = 100000
-    // matchedCost1 = round(100000 * 10 / 50) = 20000
-    // preTaxProfit1 = 150000 - 100000 - 20000 - 1000 - 200 = 28800
-    // afterTaxProfit1 = 28800 - 5000 = 23800
+    // preTaxProfit1 = 150000 - 100000 - 1000 - 200 = 48800
+    // afterTaxProfit1 = 48800 - 5000 = 43800
 
     // acquisitionAmount2 = 12000 * 20 = 240000
-    // matchedCost2 = round(100000 * 20 / 100) = 20000
-    // preTaxProfit2 = 300000 - 240000 - 20000 - 2000 - 500 = 37500
-    // afterTaxProfit2 = 37500 - 10000 = 27500
+    // preTaxProfit2 = 300000 - 240000 - 2000 - 500 = 57500
+    // afterTaxProfit2 = 57500 - 10000 = 47500
 
-    assertThat(result.getTotalPreTaxProfit()).isEqualTo(28800L + 37500L); // 66300
-    assertThat(result.getTotalAfterTaxProfit()).isEqualTo(23800L + 27500L); // 51300
+    assertThat(result.getTotalPreTaxProfit()).isEqualTo(48800L + 57500L); // 106300
+    assertThat(result.getTotalAfterTaxProfit()).isEqualTo(43800L + 47500L); // 91300
 
-    // totalProfitRate = (totalAfterTaxProfit / totalInvestmentAmount) * 100 = (51300 / 340000) *
-    // 100 = 15.088...
+    // totalProfitRate = (totalAfterTaxProfit / totalInvestmentAmount) * 100 = (91300 / 340000) *
+    // 100 = 26.853...
     assertThat(result.getTotalProfitRate())
-        .isCloseTo(15.088, org.assertj.core.api.Assertions.offset(0.01));
+        .isCloseTo(26.853, org.assertj.core.api.Assertions.offset(0.01));
   }
 
   @Test
@@ -354,17 +324,6 @@ class DashboardAggregationServiceTest {
 
     Ipo ipo = createIpo(1L, 9000L); // fixedPrice가 있지만 allocationPrice가 null이므로 0으로 취급
 
-    Cost cost =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale),
         List.of(allocation),
@@ -372,7 +331,6 @@ class DashboardAggregationServiceTest {
         List.of(investor),
         List.of(securitiesAccount),
         List.of(securitiesFirm),
-        List.of(cost),
         List.of(ipo));
 
     // When
@@ -382,10 +340,10 @@ class DashboardAggregationServiceTest {
     assertThat(result.getTotalInvestmentAmount()).isEqualTo(0L);
     assertThat(result.getTotalProfitRate()).isEqualTo(0.0);
     // 세전/세후수익은 여전히 계산됨 (acquisitionAmount = fixedPrice * saleQuantity = 9000 * 10 = 90000)
-    // preTaxProfit = 150000 - 90000 - 20000 - 1000 - 200 = 38800
-    // afterTaxProfit = 38800 - 5000 = 33800
-    assertThat(result.getTotalPreTaxProfit()).isEqualTo(38800L);
-    assertThat(result.getTotalAfterTaxProfit()).isEqualTo(33800L);
+    // preTaxProfit = 150000 - 90000 - 1000 - 200 = 58800
+    // afterTaxProfit = 58800 - 5000 = 53800
+    assertThat(result.getTotalPreTaxProfit()).isEqualTo(58800L);
+    assertThat(result.getTotalAfterTaxProfit()).isEqualTo(53800L);
     assertThat(result.getParticipationCount()).isEqualTo(1);
   }
 
@@ -445,37 +403,6 @@ class DashboardAggregationServiceTest {
     Ipo ipo1 = createIpo(1L, 9000L);
     Ipo ipo2 = createIpo(2L, 9500L);
 
-    Cost cost1 =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost2 =
-        Cost.builder()
-            .id(2L)
-            .subscriptionId(2000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost3 =
-        Cost.builder()
-            .id(3L)
-            .subscriptionId(3000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2, sale3),
         List.of(allocation1, allocation2, allocation3),
@@ -483,7 +410,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2),
         List.of(securitiesAccount1, securitiesAccount2),
         List.of(securitiesFirm1, securitiesFirm2),
-        List.of(cost1, cost2, cost3),
         List.of(ipo1, ipo2));
 
     // When
@@ -541,37 +467,6 @@ class DashboardAggregationServiceTest {
     Ipo ipo1 = createIpo(1L, 9000L);
     Ipo ipo2 = createIpo(2L, 9500L);
 
-    Cost cost1 =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost2 =
-        Cost.builder()
-            .id(2L)
-            .subscriptionId(2000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost3 =
-        Cost.builder()
-            .id(3L)
-            .subscriptionId(3000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2, sale3),
         List.of(allocation1, allocation2, allocation3),
@@ -579,7 +474,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2, investor3),
         List.of(securitiesAccount1, securitiesAccount2),
         List.of(securitiesFirm1, securitiesFirm2),
-        List.of(cost1, cost2, cost3),
         List.of(ipo1, ipo2));
 
     // When
@@ -638,27 +532,6 @@ class DashboardAggregationServiceTest {
     Ipo ipo1 = createIpo(1L, 9000L);
     Ipo ipo2 = createIpo(2L, 9500L);
 
-    Cost cost1 =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost2 =
-        Cost.builder()
-            .id(2L)
-            .subscriptionId(2000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2),
         List.of(allocation1, allocation2),
@@ -666,7 +539,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2),
         List.of(securitiesAccount1, securitiesAccount2),
         List.of(securitiesFirm2),
-        List.of(cost1, cost2),
         List.of(ipo1, ipo2));
 
     // When
@@ -690,7 +562,6 @@ class DashboardAggregationServiceTest {
         List.of(createInvestor(10L, 1L, "테스트 투자자")),
         List.of(createSecuritiesAccount(1L, 100L)),
         List.of(createSecuritiesFirm(100L, "테스트 증권사")),
-        Collections.emptyList(),
         List.of(createIpo(1L, 9000L)));
 
     SummaryDto summary = dashboardAggregationService.getSummary();
@@ -724,7 +595,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2),
         List.of(securitiesAccount1, securitiesAccount2),
         List.of(securitiesFirm2),
-        Collections.emptyList(),
         List.of(createIpo(1L, 9000L), createIpo(2L, 9500L)));
 
     List<SecuritiesFirmAggregationDto> byFirm = dashboardAggregationService.getBySecuritiesFirm();
@@ -778,47 +648,6 @@ class DashboardAggregationServiceTest {
     Ipo ipo3 = createIpo(3L, 10000L);
     Ipo ipo4 = createIpo(4L, 11000L);
 
-    Cost cost1 =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost2 =
-        Cost.builder()
-            .id(2L)
-            .subscriptionId(2000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost3 =
-        Cost.builder()
-            .id(3L)
-            .subscriptionId(3000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost4 =
-        Cost.builder()
-            .id(4L)
-            .subscriptionId(4000L)
-            .amount(80000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2, sale3, sale4),
         List.of(allocation1, allocation2, allocation3, allocation4),
@@ -826,7 +655,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2, investor3, investor4),
         List.of(securitiesAccount1, securitiesAccount2, securitiesAccount3, securitiesAccount4),
         List.of(securitiesFirm1, securitiesFirm2, securitiesFirm3, securitiesFirm4),
-        List.of(cost1, cost2, cost3, cost4),
         List.of(ipo1, ipo2, ipo3, ipo4));
 
     // When
@@ -898,47 +726,6 @@ class DashboardAggregationServiceTest {
     Ipo ipo3 = createIpo(3L, 10000L);
     Ipo ipo4 = createIpo(4L, 11000L);
 
-    Cost cost1 =
-        Cost.builder()
-            .id(1L)
-            .subscriptionId(1000L)
-            .amount(100000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost2 =
-        Cost.builder()
-            .id(2L)
-            .subscriptionId(2000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost3 =
-        Cost.builder()
-            .id(3L)
-            .subscriptionId(3000L)
-            .amount(150000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-    Cost cost4 =
-        Cost.builder()
-            .id(4L)
-            .subscriptionId(4000L)
-            .amount(80000L)
-            .costType("TRANSFER_FEE")
-            .status(RecordStatus.ACTIVE)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
     setupMocksWithSales(
         List.of(sale1, sale2, sale3, sale4),
         List.of(allocation1, allocation2, allocation3, allocation4),
@@ -946,7 +733,6 @@ class DashboardAggregationServiceTest {
         List.of(investor1, investor2, investor3, investor4),
         List.of(securitiesAccount1, securitiesAccount2, securitiesAccount3, securitiesAccount4),
         List.of(securitiesFirm1, securitiesFirm2, securitiesFirm3, securitiesFirm4),
-        List.of(cost1, cost2, cost3, cost4),
         List.of(ipo1, ipo2, ipo3, ipo4));
 
     // When

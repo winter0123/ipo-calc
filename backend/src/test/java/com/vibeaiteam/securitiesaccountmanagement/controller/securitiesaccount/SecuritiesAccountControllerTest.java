@@ -439,9 +439,7 @@ class SecuritiesAccountControllerTest {
     int status = result.getResponse().getStatus();
     assertThat(status).as("존재하지 않는 투자자로 등록 시 404 Not Found를 반환해야 합니다 (AC-003)").isEqualTo(404);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(body.get("error"))
-        .as("에러 코드는 NOT_FOUND여야 합니다 (AC-003)")
-        .isEqualTo("NOT_FOUND");
+    assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-003)").isEqualTo("NOT_FOUND");
     assertThat(body.get("message")).isNotNull();
   }
 
@@ -464,9 +462,7 @@ class SecuritiesAccountControllerTest {
     int status = result.getResponse().getStatus();
     assertThat(status).as("존재하지 않는 증권사로 등록 시 404 Not Found를 반환해야 합니다 (AC-004)").isEqualTo(404);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(body.get("error"))
-        .as("에러 코드는 NOT_FOUND여야 합니다 (AC-004)")
-        .isEqualTo("NOT_FOUND");
+    assertThat(body.get("error")).as("에러 코드는 NOT_FOUND여야 합니다 (AC-004)").isEqualTo("NOT_FOUND");
     assertThat(body.get("message")).isNotNull();
   }
 

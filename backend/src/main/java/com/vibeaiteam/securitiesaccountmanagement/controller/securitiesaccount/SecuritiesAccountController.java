@@ -19,9 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 증권계좌에 대한 등록/조회/계좌번호조회/수정/비활성화/기본계좌설정 API를 제공한다.
- */
+/** 증권계좌에 대한 등록/조회/계좌번호조회/수정/비활성화/기본계좌설정 API를 제공한다. */
 @RestController
 @RequestMapping("/securities-accounts")
 @RequiredArgsConstructor
@@ -29,9 +27,7 @@ public class SecuritiesAccountController {
 
   private final SecuritiesAccountService securitiesAccountService;
 
-  /**
-   * 증권계좌 등록 요청을 받아 새 증권계좌를 생성하고, 201 Created와 함께 생성된 계좌 정보를 반환한다.
-   */
+  /** 증권계좌 등록 요청을 받아 새 증권계좌를 생성하고, 201 Created와 함께 생성된 계좌 정보를 반환한다. */
   @PostMapping
   public ResponseEntity<SecuritiesAccountResponse> register(
       @RequestBody SecuritiesAccountRegisterRequest request) {
@@ -39,9 +35,7 @@ public class SecuritiesAccountController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  /**
-   * 현재 계정이 소유한 증권계좌 목록을 조회한다. investorId/status 파라미터로 필터링하고 계좌번호는 마스킹해 반환한다.
-   */
+  /** 현재 계정이 소유한 증권계좌 목록을 조회한다. investorId/status 파라미터로 필터링하고 계좌번호는 마스킹해 반환한다. */
   @GetMapping
   public ResponseEntity<List<SecuritiesAccountResponse>> list(
       @RequestParam(required = false) Long investorId,
@@ -49,9 +43,7 @@ public class SecuritiesAccountController {
     return ResponseEntity.ok(securitiesAccountService.list(investorId, status));
   }
 
-  /**
-   * 증권계좌 ID로 단건 계좌 정보를 조회한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다.
-   */
+  /** 증권계좌 ID로 단건 계좌 정보를 조회한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403을 반환한다. */
   @GetMapping("/{id}")
   public ResponseEntity<SecuritiesAccountResponse> getById(@PathVariable Long id) {
     return ResponseEntity.ok(securitiesAccountService.getById(id));

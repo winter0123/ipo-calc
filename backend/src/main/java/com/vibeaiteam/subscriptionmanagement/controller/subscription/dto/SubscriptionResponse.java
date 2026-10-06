@@ -8,9 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 청약 응답 DTO.
- */
+/** 청약 응답 DTO. */
 @Getter
 @Setter
 @Builder
@@ -40,9 +38,7 @@ public class SubscriptionResponse {
 
   private LocalDateTime updatedAt;
 
-  /**
-   * 엔티티를 응답 DTO로 변환한다.
-   */
+  /** 엔티티를 응답 DTO로 변환한다. */
   public static SubscriptionResponse from(Subscription subscription) {
     return SubscriptionResponse.builder()
         .id(subscription.getId())

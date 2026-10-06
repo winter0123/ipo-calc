@@ -19,9 +19,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-/**
- * 세션 쿠키 속성(HttpOnly·SameSite·Secure)과 JSESSIONID Set-Cookie 중복 방지를 검증한다.
- */
+/** 세션 쿠키 속성(HttpOnly·SameSite·Secure)과 JSESSIONID Set-Cookie 중복 방지를 검증한다. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

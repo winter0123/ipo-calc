@@ -6,9 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 증권사별 집계 DTO.
- */
+/** 증권사별 집계 DTO. */
 @Getter
 @Setter
 @Builder

@@ -9,31 +9,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-/**
- * 배정 JPA 저장소.
- */
+/** 배정 JPA 저장소. */
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
-  /**
-   * ID 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다.
-   */
+  /** ID 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다. */
   Optional<Allocation> findByIdAndDeletedAtIsNull(Long id);
 
-  /**
-   * 삭제되지 않은 배정을 목록 조회한다(생성일 내림차순).
-   */
+  /** 삭제되지 않은 배정을 목록 조회한다(생성일 내림차순). */
   List<Allocation> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
-  /**
-   * 청약 ID · 상태 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다.
-   */
+  /** 청약 ID · 상태 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다. */
   Optional<Allocation> findBySubscriptionIdAndStatusAndDeletedAtIsNull(
       Long subscriptionId, RecordStatus status);
 
-  /**
-   * 현재 계정 소유 투자자의 배정만 목록 조회한다(생성일 내림차순). subscriptionId/investorId는 null이면 무시한다.
-   */
+  /** 현재 계정 소유 투자자의 배정만 목록 조회한다(생성일 내림차순). subscriptionId/investorId는 null이면 무시한다. */
   @Query(
       "SELECT a FROM Allocation a "
           + "JOIN Subscription s ON a.subscriptionId = s.id "

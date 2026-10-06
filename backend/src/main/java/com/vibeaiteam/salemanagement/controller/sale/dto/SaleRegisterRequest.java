@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 매도 등록 요청 DTO.
- */
+/** 매도 등록 요청 DTO. */
 @Getter
 @Setter
 @Builder

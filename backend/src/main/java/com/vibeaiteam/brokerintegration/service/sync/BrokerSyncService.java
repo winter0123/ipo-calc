@@ -39,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 증권사 조회 결과로 매도 기록을 채우는 서비스.
  *
- * <p>미리보기는 조회만 하고 저장하지 않는다. 확정은 사용자가 보낸 건을 {@link SaleService#register}로 저장하므로 수동 등록과 같은
- * 검증(소유권·누적 수량 초과)을 거치며, 한 건이라도 실패하면 전체가 롤백된다.
+ * <p>미리보기는 조회만 하고 저장하지 않는다. 확정은 사용자가 보낸 건을 {@link SaleService#register}로 저장하므로 수동 등록과 같은 검증(소유권·누적
+ * 수량 초과)을 거치며, 한 건이라도 실패하면 전체가 롤백된다.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,8 +50,8 @@ public class BrokerSyncService {
   private static final int DEFAULT_LOOKBACK_DAYS = 365;
 
   /**
-   * 한 번에 조회할 수 있는 최대 기간(일). KIS 공식 한도는 문서에서 확인하지 못했고, 2026-10-01 실호출로 365·730·1825·3650일이 모두
-   * 성공했다. 확인한 가장 긴 값(10년)을 보수적 상한으로 둔다.
+   * 한 번에 조회할 수 있는 최대 기간(일). KIS 공식 한도는 문서에서 확인하지 못했고, 2026-10-01 실호출로 365·730·1825·3650일이 모두 성공했다.
+   * 확인한 가장 긴 값(10년)을 보수적 상한으로 둔다.
    */
   private static final int MAX_RANGE_DAYS = 3650;
 

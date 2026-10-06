@@ -3,8 +3,6 @@ package com.vibeaiteam.dashboard.service;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
-import com.vibeaiteam.costrecording.domain.model.cost.Cost;
-import com.vibeaiteam.costrecording.repository.cost.CostRepository;
 import com.vibeaiteam.dashboard.dto.InvestorAggregationDto;
 import com.vibeaiteam.dashboard.dto.PeriodAggregationDto;
 import com.vibeaiteam.dashboard.dto.SecuritiesFirmAggregationDto;
@@ -25,7 +23,6 @@ import com.vibeaiteam.subscriptionmanagement.repository.subscription.Subscriptio
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,9 +32,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 대시보드 집계 서비스. 요약, 투자자별, 증권사별, 기간별 집계를 제공한다.
- */
+/** 대시보드 집계 서비스. 요약, 투자자별, 증권사별, 기간별 집계를 제공한다. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -50,7 +45,6 @@ public class DashboardAggregationService {
   private final InvestorRepository investorRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
   private final SecuritiesFirmRepository securitiesFirmRepository;
-  private final CostRepository costRepository;
   private final IpoRepository ipoRepository;
 
   /** 현재 계정 소유 ACTIVE Sale을 연관 엔티티와 함께 배치 조회해 건별 수익을 계산한다. 4개 집계 엔드포인트가 공유한다. */
@@ -99,13 +93,6 @@ public class DashboardAggregationService {
         subscriptions.stream().map(Subscription::getIpoId).collect(Collectors.toSet());
     Map<Long, Ipo> ipoMap = indexById(ipoRepository.findAllById(ipoIds), Ipo::getId);
 
-    Map<Long, List<Cost>> costsBySubscription =
-        costRepository
-            .findBySubscriptionIdInAndStatusAndDeletedAtIsNull(
-                new ArrayList<>(subscriptionIds), RecordStatus.ACTIVE)
-            .stream()
-            .collect(Collectors.groupingBy(Cost::getSubscriptionId));
-
     List<CalculatedSale> calculatedSales = new ArrayList<>();
     for (Sale sale : activeSales) {
       Allocation allocation = allocationMap.get(sale.getAllocationId());
@@ -137,8 +124,7 @@ public class DashboardAggregationService {
               investor,
               securitiesFirm != null ? securitiesFirm.getId() : null,
               securitiesFirm != null ? securitiesFirm.getName() : null,
-              ipoMap.get(subscription.getIpoId()),
-              costsBySubscription.getOrDefault(subscription.getId(), Collections.emptyList())));
+              ipoMap.get(subscription.getIpoId())));
     }
 
     return calculatedSales;

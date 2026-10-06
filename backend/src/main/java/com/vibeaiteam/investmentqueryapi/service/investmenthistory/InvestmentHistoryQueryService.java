@@ -31,9 +31,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-/**
- * 투자 이력 조회 서비스.
- */
+/** 투자 이력 조회 서비스. */
 @Service
 @RequiredArgsConstructor
 public class InvestmentHistoryQueryService {
@@ -51,9 +49,7 @@ public class InvestmentHistoryQueryService {
 
   @PersistenceContext private EntityManager entityManager;
 
-  /**
-   * 청약 ID로 투자 이력 상세를 조회한다. 청약이 없으면 404를 반환한다.
-   */
+  /** 청약 ID로 투자 이력 상세를 조회한다. 청약이 없으면 404를 반환한다. */
   public InvestmentHistoryDto getHistoryDetail(Long subscriptionId) {
     // a. Subscription 조회 (없으면 404)
     Subscription subscription =
@@ -121,9 +117,7 @@ public class InvestmentHistoryQueryService {
         subscription, allocation, activeSales, ipoMap, investorName, securitiesFirmName);
   }
 
-  /**
-   * 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 조회한다.
-   */
+  /** 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 조회한다. */
   public Page<InvestmentHistoryDto> getHistory(
       Long investorId, Long securitiesAccountId, Long ipoId, int page, int size) {
 

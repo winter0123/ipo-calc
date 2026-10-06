@@ -24,8 +24,7 @@ public interface SecuritiesAccountApiCredentialRepository
    */
   Optional<SecuritiesAccountApiCredential>
       findBySecuritiesAccountIdAndApiProviderAndDeletedAtIsNull(
-          Long securitiesAccountId,
-          String apiProvider);
+          Long securitiesAccountId, String apiProvider);
 
   /**
    * 계좌 ID와 API 제공자로 활성(삭제되지 않은) 인증정보가 존재하는지 확인한다.
