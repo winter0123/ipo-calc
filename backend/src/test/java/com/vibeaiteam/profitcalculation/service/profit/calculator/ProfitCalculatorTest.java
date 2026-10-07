@@ -143,6 +143,48 @@ class ProfitCalculatorTest {
     assertThat(result).isEqualTo(-5000L);
   }
 
+  // ==================== calculateRealizedProfit 테스트 ====================
+
+  @Test
+  void calculateRealizedProfit_normalCase_doesNotSubtractFee() {
+    // Given: saleAmount=750000, acquisitionAmount=360000, tax=0, otherCost=0
+    // When
+    Long result = ProfitCalculator.calculateRealizedProfit(750000L, 360000L, 0L, 0L);
+
+    // Then: 750000 - 360000 - 0 - 0 = 390000 (공모주수수료는 차감하지 않음)
+    assertThat(result).isEqualTo(390000L);
+  }
+
+  @Test
+  void calculateRealizedProfit_withNullTaxAndOtherCost_treatsAsZero() {
+    // Given: tax=null, otherCost=null (선택 필드)
+    // When
+    Long result = ProfitCalculator.calculateRealizedProfit(750000L, 360000L, null, null);
+
+    // Then: null → 0으로 간주, 750000 - 360000 - 0 - 0 = 390000
+    assertThat(result).isEqualTo(390000L);
+  }
+
+  @Test
+  void calculateRealizedProfit_withAllNull_returnsZero() {
+    // Given: 모든 파라미터 null
+    // When
+    Long result = ProfitCalculator.calculateRealizedProfit(null, null, null, null);
+
+    // Then: 0 반환 (null-safe)
+    assertThat(result).isEqualTo(0L);
+  }
+
+  @Test
+  void calculateRealizedProfit_canBeNegative() {
+    // Given: 취득금액과 비용이 매도금액보다 큰 경우 (손실)
+    // When
+    Long result = ProfitCalculator.calculateRealizedProfit(100000L, 200000L, 5000L, 1500L);
+
+    // Then: 100000 - 200000 - 5000 - 1500 = -106500 (음수 반환 가능)
+    assertThat(result).isEqualTo(-106500L);
+  }
+
   // ==================== calculateAllocationRatio 테스트 ====================
 
   @Test

@@ -39,4 +39,6 @@ public class ProfitDto {
   private Long preTaxProfit;
 
   private Long afterTaxProfit;
+
+  private Long realizedProfit;
 }

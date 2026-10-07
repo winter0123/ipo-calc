@@ -98,6 +98,7 @@ public class ProfitCalculationService {
           .totalSaleAmount(0L)
           .totalPreTaxProfit(0L)
           .totalAfterTaxProfit(0L)
+          .totalRealizedProfit(0L)
           .build();
     }
 
@@ -162,6 +163,8 @@ public class ProfitCalculationService {
     Long totalPreTaxProfit = profits.stream().map(ProfitDto::getPreTaxProfit).reduce(0L, Long::sum);
     Long totalAfterTaxProfit =
         profits.stream().map(ProfitDto::getAfterTaxProfit).reduce(0L, Long::sum);
+    Long totalRealizedProfit =
+        profits.stream().map(ProfitDto::getRealizedProfit).reduce(0L, Long::sum);
 
     return InvestorProfitDto.builder()
         .investorId(investorId)
@@ -169,10 +172,11 @@ public class ProfitCalculationService {
         .totalSaleAmount(totalSaleAmount)
         .totalPreTaxProfit(totalPreTaxProfit)
         .totalAfterTaxProfit(totalAfterTaxProfit)
+        .totalRealizedProfit(totalRealizedProfit)
         .build();
   }
 
-  // 대응취득가액/세전·세후순수익을 계산해 ProfitDto를 구성한다 (저장 없음).
+  // 대응취득가액/세전·세후순수익/실현손익을 계산해 ProfitDto를 구성한다 (저장 없음).
   private ProfitDto buildProfitDto(Sale sale, Allocation allocation, Long fixedPrice) {
     Long acquisitionAmount =
         ProfitCalculator.calculateAcquisitionAmount(
@@ -181,6 +185,9 @@ public class ProfitCalculationService {
         ProfitCalculator.calculatePreTaxProfit(
             sale.getAmount(), acquisitionAmount, sale.getFee(), sale.getOtherCost());
     Long afterTaxProfit = ProfitCalculator.calculateAfterTaxProfit(preTaxProfit, sale.getTax());
+    Long realizedProfit =
+        ProfitCalculator.calculateRealizedProfit(
+            sale.getAmount(), acquisitionAmount, sale.getTax(), sale.getOtherCost());
 
     return ProfitDto.builder()
         .saleId(sale.getId())
@@ -194,6 +201,7 @@ public class ProfitCalculationService {
         .saleOtherCost(sale.getOtherCost() != null ? sale.getOtherCost() : 0L)
         .preTaxProfit(preTaxProfit)
         .afterTaxProfit(afterTaxProfit)
+        .realizedProfit(realizedProfit)
         .build();
   }
 }
