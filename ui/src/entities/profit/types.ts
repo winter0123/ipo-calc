@@ -13,6 +13,7 @@ export const saleProfitSchema = z.object({
   saleOtherCost: z.number(),
   preTaxProfit: z.number(),
   afterTaxProfit: z.number(),
+  realizedProfit: z.number(),
 })
 
 export const investorProfitSchema = z.object({
@@ -21,6 +22,7 @@ export const investorProfitSchema = z.object({
   totalSaleAmount: z.number(),
   totalPreTaxProfit: z.number(),
   totalAfterTaxProfit: z.number(),
+  totalRealizedProfit: z.number(),
 })
 
 export type SaleProfit = z.infer<typeof saleProfitSchema>

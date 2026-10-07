@@ -8,7 +8,6 @@ interface ProfitTableProps {
 }
 
 export default function ProfitTable({ sales }: ProfitTableProps) {
-  // 실현손익은 공모주수수료를 빼기 전 금액이다.
   const sum = (pick: (s: SaleProfitRow) => number) => sales.reduce((acc, s) => acc + pick(s), 0)
 
   return (
@@ -41,7 +40,7 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
           {sales.length > 0 && (
             <ProfitSummaryRow
               totalSaleAmount={sum((s) => s.saleAmount ?? 0)}
-              totalRealizedProfit={sum((s) => s.afterTaxProfit + s.saleFee)}
+              totalRealizedProfit={sum((s) => s.realizedProfit)}
               totalFinalProfit={sum((s) => s.afterTaxProfit)}
             />
           )}
