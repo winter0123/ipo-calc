@@ -57,6 +57,7 @@ const INVESTOR_PROFITS = {
       saleOtherCost: 1000,
       preTaxProfit: 364000,
       afterTaxProfit: 361000,
+      realizedProfit: 366000,
     },
     {
       saleId: 2,
@@ -70,11 +71,13 @@ const INVESTOR_PROFITS = {
       saleOtherCost: 500,
       preTaxProfit: -5000,
       afterTaxProfit: -8000,
+      realizedProfit: -5000,
     },
   ],
   totalSaleAmount: 3200000,
   totalPreTaxProfit: 359000,
   totalAfterTaxProfit: 353000,
+  totalRealizedProfit: 361000,
 }
 
 const EMPTY_INVESTOR_PROFITS = {
@@ -83,6 +86,7 @@ const EMPTY_INVESTOR_PROFITS = {
   totalSaleAmount: 0,
   totalPreTaxProfit: 0,
   totalAfterTaxProfit: 0,
+  totalRealizedProfit: 0,
 }
 
 function renderPage() {

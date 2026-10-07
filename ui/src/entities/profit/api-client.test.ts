@@ -18,6 +18,7 @@ const SALE_PROFIT = {
   saleOtherCost: 0,
   preTaxProfit: 0,
   afterTaxProfit: 0,
+  realizedProfit: 0,
 }
 
 describe('profit api-client 응답 검증', () => {
@@ -30,6 +31,7 @@ describe('profit api-client 응답 검증', () => {
       totalSaleAmount: 0,
       totalPreTaxProfit: 0,
       totalAfterTaxProfit: 0,
+      totalRealizedProfit: 0,
     }
     stub(investor)
     await expect(getInvestorProfits(1)).resolves.toEqual(investor)
@@ -42,6 +44,7 @@ describe('profit api-client 응답 검증', () => {
       totalSaleAmount: 0,
       totalPreTaxProfit: 0,
       totalAfterTaxProfit: 0,
+      totalRealizedProfit: 0,
     }
     stub(investor)
     await expect(getInvestorProfits(1)).resolves.toEqual(investor)
