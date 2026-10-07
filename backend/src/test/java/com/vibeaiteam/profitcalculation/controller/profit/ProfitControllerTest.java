@@ -298,6 +298,7 @@ class ProfitControllerTest {
     // - matchedCostAmount = ROUND(40000 × 30/100) = 12000
     // - preTaxProfit = 750000 - 360000 - 12000 - 1500 - 0 = 376500
     // - afterTaxProfit = 376500 - 0 = 376500
+    // - realizedProfit = 750000 - 360000 - 0 - 0 = 390000 (공모주수수료 1500 미차감)
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
     Long subscriptionId =
@@ -325,6 +326,9 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("saleOtherCost")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("preTaxProfit")).longValue()).isEqualTo(388500L);
     assertThat(((Number) body.get("afterTaxProfit")).longValue()).isEqualTo(388500L);
+    assertThat(((Number) body.get("realizedProfit")).longValue())
+        .as("실현손익 = 매도금액 - 취득금액 - 세금 - 기타 (공모주수수료 미차감)")
+        .isEqualTo(390000L);
   }
 
   // ==================== AC-002: 세금 차감 계산 (Sale.tax 반영) ====================
@@ -615,11 +619,22 @@ class ProfitControllerTest {
         .isEqualTo(360000L);
     assertThat(((Number) sales.get(0).get("preTaxProfit")).longValue()).isEqualTo(388500L);
     assertThat(((Number) sales.get(0).get("afterTaxProfit")).longValue()).isEqualTo(388500L);
+    assertThat(((Number) sales.get(0).get("realizedProfit")).longValue())
+        .as("Sale 1 실현손익 = 750000 - 360000 - 0 - 0 (공모주수수료 1500 미차감)")
+        .isEqualTo(390000L);
+
+    // 두 번째 Sale(2026-10-15): 500000 - 240000 - 0 - 0 = 260000
+    assertThat(((Number) sales.get(1).get("realizedProfit")).longValue())
+        .as("Sale 2 실현손익 = 500000 - 240000 - 0 - 0")
+        .isEqualTo(260000L);
 
     // 합계 3종 필드 검증
     assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(1250000L);
     assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(648500L);
     assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(648500L);
+    assertThat(((Number) body.get("totalRealizedProfit")).longValue())
+        .as("총 실현손익 = 각 매도의 실현손익 합계 (390000 + 260000)")
+        .isEqualTo(650000L);
   }
 
   @Test
@@ -688,6 +703,9 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(0L);
+    assertThat(((Number) body.get("totalRealizedProfit")).longValue())
+        .as("매도가 없으면 총 실현손익은 0이어야 합니다 (AC-012)")
+        .isEqualTo(0L);
   }
 
   // ==================== AC-008 (목록): CANCELLED Sale 제외 ====================

@@ -42,6 +42,19 @@ public final class ProfitCalculator {
     return ptp - t;
   }
 
+  /**
+   * 실현손익을 계산한다. saleAmount − acquisitionAmount − tax − otherCost 공모주수수료(fee)는 차감하지 않으며,
+   * null 파라미터는 0으로 간주 (null-safe).
+   */
+  public static Long calculateRealizedProfit(
+      Long saleAmount, Long acquisitionAmount, Long tax, Long otherCost) {
+    long sa = (saleAmount != null) ? saleAmount : 0L;
+    long aa = (acquisitionAmount != null) ? acquisitionAmount : 0L;
+    long t = (tax != null) ? tax : 0L;
+    long oc = (otherCost != null) ? otherCost : 0L;
+    return sa - aa - t - oc;
+  }
+
   /** 안분 비율을 계산한다. saleQuantity / allocatedQuantity allocatedQuantity가 0이면 0.0 반환 (방어적 처리). */
   public static double calculateAllocationRatio(Long saleQuantity, Long allocatedQuantity) {
     if (saleQuantity == null || allocatedQuantity == null || allocatedQuantity == 0) {
