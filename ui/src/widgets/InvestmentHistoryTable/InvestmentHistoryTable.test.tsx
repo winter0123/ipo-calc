@@ -128,6 +128,13 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
     expect(screen.getByText('IPO 고정가')).toBeInTheDocument()
   })
 
+  it('내부 ID 항목(청약 ID, IPO ID)이 상세에 표시되지 않음', () => {
+    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={() => {}} />)
+
+    expect(screen.queryByText('청약 ID')).not.toBeInTheDocument()
+    expect(screen.queryByText('IPO ID')).not.toBeInTheDocument()
+  })
+
   it('제목과 닫기 버튼이 있고 닫기 버튼을 누르면 onClose가 호출됨', async () => {
     const onClose = vi.fn()
     render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={onClose} />)

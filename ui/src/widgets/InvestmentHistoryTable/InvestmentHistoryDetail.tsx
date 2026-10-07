@@ -29,16 +29,8 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
 
       <dl className={styles.dl}>
         <div className={styles.dlRow}>
-          <dt>청약 ID</dt>
-          <dd>{detail.id}</dd>
-        </div>
-        <div className={styles.dlRow}>
           <dt>청약일</dt>
           <dd>{formattedDate}</dd>
-        </div>
-        <div className={styles.dlRow}>
-          <dt>IPO ID</dt>
-          <dd>{detail.ipoId}</dd>
         </div>
         <div className={styles.dlRow}>
           <dt>공모주명</dt>
