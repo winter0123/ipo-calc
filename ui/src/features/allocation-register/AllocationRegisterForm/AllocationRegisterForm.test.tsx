@@ -69,7 +69,7 @@ async function waitForDetailLoaded() {
 
 async function fillValidForm() {
   await fill(screen.getByLabelText('배정수량'), '50')
-  await fill(screen.getByLabelText('배정일시'), '2026-09-21T10:00')
+  await fill(screen.getByLabelText('배정일'), '2026-09-21')
   await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
   await fill(screen.getByLabelText('배정단가 (선택)'), '39000')
   await fill(screen.getByLabelText('비고 (선택)'), '테스트 배정')
@@ -148,7 +148,7 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    expect(body.allocatedAt).toBe('2026-09-21T10:00')
+    expect(body.allocatedAt).toBe('2026-09-21T09:00')
     expect(body.allocationMethod).toBe('PROPORTIONAL')
     expect(body.allocationPrice).toBe(39000)
     expect(body.note).toBe('테스트 배정')
@@ -158,7 +158,7 @@ describe('AllocationRegisterForm', () => {
     })
   })
 
-  it('필수값(배정수량, 배정일시) 미입력 시 클라이언트 사이드 검증 메시지 표시', async () => {
+  it('필수값(배정수량, 배정일) 미입력 시 클라이언트 사이드 검증 메시지 표시', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
@@ -167,7 +167,7 @@ describe('AllocationRegisterForm', () => {
 
     await waitFor(() => {
       expect(screen.getByText('배정수량을 입력해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('배정일시를 선택해 주세요.')).toBeInTheDocument()
+      expect(screen.getByText('배정일을 선택해 주세요.')).toBeInTheDocument()
     })
     expect(apiFetch).not.toHaveBeenCalledWith(
       '/allocations',
@@ -344,7 +344,7 @@ describe('AllocationRegisterForm', () => {
 
     // 필수 필드만 입력 (배정방식은 선택하지 않음)
     await fill(screen.getByLabelText('배정수량'), '50')
-    await fill(screen.getByLabelText('배정일시'), '2026-09-21T10:00')
+    await fill(screen.getByLabelText('배정일'), '2026-09-21')
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -360,7 +360,7 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    expect(body.allocatedAt).toBe('2026-09-21T10:00')
+    expect(body.allocatedAt).toBe('2026-09-21T09:00')
     // select 미선택 시 빈 문자열로 전송됨
     expect(body.allocationMethod).toBe('')
     // number 입력 비움 시 null로 전송됨 (valueAsNumber 동작)

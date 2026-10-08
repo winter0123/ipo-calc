@@ -678,7 +678,7 @@ async function scenario8(browser) {
       .catch(() => null)
 
     await page.fill('#allocatedQuantity', String(TRADE.allocatedQuantity))
-    await page.fill('#allocatedAt', localDateTime(10))
+    await page.fill('#allocatedAt', localDateTime(10).slice(0, 10))
     await page.fill('#allocationPrice', String(TRADE.allocationPrice))
     await submit(page)
 

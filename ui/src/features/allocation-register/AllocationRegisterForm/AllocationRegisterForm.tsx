@@ -29,7 +29,8 @@ export default function AllocationRegisterForm() {
 
   const onSubmit = (data: Omit<AllocationRegisterRequest, 'subscriptionId'>) => {
     mutate(
-      { ...data, subscriptionId },
+      // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
+      { ...data, subscriptionId, allocatedAt: `${data.allocatedAt}T09:00` },
       {
         onSuccess: () => {
           navigate('/subscriptions')
@@ -92,14 +93,14 @@ export default function AllocationRegisterForm() {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="allocatedAt">배정일시</label>
+        <label htmlFor="allocatedAt">배정일</label>
         <input
           id="allocatedAt"
-          type="datetime-local"
+          type="date"
           aria-invalid={!!errors.allocatedAt}
           aria-describedby={errors.allocatedAt ? 'allocatedAt-error' : undefined}
           {...register('allocatedAt', {
-            required: '배정일시를 선택해 주세요.',
+            required: '배정일을 선택해 주세요.',
           })}
           disabled={isPending}
         />

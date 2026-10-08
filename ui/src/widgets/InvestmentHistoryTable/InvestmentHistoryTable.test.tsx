@@ -59,15 +59,7 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
     renderTable([ITEM_WITH_NAMES])
 
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent)
-    expect(headers).toEqual([
-      '청약 ID',
-      '청약일',
-      '공모주명',
-      '투자자',
-      '청약수량',
-      '상태',
-      '잔여수량',
-    ])
+    expect(headers).toEqual(['청약일', '공모주명', '투자자', '청약수량', '상태', '잔여수량'])
   })
 
   it('행에 투자자명이 표시됨', () => {
@@ -77,9 +69,9 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
     const cells = within(row)
       .getAllByRole('cell')
       .map((td) => td.textContent)
-    // 투자자 컬럼은 공모주명(인덱스 2) 바로 다음
-    expect(cells[2]).toBe('카카오뱅크')
-    expect(cells[3]).toBe('김철수')
+    // 투자자 컬럼은 공모주명(인덱스 1) 바로 다음
+    expect(cells[1]).toBe('카카오뱅크')
+    expect(cells[2]).toBe('김철수')
   })
 
   it('investorName이 null이면 "-"로 표시됨', () => {
@@ -89,7 +81,7 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
     const cells = within(row)
       .getAllByRole('cell')
       .map((td) => td.textContent)
-    expect(cells[3]).toBe('-')
+    expect(cells[2]).toBe('-')
   })
 
   it('헤더 셀 수와 데이터 셀 수가 일치함', () => {
