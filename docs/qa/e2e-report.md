@@ -122,7 +122,7 @@ cd tools/e2e && pnpm run e2e
 이 스크립트는 백엔드와 프론트 개발 서버가 이미 떠 있다고 가정한다. 직접 띄우려면:
 
 1. **Postgres 컨테이너 기동 + 슬롯 DB reset**: `docker compose up -d`로 Postgres를 띄우고, `scripts/db-slot.sh reset <n>`으로 슬롯 DB를 초기화한다.
-2. **백엔드 기동**: 가입 직후 로그인하는 흐름을 쓰므로 `APP_SIGNUP_MODE=OPEN`을 함께 지정한다(기본값은 비공개 운영용 `APPROVAL`). 빈 포트를 골라 `DB_NAME=vibe_slot_<n> DB_PASSWORD=... APP_ENCRYPTION_KEY=<32바이트 Base64> SERVER_PORT=<포트>` 환경변수와 함께 `backend/`에서 `./gradlew bootRun`을 실행한다.
+2. **백엔드 기동**: 가입 직후 로그인하는 흐름을 쓰므로 `APP_SIGNUP_MODE=OPEN`과, IP별 요청 제한에 걸리지 않도록 `APP_RATE_LIMIT_AUTH_PER_MINUTE=100000`을 함께 지정한다(기본값은 비공개 운영용 `APPROVAL`). 빈 포트를 골라 `DB_NAME=vibe_slot_<n> DB_PASSWORD=... APP_ENCRYPTION_KEY=<32바이트 Base64> SERVER_PORT=<포트>` 환경변수와 함께 `backend/`에서 `./gradlew bootRun`을 실행한다.
 3. **프론트 기동**: `ui/`에서 `/api-proxy`를 백엔드로 프록시하는 임시 vite 설정(`vite.scan.config.ts`)으로 프론트를 띄운다. `tools/accessibility-scan/run-scan.sh`가 하는 방식(빈 포트 선택 → 임시 vite config 작성 → `VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts` 실행)을 그대로 참고할 수 있다.
 4. **BASE_URL 지정**: 프론트 주소를 `tools/e2e/.base-url` 파일에 넣거나 `BASE_URL` 환경변수로 전달한다. 스크립트는 `BASE_URL` 환경변수가 있으면 그것을, 없으면 `.base-url` 파일 내용을 쓴다.
 

@@ -28,7 +28,7 @@ CFG
 trap 'rm -f "$UI_DIR/vite.scan.config.ts"; cleanup' EXIT
 
 KEY="$(head -c 32 /dev/urandom | base64)"
-(cd "$ROOT/backend" && DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$(head -c 32 /dev/urandom | base64)" APP_SIGNUP_MODE=OPEN SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
+(cd "$ROOT/backend" && DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$(head -c 32 /dev/urandom | base64)" APP_RATE_LIMIT_AUTH_PER_MINUTE=100000 APP_RATE_LIMIT_PUBLIC_READ_PER_MINUTE=100000 APP_SIGNUP_MODE=OPEN SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
 PIDS+=($!)
 (cd "$UI_DIR" && VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts --host 127.0.0.1 --port "$WEB_PORT" --strictPort >"$TMP/vite.log" 2>&1) &
 PIDS+=($!)
