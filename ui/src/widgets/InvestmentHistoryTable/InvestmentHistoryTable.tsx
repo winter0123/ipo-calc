@@ -40,7 +40,6 @@ export default function InvestmentHistoryTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th scope="col">청약 ID</th>
             <th scope="col">청약일</th>
             <th scope="col">공모주명</th>
             <th scope="col">투자자</th>

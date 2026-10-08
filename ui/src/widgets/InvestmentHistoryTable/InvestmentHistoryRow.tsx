@@ -28,7 +28,6 @@ export default function InvestmentHistoryRow({
         }
       }}
     >
-      <td>{item.id}</td>
       <td>{formattedDate}</td>
       <td>{item.ipoName}</td>
       <td>{item.investorName ?? '-'}</td>
