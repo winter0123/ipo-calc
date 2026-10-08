@@ -1,9 +1,11 @@
 package com.vibeaiteam.accountauthentication.config.security;
 
+import com.vibeaiteam.accountauthentication.config.ratelimit.RateLimitFilter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +21,7 @@ import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
@@ -28,11 +31,19 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 @EnableWebSecurity
 public class SecurityConfig {
 
-  /** 요청 인가 규칙, 세션 관리, 예외 처리를 구성한다. */
+  /** 요청 인가 규칙, 세션 관리, 예외 처리를 구성하고 IP별 요청 제한 필터를 체인 앞쪽에 넣는다. */
   @Bean
   public SecurityFilterChain securityFilterChain(
-      HttpSecurity http, @Value("${app.remember-me.key:}") String rememberMeKey) throws Exception {
+      HttpSecurity http,
+      @Value("${app.remember-me.key:}") String rememberMeKey,
+      ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
+      throws Exception {
     String effectiveRememberMeKey = resolveRememberMeKey(rememberMeKey);
+    // 제한 필터가 없으면(비활성) 건너뛴다. 로그인·가입 시도를 세션·인가 처리보다 먼저 거절하기 위한 위치다.
+    RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
+    if (rateLimitFilter != null) {
+      http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+    }
     http.authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
