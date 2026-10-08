@@ -17,16 +17,9 @@ export default function ProfitViewPage() {
   const [period, setPeriod] = useState(defaultPeriod)
   const periodInvalid = period.from !== '' && period.to !== '' && period.from > period.to
 
-  // 현재 투자자(상단 전환기) 기준으로만 보여 준다.
+  // 현재 투자자(상단 전환기) 기준으로만 보여 준다. 기간 필터는 서버에 맡긴다.
   const { current, isLoading: investorsLoading } = useCurrentInvestor()
-  const { rows, isLoading, error } = useAllInvestorProfits(current ? [current] : [])
-
-  const sales = periodInvalid
-    ? []
-    : rows.filter((s) => {
-        const day = s.saleDate.slice(0, 10)
-        return (!period.from || day >= period.from) && (!period.to || day <= period.to)
-      })
+  const { rows: sales, isLoading, error } = useAllInvestorProfits(current ? [current] : [], period)
 
   return (
     <div className={styles.container}>

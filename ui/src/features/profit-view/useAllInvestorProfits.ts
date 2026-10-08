@@ -5,12 +5,31 @@ export interface SaleProfitRow extends SaleProfit {
   investorName: string
 }
 
+export interface ProfitPeriod {
+  from: string
+  to: string
+}
+
+// 둘 다 값이 있고 시작일이 종료일 이전일 때만 서버에 조회한다.
+function toQueryablePeriod(period: ProfitPeriod | undefined): ProfitPeriod | undefined {
+  if (period === undefined) return undefined
+  if (period.from === '' || period.to === '') return undefined
+  if (period.from > period.to) return undefined
+  return period
+}
+
 /** 모든 투자자의 매도 수익을 하나의 목록(매도일 최신순)으로 모은다. */
-export function useAllInvestorProfits(investors: { id: number; displayName: string }[]) {
+export function useAllInvestorProfits(
+  investors: { id: number; displayName: string }[],
+  period: ProfitPeriod | undefined,
+) {
+  const queryPeriod = toQueryablePeriod(period)
   const results = useQueries({
     queries: investors.map((investor) => ({
-      queryKey: profitKeys.investor(investor.id),
-      queryFn: ({ signal }: { signal: AbortSignal }) => getInvestorProfits(investor.id, signal),
+      queryKey: profitKeys.investor(investor.id, queryPeriod?.from, queryPeriod?.to),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        getInvestorProfits(investor.id, queryPeriod, signal),
+      enabled: queryPeriod !== undefined,
     })),
   })
   const rows: SaleProfitRow[] = results
