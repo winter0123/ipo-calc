@@ -40,6 +40,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * AC 인용: docs/spec/profit-calculation.md - AC-001: 단일 매도건 수익 계산 성공 — Valid
@@ -85,6 +86,7 @@ class ProfitControllerTest {
   private final List<Subscription> createdSubscriptions = new ArrayList<>();
   private final List<Allocation> createdAllocations = new ArrayList<>();
   private final List<Sale> createdSales = new ArrayList<>();
+  private final List<Account> createdOtherAccounts = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
@@ -102,6 +104,7 @@ class ProfitControllerTest {
     allocationRepository.deleteAll(createdAllocations);
     subscriptionRepository.deleteAll(createdSubscriptions);
     investorRepository.deleteAll(createdInvestors);
+    accountRepository.deleteAll(createdOtherAccounts);
     securitiesFirmRepository.deleteAll(createdFirms);
     ipoRepository.deleteAll(createdIpos);
     createdFirms.clear();
@@ -110,6 +113,7 @@ class ProfitControllerTest {
     createdSubscriptions.clear();
     createdAllocations.clear();
     createdSales.clear();
+    createdOtherAccounts.clear();
 
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
@@ -200,6 +204,36 @@ class ProfitControllerTest {
     return account;
   }
 
+  // 다른 계정이 소유한 투자자를 만들어 그 ID를 반환한다 (소유권 검증용).
+  private Long createOtherAccountInvestor() {
+    LocalDateTime now = LocalDateTime.now();
+    Account otherAccount =
+        accountRepository.save(
+            Account.builder()
+                .email("profit-other-" + ThreadLocalRandom.current().nextLong() + "@example.com")
+                .passwordHash("encodedHash")
+                .name("다른계정")
+                .failedLoginAttempts(0)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    createdOtherAccounts.add(otherAccount);
+
+    Investor investor =
+        investorRepository.save(
+            Investor.builder()
+                .accountId(otherAccount.getId())
+                .displayName("다른계정투자자")
+                .relationship("SELF")
+                .status(RecordStatus.ACTIVE)
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    createdInvestors.add(investor);
+    return investor.getId();
+  }
+
   private Long createIpoWithFixedPrice(Long fixedPrice) {
     LocalDateTime now = LocalDateTime.now();
     Ipo ipo =
@@ -269,6 +303,25 @@ class ProfitControllerTest {
                 .session(session)
                 .contentType(MediaType.APPLICATION_JSON))
         .andReturn();
+  }
+
+  private MvcResult getInvestorProfits(Long investorId, String from, String to) throws Exception {
+    MockHttpServletRequestBuilder request =
+        get("/investors/" + investorId + "/profits")
+            .session(session)
+            .contentType(MediaType.APPLICATION_JSON);
+    if (from != null) {
+      request.param("from", from);
+    }
+    if (to != null) {
+      request.param("to", to);
+    }
+    return mockMvc.perform(request).andReturn();
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> salesOf(Map<String, Object> body) {
+    return (List<Map<String, Object>>) body.get("sales");
   }
 
   private Map<String, Object> readBody(MvcResult result) throws Exception {
@@ -778,6 +831,185 @@ class ProfitControllerTest {
     assertThat(saleAfter.getUpdatedAt()).isEqualTo(saleBefore.getUpdatedAt());
     assertThat(saleAfter.getAmount()).isEqualTo(saleBefore.getAmount());
     assertThat(saleAfter.getQuantity()).isEqualTo(saleBefore.getQuantity());
+  }
+
+  // ==================== 기간 필터: from·to 선택 쿼리 파라미터 ====================
+
+  @Test
+  void getInvestorProfitsFiltersSalesByPeriodAndTotalsOnlyFilteredSales() throws Exception {
+    // Given: 2026-10-10 / 10-15 / 10-20 매도 3건이 한 투자자에 존재한다 (AC-2)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    createSale(allocationId, 10L, 100000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 10, 9, 0));
+    Long middleSaleId =
+        createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
+    createSale(allocationId, 20L, 500000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 20, 16, 0));
+
+    // When: from=2026-10-12, to=2026-10-18
+    MvcResult result = getInvestorProfits(investorId, "2026-10-12", "2026-10-18");
+
+    // Then: 10/15 매도 1건만 반환되고 합계도 그 매도 기준이다 (AC-2)
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    List<Map<String, Object>> sales = salesOf(body);
+    assertThat(sales)
+        .as("기간에 포함되는 매도만 반환해야 합니다 (AC-2)")
+        .hasSize(1);
+    assertThat(((Number) sales.get(0).get("saleId")).longValue()).isEqualTo(middleSaleId);
+    assertThat((String) sales.get(0).get("saleDate")).isEqualTo("2026-10-15T14:30:00");
+    // 합계는 필터링된 매도 1건 기준: 취득가 12000 × 30 = 360000
+    assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(750000L);
+    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(390000L);
+    assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(390000L);
+    assertThat(((Number) body.get("totalRealizedProfit")).longValue()).isEqualTo(390000L);
+  }
+
+  @Test
+  void getInvestorProfitsWithSameFromAndToIncludesBoundaryDaySale() throws Exception {
+    // Given: 2026-10-15 14:30 매도가 존재한다 (AC-3)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    Long saleId =
+        createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
+
+    // When: from=to=2026-10-15 (양 끝 포함)
+    MvcResult result = getInvestorProfits(investorId, "2026-10-15", "2026-10-15");
+
+    // Then: 당일 매도가 포함된다 (AC-3)
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    List<Map<String, Object>> sales = salesOf(body);
+    assertThat(sales).hasSize(1);
+    assertThat(((Number) sales.get(0).get("saleId")).longValue())
+        .as("시작일과 종료일이 같으면 당일 매도를 포함해야 합니다 (AC-3)")
+        .isEqualTo(saleId);
+    assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(750000L);
+  }
+
+  @Test
+  void getInvestorProfitsWithOnlyFromOrOnlyToFiltersOneSideOnly() throws Exception {
+    // Given: 2026-10-10 / 10-15 / 10-20 매도 3건이 존재한다 (AC-4)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    createSale(allocationId, 10L, 100000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 10, 9, 0));
+    createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
+    createSale(allocationId, 20L, 500000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 20, 16, 0));
+
+    // When: from만 준다
+    MvcResult fromOnly = getInvestorProfits(investorId, "2026-10-15", null);
+
+    // Then: 그 날 이후 전부가 반환된다 (AC-4)
+    assertThat(fromOnly.getResponse().getStatus()).isEqualTo(200);
+    List<Map<String, Object>> fromOnlySales = salesOf(readBody(fromOnly));
+    assertThat(fromOnlySales).hasSize(2);
+    assertThat((String) fromOnlySales.get(0).get("saleDate")).isEqualTo("2026-10-15T14:30:00");
+    assertThat((String) fromOnlySales.get(1).get("saleDate")).isEqualTo("2026-10-20T16:00:00");
+
+    // When: to만 준다
+    MvcResult toOnly = getInvestorProfits(investorId, null, "2026-10-15");
+
+    // Then: 그 날까지 전부가 반환된다 (AC-4)
+    assertThat(toOnly.getResponse().getStatus()).isEqualTo(200);
+    List<Map<String, Object>> toOnlySales = salesOf(readBody(toOnly));
+    assertThat(toOnlySales).hasSize(2);
+    assertThat((String) toOnlySales.get(0).get("saleDate")).isEqualTo("2026-10-10T09:00:00");
+    assertThat((String) toOnlySales.get(1).get("saleDate")).isEqualTo("2026-10-15T14:30:00");
+  }
+
+  @Test
+  void getInvestorProfitsWithNoSalesInsidePeriodReturnsEmptyListAndZeroTotals() throws Exception {
+    // Given: 매도는 존재하지만 조회 기간 밖에 있다 (AC-5)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
+
+    // When: 매도가 하나도 없는 기간을 조회한다
+    MvcResult result = getInvestorProfits(investorId, "2026-11-01", "2026-11-30");
+
+    // Then: 200 + sales 빈 배열 + 합계 전부 0 (AC-5)
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    assertThat(((Number) body.get("investorId")).longValue()).isEqualTo(investorId);
+    assertThat(salesOf(body)).isEmpty();
+    assertThat(((Number) body.get("totalSaleAmount")).longValue()).isEqualTo(0L);
+    assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(0L);
+    assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(0L);
+    assertThat(((Number) body.get("totalRealizedProfit")).longValue()).isEqualTo(0L);
+  }
+
+  @Test
+  void getInvestorProfitsWithFromAfterToReturns400() throws Exception {
+    // Given: 시작일이 종료일보다 늦은 기간이 주어진다 (AC-6)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+
+    // When: from=2026-10-20, to=2026-10-10
+    MvcResult result = getInvestorProfits(investorId, "2026-10-20", "2026-10-10");
+
+    // Then: 400 Bad Request (AC-6)
+    assertThat(result.getResponse().getStatus())
+        .as("from이 to보다 늦으면 400이어야 합니다 (AC-6)")
+        .isEqualTo(400);
+  }
+
+  @Test
+  void getInvestorProfitsWithInvalidDateFormatReturns400() throws Exception {
+    // Given: 날짜 형식이 잘못된 from이 주어진다 (AC-6)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+
+    // When: from=abc
+    MvcResult result = getInvestorProfits(investorId, "abc", null);
+
+    // Then: 400 Bad Request (AC-6)
+    assertThat(result.getResponse().getStatus())
+        .as("날짜 형식이 잘못되면 400이어야 합니다 (AC-6)")
+        .isEqualTo(400);
+  }
+
+  @Test
+  void getInvestorProfitsWithPeriodForOtherAccountInvestorReturns403() throws Exception {
+    // Given: 다른 계정이 소유한 투자자가 존재한다 (AC-7)
+    signupAndLogin();
+    Long otherInvestorId = createOtherAccountInvestor();
+
+    // When: 기간과 함께 타 계정 투자자를 조회한다
+    MvcResult result = getInvestorProfits(otherInvestorId, "2026-10-01", "2026-10-31");
+
+    // Then: 403 Forbidden (AC-7)
+    assertThat(result.getResponse().getStatus())
+        .as("타 계정 투자자는 기간을 줘도 403이어야 합니다 (AC-7)")
+        .isEqualTo(403);
+  }
+
+  @Test
+  void getInvestorProfitsWithPeriodForNonExistentInvestorReturns404() throws Exception {
+    // Given: 존재하지 않는 investorId에 기간을 함께 준다 (AC-7)
+    signupAndLogin();
+
+    // When
+    MvcResult result = getInvestorProfits(99999999L, "2026-10-01", "2026-10-31");
+
+    // Then: 404 Not Found (AC-7)
+    assertNotFoundError(result);
   }
 
   // ==================== 헬퍼: 배정수량 커스텀 ====================
