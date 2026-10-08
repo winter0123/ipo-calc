@@ -1001,6 +1001,57 @@ async function scenario13(browser) {
   return '승인 전 403, 관리자 헤더 링크로 진입해 승인, 승인 뒤 로그인 200'
 }
 
+async function scenario14(browser) {
+  const email = uniqueEmail()
+  const setup = await browser.newContext()
+  let firstId
+  let secondId
+  try {
+    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Multi' })
+    await apiLogin(setup, email)
+    firstId = (await api(setup, 'POST', '/investors', { displayName: 'E2E 갑' })).id
+    secondId = (await api(setup, 'POST', '/investors', { displayName: 'E2E 을' })).id
+  } finally {
+    await setup.close()
+  }
+
+  const { context, page } = await openContext(browser)
+  try {
+    const attempt = await login(page, email, PASSWORD)
+    if (!attempt.ok) throw new Error(`로그인 실패: 상태=${attempt.status}`)
+
+    // 투자자가 2명이면 직접 고를 때까지 작업 화면 대신 선택 화면이 나온다.
+    await goto(page, '/subscriptions')
+    await page.getByRole('heading', { name: '어느 투자자로 작업할까요?' }).waitFor({ timeout: 15000 })
+    if ((await page.getByRole('heading', { name: '청약 목록' }).count()) > 0) {
+      throw new Error('투자자를 고르기 전인데 청약 목록이 보임')
+    }
+
+    await page.getByRole('button', { name: 'E2E 을' }).click()
+    await page.getByRole('heading', { name: '청약 목록' }).waitFor({ timeout: 15000 })
+    const switcher = page.getByLabel('현재 투자자')
+    if ((await switcher.inputValue()) !== String(secondId)) {
+      throw new Error(`전환기 값 불일치: 기대=${secondId} 실제=${await switcher.inputValue()}`)
+    }
+
+    // 전환기로 바꾸면 값이 바뀌고, 새로고침해도 선택이 기억된다.
+    await switcher.selectOption(String(firstId))
+    await page.reload()
+    await page.getByRole('heading', { name: '청약 목록' }).waitFor({ timeout: 15000 })
+    const after = await page.getByLabel('현재 투자자').inputValue()
+    if (after !== String(firstId)) {
+      throw new Error(`새로고침 뒤 선택이 유지되지 않음: 기대=${firstId} 실제=${after}`)
+    }
+
+    // 대시보드는 계정 단위라 선택 없이도 열린다.
+    await goto(page, '/dashboard')
+    await page.getByRole('heading', { name: '대시보드' }).waitFor({ timeout: 15000 })
+  } finally {
+    await context.close()
+  }
+  return '투자자 2명: 선택 화면 → 선택 → 전환기 값·새로고침 유지, 대시보드 접근'
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -1015,6 +1066,7 @@ const SCENARIOS = [
   ['E2E-11', '거래흐름5: 월별/연도별 탭이 선택 기간만 집계(D-9)', scenario11],
   ['E2E-12', '증권사 연동: 진입 링크 → 연결 → 키 교체 → 해제', scenario12],
   ['E2E-13', '비공개 운영: 승인 대기 로그인 차단 → 관리자 승인 → 로그인', scenario13],
+  ['E2E-14', '현재 투자자: 2명이면 직접 선택 → 전환 → 새로고침 유지', scenario14],
 ]
 
 function printResults() {
