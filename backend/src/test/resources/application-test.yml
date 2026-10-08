@@ -29,6 +29,10 @@ app:
     enabled: false
   ipo-sync:
     enabled: false
+  rate-limit:
+    # 한 JVM에서 여러 번 요청하는 기존 통합 테스트가 제한에 걸리지 않도록 크게 둔다.
+    public-read-per-minute: 100000
+    auth-per-minute: 100000
 
 logging:
   level:
