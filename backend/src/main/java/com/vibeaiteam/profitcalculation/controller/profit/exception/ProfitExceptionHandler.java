@@ -26,6 +26,12 @@ public class ProfitExceptionHandler {
     return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
   }
 
+  /** ProfitValidationException을 HTTP 400 응답으로 변환한다. */
+  @ExceptionHandler(ProfitValidationException.class)
+  public ResponseEntity<ErrorResponse> handleValidation(ProfitValidationException ex) {
+    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+  }
+
   private ResponseEntity<ErrorResponse> response(
       HttpStatus status, String errorCode, String message) {
     return ErrorResponses.of(status, errorCode, message);
