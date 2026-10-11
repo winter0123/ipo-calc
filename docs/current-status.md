@@ -1,8 +1,39 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-10-01 E20 프런트 리팩토링 반영(위 최신 절), 직전은 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+> 마지막 갱신: 2026-10-12 인계 요약(아래 최신 절). 이전: 2026-10-01 E20 프런트 리팩토링 반영(위 최신 절), 직전은 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
 
-## 매도 입력 개편 (2026-10-02 저녁, Master 직접) — 최신
+## 인계 요약 (2026-10-12, 모델 교체 직전) — 최신, 새 세션은 이 절부터 읽는다
+
+2026-10-02~10-12에 사용자 요청으로 병합한 #308~#337의 결과를 한 곳에 모은다. 상세 이력은 `docs/daily-log/2026_10_02.md`·`2026_10_08.md`·`2026_10_12.md`, 코드·테스트 기준은 `main`(2026-10-12 시점 `aae0b76`, #337)이다.
+
+### 지금 제품 상태
+- **구조**: 로그인 계정 1개 → 투자자 여러 명 → 증권계좌·청약·배정·매도. 청약·배정·매도·수익 확인·투자 내역·증권사 연동·청약 목록은 **헤더의 "현재 투자자"** 기준으로 동작한다(`ui/src/entities/investor/useCurrentInvestor.ts`, localStorage `currentInvestorId`). 투자자 1명이면 자동 선택, 2명 이상이면 `InvestorGate`에서 직접 골라야 화면이 열린다. 대시보드·공모주 일정·투자자 등록·관리자 화면은 계정 단위라 게이트 대상이 아니다(`app/layouts/MainLayout/InvestorGate.tsx`의 `GATED_PREFIXES`).
+- **금액 용어/계산**: 실현손익 = 매도금액 − 취득금액 − 세금 및 기타(공모주수수료 제외, 증권사 앱 기준), 최종수익금 = 실현손익 − 공모주수수료. 저장 매핑은 스키마 불변: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타, otherCost 미사용. 서버가 `realizedProfit`/`totalRealizedProfit`을 내려주고(`ProfitCalculator.calculateRealizedProfit`), 기존 `afterTaxProfit`=최종수익금이다. 예전에 저장된 매도(옛 의미: fee=매도수수료, tax=세금)는 **변환하지 않았다**(합계 동일, 필드 의미만 다름 — 사용자 결정: 그대로 둠).
+- **비용(cost) 기능은 삭제**: UI(#321)·백엔드 패키지/API/수익 안분(#327)·DB 테이블(V21, #332). 수익 = 매도금액 − 취득금액 − 공모주수수료 − 세금 및 기타. `matchedCostAmount` 필드도 없다.
+- **날짜 입력**: 청약일·매도일·배정일은 date만 받고 서버로는 `T09:00`을 붙여 보낸다. 매도일 기본값은 그 공모주 상장일.
+- **수익 확인**: 현재 투자자의 매도 목록을 조회 버튼 없이 바로 표시. 기본 기간 이번 달 1일~오늘, 시작일·종료일 변경, 서버 필터(`GET /investors/{id}/profits?from=&to=`, 양 끝 포함, from>to 400).
+- **대시보드**: '종합' 탭 = 계정 합계 + 등록된 투자자별 카드(매도 없는 투자자는 0), 증권사별/월별/연도별 탭 유지. '투자자별' 탭은 없다.
+- **공개 접근**: `/ipo-calendar`, `/ipos/:id`는 로그인 없이 열린다(`app/publicPaths.ts`, 비로그인 헤더에 공모주 일정/로그인/가입하기). 백엔드 공개 GET은 `GET /ipos`, `/ipos/{id}`, `/market-holidays`.
+- **요청 제한(#333)**: IP별 고정 윈도 분당 한도 — 공개 조회 120, 로그인·가입 20(`APP_RATE_LIMIT_*` 환경변수, `config/ratelimit`). **프록시 뒤 운영이면 `APP_RATE_LIMIT_TRUST_FORWARDED=true`가 필수**(아니면 모든 방문자가 프록시 IP 하나로 합산). E2E·스캔·스크린샷은 한도를 크게 올려 실행한다(`APP_RATE_LIMIT_AUTH_PER_MINUTE=100000` 등, `docs/guide-backend.md`).
+- **달력**: 연속 막대·종류 필터·환불일(실측/예상)·공휴일·휴장일 표시, 막대→상세 페이지.
+- **보증**: 백엔드 775 테스트·checkstyle 0, UI 497 테스트, E2E 14/14(시나리오 14 = 투자자 2명 선택·전환·유지), axe 위반 0.
+
+### 사용자 선호·운영 규칙(이번 기간에 확인된 것)
+- 사용자는 짧게 지시한다("ㅇㅇ 진행", "너가 직접 해"). 모호하면 추측하지 말고 한 번 묻되(예: "기타 비용 등록도 없애" → 기능 삭제로 확인), 결정된 일은 끝까지 진행한다. 사용자가 알 수 없는 내부 ID를 입력·표시시키지 않는다(ID 입력칸·ID 열을 모두 제거했다).
+- **UI 변경은 실제 브라우저로 확인**한다(jsdom은 CSS 레이아웃을 못 잡는다). `tools/screenshot-guide/run.sh`로 화면을 캡처해 직접 열어 본다. 레이아웃·헤더 폭 문제(1280px/390px)를 이렇게 여러 번 잡았다.
+- 코디네이터는 메인 체크아웃(`/Users/joy/IdeaProjects/vibe-ai-team`, 항상 main)에서 작업하지 않는다. 구현은 `cost`·`sync`·`frontend` 작업공간에서 브랜치를 따서 하고 PR로 병합한다. 병합 후 브랜치·워커 터미널을 바로 정리한다.
+- **워커 사용법(현재 동작하는 경로)**: `worker-start --agent opencode --model ...`은 모델 선택을 검증하지 못해 거절된다. 대신 `orca terminal create --worktree path:<작업공간> --title <이름> --command 'OPENCODE_CONFIG=/Users/joy/.config/opencode/orca-worker.json opencode --model opencode/mimo-v2.6-flash-free'`로 터미널을 만들고 화면의 `Build · MiMo-V2.6-Flash Free` 줄을 확인한 뒤 `orca orchestration worker-start --spec "$(cat spec.md)" --terminal <handle> --worktree path:<작업공간> --json`으로 배정한다. 끝나면 `check --wait`로 `worker_done`을 받고, **워커 보고를 믿지 말고 diff를 읽고 검증 명령을 직접 다시 돌린 뒤** 커밋·PR·병합하고 `worker-release` + `orca terminal close`로 정리한다. 백엔드 워커는 슬롯 DB 1~3 중 배정, Master 검증은 슬롯 4.
+- 워커가 `Permission required` 프롬프트에서 멈추면(`worker-read`로 화면 확인) 프롬프트를 대신 누르지 말고 `orca-worker.json`에 좁은 allow 규칙만 추가한 뒤 새 터미널로 다시 배정한다(deny·유료 모델·비밀 파일은 건드리지 않는다). 이번에는 OpenCode 자체 임시 폴더(`/var/folders/**/opencode/**`)만 허용했다. 워커 spec에는 "JDK/Spring 내부를 javap로 파헤치지 않는다, 막히면 질문"을 넣는다.
+- 워커 spec은 `docs/worker-spec-template.md` 형식 + 범위 밖(spotlessApply 금지·슬롯 규칙·커밋 금지) + 검증 명령 복사. 빈 대기가 3번 이어지면 `worker-list`/`worker-read`로 실제 상태를 본다. 워커가 수정한 파일이 늘어나는지(`git status`)로도 진행을 확인할 수 있다.
+- `pnpm run format`은 쓰기가 아니라 검사 별칭이다. 포맷은 `pnpm exec prettier --write src`로 하고 커밋 전 `format:check`를 돌린다(#320에서 포맷 오류가 병합된 적이 있다). Python 치환 스크립트로 파일을 고칠 때는 문자열이 prettier로 바뀌어 있을 수 있으니 치환 후 `assert`로 확인한다.
+- 시크릿·키·계좌번호는 출력·커밋하지 않는다. KIS는 조회 전용(주문 코드 금지, 사용자 결정). 실제 KIS 호출은 사용자 승인 후에만. direnv 우회 금지.
+
+### 남은 일
+- **사용자 확인 필요**: KIS 이용약관·환경변수·파이프라인, 첫 관리자 지정, ustockplus 공개 노출 약관, 프록시 뒤 운영 시 `APP_RATE_LIMIT_TRUST_FORWARDED` 설정.
+- **내가 할 수 있는 후보**(우선순위 낮음, 쓰면서 거슬리는 점이 나오면 그때): 대시보드 투자자 구역이 많아질 때 접기/가로 배치, 수익 확인 합계를 서버 합계로 교체(지금은 표 행 합), 가이드 전체 재독(스크린샷은 최신이나 본문 일부가 낡았을 수 있음).
+- 결정 완료(하지 않음): 예전 매도 데이터 변환.
+
+## 매도 입력 개편 (2026-10-02 저녁, Master 직접)
 
 사용자 요청으로 `/sales/register`를 고쳤다(백엔드 변경 없음).
 
