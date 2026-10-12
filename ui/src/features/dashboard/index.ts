@@ -14,3 +14,4 @@ export type {
   DashboardByPeriod,
   PeriodUnit,
 } from './types.ts'
+export { default as DashboardHome } from './DashboardHome.tsx'

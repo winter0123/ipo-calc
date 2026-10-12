@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useInvestors } from '@/entities/investor/index.ts'
 import {
   DashboardTabs,
+  DashboardHome,
   PeriodSelector,
   useDashboardTabs,
   useDashboardSummary,
@@ -100,6 +101,7 @@ export default function DashboardPage() {
         const sections = (investors ?? []).map((investor) => ({
           id: investor.id,
           name: investor.displayName,
+          hasSales: byId.has(investor.id),
           summary: byId.get(investor.id) ?? EMPTY_SUMMARY,
         }))
         return (
@@ -119,7 +121,11 @@ export default function DashboardPage() {
                 <h2 id={`dash-investor-${section.id}`} className={styles.sectionTitle}>
                   {section.name}
                 </h2>
-                <DashboardCardGroup summary={section.summary} />
+                {section.hasSales ? (
+                  <DashboardCardGroup summary={section.summary} />
+                ) : (
+                  <p className={styles.noSales}>아직 매도 기록이 없습니다.</p>
+                )}
               </section>
             ))}
           </div>
@@ -190,6 +196,7 @@ export default function DashboardPage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>대시보드</h1>
+      <DashboardHome />
       <DashboardTabs currentTab={currentTab} onTabChange={handleTabChange} />
       <div className={styles.resultsArea}>
         {hasPeriodSelector && (
