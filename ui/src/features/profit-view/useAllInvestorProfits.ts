@@ -10,10 +10,10 @@ export interface ProfitPeriod {
   to: string
 }
 
-// 둘 다 값이 있고 시작일이 종료일 이전일 때만 서버에 조회한다.
+// 둘 다 비우면 전체 기간, 둘 다 있으면 시작일이 종료일 이전일 때만 서버에 조회한다(입력 중인 한쪽만 빈 상태는 조회하지 않는다).
 function toQueryablePeriod(period: ProfitPeriod | undefined): ProfitPeriod | undefined {
   if (period === undefined) return undefined
-  if (period.from === '' || period.to === '') return undefined
+  if ((period.from === '') !== (period.to === '')) return undefined
   if (period.from > period.to) return undefined
   return period
 }
@@ -26,7 +26,11 @@ export function useAllInvestorProfits(
   const queryPeriod = toQueryablePeriod(period)
   const results = useQueries({
     queries: investors.map((investor) => ({
-      queryKey: profitKeys.investor(investor.id, queryPeriod?.from, queryPeriod?.to),
+      queryKey: profitKeys.investor(
+        investor.id,
+        queryPeriod?.from || undefined,
+        queryPeriod?.to || undefined,
+      ),
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         getInvestorProfits(investor.id, queryPeriod, signal),
       enabled: queryPeriod !== undefined,

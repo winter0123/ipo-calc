@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -167,12 +168,13 @@ describe('ProfitViewPage', () => {
     expect(screen.queryByRole('button', { name: /^조회/ })).not.toBeInTheDocument()
     const rows = screen.getAllByRole('row')
     // 헤더, 9/22, 9/21, 합계
-    expect(rows[1]).toHaveTextContent('2026-09-22')
-    expect(rows[2]).toHaveTextContent('2026-09-21')
+    expect(rows[1]).toHaveTextContent('2026. 9. 22.')
+    expect(rows[2]).toHaveTextContent('2026. 9. 21.')
     expect(screen.getByText('366,000')).toBeInTheDocument()
-    expect(screen.getByText('3,200,000')).toBeInTheDocument()
+    expect(screen.getAllByText('3,200,000').length).toBeGreaterThan(0)
+    expect(screen.getByText('3,200,000원')).toBeInTheDocument()
     expect(screen.getAllByText('361,000').length).toBeGreaterThan(0)
-    expect(screen.getByText('353,000')).toBeInTheDocument()
+    expect(screen.getAllByText('353,000').length).toBeGreaterThan(0)
     expect(screen.getByRole('columnheader', { name: '실현손익' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: '최종수익금' })).toBeInTheDocument()
   })
@@ -200,7 +202,7 @@ describe('ProfitViewPage', () => {
     await fill(screen.getByLabelText('시작일'), '2026-09-22')
     await waitFor(() => {
       expect(screen.queryByText('366,000')).not.toBeInTheDocument()
-      expect(screen.getAllByText('1,200,000')).toHaveLength(2)
+      expect(screen.getAllByText('1,200,000').length).toBeGreaterThan(1)
     })
   })
 
@@ -209,7 +211,7 @@ describe('ProfitViewPage', () => {
     await waitFor(() => expect(screen.getByText('366,000')).toBeInTheDocument())
     await fill(screen.getByLabelText('시작일'), '2026-08-01')
     await fill(screen.getByLabelText('종료일'), '2026-08-31')
-    expect(await screen.findByText('매도 내역이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 기간에 매도 기록이 없습니다.')).toBeInTheDocument()
     await waitFor(() =>
       expect(profitPaths()).toContain('/investors/1/profits?from=2026-08-01&to=2026-08-31'),
     )
@@ -223,15 +225,51 @@ describe('ProfitViewPage', () => {
     await fill(screen.getByLabelText('종료일'), '2026-08-01')
 
     expect(screen.getByRole('alert')).toHaveTextContent('시작일이 종료일보다 늦습니다.')
-    expect(screen.getByText('매도 내역이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('이 기간에 매도 기록이 없습니다.')).toBeInTheDocument()
     expect(profitPaths()).toHaveLength(0)
   })
 
   it('현재 투자자의 매도만 보인다', async () => {
     localStorage.setItem('currentInvestorId', '2')
     renderPage()
-    expect(await screen.findByText('매도 내역이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 기간에 매도 기록이 없습니다.')).toBeInTheDocument()
     expect(screen.queryByText('366,000')).not.toBeInTheDocument()
+  })
+
+  it('매도가 없으면 매도 등록 링크가 보인다', async () => {
+    localStorage.setItem('currentInvestorId', '2')
+    renderPage()
+    expect(await screen.findByRole('link', { name: '매도 등록' })).toHaveAttribute(
+      'href',
+      '/sales/register',
+    )
+  })
+
+  it('기타비용 열이 없고 수익률 카드가 보인다', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('3,200,000원')).toBeInTheDocument())
+    expect(screen.queryByRole('columnheader', { name: '기타비용' })).not.toBeInTheDocument()
+    // 최종수익금 353,000 / 취득금액 2,400,000
+    expect(screen.getByText('14.71%')).toBeInTheDocument()
+  })
+
+  it('프리셋: 지난 달·올해·전체가 기간을 바꾸고 선택 상태를 보여 준다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    expect(screen.getByRole('button', { name: '이번 달' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: '지난 달' }))
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-08-01')
+    expect(screen.getByLabelText('종료일')).toHaveValue('2026-08-31')
+    expect(screen.getByRole('button', { name: '지난 달' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '이번 달' })).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByRole('button', { name: '올해' }))
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-01-01')
+
+    await user.click(screen.getByRole('button', { name: '전체' }))
+    expect(screen.getByLabelText('시작일')).toHaveValue('')
+    await waitFor(() => expect(profitPaths()).toContain('/investors/1/profits'))
   })
 
   it('조회 실패 시 오류 메시지가 보인다', async () => {
