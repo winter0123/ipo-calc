@@ -1,0 +1,64 @@
+import { Link } from 'react-router-dom'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
+import { useInvestmentHistory } from '@/entities/subscription/index.ts'
+import styles from './DashboardHome.module.css'
+
+export default function DashboardTodo() {
+  const { current, isLoading: investorLoading } = useCurrentInvestor()
+  const { data, isLoading, error } = useInvestmentHistory(
+    // ponytail: 서버 size 상한 100건까지만 본다. 청약이 100건을 넘으면 페이지를 이어 읽거나 서버에 할 일 API를 둔다.
+    current ? { investorId: current.id, size: 100 } : {},
+    { enabled: !!current },
+  )
+  const items = data?.content ?? []
+  const needAllocation = items.filter((i) => i.allocation === null)
+  const needSale = items.filter((i) => i.allocation !== null && (i.remainingQuantity ?? 0) > 0)
+
+  const renderBody = () => {
+    if (investorLoading || (current && isLoading))
+      return <p className={styles.muted}>불러오는 중...</p>
+    if (!current)
+      return <p className={styles.muted}>상단에서 투자자를 선택하면 할 일을 보여 드립니다.</p>
+    if (error) {
+      return (
+        <p className={styles.error} role="alert">
+          할 일을 불러오는 데 실패했습니다.
+        </p>
+      )
+    }
+    if (needAllocation.length === 0 && needSale.length === 0) {
+      return <p className={styles.muted}>처리할 일이 없습니다.</p>
+    }
+    return (
+      <ul className={styles.list}>
+        {needAllocation.map((i) => (
+          <li key={`a-${i.id}`} className={styles.row}>
+            <span>
+              {i.ipoName ?? '공모주'} · 배정 결과를 입력하세요 (
+              {new Date(i.subscribedAt).toLocaleDateString('ko-KR')} 청약)
+            </span>
+            <Link to={`/allocations/register?subscriptionId=${i.id}`}>배정 입력</Link>
+          </li>
+        ))}
+        {needSale.map((i) => (
+          <li key={`s-${i.id}`} className={styles.row}>
+            <span>
+              {i.ipoName ?? '공모주'} · 아직 안 판 수량{' '}
+              {(i.remainingQuantity ?? 0).toLocaleString()}주
+            </span>
+            <Link to={`/sales/register?subscriptionId=${i.id}`}>매도 등록</Link>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <section aria-labelledby="dash-todo" className={styles.card}>
+      <h2 id="dash-todo" className={styles.title}>
+        할 일
+      </h2>
+      {renderBody()}
+    </section>
+  )
+}

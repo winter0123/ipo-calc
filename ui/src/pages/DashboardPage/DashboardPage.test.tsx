@@ -46,6 +46,9 @@ vi.mock('@/entities/investor/useInvestors.ts')
 vi.mock('@/features/dashboard/useDashboardBySecuritiesFirm.ts')
 vi.mock('@/features/dashboard/useDashboardByPeriod.ts')
 vi.mock('@/features/dashboard/useDashboardTabs.ts')
+vi.mock('@/features/dashboard/DashboardHome.tsx', () => ({
+  default: () => <div data-testid="dashboard-home" />,
+}))
 vi.mock('@/features/dashboard/PeriodSelector/PeriodSelector.tsx', () => ({
   default: function MockPeriodSelector(props: {
     unit: string
@@ -233,6 +236,9 @@ describe('DashboardPage', () => {
 
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     expect(headings).toEqual(['종합', '홍길동', '김철수'])
+    // 매도 기록이 없는 투자자는 큰 카드 대신 한 줄 요약
+    expect(screen.getByText('아직 매도 기록이 없습니다.')).toBeInTheDocument()
+    expect(screen.getAllByText('총 투자금')).toHaveLength(2)
   })
 
   it('로딩 상태를 표시함', async () => {
