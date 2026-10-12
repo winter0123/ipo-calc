@@ -7,11 +7,36 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 const pad = (n: number) => String(n).padStart(2, '0')
 const toDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
+const PRESETS = [
+  {
+    label: '이번 달',
+    period: () => {
+      const t = new Date()
+      return { from: toDay(new Date(t.getFullYear(), t.getMonth(), 1)), to: toDay(t) }
+    },
+  },
+  {
+    label: '지난 달',
+    period: () => {
+      const t = new Date()
+      return {
+        from: toDay(new Date(t.getFullYear(), t.getMonth() - 1, 1)),
+        to: toDay(new Date(t.getFullYear(), t.getMonth(), 0)),
+      }
+    },
+  },
+  {
+    label: '올해',
+    period: () => {
+      const t = new Date()
+      return { from: toDay(new Date(t.getFullYear(), 0, 1)), to: toDay(t) }
+    },
+  },
+  { label: '전체', period: () => ({ from: '', to: '' }) },
+]
+
 // 접속 시점 기준 이번 달 1일 ~ 오늘
-function defaultPeriod() {
-  const today = new Date()
-  return { from: toDay(new Date(today.getFullYear(), today.getMonth(), 1)), to: toDay(today) }
-}
+const defaultPeriod = PRESETS[0].period
 
 export default function ProfitViewPage() {
   const [period, setPeriod] = useState(defaultPeriod)
@@ -53,13 +78,21 @@ export default function ProfitViewPage() {
               onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
             />
           </div>
-          <button
-            type="button"
-            className={styles.searchButton}
-            onClick={() => setPeriod(defaultPeriod())}
-          >
-            이번 달
-          </button>
+          {PRESETS.map((preset) => {
+            const target = preset.period()
+            const selected = target.from === period.from && target.to === period.to
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                className={selected ? styles.searchButton : styles.presetButton}
+                aria-pressed={selected}
+                onClick={() => setPeriod(target)}
+              >
+                {preset.label}
+              </button>
+            )
+          })}
         </div>
 
         {periodInvalid && (

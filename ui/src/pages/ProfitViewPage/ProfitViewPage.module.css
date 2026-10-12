@@ -47,6 +47,18 @@
   white-space: nowrap;
 }
 
+.presetButton {
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--surface);
+  color: var(--link);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .searchButton:hover:not(:disabled) {
   background-color: var(--primary-hover);
 }
