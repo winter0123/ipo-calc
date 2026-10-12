@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout/MainLayout.tsx'
+import RootRedirect from './layouts/MainLayout/RootRedirect.tsx'
 
 const LoginPage = lazy(() => import('../pages/LoginPage/LoginPage.tsx'))
 const SignupPage = lazy(() => import('../pages/SignupPage/SignupPage.tsx'))
@@ -36,7 +37,7 @@ function App() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<div>Hello</div>} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/investors/register" element={<InvestorRegisterPage />} />

@@ -909,6 +909,10 @@ async function scenario12(browser) {
 
     await page
       .getByRole('navigation', { name: '주요 메뉴' })
+      .getByRole('button', { name: '설정' })
+      .click()
+    await page
+      .getByRole('navigation', { name: '주요 메뉴' })
       .getByRole('link', { name: '증권사 연동' })
       .click()
     await page.getByRole('heading', { name: '증권사 연동' }).waitFor()
@@ -984,6 +988,10 @@ async function scenario13(browser) {
     const attempt = await login(page, adminEmail, PASSWORD)
     if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
     // 관리자에게만 헤더에 `가입 승인` 링크가 보인다.
+    await page
+      .getByRole('navigation', { name: '주요 메뉴' })
+      .getByRole('button', { name: '관리자' })
+      .click()
     await page
       .getByRole('navigation', { name: '주요 메뉴' })
       .getByRole('link', { name: '가입 승인' })

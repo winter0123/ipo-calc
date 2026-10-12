@@ -75,7 +75,6 @@
 }
 
 .link,
-.nav summary,
 .logout {
   position: relative;
   display: inline-flex;
@@ -96,18 +95,12 @@
   font-family: inherit;
 }
 
-.nav summary::-webkit-details-marker {
-  display: none;
-}
-
 .link:hover,
-.nav summary:hover,
 .logout:hover {
   background: rgba(255, 255, 255, 0.45);
 }
 
 .link:focus-visible,
-.nav summary:focus-visible,
 .logout:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
@@ -128,9 +121,13 @@
   background: var(--white);
 }
 
-.more {
+.group {
   position: relative;
   display: flex;
+}
+
+.groupTitle {
+  display: none;
 }
 
 .morePanel {
@@ -148,12 +145,22 @@
   box-shadow: var(--shadow-pop);
 }
 
+/* display: flex가 hidden 속성을 덮어쓰지 않게 한다(모바일은 아래 미디어 쿼리에서 다시 펼친다) */
+.morePanel[hidden] {
+  display: none;
+}
+
 .moreLink {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--ink);
   font-size: 15px;
   text-decoration: none;
+}
+
+.moreLinkActive {
+  font-weight: 700;
+  background: var(--surface-sea);
 }
 
 .moreLink:hover {
@@ -231,7 +238,6 @@
   }
 
   .link,
-  .nav summary,
   .logout {
     height: 48px;
     padding: 0 var(--space-3);
@@ -239,7 +245,6 @@
   }
 
   .link:hover,
-  .nav summary:hover,
   .logout:hover {
     background: var(--surface-sea);
   }
@@ -251,11 +256,38 @@
     color: var(--ink);
   }
 
-  .morePanel {
+  /* 모바일: 그룹 버튼 대신 소제목, 목록은 항상 펼침 */
+  .group {
+    flex-direction: column;
+  }
+
+  .group > button {
+    display: none;
+  }
+
+  .groupTitle {
+    display: block;
+    padding: var(--space-3) var(--space-3) var(--space-1);
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .morePanel,
+  .morePanel[hidden] {
+    display: flex;
     position: static;
     min-width: 0;
     margin-bottom: var(--space-2);
+    padding: 0;
+    border: 0;
     box-shadow: none;
+  }
+
+  .moreLink {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .main {
