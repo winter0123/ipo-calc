@@ -1,25 +1,25 @@
 import styles from './ReferenceQuantity.module.css'
 
 interface ReferenceQuantityProps {
+  ipoName: string | null
+  subscribedAt: string
   quantity: number
 }
 
-export default function ReferenceQuantity({ quantity }: ReferenceQuantityProps) {
+/** 배정을 입력할 청약을 공모주 이름·청약일·청약수량으로 알려 준다(읽기 전용 글, 입력칸 아님). */
+export default function ReferenceQuantity({
+  ipoName,
+  subscribedAt,
+  quantity,
+}: ReferenceQuantityProps) {
+  const [y, m, d] = subscribedAt.slice(0, 10).split('-').map(Number)
   return (
-    <div className={styles.container}>
-      <label htmlFor="referenceQuantity" className={styles.label}>
-        청약수량 (참고)
-      </label>
-      <input
-        id="referenceQuantity"
-        type="number"
-        value={quantity}
-        readOnly
-        disabled
-        aria-readonly="true"
-        className={styles.input}
-      />
-      <span className={styles.unit}>주</span>
-    </div>
+    <p className={styles.container}>
+      <strong>{ipoName ?? '공모주'}</strong>
+      <span>
+        청약일 {new Date(y, m - 1, d).toLocaleDateString('ko-KR')} · 청약수량{' '}
+        {quantity.toLocaleString('ko-KR')}주
+      </span>
+    </p>
   )
 }

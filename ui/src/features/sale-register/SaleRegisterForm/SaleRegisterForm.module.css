@@ -115,3 +115,12 @@
 .negative {
   color: var(--danger);
 }
+
+.help {
+  margin-top: var(--space-1);
+}
+
+.help summary {
+  cursor: pointer;
+  color: var(--link);
+}

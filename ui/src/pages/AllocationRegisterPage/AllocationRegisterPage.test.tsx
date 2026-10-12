@@ -65,8 +65,7 @@ describe('AllocationRegisterPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('배정 등록')).toBeInTheDocument()
-      expect(screen.getByText('청약수량 (참고)')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('100')).toBeInTheDocument()
+      expect(screen.getByText(/청약수량 100주/)).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })

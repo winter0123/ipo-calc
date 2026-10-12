@@ -1,10 +1,12 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
+import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import styles from './SaleRegisterForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import {
@@ -29,11 +31,17 @@ interface SaleFormValues {
 }
 
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`
+const formatDate = (value: string) => {
+  const [y, m, d] = value.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('ko-KR')
+}
 const isNum = (value: unknown): value is number => typeof value === 'number' && !Number.isNaN(value)
 
 export default function SaleRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
-  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | undefined>()
+  // 사용자가 청약을 직접 고르기 전(null)에는 ?subscriptionId=<id>로 들어온 청약을 쓴다.
+  const [pickedSubscriptionId, setPickedSubscriptionId] = useState<number | undefined | null>(null)
+  const presetSubscriptionId = Number(useSearchParams()[0].get('subscriptionId')) || undefined
   // 세금 및 기타 수수료와 실현손익 중 사용자가 마지막으로 고친 쪽(다른 쪽은 공식으로 계산한다)
   const [lastEdited, setLastEdited] = useState<'fees' | 'profit'>('fees')
   // 기본값을 이미 넣은 청약(같은 청약에서 사용자의 입력을 덮어쓰지 않는다)
@@ -47,6 +55,14 @@ export default function SaleRegisterForm() {
     selectedInvestorId ? { investorId: selectedInvestorId } : {},
     { enabled: !!selectedInvestorId },
   )
+
+  // 현재 투자자의 청약이 아니면 미리 선택을 무시한다.
+  const selectedSubscriptionId =
+    pickedSubscriptionId !== null
+      ? pickedSubscriptionId
+      : subscriptionHistory?.content.some((item) => item.id === presetSubscriptionId)
+        ? presetSubscriptionId
+        : undefined
 
   const { data: allocationData, isLoading: allocationLoading } = useInvestmentHistoryDetail(
     selectedSubscriptionId ?? null,
@@ -150,7 +166,7 @@ export default function SaleRegisterForm() {
 
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value ? Number(e.target.value) : undefined
-    setSelectedSubscriptionId(id)
+    setPickedSubscriptionId(id)
     clearSaleFields()
   }
 
@@ -197,7 +213,7 @@ export default function SaleRegisterForm() {
           <option value="">청약 선택</option>
           {subscriptions.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.ipoName} - {item.subscribedAt}
+              {item.ipoName ?? '이름 없는 공모주'} · {formatDate(item.subscribedAt)}
             </option>
           ))}
         </select>
@@ -212,37 +228,28 @@ export default function SaleRegisterForm() {
         </div>
       )}
 
-      <div className={styles.field}>
-        <label htmlFor="allocationId">배정</label>
-        <select
-          id="allocationId"
-          aria-invalid={!!errors.allocationId}
-          aria-describedby={errors.allocationId ? 'allocationId-error' : undefined}
-          {...register('allocationId', {
-            required: '배정을 선택해 주세요.',
-            valueAsNumber: true,
-          })}
-          disabled={isPending || !selectedSubscriptionId}
-        >
-          <option value="">배정 선택</option>
-          {allocationData?.allocation ? (
-            <option key={allocationData.allocation.id} value={allocationData.allocation.id}>
-              배정 #{allocationData.allocation.id} ({allocationData.allocation.allocatedQuantity}주)
-            </option>
-          ) : null}
-        </select>
-        {errors.allocationId && (
-          <span id="allocationId-error" className={styles.error} aria-live="polite">
-            {String(errors.allocationId.message)}
-          </span>
-        )}
-      </div>
+      {/* 청약당 배정은 하나뿐이라 고르게 하지 않고 자동으로 연결한다. */}
+      <input type="hidden" {...register('allocationId', { required: true, valueAsNumber: true })} />
+      {selectedSubscriptionId && allocationData && !allocationData.allocation && (
+        <p className={styles.error} role="alert">
+          이 청약은 아직 배정 입력 전입니다. 배정을 먼저 등록해 주세요.{' '}
+          <Link to={`/allocations/register?subscriptionId=${selectedSubscriptionId}`}>
+            배정 등록하기
+          </Link>
+        </p>
+      )}
+      {errors.allocationId && !(selectedSubscriptionId && allocationData?.allocation) && (
+        <p className={styles.error} role="alert">
+          매도할 청약을 선택해 주세요.
+        </p>
+      )}
 
       <div className={styles.field}>
         <label htmlFor="quantity">매도수량</label>
         <input
           id="quantity"
           type="number"
+          inputMode="numeric"
           aria-invalid={!!errors.quantity}
           aria-describedby={errors.quantity ? 'quantity-error' : 'quantity-hint'}
           {...register('quantity', {
@@ -259,25 +266,23 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="quantity-hint" className={styles.hint}>
-            배정받은 수량(이미 판 수량이 있으면 남은 수량)이 먼저 들어갑니다. 실제 판 수량으로
-            고치세요.
+            남은 수량이 먼저 들어갑니다. 실제 판 수량으로 고치세요.
           </span>
         )}
       </div>
 
       <div className={styles.field}>
         <label htmlFor="price">매도단가</label>
-        <input
+        <MoneyInput
           id="price"
-          type="number"
+          control={control}
+          name="price"
           aria-invalid={!!errors.price}
           aria-describedby={errors.price ? 'price-error' : 'price-hint'}
-          {...register('price', {
-            required: '매도단가를 입력해 주세요.',
-            valueAsNumber: true,
-            validate: (v) => (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.',
-            onChange: () => syncLinked(),
-          })}
+          requiredMessage="매도단가를 입력해 주세요."
+          validate={(v) => (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.'}
+          onValueChange={() => syncLinked()}
+          allowNegative // 음수를 입력하면 지우지 않고 검증 메시지로 알린다
           disabled={isPending}
         />
         {errors.price ? (
@@ -287,8 +292,8 @@ export default function SaleRegisterForm() {
         ) : (
           <span id="price-hint" className={styles.hint}>
             {ipoPrice != null
-              ? `공모가 ${won(ipoPrice)}이 먼저 들어갑니다. 실제 매도 단가로 고치세요.`
-              : '공모가를 알 수 없어 비어 있습니다. 실제 매도 단가를 입력하세요.'}
+              ? `공모가 ${won(ipoPrice)}이 먼저 들어갑니다.`
+              : '공모가를 알 수 없어 비어 있습니다.'}
           </span>
         )}
       </div>
@@ -311,26 +316,25 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="saleDate-hint" className={styles.hint}>
-            해당 공모주의 상장일이 먼저 들어갑니다. 실제 매도일로 고칠 수 있습니다.
+            상장일이 먼저 들어갑니다.
           </span>
         )}
       </div>
 
       <div className={styles.field}>
         <label htmlFor="otherFees">세금 및 기타 수수료 (선택)</label>
-        <input
+        <MoneyInput
           id="otherFees"
-          type="number"
+          control={control}
+          name="otherFees"
           aria-invalid={!!errors.otherFees}
           aria-describedby={errors.otherFees ? 'otherFees-error' : 'otherFees-hint'}
-          {...register('otherFees', {
-            valueAsNumber: true,
-            validate: validateNonNegativeInteger,
-            onChange: () => {
-              setLastEdited('fees')
-              syncLinked({ source: 'fees' })
-            },
-          })}
+          validate={validateNonNegativeInteger}
+          onValueChange={() => {
+            setLastEdited('fees')
+            syncLinked({ source: 'fees' })
+          }}
+          allowNegative
           disabled={isPending}
         />
         {errors.otherFees ? (
@@ -339,43 +343,40 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="otherFees-hint" className={styles.hint}>
-            증권사 매도 내역을 불러오면 자동으로 채워집니다. 직접 등록할 때는 비워 두고 아래
-            실현손익만 넣어도 됩니다.
+            비워 두고 아래 실현손익만 넣어도 됩니다.
           </span>
         )}
       </div>
 
       <div className={styles.field}>
         <label htmlFor="realizedProfit">실현손익</label>
-        <input
+        <MoneyInput
           id="realizedProfit"
-          type="number"
+          control={control}
+          name="realizedProfit"
           aria-invalid={!!errors.realizedProfit}
           aria-describedby={errors.realizedProfit ? 'realizedProfit-error' : 'realizedProfit-hint'}
-          {...register('realizedProfit', {
-            required: '실현손익을 입력해 주세요.',
-            valueAsNumber: true,
-            validate: (v) => {
-              if (!isNum(v) || !Number.isInteger(v)) return '정수를 입력해 주세요.'
-              if (lastEdited !== 'profit') return true
-              const { price, quantity, otherFees } = getValues()
-              if (ipoPrice == null) {
-                return (
-                  isNum(otherFees) ||
-                  '공모가를 알 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.'
-                )
-              }
-              if (!isNum(price) || !isNum(quantity)) return true
+          requiredMessage="실현손익을 입력해 주세요."
+          validate={(v) => {
+            if (!isNum(v) || !Number.isInteger(v)) return '정수를 입력해 주세요.'
+            if (lastEdited !== 'profit') return true
+            const { price, quantity, otherFees } = getValues()
+            if (ipoPrice == null) {
               return (
-                otherFeesFromRealizedProfit(price, quantity, ipoPrice, v) >= 0 ||
-                '실현손익이 (매도단가×수량 − 공모가×수량)보다 클 수 없습니다.'
+                isNum(otherFees) || '공모가를 알 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.'
               )
-            },
-            onChange: () => {
-              setLastEdited('profit')
-              syncLinked({ source: 'profit' })
-            },
-          })}
+            }
+            if (!isNum(price) || !isNum(quantity)) return true
+            return (
+              otherFeesFromRealizedProfit(price, quantity, ipoPrice, v) >= 0 ||
+              '실현손익이 (매도단가×수량 − 공모가×수량)보다 클 수 없습니다.'
+            )
+          }}
+          onValueChange={() => {
+            setLastEdited('profit')
+            syncLinked({ source: 'profit' })
+          }}
+          allowNegative
           disabled={isPending}
         />
         {errors.realizedProfit ? (
@@ -384,24 +385,27 @@ export default function SaleRegisterForm() {
           </span>
         ) : (
           <span id="realizedProfit-hint" className={styles.hint}>
-            증권사 앱에 표시되는 실현손익을 넣으세요. 계산식은 매도단가×수량 − 공모가×수량 − 세금 및
-            기타 수수료이며, 공모주수수료는 빼지 않습니다.
+            증권사 앱의 실현손익을 넣으세요.
             {grossValue !== undefined && ` (수수료 반영 전 차익 ${won(grossValue)})`}
+            <details className={styles.help}>
+              <summary>계산식 보기</summary>
+              실현손익 = 매도단가×수량 − 공모가×수량 − 세금 및 기타 수수료. 공모주수수료는 빼지
+              않습니다.
+            </details>
           </span>
         )}
       </div>
 
       <div className={styles.field}>
         <label htmlFor="ipoFee">공모주수수료</label>
-        <input
+        <MoneyInput
           id="ipoFee"
-          type="number"
+          control={control}
+          name="ipoFee"
           aria-invalid={!!errors.ipoFee}
           aria-describedby={errors.ipoFee ? 'ipoFee-error' : 'ipoFee-hint'}
-          {...register('ipoFee', {
-            valueAsNumber: true,
-            validate: validateNonNegativeInteger,
-          })}
+          validate={validateNonNegativeInteger}
+          allowNegative
           disabled={isPending}
         />
         {errors.ipoFee ? (
@@ -411,15 +415,14 @@ export default function SaleRegisterForm() {
         ) : (
           <span id="ipoFee-hint" className={styles.hint}>
             {hasPriorSales
-              ? '이미 매도 기록이 있어 0원으로 시작합니다(공모주수수료는 배정 1건당 한 번). '
-              : `기본 ${won(DEFAULT_IPO_FEE)}입니다. 증권사별로 다르면 고치세요. `}
-            실현손익에는 포함하지 않고 최종수익금에서만 뺍니다.
+              ? '이미 매도 기록이 있어 0원으로 시작합니다(배정 1건당 한 번).'
+              : `기본 ${won(DEFAULT_IPO_FEE)}입니다. 증권사별로 다르면 고치세요.`}
           </span>
         )}
       </div>
 
       <div className={styles.summary} role="group" aria-label="수익 요약">
-        <span className={styles.summaryLabel}>최종수익금 (실현손익 − 공모주수수료)</span>
+        <span className={styles.summaryLabel}>최종수익금</span>
         <output
           htmlFor="realizedProfit ipoFee"
           aria-live="polite"

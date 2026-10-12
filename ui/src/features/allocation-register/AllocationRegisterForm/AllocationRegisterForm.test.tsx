@@ -62,8 +62,7 @@ function renderForm() {
 
 async function waitForDetailLoaded() {
   await waitFor(() => {
-    expect(screen.getByText('청약수량 (참고)')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('100')).toBeInTheDocument()
+    expect(screen.getByText(/청약수량 100주/)).toBeInTheDocument()
   })
 }
 
@@ -100,11 +99,9 @@ describe('AllocationRegisterForm', () => {
 
     await waitForDetailLoaded()
 
-    // ReferenceQuantity는 읽기 전용으로 표시됨
-    const referenceInput = screen.getByDisplayValue('100')
-    expect(referenceInput).toBeDisabled()
-    expect(referenceInput).toHaveAttribute('readOnly')
-    expect(referenceInput).toHaveAttribute('aria-readonly', 'true')
+    // 청약 정보는 입력칸이 아니라 글로만 보인다(내부 ID 없이 공모주 이름·청약일·수량)
+    expect(screen.queryByDisplayValue('100')).not.toBeInTheDocument()
+    expect(screen.getByText(/청약일 2026\. 9\. 1\./)).toBeInTheDocument()
   })
 
   it('정상 배정 등록 성공 시 /subscriptions로 이동 (AC-013)', async () => {
@@ -163,6 +160,7 @@ describe('AllocationRegisterForm', () => {
     renderForm()
     await waitForDetailLoaded()
 
+    await userEvent.clear(screen.getByLabelText('배정일'))
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -367,5 +365,15 @@ describe('AllocationRegisterForm', () => {
     expect(body.allocationPrice).toBeNull()
     // textarea 비움 시 빈 문자열로 전송됨
     expect(body.note).toBe('')
+  })
+
+  it('배정일은 오늘로 채워져 있고 배정단가는 천 단위 쉼표로 보인다', async () => {
+    mockSubscriptionDetailFetch()
+    renderForm()
+    await waitForDetailLoaded()
+    expect(screen.getByLabelText('배정일')).toHaveValue(new Date().toLocaleDateString('sv-SE'))
+    await fill(screen.getByLabelText('배정단가 (선택)'), '39000')
+    expect(screen.getByLabelText('배정단가 (선택)')).toHaveDisplayValue('39,000')
+    expect(screen.getByLabelText('배정단가 (선택)')).toHaveAttribute('inputmode', 'numeric')
   })
 })

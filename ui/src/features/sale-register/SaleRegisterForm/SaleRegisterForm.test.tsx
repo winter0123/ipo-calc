@@ -123,13 +123,13 @@ function defaultMock(overrides: { ipo?: unknown; detail?: unknown } = {}) {
   })
 }
 
-function renderForm() {
+function renderForm(url = '/sales/register') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/sales/register']}>
+      <MemoryRouter initialEntries={[url]}>
         <SaleRegisterForm />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -147,18 +147,16 @@ async function setupForm() {
   })
   await fill(screen.getByLabelText('청약'), '1')
   await waitFor(() => {
-    expect(screen.getByText('남은 수량 (참고)')).toBeInTheDocument()
+    expect(screen.getByText('남은 수량')).toBeInTheDocument()
   })
   await waitFor(() => {
-    expect(screen.getByLabelText('배정')).not.toBeDisabled()
-  })
-  await fill(screen.getByLabelText('배정'), '1')
-  await waitFor(() => {
-    expect(screen.getByLabelText('매도단가')).toHaveValue(10000)
+    expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('10,000')
   })
 }
 
-const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value
+// 금액 칸은 천 단위 쉼표가 붙어 보이므로 숫자만 비교한다(표시 형식은 별도 테스트).
+const value = (label: string) =>
+  (screen.getByLabelText(label) as HTMLInputElement).value.replaceAll(',', '')
 
 describe('SaleRegisterForm', () => {
   beforeEach(() => {
@@ -177,7 +175,7 @@ describe('SaleRegisterForm', () => {
 
   it('참고 표시가 렌더링됨 (AC-018)', async () => {
     await setupForm()
-    expect(screen.getByText('남은 수량 (참고)')).toBeInTheDocument()
+    expect(screen.getByText('남은 수량')).toBeInTheDocument()
   })
 
   describe('기본값 자동 입력', () => {
@@ -246,7 +244,61 @@ describe('SaleRegisterForm', () => {
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
       await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
       await fill(screen.getByLabelText('청약'), '1')
-      await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveValue(9500))
+      await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('9,500'))
+    })
+  })
+
+  describe('입력 편의', () => {
+    it('청약 선택지는 공모주 이름과 한국식 날짜만 보이고, 배정 선택 칸은 없다', async () => {
+      renderForm()
+      expect(
+        await screen.findByRole('option', { name: '카카오뱅크 · 2026. 9. 1.' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByLabelText('배정')).not.toBeInTheDocument()
+      expect(screen.queryByText(/배정 #/)).not.toBeInTheDocument()
+    })
+
+    it('금액은 천 단위 쉼표로 보이고 저장 값은 숫자다', async () => {
+      const spy = vi.fn().mockResolvedValue({ id: 1 })
+      mutationFnMock = spy
+      await setupForm()
+      expect(screen.getByLabelText('매도단가')).toHaveAttribute('inputmode', 'numeric')
+      await fill(screen.getByLabelText('매도단가'), '15000')
+      expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000')
+      await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+      await waitFor(() => expect(spy).toHaveBeenCalled())
+      expect(spy.mock.calls[0][0]).toMatchObject({ price: 15000, amount: 450000 })
+    })
+
+    it('실현손익은 음수도 입력할 수 있다', async () => {
+      await setupForm()
+      await fill(screen.getByLabelText('매도단가'), '9000')
+      expect(screen.getByLabelText('실현손익')).toHaveDisplayValue('-30,000')
+    })
+
+    it('계산식 설명은 접혀 있다가 펼치면 보인다', async () => {
+      await setupForm()
+      expect(screen.getByText('계산식 보기')).toBeInTheDocument()
+      expect(screen.getByText(/공모주수수료는 빼지/).closest('details')).not.toHaveAttribute('open')
+    })
+
+    it('?subscriptionId로 들어오면 그 청약이 미리 선택된다', async () => {
+      renderForm('/sales/register?subscriptionId=1')
+      await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('10,000'))
+      expect(screen.getByLabelText('청약')).toHaveValue('1')
+    })
+
+    it('현재 투자자의 청약이 아니면 미리 선택을 무시한다', async () => {
+      renderForm('/sales/register?subscriptionId=999')
+      await screen.findByRole('option', { name: /카카오뱅크/ })
+      expect(screen.getByLabelText('청약')).toHaveValue('')
+    })
+
+    it('배정이 아직 없는 청약이면 배정 등록으로 안내한다', async () => {
+      defaultMock({ detail: { ...ALLOCATION_DETAIL, allocation: null, remainingQuantity: null } })
+      renderForm('/sales/register?subscriptionId=1')
+      const link = await screen.findByRole('link', { name: '배정 등록하기' })
+      expect(link).toHaveAttribute('href', '/allocations/register?subscriptionId=1')
     })
   })
 
