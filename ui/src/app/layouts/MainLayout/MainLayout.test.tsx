@@ -76,11 +76,12 @@ describe('MainLayout', () => {
     expect(main).toContainElement(screen.getByTestId('child-content'))
   })
 
-  it('로그인한 계정에는 주요 메뉴에서 증권사 연동 화면으로 이동할 수 있음', async () => {
+  it('로그인한 계정에는 설정 메뉴에서 증권사 연동 화면으로 이동할 수 있음', async () => {
     loggedInAs('USER')
     renderLayout()
 
     const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
+    await userEvent.click(within(nav).getByRole('button', { name: '설정' }))
     expect(within(nav).getByRole('link', { name: '증권사 연동' })).toHaveAttribute(
       'href',
       '/broker-sync',
@@ -113,6 +114,7 @@ describe('MainLayout', () => {
     loggedInAs('ADMIN')
     renderLayout()
 
+    await userEvent.click(await screen.findByRole('button', { name: '관리자' }))
     expect(await screen.findByRole('link', { name: '가입 승인' })).toHaveAttribute(
       'href',
       '/admin/accounts',
@@ -126,7 +128,7 @@ describe('MainLayout', () => {
   it('일반 계정과 로그인 전에는 가입 승인 링크가 없음', async () => {
     loggedInAs('USER')
     const { unmount } = renderLayout()
-    await screen.findByRole('link', { name: '증권사 연동' })
+    await screen.findByRole('button', { name: '설정' })
     await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
     expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
@@ -137,6 +139,98 @@ describe('MainLayout', () => {
     await vi.waitFor(() => expect(vi.mocked(apiFetch).mock.calls.length).toBeGreaterThanOrEqual(2))
     expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
+  })
+
+  describe('드롭다운 메뉴', () => {
+    it('주요 메뉴는 5개, 그룹은 새로 기록·설정이며 관리자 그룹은 일반 계정에 없음', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
+      await screen.findByRole('button', { name: '설정' })
+      const names = within(nav)
+        .getAllByRole('link')
+        .map((a) => a.textContent)
+      expect(names).toEqual(['대시보드', '공모주 일정', '청약', '투자 내역', '수익 확인'])
+      expect(within(nav).getByRole('button', { name: '새로 기록' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+      expect(within(nav).queryByRole('button', { name: '관리자' })).not.toBeInTheDocument()
+    })
+
+    it('새로 기록을 열면 청약 등록·배정 입력·매도 등록 링크가 보임', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      await userEvent.click(await screen.findByRole('button', { name: '새로 기록' }))
+      expect(screen.getByRole('link', { name: '청약 등록' })).toHaveAttribute(
+        'href',
+        '/subscriptions/register',
+      )
+      expect(screen.getByRole('link', { name: '배정 입력' })).toHaveAttribute(
+        'href',
+        '/allocations/register',
+      )
+      expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+        'href',
+        '/sales/register',
+      )
+    })
+
+    it('Esc로 닫히고 버튼으로 포커스가 돌아감', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      const button = await screen.findByRole('button', { name: '설정' })
+      await userEvent.click(button)
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+      await userEvent.keyboard('{Escape}')
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+      expect(button).toHaveFocus()
+    })
+
+    it('바깥을 클릭하면 닫힘', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      const button = await screen.findByRole('button', { name: '설정' })
+      await userEvent.click(button)
+      await userEvent.click(screen.getByTestId('child-content'))
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('화살표 키로 열고 항목 사이를 이동함', async () => {
+      loggedInAs('USER')
+      renderLayout()
+
+      const button = await screen.findByRole('button', { name: '설정' })
+      button.focus()
+      await userEvent.keyboard('{ArrowDown}')
+      await waitFor(() => expect(screen.getByRole('link', { name: '투자자 추가' })).toHaveFocus())
+      await userEvent.keyboard('{ArrowDown}')
+      expect(screen.getByRole('link', { name: '증권사 연동' })).toHaveFocus()
+    })
+
+    it('하위 페이지에 있으면 부모 버튼도 현재 위치로 표시됨', async () => {
+      loggedInAs('USER')
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/broker-sync']}>
+            <Routes>
+              <Route element={<MainLayout />}>
+                <Route path="broker-sync" element={<TestChild />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      const button = await screen.findByRole('button', { name: '설정' })
+      expect(button.className).toMatch(/active/)
+      expect(screen.getByRole('button', { name: '새로 기록' }).className).not.toMatch(/active/)
+    })
   })
 
   it('스킵 링크가 존재하고 href="#main-content"를 가리킴', () => {

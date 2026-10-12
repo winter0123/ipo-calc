@@ -43,7 +43,7 @@ vi.mock('../pages/IpoCalendarPage/IpoCalendarPage.tsx', () => ({
 }))
 
 const ROUTES: Array<[string, string]> = [
-  ['/', 'Hello'],
+  ['/', 'IpoCalendarPage'],
   ['/login', 'LoginPage'],
   ['/signup', 'SignupPage'],
   ['/investors/register', 'InvestorRegisterPage'],

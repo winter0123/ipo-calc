@@ -4,23 +4,32 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
+import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
 import styles from './MainLayout.module.css'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: '대시보드' },
-  { to: '/investments', label: '투자 내역' },
-  { to: '/subscriptions', label: '청약' },
   { to: '/ipo-calendar', label: '공모주 일정' },
+  { to: '/subscriptions', label: '청약' },
+  { to: '/investments', label: '투자 내역' },
   { to: '/profits/view', label: '수익 확인' },
+]
+
+const RECORD_ITEMS = [
+  { to: '/subscriptions/register', label: '청약 등록' },
+  { to: '/allocations/register', label: '배정 입력' },
+  { to: '/sales/register', label: '매도 등록' },
+]
+
+const SETTINGS_ITEMS = [
+  { to: '/investors/register', label: '투자자 추가' },
   { to: '/broker-sync', label: '증권사 연동' },
 ]
 
-const REGISTER_ITEMS = [
-  { to: '/investors/register', label: '투자자' },
-  { to: '/subscriptions/register', label: '청약' },
-  { to: '/allocations/register', label: '배정' },
-  { to: '/sales/register', label: '매도' },
+const ADMIN_ITEMS = [
+  { to: '/admin/accounts', label: '가입 승인' },
+  { to: '/admin/ipos', label: '공모주 등록' },
 ]
 
 const GUEST_ITEMS = [
@@ -81,27 +90,12 @@ export default function MainLayout() {
                 </NavLink>
               ))}
               {currentAccount && (
-                <details key={pathname} className={styles.more}>
-                  <summary className={styles.link}>등록</summary>
-                  <div className={styles.morePanel}>
-                    {REGISTER_ITEMS.map((item) => (
-                      <NavLink key={item.to} to={item.to} className={styles.moreLink}>
-                        {item.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                </details>
-              )}
-              {currentAccount?.role === 'ADMIN' && (
                 <>
-                  <NavLink to="/admin/accounts" className={linkClass}>
-                    가입 승인
-                  </NavLink>
-                  <NavLink to="/admin/ipos" className={linkClass}>
-                    공모주 등록
-                  </NavLink>
+                  <NavGroup label="새로 기록" items={RECORD_ITEMS} />
+                  <NavGroup label="설정" items={SETTINGS_ITEMS} />
                 </>
               )}
+              {currentAccount?.role === 'ADMIN' && <NavGroup label="관리자" items={ADMIN_ITEMS} />}
               {currentAccount && (
                 <button
                   type="button"
