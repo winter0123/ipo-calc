@@ -509,3 +509,19 @@
     font-size: 13px;
   }
 }
+
+.registerLink {
+  margin-left: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.registerLink:hover {
+  background-color: var(--primary-hover);
+}

@@ -39,6 +39,10 @@ interface IpoCalendarProps {
   onVisibleTypesChange?: (next: Set<CalendarEventType>) => void
 }
 
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function getMonthDay(dateStr: string): { month: number; day: number } {
   const [, month, day] = dateStr.split('-').map(Number)
   return { month, day }
@@ -337,6 +341,15 @@ export default function IpoCalendar({
                     </span>
                   </>
                 </Link>
+                {event.type === 'SUBSCRIPTION' && event.endDate >= toDateKey(today) && (
+                  <Link
+                    to={`/subscriptions/register?ipoId=${event.ipoId}`}
+                    className={styles.registerLink}
+                    aria-label={`${event.companyName} 청약 등록`}
+                  >
+                    청약 등록
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

@@ -48,14 +48,18 @@ const stubFetch = (body: unknown, status = 200) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })))
 
 // /auth/me와 /ipos/7을 구분해 응답한다. account가 null이면 로그인 전(401)이다.
-const stubIpoAndAccount = (account: object | null) =>
+const OPEN_PERIOD = {
+  subscriptionStartDate: '2026-10-09T09:00:00Z',
+  subscriptionEndDate: '2026-10-12T17:00:00Z',
+}
+const stubIpoAndAccount = (account: object | null, overrides: Partial<Ipo> = OPEN_PERIOD) =>
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string) =>
       Promise.resolve(
         String(url).includes('/auth/me')
           ? new Response(JSON.stringify(account), { status: account ? 200 : 401 })
-          : new Response(JSON.stringify(makeIpo()), { status: 200 }),
+          : new Response(JSON.stringify(makeIpo(overrides)), { status: 200 }),
       ),
     ),
   )
@@ -242,8 +246,17 @@ describe('IpoDetailPage', () => {
     )
     expect(await screen.findByRole('link', { name: '청약 등록하기' })).toHaveAttribute(
       'href',
-      '/subscriptions/register',
+      '/subscriptions/register?ipoId=7',
     )
+  })
+
+  it('청약 기간이 끝났으면 청약 등록 링크가 보이지 않는다', async () => {
+    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }, {})
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
   })
 
   it('로그인 전에는 청약 등록 대신 로그인 링크가 보이고 돌아가기는 그대로다', async () => {

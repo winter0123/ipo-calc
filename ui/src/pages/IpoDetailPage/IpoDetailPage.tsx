@@ -70,6 +70,9 @@ export default function IpoDetailPage() {
   }
 
   const status = getStatus(ipo)
+  // 청약 기간이 끝나기 전(예정·진행 중)에만 등록 버튼을 보인다.
+  const canRegister = status.label === '청약 예정' || status.label === '청약 진행 중'
+  const registerPath = `/subscriptions/register?ipoId=${id}`
 
   if (isLoading) {
     return (
@@ -154,19 +157,16 @@ export default function IpoDetailPage() {
         <Link to="/ipo-calendar" className={styles.secondaryLink}>
           공모주 일정으로 돌아가기
         </Link>
-        {isGuest ? (
-          <Link
-            to="/login"
-            state={{ from: '/subscriptions/register' }}
-            className={styles.primaryLink}
-          >
-            로그인하고 청약 등록하기
-          </Link>
-        ) : (
-          <Link to="/subscriptions/register" className={styles.primaryLink}>
-            청약 등록하기
-          </Link>
-        )}
+        {canRegister &&
+          (isGuest ? (
+            <Link to="/login" state={{ from: registerPath }} className={styles.primaryLink}>
+              로그인하고 청약 등록하기
+            </Link>
+          ) : (
+            <Link to={registerPath} className={styles.primaryLink}>
+              청약 등록하기
+            </Link>
+          ))}
       </nav>
     </div>
   )

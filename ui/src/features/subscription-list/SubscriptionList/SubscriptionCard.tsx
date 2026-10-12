@@ -7,7 +7,9 @@ interface SubscriptionCardProps {
 }
 
 export default function SubscriptionCard({ item }: SubscriptionCardProps) {
-  const isAllocated = item.allocation !== null
+  const allocation = item.allocation
+  const isAllocated = allocation !== null
+  const remaining = item.remainingQuantity ?? 0
 
   return (
     <li className={styles.card}>
@@ -29,7 +31,25 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
           <dt>청약일</dt>
           <dd>{new Date(item.subscribedAt).toLocaleDateString('ko-KR')}</dd>
         </div>
+        {allocation && (
+          <>
+            <div className={styles.cardRow}>
+              <dt>배정 수량</dt>
+              <dd>{allocation.allocatedQuantity.toLocaleString()}주</dd>
+            </div>
+            <div className={styles.cardRow}>
+              <dt>남은 수량</dt>
+              <dd>{remaining.toLocaleString()}주</dd>
+            </div>
+          </>
+        )}
       </dl>
+      {isAllocated && remaining > 0 && (
+        <Link to={`/sales/register?subscriptionId=${item.id}`} className={styles.allocateButton}>
+          매도 등록
+        </Link>
+      )}
+      {isAllocated && remaining <= 0 && <span className={styles.badgeAllocated}>모두 매도</span>}
       {!isAllocated && (
         <Link
           to={`/allocations/register?subscriptionId=${item.id}`}

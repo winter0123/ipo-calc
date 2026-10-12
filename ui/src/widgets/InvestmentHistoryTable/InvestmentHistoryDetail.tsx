@@ -1,4 +1,6 @@
 import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
+import { Link } from 'react-router-dom'
+import { statusLabel } from './statusLabel.ts'
 import styles from './InvestmentHistoryDetail.module.css'
 
 function formatWon(value: number | null): string {
@@ -12,6 +14,13 @@ interface InvestmentHistoryDetailProps {
 
 export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentHistoryDetailProps) {
   const formattedDate = new Date(detail.subscribedAt).toLocaleDateString('ko-KR')
+
+  const nextAction =
+    detail.allocation === null
+      ? { label: '배정 입력', to: `/allocations/register?subscriptionId=${detail.id}` }
+      : (detail.remainingQuantity ?? 0) > 0
+        ? { label: '매도 등록', to: `/sales/register?subscriptionId=${detail.id}` }
+        : null
 
   return (
     <div className={styles.detail}>
@@ -45,7 +54,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
           <dd>{detail.securitiesFirmName ?? '-'}</dd>
         </div>
         <div className={styles.dlRow}>
-          <dt>IPO 고정가</dt>
+          <dt>공모가</dt>
           <dd>{formatWon(detail.ipoFixedPrice)}</dd>
         </div>
         <div className={styles.dlRow}>
@@ -54,22 +63,24 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
         <div className={styles.dlRow}>
           <dt>상태</dt>
-          <dd>{detail.subscriptionStatus}</dd>
+          <dd>{statusLabel(detail.subscriptionStatus)}</dd>
         </div>
         <div className={styles.dlRow}>
           <dt>잔여수량</dt>
-          <dd aria-readonly="true">{detail.remainingQuantity ?? '-'}</dd>
+          <dd aria-readonly="true">{detail.remainingQuantity ?? '배정 전'}</dd>
         </div>
       </dl>
+
+      {nextAction && (
+        <Link to={nextAction.to} className={styles.actionLink}>
+          {nextAction.label}
+        </Link>
+      )}
 
       {detail.allocation && (
         <div className={styles.nestedGroup}>
           <h3 className={styles.groupTitle}>배정 정보</h3>
           <dl className={styles.dl}>
-            <div className={styles.dlRow}>
-              <dt>배정 ID</dt>
-              <dd>{detail.allocation.id}</dd>
-            </div>
             <div className={styles.dlRow}>
               <dt>배정 수량</dt>
               <dd>{detail.allocation.allocatedQuantity}</dd>
@@ -84,7 +95,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
             </div>
             <div className={styles.dlRow}>
               <dt>배정 상태</dt>
-              <dd>{detail.allocation.allocationStatus}</dd>
+              <dd>{statusLabel(detail.allocation.allocationStatus)}</dd>
             </div>
           </dl>
         </div>
@@ -96,12 +107,10 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
           <table className={styles.salesTable}>
             <thead>
               <tr>
-                <th scope="col">매도 ID</th>
                 <th scope="col">수량</th>
                 <th scope="col">금액</th>
-                <th scope="col">수수료</th>
-                <th scope="col">세금</th>
-                <th scope="col">기타비용</th>
+                <th scope="col">공모주수수료</th>
+                <th scope="col">세금 및 기타</th>
                 <th scope="col">상태</th>
                 <th scope="col">매도일</th>
               </tr>
@@ -109,13 +118,11 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
             <tbody>
               {detail.sales.map((sale) => (
                 <tr key={sale.id}>
-                  <td>{sale.id}</td>
                   <td>{sale.quantity}</td>
                   <td>{formatWon(sale.amount)}</td>
                   <td>{formatWon(sale.fee)}</td>
                   <td>{formatWon(sale.tax)}</td>
-                  <td>{formatWon(sale.otherCost)}</td>
-                  <td>{sale.status}</td>
+                  <td>{statusLabel(sale.status)}</td>
                   <td>{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
                 </tr>
               ))}

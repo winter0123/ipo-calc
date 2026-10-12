@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   SubscriptionFilter,
   SubscriptionList,
@@ -39,7 +39,12 @@ export default function SubscriptionListPage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>청약 목록</h1>
+      <div className={styles.titleRow}>
+        <h1 className={styles.title}>청약 목록</h1>
+        <Link to="/subscriptions/register" className={styles.registerButton}>
+          새 청약 등록
+        </Link>
+      </div>
 
       <SubscriptionFilter value={filter} onChange={setFilter} />
 
