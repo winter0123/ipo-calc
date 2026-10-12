@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import InvestmentHistoryTable from './InvestmentHistoryTable.tsx'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
@@ -11,9 +12,19 @@ function renderTable(items: InvestmentHistoryItem[]) {
     defaultOptions: { queries: { retry: false } },
   })
   return render(
-    <QueryClientProvider client={queryClient}>
-      <InvestmentHistoryTable items={items} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <InvestmentHistoryTable items={items} />
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
+
+function renderDetail(detail: InvestmentHistoryItem, onClose: () => void = () => {}) {
+  return render(
+    <MemoryRouter>
+      <InvestmentHistoryDetail detail={detail} onClose={onClose} />
+    </MemoryRouter>,
   )
 }
 
@@ -95,7 +106,7 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
 
 describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
   it('투자자명과 증권사명이 상세 필드로 표시됨', () => {
-    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={() => {}} />)
+    renderDetail(ITEM_WITH_NAMES)
 
     expect(screen.getByText('투자자명')).toBeInTheDocument()
     expect(screen.getByText('김철수')).toBeInTheDocument()
@@ -104,7 +115,7 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
   })
 
   it('investorName/securitiesFirmName이 null이면 "-"로 표시됨', () => {
-    render(<InvestmentHistoryDetail detail={ITEM_WITHOUT_NAMES} onClose={() => {}} />)
+    renderDetail(ITEM_WITHOUT_NAMES)
 
     const investorValue = screen.getByText('투자자명').nextElementSibling
     const firmValue = screen.getByText('증권사명').nextElementSibling
@@ -113,15 +124,15 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
   })
 
   it('기존 상세 필드가 함께 유지됨', () => {
-    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={() => {}} />)
+    renderDetail(ITEM_WITH_NAMES)
 
     expect(screen.getByText('공모주명')).toBeInTheDocument()
     expect(screen.getByText('카카오뱅크')).toBeInTheDocument()
-    expect(screen.getByText('IPO 고정가')).toBeInTheDocument()
+    expect(screen.getByText('공모가')).toBeInTheDocument()
   })
 
   it('내부 ID 항목(청약 ID, IPO ID)이 상세에 표시되지 않음', () => {
-    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={() => {}} />)
+    renderDetail(ITEM_WITH_NAMES)
 
     expect(screen.queryByText('청약 ID')).not.toBeInTheDocument()
     expect(screen.queryByText('IPO ID')).not.toBeInTheDocument()
@@ -129,10 +140,54 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
 
   it('제목과 닫기 버튼이 있고 닫기 버튼을 누르면 onClose가 호출됨', async () => {
     const onClose = vi.fn()
-    render(<InvestmentHistoryDetail detail={ITEM_WITH_NAMES} onClose={onClose} />)
+    renderDetail(ITEM_WITH_NAMES, onClose)
 
     expect(screen.getByRole('heading', { name: '청약 상세' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '상세 정보 닫기' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+const ALLOCATED: InvestmentHistoryItem = {
+  ...ITEM_WITH_NAMES,
+  id: 7,
+  allocation: { id: 3, allocatedQuantity: 10, allocationPrice: 39000, allocationStatus: 'ACTIVE' },
+  remainingQuantity: 4,
+}
+
+describe('InvestmentHistoryDetail — 상태 문구와 다음 행동', () => {
+  it('상태를 한글로, 미배정 잔여수량을 "배정 전"으로 표시한다', () => {
+    renderDetail(ITEM_WITH_NAMES)
+
+    expect(screen.queryByText('ACTIVE')).not.toBeInTheDocument()
+    expect(screen.getByText('진행 중')).toBeInTheDocument()
+    expect(screen.getByText('배정 전')).toBeInTheDocument()
+  })
+
+  it('미배정이면 배정 입력 링크가 청약 ID로 이어진다', () => {
+    renderDetail(ITEM_WITH_NAMES)
+
+    expect(screen.getByRole('link', { name: '배정 입력' })).toHaveAttribute(
+      'href',
+      '/allocations/register?subscriptionId=1',
+    )
+    expect(screen.queryByRole('link', { name: '매도 등록' })).not.toBeInTheDocument()
+  })
+
+  it('남은 수량이 있으면 매도 등록 링크가 보인다', () => {
+    renderDetail(ALLOCATED)
+
+    expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+      'href',
+      '/sales/register?subscriptionId=7',
+    )
+    expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
+  })
+
+  it('모두 팔았으면 이동 버튼이 없다', () => {
+    renderDetail({ ...ALLOCATED, remainingQuantity: 0 })
+
+    expect(screen.queryByRole('link', { name: '매도 등록' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
   })
 })

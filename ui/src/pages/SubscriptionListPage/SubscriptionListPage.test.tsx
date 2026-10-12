@@ -182,6 +182,44 @@ describe('SubscriptionListPage', () => {
     expect(links).toHaveLength(1)
   })
 
+  it('배정완료 카드에 배정·남은 수량과 매도 등록 링크가 보인다', async () => {
+    mockHistory(() => Promise.resolve(HISTORY_RESPONSE))
+    renderPage()
+    await waitForListLoaded()
+
+    expect(screen.getByText('남은 수량').nextElementSibling).toHaveTextContent('20주')
+    expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+      'href',
+      '/sales/register?subscriptionId=2',
+    )
+  })
+
+  it('남은 수량이 0이면 "모두 매도" 배지만 보인다', async () => {
+    const [first, second] = HISTORY_RESPONSE.content
+    mockHistory(() =>
+      Promise.resolve({
+        ...HISTORY_RESPONSE,
+        content: [first, { ...second, remainingQuantity: 0 }],
+      }),
+    )
+    renderPage()
+    await waitForListLoaded()
+
+    expect(screen.getByText('모두 매도')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '매도 등록' })).not.toBeInTheDocument()
+  })
+
+  it('"새 청약 등록" 링크가 등록 화면으로 이어진다', async () => {
+    mockHistory(() => Promise.resolve(HISTORY_RESPONSE))
+    renderPage()
+    await waitForListLoaded()
+
+    expect(screen.getByRole('link', { name: '새 청약 등록' })).toHaveAttribute(
+      'href',
+      '/subscriptions/register',
+    )
+  })
+
   it('"배정 입력" 버튼은 subscriptionId를 URL 파라미터로 전달함 (AC-012)', async () => {
     mockHistory(() => Promise.resolve(HISTORY_RESPONSE))
     renderPage()

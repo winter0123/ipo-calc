@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { useState } from 'react'
@@ -205,6 +205,40 @@ describe('IpoCalendar', () => {
     const detailRegion = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     expect(detailRegion).toHaveTextContent('테스트기업')
     expect(detailRegion).toHaveTextContent('청약')
+  })
+
+  it('청약 기간 전·중인 청약 일정에는 청약 등록 링크가 ipoId와 함께 보인다', async () => {
+    const ipos = [
+      makeIpo({
+        id: 5,
+        subscriptionStartDate: '2026-10-09T09:00:00Z',
+        subscriptionEndDate: '2026-10-12T17:00:00Z',
+      }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /10월 10일/ }))
+
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    expect(within(region).getByRole('link', { name: /청약 등록/ })).toHaveAttribute(
+      'href',
+      '/subscriptions/register?ipoId=5',
+    )
+  })
+
+  it('청약 기간이 지난 일정에는 청약 등록 링크가 없다', async () => {
+    const ipos = [
+      makeIpo({
+        subscriptionStartDate: '2026-10-05T09:00:00Z',
+        subscriptionEndDate: '2026-10-07T17:00:00Z',
+      }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /10월 5일/ }))
+
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    expect(within(region).queryByRole('link', { name: /청약 등록/ })).not.toBeInTheDocument()
   })
 
   it('이벤트 없는 날 클릭 시 "일정 없음"이 표시된다', async () => {

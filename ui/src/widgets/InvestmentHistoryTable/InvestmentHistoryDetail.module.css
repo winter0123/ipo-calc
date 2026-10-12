@@ -138,3 +138,20 @@
     padding: var(--space-5);
   }
 }
+
+.actionLink {
+  align-self: flex-start;
+  display: inline-block;
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.actionLink:hover {
+  background-color: var(--primary-hover);
+}

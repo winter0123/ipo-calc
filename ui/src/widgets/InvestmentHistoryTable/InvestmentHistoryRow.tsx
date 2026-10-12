@@ -1,4 +1,5 @@
 import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
+import { statusLabel } from './statusLabel.ts'
 import styles from './InvestmentHistoryTable.module.css'
 
 interface InvestmentHistoryRowProps {
@@ -32,9 +33,9 @@ export default function InvestmentHistoryRow({
       <td>{item.ipoName}</td>
       <td>{item.investorName ?? '-'}</td>
       <td className={styles.numeric}>{item.subscriptionQuantity}</td>
-      <td>{item.subscriptionStatus}</td>
+      <td>{statusLabel(item.subscriptionStatus)}</td>
       <td className={styles.numeric} aria-readonly="true">
-        {item.remainingQuantity ?? '-'}
+        {item.remainingQuantity ?? '배정 전'}
       </td>
     </tr>
   )

@@ -16,3 +16,25 @@
   font-size: 14px;
   color: var(--danger);
 }
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.registerButton {
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.registerButton:hover {
+  background-color: var(--primary-hover);
+}
