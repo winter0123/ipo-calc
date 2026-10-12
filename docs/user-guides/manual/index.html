@@ -175,7 +175,7 @@
       <div class="note"><strong>현재 투자자.</strong> 청약·배정·매도·수익 확인·투자 내역·증권사 연동 화면은 상단 헤더에 표시된 <strong>현재 투자자</strong> 기준으로 동작합니다. 투자자가 1명이면 그 사람이 자동으로 선택되어 헤더에 이름이 표시되고, 2명 이상이면 처음에 "어느 투자자로 작업할까요?" 화면에서 직접 골라야 합니다. 이후에는 헤더의 드롭다운으로 언제든 바꿀 수 있고, 선택은 이 브라우저에 기억됩니다. 대시보드와 공모주 일정은 계정 전체 기준입니다.</div>
       <h3>투자자 등록하기</h3>
       <ol>
-        <li>상단 메뉴의 "등록"을 열고 "투자자"를 선택합니다.</li>
+        <li>상단 메뉴의 "설정"을 열고 "투자자 추가"를 선택합니다.</li>
         <li>표시 이름과 관계를 선택합니다 (본인, 배우자, 부모, 자녀, 기타).</li>
         <li>"등록" 버튼을 클릭합니다.</li>
       </ol>
@@ -273,15 +273,15 @@
     </section>
      <section id="records">
       <h2>5. 거래 기록하기</h2>
-      <p>청약 → 배정 → 매도 순서로 기록합니다. 앞 단계가 있어야 다음 단계에서 고를 수 있습니다(예: 청약이 있어야 배정을 입력할 수 있고, 배정이 있어야 매도를 등록할 수 있습니다). 모든 등록 화면은 상단 메뉴의 <strong>등록</strong>에서 열 수 있습니다.</p>
+      <p>청약 → 배정 → 매도 순서로 기록합니다. 앞 단계가 있어야 다음 단계에서 고를 수 있습니다(예: 청약이 있어야 배정을 입력할 수 있고, 배정이 있어야 매도를 등록할 수 있습니다). 모든 등록 화면은 상단 메뉴의 <strong>새로 기록</strong>에서 열 수 있고, 대시보드의 <strong>할 일</strong>·청약 목록·투자 내역에서도 다음 단계 버튼으로 바로 이어집니다.</p>
       <div class="note"><strong>용어.</strong> <strong>청약</strong>은 공모주를 사겠다고 신청한 것, <strong>배정</strong>은 신청 결과 실제로 받은 수량, <strong>매도</strong>는 받은 주식을 판 것입니다. 한 배정을 여러 번 나눠 팔 수 있습니다(분할 매도).</div>
 
       <h3>청약 등록하기</h3>
       <ol>
-        <li>상단 메뉴 <strong>등록</strong> → <strong>청약</strong>을 엽니다.</li>
+        <li>상단 메뉴 <strong>새로 기록</strong> → <strong>청약 등록</strong>을 엽니다(청약 목록의 <strong>새 청약 등록</strong>, 공모주 상세·달력·대시보드 일정의 <strong>청약 등록</strong>으로 열면 그 공모주가 미리 선택됩니다).</li>
         <li>현재 투자자의 <strong>증권계좌</strong>가 목록에 나타납니다. 투자자를 바꾸려면 헤더의 <strong>현재 투자자</strong>를 바꿉니다.</li>
-        <li><strong>공모주</strong>를 고릅니다(공모주 일정에 등록된 공모주가 목록에 나옵니다).</li>
-        <li><strong>청약수량</strong>, <strong>증거금</strong>, <strong>청약일</strong>를 입력하고 필요하면 메모를 적습니다.</li>
+        <li><strong>공모주</strong>를 고릅니다(청약 진행 중·예정인 공모주가 위에 나오고, 고르면 공모가와 청약 기간이 표시됩니다).</li>
+        <li><strong>청약수량</strong>을 입력하면 <strong>증거금</strong>이 공모가 × 청약수량 × 50%로 채워집니다(증권사 기준에 맞게 고칠 수 있고, 고친 값은 다시 덮어쓰지 않습니다). <strong>청약일</strong>은 오늘이 기본값입니다. 필요하면 메모를 적습니다.</li>
         <li><strong>등록</strong>을 누르면 청약 목록으로 이동합니다.</li>
       </ol>
       <div class="table-wrap"><table>
@@ -290,8 +290,8 @@
           <tr><td>증권계좌</td><td>필수</td><td>현재 투자자의 계좌 중에서 선택</td></tr>
           <tr><td>공모주</td><td>필수</td><td>목록에서 선택</td></tr>
           <tr><td>청약수량</td><td>필수</td><td>0보다 큰 정수</td></tr>
-          <tr><td>증거금</td><td>필수</td><td>0 이상 정수(원)</td></tr>
-          <tr><td>청약일</td><td>필수</td><td>날짜 선택</td></tr>
+          <tr><td>증거금</td><td>필수</td><td>0 이상 정수(원). 공모가 × 청약수량 × 50%가 먼저 들어갑니다.</td></tr>
+          <tr><td>청약일</td><td>필수</td><td>날짜 선택(기본 오늘)</td></tr>
           <tr><td>메모 (선택)</td><td>선택</td><td>자유 입력</td></tr>
         </tbody>
       </table></div>
@@ -309,7 +309,7 @@
       </div>
 
       <h3>청약 목록 보기와 배정 입력</h3>
-      <p>상단 메뉴 <strong>청약</strong>에서 등록한 청약을 카드로 볼 수 있습니다. 위쪽 <strong>전체 / 미배정 / 배정완료</strong> 버튼으로 걸러 볼 수 있고, 조건에 맞는 청약이 없으면 "표시할 청약이 없습니다."가 나옵니다. <strong>미배정</strong> 카드에는 <strong>배정 입력</strong> 버튼이 있어, 누르면 그 청약이 선택된 배정 등록 화면으로 이동합니다.</p>
+      <p>상단 메뉴 <strong>청약</strong>에서 등록한 청약을 카드로 볼 수 있습니다. 위쪽 <strong>전체 / 미배정 / 배정완료</strong> 버튼으로 걸러 볼 수 있고, 조건에 맞는 청약이 없으면 "표시할 청약이 없습니다."가 나옵니다. <strong>미배정</strong> 카드에는 <strong>배정 입력</strong> 버튼이 있어, 누르면 그 청약이 선택된 배정 등록 화면으로 이동합니다. <strong>배정완료</strong> 카드에는 배정 수량과 남은 수량이 보이고, 남은 수량이 있으면 <strong>매도 등록</strong> 버튼, 모두 팔았으면 "모두 매도"가 표시됩니다. 오른쪽 위 <strong>새 청약 등록</strong>으로 청약 등록 화면을 엽니다.</p>
       <div class="shots">
         <figure><img src="screenshots/subscription-list-desktop.png" alt="청약 목록 화면 — 데스크톱" loading="lazy"><figcaption>청약 목록 (데스크톱)</figcaption></figure>
         <figure><img src="screenshots/subscription-list-mobile.png" alt="청약 목록 화면 — 모바일" loading="lazy"><figcaption>청약 목록 (모바일)</figcaption></figure>
@@ -317,8 +317,8 @@
 
       <h3>배정 등록하기</h3>
       <ol>
-        <li>청약 목록에서 <strong>배정 입력</strong>을 누르거나, 상단 메뉴 <strong>등록</strong> → <strong>배정</strong>을 엽니다.</li>
-        <li><strong>배정수량</strong>과 <strong>배정일</strong>을 입력합니다. 못 받았다면 0이 아니라 배정을 등록하지 않습니다(배정수량은 1 이상).</li>
+        <li>청약 목록·대시보드 할 일·투자 내역 상세에서 <strong>배정 입력</strong>을 누르거나, 상단 메뉴 <strong>새로 기록</strong> → <strong>배정 입력</strong>을 엽니다. 위쪽에 청약 요약(공모주명·청약일·수량)이 표시됩니다.</li>
+        <li><strong>배정수량</strong>과 <strong>배정일</strong>(기본 오늘)을 입력합니다. 못 받았다면 0이 아니라 배정을 등록하지 않습니다(배정수량은 1 이상).</li>
         <li>가능하면 <strong>배정단가</strong>도 입력합니다. 총 투자금과 수익 계산의 기준이 되는 값입니다.</li>
         <li><strong>등록</strong>을 누르면 청약 목록으로 이동하고, 해당 청약은 <strong>배정완료</strong>로 바뀝니다.</li>
       </ol>
@@ -346,8 +346,8 @@
 
       <h3>매도 등록하기</h3>
       <ol>
-        <li>상단 메뉴 <strong>등록</strong> → <strong>매도</strong>를 엽니다.</li>
-        <li><strong>청약</strong> → <strong>배정</strong> 순서로 고릅니다(투자자는 헤더의 현재 투자자). 청약을 고르면 아래 칸들이 자동으로 채워집니다: <strong>매도일</strong>는 그 공모주의 상장일 09:00, <strong>매도단가</strong>는 공모가, <strong>매도수량</strong>은 배정받은 수량(이미 판 수량이 있으면 남은 수량)입니다. 모두 직접 고칠 수 있습니다.</li>
+        <li>상단 메뉴 <strong>새로 기록</strong> → <strong>매도 등록</strong>을 엽니다. 청약 목록·대시보드 할 일·투자 내역 상세의 <strong>매도 등록</strong>으로 열면 그 청약이 미리 선택됩니다.</li>
+        <li><strong>청약</strong>을 고릅니다(목록은 "공모주 · 청약일", 투자자는 헤더의 현재 투자자). 청약마다 배정은 하나라 자동으로 연결되고, 남은 수량이 표시됩니다. 청약을 고르면 아래 칸들이 자동으로 채워집니다: <strong>매도일</strong>은 그 공모주의 상장일, <strong>매도단가</strong>는 공모가, <strong>매도수량</strong>은 배정받은 수량(이미 판 수량이 있으면 남은 수량)입니다. 모두 직접 고칠 수 있습니다.</li>
         <li>실제 판 <strong>매도수량</strong>과 <strong>매도단가</strong>로 고칩니다(둘 다 필수).</li>
         <li><strong>실현손익</strong>에 증권사 앱에 표시되는 실현손익을 넣습니다. 처음에는 공식으로 계산한 값이 들어 있습니다.</li>
         <li><strong>공모주수수료</strong>는 기본 2,000원입니다. 증권사별로 다르면 고칩니다.</li>
@@ -357,7 +357,7 @@
       <div class="table-wrap"><table>
         <thead><tr><th>항목</th><th>필수</th><th>입력 방법</th></tr></thead>
         <tbody>
-          <tr><td>청약 / 배정</td><td>필수</td><td>순서대로 선택</td></tr>
+          <tr><td>청약</td><td>필수</td><td>목록에서 선택(배정은 자동 연결)</td></tr>
           <tr><td>매도수량</td><td>필수</td><td>0보다 큰 정수(배정 수량 범위 안). 배정받은 수량이 먼저 들어갑니다.</td></tr>
           <tr><td>매도단가</td><td>필수</td><td>0보다 큰 정수(원). 공모가가 먼저 들어갑니다.</td></tr>
           <tr><td>매도일</td><td>필수</td><td>날짜 선택. 상장일이 먼저 들어갑니다.</td></tr>
@@ -370,7 +370,7 @@
       <div class="table-wrap"><table>
         <thead><tr><th>표시되는 문구</th><th>해결 방법</th></tr></thead>
         <tbody>
-          <tr><td>배정을 선택해 주세요.</td><td>청약을 고른 뒤 나타나는 배정을 선택합니다. 배정이 없다면 먼저 배정을 등록합니다.</td></tr>
+          <tr><td>매도할 청약을 선택해 주세요. / 이 청약은 아직 배정 입력 전입니다.</td><td>청약을 고릅니다. 배정 전인 청약이면 안내의 <strong>배정 등록하기</strong>로 배정을 먼저 등록합니다.</td></tr>
           <tr><td>매도수량을 입력해 주세요. / 매도단가를 입력해 주세요. / 실현손익을 입력해 주세요.</td><td>비어 있는 필수 칸을 채웁니다.</td></tr>
           <tr><td>실현손익이 (매도단가×수량 − 공모가×수량)보다 클 수 없습니다.</td><td>증권사 실현손익이 계산 차익보다 클 수는 없습니다. 매도단가·수량이나 실현손익을 다시 확인합니다.</td></tr>
           <tr><td>공모가를 알 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.</td><td>공모가가 없는 공모주입니다. 세금 및 기타 수수료를 직접 넣습니다.</td></tr>
@@ -398,9 +398,9 @@
       </table></div>
 
       <h3>대시보드</h3>
-      <p>상단 메뉴 <strong>대시보드</strong>는 각 구역의 네 가지 카드(총 투자금, 최종수익금, 수익률, 참여 건수)를 한눈에 보여 줍니다. 위쪽 탭으로 집계 기준을 바꿉니다.</p>
+      <p>상단 메뉴 <strong>대시보드</strong> 맨 위에는 <strong>할 일</strong>(현재 투자자의 배정 입력 전 청약 → <strong>배정 입력</strong>, 남은 수량이 있는 배정 → <strong>매도 등록</strong>)과 <strong>다가오는 일정</strong>(오늘부터 7일 안의 청약 시작·마감·환불·상장, 최대 8건, 청약 기간 중이면 <strong>청약 등록</strong>)이 있습니다. 그 아래는 각 구역의 네 가지 카드(총 투자금, 최종수익금, 수익률, 참여 건수)를 한눈에 보여 줍니다. 위쪽 탭으로 집계 기준을 바꿉니다.</p>
       <ul>
-        <li><strong>종합</strong> — 맨 위에 계정 전체 합계, 그 아래로 등록된 투자자별 카드를 차례로 보여 줍니다(매도가 없는 투자자는 0으로 표시)</li>
+        <li><strong>종합</strong> — 맨 위에 계정 전체 합계, 그 아래로 등록된 투자자별 카드를 차례로 보여 줍니다(매도가 없는 투자자는 "아직 매도 기록이 없습니다." 한 줄)</li>
         <li><strong>증권사별</strong> — 증권사별로 나눈 집계</li>
         <li><strong>월별</strong>, <strong>연도별</strong> — 선택한 달 또는 해의 집계. 화면 위쪽에서 <strong>◀ 이전 달 / 다음 달 ▶</strong>(연도별은 이전·다음 연도)로 옮기거나 연도·월을 직접 입력합니다.</li>
       </ul>
@@ -411,8 +411,8 @@
       </div>
 
       <h3>수익 확인</h3>
-      <p>상단 메뉴 <strong>수익 확인</strong>을 열면 현재 투자자의 이번 달 1일부터 오늘까지의 매도 내역이 최신순으로 바로 표에 나옵니다(조회 버튼은 없습니다). <strong>시작일</strong>과 <strong>종료일</strong>을 날짜로 바꾸면 그 기간의 매도만 보이고 합계도 다시 계산됩니다. <strong>이번 달</strong> 버튼으로 기본 기간으로 돌아갑니다.</p>
-      <p>표의 열은 매도일, 투자자, 수량, 매도금액, 취득금액, 공모주수수료, 세금 및 기타, 기타비용, 실현손익(공모주수수료를 빼기 전), 최종수익금이며 맨 아래에 합계가 있습니다. 기간 안에 매도가 없으면 "매도 내역이 없습니다."가 표시되고, 시작일이 종료일보다 늦으면 안내가 나옵니다.</p>
+      <p>상단 메뉴 <strong>수익 확인</strong>을 열면 현재 투자자의 이번 달 1일부터 오늘까지의 매도 내역이 최신순으로 바로 표에 나옵니다(조회 버튼은 없습니다). <strong>시작일</strong>과 <strong>종료일</strong>을 날짜로 바꾸면 그 기간의 매도만 보이고 합계도 다시 계산됩니다. <strong>이번 달 / 지난 달 / 올해 / 전체</strong> 버튼으로 기간을 한 번에 고를 수 있습니다. 표 위에는 합계 매도금액·최종수익금·수익률(최종수익금 ÷ 취득금액) 카드가 있습니다.</p>
+      <p>표의 열은 매도일, 투자자, 수량, 매도금액, 취득금액, 공모주수수료, 세금 및 기타, 실현손익(공모주수수료를 빼기 전), 최종수익금이며 맨 아래에 모든 금액 열의 합계가 있습니다. 모바일에서는 표만 가로로 밀어 봅니다. 기간 안에 매도가 없으면 "이 기간에 매도 기록이 없습니다."와 <strong>매도 등록</strong> 링크가 표시되고, 시작일이 종료일보다 늦으면 안내가 나옵니다.</p>
       <div class="shots">
         <figure><img src="screenshots/profit-view-desktop.png" alt="수익 확인 화면 — 데스크톱" loading="lazy"><figcaption>수익 확인 (데스크톱)</figcaption></figure>
         <figure><img src="screenshots/profit-view-mobile.png" alt="수익 확인 화면 — 모바일" loading="lazy"><figcaption>수익 확인 (모바일)</figcaption></figure>
@@ -426,7 +426,7 @@
         <li><strong>공모주</strong> — 이름으로 골라 그 공모주의 기록만 봅니다. 기본은 전체입니다.</li>
         <li><strong>초기화</strong> — 필터를 모두 지웁니다.</li>
       </ul>
-      <p>표의 행을 누르면 아래에 상세가 열려 청약 정보, 배정 정보, 매도 내역을 볼 수 있고 오른쪽 위 닫기 버튼으로 닫습니다. 필터 상태는 주소(URL)에 저장되므로 주소를 복사하면 같은 조건의 화면을 다시 열 수 있습니다.</p>
+      <p>표의 행을 누르면 아래에 상세가 열려 청약 정보, 배정 정보, 매도 내역을 볼 수 있고 오른쪽 위 닫기 버튼으로 닫습니다. 상태는 한글(진행 중 등)로, 배정 전인 청약의 잔여수량은 "배정 전"으로 표시됩니다. 상세 아래의 <strong>배정 입력</strong>·<strong>매도 등록</strong> 버튼으로 다음 단계를 바로 열 수 있습니다. 필터 상태는 주소(URL)에 저장되므로 주소를 복사하면 같은 조건의 화면을 다시 열 수 있습니다.</p>
       <div class="shots">
         <figure><img src="screenshots/investments-desktop.png" alt="투자 내역 화면 — 데스크톱" loading="lazy"><figcaption>투자 내역 (데스크톱)</figcaption></figure>
         <figure><img src="screenshots/investments-mobile.png" alt="투자 내역 화면 — 모바일" loading="lazy"><figcaption>투자 내역 (모바일)</figcaption></figure>
@@ -449,7 +449,7 @@
 
       <h3>2단계. 증권계좌 연결하기</h3>
       <ol>
-        <li>상단 메뉴 <strong>증권사 연동</strong>을 누릅니다.</li>
+        <li>상단 메뉴 <strong>설정</strong> → <strong>증권사 연동</strong>을 누릅니다.</li>
         <li><strong>증권계좌</strong>를 고릅니다(투자자는 헤더의 현재 투자자). 증권계좌가 한국투자증권이어야 연결 폼이 나옵니다.</li>
         <li><strong>앱키</strong>와 <strong>앱시크릿</strong>을 입력합니다(입력칸은 가려집니다).</li>
         <li><strong>키 발급일(증권사 서비스 신청일)</strong>을 확인합니다. 기본은 오늘이며, 실제 신청일과 다르면 고칩니다. 사용기간 만료 안내가 이 날짜에서 계산됩니다.</li>
@@ -506,7 +506,7 @@
 
     <section id="admin">
       <h2>8. 관리자 기능과 문제 해결</h2>
-      <p>관리자 계정으로 로그인하면 상단 메뉴에 <strong>가입 승인</strong>과 <strong>공모주 등록</strong>이 보입니다(일반 계정에는 보이지 않습니다). 화면 오른쪽 끝의 <strong>로그아웃</strong>은 모든 계정에 보이며, 누르면 로그인 화면으로 돌아갑니다.</p>
+      <p>상단 메뉴는 대시보드·공모주 일정·청약·투자 내역·수익 확인과, 펼쳐 쓰는 <strong>새로 기록</strong>(청약 등록·배정 입력·매도 등록)·<strong>설정</strong>(투자자 추가·증권사 연동)으로 되어 있습니다. 관리자 계정으로 로그인하면 <strong>관리자</strong>(가입 승인·공모주 등록)가 더 보입니다(일반 계정에는 보이지 않습니다). 주소창에 사이트 주소만 넣으면 로그인 상태에 따라 대시보드 또는 공모주 일정으로 이동합니다. 화면 오른쪽 끝의 <strong>로그아웃</strong>은 모든 계정에 보이며, 누르면 로그인 화면으로 돌아갑니다.</p>
       <div class="shots">
         <figure><img src="screenshots/nav-desktop.png" alt="상단 메뉴 — 데스크톱" loading="lazy"><figcaption>상단 메뉴 (데스크톱)</figcaption></figure>
         <figure><img src="screenshots/nav-mobile-menu.png" alt="상단 메뉴 — 모바일 메뉴 열림" loading="lazy"><figcaption>모바일에서는 "메뉴" 버튼으로 엽니다</figcaption></figure>
