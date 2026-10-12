@@ -6,7 +6,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-02T06:37:59.256Z"
+    "timestamp": "2026-10-12T23:54:23.139Z"
   },
   {
     "page": "signup",
@@ -15,7 +15,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:01.048Z"
+    "timestamp": "2026-10-12T23:54:24.975Z"
   },
   {
     "page": "investor-register",
@@ -24,7 +24,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:02.801Z"
+    "timestamp": "2026-10-12T23:54:26.752Z"
   },
   {
     "page": "securities-account-register",
@@ -33,79 +33,70 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:04.908Z"
+    "timestamp": "2026-10-12T23:54:28.850Z"
   },
   {
     "page": "subscription-register",
     "path": "/subscriptions/register",
     "violations": [],
-    "passes": 34,
+    "passes": 35,
     "incomplete": 1,
-    "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:06.982Z"
+    "inapplicable": 54,
+    "timestamp": "2026-10-12T23:54:31.023Z"
   },
   {
     "page": "subscription-list",
     "path": "/subscriptions",
     "violations": [],
-    "passes": 34,
+    "passes": 33,
     "incomplete": 1,
-    "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:09.038Z"
+    "inapplicable": 56,
+    "timestamp": "2026-10-12T23:54:33.081Z"
   },
   {
     "page": "allocation-register",
     "path": "/allocations/register",
     "violations": [],
-    "passes": 34,
+    "passes": 33,
     "incomplete": 1,
-    "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:11.095Z"
+    "inapplicable": 56,
+    "timestamp": "2026-10-12T23:54:35.138Z"
   },
   {
     "page": "sale-register",
     "path": "/sales/register",
     "violations": [],
-    "passes": 38,
+    "passes": 39,
     "incomplete": 1,
-    "inapplicable": 51,
-    "timestamp": "2026-10-02T06:38:13.233Z"
-  },
-  {
-    "page": "cost-register",
-    "path": "/costs/register",
-    "violations": [],
-    "passes": 34,
-    "incomplete": 1,
-    "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:15.302Z"
+    "inapplicable": 50,
+    "timestamp": "2026-10-12T23:54:37.294Z"
   },
   {
     "page": "profit-view",
     "path": "/profits/view",
     "violations": [],
-    "passes": 37,
+    "passes": 33,
     "incomplete": 1,
-    "inapplicable": 52,
-    "timestamp": "2026-10-02T06:38:17.356Z"
+    "inapplicable": 56,
+    "timestamp": "2026-10-12T23:54:39.435Z"
   },
   {
     "page": "investments",
     "path": "/investments",
     "violations": [],
-    "passes": 39,
+    "passes": 33,
     "incomplete": 1,
-    "inapplicable": 50,
-    "timestamp": "2026-10-02T06:38:19.475Z"
+    "inapplicable": 56,
+    "timestamp": "2026-10-12T23:54:41.499Z"
   },
   {
     "page": "dashboard",
     "path": "/dashboard",
     "violations": [],
-    "passes": 37,
+    "passes": 36,
     "incomplete": 1,
-    "inapplicable": 52,
-    "timestamp": "2026-10-02T06:38:21.545Z"
+    "inapplicable": 53,
+    "timestamp": "2026-10-12T23:54:43.322Z"
   },
   {
     "page": "broker-sync",
@@ -114,33 +105,6 @@
     "passes": 33,
     "incomplete": 1,
     "inapplicable": 56,
-    "timestamp": "2026-10-02T06:38:23.591Z"
-  },
-  {
-    "page": "broker-sync-connected",
-    "path": "/broker-sync?investorId=4&securitiesAccountId=4",
-    "violations": [],
-    "passes": 34,
-    "incomplete": 1,
-    "inapplicable": 55,
-    "timestamp": "2026-10-02T06:38:25.688Z"
-  },
-  {
-    "page": "broker-sync-replace-form",
-    "path": "/broker-sync?investorId=4&securitiesAccountId=4",
-    "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-02T06:38:27.874Z"
-  },
-  {
-    "page": "broker-sync-register-form",
-    "path": "/broker-sync?investorId=4&securitiesAccountId=5",
-    "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-02T06:38:30.032Z"
+    "timestamp": "2026-10-12T23:54:45.381Z"
   }
 ]
