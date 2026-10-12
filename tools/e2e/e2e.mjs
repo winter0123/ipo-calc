@@ -708,8 +708,8 @@ async function registerSale(page, trade, sale) {
   await page.waitForSelector('form[aria-label="매도 등록 폼"]')
   await waitFor(async () => (await page.locator('#subscriptionId option').count()) > 1)
   await page.selectOption('#subscriptionId', { index: 1 })
-  await waitFor(async () => (await page.locator('#allocationId option').count()) > 1)
-  await page.selectOption('#allocationId', { index: 1 })
+  // 청약당 배정은 하나라 선택 칸 없이 자동 연결된다(숨은 입력에 배정 ID가 채워질 때까지 기다린다).
+  await waitFor(async () => (await page.locator('#allocationId').inputValue().catch(() => '')) !== '')
   // 매도수량·매도단가·매도일는 공모주 정보로 미리 채워지지만 사용자가 고칠 수 있다(여기서는 직접 입력).
   // 공모주수수료(#ipoFee)는 저장 시 fee, 세금 및 기타 수수료(#otherFees)는 tax로 간다. 실현손익은 공식으로 자동 계산된다.
   await page.fill('#quantity', String(sale.quantity))

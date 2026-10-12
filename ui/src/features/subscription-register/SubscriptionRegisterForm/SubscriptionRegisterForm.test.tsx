@@ -79,7 +79,7 @@ function mockDropdownFetches() {
   })
 }
 
-function renderForm() {
+function renderForm(url = '/subscriptions/register') {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -88,7 +88,7 @@ function renderForm() {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <SubscriptionRegisterForm />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -198,6 +198,7 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
+    await userEvent.clear(screen.getByLabelText('청약일'))
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -328,5 +329,50 @@ describe('SubscriptionRegisterForm', () => {
       expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  describe('입력 편의', () => {
+    it('청약일은 오늘로 채워져 있다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      expect(screen.getByLabelText('청약일')).toHaveValue(new Date().toLocaleDateString('sv-SE'))
+    })
+
+    it('공모주를 고르면 공모가·청약 기간이 보이고, 증거금은 공모가×수량×50%로 채워진다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      expect(screen.getByTestId('ipo-info')).toHaveTextContent(
+        '공모가 11,000원 · 청약 2026. 9. 1. ~ 2026. 9. 2.',
+      )
+      await fill(screen.getByLabelText('청약수량'), '10')
+      // 11,000 × 10 × 50%
+      expect(screen.getByLabelText('증거금')).toHaveDisplayValue('55,000')
+      expect(screen.getByLabelText('증거금')).toHaveAttribute('inputmode', 'numeric')
+    })
+
+    it('사용자가 고친 증거금은 수량을 바꿔도 덮어쓰지 않는다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await fill(screen.getByLabelText('청약수량'), '10')
+      await fill(screen.getByLabelText('증거금'), '70000')
+      await fill(screen.getByLabelText('청약수량'), '20')
+      expect(screen.getByLabelText('증거금')).toHaveDisplayValue('70,000')
+    })
+
+    it('?ipoId로 들어오면 그 공모주가 미리 선택되고, 없는 id는 무시한다', async () => {
+      mockDropdownFetches()
+      const { unmount } = renderForm('/subscriptions/register?ipoId=1')
+      await waitForDropdownsLoaded()
+      expect(screen.getByLabelText('공모주')).toHaveValue('1')
+      unmount()
+      renderForm('/subscriptions/register?ipoId=999')
+      await waitForDropdownsLoaded()
+      expect(screen.getByLabelText('공모주')).toHaveValue('')
+    })
   })
 })

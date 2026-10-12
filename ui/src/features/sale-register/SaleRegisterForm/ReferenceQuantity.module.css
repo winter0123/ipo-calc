@@ -1,31 +1,9 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.label {
-  font-weight: 500;
+  margin: 0;
   color: var(--ink);
   font-size: 14px;
 }
 
-.input {
-  cursor: not-allowed;
-}
-
-.unit {
-  font-size: 12px;
+.container span {
   color: var(--ink-muted);
-}
-
-@media (min-width: 768px) {
-  .container {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .input {
-    flex: 1;
-  }
 }

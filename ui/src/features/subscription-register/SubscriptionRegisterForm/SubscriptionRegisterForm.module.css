@@ -76,3 +76,9 @@
   font-size: 14px;
   color: var(--ink-muted);
 }
+
+.ipoInfo {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}

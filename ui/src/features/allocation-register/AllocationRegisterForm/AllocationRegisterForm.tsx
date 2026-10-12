@@ -6,6 +6,7 @@ import ReferenceQuantity from './ReferenceQuantity.tsx'
 import { type AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import styles from './AllocationRegisterForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 
 export default function AllocationRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -25,7 +26,14 @@ export default function AllocationRegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<AllocationRegisterRequest>({ mode: 'onSubmit' })
+    control,
+  } = useForm<AllocationRegisterRequest>({
+    mode: 'onSubmit',
+    defaultValues: {
+      allocatedAt: new Date().toLocaleDateString('sv-SE'),
+      allocationPrice: Number.NaN,
+    },
+  })
 
   const onSubmit = (data: Omit<AllocationRegisterRequest, 'subscriptionId'>) => {
     mutate(
@@ -58,8 +66,6 @@ export default function AllocationRegisterForm() {
     )
   }
 
-  const referenceQuantity = subscriptionDetail.subscriptionQuantity
-
   return (
     <form
       className={styles.form}
@@ -68,7 +74,11 @@ export default function AllocationRegisterForm() {
       noValidate
     >
       <div className={styles.referenceSection}>
-        <ReferenceQuantity quantity={referenceQuantity} />
+        <ReferenceQuantity
+          ipoName={subscriptionDetail.ipoName}
+          subscribedAt={subscriptionDetail.subscribedAt}
+          quantity={subscriptionDetail.subscriptionQuantity}
+        />
       </div>
 
       <div className={styles.field}>
@@ -76,6 +86,7 @@ export default function AllocationRegisterForm() {
         <input
           id="allocatedQuantity"
           type="number"
+          inputMode="numeric"
           aria-invalid={!!errors.allocatedQuantity}
           aria-describedby={errors.allocatedQuantity ? 'allocatedQuantity-error' : undefined}
           {...register('allocatedQuantity', {
@@ -134,15 +145,14 @@ export default function AllocationRegisterForm() {
 
       <div className={styles.field}>
         <label htmlFor="allocationPrice">배정단가 (선택)</label>
-        <input
+        <MoneyInput
           id="allocationPrice"
-          type="number"
+          control={control}
+          name="allocationPrice"
+          allowNegative // 음수를 입력하면 지우지 않고 검증 메시지로 알린다
           aria-invalid={!!errors.allocationPrice}
           aria-describedby={errors.allocationPrice ? 'allocationPrice-error' : undefined}
-          {...register('allocationPrice', {
-            valueAsNumber: true,
-            validate: (v) => !v || (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.',
-          })}
+          validate={(v) => !v || (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.'}
           disabled={isPending}
         />
         {errors.allocationPrice && (

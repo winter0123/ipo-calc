@@ -1,20 +1,53 @@
-import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useForm, useWatch } from 'react-hook-form'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
-import { useIpos } from '@/entities/ipo/index.ts'
+import { useIpos, type Ipo } from '@/entities/ipo/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
 import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionRegisterForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
+import {
+  depositFor,
+  formatDate,
+  ipoPriceInfo,
+  sortIposForSubscription,
+} from './subscriptionForm.ts'
+
+type FormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
+
+const today = () => new Date().toLocaleDateString('sv-SE')
 
 export default function SubscriptionRegisterForm() {
+  // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
+  const { isLoading: investorsLoading } = useCurrentInvestor()
+  const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
+
+  if (investorsLoading || iposLoading) {
+    return <div className={styles.loading}>목록을 불러오는 중...</div>
+  }
+
+  if (iposError) {
+    return (
+      <div className={styles.blockError}>
+        목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
+      </div>
+    )
+  }
+
+  return <SubscriptionForm ipos={sortIposForSubscription(ipos ?? [], today())} />
+}
+
+function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { current } = useCurrentInvestor()
 
-  // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
-  const { current, isLoading: investorsLoading } = useCurrentInvestor()
-  const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
+  // ?ipoId=<id>로 들어오면 그 공모주를 미리 고른다(목록에 없으면 무시).
+  const presetIpoId = Number(searchParams.get('ipoId'))
+  const presetIpo = ipos.find((ipo) => ipo.id === presetIpoId)
 
   const { mutate, isPending, error } = useSubscriptionRegister()
 
@@ -22,7 +55,28 @@ export default function SubscriptionRegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<Omit<SubscriptionRegisterRequest, 'investorId'>>({ mode: 'onSubmit' })
+    control,
+    getValues,
+    setValue,
+    getFieldState,
+  } = useForm<FormValues>({
+    mode: 'onSubmit',
+    defaultValues: { subscribedAt: today(), ipoId: presetIpo?.id, depositAmount: Number.NaN },
+  })
+
+  const watchedIpoId = useWatch({ control, name: 'ipoId' })
+  const selectedIpo = ipos.find((ipo) => ipo.id === Number(watchedIpoId))
+
+  /** 증거금 기본값(공모가×수량×50%). 사용자가 고친 칸은 덮어쓰지 않는다. */
+  const syncDeposit = () => {
+    if (getFieldState('depositAmount').isDirty) return
+    const { ipoId, quantity } = getValues()
+    const deposit = depositFor(
+      ipos.find((ipo) => ipo.id === Number(ipoId)),
+      quantity,
+    )
+    if (deposit !== undefined) setValue('depositAmount', deposit)
+  }
 
   const selectedInvestorId = current?.id
   const investorSelected = selectedInvestorId !== undefined
@@ -32,7 +86,7 @@ export default function SubscriptionRegisterForm() {
     error: securitiesAccountsError,
   } = useSecuritiesAccounts(selectedInvestorId)
 
-  const onSubmit = (data: Omit<SubscriptionRegisterRequest, 'investorId'>) => {
+  const onSubmit = (data: FormValues) => {
     if (selectedInvestorId === undefined) return
     // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
     mutate(
@@ -56,21 +110,6 @@ export default function SubscriptionRegisterForm() {
       409: '이미 동일한 조건의 청약이 존재합니다.',
     },
   })
-
-  const dropdownsLoading = investorsLoading || iposLoading
-  const dropdownsError = iposError
-
-  if (dropdownsLoading) {
-    return <div className={styles.loading}>목록을 불러오는 중...</div>
-  }
-
-  if (dropdownsError) {
-    return (
-      <div className={styles.blockError}>
-        목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
-      </div>
-    )
-  }
 
   return (
     <form
@@ -129,11 +168,12 @@ export default function SubscriptionRegisterForm() {
           {...register('ipoId', {
             required: '공모주를 선택해 주세요.',
             valueAsNumber: true,
+            onChange: syncDeposit,
           })}
           disabled={isPending}
         >
           <option value="">공모주 선택</option>
-          {ipos?.map((ipo) => (
+          {ipos.map((ipo) => (
             <option key={ipo.id} value={ipo.id}>
               {ipo.ipoName}
             </option>
@@ -144,6 +184,12 @@ export default function SubscriptionRegisterForm() {
             {String(errors.ipoId.message)}
           </span>
         )}
+        {selectedIpo && (
+          <p className={styles.ipoInfo} data-testid="ipo-info">
+            {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)} ~{' '}
+            {formatDate(selectedIpo.subscriptionEndDate)}
+          </p>
+        )}
       </div>
 
       <div className={styles.field}>
@@ -151,12 +197,14 @@ export default function SubscriptionRegisterForm() {
         <input
           id="quantity"
           type="number"
+          inputMode="numeric"
           aria-invalid={!!errors.quantity}
           aria-describedby={errors.quantity ? 'quantity-error' : undefined}
           {...register('quantity', {
             required: '청약수량을 입력해 주세요.',
             valueAsNumber: true,
             validate: (v) => (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.',
+            onChange: syncDeposit,
           })}
           disabled={isPending}
         />
@@ -169,21 +217,24 @@ export default function SubscriptionRegisterForm() {
 
       <div className={styles.field}>
         <label htmlFor="depositAmount">증거금</label>
-        <input
+        <MoneyInput
           id="depositAmount"
-          type="number"
+          control={control}
+          name="depositAmount"
+          allowNegative // 음수를 입력하면 지우지 않고 검증 메시지로 알린다
           aria-invalid={!!errors.depositAmount}
-          aria-describedby={errors.depositAmount ? 'depositAmount-error' : undefined}
-          {...register('depositAmount', {
-            required: '증거금을 입력해 주세요.',
-            valueAsNumber: true,
-            validate: (v) => (Number.isInteger(v) && v >= 0) || '0 이상 정수를 입력해 주세요.',
-          })}
+          aria-describedby={errors.depositAmount ? 'depositAmount-error' : 'depositAmount-hint'}
+          requiredMessage="증거금을 입력해 주세요."
+          validate={(v) => (Number.isInteger(v) && v >= 0) || '0 이상 정수를 입력해 주세요.'}
           disabled={isPending}
         />
-        {errors.depositAmount && (
+        {errors.depositAmount ? (
           <span id="depositAmount-error" className={styles.error} aria-live="polite">
             {String(errors.depositAmount.message)}
+          </span>
+        ) : (
+          <span id="depositAmount-hint" className={styles.hint}>
+            공모가 × 청약수량 × 50%로 채워 드려요. 증권사 기준에 맞게 고치세요.
           </span>
         )}
       </div>
