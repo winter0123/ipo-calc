@@ -68,16 +68,10 @@ public class ProfitCalculationService {
         () -> new ProfitForbiddenException("계정 소유권이 없습니다."));
 
     // 4. IPO 조건부 조회 — allocationPrice가 null이면 fixedPrice 사용
-    Long fixedPrice = null;
-    if (allocation.getAllocationPrice() == null) {
-      Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
-      if (ipo != null) {
-        fixedPrice = ipo.getFixedPrice();
-      }
-    }
+    Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
 
     // 5. 대응취득가액/세전·세후순수익 계산 및 ProfitDto 구성
-    return buildProfitDto(sale, allocation, fixedPrice);
+    return buildProfitDto(sale, allocation, ipo);
   }
 
   /**
@@ -166,14 +160,7 @@ public class ProfitCalculationService {
                   if (subscription == null) {
                     throw new ProfitNotFoundException("청약 기록을 찾을 수 없습니다.");
                   }
-                  Long fixedPrice = null;
-                  if (allocation.getAllocationPrice() == null) {
-                    Ipo ipo = ipoById.get(subscription.getIpoId());
-                    if (ipo != null) {
-                      fixedPrice = ipo.getFixedPrice();
-                    }
-                  }
-                  return buildProfitDto(sale, allocation, fixedPrice);
+                  return buildProfitDto(sale, allocation, ipoById.get(subscription.getIpoId()));
                 })
             // 6. 정렬 — saleDate 오름차순, 동일 saleDate인 경우 id 오름차순
             .sorted(
@@ -226,7 +213,10 @@ public class ProfitCalculationService {
   }
 
   // 대응취득가액/세전·세후순수익/실현손익을 계산해 ProfitDto를 구성한다 (저장 없음).
-  private ProfitDto buildProfitDto(Sale sale, Allocation allocation, Long fixedPrice) {
+  private ProfitDto buildProfitDto(Sale sale, Allocation allocation, Ipo ipo) {
+    // allocationPrice가 없을 때만 공모가(fixedPrice)로 대체한다.
+    Long fixedPrice =
+        allocation.getAllocationPrice() == null && ipo != null ? ipo.getFixedPrice() : null;
     Long acquisitionAmount =
         ProfitCalculator.calculateAcquisitionAmount(
             allocation.getAllocationPrice(), fixedPrice, sale.getQuantity());
@@ -251,6 +241,8 @@ public class ProfitCalculationService {
         .preTaxProfit(preTaxProfit)
         .afterTaxProfit(afterTaxProfit)
         .realizedProfit(realizedProfit)
+        .listingDate(ipo == null ? null : ipo.getListingDate())
+        .ipoName(ipo == null ? null : ipo.getIpoName())
         .build();
   }
 }

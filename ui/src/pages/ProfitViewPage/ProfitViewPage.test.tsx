@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { fill } from '@/test/fill'
 import { MemoryRouter } from 'react-router-dom'
@@ -9,6 +9,11 @@ import { apiFetch } from '@/shared/api/client.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
+}))
+
+// jsdom에는 크기가 없어 차트를 그리지 못한다. 차트 대신 같은 데이터를 담은 기간별 표로 검증한다.
+vi.mock('@/features/profit-view/ProfitPeriod/ProfitLineChart.tsx', () => ({
+  default: () => null,
 }))
 
 vi.mock('@/entities/investor/api-client.ts', async () => {
@@ -59,6 +64,8 @@ const INVESTOR_PROFITS = {
       preTaxProfit: 364000,
       afterTaxProfit: 361000,
       realizedProfit: 366000,
+      listingDate: '2026-09-21',
+      ipoName: 'A공모주',
     },
     {
       saleId: 2,
@@ -73,6 +80,8 @@ const INVESTOR_PROFITS = {
       preTaxProfit: -5000,
       afterTaxProfit: -8000,
       realizedProfit: -5000,
+      listingDate: null,
+      ipoName: null,
     },
   ],
   totalSaleAmount: 3200000,
@@ -166,7 +175,7 @@ describe('ProfitViewPage', () => {
 
     await waitFor(() => expect(screen.getAllByText('홍길동').length).toBe(2)) // 드롭다운 1 + 행 2)
     expect(screen.queryByRole('button', { name: /^조회/ })).not.toBeInTheDocument()
-    const rows = screen.getAllByRole('row')
+    const rows = within(screen.getByRole('region', { name: '매도별 수익 표' })).getAllByRole('row')
     // 헤더, 9/22, 9/21, 합계
     expect(rows[1]).toHaveTextContent('2026. 9. 22.')
     expect(rows[2]).toHaveTextContent('2026. 9. 21.')
@@ -176,7 +185,8 @@ describe('ProfitViewPage', () => {
     expect(screen.getAllByText('361,000').length).toBeGreaterThan(0)
     expect(screen.getAllByText('353,000').length).toBeGreaterThan(0)
     expect(screen.getByRole('columnheader', { name: '실현손익' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: '최종수익금' })).toBeInTheDocument()
+    // 기간별 표 + 매도 내역 표
+    expect(screen.getAllByRole('columnheader', { name: '최종수익금' })).toHaveLength(2)
   })
 
   it('음수 수익(손실)이 표시된다', async () => {
@@ -270,6 +280,38 @@ describe('ProfitViewPage', () => {
     await user.click(screen.getByRole('button', { name: '전체' }))
     expect(screen.getByLabelText('시작일')).toHaveValue('')
     await waitFor(() => expect(profitPaths()).toContain('/investors/1/profits'))
+  })
+
+  it('기간별 수익: 기본은 월 단위, 연·일로 바꾸면 표가 바뀐다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const section = await screen.findByRole('region', { name: '기간별 수익' })
+    expect(within(section).getByRole('button', { name: '월' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    // 9월: 2건, 매도금액 3,200,000, 최종수익금 361,000 - 8,000 = 353,000
+    const month = within(section).getByRole('row', { name: /2026\. 9\./ })
+    expect(month).toHaveTextContent('23,200,000353,000')
+
+    await user.click(within(section).getByRole('button', { name: '연' }))
+    expect(within(section).getByRole('row', { name: /2026년/ })).toHaveTextContent('2')
+
+    await user.click(within(section).getByRole('button', { name: '일' }))
+    expect(within(section).getByRole('row', { name: /2026\. 9\. 21\./ })).toHaveTextContent(
+      '361,000',
+    )
+    expect(within(section).getByRole('row', { name: /2026\. 9\. 22\./ })).toHaveTextContent(
+      '-8,000',
+    )
+    expect(within(section).getByRole('row', { name: /합계/ })).toHaveTextContent('353,000')
+  })
+
+  it('기간 안에 매도가 없으면 기간별 수익 구역 없이 빈 상태만 보인다', async () => {
+    localStorage.setItem('currentInvestorId', '2')
+    renderPage()
+    expect(await screen.findByText('이 기간에 매도 기록이 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '기간별 수익' })).not.toBeInTheDocument()
   })
 
   it('조회 실패 시 오류 메시지가 보인다', async () => {

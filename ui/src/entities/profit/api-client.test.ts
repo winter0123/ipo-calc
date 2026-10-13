@@ -22,6 +22,8 @@ const SALE_PROFIT = {
   preTaxProfit: 0,
   afterTaxProfit: 0,
   realizedProfit: 0,
+  listingDate: null,
+  ipoName: null,
 }
 
 describe('profit api-client 응답 검증', () => {

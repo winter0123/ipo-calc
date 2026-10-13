@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { ProfitTable, useAllInvestorProfits } from '@/features/profit-view/index.ts'
+import {
+  ProfitPeriodSection,
+  ProfitTable,
+  useAllInvestorProfits,
+} from '@/features/profit-view/index.ts'
 import styles from './ProfitViewPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
@@ -113,7 +117,15 @@ export default function ProfitViewPage() {
       {investorsLoading || isLoading ? (
         <div className={styles.loading}>수익 정보를 불러오는 중...</div>
       ) : (
-        !error && <ProfitTable sales={sales} />
+        !error && (
+          <>
+            {sales.length > 0 && (
+              <ProfitPeriodSection sales={sales} from={period.from} to={period.to} />
+            )}
+            <h2>매도 내역</h2>
+            <ProfitTable sales={sales} />
+          </>
+        )
       )}
     </div>
   )

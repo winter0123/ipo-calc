@@ -1,5 +1,6 @@
 package com.vibeaiteam.profitcalculation.dto.profit;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,4 +42,10 @@ public class ProfitDto {
   private Long afterTaxProfit;
 
   private Long realizedProfit;
+
+  /** 그 매도의 공모주 상장일. 모르면 null. */
+  private LocalDate listingDate;
+
+  /** 그 매도의 공모주 이름. 모르면 null. */
+  private String ipoName;
 }

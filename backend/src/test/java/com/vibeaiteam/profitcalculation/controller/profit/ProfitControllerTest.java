@@ -651,6 +651,7 @@ class ProfitControllerTest {
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
 
+    useIpoListedOn(allocationId, java.time.LocalDate.of(2026, 10, 15));
     // saleDate가 10/14인 Sale을 나중에 생성해도 id가 더 작으므로 정렬 검증에 영향 없음
     Long saleId2 =
         createSale(allocationId, 20L, 500000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
@@ -688,6 +689,8 @@ class ProfitControllerTest {
     assertThat(((Number) sales.get(0).get("realizedProfit")).longValue())
         .as("Sale 1 실현손익 = 750000 - 360000 - 0 - 0 (공모주수수료 1500 미차감)")
         .isEqualTo(390000L);
+    assertThat(sales.get(0).get("listingDate")).isEqualTo("2026-10-15");
+    assertThat(sales.get(0).get("ipoName")).isEqualTo("테스트공모주");
 
     // 두 번째 Sale(2026-10-15): 500000 - 240000 - 0 - 0 = 260000
     assertThat(((Number) sales.get(1).get("realizedProfit")).longValue())

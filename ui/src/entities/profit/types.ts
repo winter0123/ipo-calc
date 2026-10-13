@@ -14,6 +14,9 @@ export const saleProfitSchema = z.object({
   preTaxProfit: z.number(),
   afterTaxProfit: z.number(),
   realizedProfit: z.number(),
+  // 그 매도의 공모주 상장일(`YYYY-MM-DD`)과 이름. 모르면 null.
+  listingDate: z.string().nullable(),
+  ipoName: z.string().nullable(),
 })
 
 export const investorProfitSchema = z.object({
