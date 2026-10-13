@@ -40,7 +40,7 @@ export default function InvestmentHistoryRow({
       <td data-label="상태" className={styles.status}>
         {statusLabel(item.subscriptionStatus)}
       </td>
-      <td data-label="잔여수량" className={styles.numeric} aria-readonly="true">
+      <td data-label="잔여수량" className={styles.numeric}>
         {item.remainingQuantity ?? '배정 전'}
       </td>
     </tr>
