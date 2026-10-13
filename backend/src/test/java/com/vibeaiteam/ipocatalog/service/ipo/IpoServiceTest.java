@@ -237,7 +237,7 @@ class IpoServiceTest {
     assertThat(stored.isRefundDateEstimated()).isFalse();
 
     withRefund.setRefundDate(null);
-    when(calculator.plusBusinessDays(END, 2)).thenReturn(LocalDate.of(2026, 10, 23));
+    when(calculator.plusBusinessDaysOrNull(END, 2)).thenReturn(LocalDate.of(2026, 10, 23));
     assertThat(service.getById(1L).isRefundDateEstimated()).isTrue();
 
     withRefund.setSubscriptionEndDate(null);

@@ -28,6 +28,10 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
   Optional<Ipo> findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
       String ipoName, LocalDate subscriptionStartDate, RecordStatus status);
 
+  /** 청약 시작일 · 상태 조건(삭제되지 않은 건만)으로 공모주 목록을 조회한다. 동기화 중복 검사에서 이름 정규화 비교에 쓴다. */
+  List<Ipo> findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
+      LocalDate subscriptionStartDate, RecordStatus status);
+
   /**
    * 종목코드가 null이고 동기화 출처가 있는(자동 동기화) · 상태 조건(삭제되지 않은 건만) 공모주 목록을 조회한다. ustockplus 일정 병합 시 회사명 정규화 매칭
    * 후보군 조회에 사용한다.

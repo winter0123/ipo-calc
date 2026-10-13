@@ -11,6 +11,8 @@ export interface UpcomingEvent {
   date: string
   /** 청약 기간(시작~마감) 중이라 지금 청약 등록을 할 수 있는 공모주 */
   canSubscribe: boolean
+  /** 환불일이 청약 종료일 기준 추정값이면 true */
+  estimated: boolean
 }
 
 /** 오늘부터 7일 안의 청약 시작·마감·환불·상장 일정을 날짜순으로 최대 limit건. */
@@ -24,7 +26,7 @@ export function buildUpcomingEvents(ipos: Ipo[], today: Date, limit = 5): Upcomi
     const start = dateOnly(ipo.subscriptionStartDate)
     const end = dateOnly(ipo.subscriptionEndDate)
     const canSubscribe = start <= from && from <= end
-    const add = (kind: UpcomingKind, date: string | null | undefined) => {
+    const add = (kind: UpcomingKind, date: string | null | undefined, estimated = false) => {
       if (!date) return
       const d = dateOnly(date)
       if (d < from || d > to) return
@@ -35,11 +37,12 @@ export function buildUpcomingEvents(ipos: Ipo[], today: Date, limit = 5): Upcomi
         kind,
         date: d,
         canSubscribe: canSubscribe && (kind === '청약 시작' || kind === '청약 마감'),
+        estimated,
       })
     }
     add('청약 시작', start)
     add('청약 마감', end)
-    add('환불', ipo.refundDate)
+    add('환불', ipo.refundDate, ipo.refundDateEstimated ?? false)
     add('상장', ipo.listingDate)
   }
 

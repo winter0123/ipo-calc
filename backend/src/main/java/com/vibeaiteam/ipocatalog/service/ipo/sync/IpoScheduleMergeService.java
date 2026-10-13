@@ -138,6 +138,7 @@ public class IpoScheduleMergeService {
         ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
             s.stockCode(), RecordStatus.ACTIVE);
     Ipo target = null;
+    boolean stockCodeFilled = false;
 
     if (byStockCode.isPresent()) {
       Ipo found = byStockCode.get();
@@ -173,12 +174,13 @@ public class IpoScheduleMergeService {
         return false;
       }
       target = matches.get(0);
-      // stockCode 채우기
+      // stockCode 채우기 (이름 매칭으로 새로 채워지면 날짜가 그대로여도 저장 대상)
       target.setStockCode(s.stockCode());
+      stockCodeFilled = true;
     }
 
     // 채우기 및 변경 여부 확인
-    boolean changed = applyScheduleDates(target, s);
+    boolean changed = applyScheduleDates(target, s) || stockCodeFilled;
     if (!changed) {
       return false;
     }

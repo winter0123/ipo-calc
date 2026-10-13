@@ -523,4 +523,36 @@ class IpoScheduleMergeServiceTest {
     assertThat(IpoScheduleMergeService.normalizeName(" (주) 진코스텍 ")).isEqualTo("진코스텍");
     assertThat(IpoScheduleMergeService.normalizeName(null)).isEqualTo("");
   }
+
+  @Test
+  void merge_nameMatch_savesWhenOnlyStockCodeWasFilled() {
+    // 날짜가 이미 모두 채워져 있어도 종목코드가 새로 채워지면 저장되어야 한다
+    Ipo existing =
+        createAutoSyncIpo(
+            1L,
+            "01658035",
+            "진코스텍",
+            null,
+            LocalDate.of(2026, 11, 20),
+            LocalDate.of(2026, 11, 10),
+            LocalDate.of(2026, 11, 12));
+    when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("250030", STATUS_ACTIVE))
+        .thenReturn(Optional.empty());
+    when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+            STATUS_ACTIVE))
+        .thenReturn(List.of(existing));
+    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
+        .thenReturn(
+            List.of(
+                createSchedule(
+                    "250030",
+                    "진코스텍",
+                    LocalDate.of(2026, 11, 20),
+                    LocalDate.of(2026, 11, 10),
+                    LocalDate.of(2026, 11, 12))));
+
+    assertThat(mergeService.merge(TODAY)).isEqualTo(1);
+    assertThat(existing.getStockCode()).isEqualTo("250030");
+    org.mockito.Mockito.verify(ipoRepository).saveAndFlush(existing);
+  }
 }

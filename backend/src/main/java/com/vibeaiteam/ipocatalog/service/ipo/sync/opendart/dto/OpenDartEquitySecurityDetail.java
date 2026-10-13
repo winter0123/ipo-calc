@@ -1,9 +1,11 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +17,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OpenDartEquitySecurityDetail {
+
+  /** 접수번호 (정정 공시 중 최신 건 선택용; 클라이언트가 채움). */
+  private String rceptNo;
 
   /** 회사고유번호. */
   private String corpCode;
@@ -58,6 +63,9 @@ public class OpenDartEquitySecurityDetail {
   /** 청약기일 종료일 파싱 결과 (기간 문자열이면 종료일, 단일 날짜/파싱 실패 시 {@code null}). */
   private LocalDate subscriptionEndDate;
 
+  /** 구분자("~") 뒤 끝일이 있는데 읽지 못한 경우 true (단일 날짜 형식이면 false). */
+  private boolean subscriptionEndUnreadable;
+
   /** 배정공고일(asand) 파싱 결과 (일자까지 읽히지 않으면 {@code null}). */
   private LocalDate allotmentDate;
 
@@ -77,90 +85,91 @@ public class OpenDartEquitySecurityDetail {
   public void parseDerivedFields() {
     this.subscriptionStartDate = parseSbdStartDate(this.sbd);
     this.subscriptionEndDate = parseSbdEndDate(this.sbd);
-    this.allotmentDate = parseFullDate(this.asand);
-    this.refundDate = parseFullDate(this.pymd);
+    this.subscriptionEndUnreadable =
+        this.subscriptionStartDate != null
+            && splitSbd(this.sbd).length > 1
+            && this.subscriptionEndDate == null;
+    this.allotmentDate = parseYmd(this.asand);
+    this.refundDate = parseYmd(this.pymd);
     this.offeringShareCount = parseNumber(this.stkcnt);
     this.offerPrice = parseNumber(this.slprc);
     this.totalOfferingAmount = parseNumber(this.slta);
   }
 
-  /**
-   * 청약기일(sbd) 문자열에서 시작일만 추출하여 {@code LocalDate}로 변환.
-   *
-   * <p>형식 예: {@code "2026년 11월 05일 ~ 2026년 11월 06일"}, {@code "2026년 11월 05일"}, {@code "-"}, {@code
-   * null}
-   *
-   * @param sbd 원문 청약기일 문자열
-   * @return 파싱된 시작일 또는 {@code null}
-   */
+  private static final Pattern PAREN = Pattern.compile("\\([^)]*\\)|（[^）]*）");
+  private static final Pattern TILDE = Pattern.compile("[~∼〜～]");
+  private static final Pattern NUMBER = Pattern.compile("\\d+");
+
+  /** 청약기일(sbd) 시작일: 숫자 3개(연·월·일)를 구분자 무관하게 읽는다. 월만 있거나 못 읽으면 {@code null}. */
   private static LocalDate parseSbdStartDate(String sbd) {
-    if (sbd == null || sbd.isBlank() || sbd.equals("-")) {
-      return null;
-    }
-    // "2026년 11월 05일 ~ 2026년 11월 06일" 또는 "2026년 11월 05일"에서 첫 번째 날짜만 추출
-    String firstDatePart = sbd.split("~")[0].trim();
-    return parseKoreanDate(firstDatePart);
+    String[] parts = splitSbd(sbd);
+    return parts == null ? null : parseYmd(parts[0]);
   }
 
   /**
-   * 청약기일(sbd) 문자열에서 종료일 추출하여 {@code LocalDate}로 변환.
-   *
-   * <p>형식 예: {@code "2026년 11월 05일 ~ 2026년 11월 06일"} → 종료일 파싱, {@code "2026년 11월 05일"} → {@code
-   * null} (단일 날짜는 다음 영업일 계산은 Service 계층에서 수행), {@code "-"}, {@code null} → {@code null}
-   *
-   * @param sbd 원문 청약기일 문자열
-   * @return 파싱된 종료일 (기간 문자열인 경우) 또는 {@code null}
+   * 청약기일(sbd) 종료일. 끝일의 연·월이 생략되면("10월 13일", "13일") 시작일 기준으로 보완한다(끝 월이 시작 월보다 작으면 다음 해). 단일 날짜는
+   * {@code null}(다음 영업일 보완은 Service), 구분자 뒤를 못 읽으면 {@code null}이면서
+   * {@link #subscriptionEndUnreadable}이 true.
    */
   private static LocalDate parseSbdEndDate(String sbd) {
-    if (sbd == null || sbd.isBlank() || sbd.equals("-")) {
+    String[] parts = splitSbd(sbd);
+    if (parts == null || parts.length < 2) {
       return null;
     }
-    String[] parts = sbd.split("~");
-    if (parts.length < 2) {
-      // 단일 날짜인 경우 종료일은 Service 계층에서 다음 영업일로 계산
+    LocalDate start = parseYmd(parts[0]);
+    if (start == null) {
       return null;
     }
-    String secondDatePart = parts[1].trim();
-    return parseKoreanDate(secondDatePart);
+    List<Integer> n = numbers(parts[1]);
+    try {
+      return switch (n.size()) {
+        case 3 -> n.get(0) >= 1000 ? LocalDate.of(n.get(0), n.get(1), n.get(2)) : null;
+        case 2 ->
+            LocalDate.of(
+                n.get(0) < start.getMonthValue() ? start.getYear() + 1 : start.getYear(),
+                n.get(0),
+                n.get(1));
+        case 1 -> LocalDate.of(start.getYear(), start.getMonthValue(), n.get(0));
+        default -> null;
+      };
+    } catch (DateTimeException e) {
+      return null;
+    }
   }
 
-  /** "2026년 11월 05일" 형식만 허용한다. "-", 월만 있는 값, 형식 이상은 {@code null} (엉뚱한 1일로 채우지 않기 위함). */
-  private static LocalDate parseFullDate(String raw) {
-    if (raw == null || raw.isBlank()) {
+  /** 괄호 주석 제거 + 물결 통일 후 분리. 값이 없거나 "-"면 {@code null}. 끝 구간이 비어 있어도 2개로 유지한다. */
+  private static String[] splitSbd(String sbd) {
+    if (sbd == null || sbd.isBlank() || sbd.trim().equals("-")) {
       return null;
     }
-    try {
-      return LocalDate.parse(
-          raw.trim(), DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN));
-    } catch (DateTimeParseException e) {
-      return null;
+    return TILDE.matcher(PAREN.matcher(sbd).replaceAll(" ")).replaceAll("~").split("~", -1);
+  }
+
+  private static List<Integer> numbers(String raw) {
+    List<Integer> result = new ArrayList<>();
+    Matcher m = NUMBER.matcher(raw);
+    while (m.find() && m.group().length() <= 4) {
+      result.add(Integer.parseInt(m.group()));
     }
+    return result;
   }
 
   /**
-   * 한국어 날짜 문자열("2026년 11월 05일", "2026년 11월" 등)을 {@code LocalDate}로 파싱.
-   *
-   * @param koreanDate 한국어 날짜 문자열
-   * @return 파싱된 {@code LocalDate} 또는 {@code null} (파싱 실패 시)
+   * 숫자 3개(연·월·일)로 날짜를 만든다. "2026.10.12", "2026-10-12", "2026년 10월 12일 (월)" 등.
+   * 월만 있으면 {@code null}.
    */
-  private static LocalDate parseKoreanDate(String koreanDate) {
-    if (koreanDate == null || koreanDate.isBlank()) {
+  private static LocalDate parseYmd(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    List<Integer> n = numbers(PAREN.matcher(raw).replaceAll(" "));
+    if (n.size() != 3 || n.get(0) < 1000) {
       return null;
     }
     try {
-      // "2026년 11월 05일" 형식
-      DateTimeFormatter formatterWithDay =
-          DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN);
-      return LocalDate.parse(koreanDate.trim(), formatterWithDay);
-    } catch (DateTimeParseException e1) {
-      try {
-        // "2026년 11월" 형식 (일자 없는 경우) → 1일로 가정
-        DateTimeFormatter formatterMonthOnly =
-            DateTimeFormatter.ofPattern("yyyy년 M월", Locale.KOREAN);
-        return LocalDate.parse(koreanDate.trim(), formatterMonthOnly).withDayOfMonth(1);
-      } catch (DateTimeParseException e2) {
-        return null;
-      }
+      return LocalDate.of(n.get(0), n.get(1), n.get(2));
+    } catch (DateTimeException e) {
+      return null;
     }
   }
 

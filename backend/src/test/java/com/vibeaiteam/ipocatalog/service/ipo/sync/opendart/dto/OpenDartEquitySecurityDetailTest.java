@@ -164,4 +164,66 @@ class OpenDartEquitySecurityDetailTest {
     assertThat(missing.getAllotmentDate()).isNull();
     assertThat(missing.getRefundDate()).isNull();
   }
+
+  private static OpenDartEquitySecurityDetail parsed(String sbd) {
+    OpenDartEquitySecurityDetail d = OpenDartEquitySecurityDetail.builder().sbd(sbd).build();
+    d.parseDerivedFields();
+    return d;
+  }
+
+  @Test
+  void sbd_endWithoutYear_usesStartYear() {
+    OpenDartEquitySecurityDetail d = parsed("2026년 10월 12일 ~ 10월 13일");
+    assertThat(d.getSubscriptionEndDate()).isEqualTo(java.time.LocalDate.of(2026, 10, 13));
+    assertThat(d.isSubscriptionEndUnreadable()).isFalse();
+  }
+
+  @Test
+  void sbd_endDayOnly_usesStartYearAndMonth() {
+    assertThat(parsed("2026년 10월 12일 ~ 13일").getSubscriptionEndDate())
+        .isEqualTo(java.time.LocalDate.of(2026, 10, 13));
+  }
+
+  @Test
+  void sbd_endMonthBeforeStartMonth_rollsToNextYear() {
+    assertThat(parsed("2026년 12월 30일 ~ 1월 2일").getSubscriptionEndDate())
+        .isEqualTo(java.time.LocalDate.of(2027, 1, 2));
+  }
+
+  @Test
+  void sbd_endDash_isUnreadableNotSingleDate() {
+    OpenDartEquitySecurityDetail d = parsed("2026년 10월 12일 ~ -");
+    assertThat(d.getSubscriptionStartDate()).isEqualTo(java.time.LocalDate.of(2026, 10, 12));
+    assertThat(d.getSubscriptionEndDate()).isNull();
+    assertThat(d.isSubscriptionEndUnreadable()).isTrue();
+  }
+
+  @Test
+  void sbd_singleDate_isNotUnreadable() {
+    assertThat(parsed("2026년 10월 12일").isSubscriptionEndUnreadable()).isFalse();
+  }
+
+  @Test
+  void sbd_variantFormats_areParsed() {
+    for (String sbd :
+        new String[] {
+          "2026.10.12 ~ 2026.10.13",
+          "2026-10-12 ∼ 2026-10-13",
+          "2026/10/12 〜 2026/10/13",
+          "2026년 10월 12일(월) ～ 10월 13일(화) (기관 포함)"
+        }) {
+      OpenDartEquitySecurityDetail d = parsed(sbd);
+      assertThat(d.getSubscriptionStartDate())
+          .as(sbd)
+          .isEqualTo(java.time.LocalDate.of(2026, 10, 12));
+      assertThat(d.getSubscriptionEndDate())
+          .as(sbd)
+          .isEqualTo(java.time.LocalDate.of(2026, 10, 13));
+    }
+  }
+
+  @Test
+  void sbd_monthOnly_isNull() {
+    assertThat(parsed("2026년 10월").getSubscriptionStartDate()).isNull();
+  }
 }
