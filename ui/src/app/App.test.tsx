@@ -42,6 +42,10 @@ vi.mock('../pages/IpoCalendarPage/IpoCalendarPage.tsx', () => ({
   default: () => <div>IpoCalendarPage</div>,
 }))
 
+vi.mock('../pages/SecuritiesPage/SecuritiesPage.tsx', () => ({
+  default: () => <div>SecuritiesPage</div>,
+}))
+
 const ROUTES: Array<[string, string]> = [
   ['/', 'IpoCalendarPage'],
   ['/login', 'LoginPage'],
@@ -56,6 +60,7 @@ const ROUTES: Array<[string, string]> = [
   ['/profits/view', 'ProfitViewPage'],
   ['/investments', 'InvestmentHistoryPage'],
   ['/ipo-calendar', 'IpoCalendarPage'],
+  ['/securities', 'SecuritiesPage'],
 ]
 
 function renderAt(path: string) {

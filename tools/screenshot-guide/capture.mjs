@@ -138,6 +138,8 @@ await go('/investments')
 const row = page.getByRole('row').nth(1)
 if (await row.count()) await row.click()
 await shot('investments')
+await go('/securities', () => page.getByRole('heading', { name: '증권사 관리' }).waitFor())
+await shot('securities')
 
 // 6) 증권사 연동: 키 등록 전 → 연결됨 → 매도 내역 조회(미리보기는 더미 응답으로 대체)
 await go(`/broker-sync?investorId=${inv1.id}&securitiesAccountId=${acc1.id}`)
