@@ -14,7 +14,7 @@ pipeline {
           until docker exec ci-pg pg_isready -U vibe -d vibe_ai_team; do sleep 1; done
           cd backend
           SPRING_DATASOURCE_URL=$CI_DB SPRING_DATASOURCE_PASSWORD=vibe_local_password DB_PASSWORD=vibe_local_password \
-            ./gradlew test --no-daemon
+            ./gradlew test checkstyleMain checkstyleTest --no-daemon
         '''
       }
       post { always { sh 'docker rm -f ci-pg || true' } }
@@ -22,7 +22,7 @@ pipeline {
     stage('Test ui') {
       steps {
         dir('ui') {
-          sh 'pnpm install --frozen-lockfile && pnpm run lint && pnpm run typecheck && pnpm run test'
+          sh 'pnpm install --frozen-lockfile && pnpm run lint && pnpm run typecheck && pnpm run format:check && pnpm run test && pnpm run build'
         }
       }
     }
