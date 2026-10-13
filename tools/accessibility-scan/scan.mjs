@@ -19,6 +19,7 @@ const pages = [
   { name: 'signup', path: '/signup', needsAuth: false },
   { name: 'investor-register', path: '/investors/register', needsAuth: true },
   { name: 'securities-account-register', path: '/securities-accounts/register/1', needsAuth: true },
+  { name: 'securities', path: '/securities', needsAuth: true },
   { name: 'subscription-register', path: '/subscriptions/register', needsAuth: true },
   { name: 'subscription-list', path: '/subscriptions', needsAuth: true },
   { name: 'allocation-register', path: '/allocations/register', needsAuth: true },
@@ -31,6 +32,7 @@ const pages = [
 
 const viewports = [
   { name: 'desktop', width: 1280, height: 720 },
+  { name: 'mobile', width: 390, height: 844 },
 ]
 
 async function login(page, context) {
@@ -182,6 +184,168 @@ async function setupAdminStates(browser, page) {
   }
 }
 
+
+const day = (offset) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 달력·공모주 상세·수익·투자 내역 화면을 데이터가 있는 상태로 스캔하기 위한 시드. 관리자 승격(공모주 등록 API) 뒤에 부른다.
+// 상세의 공시 구역은 ipo_details 예시 행을 SQL로 넣어 보이게 한다(실제 DART 호출 없음).
+async function setupTradeStates(page, context) {
+  const call = async (method, path, data) => {
+    const response = await context.request.fetch(`${baseUrl}${apiPrefix}${path}`, {
+      method,
+      data,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok()) throw new Error(`${method} ${path} → ${response.status()} ${await response.text()}`)
+    const text = await response.text()
+    return text ? JSON.parse(text) : null
+  }
+  try {
+    const kis = (await call('GET', '/securities-firms')).find((f) => f.name.includes('한국투자'))
+    const investor = await call('POST', '/investors', { displayName: 'Scan Trader' })
+    const account = await call('POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: kis.id,
+      accountNumber: '3333333333',
+      isDefault: true,
+    })
+    const stamp = Date.now() % 80
+    const defs = [
+      ['바다전자', -6, -4, -1, 10000],
+      ['파도소프트', -1, 1, 5, 25000],
+      ['산호테크', 3, 5, 10, 32000],
+    ]
+    const ipos = []
+    for (const [i, [name, s, e, l, price]] of defs.entries()) {
+      ipos.push(
+        await call('POST', '/ipos', {
+          companyName: name,
+          ipoName: name,
+          stockCode: String(200000 + i * 1111 + stamp * 10000),
+          roundLabel: null,
+          fixedPrice: price,
+          subscriptionStartDate: day(s),
+          subscriptionEndDate: day(e),
+          listingDate: day(l),
+          offeringShareCount: 1000000,
+        }),
+      )
+    }
+    const sub = await call('POST', '/subscriptions', {
+      investorId: investor.id,
+      securitiesAccountId: account.id,
+      ipoId: ipos[0].id,
+      quantity: 100,
+      depositAmount: 500000,
+      subscribedAt: `${day(-6)}T09:00:00`,
+    })
+    const alloc = await call('POST', '/allocations', {
+      subscriptionId: sub.id,
+      allocatedQuantity: 40,
+      allocatedAt: `${day(-3)}T09:00:00`,
+      allocationPrice: 10000,
+    })
+    await call('POST', '/sales', {
+      allocationId: alloc.id,
+      quantity: 25,
+      price: 16000,
+      amount: 400000,
+      saleDate: `${day(-1)}T09:00:00`,
+      fee: 600,
+      tax: 920,
+    })
+    execFileSync('docker', ['exec', dbContainer, 'psql', '-U', dbUser, '-d', dbName, '-c', `INSERT INTO ipo_details (ipo_id, source_rcept_no, source_report_name, synced_at, ceo_name, established_on, address, par_value, capital_stock,
+  largest_shareholder_name, largest_shareholder_ratio, institutional_competition_rate, lock_up_commitment_ratio, financials, float_schedule, underwriters, created_at, updated_at)
+  SELECT id, '20260101000001', '투자설명서', now(), '가나다', DATE '2015-03-02', '서울특별시 예시구 예시로 100', 500, 3500000000,
+  '예시홀딩스', 52.30, 850.40, 31.20,
+  '[{"period":"제11기(2025년12월말)","revenue":24800000000,"operatingProfit":3300000000,"netIncome":2700000000},{"period":"제9기(2023년12월말)","revenue":8200000000,"operatingProfit":-900000000,"netIncome":-1200000000}]',
+  '[{"label":"상장일 유통가능","shares":4200000,"ratio":38.50},{"label":"상장 후 1개월 유통가능","shares":5100000,"ratio":46.80}]',
+  '[{"name":"예시증권","role":"대표","shares":700000},{"name":"샘플투자증권","role":"인수","shares":300000}]', now(), now()
+  FROM ipos WHERE id=${ipos[0].id}`])
+    // 투자자가 여럿이면 현재 투자자를 직접 골라야 하므로 시드한 투자자로 고정한다.
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: 'networkidle' })
+    await page.evaluate((id) => localStorage.setItem('currentInvestorId', String(id)), investor.id)
+    const openRow = async (p) => {
+      await p.locator('tbody tr').first().click()
+      await p.getByRole('button', { name: '청약 수정' }).waitFor()
+    }
+    return [
+      { name: 'ipo-calendar', path: '/ipo-calendar', needsAuth: true },
+      { name: 'ipo-detail', path: `/ipos/${ipos[0].id}`, needsAuth: true },
+      { name: 'profits-graph', path: '/profits/view', needsAuth: true },
+      { name: 'investments-detail-panel', path: '/investments', needsAuth: true, prepare: openRow },
+      {
+        name: 'investments-edit-dialog',
+        path: '/investments',
+        needsAuth: true,
+        prepare: async (p) => {
+          await openRow(p)
+          await p.getByRole('button', { name: '청약 수정' }).click()
+          await p.getByRole('dialog').waitFor()
+        },
+      },
+      {
+        name: 'investments-delete-dialog',
+        path: '/investments',
+        needsAuth: true,
+        prepare: async (p) => {
+          await openRow(p)
+          await p.getByRole('button', { name: '청약 삭제' }).click()
+          await p.getByRole('alertdialog').waitFor()
+        },
+      },
+    ]
+  } catch (error) {
+    console.log(`거래 데이터 시드 실패(건너뜀): ${error.message}`)
+    return []
+  }
+}
+
+// 키보드만으로 수정 대화상자를 열고 닫고 저장할 수 있는지 확인한다(마우스 사용 없음). 어긋나면 error로 보고서에 남는다.
+async function keyboardCheck(page) {
+  const name = 'keyboard-edit-dialog'
+  try {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await page.goto(`${baseUrl}/investments`, { waitUntil: 'networkidle' })
+    await page.locator('tbody tr').first().focus()
+    await page.keyboard.press('Enter')
+    const edit = page.getByRole('button', { name: '청약 수정' })
+    await edit.waitFor()
+    await edit.focus()
+    const inDialog = () => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))
+    const assert = (ok, msg) => { if (!ok) throw new Error(msg) }
+
+    await page.keyboard.press('Enter')
+    await page.getByRole('dialog').waitFor()
+    assert(await inDialog(), '열린 직후 포커스가 대화상자 안에 없음')
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press('Tab')
+      assert(await inDialog(), `Tab ${i + 1}번째에 포커스가 대화상자 밖으로 나감`)
+    }
+    await page.keyboard.press('Escape')
+    await page.getByRole('dialog').waitFor({ state: 'detached' })
+    assert(await edit.evaluate((el) => el === document.activeElement), 'Esc 뒤 포커스가 수정 버튼으로 돌아오지 않음')
+
+    await page.keyboard.press('Enter')
+    await page.getByRole('dialog').waitFor()
+    await page.getByRole('button', { name: '저장' }).waitFor()
+    await page.keyboard.press('Shift+Tab') // 대화상자 처음에서 거꾸로 가도 안에 머무는지
+    assert(await inDialog(), 'Shift+Tab에서 포커스가 대화상자 밖으로 나감')
+    await page.getByRole('button', { name: '저장' }).focus()
+    await page.keyboard.press('Enter')
+    await page.getByRole('dialog').waitFor({ state: 'detached' })
+    console.log(`  ${name}: OK (열기·Tab 가둠·Esc 복귀·키보드 저장)`)
+    return { page: name, path: '/investments', violations: [], passes: 0, incomplete: 0, inapplicable: 0 }
+  } catch (error) {
+    console.log(`  ${name}: FAIL - ${error.message}`)
+    return { page: name, path: '/investments', error: error.message, violations: [] }
+  }
+}
+
 async function scanPage(page, pageInfo) {
   console.log(`Scanning ${pageInfo.name} at ${pageInfo.path}...`)
   
@@ -249,8 +413,9 @@ async function main() {
   const loggedIn = await login(page, context)
   
   const results = []
-  if (loggedIn) pages.push(...(await setupBrokerStates(context)))
   if (loggedIn) pages.push(...(await setupAdminStates(browser, page)))
+  if (loggedIn) pages.push(...(await setupTradeStates(page, context)))
+  if (loggedIn) pages.push(...(await setupBrokerStates(context)))
 
   for (const pageInfo of pages) {
     if (pageInfo.needsAuth && !loggedIn) {
@@ -265,7 +430,9 @@ async function main() {
       continue
     }
     
-    const result = await scanPage(page, pageInfo)
+    for (const vp of viewports) {
+    await page.setViewportSize({ width: vp.width, height: vp.height })
+    const result = await scanPage(page, { ...pageInfo, name: `${pageInfo.name}@${vp.name}` })
     results.push(result)
     
     // Print summary
@@ -274,14 +441,17 @@ async function main() {
       for (const v of result.violations) {
         bySeverity[v.impact] = (bySeverity[v.impact] || 0) + v.nodes.length
       }
-      console.log(`  ${pageInfo.name}: ${result.violations.length} violations (${Object.entries(bySeverity).map(([k,v])=>`${k}:${v}`).join(', ')})`)
+      console.log(`  ${result.page}: ${result.violations.length} violations (${Object.entries(bySeverity).map(([k,v])=>`${k}:${v}`).join(', ')})`)
     } else if (result.error) {
       console.log(`  ${pageInfo.name}: ERROR - ${result.error}`)
     } else if (result.skipped) {
       console.log(`  ${pageInfo.name}: SKIPPED - ${result.reason}`)
     }
+    }
   }
   
+  if (loggedIn) results.push(await keyboardCheck(page))
+
   await context.close()
   await browser.close()
   

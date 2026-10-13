@@ -10,21 +10,15 @@ import {
 import { type Ipo } from '@/entities/ipo/index.ts'
 import { useMarketHolidays } from '@/entities/market-holiday/index.ts'
 import styles from './IpoCalendar.module.css'
-import { toLocalYmd } from '@/shared/lib/date.ts'
+import {
+  EVENT_TYPE_CLASSES,
+  EVENT_TYPE_LABELS,
+  barLabel,
+  buildWeekRows,
+} from './calendarHelpers.ts'
+import { SelectedDayDetail } from './IpoCalendarParts.tsx'
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
-
-const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
-  SUBSCRIPTION: '청약',
-  REFUND: '환불',
-  LISTING: '상장',
-}
-
-const EVENT_TYPE_CLASSES: Record<CalendarEventType, string> = {
-  SUBSCRIPTION: styles.barSubscription,
-  REFUND: styles.barRefund,
-  LISTING: styles.barListing,
-}
 
 const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
   'SUBSCRIPTION',
@@ -38,11 +32,6 @@ interface IpoCalendarProps {
   initialMonth?: number
   visibleTypes?: ReadonlySet<CalendarEventType>
   onVisibleTypesChange?: (next: Set<CalendarEventType>) => void
-}
-
-function getMonthDay(dateStr: string): { month: number; day: number } {
-  const [, month, day] = dateStr.split('-').map(Number)
-  return { month, day }
 }
 
 export default function IpoCalendar({
@@ -87,31 +76,10 @@ export default function IpoCalendar({
     setSelectedDate(date)
   }
 
-  const weekRows = useMemo(() => {
-    const rows: (number | null)[][] = []
-    let week: (number | null)[] = []
-
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      week.push(null)
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      week.push(day)
-      if (week.length === 7) {
-        rows.push(week)
-        week = []
-      }
-    }
-
-    if (week.length > 0) {
-      while (week.length < 7) {
-        week.push(null)
-      }
-      rows.push(week)
-    }
-
-    return rows
-  }, [startingDayOfWeek, daysInMonth])
+  const weekRows = useMemo(
+    () => buildWeekRows(startingDayOfWeek, daysInMonth),
+    [startingDayOfWeek, daysInMonth],
+  )
 
   const formatDateKey = useCallback(
     (day: number) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
@@ -281,15 +249,7 @@ export default function IpoCalendar({
                       marginRight: segment.continuesAfter ? 0 : '2px',
                     } as React.CSSProperties
                   }
-                  aria-label={
-                    segment.event.type === 'SUBSCRIPTION'
-                      ? `${segment.event.companyName} 청약 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일부터 ${getMonthDay(segment.event.endDate).month}월 ${getMonthDay(segment.event.endDate).day}일까지`
-                      : segment.event.type === 'REFUND'
-                        ? `${segment.event.companyName} 환불 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일${
-                            segment.event.estimated ? ' (예상)' : ''
-                          }`
-                        : `${segment.event.companyName} 상장 ${getMonthDay(segment.event.startDate).month}월 ${getMonthDay(segment.event.startDate).day}일`
-                  }
+                  aria-label={barLabel(segment.event)}
                 >
                   {segment.event.companyName}
                 </Link>
@@ -299,59 +259,12 @@ export default function IpoCalendar({
         })}
       </div>
 
-      <section className={styles.detail} aria-label="선택한 날짜 일정 상세" aria-live="polite">
-        <h3 className={styles.detailTitle}>
-          {selectedDate ? `${selectedDate} 일정` : '날짜를 선택하세요'}
-        </h3>
-        {selectedDate && holidayMap.has(selectedDate) && (
-          <p className={styles.holidayNotice}>휴장일 · {holidayMap.get(selectedDate)}</p>
-        )}
-        {selectedDate && selectedDateEvents.length === 0 && (
-          <p className={styles.noEvents}>일정 없음</p>
-        )}
-        {selectedDate && selectedDateEvents.length > 0 && (
-          <ul className={styles.eventList}>
-            {selectedDateEvents.map((event, idx) => (
-              <li key={idx} className={styles.eventItem}>
-                <Link
-                  to={`/ipos/${event.ipoId}`}
-                  className={styles.eventLink}
-                  aria-label={`${event.companyName} ${event.ipoName} 상세 보기`}
-                >
-                  <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
-                    {EVENT_TYPE_LABELS[event.type]}
-                  </span>
-                  <span className={styles.eventCompany}>{event.companyName}</span>
-                  {event.type === 'REFUND' && event.estimated && (
-                    <span className={styles.eventIpo}> (예상)</span>
-                  )}
-                  <span className={styles.eventIpo}>({event.ipoName})</span>
-                  {event.type === 'SUBSCRIPTION' && (
-                    <span className={styles.eventPeriod}>
-                      {event.startDate} ~ {event.endDate}
-                    </span>
-                  )}
-                  <>
-                    {event.price && <span className={styles.eventPrice}>{event.price}</span>}
-                    <span className={styles.eventArrow} aria-hidden="true">
-                      ›
-                    </span>
-                  </>
-                </Link>
-                {event.type === 'SUBSCRIPTION' && event.endDate >= toLocalYmd(today) && (
-                  <Link
-                    to={`/subscriptions/register?ipoId=${event.ipoId}`}
-                    className={styles.registerLink}
-                    aria-label={`${event.companyName} 청약 등록`}
-                  >
-                    청약 등록
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <SelectedDayDetail
+        selectedDate={selectedDate}
+        holidayName={selectedDate ? holidayMap.get(selectedDate) : undefined}
+        events={selectedDateEvents}
+        today={today}
+      />
 
       {visibleTypes.size === 0 && (
         <p className={styles.noTypesSelected} role="status">

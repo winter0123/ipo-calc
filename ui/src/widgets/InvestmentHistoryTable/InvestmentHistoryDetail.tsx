@@ -67,7 +67,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
         <div className={styles.dlRow}>
           <dt>잔여수량</dt>
-          <dd aria-readonly="true">{detail.remainingQuantity ?? '배정 전'}</dd>
+          <dd>{detail.remainingQuantity ?? '배정 전'}</dd>
         </div>
       </dl>
 
