@@ -234,6 +234,19 @@ class ProfitControllerTest {
     return investor.getId();
   }
 
+  // 배정의 청약이 가리키는 공모주를 주어진 상장일(null이면 상장일 없음 → 매도일로 기간 판단)의 새 공모주로 바꾼다.
+  private void useIpoListedOn(Long allocationId, java.time.LocalDate listingDate) {
+    Ipo ipo = ipoRepository.findById(createIpoWithFixedPrice(12000L)).orElseThrow();
+    ipo.setListingDate(listingDate);
+    ipoRepository.save(ipo);
+    Subscription subscription =
+        subscriptionRepository
+            .findById(allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId())
+            .orElseThrow();
+    subscription.setIpoId(ipo.getId());
+    subscriptionRepository.save(subscription);
+  }
+
   private Long createIpoWithFixedPrice(Long fixedPrice) {
     LocalDateTime now = LocalDateTime.now();
     Ipo ipo =
@@ -840,6 +853,7 @@ class ProfitControllerTest {
     // Given: 2026-10-10 / 10-15 / 10-20 매도 3건이 한 투자자에 존재한다 (AC-2)
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
+    useIpoListedOn(allocationId, null);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
@@ -855,9 +869,7 @@ class ProfitControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = readBody(result);
     List<Map<String, Object>> sales = salesOf(body);
-    assertThat(sales)
-        .as("기간에 포함되는 매도만 반환해야 합니다 (AC-2)")
-        .hasSize(1);
+    assertThat(sales).as("기간에 포함되는 매도만 반환해야 합니다 (AC-2)").hasSize(1);
     assertThat(((Number) sales.get(0).get("saleId")).longValue()).isEqualTo(middleSaleId);
     assertThat((String) sales.get(0).get("saleDate")).isEqualTo("2026-10-15T14:30:00");
     // 합계는 필터링된 매도 1건 기준: 취득가 12000 × 30 = 360000
@@ -872,6 +884,7 @@ class ProfitControllerTest {
     // Given: 2026-10-15 14:30 매도가 존재한다 (AC-3)
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
+    useIpoListedOn(allocationId, null);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
@@ -897,6 +910,7 @@ class ProfitControllerTest {
     // Given: 2026-10-10 / 10-15 / 10-20 매도 3건이 존재한다 (AC-4)
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
+    useIpoListedOn(allocationId, null);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
@@ -930,6 +944,7 @@ class ProfitControllerTest {
     // Given: 매도는 존재하지만 조회 기간 밖에 있다 (AC-5)
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
+    useIpoListedOn(allocationId, null);
     Long subscriptionId =
         allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
     Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
@@ -947,6 +962,26 @@ class ProfitControllerTest {
     assertThat(((Number) body.get("totalPreTaxProfit")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("totalAfterTaxProfit")).longValue()).isEqualTo(0L);
     assertThat(((Number) body.get("totalRealizedProfit")).longValue()).isEqualTo(0L);
+  }
+
+  @Test
+  void getInvestorProfitsFiltersByIpoListingDateEvenWhenSoldLater() throws Exception {
+    // Given: 10/15 상장 공모주를 10/20과 11/05에 나눠 팔았다 (사용자 결정 2026-10-13: 상장일 기준)
+    signupAndLogin();
+    Long allocationId = setupFoundation(12000L);
+    useIpoListedOn(allocationId, java.time.LocalDate.of(2026, 10, 15));
+    Long subscriptionId =
+        allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId();
+    Long investorId = subscriptionRepository.findById(subscriptionId).orElseThrow().getInvestorId();
+    createSale(allocationId, 10L, 150000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 20, 9, 0));
+    createSale(allocationId, 20L, 300000L, 0L, 0L, 0L, LocalDateTime.of(2026, 11, 5, 9, 0));
+
+    // When/Then: 10월을 조회하면 11월 매도까지 둘 다 나오고, 11월을 조회하면 없다
+    List<Map<String, Object>> october =
+        salesOf(readBody(getInvestorProfits(investorId, "2026-10-01", "2026-10-31")));
+    assertThat(october).hasSize(2);
+    assertThat(salesOf(readBody(getInvestorProfits(investorId, "2026-11-01", "2026-11-30"))))
+        .isEmpty();
   }
 
   @Test
@@ -980,9 +1015,7 @@ class ProfitControllerTest {
     MvcResult result = getInvestorProfits(investorId, "abc", null);
 
     // Then: 400 Bad Request (AC-6)
-    assertThat(result.getResponse().getStatus())
-        .as("날짜 형식이 잘못되면 400이어야 합니다 (AC-6)")
-        .isEqualTo(400);
+    assertThat(result.getResponse().getStatus()).as("날짜 형식이 잘못되면 400이어야 합니다 (AC-6)").isEqualTo(400);
   }
 
   @Test

@@ -98,7 +98,7 @@ public final class DashboardAggregator {
   }
 
   /**
-   * 매도월("YYYY-MM") 또는 매도연도("YYYY") 기준으로 그룹핑해 period 오름차순으로 반환한다.
+   * 공모주 상장월("YYYY-MM") 또는 상장연도("YYYY") 기준(상장일이 없으면 매도일)으로 그룹핑해 period 오름차순으로 반환한다.
    *
    * @param unit "year"이면 연도, 그 외에는 월 단위
    */
@@ -107,7 +107,7 @@ public final class DashboardAggregator {
   }
 
   /**
-   * 매도일 기준 연/월로 좁힌 뒤 기간별로 집계한다. year가 null이면 전체. month는 unit이 "month"이고 year가 있을 때만 적용돼 해당 월 한 건만
+   * 상장일 기준 연/월로 좁힌 뒤 기간별로 집계한다. year가 null이면 전체. month는 unit이 "month"이고 year가 있을 때만 적용돼 해당 월 한 건만
    * 남기고, 그 외에는 무시한다.
    */
   public static List<PeriodAggregationDto> byPeriod(
@@ -118,12 +118,12 @@ public final class DashboardAggregator {
           month != null && !"year".equals(unit)
               ? String.format("%04d-%02d", year, month)
               : String.format("%04d", year);
-      scoped = sales.stream().filter(cs -> cs.saleDateKey().startsWith(prefix)).toList();
+      scoped = sales.stream().filter(cs -> cs.periodKey().startsWith(prefix)).toList();
     }
     return scoped.stream()
         .collect(
             Collectors.groupingBy(
-                cs -> "year".equals(unit) ? cs.saleDateKey().substring(0, 4) : cs.saleDateKey()))
+                cs -> "year".equals(unit) ? cs.periodKey().substring(0, 4) : cs.periodKey()))
         .entrySet()
         .stream()
         .map(

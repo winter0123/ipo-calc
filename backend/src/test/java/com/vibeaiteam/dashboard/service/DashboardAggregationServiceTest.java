@@ -28,6 +28,7 @@ import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.Securiti
 import com.vibeaiteam.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -204,8 +205,13 @@ class DashboardAggregationServiceTest {
   }
 
   private Ipo createIpo(Long id, Long fixedPrice) {
+    return createIpo(id, fixedPrice, null);
+  }
+
+  private Ipo createIpo(Long id, Long fixedPrice, LocalDate listingDate) {
     return Ipo.builder()
         .id(id)
+        .listingDate(listingDate)
         .ipoName("테스트 IPO")
         .fixedPrice(fixedPrice)
         .status(RecordStatus.ACTIVE)
@@ -603,6 +609,30 @@ class DashboardAggregationServiceTest {
     assertThat(byFirm).hasSize(1);
     assertThat(byFirm.get(0).getSecuritiesFirmId()).isEqualTo(200L);
     assertThat(summary.getParticipationCount()).isEqualTo(2);
+  }
+
+  @Test
+  void getByPeriodUsesIpoListingDateEvenWhenSoldInLaterMonth() {
+    // 10월 상장 공모주를 10월·11월에 나눠 팔아도 기간은 상장월(2024-10) 하나다.
+    Sale oct =
+        createSaleWithDate(
+            1L, 100L, 10L, 150000L, 0L, 0L, 0L, LocalDateTime.of(2024, 10, 20, 9, 0));
+    Sale nov =
+        createSaleWithDate(2L, 100L, 20L, 300000L, 0L, 0L, 0L, LocalDateTime.of(2024, 11, 5, 9, 0));
+
+    setupMocksWithSales(
+        List.of(oct, nov),
+        List.of(createAllocation(100L, 1000L, 50L, 10000L)),
+        List.of(createSubscription(1000L, 10L, 1L, 1L, 100L)),
+        List.of(createInvestor(10L, 1L, "테스트 투자자")),
+        List.of(createSecuritiesAccount(1L, 100L)),
+        List.of(createSecuritiesFirm(100L, "테스트 증권사")),
+        List.of(createIpo(1L, 10000L, LocalDate.of(2024, 10, 15))));
+
+    List<PeriodAggregationDto> byMonth = dashboardAggregationService.getByPeriod("month");
+    assertThat(byMonth).extracting(PeriodAggregationDto::getPeriod).containsExactly("2024-10");
+    assertThat(byMonth.get(0).getTotalInvestmentAmount()).isEqualTo(300000L);
+    assertThat(dashboardAggregationService.getByPeriod("month", 2024, 11)).isEmpty();
   }
 
   @Test

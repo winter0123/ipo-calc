@@ -147,6 +147,9 @@ export default function PeriodSelector({
       <h2 id="period-heading" className={styles.heading}>
         {unit === 'month' ? `${year}년 ${month}월` : `${year}년`}
       </h2>
+      <p className={styles.hint}>
+        공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
+      </p>
 
       <div className={styles.controls}>
         <button

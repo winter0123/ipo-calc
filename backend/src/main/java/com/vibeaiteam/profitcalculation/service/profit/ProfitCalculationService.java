@@ -18,7 +18,6 @@ import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -92,8 +91,8 @@ public class ProfitCalculationService {
   }
 
   /**
-   * 투자자의 ACTIVE Sale 중 매도일(saleDate) 날짜가 from~to 범위에 포함되는 것만 수익을 계산하고 합계를 반환한다. 양 끝 날짜는 포함하며 어느
-   * 한쪽이 없으면 해당 방향의 제한을 두지 않는다. 거른 결과가 비면 빈 목록과 합계 0을 반환한다.
+   * 투자자의 ACTIVE Sale 중 공모주 상장일(없으면 매도일)이 from~to 범위에 포함되는 것만 수익을 계산하고 합계를 반환한다. 양 끝 날짜는 포함하며 어느 한쪽이
+   * 없으면 해당 방향의 제한을 두지 않는다. 거른 결과가 비면 빈 목록과 합계 0을 반환한다.
    *
    * @param investorId 투자자 ID
    * @param from 조회 시작일(포함, null이면 무제한)
@@ -117,22 +116,8 @@ public class ProfitCalculationService {
     List<Sale> sales =
         saleRepository.findActiveWithFilters(investor.getAccountId(), null, investorId, null);
 
-    // 3. 기간 필터 — 매도일의 날짜 부분으로 비교(양 끝 포함)
-    List<Sale> filteredSales = filterByPeriod(sales, from, to);
-    if (filteredSales.isEmpty()) {
-      return InvestorProfitDto.builder()
-          .investorId(investorId)
-          .sales(List.of())
-          .totalSaleAmount(0L)
-          .totalPreTaxProfit(0L)
-          .totalAfterTaxProfit(0L)
-          .totalRealizedProfit(0L)
-          .build();
-    }
-
-    // 4. 배치 조회 (N+1 방지)
-    List<Long> allocationIds =
-        filteredSales.stream().map(Sale::getAllocationId).distinct().toList();
+    // 3. 배치 조회 (N+1 방지) — 기간 필터에 상장일이 필요해 거르기 전에 읽는다
+    List<Long> allocationIds = sales.stream().map(Sale::getAllocationId).distinct().toList();
     Map<Long, Allocation> allocationsById =
         allocationRepository.findAllById(allocationIds).stream()
             .collect(Collectors.toMap(Allocation::getId, Function.identity()));
@@ -144,16 +129,29 @@ public class ProfitCalculationService {
             .collect(Collectors.toMap(Subscription::getId, Function.identity()));
 
     List<Long> ipoIds =
-        allocationsById.values().stream()
-            .filter(allocation -> allocation.getAllocationPrice() == null)
-            .map(allocation -> subscriptionsById.get(allocation.getSubscriptionId()))
-            .filter(Objects::nonNull)
-            .map(Subscription::getIpoId)
-            .distinct()
-            .toList();
+        subscriptionsById.values().stream().map(Subscription::getIpoId).distinct().toList();
     Map<Long, Ipo> ipoById =
         ipoRepository.findAllById(ipoIds).stream()
             .collect(Collectors.toMap(Ipo::getId, Function.identity()));
+
+    // 4. 기간 필터 — 사용자 결정(2026-10-13): 공모주 상장일 기준(10월 상장을 11월에 팔아도 10월). 상장일이 없으면 매도일.
+    List<Sale> filteredSales =
+        sales.stream()
+            .filter(
+                sale ->
+                    isInPeriod(
+                        basisDay(sale, allocationsById, subscriptionsById, ipoById), from, to))
+            .toList();
+    if (filteredSales.isEmpty()) {
+      return InvestorProfitDto.builder()
+          .investorId(investorId)
+          .sales(List.of())
+          .totalSaleAmount(0L)
+          .totalPreTaxProfit(0L)
+          .totalAfterTaxProfit(0L)
+          .totalRealizedProfit(0L)
+          .build();
+    }
 
     // 5. 각 Sale마다 수익 계산 (SF-2 로직 재사용)
     List<ProfitDto> profits =
@@ -205,16 +203,25 @@ public class ProfitCalculationService {
         .build();
   }
 
-  // 매도일의 날짜 부분이 from~to 범위(양 끝 포함)에 해당하는 매도만 남긴다. 한쪽이 null이면 그 방향의 제한이 없다.
-  private List<Sale> filterByPeriod(List<Sale> sales, LocalDate from, LocalDate to) {
-    return sales.stream().filter(sale -> isInPeriod(sale.getSaleDate(), from, to)).toList();
+  // 기간 판단 기준일: 그 매도의 공모주 상장일, 상장일을 모르면 매도일.
+  private static LocalDate basisDay(
+      Sale sale,
+      Map<Long, Allocation> allocationsById,
+      Map<Long, Subscription> subscriptionsById,
+      Map<Long, Ipo> ipoById) {
+    Allocation allocation = allocationsById.get(sale.getAllocationId());
+    Subscription subscription =
+        allocation == null ? null : subscriptionsById.get(allocation.getSubscriptionId());
+    Ipo ipo = subscription == null ? null : ipoById.get(subscription.getIpoId());
+    return ipo != null && ipo.getListingDate() != null
+        ? ipo.getListingDate()
+        : sale.getSaleDate().toLocalDate();
   }
 
-  // 매도일의 날짜가 from·to 사이(양 끝 포함)면 true다. null인 경계는 무제한으로 본다.
-  private boolean isInPeriod(LocalDateTime saleDate, LocalDate from, LocalDate to) {
-    LocalDate saleDay = saleDate.toLocalDate();
-    boolean fromOk = from == null || !saleDay.isBefore(from);
-    boolean toOk = to == null || !saleDay.isAfter(to);
+  // 기준일이 from·to 사이(양 끝 포함)면 true다. null인 경계는 무제한으로 본다.
+  private static boolean isInPeriod(LocalDate day, LocalDate from, LocalDate to) {
+    boolean fromOk = from == null || !day.isBefore(from);
+    boolean toOk = to == null || !day.isAfter(to);
     return fromOk && toOk;
   }
 

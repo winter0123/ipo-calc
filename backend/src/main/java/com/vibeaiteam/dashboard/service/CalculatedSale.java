@@ -14,7 +14,7 @@ public record CalculatedSale(
     Long afterTaxProfit,
     Long investorId,
     Long securitiesFirmId,
-    String saleDateKey, // "YYYY-MM"
+    String periodKey, // "YYYY-MM": 공모주 상장일 기준(상장일이 없으면 매도일)
     String investorName,
     String securitiesFirmName,
     Long soldQuantity,
@@ -55,7 +55,10 @@ public record CalculatedSale(
         afterTaxProfit,
         investor.getId(),
         securitiesFirmId,
-        sale.getSaleDate().format(MONTH_FORMATTER),
+        // 사용자 결정(2026-10-13): 10월 상장 공모주를 11월에 팔아도 수익은 10월로 잡는다.
+        ipo != null && ipo.getListingDate() != null
+            ? ipo.getListingDate().format(MONTH_FORMATTER)
+            : sale.getSaleDate().format(MONTH_FORMATTER),
         investor.getDisplayName(),
         securitiesFirmName,
         sale.getQuantity(),
