@@ -97,6 +97,15 @@ for (const [i, [name, code, s, e, l, price]] of ipoDefs.entries()) {
     fixedPrice: price, subscriptionStartDate: day(s, ''), subscriptionEndDate: day(e, ''), listingDate: day(l, ''), offeringShareCount: 1000000,
   }))
 }
+// 공시 정보 구역(수요예측·유통가능 일정·기업정보·손익계산서·인수단)이 보이도록 설명용 예시 값을 직접 넣는다(실제 DART 호출 없음).
+sql(`INSERT INTO ipo_details (ipo_id, source_rcept_no, source_report_name, synced_at, ceo_name, established_on, address, par_value, capital_stock,
+  largest_shareholder_name, largest_shareholder_ratio, institutional_competition_rate, lock_up_commitment_ratio, financials, float_schedule, underwriters, created_at, updated_at)
+  SELECT id, '20260101000001', '투자설명서', now(), '가나다', DATE '2015-03-02', '서울특별시 예시구 예시로 100', 500, 3500000000,
+  '예시홀딩스', 52.30, 850.40, 31.20,
+  '[{"period":"제11기(2025년12월말)","revenue":24800000000,"operatingProfit":3300000000,"netIncome":2700000000},{"period":"제10기(2024년12월말)","revenue":15400000000,"operatingProfit":1100000000,"netIncome":800000000},{"period":"제9기(2023년12월말)","revenue":8200000000,"operatingProfit":-900000000,"netIncome":-1200000000}]',
+  '[{"label":"상장일 유통가능","shares":4200000,"ratio":38.50},{"label":"상장 후 1개월 유통가능","shares":5100000,"ratio":46.80},{"label":"상장 후 3개월 유통가능","shares":6300000,"ratio":57.80},{"label":"상장 후 6개월 유통가능","shares":8400000,"ratio":77.10},{"label":"상장 후 1년 유통가능","shares":10900000,"ratio":100.00}]',
+  '[{"name":"예시증권","role":"대표","shares":700000},{"name":"샘플투자증권","role":"인수","shares":300000}]', now(), now()
+  FROM ipos`)
 await go('/ipo-calendar')
 await page.getByRole('heading', { name: /공모주 일정/ }).waitFor()
 const pick = new Date()
