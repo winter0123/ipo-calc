@@ -1,5 +1,6 @@
 package com.vibeaiteam.brokerintegration.adapter.kis;
 
+import com.vibeaiteam.brokerintegration.adapter.BrokerHttp;
 import com.vibeaiteam.brokerintegration.adapter.BrokerQueryPort;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfit;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitDetail;
@@ -12,9 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -43,8 +42,6 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
   private static final long PAGE_DELAY_MS = 150;
   private static final int MAX_RATE_LIMIT_RETRIES = 2;
   private static final long RATE_LIMIT_BACKOFF_MS = 1_100;
-  private static final int CONNECT_TIMEOUT_MS = 5_000;
-  private static final int READ_TIMEOUT_MS = 15_000;
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
   private final RestClient restClient;
@@ -65,19 +62,7 @@ public class KisPeriodTradeProfitClient implements BrokerQueryPort {
    * @param baseUrl KIS API base-url
    */
   public KisPeriodTradeProfitClient(RestClient.Builder restClientBuilder, String baseUrl) {
-    this(
-        restClientBuilder
-            .baseUrl(baseUrl)
-            .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-            .requestFactory(createRequestFactory())
-            .build());
-  }
-
-  private static SimpleClientHttpRequestFactory createRequestFactory() {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    factory.setReadTimeout(READ_TIMEOUT_MS);
-    return factory;
+    this(BrokerHttp.newClient(restClientBuilder, baseUrl));
   }
 
   @Override
