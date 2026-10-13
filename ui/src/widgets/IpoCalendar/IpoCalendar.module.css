@@ -482,6 +482,11 @@
 }
 
 @media (max-width: 640px) {
+  /* 칸이 좁아 잘린 이름 조각만 보이므로 숨긴다(붉은 날짜·접근성 이름·선택일 안내는 유지) */
+  .holidayName {
+    display: none;
+  }
+
   .emptyCell,
   .dateCell {
     min-height: 72px;
