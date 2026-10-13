@@ -83,8 +83,17 @@ class BrokerTokenServiceTest {
     // 저장소 목은 방금 만든 엔티티를 그대로 돌려준다(서비스가 엔티티를 갱신하면 다음 조회에 그대로 반영된다).
     when(credentialRepository.findByIdAndDeletedAtIsNull(CREDENTIAL_ID))
         .thenAnswer(invocation -> Optional.of(credential));
-    when(credentialRepository.save(any(SecuritiesAccountApiCredential.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+    // 조건부 UPDATE 목: 앱키 암호문이 같을 때만 "DB 행"(credential)에 반영한다.
+    when(credentialRepository.updateTokenIfKeyUnchanged(any(), any(), any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              if (!credential.getAppKeyEncrypted().equals(invocation.getArgument(1))) {
+                return 0;
+              }
+              credential.setAccessTokenEncrypted(invocation.getArgument(2));
+              credential.setTokenExpiresAt(invocation.getArgument(3));
+              return 1;
+            });
 
     loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
     listAppender = new ListAppender<>();
@@ -112,7 +121,8 @@ class BrokerTokenServiceTest {
     assertThat(token.token()).isEqualTo(CACHED_TOKEN);
     assertThat(token.expiresAt()).isEqualTo(credential.getTokenExpiresAt());
     verify(authClient, never()).issueToken(anyString(), anyString());
-    verify(credentialRepository, never()).save(any(SecuritiesAccountApiCredential.class));
+    verify(credentialRepository, never())
+        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -143,8 +153,26 @@ class BrokerTokenServiceTest {
     // Then: 1회 발급하고 만료 시각과 암호문을 저장한다.
     assertThat(token.token()).isEqualTo(ISSUED_TOKEN);
     verify(authClient).issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET);
-    verify(credentialRepository).save(credential);
+    verify(credentialRepository)
+        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
     assertThat(credential.getTokenExpiresAt()).isEqualTo(token.expiresAt());
+  }
+
+  @Test
+  void getValidToken_keyRotatedDuringIssuance_doesNotOverwriteNewKeyOrCacheOldToken() {
+    // Given: 호출자가 읽어 둔 엔티티(옛 키)와, 그 사이 새 키로 바뀐 "DB 행"
+    SecuritiesAccountApiCredential stale = buildCredential(null, null);
+    credential = buildCredential(null, null);
+    String newKeyCipher = secretEncryptor.encrypt("dummy-new-app-key");
+    credential.setAppKeyEncrypted(newKeyCipher);
+    stubSuccessfulIssuance();
+
+    // When: 낡은 엔티티로 토큰 발급 경로 실행
+    service.getValidToken(stale);
+
+    // Then: 새 키는 유지되고 옛 키로 발급한 토큰은 저장되지 않는다.
+    assertThat(credential.getAppKeyEncrypted()).isEqualTo(newKeyCipher);
+    assertThat(credential.getAccessTokenEncrypted()).isNull();
   }
 
   @Test
@@ -219,7 +247,8 @@ class BrokerTokenServiceTest {
     // 실패한 시도는 상태를 남기지 않는다(부분 상태 금지) → 재시도 차단을 추가하지 않았다.
     assertThat(credential.getAccessTokenEncrypted()).isNull();
     assertThat(credential.getTokenExpiresAt()).isNull();
-    verify(credentialRepository, never()).save(any(SecuritiesAccountApiCredential.class));
+    verify(credentialRepository, never())
+        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -236,7 +265,8 @@ class BrokerTokenServiceTest {
 
     // Then: 기존 캐시 값은 덮어쓰지 않는다(부분 갱신 금지).
     assertThat(credential.getAccessTokenEncrypted()).isEqualTo(staleCiphertext);
-    verify(credentialRepository, never()).save(any(SecuritiesAccountApiCredential.class));
+    verify(credentialRepository, never())
+        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -336,7 +366,8 @@ class BrokerTokenServiceTest {
             BrokerApiException.class,
             e -> assertThat(e.getStatusCode()).isEqualTo("unsupported_provider"));
     verify(authClient, never()).issueToken(anyString(), anyString());
-    verify(credentialRepository, never()).save(any(SecuritiesAccountApiCredential.class));
+    verify(credentialRepository, never())
+        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
   }
 
   private void stubSuccessfulIssuance() {

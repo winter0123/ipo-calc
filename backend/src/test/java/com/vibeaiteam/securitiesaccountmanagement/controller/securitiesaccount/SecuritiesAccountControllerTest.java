@@ -11,6 +11,8 @@ import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
+import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
+import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountApiCredentialRepository;
 import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
@@ -59,7 +61,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
 class SecuritiesAccountControllerTest {
 
-  private static final String ACCOUNT_NUMBER = "123-456-789012";
+  private static final String ACCOUNT_NUMBER = "123456789012";
 
   @Autowired private MockMvc mockMvc;
 
@@ -74,6 +76,8 @@ class SecuritiesAccountControllerTest {
   @Autowired private SecuritiesAccountRepository securitiesAccountRepository;
 
   @Autowired private AccountNumberEncryptor accountNumberEncryptor;
+
+  @Autowired private SecuritiesAccountApiCredentialRepository credentialRepository;
 
   private String testEmail;
   private String testPassword;
@@ -1580,5 +1584,93 @@ class SecuritiesAccountControllerTest {
     SecuritiesAccount unchanged =
         securitiesAccountRepository.findById(otherAccount.getId()).orElseThrow();
     assertThat(unchanged.getIsDefault()).as("소유권 없는 요청은 계좌를 변경하면 안 됩니다 (SF-7)").isFalse();
+  }
+
+  private long register(Long investorId, Long firmId, String number, boolean isDefault)
+      throws Exception {
+    MvcResult r =
+        registerSecuritiesAccount(
+            Map.of(
+                "investorId", investorId,
+                "securitiesFirmId", firmId,
+                "accountNumber", number,
+                "isDefault", isDefault));
+    assertThat(r.getResponse().getStatus()).as(utf8Body(r)).isEqualTo(201);
+    long id = ((Number) objectMapper.readValue(utf8Body(r), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(id).orElseThrow());
+    return id;
+  }
+
+  @Test
+  void registerDefaultAccountWhenDefaultExistsReturns201AndMovesDefault() throws Exception {
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    long first = register(investorId, firmId, "1234567890123", true);
+
+    long second = register(investorId, firmId, "2234567890123", true);
+
+    assertThat(securitiesAccountRepository.findById(first).orElseThrow().getIsDefault()).isFalse();
+    assertThat(securitiesAccountRepository.findById(second).orElseThrow().getIsDefault()).isTrue();
+  }
+
+  @Test
+  void registerAfterOnlyAccountDeactivatedMakesNewAccountDefault() throws Exception {
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    long first = register(investorId, firmId, "1234567890123", true);
+    mockMvc.perform(delete("/securities-accounts/{id}", first).session(session)).andReturn();
+
+    long second = register(investorId, firmId, "2234567890123", false);
+
+    assertThat(securitiesAccountRepository.findById(second).orElseThrow().getIsDefault()).isTrue();
+  }
+
+  @Test
+  void registerNormalizesAccountNumberAndRejectsInvalidFormat() throws Exception {
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    long id = register(investorId, firmId, " 123 456-7890 123 ", true);
+    SecuritiesAccount saved = securitiesAccountRepository.findById(id).orElseThrow();
+    assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("1234567890123");
+
+    for (String bad : new String[] {"123456789", "12345678901234567", "1234-abcd-56789"}) {
+      MvcResult r =
+          registerSecuritiesAccount(
+              Map.of("investorId", investorId, "securitiesFirmId", firmId, "accountNumber", bad));
+      assertThat(r.getResponse().getStatus()).as(bad).isEqualTo(400);
+    }
+  }
+
+  @Test
+  void deactivateDeletesApiCredentialAndPromotesOldestActiveAccount() throws Exception {
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    long first = register(investorId, firmId, "1234567890123", true);
+    long second = register(investorId, firmId, "2234567890123", false);
+    long third = register(investorId, firmId, "3234567890123", false);
+    LocalDateTime now = LocalDateTime.now();
+    SecuritiesAccountApiCredential credential =
+        credentialRepository.save(
+            SecuritiesAccountApiCredential.builder()
+                .securitiesAccountId(first)
+                .apiProvider("KIS")
+                .appKeyEncrypted("k")
+                .appSecretEncrypted("s")
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+    MvcResult r =
+        mockMvc.perform(delete("/securities-accounts/{id}", first).session(session)).andReturn();
+
+    assertThat(r.getResponse().getStatus()).isEqualTo(204);
+    assertThat(credentialRepository.findById(credential.getId())).isEmpty();
+    assertThat(securitiesAccountRepository.findById(second).orElseThrow().getIsDefault()).isTrue();
+    assertThat(securitiesAccountRepository.findById(third).orElseThrow().getIsDefault()).isFalse();
   }
 }

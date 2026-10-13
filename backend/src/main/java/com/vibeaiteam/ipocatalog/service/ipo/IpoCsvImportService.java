@@ -8,9 +8,13 @@ import com.vibeaiteam.ipocatalog.exception.IpoFileTooLargeException;
 import com.vibeaiteam.ipocatalog.exception.IpoInvalidCsvException;
 import com.vibeaiteam.ipocatalog.exception.IpoValidationException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -81,7 +85,7 @@ public class IpoCsvImportService {
 
   private List<CSVRecord> parseRecords(MultipartFile file) {
     CSVFormat format = CSVFormat.DEFAULT.builder().setIgnoreEmptyLines(true).setTrim(true).get();
-    try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+    try (Reader reader = new StringReader(decode(file.getBytes()));
         CSVParser parser = format.parse(reader)) {
       List<CSVRecord> records = parser.getRecords();
       if (records.isEmpty()) {
@@ -93,6 +97,23 @@ public class IpoCsvImportService {
     } catch (IOException | UncheckedIOException ex) {
       throw new IpoInvalidCsvException("CSV 파일을 읽을 수 없습니다.");
     }
+  }
+
+  /** 엄격한 UTF-8로 읽고, 실패하면 CP949로 재시도한다. UTF-8 BOM은 제거한다. */
+  private static String decode(byte[] bytes) throws IOException {
+    String text;
+    try {
+      text =
+          StandardCharsets.UTF_8
+              .newDecoder()
+              .onMalformedInput(CodingErrorAction.REPORT)
+              .onUnmappableCharacter(CodingErrorAction.REPORT)
+              .decode(ByteBuffer.wrap(bytes))
+              .toString();
+    } catch (CharacterCodingException ex) {
+      text = new String(bytes, Charset.forName("MS949"));
+    }
+    return text.startsWith("\uFEFF") ? text.substring(1) : text;
   }
 
   private Map<String, Integer> buildHeaderIndex(CSVRecord header) {

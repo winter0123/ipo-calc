@@ -409,4 +409,39 @@ class SecuritiesAccountApiCredentialRepositoryTest {
     assertThat(activeResult.get().getApiProvider()).isEqualTo("KIS");
     assertThat(deletedResult).isEmpty();
   }
+
+  @Test
+  void updateTokenIfKeyUnchangedSkipsWhenKeyWasRotatedAndKeepsNewKey() {
+    // Given: 옛 키로 저장된 인증정보
+    SecuritiesAccountApiCredential saved =
+        credentialRepository.saveAndFlush(
+            buildCredential(
+                securitiesAccountId,
+                "KIS",
+                "old-key",
+                "secret",
+                null,
+                null,
+                RecordStatus.ACTIVE,
+                null));
+    LocalDateTime exp = LocalDateTime.now().plusDays(1);
+
+    // When: 키 교체 후, 옛 키 기준으로 토큰 갱신 시도 / 같은 키로 토큰 갱신 시도
+    saved.setAppKeyEncrypted("new-key");
+    credentialRepository.saveAndFlush(saved);
+    int stale =
+        credentialRepository.updateTokenIfKeyUnchanged(
+            saved.getId(), "old-key", "old-token", exp, LocalDateTime.now());
+    int fresh =
+        credentialRepository.updateTokenIfKeyUnchanged(
+            saved.getId(), "new-key", "new-token", exp, LocalDateTime.now());
+
+    // Then: 옛 키 토큰은 저장되지 않고, 새 키는 유지된다.
+    assertThat(stale).isZero();
+    assertThat(fresh).isEqualTo(1);
+    SecuritiesAccountApiCredential reloaded =
+        credentialRepository.findById(saved.getId()).orElseThrow();
+    assertThat(reloaded.getAppKeyEncrypted()).isEqualTo("new-key");
+    assertThat(reloaded.getAccessTokenEncrypted()).isEqualTo("new-token");
+  }
 }

@@ -59,7 +59,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
 class ApiCredentialControllerTest {
 
-  private static final String PLAIN_ACCOUNT_NUMBER = "123-456-789012";
+  private static final String PLAIN_ACCOUNT_NUMBER = "123456789012";
   private static final String DUMMY_APP_KEY = "dummy-app-key";
   private static final String DUMMY_APP_SECRET = "dummy-app-secret";
 

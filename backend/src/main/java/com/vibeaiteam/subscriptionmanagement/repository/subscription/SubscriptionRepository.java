@@ -101,7 +101,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
           + "AND (:securitiesAccountId IS NULL OR s.securitiesAccountId = :securitiesAccountId) "
           + "AND (:ipoId IS NULL OR s.ipoId = :ipoId) "
           + "AND s.deletedAt IS NULL "
-          + "ORDER BY s.subscribedAt DESC")
+          + "ORDER BY s.subscribedAt DESC, s.id DESC")
   Page<Subscription> findByInvestorAccountIdWithFilters(
       @Param("currentAccountId") Long currentAccountId,
       @Param("investorId") Long investorId,
