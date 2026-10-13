@@ -94,6 +94,9 @@ export default function ProfitViewPage() {
             )
           })}
         </div>
+        <p className={styles.hint}>
+          기간은 공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
+        </p>
 
         {periodInvalid && (
           <div className={styles.error} role="alert">
