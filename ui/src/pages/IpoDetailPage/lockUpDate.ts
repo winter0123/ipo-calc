@@ -4,8 +4,11 @@
  */
 export function expectedUnlockDate(listingDate: string | null, label: string): string | null {
   const m = listingDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  const parts = [...label.matchAll(/(\d+)\s*(개월|년|일)/g)]
-  if (!m || parts.length === 0) return null
+  // '1.5년'의 5, '2026년'처럼 기간이 아닌 숫자는 버린다(소수점 뒤 숫자 제외, 년은 두 자리까지).
+  const parts = [...label.matchAll(/(?<![\d.])(\d{1,3})\s*(개월|년|일)/g)].filter(
+    ([, n, unit]) => unit !== '년' || Number(n) < 100,
+  )
+  if (!m || parts.length === 0 || /\d\.\d/.test(label)) return null
   let months = 0
   let days = 0
   for (const [, n, unit] of parts) {

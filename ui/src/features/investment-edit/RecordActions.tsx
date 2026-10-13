@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { deleteSubscription } from '@/entities/subscription/index.ts'
 import { deleteAllocation } from '@/entities/allocation/index.ts'
 import { deleteSale } from '@/entities/sale/index.ts'
@@ -37,6 +37,7 @@ interface RecordActionsProps {
 export default function RecordActions({ kind, id, label, onDeleted }: RecordActionsProps) {
   const [mode, setMode] = useState<'edit' | 'delete' | null>(null)
   const name = KIND_LABEL[kind]
+  const deleting = useRef(false)
   const remove = useRecordMutation(DELETE_BY_KIND[kind])
   const close = () => setMode(null)
 
@@ -82,15 +83,22 @@ export default function RecordActions({ kind, id, label, onDeleted }: RecordActi
         message={`${label ?? name}을(를) 삭제할까요?`}
         confirmLabel="삭제"
         onCancel={close}
-        onConfirm={() =>
+        pending={remove.isPending}
+        onConfirm={() => {
+          // 같은 틱의 연속 클릭은 isPending이 아직 false라 ref로 막는다.
+          if (deleting.current) return
+          deleting.current = true
           remove.mutate(id, {
             onSuccess: () => {
               close()
               onDeleted?.()
             },
             onError: close,
+            onSettled: () => {
+              deleting.current = false
+            },
           })
-        }
+        }}
       />
     </>
   )

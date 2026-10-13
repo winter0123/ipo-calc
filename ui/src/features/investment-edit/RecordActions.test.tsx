@@ -128,6 +128,44 @@ describe('RecordActions', () => {
     },
   )
 
+  it('삭제 확인을 연달아 눌러도 DELETE는 한 번만 나간다', async () => {
+    let release: () => void = () => {}
+    mockFetch.mockImplementation((_path, options) =>
+      options?.method === 'DELETE'
+        ? new Promise((resolve) => {
+            release = () => resolve(undefined)
+          })
+        : Promise.resolve(RECORDS.sale),
+    )
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RecordActions kind="sale" id={3} />
+      </QueryClientProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: '매도 삭제' }))
+    const confirm = within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' })
+    await userEvent.dblClick(confirm)
+    await userEvent.click(confirm)
+    release()
+
+    await waitFor(() =>
+      expect(mockFetch.mock.calls.filter(([, o]) => o?.method === 'DELETE')).toHaveLength(1),
+    )
+  })
+
+  it('배정 수정에서 있던 배정단가를 비우면 저장하지 않고 안내한다', async () => {
+    setup('allocation')
+    await userEvent.click(screen.getByRole('button', { name: /수정$/ }))
+    const price = await screen.findByLabelText(/배정단가/)
+    await userEvent.clear(price)
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(
+      await screen.findByText('배정단가는 비울 수 없습니다. 값을 입력해 주세요.'),
+    ).toBeInTheDocument()
+    expect(call('PATCH')).toBeUndefined()
+  })
+
   it('삭제가 409면 서버 메시지를 그대로 보여 준다', async () => {
     const message = '매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.'
     mockFetch.mockRejectedValueOnce(new ApiError(409, message, message))

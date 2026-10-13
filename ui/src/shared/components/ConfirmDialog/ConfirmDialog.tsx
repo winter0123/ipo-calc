@@ -9,6 +9,8 @@ export interface ConfirmDialogProps {
   onCancel: () => void
   confirmLabel?: string
   cancelLabel?: string
+  /** 확인 처리 중이면 확인 버튼을 잠근다(연속 클릭으로 요청이 두 번 나가지 않게). */
+  pending?: boolean
 }
 
 export default function ConfirmDialog({
@@ -19,6 +21,7 @@ export default function ConfirmDialog({
   onCancel,
   confirmLabel = '확인',
   cancelLabel = '취소',
+  pending = false,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
@@ -84,7 +87,9 @@ export default function ConfirmDialog({
             ref={confirmButtonRef}
             type="button"
             className={styles.confirmButton}
-            onClick={onConfirm}
+            onClick={pending ? undefined : onConfirm}
+            disabled={pending}
+            aria-busy={pending}
           >
             {confirmLabel}
           </button>

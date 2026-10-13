@@ -13,6 +13,10 @@ describe('expectedUnlockDate', () => {
   it('말일을 넘기는 달은 말일로 맞춘다', () => {
     expect(expectedUnlockDate('2026-08-31', '6개월')).toBe('2027-02-28')
   })
+  it('소수 기간이나 연도 숫자는 기간으로 읽지 않는다', () => {
+    expect(expectedUnlockDate('2026-10-14', '상장 후 1.5년 뒤')).toBeNull()
+    expect(expectedUnlockDate('2026-10-14', '2026년 3월 신청, 3개월')).toBe('2027-01-14')
+  })
   it('기간을 못 읽거나 상장일이 없으면 null', () => {
     expect(expectedUnlockDate('2026-10-22', '상장일 유통가능')).toBeNull()
     expect(expectedUnlockDate(null, '3개월')).toBeNull()

@@ -5,12 +5,15 @@ import type { InvestorResponse } from './types.ts'
 const STORAGE_KEY = 'currentInvestorId'
 const CHANGE_EVENT = 'current-investor-change'
 
-// 선택은 브라우저에 기억한다. 저장소를 못 쓰는 환경에서도 화면은 동작해야 하므로 예외는 삼킨다.
+// 선택은 브라우저에 기억한다. 저장소를 못 쓰는 환경(사생활 보호 창, 사이트 데이터 차단)에서도
+// 이번 방문 동안은 선택이 유지되도록 메모리에도 둔다.
+let memorySelection: string | null = null
+
 function readStored(): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY)
+    return localStorage.getItem(STORAGE_KEY) ?? memorySelection
   } catch {
-    return null
+    return memorySelection
   }
 }
 
@@ -43,10 +46,11 @@ export function useCurrentInvestor(): CurrentInvestor {
   const investors = data ?? []
 
   const select = useCallback((investorId: number) => {
+    memorySelection = String(investorId)
     try {
       localStorage.setItem(STORAGE_KEY, String(investorId))
     } catch {
-      // 저장 실패해도 이번 방문에서만 선택이 풀릴 뿐이다.
+      // 저장 실패해도 memorySelection으로 이번 방문 동안은 유지된다.
     }
     window.dispatchEvent(new Event(CHANGE_EVENT))
   }, [])
