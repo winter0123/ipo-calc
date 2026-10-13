@@ -13,6 +13,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -198,13 +199,33 @@ public class IpoSyncService {
       return true;
     }
 
-    // 보통 1건만 옴, 첫 번째 건 사용
-    OpenDartEquitySecurityDetail detail = details.get(0);
+    // 정정 공시가 있으면 여러 건 → 접수번호가 가장 큰(최신) 건을 명시적으로 선택
+    OpenDartEquitySecurityDetail detail =
+        details.stream()
+            .max(
+                Comparator.comparing(
+                    OpenDartEquitySecurityDetail::getRceptNo,
+                    Comparator.nullsFirst(Comparator.naturalOrder())))
+            .orElseThrow();
 
     // subscriptionStartDate가 null이면 실패 처리
     if (detail.getSubscriptionStartDate() == null) {
       recordFailure(result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
+      return true;
+    }
+
+    // 끝일 구분자는 있는데 못 읽은 경우: 다음 영업일로 조용히 채우지 않고 실패 기록
+    if (detail.isSubscriptionEndUnreadable()) {
+      recordFailure(result, corpCode, corpName, "청약 종료일 파싱 실패 (sbd: " + detail.getSbd() + ")");
+      log.warn("청약 종료일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
+      return true;
+    }
+    if (detail.getSubscriptionEndDate() != null
+        && detail.getSubscriptionEndDate().isBefore(detail.getSubscriptionStartDate())) {
+      recordFailure(
+          result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
+      log.warn("청약 종료일이 시작일보다 앞섬: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
 
@@ -290,10 +311,17 @@ public class IpoSyncService {
     }
 
     // 2) (ipoName, subscriptionStartDate)로 수동 등록 레코드 등 조회
-    var existingByNameAndDate =
-        ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
-            corpName, startDate, RecordStatus.ACTIVE);
-    if (existingByNameAndDate.isPresent()) {
+    String normalizedName = IpoScheduleMergeService.normalizeName(corpName);
+    boolean sameNameAndDate =
+        ipoRepository
+            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(startDate, RecordStatus.ACTIVE)
+            .stream()
+            .anyMatch(
+                i ->
+                    i.getIpoName() != null
+                        && IpoScheduleMergeService.normalizeName(i.getIpoName())
+                            .equals(normalizedName));
+    if (sameNameAndDate) {
       // 수동 등록 또는 다른 경로로 생성된 레코드 → 수정하지 않음
       result.setSkippedManual(result.getSkippedManual() + 1);
       log.debug("이름+시작일 매칭 레코드 존재로 건너뜀: corpName={}, startDate={}", corpName, startDate);

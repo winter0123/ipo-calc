@@ -22,8 +22,8 @@ export default function DashboardUpcoming() {
         {events.map((e) => (
           <li key={e.key} className={styles.row}>
             <span>
-              {new Date(`${e.date}T00:00:00`).toLocaleDateString('ko-KR')} · {e.kind} ·{' '}
-              <Link to={`/ipos/${e.ipoId}`}>{e.ipoName}</Link>
+              {new Date(`${e.date}T00:00:00`).toLocaleDateString('ko-KR')} · {e.kind}
+              {e.estimated && ' (예상)'} · <Link to={`/ipos/${e.ipoId}`}>{e.ipoName}</Link>
             </span>
             {e.canSubscribe && (
               <Link to={`/subscriptions/register?ipoId=${e.ipoId}`}>청약 등록</Link>

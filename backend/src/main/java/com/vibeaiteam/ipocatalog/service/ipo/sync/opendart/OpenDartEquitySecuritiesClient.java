@@ -3,9 +3,11 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.TreeMap;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -121,55 +123,64 @@ public class OpenDartEquitySecuritiesClient {
   }
 
   /**
-   * DS006 응답의 group[] 배열에서 필요한 필드를 추출하여 DTO 리스트로 변환.
+   * DS006 응답의 group[] 배열에서 필요한 필드를 추출하여 DTO 리스트로 변환한다.
    *
    * <p>관심 그룹: "일반사항"(sbd, pymd, sband, asand, asstd), "증권의종류"(stksen, stkcnt, slprc, slta),
-   * "인수인정보"(actnmn). 각 그룹의 list[] 첫 번째 항목에서 값을 가져온다.
+   * "인수인정보"(actnmn). 정정 공시가 있으면 {@code rcept_no}가 여러 개이므로 같은 {@code rcept_no}끼리만 묶어 접수번호별로 DTO를 하나씩
+   * 만든다(접수번호 오름차순). 최신 건 선택은 호출자가 {@code rceptNo}가 가장 큰 건을 고른다.
    */
   private List<OpenDartEquitySecurityDetail> parseGroups(List<OpenDartGroup> groups) {
     if (groups == null || groups.isEmpty()) {
       return List.of();
     }
 
-    // 그룹별 첫 번째 항목만 사용 (보통 1개씩만 있음)
-    Map<String, OpenDartGroupItem> groupMap =
-        groups.stream()
-            .filter(g -> g.list() != null && !g.list().isEmpty())
-            .collect(Collectors.toMap(OpenDartGroup::title, g -> g.list().get(0), (a, b) -> a));
-
-    OpenDartGroupItem general = groupMap.get("일반사항");
-    OpenDartGroupItem securityType = groupMap.get("증권의종류");
-    OpenDartGroupItem underwriter = groupMap.get("인수인정보");
-
-    // corp_code, corp_name은 모든 그룹에 공통으로 포함되어 있음 → 첫 번째 그룹에서 추출
-    String corpCode = null;
-    String corpName = null;
-    for (OpenDartGroupItem item : groupMap.values()) {
-      if (item.corp_code() != null) {
-        corpCode = item.corp_code();
-        corpName = item.corp_name();
-        break;
+    // rcept_no -> (그룹 title -> 첫 항목). TreeMap으로 접수번호 오름차순.
+    Map<String, Map<String, OpenDartGroupItem>> byReceipt = new TreeMap<>();
+    for (OpenDartGroup g : groups) {
+      if (g.list() == null) {
+        continue;
+      }
+      for (OpenDartGroupItem item : g.list()) {
+        byReceipt
+            .computeIfAbsent(item.rcept_no() == null ? "" : item.rcept_no(), k -> new HashMap<>())
+            .putIfAbsent(g.title(), item);
       }
     }
 
-    OpenDartEquitySecurityDetail detail =
-        OpenDartEquitySecurityDetail.builder()
-            .corpCode(corpCode)
-            .corpName(corpName)
-            .sbd(getValue(general, "sbd"))
-            .pymd(getValue(general, "pymd"))
-            .sband(getValue(general, "sband"))
-            .asand(getValue(general, "asand"))
-            .asstd(getValue(general, "asstd"))
-            .stksen(getValue(securityType, "stksen"))
-            .stkcnt(getValue(securityType, "stkcnt"))
-            .slprc(getValue(securityType, "slprc"))
-            .slta(getValue(securityType, "slta"))
-            .actnmn(getValue(underwriter, "actnmn"))
-            .build();
+    List<OpenDartEquitySecurityDetail> details = new ArrayList<>();
+    byReceipt.forEach(
+        (rceptNo, groupMap) -> {
+          OpenDartGroupItem general = groupMap.get("일반사항");
+          OpenDartGroupItem securityType = groupMap.get("증권의종류");
+          OpenDartGroupItem underwriter = groupMap.get("인수인정보");
 
-    detail.parseDerivedFields();
-    return List.of(detail);
+          // corp_code, corp_name은 모든 그룹에 공통으로 포함되어 있음
+          OpenDartGroupItem any =
+              groupMap.values().stream()
+                  .filter(i -> i.corp_code() != null)
+                  .findFirst()
+                  .orElse(null);
+
+          OpenDartEquitySecurityDetail detail =
+              OpenDartEquitySecurityDetail.builder()
+                  .rceptNo(rceptNo.isEmpty() ? null : rceptNo)
+                  .corpCode(any == null ? null : any.corp_code())
+                  .corpName(any == null ? null : any.corp_name())
+                  .sbd(getValue(general, "sbd"))
+                  .pymd(getValue(general, "pymd"))
+                  .sband(getValue(general, "sband"))
+                  .asand(getValue(general, "asand"))
+                  .asstd(getValue(general, "asstd"))
+                  .stksen(getValue(securityType, "stksen"))
+                  .stkcnt(getValue(securityType, "stkcnt"))
+                  .slprc(getValue(securityType, "slprc"))
+                  .slta(getValue(securityType, "slta"))
+                  .actnmn(getValue(underwriter, "actnmn"))
+                  .build();
+          detail.parseDerivedFields();
+          details.add(detail);
+        });
+    return details;
   }
 
   private String getValue(OpenDartGroupItem item, String fieldName) {

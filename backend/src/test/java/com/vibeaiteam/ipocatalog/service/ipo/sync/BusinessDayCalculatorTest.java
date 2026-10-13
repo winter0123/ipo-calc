@@ -300,4 +300,44 @@ class BusinessDayCalculatorTest {
     // 9/24(목-휴장일), 9/25(금-휴장일), 9/26(토), 9/27(일), 9/28(월-휴장일), 9/29(화-1영업일), 9/30(수-2영업일)
     assertThat(result).isEqualTo(LocalDate.of(2026, 9, 30));
   }
+
+  @Test
+  void plusBusinessDaysOrNull_crossingYearWithoutData_returnsNull() {
+    // 2027은 데이터 없음 → 1/1을 영업일로 세지 않도록 추정 불가(null)
+    assertThat(calculator.plusBusinessDaysOrNull(LocalDate.of(2026, 12, 29), 2)).isNull();
+  }
+
+  @Test
+  void plusBusinessDaysOrNull_crossingYearWithRuleOnly_returnsNull() {
+    when(marketHolidayRepository.findByYear(2027))
+        .thenReturn(
+            List.of(
+                MarketHoliday.builder()
+                    .holidayDate(LocalDate.of(2027, 5, 1))
+                    .name("근로자의 날")
+                    .source("RULE")
+                    .build()));
+    assertThat(calculator.plusBusinessDaysOrNull(LocalDate.of(2026, 12, 29), 2)).isNull();
+  }
+
+  @Test
+  void plusBusinessDaysOrNull_crossingYearWithKasiData_returnsDate() {
+    when(marketHolidayRepository.findByYear(2027))
+        .thenReturn(
+            List.of(
+                MarketHoliday.builder()
+                    .holidayDate(LocalDate.of(2027, 1, 1))
+                    .name("신정")
+                    .source("KASI_API")
+                    .build()));
+    // 12/29(화)+2영업일: 12/30, (12/31 휴장) 1/1 휴장, 1/4
+    assertThat(calculator.plusBusinessDaysOrNull(LocalDate.of(2026, 12, 29), 2))
+        .isEqualTo(LocalDate.of(2027, 1, 4));
+  }
+
+  @Test
+  void plusBusinessDaysOrNull_withinReliableYear_returnsDate() {
+    assertThat(calculator.plusBusinessDaysOrNull(LocalDate.of(2026, 10, 7), 2))
+        .isEqualTo(LocalDate.of(2026, 10, 12));
+  }
 }

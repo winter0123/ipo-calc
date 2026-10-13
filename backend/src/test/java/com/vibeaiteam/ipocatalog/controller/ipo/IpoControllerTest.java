@@ -758,11 +758,11 @@ class IpoControllerTest {
   @Test
   void registerIpoWithoutRefundDateCalculatesEstimatedRefundDate() throws Exception {
     signupAndLogin();
-    // 2027-01-15 금요일 (휴장일 없는 주, 2영업일 후 = 2027-01-19 수요일)
+    // 2026-11-13 금요일 (휴장일 없는 주, 2영업일 후 = 2026-11-17 화요일)
     Map<String, Object> request = validRequest();
     request.put("ipoName", "공모주B");
-    request.put("subscriptionStartDate", "2027-01-13");
-    request.put("subscriptionEndDate", "2027-01-15"); // 금요일
+    request.put("subscriptionStartDate", "2026-11-11");
+    request.put("subscriptionEndDate", "2026-11-13"); // 금요일
     request.put("stockCode", "999999");
 
     MvcResult result = registerIpo(request);
@@ -770,7 +770,7 @@ class IpoControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(201);
     Map<String, Object> response = readBody(result);
     // 청약 종료일(금) + 2영업일 = 수요일 (토/일 제외)
-    assertThat(response.get("refundDate")).isEqualTo("2027-01-19");
+    assertThat(response.get("refundDate")).isEqualTo("2026-11-17");
     assertThat(response.get("refundDateEstimated")).isEqualTo(true);
   }
 
@@ -779,15 +779,15 @@ class IpoControllerTest {
     signupAndLogin();
     Map<String, Object> request = validRequest();
     request.put("ipoName", "공모주A");
-    request.put("subscriptionStartDate", "2027-02-01");
-    request.put("subscriptionEndDate", "2027-02-02");
+    request.put("subscriptionStartDate", "2026-11-02");
+    request.put("subscriptionEndDate", "2026-11-03");
     request.put("stockCode", "111111");
     MvcResult first = registerIpo(request);
     assertThat(first.getResponse().getStatus()).isEqualTo(201);
 
     request.put("ipoName", "공모주B");
-    request.put("subscriptionStartDate", "2027-02-08");
-    request.put("subscriptionEndDate", "2027-02-12"); // 금요일
+    request.put("subscriptionStartDate", "2026-11-09");
+    request.put("subscriptionEndDate", "2026-11-13"); // 금요일
     request.put("stockCode", "222222");
     MvcResult second = registerIpo(request);
     assertThat(second.getResponse().getStatus()).isEqualTo(201);

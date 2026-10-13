@@ -115,6 +115,29 @@ describe('DashboardHome', () => {
   })
 })
 
+describe('DashboardHome 환불 예상 표시', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-13T12:00:00'))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('추정 환불일 줄에만 (예상)을 붙인다', () => {
+    setup(
+      [],
+      [
+        ipo({
+          subscriptionStartDate: '2026-10-01',
+          subscriptionEndDate: '2026-10-02',
+          refundDate: '2026-10-16',
+          refundDateEstimated: true,
+        }),
+      ],
+    )
+    expect(screen.getByText(/환불 \(예상\)/)).toBeInTheDocument()
+  })
+})
+
 describe('buildUpcomingEvents', () => {
   it('최대 5건으로 자르고 날짜순으로 정렬한다', () => {
     const ipos = Array.from({ length: 6 }, (_, i) =>
@@ -142,5 +165,21 @@ describe('buildUpcomingEvents', () => {
       ['환불', false],
       ['상장', false],
     ])
+  })
+
+  it('환불일이 추정값이면 estimated를 true로 둔다', () => {
+    const events = buildUpcomingEvents(
+      [
+        ipo({
+          subscriptionStartDate: '2026-10-12',
+          subscriptionEndDate: '2026-10-14',
+          refundDate: '2026-10-16',
+          refundDateEstimated: true,
+        }),
+      ],
+      new Date('2026-10-13T09:00:00'),
+    )
+    expect(events.find((e) => e.kind === '환불')?.estimated).toBe(true)
+    expect(events.find((e) => e.kind === '청약 마감')?.estimated).toBe(false)
   })
 })

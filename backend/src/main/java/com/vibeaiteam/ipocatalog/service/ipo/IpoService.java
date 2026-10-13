@@ -310,9 +310,11 @@ public class IpoService {
       response.setRefundDate(ipo.getRefundDate());
       response.setRefundDateEstimated(false);
     } else if (ipo.getSubscriptionEndDate() != null) {
-      LocalDate estimated = businessDayCalculator.plusBusinessDays(ipo.getSubscriptionEndDate(), 2);
+      // 휴장일 데이터가 없는 연도를 지나면 null → 화면은 '-'
+      LocalDate estimated =
+          businessDayCalculator.plusBusinessDaysOrNull(ipo.getSubscriptionEndDate(), 2);
       response.setRefundDate(estimated);
-      response.setRefundDateEstimated(true);
+      response.setRefundDateEstimated(estimated != null);
     }
     return response;
   }

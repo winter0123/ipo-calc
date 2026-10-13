@@ -30,6 +30,9 @@ public class BusinessDayCalculator {
   /** 연도별 휴장일 캐시: year -> {@code Set<LocalDate>}. */
   private final Map<Integer, Set<LocalDate>> holidayCache = new ConcurrentHashMap<>();
 
+  /** 연도별 휴장일 데이터 신뢰 여부: KASI/SEED 등 RULE 외 출처가 하나라도 있으면 true. */
+  private final Map<Integer, Boolean> reliableCache = new ConcurrentHashMap<>();
+
   /** 주어진 날짜의 다음 영업일을 반환한다 (주말 및 KRX 휴장일 제외). */
   public LocalDate nextBusinessDay(LocalDate date) {
     return plusBusinessDays(date, 1);
@@ -66,6 +69,36 @@ public class BusinessDayCalculator {
     return current;
   }
 
+  /**
+   * {@link #plusBusinessDays}와 같되, 계산 중 지나는 모든 연도(시작 연도 포함)의 휴장일 데이터가 신뢰할 수 없으면(KASI/SEED 없이 RULE만
+   * 있거나 아예 없음) {@code null}을 반환한다. 1/1·설 연휴를 영업일로 세어 틀린 날짜를 예상으로 내는 것을 막기 위함이다.
+   */
+  public LocalDate plusBusinessDaysOrNull(LocalDate date, int businessDays) {
+    if (businessDays < 0) {
+      throw new IllegalArgumentException("businessDays는 0 이상이어야 합니다.");
+    }
+    LocalDate current = date;
+    int counted = 0;
+    if (!isYearReliable(current.getYear())) {
+      return null;
+    }
+    while (counted < businessDays) {
+      current = current.plusDays(1);
+      if (!isYearReliable(current.getYear())) {
+        return null;
+      }
+      if (isBusinessDay(current)) {
+        counted++;
+      }
+    }
+    return current;
+  }
+
+  private boolean isYearReliable(int year) {
+    ensureYearCached(year);
+    return reliableCache.getOrDefault(year, false);
+  }
+
   /** 주어진 날짜가 영업일인지 판별한다 (주말 및 KRX 휴장일 제외). */
   public boolean isBusinessDay(LocalDate date) {
     ensureYearCached(date.getYear());
@@ -79,6 +112,7 @@ public class BusinessDayCalculator {
   /** 캐시를 완전히 비운다. 배치 갱신 후 호출되어야 한다. */
   public void evictCache() {
     holidayCache.clear();
+    reliableCache.clear();
     log.info("BusinessDayCalculator 휴장일 캐시 무효화 완료");
   }
 
@@ -90,6 +124,11 @@ public class BusinessDayCalculator {
   /** 특정 연도의 휴장일을 DB에서 조회해 Set으로 반환한다. */
   private Set<LocalDate> loadHolidaysForYear(int year) {
     List<MarketHoliday> holidays = marketHolidayRepository.findByYear(year);
+    boolean reliable = holidays.stream().anyMatch(h -> !"RULE".equals(h.getSource()));
+    reliableCache.put(year, reliable);
+    if (!reliable) {
+      log.warn("연도 {}의 휴장일 데이터가 KASI/SEED 없이 RULE뿐이거나 없어 환불일 추정을 건너뜁니다.", year);
+    }
     Set<LocalDate> holidaySet =
         holidays.stream()
             .map(MarketHoliday::getHolidayDate)
