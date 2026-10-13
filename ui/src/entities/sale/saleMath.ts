@@ -34,7 +34,19 @@ export function finalProfit(realizedProfit: number, ipoFee: number): number {
   return realizedProfit - ipoFee
 }
 
-/** 공모가: 확정 공모가가 있으면 그 값, 없으면 배정단가, 둘 다 없으면 null. */
+/**
+ * 취득 단가: 서버 수익 계산(ProfitCalculator)과 같은 규칙 — 배정단가가 있으면(0 포함) 그 값, 없으면 확정 공모가.
+ * 실현손익 미리보기가 저장 후 서버 값과 같아야 한다.
+ */
+export function acquisitionUnitPrice(
+  allocationPrice: number | null | undefined,
+  fixedPrice: number | null | undefined,
+): number | null {
+  if (allocationPrice != null) return allocationPrice
+  return fixedPrice ?? null
+}
+
+/** 매도단가 기본값용 공모가: 확정 공모가가 있으면 그 값, 없으면 배정단가, 둘 다 없으면 null. */
 export function resolveIpoPrice(
   fixedPrice: number | null | undefined,
   allocationPrice: number | null | undefined,

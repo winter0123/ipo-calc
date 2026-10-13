@@ -17,8 +17,7 @@ public record CalculatedSale(
     String periodKey, // "YYYY-MM": 공모주 상장일 기준(상장일이 없으면 매도일)
     String investorName,
     String securitiesFirmName,
-    Long soldQuantity,
-    Long allocationPrice,
+    Long acquisitionAmount, // 취득금액: 배정단가(없으면 공모가) × 매도수량. 수익 계산과 같은 규칙
     Long allocationId) {
 
   private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -61,8 +60,7 @@ public record CalculatedSale(
             : sale.getSaleDate().format(MONTH_FORMATTER),
         investor.getDisplayName(),
         securitiesFirmName,
-        sale.getQuantity(),
-        allocation.getAllocationPrice(),
+        acquisitionAmount,
         allocation.getId());
   }
 }

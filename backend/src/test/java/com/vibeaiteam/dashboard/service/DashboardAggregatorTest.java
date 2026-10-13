@@ -37,8 +37,7 @@ class DashboardAggregatorTest {
         month,
         "inv" + investorId,
         firmId == null ? null : "firm" + firmId,
-        qty,
-        price,
+        qty == null || price == null ? null : qty * price,
         allocationId);
   }
 
