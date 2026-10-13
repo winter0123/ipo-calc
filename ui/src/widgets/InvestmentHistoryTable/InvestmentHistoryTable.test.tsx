@@ -104,6 +104,17 @@ describe('InvestmentHistoryTable — 투자자 컬럼', () => {
   })
 })
 
+describe('InvestmentHistoryTable — 모바일 라벨', () => {
+  it('각 셀에 데스크톱 헤더와 같은 data-label이 있다', () => {
+    renderTable([ITEM_WITH_NAMES])
+
+    const labels = within(screen.getAllByRole('row')[1])
+      .getAllByRole('cell')
+      .map((td) => td.getAttribute('data-label'))
+    expect(labels).toEqual(['청약일', '공모주명', '투자자', '청약수량', '상태', '잔여수량'])
+  })
+})
+
 describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
   it('투자자명과 증권사명이 상세 필드로 표시됨', () => {
     renderDetail(ITEM_WITH_NAMES)

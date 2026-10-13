@@ -29,12 +29,18 @@ export default function InvestmentHistoryRow({
         }
       }}
     >
-      <td>{formattedDate}</td>
-      <td>{item.ipoName}</td>
-      <td>{item.investorName ?? '-'}</td>
-      <td className={styles.numeric}>{item.subscriptionQuantity}</td>
-      <td>{statusLabel(item.subscriptionStatus)}</td>
-      <td className={styles.numeric} aria-readonly="true">
+      <td data-label="청약일">{formattedDate}</td>
+      <td data-label="공모주명" className={styles.name}>
+        {item.ipoName}
+      </td>
+      <td data-label="투자자">{item.investorName ?? '-'}</td>
+      <td data-label="청약수량" className={styles.numeric}>
+        {item.subscriptionQuantity}
+      </td>
+      <td data-label="상태" className={styles.status}>
+        {statusLabel(item.subscriptionStatus)}
+      </td>
+      <td data-label="잔여수량" className={styles.numeric} aria-readonly="true">
         {item.remainingQuantity ?? '배정 전'}
       </td>
     </tr>
