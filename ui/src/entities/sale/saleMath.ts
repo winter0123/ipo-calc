@@ -49,3 +49,26 @@ export function listingDate(value: string | null | undefined): string | undefine
   if (!value) return undefined
   return value.slice(0, 10)
 }
+
+/** 매도 폼 입력값(숫자 칸은 비어 있으면 NaN). */
+export interface SaleFormInput {
+  quantity: number
+  price: number
+  saleDate: string
+  ipoFee: number
+  otherFees: number
+}
+
+const isNum = (value: unknown): value is number => typeof value === 'number' && !Number.isNaN(value)
+
+/** 폼 입력을 저장 요청으로: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타, 날짜에 T09:00. */
+export function toSalePayload(data: SaleFormInput) {
+  return {
+    quantity: data.quantity,
+    price: data.price,
+    amount: data.price * data.quantity,
+    saleDate: `${data.saleDate}T09:00`,
+    fee: isNum(data.ipoFee) ? data.ipoFee : 0,
+    tax: isNum(data.otherFees) ? data.otherFees : 0,
+  }
+}

@@ -7,6 +7,7 @@ import {
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
   resolveIpoPrice,
+  toSalePayload,
 } from './saleMath.ts'
 
 describe('saleMath', () => {
@@ -53,5 +54,42 @@ describe('saleMath', () => {
     expect(listingDate('2026-10-23T00:00:00Z')).toBe('2026-10-23')
     expect(listingDate(null)).toBeUndefined()
     expect(listingDate(undefined)).toBeUndefined()
+  })
+
+  it('저장 매핑: amount=단가×수량, 날짜에 T09:00, 빈 수수료(NaN)는 0', () => {
+    expect(
+      toSalePayload({
+        quantity: 30,
+        price: 15000,
+        saleDate: '2026-10-23',
+        ipoFee: 2000,
+        otherFees: 1500,
+      }),
+    ).toEqual({
+      quantity: 30,
+      price: 15000,
+      amount: 450000,
+      saleDate: '2026-10-23T09:00',
+      fee: 2000,
+      tax: 1500,
+    })
+    const blank = toSalePayload({
+      quantity: 1,
+      price: 100,
+      saleDate: '2026-10-23',
+      ipoFee: NaN,
+      otherFees: NaN,
+    })
+    expect(blank.fee).toBe(0)
+    expect(blank.tax).toBe(0)
+  })
+
+  it('음수 단가·공모가 없음(null)도 계산식 그대로 다룬다', () => {
+    expect(
+      toSalePayload({ quantity: 2, price: -5, saleDate: '2026-10-23', ipoFee: 0, otherFees: 0 })
+        .amount,
+    ).toBe(-10)
+    expect(resolveIpoPrice(undefined, undefined)).toBeNull()
+    expect(finalProfit(-500, 2000)).toBe(-2500)
   })
 })
