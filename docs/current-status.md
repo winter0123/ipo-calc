@@ -15,7 +15,7 @@
 - **배포 코드(#339)**: `infra/oracle/` Terraform(Oracle Cloud VM)과 `docs/handoff-free-deployment.md` 병합. 실제 VM 생성·운영 환경 변수·키 백업은 사용자 몫.
 - **할 일 전체 조회(#349)**: 대시보드 할 일이 청약 100건 상한 없이 마지막 페이지까지 이어 읽는다(`getAllInvestmentHistory`).
 - **배포 파이프라인 실동작 확인**: 로컬 Jenkins(`deploy/jenkins`, :18081) `vibe-deploy` 빌드 #4가 `main`(`94264f4`)으로 백엔드 테스트·UI 테스트·운영 compose 배포·스모크까지 SUCCESS, 로컬 운영 스택(:18080) 웹 200·`/api/auth/me` 401·`/api/ipos` 200. 실제 Oracle VM 배포는 아직 안 함.
-- **남은 것(사용자 몫)**: KIS·키움·LS 실제 키로 1회 조회 확인(키움은 서버 IP 등록), 실제 Oracle VM 배포, 상장일 공식 출처 없음(ustockplus 유지), 배포 후 관리자가 `POST /ipos/insight/sync` 1회 실행.
+- **남은 것(사용자 몫)**: 운영 VM에 백업 cron 등록(`scripts/backup-db.sh`),  KIS·키움·LS 실제 키로 1회 조회 확인(키움은 서버 IP 등록), 실제 Oracle VM 배포, 상장일 공식 출처 없음(ustockplus 유지), 배포 후 관리자가 `POST /ipos/insight/sync` 1회 실행.
 - **기간 기준 = 공모주 상장일(#351, 사용자 결정)**: 대시보드 월별·연도별과 수익 확인 기간 필터는 매도일이 아니라 공모주 상장일로 판단한다(10월 상장을 11월에 팔아도 10월). 상장일이 없는 공모주만 매도일로 대체. 이로써 "한 배정이 여러 기간에 걸치는" 미결 문제도 사라졌다.
 - **증권사 관리 화면(#353)**: `/securities`(설정 → 증권사 관리, 현재 투자자 기준). 등록한 증권사(계좌 이름·가려진 번호, `번호 보기`는 그때만 서버 조회, 이름 수정·기본 지정·삭제=소프트 삭제)와 나머지 증권사 그리드(신규 등록). 증권사 목록에 15곳 추가(V22, 총 30곳). 계좌번호 자체는 수정 불가(서버 PATCH가 이름만 받음) → 바꾸려면 삭제 후 재등록.
 - **테스트 기동 동기화 끔(#354)**: `tasks.test`에 `app.holiday-sync.enabled=false`·`app.ipo-sync.enabled=false`. 테스트 순서에 따라 실제 KASI 동기화가 돌아 휴장일 테스트가 깨지던 문제의 원인 수정.
@@ -29,7 +29,8 @@
 - **리팩토링(#375~#382)**: 외부 API 클라이언트 공용 도우미(OpenDART 간격 공유 결함 수정), 표시 함수 `shared/lib/format.ts`·`dateOnly`, 매도 매핑 `entities/sale`의 `toSalePayload`, 예외는 `ApiException`+`GlobalExceptionHandler`(새 예외는 이걸 상속), 매도 등록 폼·수정 대화상자 분리. 원격 브랜치는 `main`만 남김.
 - **품질·운영(#384~#390)**: Spring Boot 3.5.16, N+1 회귀 테스트(`QueryCountTest`), open-in-view 끔, 접근성 위반 0(25화면×2폭), UI 의존성 취약점 0. **운영 `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY`를 채워야 동기화·증권사 연동이 동작**(#385).
 - **테스트·CI(#392~#399)**: E2E 18개(수정·삭제·공모주 상세·증권사 관리·수익 그래프 추가), 커버리지 도구(백엔드 JaCoCo `jacocoTestReport`, UI `test:coverage`), checkstyle 경고 0을 빌드가 강제, Jenkins가 checkstyle·format:check·build까지 검사. 처음 쓰는 사용자 빈 상태 안내(#398).
-- **보증**: 백엔드 946 테스트(분기 87.7%)·checkstyle 경고 0, UI 611 테스트, E2E 18/18, Jenkins #7 SUCCESS.
+- **운영(#402~#404)**: 화면 응답 보안 헤더(CSP 등), DB 백업·복원 스크립트(`scripts/backup-db.sh` — 운영 VM cron 등록은 사용자 몫, 배포 문서 참고), backend 헬스체크. 로컬 운영 스택은 반드시 Jenkins로만 재배포(직접 compose up 하면 DB 비밀번호가 달라 깨짐).
+- **보증**: 백엔드 946 테스트(분기 87.7%)·checkstyle 경고 0, UI 611 테스트, E2E 18/18, Jenkins #10 SUCCESS.
 
 ## 인계 요약 (2026-10-12, 모델 교체 직전) — 최신, 새 세션은 이 절부터 읽는다
 
