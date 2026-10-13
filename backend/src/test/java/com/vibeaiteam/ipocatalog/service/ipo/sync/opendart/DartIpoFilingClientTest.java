@@ -7,6 +7,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.EquityOffering;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.FilingRef;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +41,9 @@ class DartIpoFilingClientTest {
             .build();
     client =
         new DartIpoFilingClient(
-            restClient, new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr"));
+            restClient,
+            new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr"),
+            new RequestThrottle(0));
   }
 
   private static String item(String rceptNo, String name, String date) {
@@ -149,6 +152,7 @@ class DartIpoFilingClientTest {
         new DartIpoFilingClient(
             restClient,
             new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr"),
+            new RequestThrottle(0),
             1024);
     mockServer
         .expect(requestTo(containsString("/api/document.xml")))
@@ -198,7 +202,9 @@ class DartIpoFilingClientTest {
   void 키_없음_형식_오류는_호출_없이_empty() {
     DartIpoFilingClient noKey =
         new DartIpoFilingClient(
-            restClient, new OpenDartApiProperties("", "https://opendart.fss.or.kr"));
+            restClient,
+            new OpenDartApiProperties("", "https://opendart.fss.or.kr"),
+            new RequestThrottle(0));
 
     assertThat(noKey.findLatestOfferingDocument("00123456", TODAY)).isEmpty();
     assertThat(noKey.fetchEquityOffering("00123456", TODAY)).isEmpty();

@@ -3,6 +3,7 @@ package com.vibeaiteam.ipocatalog.service.holiday;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -10,7 +11,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -35,8 +35,6 @@ public class KasiSpecialDayClient {
 
   private static final String ENDPOINT_PATH =
       "/B090041/openapi/service/SpcdeInfoService/getRestDeInfo";
-  private static final int CONNECT_TIMEOUT_MS = 5_000;
-  private static final int READ_TIMEOUT_MS = 15_000;
   private static final String NORMAL_RESULT_CODE = "00";
 
   private final DataGoKrApiProperties properties;
@@ -61,16 +59,9 @@ public class KasiSpecialDayClient {
         restClientBuilder
             .baseUrl(properties.getBaseUrl())
             .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-            .requestFactory(createRequestFactory())
+            .requestFactory(HttpClientSupport.requestFactory())
             .build(),
         properties);
-  }
-
-  private static SimpleClientHttpRequestFactory createRequestFactory() {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    factory.setReadTimeout(READ_TIMEOUT_MS);
-    return factory;
   }
 
   private static ObjectMapper createObjectMapper() {

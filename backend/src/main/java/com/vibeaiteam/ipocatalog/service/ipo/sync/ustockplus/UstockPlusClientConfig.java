@@ -1,8 +1,9 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus;
 
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /** ustockplus 클라이언트 빈 설정. */
@@ -17,9 +18,9 @@ public class UstockPlusClientConfig {
    */
   @Bean
   public UstockPlusCalendarClient ustockPlusCalendarClient(UstockPlusApiProperties properties) {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(5_000);
-    factory.setReadTimeout(15_000);
-    return new UstockPlusCalendarClient(RestClient.builder().requestFactory(factory), properties);
+    return new UstockPlusCalendarClient(
+        RestClient.builder().requestFactory(HttpClientSupport.requestFactory()),
+        properties,
+        new RequestThrottle(70));
   }
 }

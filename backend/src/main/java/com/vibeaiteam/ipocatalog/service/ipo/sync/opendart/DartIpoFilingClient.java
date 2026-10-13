@@ -2,6 +2,8 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +32,6 @@ public class DartIpoFilingClient {
   private static final DateTimeFormatter DATE = DateTimeFormatter.BASIC_ISO_DATE;
   private static final int PAGE_COUNT = 100;
   private static final int MAX_PAGES = 5; // 1년치 한 회사 공시는 이를 넘지 않는다
-  private static final int REQUEST_INTERVAL_MS = 200;
   private static final long MAX_RESPONSE_BYTES = 50L * 1024 * 1024; // 응답 50MB
   private static final long MAX_UNZIPPED_BYTES = 80L * 1024 * 1024; // 압축 해제 합계 80MB
   private static final String PROSPECTUS = "투자설명서";
@@ -40,7 +41,7 @@ public class DartIpoFilingClient {
   private final OpenDartApiProperties properties;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final long maxUnzippedBytes;
-  private long lastRequestTimeMs = 0;
+  private final RequestThrottle throttle;
 
   /** 접수된 공시 한 건. */
   public record FilingRef(String rceptNo, String reportName, LocalDate receivedOn) {}
@@ -52,15 +53,20 @@ public class DartIpoFilingClient {
   public record EquityOffering(Long parValue, List<Underwriter> underwriters) {}
 
   /** 생성자 (테스트용 - RestClient 직접 주입). */
-  public DartIpoFilingClient(RestClient restClient, OpenDartApiProperties properties) {
-    this(restClient, properties, MAX_UNZIPPED_BYTES);
+  public DartIpoFilingClient(
+      RestClient restClient, OpenDartApiProperties properties, RequestThrottle throttle) {
+    this(restClient, properties, throttle, MAX_UNZIPPED_BYTES);
   }
 
   /** 압축 해제 한도를 바꾸는 생성자 (테스트용 - 큰 메모리 없이 zip bomb 경로를 확인한다). */
   DartIpoFilingClient(
-      RestClient restClient, OpenDartApiProperties properties, long maxUnzippedBytes) {
+      RestClient restClient,
+      OpenDartApiProperties properties,
+      RequestThrottle throttle,
+      long maxUnzippedBytes) {
     this.restClient = restClient;
     this.properties = properties;
+    this.throttle = throttle;
     this.maxUnzippedBytes = maxUnzippedBytes;
   }
 
@@ -68,22 +74,16 @@ public class DartIpoFilingClient {
   public DartIpoFilingClient(
       RestClient.Builder restClientBuilder,
       OpenDartApiProperties properties,
+      RequestThrottle throttle,
       int connectTimeoutMs,
       int readTimeoutMs) {
     this(
         restClientBuilder
             .baseUrl(properties.getBaseUrl())
-            .requestFactory(createRequestFactory(connectTimeoutMs, readTimeoutMs))
+            .requestFactory(HttpClientSupport.requestFactory(connectTimeoutMs, readTimeoutMs))
             .build(),
-        properties);
-  }
-
-  private static org.springframework.http.client.SimpleClientHttpRequestFactory
-      createRequestFactory(int connectTimeoutMs, int readTimeoutMs) {
-    var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(connectTimeoutMs);
-    factory.setReadTimeout(readTimeoutMs);
-    return factory;
+        properties,
+        throttle);
   }
 
   /** 최근 1년 공시 중 최신 투자설명서, 없으면 최신 증권신고서(지분증권)를 찾는다. */
@@ -143,7 +143,7 @@ public class DartIpoFilingClient {
     }
     byte[] body;
     try {
-      enforceRateLimit();
+      throttle.acquire();
       body =
           restClient
               .get()
@@ -243,7 +243,7 @@ public class DartIpoFilingClient {
       Function<org.springframework.web.util.UriBuilder, org.springframework.web.util.UriBuilder>
           params) {
     try {
-      enforceRateLimit();
+      throttle.acquire();
       String body =
           restClient
               .get()
@@ -258,18 +258,5 @@ public class DartIpoFilingClient {
     } catch (RestClientException | IOException e) {
       return Optional.empty(); // 메시지에 crtfc_key가 든 URL이 있어 남기지 않는다
     }
-  }
-
-  private void enforceRateLimit() {
-    long elapsed = System.currentTimeMillis() - lastRequestTimeMs;
-    if (elapsed < REQUEST_INTERVAL_MS) {
-      try {
-        Thread.sleep(REQUEST_INTERVAL_MS - elapsed);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("요청 간격 대기 중 인터럽트 발생", e);
-      }
-    }
-    lastRequestTimeMs = System.currentTimeMillis();
   }
 }

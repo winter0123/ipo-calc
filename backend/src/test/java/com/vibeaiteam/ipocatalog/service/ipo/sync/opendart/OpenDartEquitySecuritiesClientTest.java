@@ -10,6 +10,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +43,7 @@ class OpenDartEquitySecuritiesClientTest {
             .requestFactory(restTemplate.getRequestFactory())
             .build();
     properties = new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr");
-    client = new OpenDartEquitySecuritiesClient(restClient, properties);
+    client = new OpenDartEquitySecuritiesClient(restClient, properties, new RequestThrottle(0));
     objectMapper = new ObjectMapper();
   }
 
@@ -211,7 +212,8 @@ class OpenDartEquitySecuritiesClientTest {
     // given
     OpenDartApiProperties emptyProps = new OpenDartApiProperties("", "https://opendart.fss.or.kr");
     OpenDartEquitySecuritiesClient clientWithEmptyKey =
-        new OpenDartEquitySecuritiesClient(RestClient.builder(), emptyProps);
+        new OpenDartEquitySecuritiesClient(
+            RestClient.builder(), emptyProps, new RequestThrottle(0));
 
     // when & then
     assertThatThrownBy(() -> clientWithEmptyKey.getEquitySecurityDetail("01658035"))
