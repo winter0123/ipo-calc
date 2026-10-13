@@ -6,7 +6,8 @@ import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
 import styles from './IpoDetailPage.module.css'
 import IpoInsightSections from './IpoInsightSections.tsx'
-import { toLocalYmd } from '@/shared/lib/date.ts'
+import { dateOnly, toLocalYmd } from '@/shared/lib/date.ts'
+import { formatShares, formatWon } from '@/shared/lib/format.ts'
 
 export default function IpoDetailPage() {
   const { ipoId } = useParams<{ ipoId: string }>()
@@ -27,12 +28,12 @@ export default function IpoDetailPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-'
-    return dateStr.split('T')[0]
+    return dateOnly(dateStr)
   }
 
   const formatPrice = (price: number | null) => {
     if (price === null || price === 0) return '-'
-    return `${price.toLocaleString()}원`
+    return formatWon(price)
   }
 
   const formatBandPrice = (lower: number | null, upper: number | null) => {
@@ -40,25 +41,25 @@ export default function IpoDetailPage() {
       return `${lower.toLocaleString()}~${upper.toLocaleString()}원`
     }
     if (lower !== null) {
-      return `${lower.toLocaleString()}원`
+      return formatWon(lower)
     }
     if (upper !== null) {
-      return `${upper.toLocaleString()}원`
+      return formatWon(upper)
     }
     return '-'
   }
 
   const formatShareCount = (count: number | null) => {
     if (count === null) return '-'
-    return `${count.toLocaleString()}주`
+    return formatShares(count)
   }
 
   const getStatus = (ipoData: typeof ipo) => {
     if (!ipoData) return { label: '알 수 없음', className: styles.statusUnknown }
     const today = toLocalYmd()
-    const start = ipoData.subscriptionStartDate.split('T')[0]
-    const end = ipoData.subscriptionEndDate.split('T')[0]
-    const listing = ipoData.listingDate ? ipoData.listingDate.split('T')[0] : null
+    const start = dateOnly(ipoData.subscriptionStartDate)
+    const end = dateOnly(ipoData.subscriptionEndDate)
+    const listing = dateOnly(ipoData.listingDate)
 
     if (today < start) return { label: '청약 예정', className: styles.statusScheduled }
     if (today >= start && today <= end)
@@ -153,7 +154,7 @@ export default function IpoDetailPage() {
         </div>
       </dl>
 
-      <IpoInsightSections ipoId={id} listingDate={ipo!.listingDate?.split('T')[0] ?? null} />
+      <IpoInsightSections ipoId={id} listingDate={dateOnly(ipo!.listingDate)} />
 
       <nav className={styles.actions} aria-label="공모주 상세 액션">
         <Link to="/ipo-calendar" className={styles.secondaryLink}>

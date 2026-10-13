@@ -1,4 +1,5 @@
 import styles from './ReferenceQuantity.module.css'
+import { formatShares } from '@/shared/lib/format.ts'
 
 interface ReferenceQuantityProps {
   ipoName: string | null
@@ -18,7 +19,7 @@ export default function ReferenceQuantity({
       <strong>{ipoName ?? '공모주'}</strong>
       <span>
         청약일 {new Date(y, m - 1, d).toLocaleDateString('ko-KR')} · 청약수량{' '}
-        {quantity.toLocaleString('ko-KR')}주
+        {formatShares(quantity)}
       </span>
     </p>
   )

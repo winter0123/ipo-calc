@@ -4,3 +4,10 @@ const pad = (n: number) => String(n).padStart(2, '0')
 export function toLocalYmd(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/** `'2026-10-15T09:00:00'` → `'2026-10-15'`. null/undefined면 null. */
+export function dateOnly(value: string): string
+export function dateOnly(value: string | null | undefined): string | null
+export function dateOnly(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 10) : null
+}

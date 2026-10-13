@@ -1,5 +1,5 @@
 import type { Ipo } from '@/entities/ipo/index.ts'
-import { toLocalYmd } from '@/shared/lib/date.ts'
+import { dateOnly, toLocalYmd } from '@/shared/lib/date.ts'
 
 export type UpcomingKind = '청약 시작' | '청약 마감' | '환불' | '상장'
 
@@ -12,8 +12,6 @@ export interface UpcomingEvent {
   /** 청약 기간(시작~마감) 중이라 지금 청약 등록을 할 수 있는 공모주 */
   canSubscribe: boolean
 }
-
-const dateOnly = (s: string) => s.split('T')[0]
 
 /** 오늘부터 7일 안의 청약 시작·마감·환불·상장 일정을 날짜순으로 최대 limit건. */
 export function buildUpcomingEvents(ipos: Ipo[], today: Date, limit = 8): UpcomingEvent[] {
