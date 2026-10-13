@@ -5,6 +5,7 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
 import styles from './IpoDetailPage.module.css'
+import IpoInsightSections from './IpoInsightSections.tsx'
 import { toLocalYmd } from '@/shared/lib/date.ts'
 
 export default function IpoDetailPage() {
@@ -151,6 +152,8 @@ export default function IpoDetailPage() {
           <dd>{formatShareCount(ipo!.offeringShareCount)}</dd>
         </div>
       </dl>
+
+      <IpoInsightSections ipoId={id} />
 
       <nav className={styles.actions} aria-label="공모주 상세 액션">
         <Link to="/ipo-calendar" className={styles.secondaryLink}>

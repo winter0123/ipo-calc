@@ -1,5 +1,6 @@
-export type { Ipo, IpoRegisterRequest } from './types.ts'
+export type { Ipo, IpoInsight, IpoRegisterRequest } from './types.ts'
 export { useIpos } from './useIpos.ts'
 export { useIpo } from './useIpo.ts'
+export { useIpoInsight } from './useIpoInsight.ts'
 export { registerIpo, fetchIpo } from './api-client.ts'
 export { ipoKeys } from './queryKeys.ts'

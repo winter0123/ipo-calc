@@ -36,3 +36,34 @@ export interface IpoRegisterRequest {
   listingDate?: string
   offeringShareCount?: number
 }
+
+// 공모주 상세 부가 정보(GET /ipos/{id}/insight). 출처에 없는 값은 null.
+export const ipoInsightSchema = z.object({
+  description: z.string().nullable(),
+  keywords: z.array(z.string()),
+  ceoName: z.string().nullable(),
+  establishedOn: z.string().nullable(),
+  address: z.string().nullable(),
+  demandForecastStartDate: z.string().nullable(),
+  demandForecastEndDate: z.string().nullable(),
+  institutionalCompetitionRate: z.number().nullable(),
+  lockUpCommitmentRatio: z.number().nullable(),
+  protectedShareRatio: z.number().nullable(),
+  floatShareRatio: z.number().nullable(),
+  listedShares: z.number().nullable(),
+  offeringShares: z.number().nullable(),
+  marketCapAtOfferPrice: z.number().nullable(),
+  recentSales: z.number().nullable(),
+  recentNetProfit: z.number().nullable(),
+  registrationStatementUrl: z.string().nullable(),
+  brokers: z.array(
+    z.object({
+      name: z.string().nullable(),
+      shares: z.number().nullable(),
+      equalSharesPerPerson: z.number().nullable(),
+      proportionalCompetitionRate: z.number().nullable(),
+    }),
+  ),
+})
+
+export type IpoInsight = z.infer<typeof ipoInsightSchema>
