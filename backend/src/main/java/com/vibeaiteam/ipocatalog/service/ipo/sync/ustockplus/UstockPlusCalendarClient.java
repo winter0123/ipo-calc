@@ -2,6 +2,7 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.dto.UstockPlusCalendarItem;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -31,20 +32,22 @@ public class UstockPlusCalendarClient {
   private static final String REFERER = "https://ustock.naver.com/service/ipo";
   private static final String PATH = "/v2/ipo/calendars";
   private static final long MAX_RANGE_DAYS = 89;
-  private static final long REQUEST_INTERVAL_MS = 70;
   private static final Map<String, Integer> SLOTS =
       Map.of("TO_BE_LISTED", 0, "ALLOTMENT_DATE", 1, "REFUND_DATE", 2);
 
   private final RestClient restClient;
-  private long lastRequestTimeMs = 0;
+  private final RequestThrottle throttle;
 
   /**
    * 기본 URL과 고정 헤더 세 개를 적용한 클라이언트를 만든다.
    *
    * @param builder 타임아웃 등이 설정된 RestClient 빌더
    * @param properties ustockplus 설정
+   * @param throttle 호출 간 최소 간격 조절기
    */
-  public UstockPlusCalendarClient(RestClient.Builder builder, UstockPlusApiProperties properties) {
+  public UstockPlusCalendarClient(
+      RestClient.Builder builder, UstockPlusApiProperties properties, RequestThrottle throttle) {
+    this.throttle = throttle;
     this.restClient =
         builder
             .baseUrl(properties.getBaseUrl())
@@ -73,7 +76,7 @@ public class UstockPlusCalendarClient {
       throw new IllegalArgumentException("조회 기간은 최대 " + MAX_RANGE_DAYS + "일입니다.");
     }
     try {
-      enforceRateLimit();
+      throttle.acquire();
       CalendarResponse response =
           restClient
               .get()
@@ -133,19 +136,6 @@ public class UstockPlusCalendarClient {
                     e.getValue()[1],
                     e.getValue()[2]))
         .toList();
-  }
-
-  private synchronized void enforceRateLimit() {
-    long wait = REQUEST_INTERVAL_MS - (System.currentTimeMillis() - lastRequestTimeMs);
-    if (wait > 0) {
-      try {
-        Thread.sleep(wait);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("요청 간격 대기 중 인터럽트", e);
-      }
-    }
-    lastRequestTimeMs = System.currentTimeMillis();
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

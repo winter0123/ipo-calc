@@ -2,6 +2,8 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartCompanyOverview;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -12,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -27,41 +28,39 @@ public class OpenDartCorpDisclosureClient {
   private static final String ENDPOINT_PATH = "/api/list.json";
   private static final String REPORT_TYPE_FILTER = "C001"; // 증권신고서-지분증권
   private static final int PAGE_COUNT = 100; // 페이지당 최대 건수
-  private static final int REQUEST_INTERVAL_MS = 200; // 호출 간 최소 간격
-  private static final int CONNECT_TIMEOUT_MS = 5_000; // 연결 타임아웃 5초
-  private static final int READ_TIMEOUT_MS = 15_000; // 읽기 타임아웃 15초
 
   private final RestClient restClient;
   private final OpenDartApiProperties properties;
   private final Clock clock;
-  private long lastRequestTimeMs = 0;
+  private final RequestThrottle throttle;
 
   /** 생성자 (테스트용 - RestClient 직접 주입). */
   public OpenDartCorpDisclosureClient(
-      RestClient restClient, OpenDartApiProperties properties, Clock clock) {
+      RestClient restClient,
+      OpenDartApiProperties properties,
+      Clock clock,
+      RequestThrottle throttle) {
     this.restClient = restClient;
     this.properties = properties;
     this.clock = clock;
+    this.throttle = throttle;
   }
 
   /** 생성자 (운영용 - RestClient.Builder로 생성, 타임아웃 설정 포함). */
   public OpenDartCorpDisclosureClient(
-      RestClient.Builder restClientBuilder, OpenDartApiProperties properties, Clock clock) {
+      RestClient.Builder restClientBuilder,
+      OpenDartApiProperties properties,
+      Clock clock,
+      RequestThrottle throttle) {
     this(
         restClientBuilder
             .baseUrl(properties.getBaseUrl())
             .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-            .requestFactory(createRequestFactory())
+            .requestFactory(HttpClientSupport.requestFactory())
             .build(),
         properties,
-        clock);
-  }
-
-  private static SimpleClientHttpRequestFactory createRequestFactory() {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    factory.setReadTimeout(READ_TIMEOUT_MS);
-    return factory;
+        clock,
+        throttle);
   }
 
   /**
@@ -99,7 +98,7 @@ public class OpenDartCorpDisclosureClient {
     int totalPages = 1;
 
     do {
-      enforceRateLimit();
+      throttle.acquire();
       int currentPage = pageNo;
       OpenDartListResponse response;
       try {
@@ -161,7 +160,7 @@ public class OpenDartCorpDisclosureClient {
       return Optional.empty();
     }
     try {
-      enforceRateLimit();
+      throttle.acquire();
       OpenDartCompanyOverview overview =
           restClient
               .get()
@@ -185,20 +184,6 @@ public class OpenDartCorpDisclosureClient {
     if (properties.isApiKeyMissing()) {
       throw new IllegalStateException("OpenDART API 키가 설정되지 않았습니다. OPENDART_API_KEY 환경변수를 확인하세요.");
     }
-  }
-
-  private void enforceRateLimit() {
-    long now = System.currentTimeMillis();
-    long elapsed = now - lastRequestTimeMs;
-    if (elapsed < REQUEST_INTERVAL_MS) {
-      try {
-        Thread.sleep(REQUEST_INTERVAL_MS - elapsed);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("요청 간격 대기 중 인터럽트 발생", e);
-      }
-    }
-    lastRequestTimeMs = System.currentTimeMillis();
   }
 
   private void handleStatus(String status, String message) {

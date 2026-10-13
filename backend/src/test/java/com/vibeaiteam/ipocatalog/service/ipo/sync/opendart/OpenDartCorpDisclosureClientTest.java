@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,7 +47,8 @@ class OpenDartCorpDisclosureClientTest {
             .requestFactory(restTemplate.getRequestFactory())
             .build();
     properties = new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr");
-    client = new OpenDartCorpDisclosureClient(restClient, properties, Clock.systemDefaultZone());
+    client = new OpenDartCorpDisclosureClient(
+            restClient, properties, Clock.systemDefaultZone(), new RequestThrottle(0));
     objectMapper = new ObjectMapper();
   }
 
@@ -271,7 +273,7 @@ class OpenDartCorpDisclosureClientTest {
     OpenDartApiProperties emptyProps = new OpenDartApiProperties("", "https://opendart.fss.or.kr");
     OpenDartCorpDisclosureClient clientWithEmptyKey =
         new OpenDartCorpDisclosureClient(
-            RestClient.builder(), emptyProps, Clock.systemDefaultZone());
+            RestClient.builder(), emptyProps, Clock.systemDefaultZone(), new RequestThrottle(0));
 
     // when & then
     assertThatThrownBy(() -> clientWithEmptyKey.searchRecentEquitySecuritiesCompanies(7))

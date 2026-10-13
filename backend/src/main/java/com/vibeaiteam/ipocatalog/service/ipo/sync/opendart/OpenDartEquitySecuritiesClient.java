@@ -1,11 +1,12 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -18,37 +19,32 @@ import org.springframework.web.client.RestClientException;
 public class OpenDartEquitySecuritiesClient {
 
   private static final String ENDPOINT_PATH = "/api/estkRs.json";
-  private static final int REQUEST_INTERVAL_MS = 200; // 호출 간 최소 간격
-  private static final int CONNECT_TIMEOUT_MS = 5_000; // 연결 타임아웃 5초
-  private static final int READ_TIMEOUT_MS = 15_000; // 읽기 타임아웃 15초
 
   private final RestClient restClient;
   private final OpenDartApiProperties properties;
-  private long lastRequestTimeMs = 0;
+  private final RequestThrottle throttle;
 
   /** 생성자 (테스트용 - RestClient 직접 주입). */
-  public OpenDartEquitySecuritiesClient(RestClient restClient, OpenDartApiProperties properties) {
+  public OpenDartEquitySecuritiesClient(
+      RestClient restClient, OpenDartApiProperties properties, RequestThrottle throttle) {
     this.restClient = restClient;
     this.properties = properties;
+    this.throttle = throttle;
   }
 
   /** 생성자 (운영용 - RestClient.Builder로 생성, 타임아웃 설정 포함). */
   public OpenDartEquitySecuritiesClient(
-      RestClient.Builder restClientBuilder, OpenDartApiProperties properties) {
+      RestClient.Builder restClientBuilder,
+      OpenDartApiProperties properties,
+      RequestThrottle throttle) {
     this(
         restClientBuilder
             .baseUrl(properties.getBaseUrl())
             .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-            .requestFactory(createRequestFactory())
+            .requestFactory(HttpClientSupport.requestFactory())
             .build(),
-        properties);
-  }
-
-  private static SimpleClientHttpRequestFactory createRequestFactory() {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    factory.setReadTimeout(READ_TIMEOUT_MS);
-    return factory;
+        properties,
+        throttle);
   }
 
   /**
@@ -62,7 +58,7 @@ public class OpenDartEquitySecuritiesClient {
    */
   public List<OpenDartEquitySecurityDetail> getEquitySecurityDetail(String corpCode) {
     validateApiKey();
-    enforceRateLimit();
+    throttle.acquire();
 
     OpenDartEstkRsResponse response;
     try {
@@ -106,20 +102,6 @@ public class OpenDartEquitySecuritiesClient {
     if (properties.isApiKeyMissing()) {
       throw new IllegalStateException("OpenDART API 키가 설정되지 않았습니다. OPENDART_API_KEY 환경변수를 확인하세요.");
     }
-  }
-
-  private void enforceRateLimit() {
-    long now = System.currentTimeMillis();
-    long elapsed = now - lastRequestTimeMs;
-    if (elapsed < REQUEST_INTERVAL_MS) {
-      try {
-        Thread.sleep(REQUEST_INTERVAL_MS - elapsed);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IllegalStateException("요청 간격 대기 중 인터럽트 발생", e);
-      }
-    }
-    lastRequestTimeMs = System.currentTimeMillis();
   }
 
   private void handleStatus(String status, String message) {

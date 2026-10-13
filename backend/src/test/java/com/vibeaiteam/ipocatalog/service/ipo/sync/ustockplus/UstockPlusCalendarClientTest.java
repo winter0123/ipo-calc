@@ -10,6 +10,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
@@ -38,7 +39,9 @@ class UstockPlusCalendarClientTest {
     server = MockRestServiceServer.bindTo(builder).build();
     client =
         new UstockPlusCalendarClient(
-            builder, new UstockPlusApiProperties("https://api.ustockplus.com"));
+            builder,
+            new UstockPlusApiProperties("https://api.ustockplus.com"),
+            new RequestThrottle(70));
   }
 
   private static String item(String code, String name, String type, String date) {
