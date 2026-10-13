@@ -180,6 +180,157 @@ class LsClientsTest {
     assertThat(client.rangeLimitMessage()).isEqualTo("LS증권은 한 번에 31일까지 조회할 수 있습니다.");
   }
 
+  private static final String SELL_ROW =
+      "{\"medosu\":\"매도\",\"expcode\":\"005930\",\"qty\":\"1\",\"price\":\"10\","
+          + "\"amt\":\"10\",\"fee\":\"0\",\"tax\":\"0\",\"argtax\":\"0\"}";
+
+  private static void assertCode(Runnable call, String code) {
+    assertThatThrownBy(call::run)
+        .isInstanceOfSatisfying(
+            BrokerApiException.class, e -> assertThat(e.getStatusCode()).isEqualTo(code));
+  }
+
+  private List<BrokerSaleSummary> fetchDay(int day) {
+    return client(d -> false)
+        .fetchSales(ctx(), LocalDate.of(2026, 10, day), LocalDate.of(2026, 10, day));
+  }
+
+  @Test
+  void fetchSales_multipleTradingDays_callsEachDayAndMergesRows() {
+    // 10-07(수)과 10-08(목) 두 영업일을 각각 호출하고 결과를 날짜별로 합친다.
+    expectDay("20261007", body(SELL_ROW), null);
+    expectDay("20261008", body(SELL_ROW), null);
+
+    List<BrokerSaleSummary> result =
+        client(d -> false).fetchSales(ctx(), LocalDate.of(2026, 10, 7), LocalDate.of(2026, 10, 8));
+
+    server.verify();
+    assertThat(result).extracting(BrokerSaleSummary::tradeDate)
+        .containsExactlyInAnyOrder(LocalDate.of(2026, 10, 7), LocalDate.of(2026, 10, 8));
+  }
+
+  @Test
+  void fetchSales_onlyBuyRows_returnsEmpty() {
+    expectDay(
+        "20261002",
+        body(
+            "{\"medosu\":\"2\",\"expcode\":\"005930\",\"qty\":\"1\",\"price\":\"10\","
+                + "\"amt\":\"10\"}"),
+        null);
+
+    assertThat(fetchDay(2)).isEmpty();
+    server.verify();
+  }
+
+  @Test
+  void fetchSales_blankAmount_usesQuantityTimesPrice() {
+    expectDay(
+        "20261002",
+        body(
+            "{\"medosu\":\"매도\",\"expcode\":\"005930\",\"qty\":\"3\",\"price\":\"70.5\","
+                + "\"amt\":\"\",\"fee\":\"0\",\"tax\":\"0\",\"argtax\":\"0\"}"),
+        null);
+
+    assertThat(fetchDay(2)).singleElement().satisfies(r -> assertThat(r.amount()).isEqualTo(212));
+  }
+
+  @Test
+  void fetchSales_missingRowsBlock_returnsEmpty() {
+    server
+        .expect(requestTo(ACCNO_URL))
+        .andRespond(withSuccess("{\"t0151OutBlock\":{}}", MediaType.APPLICATION_JSON));
+
+    assertThat(fetchDay(2)).isEmpty();
+  }
+
+  @Test
+  void fetchSales_emptyBody_failsAsNullResponse() {
+    server
+        .expect(requestTo(ACCNO_URL))
+        .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+
+    assertCode(() -> fetchDay(2), "null_response");
+  }
+
+  @Test
+  void fetchSales_nullSellBuyValue_failsAsInvalidResponse() {
+    expectDay("20261002", body("{\"expcode\":\"005930\",\"qty\":\"1\"}"), null);
+
+    assertCode(() -> fetchDay(2), "invalid_response");
+  }
+
+  @Test
+  void fetchSales_continuationWithoutKeyOrCts_keepsEmptyDefaults() {
+    var first =
+        withSuccess("{\"t0151OutBlock1\":[" + SELL_ROW + "]}", MediaType.APPLICATION_JSON)
+            .header("tr_cont", "y");
+    server.expect(requestTo(ACCNO_URL)).andRespond(first);
+    server
+        .expect(requestTo(ACCNO_URL))
+        .andExpect(header("tr_cont", "Y"))
+        .andExpect(header("tr_cont_key", ""))
+        .andExpect(jsonPath("$.t0151InBlock.cts_expcode").value(""))
+        .andRespond(withSuccess(body(SELL_ROW), MediaType.APPLICATION_JSON));
+
+    assertThat(fetchDay(2)).singleElement().satisfies(r -> assertThat(r.quantity()).isEqualTo(2));
+    server.verify();
+  }
+
+  @Test
+  void fetchSales_continuationNeverEnds_failsAfterTenPagesInsteadOfTruncating() {
+    server
+        .expect(org.springframework.test.web.client.ExpectedCount.times(10), requestTo(ACCNO_URL))
+        .andRespond(
+            withSuccess(body(SELL_ROW), MediaType.APPLICATION_JSON)
+                .header("tr_cont", "Y")
+                .header("tr_cont_key", "k"));
+
+    assertCode(() -> fetchDay(2), "too_many_pages");
+    server.verify();
+  }
+
+  @Test
+  void fetchSales_httpError_failsWithStatusAndNoBody() {
+    server
+        .expect(requestTo(ACCNO_URL))
+        .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("secret-body"));
+
+    assertThatThrownBy(() -> fetchDay(2))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class,
+            e -> {
+              assertThat(e.getStatusCode()).isEqualTo("query_failed");
+              assertThat(e.getMessage()).contains("HTTP 500").doesNotContain("secret-body");
+            });
+  }
+
+  @Test
+  void fetchSales_malformedJson_failsWithExceptionTypeOnly() {
+    server
+        .expect(requestTo(ACCNO_URL))
+        .andRespond(withSuccess("{not json", MediaType.APPLICATION_JSON));
+
+    assertCode(() -> fetchDay(2), "query_failed");
+  }
+
+  @Test
+  void fetchSales_interruptedBetweenDays_failsAndKeepsInterruptFlag() {
+    expectDay("20261007", body(SELL_ROW), null);
+    Thread.currentThread().interrupt();
+    try {
+      assertThatThrownBy(
+              () ->
+                  client(d -> false)
+                      .fetchSales(ctx(), LocalDate.of(2026, 10, 7), LocalDate.of(2026, 10, 8)))
+          .isInstanceOfSatisfying(
+              BrokerApiException.class,
+              e -> assertThat(e.getStatusCode()).isEqualTo("interrupted"));
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
   private LsDailyTradeClient client(java.util.function.Predicate<LocalDate> holiday) {
     return new LsDailyTradeClient(restClient, holiday);
   }

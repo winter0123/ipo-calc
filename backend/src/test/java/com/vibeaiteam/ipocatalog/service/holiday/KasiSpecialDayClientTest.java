@@ -221,4 +221,91 @@ class KasiSpecialDayClientTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).date()).isEqualTo(LocalDate.of(2026, 1, 1));
   }
+
+  private static String itemsJson(String itemsValue) {
+    return "{\"response\":{\"header\":{\"resultCode\":\"00\"},"
+        + "\"body\":{\"items\":"
+        + itemsValue
+        + "}}}";
+  }
+
+  @Test
+  void getHolidays_blankResponseBody_throwsKasiApiException() {
+    expectKasiRequest(2026, "  ");
+
+    assertThatThrownBy(() -> client.getHolidays(2026))
+        .isInstanceOf(KasiSpecialDayClient.KasiApiException.class)
+        .hasMessageContaining("비어 있습니다");
+  }
+
+  @Test
+  void getHolidays_malformedJson_throwsParseFailure() {
+    expectKasiRequest(2026, "{not json");
+
+    assertThatThrownBy(() -> client.getHolidays(2026))
+        .isInstanceOf(KasiSpecialDayClient.KasiApiException.class)
+        .hasMessageContaining("파싱 실패");
+  }
+
+  @Test
+  void getHolidays_itemsWithoutItemNode_returnsEmpty() {
+    expectKasiRequest(2026, itemsJson("{}"));
+
+    assertThat(client.getHolidays(2026)).isEmpty();
+  }
+
+  @Test
+  void getHolidays_itemNull_returnsEmpty() {
+    expectKasiRequest(2026, itemsJson("{\"item\":null}"));
+
+    assertThat(client.getHolidays(2026)).isEmpty();
+  }
+
+  @Test
+  void getHolidays_itemIsNeitherArrayNorObject_returnsEmpty() {
+    expectKasiRequest(2026, itemsJson("{\"item\":\"oops\"}"));
+
+    assertThat(client.getHolidays(2026)).isEmpty();
+  }
+
+  @Test
+  void getHolidays_singleObjectNotHoliday_returnsEmpty() {
+    expectKasiRequest(
+        2026,
+        itemsJson("{\"item\":{\"isHoliday\":\"N\",\"locdate\":20260101,\"dateName\":\"x\"}}"));
+
+    assertThat(client.getHolidays(2026)).isEmpty();
+  }
+
+  @Test
+  void getHolidays_badRows_skippedAndBlankNameDefaulted() {
+    // 날짜가 비었거나 형식이 틀린 행은 버리고, 이름이 빈 행은 "특일"로 채운다.
+    expectKasiRequest(
+        2026,
+        itemsJson(
+            "{\"item\":["
+                + "{\"isHoliday\":\"Y\",\"dateName\":\"a\"},"
+                + "{\"isHoliday\":\"Y\",\"locdate\":\"2026-13-99\",\"dateName\":\"b\"},"
+                + "{\"isHoliday\":\"Y\",\"locdate\":20260505,\"dateName\":\"\"}]}"));
+
+    assertThat(client.getHolidays(2026))
+        .containsExactly(new KasiSpecialDayClient.HolidayItem(LocalDate.of(2026, 5, 5), "특일"));
+  }
+
+  @Test
+  void getHolidays_resultCodeError_defaultsMessageWhenMissing() {
+    expectKasiRequest(2026, "{\"response\":{\"header\":{\"resultCode\":\"30\"}}}");
+
+    assertThatThrownBy(() -> client.getHolidays(2026))
+        .isInstanceOf(KasiSpecialDayClient.KasiApiException.class)
+        .hasMessageContaining("resultCode=30")
+        .hasMessageContaining("알 수 없는 오류");
+  }
+
+  @Test
+  void productionConstructor_buildsClientWithBaseUrlAndExposesProperties() {
+    KasiSpecialDayClient prod = new KasiSpecialDayClient(RestClient.builder(), properties);
+
+    assertThat(prod.getProperties()).isSameAs(properties);
+  }
 }
