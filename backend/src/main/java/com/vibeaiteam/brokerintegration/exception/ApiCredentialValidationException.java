@@ -1,7 +1,10 @@
 package com.vibeaiteam.brokerintegration.exception;
 
+import com.vibeaiteam.accountauthentication.exception.ApiException;
+import org.springframework.http.HttpStatus;
+
 /** 브로커 API 인증정보 입력 검증 실패 예외(HTTP 400). */
-public class ApiCredentialValidationException extends RuntimeException {
+public class ApiCredentialValidationException extends ApiException {
 
   private static final long serialVersionUID = 1L;
 
@@ -11,6 +14,6 @@ public class ApiCredentialValidationException extends RuntimeException {
    * @param message 시크릿이 포함되지 않은 검증 실패 메시지
    */
   public ApiCredentialValidationException(String message) {
-    super(message);
+    super(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
   }
 }

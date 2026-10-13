@@ -11,42 +11,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiCredentialExceptionHandler {
 
-  /** ApiCredentialValidationException을 HTTP 400 응답으로 변환한다. */
-  @ExceptionHandler(ApiCredentialValidationException.class)
-  public ResponseEntity<ErrorResponse> handleApiCredentialValidation(
-      ApiCredentialValidationException ex) {
-    return ErrorResponses.of(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
-  }
-
-  /** ApiCredentialNotFoundException을 HTTP 404 응답으로 변환한다. */
-  @ExceptionHandler(ApiCredentialNotFoundException.class)
-  public ResponseEntity<ErrorResponse> handleApiCredentialNotFound(
-      ApiCredentialNotFoundException ex) {
-    return ErrorResponses.of(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
-  }
-
-  /** ApiCredentialForbiddenException을 HTTP 403 응답으로 변환한다. */
-  @ExceptionHandler(ApiCredentialForbiddenException.class)
-  public ResponseEntity<ErrorResponse> handleApiCredentialForbidden(
-      ApiCredentialForbiddenException ex) {
-    return ErrorResponses.of(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage());
-  }
-
-  /** ApiCredentialConflictException을 HTTP 409 응답으로 변환한다. */
-  @ExceptionHandler(ApiCredentialConflictException.class)
-  public ResponseEntity<ErrorResponse> handleApiCredentialConflict(
-      ApiCredentialConflictException ex) {
-    return ErrorResponses.of(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage());
-  }
-
-  /** BrokerConnectionUnavailableException을 HTTP 503 응답으로 변환한다. */
-  @ExceptionHandler(BrokerConnectionUnavailableException.class)
-  public ResponseEntity<ErrorResponse> handleBrokerConnectionUnavailable(
-      BrokerConnectionUnavailableException ex) {
-    return ErrorResponses.of(
-        HttpStatus.SERVICE_UNAVAILABLE, "BROKER_CONNECTION_UNAVAILABLE", ex.getMessage());
-  }
-
   /** RateLimitExceededException을 HTTP 429 응답으로 변환한다. {@code Retry-After} 헤더에 남은 초를 담는다. */
   @ExceptionHandler(RateLimitExceededException.class)
   public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitExceededException ex) {
