@@ -28,6 +28,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class MarketHoliday {
 
+  /** PK. DB가 자동으로 매기는 번호. */
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
