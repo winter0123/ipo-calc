@@ -52,7 +52,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
   /** AllocationIdIn · 상태 조건으로 매도를 목록 조회한다. */
   @Query(
       "SELECT s FROM Sale s "
-          + "WHERE s.allocationId IN ?1 AND s.status = ?2 AND s.deletedAt IS NULL")
+          + "WHERE s.allocationId IN ?1 AND s.status = ?2 AND s.deletedAt IS NULL "
+          + "ORDER BY s.saleDate DESC, s.createdAt DESC")
   List<Sale> findByAllocationIdInAndStatus(List<Long> allocationIds, RecordStatus status);
 
   /** 현재 계정(accountId) 소유 투자자의 ACTIVE 매도를 배정 ID·투자자 ID·투자자명 필터로 조회한다. */

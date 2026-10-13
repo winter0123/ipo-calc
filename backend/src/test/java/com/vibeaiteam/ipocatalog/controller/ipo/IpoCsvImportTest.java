@@ -13,6 +13,7 @@ import com.vibeaiteam.accountauthentication.repository.account.AccountRepository
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -245,6 +246,39 @@ class IpoCsvImportTest {
     Map<String, Object> response = readBody(result);
     assertThat(response.get("error")).isEqualTo("FILE_TOO_LARGE");
     assertThat(ipoRepository.count()).isZero();
+  }
+
+  @Test
+  void importCsvWithUtf8BomParsesFirstHeader() throws Exception {
+    signupAndLogin();
+    String csv =
+        "\uFEFF"
+            + CSV_HEADER
+            + "\n기업A,공모주A,111111,,10000,12000,11000,2026-10-01,2026-10-02,,1000";
+
+    MvcResult result = importCsv(csv);
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    assertThat(readBody(result).get("successCount")).isEqualTo(1);
+  }
+
+  @Test
+  void importCsvInCp949DecodesKoreanCorrectly() throws Exception {
+    signupAndLogin();
+    String csv =
+        CSV_HEADER + "\n기업가,공모주나,333333,,10000,12000,11000,2026-10-01,2026-10-02,,1000";
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "ipos.csv", "text/csv", csv.getBytes(Charset.forName("MS949")));
+
+    MvcResult result =
+        mockMvc.perform(multipart("/ipos/import").file(file).session(session)).andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    List<Ipo> saved = ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+    assertThat(saved).hasSize(1);
+    assertThat(saved.get(0).getCompanyName()).isEqualTo("기업가");
+    assertThat(saved.get(0).getIpoName()).isEqualTo("공모주나");
   }
 
   private MvcResult importCsv(String csvContent) throws Exception {

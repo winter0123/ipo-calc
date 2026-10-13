@@ -99,7 +99,10 @@ public class BrokerTokenService {
     lock.lock();
     try {
       // 락 안에서 다시 검사한다. 대기 중 다른 요청이 이미 발급했을 수 있다.
-      KisAccessToken cached = readCachedToken(credential);
+      // 호출자가 미리 읽은 엔티티는 낡았을 수 있으므로 캐시는 DB에서 다시 읽어 판정한다.
+      SecuritiesAccountApiCredential fresh =
+          credentialRepository.findByIdAndDeletedAtIsNull(credential.getId()).orElse(credential);
+      KisAccessToken cached = readCachedToken(fresh);
       if (cached != null) {
         log.debug(
             "브로커 접근토큰 캐시 재사용: credentialId={}, expiresAt={}",
@@ -182,12 +185,19 @@ public class BrokerTokenService {
       throw e;
     }
 
-    credential.setAccessTokenEncrypted(secretEncryptor.encrypt(issued.token()));
-    credential.setTokenExpiresAt(issued.expiresAt());
-    credential.setUpdatedAt(LocalDateTime.now(clock));
-    credentialRepository.save(credential);
+    // 키가 그 사이 교체됐으면 0행이 갱신되어 옛 키의 토큰은 캐시되지 않는다(새 키를 덮어쓰지 않는다).
+    int updated =
+        credentialRepository.updateTokenIfKeyUnchanged(
+            credential.getId(),
+            credential.getAppKeyEncrypted(),
+            secretEncryptor.encrypt(issued.token()),
+            issued.expiresAt(),
+            LocalDateTime.now(clock));
     log.info(
-        "브로커 접근토큰 캐시 갱신: credentialId={}, expiresAt={}", credential.getId(), issued.expiresAt());
+        "브로커 접근토큰 캐시 갱신: credentialId={}, expiresAt={}, cached={}",
+        credential.getId(),
+        issued.expiresAt(),
+        updated > 0);
     return issued;
   }
 }

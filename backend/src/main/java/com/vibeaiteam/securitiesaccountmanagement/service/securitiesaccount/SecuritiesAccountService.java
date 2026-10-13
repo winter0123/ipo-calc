@@ -62,11 +62,14 @@ public class SecuritiesAccountService {
   public SecuritiesAccountResponse register(SecuritiesAccountRegisterRequest request) {
     Long investorId = request.getInvestorId();
     Long securitiesFirmId = request.getSecuritiesFirmId();
-    String plainAccountNumber = request.getAccountNumber();
-
-    if (investorId == null || securitiesFirmId == null || plainAccountNumber == null) {
+    if (investorId == null || securitiesFirmId == null || request.getAccountNumber() == null) {
       throw new SecuritiesAccountValidationException(
           "investorId, securitiesFirmId, accountNumber는 필수 입력값입니다.");
+    }
+    // 공백·하이픈을 제거한 숫자 10~16자리만 허용하고 정규화한 값을 저장한다(화면 규칙과 동일).
+    String plainAccountNumber = request.getAccountNumber().replaceAll("[\\s-]", "");
+    if (!plainAccountNumber.matches("\\d{10,16}")) {
+      throw new SecuritiesAccountValidationException("계좌번호는 10~16자리 숫자여야 합니다.");
     }
 
     validateAccountName(request.getAccountName());
@@ -83,7 +86,10 @@ public class SecuritiesAccountService {
         .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 증권사입니다"));
 
     // D-SA-003: 투자자의 첫 번째 계좌 등록 시 요청의 isDefault와 무관하게 true로 강제
-    boolean firstAccount = securitiesAccountRepository.findByInvestorId(investorId).isEmpty();
+    boolean firstAccount =
+        securitiesAccountRepository
+            .findByInvestorIdAndStatus(investorId, RecordStatus.ACTIVE)
+            .isEmpty();
     boolean isDefault = firstAccount || Boolean.TRUE.equals(request.getIsDefault());
 
     LocalDateTime now = LocalDateTime.now(clock);
@@ -100,6 +106,17 @@ public class SecuritiesAccountService {
             .updatedAt(now)
             .build();
 
+    if (isDefault) {
+      // 기존 기본 계좌를 먼저 해제·flush해야 partial unique index를 위반하지 않는다(setDefault와 같은 순서).
+      securitiesAccountRepository
+          .findByInvestorIdAndIsDefaultTrue(investorId)
+          .ifPresent(
+              previous -> {
+                previous.setIsDefault(false);
+                previous.setUpdatedAt(now);
+                securitiesAccountRepository.saveAndFlush(previous);
+              });
+    }
     SecuritiesAccount saved = securitiesAccountRepository.save(entity);
     // 저장 직후이므로 저장에 사용한 원본 평문을 그대로 마스킹에 사용한다 (다시 복호화할 필요 없음)
     return SecuritiesAccountResponse.from(saved, AccountNumberMasker.mask(plainAccountNumber));
@@ -199,11 +216,28 @@ public class SecuritiesAccountService {
     account.setStatus(RecordStatus.INACTIVE);
     account.setDeletedAt(now);
     // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
-    if (Boolean.TRUE.equals(account.getIsDefault())) {
+    boolean wasDefault = Boolean.TRUE.equals(account.getIsDefault());
+    if (wasDefault) {
       account.setIsDefault(false);
     }
     account.setUpdatedAt(now);
-    securitiesAccountRepository.save(account);
+    securitiesAccountRepository.saveAndFlush(account);
+    // 비밀키 암호문을 남기지 않도록 API 인증정보는 물리 삭제한다.
+    securitiesAccountRepository.deleteApiCredentials(id);
+    // 남은 활성 계좌 중 가장 오래된 것을 기본으로 승격한다.
+    if (wasDefault) {
+      securitiesAccountRepository
+          .findByInvestorIdAndStatusOrderByCreatedAtAscIdAsc(
+              account.getInvestorId(), RecordStatus.ACTIVE)
+          .stream()
+          .findFirst()
+          .ifPresent(
+              next -> {
+                next.setIsDefault(true);
+                next.setUpdatedAt(now);
+                securitiesAccountRepository.save(next);
+              });
+    }
   }
 
   /** 지정한 계좌를 투자자의 기본 계좌로 설정한다. */
