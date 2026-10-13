@@ -7,6 +7,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 UI_DIR="${UI_DIR:-$ROOT/ui}"
 : "${DB_PASSWORD:?DB_PASSWORD가 필요합니다}"
+# 다른 도구(E2E·가이드 캡처)처럼 슬롯 4를 리셋해 쓴다. 기본 개발 DB를 쓰면 시드(증권사 등)가 달라 화면을 건너뛴다.
+export DB_NAME="${DB_NAME:-vibe_slot_4}"
+"$ROOT/scripts/db-slot.sh" reset "${DB_NAME#vibe_slot_}" | tail -1
 
 free_port() { node -e "const s=require('net').createServer().listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})"; }
 API_PORT="$(free_port)"
@@ -28,7 +31,7 @@ CFG
 trap 'rm -f "$UI_DIR/vite.scan.config.ts"; cleanup' EXIT
 
 KEY="$(head -c 32 /dev/urandom | base64)"
-(cd "$ROOT/backend" && DB_PASSWORD="$DB_PASSWORD" APP_IPO_SYNC_ENABLED=false APP_HOLIDAY_SYNC_ENABLED=false APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$(head -c 32 /dev/urandom | base64)" APP_RATE_LIMIT_AUTH_PER_MINUTE=100000 APP_RATE_LIMIT_PUBLIC_READ_PER_MINUTE=100000 APP_SIGNUP_MODE=OPEN SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
+(cd "$ROOT/backend" && DB_NAME="$DB_NAME" DB_PASSWORD="$DB_PASSWORD" APP_IPO_SYNC_ENABLED=false APP_HOLIDAY_SYNC_ENABLED=false APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$(head -c 32 /dev/urandom | base64)" APP_RATE_LIMIT_AUTH_PER_MINUTE=100000 APP_RATE_LIMIT_PUBLIC_READ_PER_MINUTE=100000 APP_SIGNUP_MODE=OPEN SERVER_PORT="$API_PORT" ./gradlew bootRun >"$TMP/backend.log" 2>&1) &
 PIDS+=($!)
 (cd "$UI_DIR" && VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts --host 127.0.0.1 --port "$WEB_PORT" --strictPort >"$TMP/vite.log" 2>&1) &
 PIDS+=($!)
@@ -40,7 +43,9 @@ done
 curl -s -o /dev/null "http://127.0.0.1:$API_PORT/auth/me" || { echo "백엔드 기동 실패"; tail -20 "$TMP/backend.log"; exit 1; }
 
 [ -d "$HERE/node_modules" ] || (cd "$HERE" && npm ci --silent)
-BASE_URL="http://127.0.0.1:$WEB_PORT" node "$HERE/scan.mjs"
+E2E_DB_NAME="$DB_NAME" BASE_URL="http://127.0.0.1:$WEB_PORT" node "$HERE/scan.mjs"
+rc=$?
 
 # bootRun은 자식 JVM을 남기므로 이 실행이 고른 포트의 리스너를 직접 종료한다.
 for port in "$API_PORT" "$WEB_PORT"; do lsof -tiTCP:"$port" -sTCP:LISTEN | xargs -r kill 2>/dev/null || true; done
+exit $rc
