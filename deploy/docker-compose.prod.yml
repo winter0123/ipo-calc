@@ -16,6 +16,13 @@ services:
   backend:
     build: ../backend
     restart: unless-stopped
+    # 비로그인 /auth/me 가 401이면 앱·DB·마이그레이션까지 정상(Jenkins 스모크와 같은 기준)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -O /dev/null http://localhost:8080/auth/me 2>&1 | grep -q 'HTTP/1.1 401'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,7 +46,8 @@ services:
     build: ../ui
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS}
     ports:
