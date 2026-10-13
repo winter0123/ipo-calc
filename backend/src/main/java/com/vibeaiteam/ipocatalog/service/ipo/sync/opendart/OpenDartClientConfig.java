@@ -22,4 +22,10 @@ public class OpenDartClientConfig {
       OpenDartApiProperties properties) {
     return new OpenDartEquitySecuritiesClient(RestClient.builder(), properties);
   }
+
+  /** OpenDART 공모 공시(투자설명서·증권신고서) 조회 클라이언트 빈. 문서가 수 MB라 읽기 타임아웃을 60초로 둔다. */
+  @Bean
+  public DartIpoFilingClient dartIpoFilingClient(OpenDartApiProperties properties) {
+    return new DartIpoFilingClient(RestClient.builder(), properties, 5_000, 60_000);
+  }
 }
