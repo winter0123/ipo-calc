@@ -287,7 +287,9 @@ describe('IpoCalendar', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
 
-    expect(screen.getByText('날짜를 선택하세요')).toBeInTheDocument()
+    expect(
+      screen.getByText('날짜를 누르면 그날의 청약·환불·상장 일정이 여기에 나옵니다'),
+    ).toBeInTheDocument()
     expect(screen.queryByText('일정 없음')).not.toBeInTheDocument()
   })
 

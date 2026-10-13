@@ -19,7 +19,9 @@ export function SelectedDayDetail({
   return (
     <section className={styles.detail} aria-label="선택한 날짜 일정 상세" aria-live="polite">
       <h3 className={styles.detailTitle}>
-        {selectedDate ? `${selectedDate} 일정` : '날짜를 선택하세요'}
+        {selectedDate
+          ? `${selectedDate} 일정`
+          : '날짜를 누르면 그날의 청약·환불·상장 일정이 여기에 나옵니다'}
       </h3>
       {selectedDate && holidayName && (
         <p className={styles.holidayNotice}>휴장일 · {holidayName}</p>
