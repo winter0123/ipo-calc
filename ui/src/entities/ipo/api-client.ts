@@ -22,3 +22,15 @@ export async function registerIpo(data: IpoRegisterRequest): Promise<Ipo> {
     body: JSON.stringify(data),
   })
 }
+
+export interface IpoImportResult {
+  successCount: number
+  failureCount: number
+  failures: { rowNumber: number; reason: string }[]
+}
+
+export async function importIposCsv(file: File): Promise<IpoImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  return apiFetch<IpoImportResult>('/ipos/import', { method: 'POST', body })
+}

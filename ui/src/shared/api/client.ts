@@ -18,7 +18,8 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
     ...options,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      // FormData는 브라우저가 multipart 경계를 포함해 Content-Type을 직접 채운다
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers as Record<string, string> | undefined),
     },
   }
