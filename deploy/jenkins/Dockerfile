@@ -7,8 +7,12 @@ COPY --from=docker:cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr
 COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:22-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
  && npm i -g pnpm@10 \
  && git config --system --add safe.directory '*'
+# E2E용 Playwright Chromium + 시스템 의존성 (버전은 tools/e2e/package.json과 맞춘다)
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+RUN npx --yes playwright@1.63.0 install --with-deps chromium && chmod -R a+rX /opt/pw-browsers
 USER jenkins
 COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
