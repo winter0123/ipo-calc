@@ -13,6 +13,7 @@ import {
   listingDate,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
+  acquisitionUnitPrice,
   resolveIpoPrice,
   toSalePayload,
 } from '@/entities/sale/index.ts'
@@ -79,9 +80,10 @@ export function useSaleForm() {
   } = useForm<SaleFormValues>({ mode: 'onSubmit', defaultValues: { ipoFee: DEFAULT_IPO_FEE } })
 
   const hasPriorSales = allocationData?.sales.some((sale) => sale.status === 'ACTIVE') ?? false
-  const ipoPrice = resolveIpoPrice(
-    ipo?.fixedPrice ?? allocationData?.ipoFixedPrice,
+  // 실현손익 계산의 취득 단가 — 서버와 같은 규칙(배정단가 우선)이어야 저장 후 값이 같다.
+  const ipoPrice = acquisitionUnitPrice(
     allocationData?.allocation?.allocationPrice,
+    ipo?.fixedPrice ?? allocationData?.ipoFixedPrice,
   )
 
   /** 매도단가·수량·공모가가 정해져 있으면 마지막에 고치지 않은 쪽을 공식으로 다시 계산한다. */

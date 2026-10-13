@@ -18,10 +18,9 @@ public final class DashboardAggregator {
       long investmentAmount, long preTaxProfit, long afterTaxProfit, double profitRate, int count) {
 
     /** 매도 건의 투자금 = 배정금액을 매도 수량 비율로 안분한 몫. 배정금액이 단가×수량이라 단가×매도수량과 같고 항상 정수다. */
+    // 총 투자금은 수익 계산의 취득금액과 같은 값(배정단가 없으면 공모가)이어야 수익률이 맞는다.
     private static long investmentOf(CalculatedSale cs) {
-      Long price = cs.allocationPrice();
-      Long qty = cs.soldQuantity();
-      return (price == null || qty == null) ? 0L : price * qty;
+      return cs.acquisitionAmount() == null ? 0L : cs.acquisitionAmount();
     }
 
     static Totals of(List<CalculatedSale> group) {

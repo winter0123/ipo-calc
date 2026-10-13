@@ -314,7 +314,7 @@ class DashboardAggregationServiceTest {
   }
 
   @Test
-  void getSummaryReturnsZeroProfitRateWhenTotalInvestmentAmountIsZero() {
+  void getSummaryUsesFixedPriceForInvestmentWhenAllocationPriceMissing() {
     // Given: allocationPrice가 null인 Sale (총투자금 0)
     Sale sale = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
 
@@ -328,7 +328,7 @@ class DashboardAggregationServiceTest {
 
     SecuritiesFirm securitiesFirm = createSecuritiesFirm(100L, "테스트 증권사");
 
-    Ipo ipo = createIpo(1L, 9000L); // fixedPrice가 있지만 allocationPrice가 null이므로 0으로 취급
+    Ipo ipo = createIpo(1L, 9000L); // allocationPrice가 null이면 공모가로 대체(수익 계산과 같은 규칙)
 
     setupMocksWithSales(
         List.of(sale),
@@ -342,9 +342,10 @@ class DashboardAggregationServiceTest {
     // When
     SummaryDto result = dashboardAggregationService.getSummary();
 
-    // Then: totalInvestmentAmount = 0 (allocationPrice가 null이므로), totalProfitRate = 0.0 (AC-007)
-    assertThat(result.getTotalInvestmentAmount()).isEqualTo(0L);
-    assertThat(result.getTotalProfitRate()).isEqualTo(0.0);
+    // Then: 2026-10-14 기준 변경 — 총 투자금도 수익 계산의 취득금액과 같은 규칙(배정단가 없으면 공모가).
+    // 예전(AC-007)엔 0으로 두어 수익은 잡히는데 수익률이 0%가 되는 불일치가 있었다.
+    assertThat(result.getTotalInvestmentAmount()).isEqualTo(90000L);
+    assertThat(result.getTotalProfitRate()).isEqualTo(53800 * 100.0 / 90000);
     // 세전/세후수익은 여전히 계산됨 (acquisitionAmount = fixedPrice * saleQuantity = 9000 * 10 = 90000)
     // preTaxProfit = 150000 - 90000 - 1000 - 200 = 58800
     // afterTaxProfit = 58800 - 5000 = 53800

@@ -6,6 +6,7 @@ import {
   listingDate,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
+  acquisitionUnitPrice,
   resolveIpoPrice,
   toSalePayload,
 } from './saleMath.ts'
@@ -42,6 +43,10 @@ describe('saleMath', () => {
   })
 
   it('공모가는 확정 공모가 → 배정단가 순으로 쓰고 없으면 null', () => {
+    expect(acquisitionUnitPrice(9000, 10000)).toBe(9000) // 서버와 같이 배정단가 우선
+    expect(acquisitionUnitPrice(0, 10000)).toBe(0) // 0도 값으로 인정(서버 규칙)
+    expect(acquisitionUnitPrice(null, 10000)).toBe(10000)
+    expect(acquisitionUnitPrice(undefined, null)).toBeNull()
     expect(resolveIpoPrice(10000, 9000)).toBe(10000)
     expect(resolveIpoPrice(0, 9000)).toBe(9000)
     expect(resolveIpoPrice(null, 9000)).toBe(9000)
