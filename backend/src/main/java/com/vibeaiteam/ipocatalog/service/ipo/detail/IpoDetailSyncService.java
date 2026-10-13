@@ -111,20 +111,52 @@ public class IpoDetailSyncService {
       return false;
     }
     String rceptNo = filing.get().rceptNo();
+    Optional<IpoDetail> existing = detailRepository.findById(ipo.getId());
     boolean unchanged =
-        detailRepository
-            .findById(ipo.getId())
-            .map(IpoDetail::getSourceRceptNo)
-            .filter(rceptNo::equals)
-            .isPresent();
+        existing.map(IpoDetail::getSourceRceptNo).filter(rceptNo::equals).isPresent();
     if (unchanged) {
       return false;
     }
-    ParsedFiling parsed = parser.parse(filingClient.downloadDocument(rceptNo).orElse(null));
+    // 원문을 못 받았으면 빈 상세를 저장하지 않고 다음 주기에 다시 시도한다.
+    Optional<String> document = filingClient.downloadDocument(rceptNo);
+    if (document.isEmpty()) {
+      return false;
+    }
+    ParsedFiling parsed = parser.parse(document.get());
     OpenDartCompanyOverview company = disclosureClient.getCompanyOverview(corpCode).orElse(null);
     EquityOffering offering = filingClient.fetchEquityOffering(corpCode, today).orElse(null);
-    detailService.save(ipo.getId(), toSnapshot(filing.get(), parsed, company, offering));
+    IpoDetailSnapshot snapshot = toSnapshot(filing.get(), parsed, company, offering);
+    detailService.save(ipo.getId(), keepStoredWhenMissing(snapshot, company, offering, existing));
     return true;
+  }
+
+  // 기업개황·지분증권 조회가 일시적으로 비었으면 그 부분은 기존 저장값을 유지한다.
+  private static IpoDetailSnapshot keepStoredWhenMissing(
+      IpoDetailSnapshot s,
+      OpenDartCompanyOverview company,
+      EquityOffering offering,
+      Optional<IpoDetail> existing) {
+    if (existing.isEmpty() || (company != null && offering != null)) {
+      return s;
+    }
+    IpoDetail old = existing.get();
+    boolean keepCompany = company == null;
+    boolean keepOffering = offering == null;
+    return new IpoDetailSnapshot(
+        s.sourceRceptNo(),
+        s.sourceReportName(),
+        keepCompany ? old.getCeoName() : s.ceoName(),
+        keepCompany ? old.getEstablishedOn() : s.establishedOn(),
+        keepCompany ? old.getAddress() : s.address(),
+        keepOffering ? old.getParValue() : s.parValue(),
+        s.capitalStock(),
+        s.largestShareholderName(),
+        s.largestShareholderRatio(),
+        s.institutionalCompetitionRate(),
+        s.lockUpCommitmentRatio(),
+        s.financials(),
+        s.floatSchedule(),
+        keepOffering ? old.getUnderwriters() : s.underwriters());
   }
 
   static IpoDetailSnapshot toSnapshot(

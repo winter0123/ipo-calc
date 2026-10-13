@@ -1,6 +1,7 @@
 package com.vibeaiteam.subscriptionmanagement.service.subscription;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.exception.HasChildRecordsException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipErrors;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
@@ -114,6 +115,8 @@ public class SubscriptionService {
    */
   @Transactional
   public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
+    // 배정 수량 대비 검증을 직렬화하려고 청약 행을 먼저 잠근다
+    subscriptionRepository.findByIdForUpdate(id);
     final Subscription subscription = findOwnedSubscription(id);
 
     final Long updatedInvestorId = request.getInvestorId();
@@ -202,7 +205,7 @@ public class SubscriptionService {
   public void cancel(Long id) {
     Subscription subscription = findOwnedSubscription(id);
     if (subscriptionRepository.hasActiveAllocation(id)) {
-      throw new SubscriptionConflictException("배정 기록이 있는 청약은 취소할 수 없습니다. 배정을 먼저 취소해 주세요.");
+      throw new HasChildRecordsException("배정 기록이 있는 청약은 취소할 수 없습니다. 배정을 먼저 취소해 주세요.");
     }
     LocalDateTime now = LocalDateTime.now(clock);
     subscription.setStatus(RecordStatus.CANCELLED);

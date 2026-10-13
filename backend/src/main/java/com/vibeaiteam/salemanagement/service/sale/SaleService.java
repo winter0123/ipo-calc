@@ -41,6 +41,9 @@ public class SaleService {
   public SaleResponse register(SaleRegisterRequest request) {
     validateRequest(request);
 
+    // 동시 매도가 한도를 넘지 않도록 배정 행을 먼저 잠근다(이후 조회는 잠금 뒤의 최신 값)
+    allocationRepository.findByIdForUpdate(request.getAllocationId());
+
     // (1) Allocation 조회 — 존재하지 않으면 404, 타 계정 소유면 403
     Allocation allocation =
         allocationOwnership.requireOwnedActive(request.getAllocationId(), OWNERSHIP_ERRORS);
@@ -107,6 +110,11 @@ public class SaleService {
   @Transactional
   public SaleResponse update(Long id, SaleUpdateRequest request) {
     validateUpdateRequest(request);
+
+    // 배정 행 잠금(등록과 같은 잠금) — 대상 매도가 없으면 아래 findOwnedSale이 404를 낸다
+    saleRepository
+        .findByIdAndDeletedAtIsNull(id)
+        .ifPresent(s -> allocationRepository.findByIdForUpdate(s.getAllocationId()));
 
     // (1) 대상 Sale 조회 — 없거나 CANCELLED이면 404, 타 계정 소유면 403
     Sale sale = findOwnedSale(id);

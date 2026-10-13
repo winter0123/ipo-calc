@@ -992,6 +992,47 @@ class SaleControllerTest {
 
   // ==================== SF-4: 매도 수정 테스트 (AC-012~016) ====================
 
+  @Test
+  void concurrentSalesNeverExceedAllocatedQuantity() throws Exception {
+    // Given: 배정 10주
+    signupAndLogin();
+    Long allocationId = createAllocation(10L);
+    int threads = 8;
+    Map<String, Object> request = validSaleRequest(allocationId);
+    request.put("quantity", 10L);
+    java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.ExecutorService pool =
+        java.util.concurrent.Executors.newFixedThreadPool(threads);
+    List<java.util.concurrent.Future<Integer>> futures = new ArrayList<>();
+    for (int i = 0; i < threads; i++) {
+      futures.add(
+          pool.submit(
+              () -> {
+                start.await();
+                return registerSale(request).getResponse().getStatus();
+              }));
+    }
+
+    // When: 10주 매도를 동시에 요청
+    start.countDown();
+    int created = 0;
+    for (java.util.concurrent.Future<Integer> f : futures) {
+      if (f.get() == 201) {
+        created++;
+      }
+    }
+    pool.shutdown();
+
+    // Then: 정확히 1건만 성공, 누적 매도 <= 10
+    assertThat(created).isEqualTo(1);
+    long sold =
+        saleRepository.findAll().stream()
+            .filter(sale -> allocationId.equals(sale.getAllocationId()))
+            .mapToLong(Sale::getQuantity)
+            .sum();
+    assertThat(sold).isLessThanOrEqualTo(10L);
+  }
+
   private MvcResult updateSale(Long id, Map<String, Object> request) throws Exception {
     return mockMvc
         .perform(
