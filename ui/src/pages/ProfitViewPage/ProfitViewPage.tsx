@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import {
+  downloadCsv,
+  profitCsvFileName,
+  toProfitCsv,
   ProfitPeriodSection,
   ProfitTable,
   useAllInvestorProfits,
@@ -121,6 +124,17 @@ export default function ProfitViewPage() {
               <ProfitPeriodSection sales={sales} from={period.from} to={period.to} />
             )}
             <h2>매도 내역</h2>
+            {sales.length > 0 && (
+              <button
+                type="button"
+                className={styles.presetButton}
+                onClick={() =>
+                  downloadCsv(toProfitCsv(sales), profitCsvFileName(period.from, period.to))
+                }
+              >
+                CSV로 내보내기
+              </button>
+            )}
             <ProfitTable sales={sales} />
           </>
         )
