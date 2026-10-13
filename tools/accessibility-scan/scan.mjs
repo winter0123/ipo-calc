@@ -118,18 +118,24 @@ async function setupBrokerStates(context) {
     })
     const query = (accountId) =>
       `/broker-sync?investorId=${investor.id}&securitiesAccountId=${accountId}`
+    // 현재 투자자는 localStorage 기준이라, 이 투자자로 바꾸고 새로고침한 뒤 화면을 스캔한다.
+    const asBroker = (extra) => async (page) => {
+      await page.evaluate((id) => localStorage.setItem('currentInvestorId', String(id)), investor.id)
+      await page.reload({ waitUntil: 'networkidle' })
+      if (extra) await extra(page)
+    }
     return [
-      { name: 'broker-sync-connected', path: query(connected.id), needsAuth: true },
+      { name: 'broker-sync-connected', path: query(connected.id), needsAuth: true, prepare: asBroker() },
       {
         name: 'broker-sync-replace-form',
         path: query(connected.id),
         needsAuth: true,
-        prepare: async (page) => {
+        prepare: asBroker(async (page) => {
           await page.getByRole('button', { name: '키 교체' }).click()
           await page.getByLabel('앱키').waitFor()
-        },
+        }),
       },
-      { name: 'broker-sync-register-form', path: query(open.id), needsAuth: true },
+      { name: 'broker-sync-register-form', path: query(open.id), needsAuth: true, prepare: asBroker() },
     ]
   } catch (error) {
     console.log(`증권사 연동 상태별 스캔 준비 실패(건너뜀): ${error.message}`)
@@ -160,7 +166,8 @@ async function setupAdminStates(browser, page) {
     sql(`UPDATE accounts SET approved=false, failed_login_attempts=5, locked_until=(now() at time zone 'Asia/Seoul') + interval '30 minutes' WHERE email='${memberEmail}'`)
     sql(`UPDATE accounts SET role='ADMIN' WHERE email='${scanEmail}'`)
 
-    // 역할은 로그인 시점의 세션에 담기므로 다시 로그인한다.
+    // 역할은 로그인 시점의 세션에 담기므로 다시 로그인한다(로그인 상태면 /login이 대시보드로 보내므로 먼저 로그아웃).
+    await page.context().request.post(`${baseUrl}${apiPrefix}/auth/logout`)
     await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' })
     await page.fill('#email', scanEmail)
     await page.fill('#password', 'testpassword123!')
@@ -178,6 +185,18 @@ async function setupAdminStates(browser, page) {
         },
       },
       { name: 'admin-ipo-register', path: '/admin/ipos', needsAuth: true },
+      { name: 'admin-ipo-import', path: '/admin/ipos/import', needsAuth: true },
+      {
+        name: 'admin-ipo-import-result',
+        path: '/admin/ipos/import',
+        needsAuth: true,
+        prepare: async (p) => {
+          const csv = 'companyName,ipoName,subscriptionStartDate,subscriptionEndDate\n스캔전자,scan-import,2026-12-02,2026-12-03\n스캔전자,scan-bad,2026/12/02,2026-12-03\n'
+          await p.getByLabel('CSV 파일').setInputFiles({ name: 'scan.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+          await p.getByRole('button', { name: '가져오기', exact: true }).click()
+          await p.getByRole('status').filter({ hasText: '성공' }).waitFor()
+        },
+      },
     ]
   } catch (error) {
     console.log(`관리자 화면 스캔 준비 실패(건너뜀): ${error.message}`)
@@ -194,6 +213,7 @@ const day = (offset) => {
 
 // 달력·공모주 상세·수익·투자 내역 화면을 데이터가 있는 상태로 스캔하기 위한 시드. 관리자 승격(공모주 등록 API) 뒤에 부른다.
 // 상세의 공시 구역은 ipo_details 예시 행을 SQL로 넣어 보이게 한다(실제 DART 호출 없음).
+let tradeInvestorId = null // 거래 시드 투자자(증권사 화면 스캔이 현재 투자자를 바꾼 뒤 키보드 점검이 되돌린다)
 async function setupTradeStates(page, context) {
   const call = async (method, path, data) => {
     const response = await context.request.fetch(`${baseUrl}${apiPrefix}${path}`, {
@@ -280,6 +300,7 @@ async function setupTradeStates(page, context) {
     // 투자자가 여럿이면 현재 투자자를 직접 골라야 하므로 시드한 투자자로 고정한다.
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: 'networkidle' })
     await page.evaluate((id) => localStorage.setItem('currentInvestorId', String(id)), investor.id)
+    tradeInvestorId = investor.id
     const openRow = async (p) => {
       await p.locator('tbody tr').first().click()
       await p.getByRole('button', { name: '청약 수정' }).waitFor()
@@ -321,6 +342,9 @@ async function keyboardCheck(page) {
   const name = 'keyboard-edit-dialog'
   try {
     await page.setViewportSize({ width: 1280, height: 720 })
+    if (tradeInvestorId) {
+      await page.evaluate((id) => localStorage.setItem('currentInvestorId', String(id)), tradeInvestorId)
+    }
     await page.goto(`${baseUrl}/investments`, { waitUntil: 'networkidle' })
     await page.locator('tbody tr').first().focus()
     await page.keyboard.press('Enter')
