@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/** 키움·LS 어댑터가 함께 쓰는 RestClient 생성, base-url 검증, 숫자·종목코드 정규화. */
+/** KIS·키움·LS 어댑터가 함께 쓰는 RestClient 생성, base-url 검증, 숫자·종목코드 정규화. */
 public final class BrokerHttp {
 
   private static final String INVALID = "invalid_response";
@@ -49,7 +49,10 @@ public final class BrokerHttp {
     } catch (IllegalArgumentException e) {
       throw new IllegalStateException(name + " API base-url 형식이 올바르지 않습니다: " + baseUrl, e);
     }
-    if (uri.getHost() == null || !allowedHosts.contains(uri.getHost())) {
+    if (uri.getHost() == null) {
+      throw new IllegalStateException(name + " API base-url 형식이 올바르지 않습니다 (호스트가 없음): " + baseUrl);
+    }
+    if (!allowedHosts.contains(uri.getHost())) {
       throw new IllegalStateException(
           name + " API base-url의 호스트가 허용되지 않았습니다: " + uri.getHost() + ". 허용 호스트: " + allowedHosts);
     }

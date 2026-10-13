@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.adapter.kis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.vibeaiteam.brokerintegration.adapter.BrokerHttp;
 import com.vibeaiteam.brokerintegration.adapter.BrokerTokenIssuer;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.time.LocalDateTime;
@@ -8,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -23,8 +23,6 @@ public class KisAuthClient implements BrokerTokenIssuer {
 
   private static final Logger log = LoggerFactory.getLogger(KisAuthClient.class);
   private static final String TOKEN_PATH = "/oauth2/tokenP";
-  private static final int CONNECT_TIMEOUT_MS = 5_000;
-  private static final int READ_TIMEOUT_MS = 15_000;
   private static final DateTimeFormatter EXPIRES_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -46,19 +44,7 @@ public class KisAuthClient implements BrokerTokenIssuer {
    * @param baseUrl KIS API base-url
    */
   public KisAuthClient(RestClient.Builder restClientBuilder, String baseUrl) {
-    this(
-        restClientBuilder
-            .baseUrl(baseUrl)
-            .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-            .requestFactory(createRequestFactory())
-            .build());
-  }
-
-  private static SimpleClientHttpRequestFactory createRequestFactory() {
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
-    factory.setReadTimeout(READ_TIMEOUT_MS);
-    return factory;
+    this(BrokerHttp.newClient(restClientBuilder, baseUrl));
   }
 
   @Override
