@@ -29,4 +29,15 @@ public class KisClientConfig {
   public KisPeriodTradeProfitClient kisPeriodTradeProfitClient(KisApiProperties properties) {
     return new KisPeriodTradeProfitClient(RestClient.builder(), properties.getBaseUrl());
   }
+
+  /**
+   * KIS 매도 조회 소스 빈.
+   *
+   * @param client 기간별 매매손익 조회 클라이언트
+   * @return KIS 매도 조회 소스
+   */
+  @Bean
+  public KisSaleSource kisSaleSource(KisPeriodTradeProfitClient client) {
+    return new KisSaleSource(client);
+  }
 }

@@ -61,6 +61,11 @@ app:
     days-back: 90
   kis:
     base-url: https://openapi.koreainvestment.com:9443
+  kiwoom:
+    # 모의투자는 https://mockapi.kiwoom.com
+    base-url: https://api.kiwoom.com
+  ls:
+    base-url: https://openapi.ls-sec.co.kr:8080
   rate-limit:
     # 로그인 없이 열려 있는 공개 조회와 로그인·가입 요청의 IP별 분당 한도(0 이하이면 모두 차단).
     enabled: ${APP_RATE_LIMIT_ENABLED:true}

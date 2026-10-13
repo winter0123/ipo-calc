@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.adapter.kis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.vibeaiteam.brokerintegration.adapter.BrokerTokenIssuer;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -18,7 +19,7 @@ import org.springframework.web.client.RestClientResponseException;
  * {@code BrokerReadOnlyArchitectureTest}가 강제). 이 클래스도 put/patch/delete/method 호출은 금지된다. 재시도는 하지 않는다
  * — 재발급은 분당 1회로 제한되기 때문이다.
  */
-public class KisAuthClient {
+public class KisAuthClient implements BrokerTokenIssuer {
 
   private static final Logger log = LoggerFactory.getLogger(KisAuthClient.class);
   private static final String TOKEN_PATH = "/oauth2/tokenP";
@@ -60,6 +61,11 @@ public class KisAuthClient {
     return factory;
   }
 
+  @Override
+  public String provider() {
+    return KisApiProperties.PROVIDER;
+  }
+
   /**
    * 앱키와 앱시크릿으로 접근토큰을 발급받는다.
    *
@@ -71,6 +77,7 @@ public class KisAuthClient {
    * @return 발급된 접근토큰과 만료 시각
    * @throws BrokerApiException 토큰 발급이 실패한 경우
    */
+  @Override
   public KisAccessToken issueToken(String appKey, String appSecret) {
     log.info("KIS 접근토큰 발급 요청: method=POST, path={}", TOKEN_PATH);
     try {

@@ -73,8 +73,10 @@ class BrokerTokenServiceTest {
   void setUp() {
     secretEncryptor = new BrokerSecretEncryptor(DUMMY_ENCRYPTION_KEY);
     authClient = mock(KisAuthClient.class);
+    when(authClient.provider()).thenReturn("KIS");
     credentialRepository = mock(SecuritiesAccountApiCredentialRepository.class);
-    service = new BrokerTokenService(authClient, secretEncryptor, credentialRepository, clock);
+    service =
+        new BrokerTokenService(List.of(authClient), secretEncryptor, credentialRepository, clock);
 
     credential = buildCredential(null, null);
 

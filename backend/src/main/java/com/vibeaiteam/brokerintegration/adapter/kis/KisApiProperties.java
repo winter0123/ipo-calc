@@ -16,6 +16,9 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.kis")
 public class KisApiProperties {
 
+  /** 인증정보 {@code apiProvider}에 저장되는 식별자. */
+  public static final String PROVIDER = "KIS";
+
   /** 허용되는 KIS 실거래 API 호스트. 모의투자 호스트는 포함하지 않는다. */
   private static final Set<String> ALLOWED_HOSTS = Set.of("openapi.koreainvestment.com");
 

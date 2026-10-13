@@ -1,5 +1,6 @@
 package com.vibeaiteam.brokerintegration.service.credential;
 
+import com.vibeaiteam.brokerintegration.adapter.kis.KisApiProperties;
 import com.vibeaiteam.brokerintegration.controller.credential.dto.ApiCredentialResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
@@ -78,7 +79,10 @@ public class ApiCredentialAssembler {
   }
 
   private LocalDate keyExpiresOn(SecuritiesAccountApiCredential credential) {
-    if (credential == null || credential.getKeyIssuedOn() == null) {
+    // 키움·LS는 사용기간 규칙을 확인하지 못했으므로 만료일을 계산하지 않는다.
+    if (credential == null
+        || credential.getKeyIssuedOn() == null
+        || !KisApiProperties.PROVIDER.equals(credential.getApiProvider())) {
       return null;
     }
     return credential.getKeyIssuedOn().plus(KEY_VALIDITY);

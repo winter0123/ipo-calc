@@ -45,8 +45,21 @@ const day = (offset: number) => {
 const confirmCalls = () =>
   vi.mocked(apiFetch).mock.calls.filter(([path]) => String(path).endsWith('/broker-sync/confirm'))
 
-function setup(preview: unknown = PREVIEW) {
+function setup(preview: unknown = PREVIEW, provider = 'KIS') {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+    if (String(path).endsWith('/api-credential')) {
+      return {
+        id: 1,
+        securitiesAccountId: 10,
+        apiProvider: provider,
+        connectionStatus: 'CONNECTED',
+        accountNumber: null,
+        lastSyncedAt: null,
+        supportedProvider: provider,
+        keyIssuedOn: null,
+        keyExpiresOn: null,
+      }
+    }
     if (isPreview(path)) {
       if (preview instanceof Error) throw preview
       return preview
@@ -70,7 +83,7 @@ describe('BrokerSyncPanel', () => {
   it('버튼을 누르기 전에는 증권사를 조회하지 않는다', () => {
     setup()
 
-    expect(apiFetch).not.toHaveBeenCalled()
+    expect(previewCalls()).toHaveLength(0)
   })
 
   it('기본 조회 기간은 오늘까지 최근 1년이고 기간 파라미터로 요청한다', async () => {
@@ -90,7 +103,7 @@ describe('BrokerSyncPanel', () => {
     setup()
     await fill(screen.getByLabelText('조회 시작일'), day(-800))
     await fill(screen.getByLabelText('조회 종료일'), day(-30))
-    expect(apiFetch).not.toHaveBeenCalled()
+    expect(previewCalls()).toHaveLength(0)
 
     await clickQuery()
 
@@ -211,5 +224,16 @@ describe('BrokerSyncPanel', () => {
     await clickQuery()
 
     expect(await screen.findByText('조회된 매도 내역이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('LS증권은 한 번에 31일까지만 조회하도록 기본 기간과 검증을 바꾼다', async () => {
+    setup(PREVIEW, 'LS')
+
+    expect(await screen.findByText(/기본 최근 30일, 최대 31일/)).toBeInTheDocument()
+    await fill(screen.getByLabelText('조회 시작일'), day(-40))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'LS증권은 한 번에 31일까지 조회할 수 있습니다.',
+    )
   })
 })

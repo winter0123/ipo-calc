@@ -15,6 +15,8 @@ interface Props {
   pending: boolean
   errorMessage: string | null
   today: string
+  // 사용기간 계산에 쓰는 발급일 입력은 사용기간 규칙이 확인된 증권사(KIS)에서만 보여 준다.
+  showIssuedOn?: boolean
   onSubmit: (values: KeyFormValues) => void
 }
 
@@ -26,6 +28,7 @@ export default function BrokerKeyForm({
   pending,
   errorMessage,
   today,
+  showIssuedOn = true,
   onSubmit,
 }: Props) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -71,24 +74,26 @@ export default function BrokerKeyForm({
           </span>
         )}
       </div>
-      <div className={styles.field}>
-        <label htmlFor={`${idPrefix}-issued-on`}>키 발급일(증권사 서비스 신청일)</label>
-        <input
-          id={`${idPrefix}-issued-on`}
-          type="date"
-          max={today}
-          aria-invalid={errors.keyIssuedOn ? 'true' : undefined}
-          aria-describedby={errors.keyIssuedOn ? `${idPrefix}-issued-on-error` : undefined}
-          {...field('keyIssuedOn', {
-            validate: (v) => !v || v <= today || '발급일은 오늘 이후일 수 없습니다.',
-          })}
-        />
-        {errors.keyIssuedOn && (
-          <span id={`${idPrefix}-issued-on-error`} role="alert" className={styles.error}>
-            {errors.keyIssuedOn.message}
-          </span>
-        )}
-      </div>
+      {showIssuedOn && (
+        <div className={styles.field}>
+          <label htmlFor={`${idPrefix}-issued-on`}>키 발급일(증권사 서비스 신청일)</label>
+          <input
+            id={`${idPrefix}-issued-on`}
+            type="date"
+            max={today}
+            aria-invalid={errors.keyIssuedOn ? 'true' : undefined}
+            aria-describedby={errors.keyIssuedOn ? `${idPrefix}-issued-on-error` : undefined}
+            {...field('keyIssuedOn', {
+              validate: (v) => !v || v <= today || '발급일은 오늘 이후일 수 없습니다.',
+            })}
+          />
+          {errors.keyIssuedOn && (
+            <span id={`${idPrefix}-issued-on-error`} role="alert" className={styles.error}>
+              {errors.keyIssuedOn.message}
+            </span>
+          )}
+        </div>
+      )}
       {errorMessage && (
         <p role="alert" className={styles.error}>
           {errorMessage}

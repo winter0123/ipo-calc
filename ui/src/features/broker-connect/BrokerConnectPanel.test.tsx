@@ -70,6 +70,15 @@ describe('BrokerConnectPanel', () => {
     expect(screen.getByText('연결 안 됨')).toBeInTheDocument()
   })
 
+  it('키움증권은 IP 등록 안내를 보이고 KIS 전용 사용기간·발급일 입력은 숨긴다', async () => {
+    setup({ supportedProvider: 'KIWOOM' })
+    expect(
+      await screen.findByText('키움 REST API 사용 신청과 서버 IP 등록이 필요합니다.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/신청일부터 1년/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/키 발급일/)).not.toBeInTheDocument()
+  })
+
   it('빈 값으로 제출하면 검증 오류를 보이고 요청하지 않는다', async () => {
     setup()
     await userEvent.click(await screen.findByRole('button', { name: '연결' }))
