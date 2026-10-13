@@ -133,22 +133,17 @@ public class IpoSyncService {
     try {
       return corpDisclosureClient.searchRecentEquitySecuritiesCompanies(daysBack);
     } catch (OpenDartAuthenticationException e) {
-      result.setAborted(true);
-      result.setAbortReason("인증 오류: " + e.getMessage());
+      abort(result, "인증 오류: " + e.getMessage(), false);
       log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getMessage());
       return null;
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
-        result.setAborted(true);
-        result.setRetryable(false);
-        result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
+        abort(result, "요청 제한 초과(020): " + e.getMessage(), false);
         log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
         return null;
       }
       // 일반 API 오류 (예: 800 시스템 점검) → 재시도 가능으로 표시
-      result.setAborted(true);
-      result.setRetryable(true);
-      result.setAbortReason("API 오류: " + e.getMessage());
+      abort(result, "API 오류: " + e.getMessage(), true);
       log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
       return null;
     }
@@ -182,14 +177,12 @@ public class IpoSyncService {
     try {
       details = equitySecuritiesClient.getEquitySecurityDetail(corpCode);
     } catch (OpenDartAuthenticationException e) {
-      result.setAborted(true);
-      result.setAbortReason("인증 오류: " + e.getMessage());
+      abort(result, "인증 오류: " + e.getMessage(), false);
       log.error("OpenDART 인증 오류로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
       return false;
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
-        result.setAborted(true);
-        result.setAbortReason("요청 제한 초과(020): " + e.getMessage());
+        abort(result, "요청 제한 초과(020): " + e.getMessage(), false);
         log.error("OpenDART 요청 제한 초과로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
         return false;
       }
@@ -229,6 +222,12 @@ public class IpoSyncService {
         });
 
     return true;
+  }
+
+  private static void abort(IpoSyncResult result, String reason, boolean retryable) {
+    result.setAborted(true);
+    result.setRetryable(retryable);
+    result.setAbortReason(reason);
   }
 
   private static void recordFailure(
@@ -272,9 +271,6 @@ public class IpoSyncService {
           endDate);
     }
 
-    Long offerPrice = detail.getOfferPrice();
-    Long offeringShareCount = detail.getOfferingShareCount();
-
     // 1) corpCode로 기존 자동 동기화 레코드 조회
     var existingByCorpCode =
         ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
@@ -305,37 +301,43 @@ public class IpoSyncService {
     }
 
     // 3) 신규 생성
-    LocalDateTime now = LocalDateTime.now(clock);
-    Ipo newIpo =
-        Ipo.builder()
-            .companyName(corpName)
-            .ipoName(corpName)
-            .corpCode(corpCode)
-            .stockCode(null)
-            .lowerBandPrice(offerPrice)
-            .upperBandPrice(offerPrice)
-            .fixedPrice(null) // 동기화가 절대 설정하지 않음
-            .subscriptionStartDate(startDate)
-            .subscriptionEndDate(endDate)
-            .listingDate(null) // 동기화가 절대 설정하지 않음
-            .allotmentDate(detail.getAllotmentDate()) // DART 배정공고일
-            .refundDate(detail.getRefundDate()) // DART 납입기일
-            .offeringShareCount(offeringShareCount)
-            .status(RecordStatus.ACTIVE)
-            .syncSource(SYNC_SOURCE_OPENDART)
-            .lastSyncedAt(now)
-            .createdAt(now)
-            .updatedAt(now)
-            .build();
-
     try {
-      ipoRepository.saveAndFlush(newIpo);
+      ipoRepository.saveAndFlush(newIpo(corpCode, corpName, detail, startDate, endDate));
       result.setCreated(result.getCreated() + 1);
       log.debug("신규 IPO 생성: corpCode={}, corpName={}", corpCode, corpName);
     } catch (DataIntegrityViolationException e) {
       // 동시성 등으로 인한 중복 키 위반 → 실패 처리
       throw new RuntimeException("중복 키 위반: " + e.getMessage(), e);
     }
+  }
+
+  private Ipo newIpo(
+      String corpCode,
+      String corpName,
+      OpenDartEquitySecurityDetail detail,
+      LocalDate startDate,
+      LocalDate endDate) {
+    LocalDateTime now = LocalDateTime.now(clock);
+    return Ipo.builder()
+        .companyName(corpName)
+        .ipoName(corpName)
+        .corpCode(corpCode)
+        .stockCode(null)
+        .lowerBandPrice(detail.getOfferPrice())
+        .upperBandPrice(detail.getOfferPrice())
+        .fixedPrice(null) // 동기화가 절대 설정하지 않음
+        .subscriptionStartDate(startDate)
+        .subscriptionEndDate(endDate)
+        .listingDate(null) // 동기화가 절대 설정하지 않음
+        .allotmentDate(detail.getAllotmentDate()) // DART 배정공고일
+        .refundDate(detail.getRefundDate()) // DART 납입기일
+        .offeringShareCount(detail.getOfferingShareCount())
+        .status(RecordStatus.ACTIVE)
+        .syncSource(SYNC_SOURCE_OPENDART)
+        .lastSyncedAt(now)
+        .createdAt(now)
+        .updatedAt(now)
+        .build();
   }
 
   /** 기존 자동 동기화 레코드 갱신 (fixedPrice, listingDate 보존). */
@@ -366,8 +368,9 @@ public class IpoSyncService {
     }
     // fixedPrice, listingDate는 절대 수정하지 않음 (수동 입력 보호)
     existing.setSyncSource(SYNC_SOURCE_OPENDART);
-    existing.setLastSyncedAt(LocalDateTime.now(clock));
-    existing.setUpdatedAt(LocalDateTime.now(clock));
+    LocalDateTime now = LocalDateTime.now(clock);
+    existing.setLastSyncedAt(now);
+    existing.setUpdatedAt(now);
 
     ipoRepository.saveAndFlush(existing);
   }
