@@ -115,3 +115,8 @@ th.numeric {
     overflow-wrap: anywhere;
   }
 }
+
+.emptyHint {
+  margin: var(--space-2) 0;
+  font-size: 14px;
+}

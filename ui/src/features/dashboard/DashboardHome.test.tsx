@@ -37,7 +37,9 @@ const item = (o: Record<string, unknown>) => ({
 })
 
 function setup(history: unknown[], ipos: Ipo[], current: unknown = { id: 7 }) {
-  vi.mocked(useCurrentInvestor).mockReturnValue(as({ current, isLoading: false }))
+  vi.mocked(useCurrentInvestor).mockReturnValue(
+    as({ current, investors: [{ id: 7 }, { id: 8 }], isLoading: false }),
+  )
   vi.mocked(useAllInvestmentHistory).mockReturnValue(
     as({ data: history, isLoading: false, error: null }),
   )

@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import styles from './MainLayout.module.css'
 
@@ -39,9 +39,30 @@ export default function InvestorGate() {
   )
 }
 
+// 투자자가 아직 한 명도 없을 때 작업 화면 대신 보여 준다(투자 내역·증권사 관리는 자체 안내가 있다).
+function NoInvestorGate() {
+  return (
+    <section className={styles.gate} aria-labelledby="no-investor-title">
+      <h1 id="no-investor-title">먼저 투자자를 등록해 주세요</h1>
+      <p>
+        청약·배정·매도·수익은 투자자별로 기록합니다. 본인 이름이나 가족 이름으로 먼저 만들어 두세요.
+      </p>
+      <div className={styles.gateButtons}>
+        <Link to="/investors/register" className={styles.gateLink}>
+          투자자 등록하기
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 // 로그인한 사용자의 본문. 선택이 필요하면 작업 화면 대신 선택 화면을 보여 준다.
 export function GatedOutlet() {
   const { pathname } = useLocation()
-  const { needsSelection } = useCurrentInvestor()
-  return needsSelection && isInvestorScoped(pathname) ? <InvestorGate /> : <Outlet />
+  const { needsSelection, investors, isLoading } = useCurrentInvestor()
+  if (!isInvestorScoped(pathname)) return <Outlet />
+  if (needsSelection) return <InvestorGate />
+  const selfGuided = pathname.startsWith('/investments') || pathname === '/securities'
+  if (!isLoading && investors.length === 0 && !selfGuided) return <NoInvestorGate />
+  return <Outlet />
 }

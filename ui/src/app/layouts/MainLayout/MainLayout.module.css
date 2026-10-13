@@ -425,6 +425,22 @@
   cursor: pointer;
 }
 
+.gateLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--radius-sm);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.gateLink:hover {
+  background: var(--primary-hover);
+}
+
 .gateButtons button:hover {
   background: var(--primary-hover);
 }
