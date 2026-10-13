@@ -1,17 +1,16 @@
 import type { ReactNode } from 'react'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
 import type { IpoInsight } from '@/entities/ipo/index.ts'
+import { expectedUnlockDate } from './lockUpDate.ts'
 import styles from './IpoDetailPage.module.css'
 
 const num = (v: number) => v.toLocaleString('ko-KR', { maximumFractionDigits: 2 })
 const ratio = (v: number | null) => (v === null ? null : `${num(v)}:1`)
 const percent = (v: number | null) => (v === null ? null : `${num(v)}%`)
 const shares = (v: number | null) => (v === null ? null : `${num(v)}주`)
-const eok = (v: number | null) =>
-  v === null
-    ? null
-    : `${(v / 100_000_000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}억원`
-const range = (a: string | null, b: string | null) => (a && b ? `${a} ~ ${b}` : (a ?? b))
+const eok = (v: number) => (v / 100_000_000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })
+const capital = (v: number | null) =>
+  v === null ? null : v >= 100_000_000 ? `${eok(v)}억원` : `${num(v / 1_000_000)}백만원`
 
 type Row = [label: string, value: ReactNode]
 
@@ -33,94 +32,158 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
   )
 }
 
-function Brokers({ brokers }: { brokers: IpoInsight['brokers'] }) {
-  if (brokers.length === 0) return null
+function Table({
+  title,
+  label,
+  head,
+  children,
+}: {
+  title: string
+  label: string
+  head: string[]
+  children: ReactNode
+}) {
   return (
-    <section className={styles.insightSection} aria-label="증권사별 청약">
-      <h2 className={styles.insightTitle}>증권사별 청약</h2>
-      <div className={styles.tableWrap} role="region" aria-label="증권사별 청약 표" tabIndex={0}>
+    <section className={styles.insightSection} aria-label={title}>
+      <h2 className={styles.insightTitle}>{title}</h2>
+      <div className={styles.tableWrap} role="region" aria-label={label} tabIndex={0}>
         <table className={styles.insightTable}>
           <thead>
             <tr>
-              <th scope="col">증권사</th>
-              <th scope="col">일반청약 물량</th>
-              <th scope="col">균등 1인당(예상)</th>
-              <th scope="col">비례 경쟁률</th>
+              {head.map((h, i) => (
+                <th key={`${h}-${i}`} scope="col">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {brokers.map((b, i) => (
-              <tr key={`${b.name}-${i}`}>
-                <th scope="row">{b.name ?? '-'}</th>
-                <td>{shares(b.shares) ?? '-'}</td>
-                <td>
-                  {b.equalSharesPerPerson === null ? '-' : `${num(b.equalSharesPerPerson)}주`}
-                </td>
-                <td>{ratio(b.proportionalCompetitionRate) ?? '-'}</td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{children}</tbody>
         </table>
       </div>
-      <p className={styles.insightNote}>균등·비례 값은 청약 마감 뒤에 채워집니다.</p>
     </section>
   )
 }
 
-/** 공모주 상세 아래의 부가 정보. 출처에서 못 받은 항목·구역은 보이지 않는다. */
-export default function IpoInsightSections({ ipoId }: { ipoId: number }) {
+function FloatSchedule({
+  rows,
+  listingDate,
+}: {
+  rows: IpoInsight['floatSchedule']
+  listingDate: string | null
+}) {
+  if (rows.length === 0) return null
+  return (
+    <Table
+      title="유통가능 물량(락업 해제) 일정"
+      label="유통가능 물량 표"
+      head={['시점', '예상 해제일', '누적 유통가능 주식수', '비율']}
+    >
+      {rows.map((r, i) => (
+        <tr key={`${r.label}-${i}`}>
+          <th scope="row">{r.label}</th>
+          <td>{expectedUnlockDate(listingDate, r.label) ?? ''}</td>
+          <td>{shares(r.shares) ?? '-'}</td>
+          <td>{percent(r.ratio) ?? '-'}</td>
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+function Financials({ rows }: { rows: IpoInsight['financials'] }) {
+  if (rows.length === 0) return null
+  const lines: [string, 'revenue' | 'operatingProfit' | 'netIncome'][] = [
+    ['매출액', 'revenue'],
+    ['영업이익', 'operatingProfit'],
+    ['순이익', 'netIncome'],
+  ]
+  return (
+    <Table
+      title="손익계산서"
+      label="손익계산서 표(억원)"
+      head={['(억원)', ...rows.map((r) => r.period)]}
+    >
+      {lines.map(([name, key]) => (
+        <tr key={key}>
+          <th scope="row">{name}</th>
+          {rows.map((r, i) => {
+            const v = r[key]
+            return (
+              <td key={i} className={v !== null && v < 0 ? styles.negative : undefined}>
+                {v === null ? '-' : eok(v)}
+              </td>
+            )
+          })}
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+function Underwriters({ rows }: { rows: IpoInsight['underwriters'] }) {
+  if (rows.length === 0) return null
+  return (
+    <Table title="인수단" label="인수단 표" head={['증권사', '역할', '인수 수량']}>
+      {rows.map((u, i) => (
+        <tr key={`${u.name}-${i}`}>
+          <th scope="row">{u.name}</th>
+          <td>{u.role ?? '-'}</td>
+          <td>{shares(u.shares) ?? '-'}</td>
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+/** 공모주 상세 아래의 공시 정보(DART). 값이 없는 항목·구역은 보이지 않는다. */
+export default function IpoInsightSections({
+  ipoId,
+  listingDate = null,
+}: {
+  ipoId: number
+  listingDate?: string | null
+}) {
   const { data, isLoading, isError } = useIpoInsight(ipoId)
-  if (isLoading) return <p className={styles.insightNote}>추가 정보를 불러오는 중...</p>
+  if (isLoading) return <p className={styles.insightNote}>공시 정보를 불러오는 중...</p>
   if (isError || !data) {
-    return (
-      <p className={styles.insightNote}>추가 정보(수요예측·기업정보)를 지금 불러올 수 없습니다.</p>
-    )
+    return <p className={styles.insightNote}>공시 정보를 지금 불러올 수 없습니다.</p>
   }
-  const protectedFloat =
-    data.protectedShareRatio !== null || data.floatShareRatio !== null
-      ? [percent(data.protectedShareRatio), percent(data.floatShareRatio)]
-          .map((v) => v ?? '-')
-          .join(' / ')
-      : null
+  if (data.syncedAt === null) {
+    return <p className={styles.insightNote}>아직 공시 정보를 가져오지 않았습니다.</p>
+  }
+  const shareholder = data.largestShareholderName
+    ? `${data.largestShareholderName}${data.largestShareholderRatio === null ? '' : ` (${percent(data.largestShareholderRatio)})`}`
+    : null
   return (
     <>
       <Section
-        title="수요예측·공모"
+        title="수요예측"
         rows={[
-          ['수요예측 기간', range(data.demandForecastStartDate, data.demandForecastEndDate)],
           ['기관 경쟁률', ratio(data.institutionalCompetitionRate)],
           ['의무보유확약 비율', percent(data.lockUpCommitmentRatio)],
-          ['보호예수 / 유통가능 물량', protectedFloat],
-          ['상장 예정 주식 수', shares(data.listedShares)],
-          ['공모가 기준 시가총액', eok(data.marketCapAtOfferPrice)],
         ]}
       />
-      <Brokers brokers={data.brokers} />
+      <FloatSchedule rows={data.floatSchedule} listingDate={listingDate} />
       <Section
         title="기업정보"
         rows={[
-          ['소개', data.description],
-          ['업종', data.keywords.length > 0 ? data.keywords.join(', ') : null],
           ['대표이사', data.ceoName],
           ['설립일', data.establishedOn],
           ['주소', data.address],
+          ['최대주주', shareholder],
+          ['자본금', capital(data.capitalStock)],
+          ['액면가', data.parValue === null ? null : `${num(data.parValue)}원`],
         ]}
       />
-      <Section
-        title="최근 실적(최근 사업연도)"
-        rows={[
-          ['매출액', eok(data.recentSales)],
-          ['순이익', eok(data.recentNetProfit)],
-        ]}
-      />
+      <Financials rows={data.financials} />
+      <Underwriters rows={data.underwriters} />
       <p className={styles.insightNote}>
-        출처: 증권플러스 비상장·금융감독원 DART.{' '}
-        {data.registrationStatementUrl && (
-          <a href={data.registrationStatementUrl} target="_blank" rel="noopener noreferrer">
-            증권신고서 보기
+        출처: 금융감독원 DART {data.sourceReportName ?? '공시'} · {data.syncedAt.slice(0, 10)} 기준{' '}
+        {data.sourceUrl && (
+          <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer">
+            공시 원문 보기
           </a>
-        )}{' '}
-        락업 해제 일정·연도별 실적은 증권신고서에서 확인하세요.
+        )}
       </p>
     </>
   )

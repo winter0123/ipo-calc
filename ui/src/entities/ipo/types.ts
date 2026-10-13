@@ -37,31 +37,40 @@ export interface IpoRegisterRequest {
   offeringShareCount?: number
 }
 
-// 공모주 상세 부가 정보(GET /ipos/{id}/insight). 출처에 없는 값은 null.
+// 공모주 상세 공시 정보(GET /ipos/{id}/insight). DART 공시에서 DB에 저장한 값, 없는 값은 null.
 export const ipoInsightSchema = z.object({
-  description: z.string().nullable(),
-  keywords: z.array(z.string()),
+  syncedAt: z.string().nullable(),
+  sourceReportName: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
   ceoName: z.string().nullable(),
   establishedOn: z.string().nullable(),
   address: z.string().nullable(),
-  demandForecastStartDate: z.string().nullable(),
-  demandForecastEndDate: z.string().nullable(),
+  parValue: z.number().nullable(),
+  capitalStock: z.number().nullable(),
+  largestShareholderName: z.string().nullable(),
+  largestShareholderRatio: z.number().nullable(),
   institutionalCompetitionRate: z.number().nullable(),
   lockUpCommitmentRatio: z.number().nullable(),
-  protectedShareRatio: z.number().nullable(),
-  floatShareRatio: z.number().nullable(),
-  listedShares: z.number().nullable(),
-  offeringShares: z.number().nullable(),
-  marketCapAtOfferPrice: z.number().nullable(),
-  recentSales: z.number().nullable(),
-  recentNetProfit: z.number().nullable(),
-  registrationStatementUrl: z.string().nullable(),
-  brokers: z.array(
+  financials: z.array(
     z.object({
-      name: z.string().nullable(),
+      period: z.string(),
+      revenue: z.number().nullable(),
+      operatingProfit: z.number().nullable(),
+      netIncome: z.number().nullable(),
+    }),
+  ),
+  floatSchedule: z.array(
+    z.object({
+      label: z.string(),
       shares: z.number().nullable(),
-      equalSharesPerPerson: z.number().nullable(),
-      proportionalCompetitionRate: z.number().nullable(),
+      ratio: z.number().nullable(),
+    }),
+  ),
+  underwriters: z.array(
+    z.object({
+      name: z.string(),
+      role: z.string().nullable(),
+      shares: z.number().nullable(),
     }),
   ),
 })
