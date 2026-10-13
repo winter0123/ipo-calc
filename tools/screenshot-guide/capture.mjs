@@ -64,6 +64,8 @@ await other.request.fetch(`${BASE}/api-proxy/accounts`, {
   method: 'POST', data: { email: member, password: PW, name: '김가입' }, headers: { 'Content-Type': 'application/json' },
 })
 await other.close()
+// 가입 승인 화면에 '잠김'·'잠금 해제'가 보이도록 승인 대기 계정을 30분 잠금 상태로 둔다(앱이 로컬 시각 KST로 저장하므로 Asia/Seoul 기준으로 넣는다).
+sql(`UPDATE accounts SET failed_login_attempts=5, locked_until=(now() at time zone 'Asia/Seoul') + interval '30 minutes' WHERE email='${member}'`)
 await page.fill('#email', admin)
 await page.fill('#password', PW)
 await page.click('button[type="submit"]')
@@ -87,7 +89,7 @@ const ipoDefs = [
   ['바다전자', 'BADA', -6, -4, -1, 10000],
   ['파도소프트', 'PADO', -1, 1, 5, 25000],
   ['물결바이오', 'MULG', 0, 2, 7, 18000],
-  ['산호테크', 'SANH', 3, 5, 10, 32000],
+  ['산호테크', 'SANH', 5, 7, 10, 32000],
   ['해초푸드', 'HAEC', 6, 8, 13, 12000],
 ]
 const ipos = []

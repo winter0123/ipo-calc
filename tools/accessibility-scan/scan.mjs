@@ -156,7 +156,8 @@ async function setupAdminStates(browser, page) {
     if (!created.ok()) throw new Error(`대기 계정 가입 실패: ${created.status()}`)
     const sql = (statement) =>
       execFileSync('docker', ['exec', dbContainer, 'psql', '-U', dbUser, '-d', dbName, '-c', statement])
-    sql(`UPDATE accounts SET approved=false WHERE email='${memberEmail}'`)
+    // 잠긴 계정 표시('잠김'·'잠금 해제')도 스캔되도록 대기 계정을 30분 잠금 상태로 둔다(앱이 로컬 시각 KST로 저장하므로 Asia/Seoul 기준으로 넣는다).
+    sql(`UPDATE accounts SET approved=false, failed_login_attempts=5, locked_until=(now() at time zone 'Asia/Seoul') + interval '30 minutes' WHERE email='${memberEmail}'`)
     sql(`UPDATE accounts SET role='ADMIN' WHERE email='${scanEmail}'`)
 
     // 역할은 로그인 시점의 세션에 담기므로 다시 로그인한다.
