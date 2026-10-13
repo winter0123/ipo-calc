@@ -3,37 +3,37 @@
     "page": "login@desktop",
     "path": "/login",
     "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:25.981Z"
+    "passes": 43,
+    "incomplete": 2,
+    "inapplicable": 46,
+    "timestamp": "2026-10-13T21:42:32.898Z"
   },
   {
     "page": "login@mobile",
     "path": "/login",
     "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:27.735Z"
+    "passes": 43,
+    "incomplete": 2,
+    "inapplicable": 46,
+    "timestamp": "2026-10-13T21:42:34.765Z"
   },
   {
     "page": "signup@desktop",
     "path": "/signup",
     "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:29.500Z"
+    "passes": 43,
+    "incomplete": 2,
+    "inapplicable": 46,
+    "timestamp": "2026-10-13T21:42:36.646Z"
   },
   {
     "page": "signup@mobile",
     "path": "/signup",
     "violations": [],
-    "passes": 35,
-    "incomplete": 1,
-    "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:31.254Z"
+    "passes": 43,
+    "incomplete": 2,
+    "inapplicable": 46,
+    "timestamp": "2026-10-13T21:42:38.525Z"
   },
   {
     "page": "investor-register@desktop",
@@ -42,7 +42,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:07:33.057Z"
+    "timestamp": "2026-10-13T21:42:40.286Z"
   },
   {
     "page": "investor-register@mobile",
@@ -51,7 +51,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:07:34.787Z"
+    "timestamp": "2026-10-13T21:42:42.035Z"
   },
   {
     "page": "securities-account-register@desktop",
@@ -60,7 +60,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:07:36.894Z"
+    "timestamp": "2026-10-13T21:42:44.161Z"
   },
   {
     "page": "securities-account-register@mobile",
@@ -69,7 +69,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:07:38.692Z"
+    "timestamp": "2026-10-13T21:42:46.245Z"
   },
   {
     "page": "securities@desktop",
@@ -78,7 +78,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:40.945Z"
+    "timestamp": "2026-10-13T21:42:48.447Z"
   },
   {
     "page": "securities@mobile",
@@ -87,7 +87,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:43.199Z"
+    "timestamp": "2026-10-13T21:42:50.678Z"
   },
   {
     "page": "subscription-register@desktop",
@@ -96,7 +96,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:45.320Z"
+    "timestamp": "2026-10-13T21:42:52.796Z"
   },
   {
     "page": "subscription-register@mobile",
@@ -105,7 +105,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:07:47.395Z"
+    "timestamp": "2026-10-13T21:42:54.858Z"
   },
   {
     "page": "subscription-list@desktop",
@@ -114,7 +114,7 @@
     "passes": 40,
     "incomplete": 2,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:07:49.476Z"
+    "timestamp": "2026-10-13T21:42:56.947Z"
   },
   {
     "page": "subscription-list@mobile",
@@ -123,7 +123,7 @@
     "passes": 40,
     "incomplete": 2,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:07:51.258Z"
+    "timestamp": "2026-10-13T21:42:58.698Z"
   },
   {
     "page": "allocation-register@desktop",
@@ -132,7 +132,7 @@
     "passes": 40,
     "incomplete": 2,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:07:53.323Z"
+    "timestamp": "2026-10-13T21:43:00.833Z"
   },
   {
     "page": "allocation-register@mobile",
@@ -141,7 +141,7 @@
     "passes": 40,
     "incomplete": 2,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:07:55.098Z"
+    "timestamp": "2026-10-13T21:43:02.914Z"
   },
   {
     "page": "sale-register@desktop",
@@ -150,7 +150,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:07:57.222Z"
+    "timestamp": "2026-10-13T21:43:05.032Z"
   },
   {
     "page": "sale-register@mobile",
@@ -159,7 +159,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:07:59.323Z"
+    "timestamp": "2026-10-13T21:43:07.131Z"
   },
   {
     "page": "profit-view@desktop",
@@ -168,7 +168,7 @@
     "passes": 44,
     "incomplete": 1,
     "inapplicable": 45,
-    "timestamp": "2026-10-13T20:08:01.625Z"
+    "timestamp": "2026-10-13T21:43:09.412Z"
   },
   {
     "page": "profit-view@mobile",
@@ -177,7 +177,7 @@
     "passes": 44,
     "incomplete": 1,
     "inapplicable": 45,
-    "timestamp": "2026-10-13T20:08:03.565Z"
+    "timestamp": "2026-10-13T21:43:11.575Z"
   },
   {
     "page": "investments@desktop",
@@ -186,7 +186,7 @@
     "passes": 44,
     "incomplete": 1,
     "inapplicable": 45,
-    "timestamp": "2026-10-13T20:08:05.667Z"
+    "timestamp": "2026-10-13T21:43:13.658Z"
   },
   {
     "page": "investments@mobile",
@@ -195,7 +195,7 @@
     "passes": 42,
     "incomplete": 1,
     "inapplicable": 47,
-    "timestamp": "2026-10-13T20:08:07.751Z"
+    "timestamp": "2026-10-13T21:43:15.729Z"
   },
   {
     "page": "dashboard@desktop",
@@ -204,7 +204,7 @@
     "passes": 43,
     "incomplete": 2,
     "inapplicable": 46,
-    "timestamp": "2026-10-13T20:08:09.941Z"
+    "timestamp": "2026-10-13T21:43:17.917Z"
   },
   {
     "page": "dashboard@mobile",
@@ -213,7 +213,7 @@
     "passes": 43,
     "incomplete": 2,
     "inapplicable": 46,
-    "timestamp": "2026-10-13T20:08:12.104Z"
+    "timestamp": "2026-10-13T21:43:20.064Z"
   },
   {
     "page": "broker-sync@desktop",
@@ -222,7 +222,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:14.157Z"
+    "timestamp": "2026-10-13T21:43:22.114Z"
   },
   {
     "page": "broker-sync@mobile",
@@ -231,7 +231,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:16.204Z"
+    "timestamp": "2026-10-13T21:43:24.182Z"
   },
   {
     "page": "admin-accounts-pending@desktop",
@@ -240,7 +240,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:08:18.285Z"
+    "timestamp": "2026-10-13T21:43:26.267Z"
   },
   {
     "page": "admin-accounts-pending@mobile",
@@ -249,7 +249,7 @@
     "passes": 40,
     "incomplete": 1,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:08:20.073Z"
+    "timestamp": "2026-10-13T21:43:28.342Z"
   },
   {
     "page": "admin-accounts-all@desktop",
@@ -258,7 +258,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:08:21.949Z"
+    "timestamp": "2026-10-13T21:43:30.517Z"
   },
   {
     "page": "admin-accounts-all@mobile",
@@ -267,7 +267,7 @@
     "passes": 40,
     "incomplete": 1,
     "inapplicable": 49,
-    "timestamp": "2026-10-13T20:08:24.090Z"
+    "timestamp": "2026-10-13T21:43:32.684Z"
   },
   {
     "page": "admin-ipo-register@desktop",
@@ -276,7 +276,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:26.225Z"
+    "timestamp": "2026-10-13T21:43:34.791Z"
   },
   {
     "page": "admin-ipo-register@mobile",
@@ -285,7 +285,43 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:28.047Z"
+    "timestamp": "2026-10-13T21:43:36.898Z"
+  },
+  {
+    "page": "admin-ipo-import@desktop",
+    "path": "/admin/ipos/import",
+    "violations": [],
+    "passes": 34,
+    "incomplete": 1,
+    "inapplicable": 55,
+    "timestamp": "2026-10-13T21:43:39.000Z"
+  },
+  {
+    "page": "admin-ipo-import@mobile",
+    "path": "/admin/ipos/import",
+    "violations": [],
+    "passes": 34,
+    "incomplete": 1,
+    "inapplicable": 55,
+    "timestamp": "2026-10-13T21:43:41.071Z"
+  },
+  {
+    "page": "admin-ipo-import-result@desktop",
+    "path": "/admin/ipos/import",
+    "violations": [],
+    "passes": 42,
+    "incomplete": 1,
+    "inapplicable": 47,
+    "timestamp": "2026-10-13T21:43:43.305Z"
+  },
+  {
+    "page": "admin-ipo-import-result@mobile",
+    "path": "/admin/ipos/import",
+    "violations": [],
+    "passes": 42,
+    "incomplete": 1,
+    "inapplicable": 47,
+    "timestamp": "2026-10-13T21:43:45.461Z"
   },
   {
     "page": "ipo-calendar@desktop",
@@ -294,7 +330,7 @@
     "passes": 37,
     "incomplete": 1,
     "inapplicable": 52,
-    "timestamp": "2026-10-13T20:08:30.311Z"
+    "timestamp": "2026-10-13T21:43:47.720Z"
   },
   {
     "page": "ipo-calendar@mobile",
@@ -303,7 +339,7 @@
     "passes": 37,
     "incomplete": 1,
     "inapplicable": 52,
-    "timestamp": "2026-10-13T20:08:32.579Z"
+    "timestamp": "2026-10-13T21:43:49.945Z"
   },
   {
     "page": "ipo-detail@desktop",
@@ -312,7 +348,7 @@
     "passes": 45,
     "incomplete": 1,
     "inapplicable": 44,
-    "timestamp": "2026-10-13T20:08:34.797Z"
+    "timestamp": "2026-10-13T21:43:52.157Z"
   },
   {
     "page": "ipo-detail@mobile",
@@ -321,7 +357,7 @@
     "passes": 46,
     "incomplete": 1,
     "inapplicable": 43,
-    "timestamp": "2026-10-13T20:08:36.682Z"
+    "timestamp": "2026-10-13T21:43:54.027Z"
   },
   {
     "page": "profits-graph@desktop",
@@ -330,7 +366,7 @@
     "passes": 44,
     "incomplete": 1,
     "inapplicable": 45,
-    "timestamp": "2026-10-13T20:08:38.891Z"
+    "timestamp": "2026-10-13T21:43:56.241Z"
   },
   {
     "page": "profits-graph@mobile",
@@ -339,7 +375,7 @@
     "passes": 44,
     "incomplete": 1,
     "inapplicable": 45,
-    "timestamp": "2026-10-13T20:08:40.782Z"
+    "timestamp": "2026-10-13T21:43:58.409Z"
   },
   {
     "page": "investments-detail-panel@desktop",
@@ -348,7 +384,7 @@
     "passes": 46,
     "incomplete": 1,
     "inapplicable": 43,
-    "timestamp": "2026-10-13T20:08:43.020Z"
+    "timestamp": "2026-10-13T21:44:00.673Z"
   },
   {
     "page": "investments-detail-panel@mobile",
@@ -357,7 +393,7 @@
     "passes": 46,
     "incomplete": 1,
     "inapplicable": 43,
-    "timestamp": "2026-10-13T20:08:45.269Z"
+    "timestamp": "2026-10-13T21:44:02.877Z"
   },
   {
     "page": "investments-edit-dialog@desktop",
@@ -366,7 +402,7 @@
     "passes": 49,
     "incomplete": 1,
     "inapplicable": 40,
-    "timestamp": "2026-10-13T20:08:47.619Z"
+    "timestamp": "2026-10-13T21:44:05.162Z"
   },
   {
     "page": "investments-edit-dialog@mobile",
@@ -375,7 +411,7 @@
     "passes": 49,
     "incomplete": 1,
     "inapplicable": 40,
-    "timestamp": "2026-10-13T20:08:49.889Z"
+    "timestamp": "2026-10-13T21:44:07.431Z"
   },
   {
     "page": "investments-delete-dialog@desktop",
@@ -384,7 +420,7 @@
     "passes": 47,
     "incomplete": 1,
     "inapplicable": 42,
-    "timestamp": "2026-10-13T20:08:52.202Z"
+    "timestamp": "2026-10-13T21:44:09.725Z"
   },
   {
     "page": "investments-delete-dialog@mobile",
@@ -393,7 +429,7 @@
     "passes": 47,
     "incomplete": 1,
     "inapplicable": 42,
-    "timestamp": "2026-10-13T20:08:54.486Z"
+    "timestamp": "2026-10-13T21:44:11.987Z"
   },
   {
     "page": "broker-sync-connected@desktop",
@@ -402,7 +438,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:56.597Z"
+    "timestamp": "2026-10-13T21:44:14.934Z"
   },
   {
     "page": "broker-sync-connected@mobile",
@@ -411,7 +447,7 @@
     "passes": 34,
     "incomplete": 1,
     "inapplicable": 55,
-    "timestamp": "2026-10-13T20:08:58.662Z"
+    "timestamp": "2026-10-13T21:44:17.924Z"
   },
   {
     "page": "broker-sync-replace-form@desktop",
@@ -420,7 +456,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:09:00.854Z"
+    "timestamp": "2026-10-13T21:44:20.988Z"
   },
   {
     "page": "broker-sync-replace-form@mobile",
@@ -429,7 +465,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:09:02.988Z"
+    "timestamp": "2026-10-13T21:44:24.060Z"
   },
   {
     "page": "broker-sync-register-form@desktop",
@@ -438,7 +474,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:09:05.067Z"
+    "timestamp": "2026-10-13T21:44:27.062Z"
   },
   {
     "page": "broker-sync-register-form@mobile",
@@ -447,7 +483,7 @@
     "passes": 35,
     "incomplete": 1,
     "inapplicable": 54,
-    "timestamp": "2026-10-13T20:09:07.151Z"
+    "timestamp": "2026-10-13T21:44:30.069Z"
   },
   {
     "page": "keyboard-edit-dialog",
@@ -464,7 +500,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:09:11.554Z"
+    "timestamp": "2026-10-13T21:44:34.487Z"
   },
   {
     "page": "empty-account-dashboard@mobile",
@@ -473,7 +509,7 @@
     "passes": 39,
     "incomplete": 1,
     "inapplicable": 50,
-    "timestamp": "2026-10-13T20:09:13.639Z"
+    "timestamp": "2026-10-13T21:44:36.564Z"
   },
   {
     "page": "empty-account-investments@desktop",
@@ -482,7 +518,7 @@
     "passes": 33,
     "incomplete": 1,
     "inapplicable": 56,
-    "timestamp": "2026-10-13T20:09:15.669Z"
+    "timestamp": "2026-10-13T21:44:38.629Z"
   },
   {
     "page": "empty-account-investments@mobile",
@@ -491,7 +527,7 @@
     "passes": 33,
     "incomplete": 1,
     "inapplicable": 56,
-    "timestamp": "2026-10-13T20:09:17.680Z"
+    "timestamp": "2026-10-13T21:44:40.666Z"
   },
   {
     "page": "empty-account-profits-view@desktop",
@@ -500,7 +536,7 @@
     "passes": 30,
     "incomplete": 1,
     "inapplicable": 59,
-    "timestamp": "2026-10-13T20:09:19.714Z"
+    "timestamp": "2026-10-13T21:44:42.711Z"
   },
   {
     "page": "empty-account-profits-view@mobile",
@@ -509,7 +545,7 @@
     "passes": 30,
     "incomplete": 1,
     "inapplicable": 59,
-    "timestamp": "2026-10-13T20:09:21.483Z"
+    "timestamp": "2026-10-13T21:44:44.736Z"
   },
   {
     "page": "empty-account-subscriptions-register@desktop",
@@ -518,7 +554,7 @@
     "passes": 30,
     "incomplete": 1,
     "inapplicable": 59,
-    "timestamp": "2026-10-13T20:09:23.534Z"
+    "timestamp": "2026-10-13T21:44:46.773Z"
   },
   {
     "page": "empty-account-subscriptions-register@mobile",
@@ -527,6 +563,6 @@
     "passes": 30,
     "incomplete": 1,
     "inapplicable": 59,
-    "timestamp": "2026-10-13T20:09:25.582Z"
+    "timestamp": "2026-10-13T21:44:48.791Z"
   }
 ]
