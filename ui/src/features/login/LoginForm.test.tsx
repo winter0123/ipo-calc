@@ -157,15 +157,30 @@ describe('LoginForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('관리자 승인 대기 중입니다')
   })
 
-  it('401이 아닌 오류는 네트워크 안내 문구를 보여준다', async () => {
+  async function loginWith(err: unknown) {
     const user = userEvent.setup()
-    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(500, 'Server Error'))
+    vi.mocked(apiFetch).mockRejectedValueOnce(err)
     renderLoginForm()
-
     await user.type(screen.getByLabelText('이메일'), 'test@example.com')
     await user.type(screen.getByLabelText('비밀번호'), 'password123')
     await user.click(screen.getByRole('button', { name: '로그인' }))
+    return screen.findByRole('alert')
+  }
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('네트워크 연결을 확인해 주세요.')
+  it('500은 네트워크 문구가 아니라 일반 오류 문구', async () => {
+    const alert = await loginWith(new ApiError(500, 'Server Error'))
+    expect(alert).toHaveTextContent('로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    expect(alert).not.toHaveTextContent('네트워크')
+  })
+
+  it('429는 서버 메시지를 보여준다', async () => {
+    const msg = '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.'
+    expect(await loginWith(new ApiError(429, msg, msg))).toHaveTextContent(msg)
+  })
+
+  it('네트워크 실패(ApiError 아님)일 때만 네트워크 문구', async () => {
+    expect(await loginWith(new TypeError('Failed to fetch'))).toHaveTextContent(
+      '네트워크 연결을 확인해 주세요.',
+    )
   })
 })

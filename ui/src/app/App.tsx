@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout/MainLayout.tsx'
+import { AdminOnly, GuestOnly } from './layouts/MainLayout/RouteGuards.tsx'
 import RootRedirect from './layouts/MainLayout/RootRedirect.tsx'
 
 const LoginPage = lazy(() => import('../pages/LoginPage/LoginPage.tsx'))
@@ -39,8 +40,22 @@ function App() {
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<RootRedirect />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route
+          path="/login"
+          element={
+            <GuestOnly>
+              <LoginPage />
+            </GuestOnly>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <GuestOnly>
+              <SignupPage />
+            </GuestOnly>
+          }
+        />
         <Route path="/investors/register" element={<InvestorRegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route
@@ -57,8 +72,22 @@ function App() {
         <Route path="/ipo-calendar" element={<IpoCalendarPage />} />
         <Route path="/ipos/:ipoId" element={<IpoDetailPage />} />
         <Route path="/broker-sync" element={<BrokerSyncPage />} />
-        <Route path="/admin/accounts" element={<AdminAccountsPage />} />
-        <Route path="/admin/ipos" element={<IpoRegisterPage />} />
+        <Route
+          path="/admin/accounts"
+          element={
+            <AdminOnly>
+              <AdminAccountsPage />
+            </AdminOnly>
+          }
+        />
+        <Route
+          path="/admin/ipos"
+          element={
+            <AdminOnly>
+              <IpoRegisterPage />
+            </AdminOnly>
+          }
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

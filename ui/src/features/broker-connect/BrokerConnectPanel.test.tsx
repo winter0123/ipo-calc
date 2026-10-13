@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { apiFetch } from '@/shared/api/client.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
 import { fill } from '@/test/fill'
 import BrokerConnectPanel from './BrokerConnectPanel.tsx'
 
@@ -106,6 +107,21 @@ describe('BrokerConnectPanel', () => {
         }),
       }),
     )
+  })
+
+  it('등록이 실패해도 앱시크릿 입력값은 비우고 앱키는 유지한다', async () => {
+    setup()
+    vi.mocked(apiFetch).mockImplementation(async (_path: unknown, init?: RequestInit) => {
+      if (init?.method === 'POST') throw new ApiError(400, 'x', '증권사 인증에 실패했습니다.')
+      return credential({})
+    })
+    await fill(await screen.findByLabelText('앱키'), 'dummy-key')
+    await fill(screen.getByLabelText('앱시크릿'), 'dummy-secret')
+    await userEvent.click(screen.getByRole('button', { name: '연결' }))
+
+    expect(await screen.findByText('증권사 인증에 실패했습니다.')).toBeInTheDocument()
+    expect(screen.getByLabelText('앱시크릿')).toHaveValue('')
+    expect(screen.getByLabelText('앱키')).toHaveValue('dummy-key')
   })
 
   it('증권사가 API 연동을 지원하지 않으면 입력 폼 대신 안내를 보여준다', async () => {

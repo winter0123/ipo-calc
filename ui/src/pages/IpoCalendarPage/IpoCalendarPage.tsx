@@ -5,6 +5,7 @@ import {
   toTypesParam,
   type VisibleTypes,
 } from '@/features/ipo-calendar/index.ts'
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import styles from './IpoCalendarPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -13,7 +14,8 @@ export default function IpoCalendarPage() {
   const { data: ipos, isLoading, error } = useIpos()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const visibleTypes = parseVisibleTypes(searchParams)
+  // searchParams가 바뀔 때만 새 Set을 만든다(렌더마다 새 참조면 하위 useMemo가 무력화된다)
+  const visibleTypes = useMemo(() => parseVisibleTypes(searchParams), [searchParams])
 
   const handleVisibleTypesChange = (next: VisibleTypes) => {
     const nextParam = toTypesParam(next)

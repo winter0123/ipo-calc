@@ -1,4 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { securitiesAccountKeys } from '@/entities/securities-account/index.ts'
 import { apiFetch } from '@/shared/api/client.ts'
 
 export interface RegisterSecuritiesAccountRequest {
@@ -24,6 +25,7 @@ export interface RegisterSecuritiesAccountResponse {
 }
 
 export function useRegisterSecuritiesAccount() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: RegisterSecuritiesAccountRequest) => {
       return apiFetch<RegisterSecuritiesAccountResponse>('/securities-accounts', {
@@ -31,5 +33,6 @@ export function useRegisterSecuritiesAccount() {
         body: JSON.stringify(data),
       })
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: securitiesAccountKeys.all }),
   })
 }

@@ -174,6 +174,25 @@ describe('BrokerSyncPanel', () => {
     expect(await screen.findByText('1건을 매도로 등록했습니다.')).toBeInTheDocument()
   })
 
+  it('확정이 409인데 서버 메시지가 없으면 한국어 일반 문구를 보여주고, 다시 조회하면 지운다', async () => {
+    setup()
+    const base = vi.mocked(apiFetch).getMockImplementation()!
+    vi.mocked(apiFetch).mockImplementation(async (path: unknown, init?: RequestInit) => {
+      if (String(path).endsWith('/broker-sync/confirm'))
+        throw new ApiError(409, 'Request failed: 409')
+      return base(path as string, init)
+    })
+    await clickQuery()
+    await userEvent.click(await screen.findByRole('button', { name: '선택한 1건 매도로 등록' }))
+    const alert = await screen.findByText(/매도 내역을 저장하지 못했습니다/)
+    expect(alert).not.toHaveTextContent('Request failed')
+
+    await clickQuery()
+    await waitFor(() =>
+      expect(screen.queryByText(/매도 내역을 저장하지 못했습니다/)).not.toBeInTheDocument(),
+    )
+  })
+
   it('같은 배정의 매도가 여러 건이면 공모주수수료 기본값은 첫 건에만 2000원이다', async () => {
     setup({
       matched: [

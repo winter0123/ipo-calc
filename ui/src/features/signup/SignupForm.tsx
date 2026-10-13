@@ -2,17 +2,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
-import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
+import { isValidEmail, isMinLength, passwordProblem } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
-
-function hasTwoCategories(v: string): boolean {
-  const hasLetter = /[a-zA-Z]/.test(v)
-  const hasDigit = /\d/.test(v)
-  const hasSpecial = /[^a-zA-Z0-9]/.test(v)
-  return [hasLetter, hasDigit, hasSpecial].filter(Boolean).length >= 2
-}
 
 export default function SignupForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -40,7 +33,13 @@ export default function SignupForm() {
   }
 
   const formErrorMessage = toErrorMessage(error, {
-    byStatus: { 403: (e) => e.serverMessage, 409: '이미 사용 중인 이메일입니다.' },
+    byStatus: {
+      400: (e) => e.serverMessage,
+      403: (e) => e.serverMessage,
+      409: '이미 사용 중인 이메일입니다.',
+      429: (e) => e.serverMessage,
+    },
+    fallback: '가입하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   })
 
   if (pendingApproval) {
@@ -88,9 +87,7 @@ export default function SignupForm() {
             aria-describedby={errors.password ? 'password-error' : undefined}
             {...register('password', {
               required: '필수 입력 항목입니다.',
-              validate: (v) =>
-                (v.length >= 8 && v.length <= 72 && hasTwoCategories(v)) ||
-                '비밀번호는 최소 8자 이상이어야 합니다.',
+              validate: (v) => passwordProblem(v) ?? true,
             })}
           />
           {errors.password && (

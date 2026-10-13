@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useLogin } from './useLogin.ts'
 import { isValidEmail, isMinLength } from '@/shared/lib/validators.ts'
 import type { LoginRequest } from './types.ts'
-import { NETWORK_ERROR_MESSAGE, toErrorMessage } from '@/shared/api/apiError.ts'
+import { toErrorMessage } from '@/shared/api/apiError.ts'
 import styles from './LoginForm.module.css'
 
 // 외부 사이트로의 open redirect를 막기 위해 앱 내부 경로만 허용한다.
@@ -80,10 +80,12 @@ export default function LoginForm() {
         <div className={styles.formError} role="alert">
           {toErrorMessage(error, {
             byStatus: {
+              400: (e) => e.serverMessage,
               401: '이메일 또는 비밀번호가 올바르지 않습니다.',
               403: (e) => e.serverMessage,
+              429: (e) => e.serverMessage,
             },
-            fallback: NETWORK_ERROR_MESSAGE,
+            fallback: '로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
           })}
         </div>
       )}

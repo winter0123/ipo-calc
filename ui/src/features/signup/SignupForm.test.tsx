@@ -143,12 +143,26 @@ describe('SignupForm', () => {
     expect(apiFetch).not.toHaveBeenCalled()
   })
 
-  it('비밀번호 조건 미충족 시 메시지', async () => {
+  it.each([
+    ['abcdefg1', '특수문자'],
+    ['abcdefg!', '숫자'],
+    ['1234567!', '영문'],
+    ['aa1!', '8자 이상'],
+  ])('비밀번호 %s는 부족한 조건(%s)을 알려 준다', async (pw, missing) => {
     renderSignupForm()
+    await fillAndSubmit('test@example.com', pw, '홍길동')
+    expect(await screen.findByText(new RegExp(missing))).toBeInTheDocument()
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
 
-    await fillAndSubmit('test@example.com', 'short', '홍길동')
-
-    expect(await screen.findByText('비밀번호는 최소 8자 이상이어야 합니다.')).toBeInTheDocument()
+  it('UTF-8 72바이트를 넘으면 거부한다', async () => {
+    renderSignupForm()
+    await fillAndSubmit(
+      'test@example.com',
+      '가나다라마바사아자차카타파하가나다라마바사아자차카타1!a',
+      '홍길동',
+    )
+    expect(await screen.findByText(/72바이트/)).toBeInTheDocument()
     expect(apiFetch).not.toHaveBeenCalled()
   })
 
