@@ -1,62 +1,45 @@
 package com.vibeaiteam.ipocatalog.controller.ipo.dto;
 
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSnapshot.Financial;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSnapshot.FloatStep;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSnapshot.Underwriter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 공모주 상세 화면의 부가 정보(기업정보·수요예측·증권사별 청약·최근 실적). 출처가 없거나 아직 나오지 않은 값은 null이다.
+ * 공모주 상세 화면의 부가 정보(DART 공시에서 가져와 DB에 저장한 값). 아직 없는 값은 null, 배열은 빈 배열이다.
  *
- * @param description 회사 한 줄 소개(ustockplus)
- * @param keywords 업종 키워드(ustockplus)
- * @param ceoName 대표이사(OpenDART)
- * @param establishedOn 설립일(OpenDART)
- * @param address 주소(OpenDART)
- * @param demandForecastStartDate 수요예측 시작일
- * @param demandForecastEndDate 수요예측 종료일
- * @param institutionalCompetitionRate 기관 경쟁률(예: 1097.62 → 1097.62:1)
- * @param lockUpCommitmentRatio 기관 의무보유확약 비율(%)
- * @param protectedShareRatio 보호예수(매도 제한) 물량 비율(%)
- * @param floatShareRatio 상장일 유통가능 물량 비율(%)
- * @param listedShares 상장 예정 주식수
- * @param offeringShares 공모 주식수
- * @param marketCapAtOfferPrice 확정 공모가 기준 시가총액(원)
- * @param recentSales 최근 연도 매출액(원)
- * @param recentNetProfit 최근 연도 순이익(원)
- * @param registrationStatementUrl DART 증권신고서 주소(https://dart.fss.or.kr/ 만 허용)
- * @param brokers 증권사별 청약 정보
+ * @param syncedAt 공시에서 마지막으로 가져온 시각
+ * @param sourceReportName 출처 공시 이름
+ * @param sourceUrl 출처 공시 주소(https://dart.fss.or.kr/ 만)
+ * @param ceoName 대표이사
+ * @param establishedOn 설립일
+ * @param address 본점 주소
+ * @param parValue 액면가(원)
+ * @param capitalStock 자본금(원)
+ * @param largestShareholderName 최대주주 이름
+ * @param largestShareholderRatio 최대주주 공모 전 지분율(%)
+ * @param institutionalCompetitionRate 수요예측 기관 경쟁률(예: 1096.56 → 1096.56:1)
+ * @param lockUpCommitmentRatio 의무보유확약 비율(%)
+ * @param financials 요약 재무(공시 순서, 최근 기 먼저)
+ * @param floatSchedule 유통가능 물량 일정(누적 주식수·비율)
+ * @param underwriters 인수회사
  */
 public record IpoInsightResponse(
-    String description,
-    List<String> keywords,
+    LocalDateTime syncedAt,
+    String sourceReportName,
+    String sourceUrl,
     String ceoName,
     LocalDate establishedOn,
     String address,
-    LocalDate demandForecastStartDate,
-    LocalDate demandForecastEndDate,
+    Long parValue,
+    Long capitalStock,
+    String largestShareholderName,
+    BigDecimal largestShareholderRatio,
     BigDecimal institutionalCompetitionRate,
     BigDecimal lockUpCommitmentRatio,
-    BigDecimal protectedShareRatio,
-    BigDecimal floatShareRatio,
-    Long listedShares,
-    Long offeringShares,
-    Long marketCapAtOfferPrice,
-    Long recentSales,
-    Long recentNetProfit,
-    String registrationStatementUrl,
-    List<BrokerAllocation> brokers) {
-
-  /**
-   * 증권사 한 곳의 청약 정보.
-   *
-   * @param name 증권사 이름
-   * @param shares 그 증권사에 배정된 일반청약 주식수
-   * @param equalSharesPerPerson 균등배정 1인당 예상 주식수(청약 마감 후에만)
-   * @param proportionalCompetitionRate 비례 경쟁률(청약 마감 후에만)
-   */
-  public record BrokerAllocation(
-      String name,
-      Long shares,
-      BigDecimal equalSharesPerPerson,
-      BigDecimal proportionalCompetitionRate) {}
-}
+    List<Financial> financials,
+    List<FloatStep> floatSchedule,
+    List<Underwriter> underwriters) {}

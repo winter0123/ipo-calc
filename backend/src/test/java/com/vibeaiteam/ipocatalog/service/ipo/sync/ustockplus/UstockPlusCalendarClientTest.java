@@ -184,49 +184,4 @@ class UstockPlusCalendarClientTest {
 
     assertThat(client.fetchScheduleDates(START, START.plusDays(89))).isEmpty();
   }
-
-  @Test
-  void fetchIpoDetailParsesFieldsAndSendsHeaders() {
-    server
-        .expect(requestTo("https://api.ustockplus.com/v2/ipo/stocks/0013Y0"))
-        .andExpect(header("x-app-device", "WEB"))
-        .andRespond(
-            withSuccess(
-                """
-                {"name":"엠에스바이오","description":"생체 소재","keywords":["의료기기"],
-                 "subscriptionAndListedInformation":{"securitiesFirmCompetitionRates":[
-                   {"securitiesFirmName":"하나증권","numberOfDistributedShares":213000,
-                    "equalityDistributionNumberPerPerson":0.72,
-                    "proportionalDistributionRatio":1370.7}]},
-                 "demandForecastResponse":{"demandForecastStartDate":"2026-09-16",
-                   "demandForecastEndDate":"2026-09-22","instCompetitiveness":1096.56,
-                   "lockUpPromiseRatio":30.62,"offerPriceBasedMarketCap":88070550500},
-                 "ipoInformation":{"totalSales":23786847000,"netProfit":7287888000,
-                   "lockupRatio":76.67,
-                   "registrationStatementUrl":"https://dart.fss.or.kr/x"}}""",
-                MediaType.APPLICATION_JSON));
-
-    var detail = client.fetchIpoDetail("0013Y0").orElseThrow();
-
-    assertThat(detail.demandForecastResponse().lockUpPromiseRatio()).isEqualByComparingTo("30.62");
-    assertThat(detail.ipoInformation().totalSales()).isEqualTo(23786847000L);
-    assertThat(detail.subscriptionAndListedInformation().securitiesFirmCompetitionRates())
-        .hasSize(1);
-  }
-
-  @Test
-  void fetchIpoDetailRejectsMalformedCodeWithoutCalling() {
-    assertThat(client.fetchIpoDetail("../x")).isEmpty();
-    assertThat(client.fetchIpoDetail(null)).isEmpty();
-    server.verify();
-  }
-
-  @Test
-  void fetchIpoDetailReturnsEmptyOnServerError() {
-    server
-        .expect(requestTo("https://api.ustockplus.com/v2/ipo/stocks/250030"))
-        .andRespond(withServerError());
-
-    assertThat(client.fetchIpoDetail("250030")).isEmpty();
-  }
 }
