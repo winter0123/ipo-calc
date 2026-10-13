@@ -8,7 +8,9 @@ import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoCsvImportService;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailService;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSyncService;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,6 +35,7 @@ public class IpoController {
   private final IpoService ipoService;
   private final IpoCsvImportService ipoCsvImportService;
   private final IpoDetailService ipoDetailService;
+  private final IpoDetailSyncService ipoDetailSyncService;
 
   /** 비활성화되지 않은(삭제되지 않은) IPO 목록을 최신 기준·생성일 내림차순으로 조회해 반환한다. */
   @GetMapping
@@ -57,6 +60,16 @@ public class IpoController {
   @GetMapping("/{id}/insight")
   public ResponseEntity<IpoInsightResponse> getInsight(@PathVariable Long id) {
     return ResponseEntity.ok(ipoDetailService.getInsight(id));
+  }
+
+  /**
+   * 공모주 상세 정보(DART)를 지금 바로 동기화한다. 관리자 전용(POST /ipos/**). 평소에는 매일 05:00에 자동으로 돈다.
+   *
+   * @return 새로 저장한 공모주 수
+   */
+  @PostMapping("/insight/sync")
+  public ResponseEntity<Map<String, Integer>> syncInsight() {
+    return ResponseEntity.ok(Map.of("saved", ipoDetailSyncService.syncRecent()));
   }
 
   /** IPO ID로 해당 IPO의 회사명/공모명 등을 수정하고, 수정된 IPO 정보를 반환한다. 존재하지 않으면 404를 반환한다. */
