@@ -319,4 +319,16 @@ describe('ProfitViewPage', () => {
     renderPage()
     expect(await screen.findByRole('alert')).toHaveTextContent('수익 조회에 실패했습니다.')
   })
+
+  it('CSV로 내보내기 버튼이 다운로드를 호출한다', async () => {
+    const create = vi.fn(() => 'blob:x')
+    const revoke = vi.fn()
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'CSV로 내보내기' }))
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(click).toHaveBeenCalled()
+    expect(revoke).toHaveBeenCalledWith('blob:x')
+  })
 })
