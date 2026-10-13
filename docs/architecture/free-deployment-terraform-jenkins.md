@@ -22,7 +22,7 @@
 
 | 안 | 판단 | 이유 |
 |---|---|---|
-| **A. Oracle Always Free (채택)** | VM 1대에 Docker | 영구 무료, ARM 최대 4 OCPU/24GB, 공식 Terraform provider(`oracle/oci`), 구조 단순 |
+| **A. Oracle Always Free (채택)** | VM 1대에 Docker | 영구 무료, ARM 합계 2 OCPU/12GB(공식 문서 2026-10-02 확인, 옛 한도 4/24에서 축소됨), 공식 Terraform provider(`oracle/oci`), 구조 단순 |
 | B. 집 PC + Cloudflare Tunnel | 대안(A 실패 시) | 확실한 0원이나 24시간 가동 기기 필요. Dockerfile·compose는 그대로 재사용 가능 |
 | C. Cloud Run + Neon + Cloudflare Pages | 비채택 | JVM 콜드스타트, 서비스 3분할로 동일 도메인 쿠키 설정 번거로움, GCP 결제계정 필요(실수 과금 위험) |
 | D. Render/Koyeb 무료 | 비채택 | 유휴 슬립, 무료 DB 만료·제한으로 지속 운영 불안 |
@@ -110,7 +110,7 @@
 ### 4.5 Terraform (`infra/`)
 
 - provider: `oracle/oci`.
-- 리소스: VCN, 인터넷 게이트웨이, 라우트 테이블, 서브넷, 보안 리스트(인바운드 22·80·443만), 예약 공인 IP, `VM.Standard.A1.Flex` 인스턴스(Always Free 한도 내), cloud-init(Docker·compose 설치, 디렉터리 준비). 저장소 clone은 cloud-init에서 하지 않는다 — 저장소가 비공개면 인증이 필요하므로 코드 checkout은 Jenkins의 GitHub 자격증명(Deploy key 또는 토큰)이 맡는다.
+- 리소스: VCN, 인터넷 게이트웨이, 라우트 테이블, 서브넷, 보안 리스트(인바운드 22·80·443만), 예약 공인 IP, `VM.Standard.A1.Flex` 인스턴스(Always Free 한도 합계 2 OCPU/12GB 이내), cloud-init(Docker·compose 설치, 디렉터리 준비). 저장소 clone은 cloud-init에서 하지 않는다 — 저장소가 비공개면 인증이 필요하므로 코드 checkout은 Jenkins의 GitHub 자격증명(Deploy key 또는 토큰)이 맡는다.
 - 변수: `tenancy_ocid`, `user_ocid`, `fingerprint`, `private_key_path`, `region`, `ssh_public_key`, `ssh_allowed_cidr`. 민감 값은 `terraform.tfvars`(git 제외)로 주입한다.
 - **상태 파일**: 1인 사용이므로 로컬 `terraform.tfstate`로 시작한다. 상태 파일에는 민감정보가 있으므로 `.gitignore`에 추가하고 별도 백업한다. (원격 백엔드는 필요해질 때 도입)
 - 무료 한도를 넘는 리소스(추가 볼륨, 로드밸런서, NAT 게이트웨이 등)는 만들지 않는다. `terraform plan` 결과에서 유료 리소스 유무를 매번 확인한다.
@@ -149,7 +149,7 @@
 |---|---|---|
 | 가입 | 카드 인증 필요, 가입 거절 사례, **Home Region 변경 불가** | 서울/춘천 중 선택. 막히면 대안 B(집 PC + Cloudflare Tunnel) |
 | ARM 용량 | 지역에 따라 "Out of capacity" 발생 가능 | 재시도·다른 availability domain. 작은 VM만 확보 시 Jenkins 제외 |
-| Jenkins 메모리 | 1~2GB 소요. VM이 작으면 빠듯 | 24GB 확보 시에만 동거 |
+| Jenkins 메모리 | 1~2GB 소요. VM이 작으면 빠듯 | 12GB면 동거 가능. 6GB(1 OCPU)는 빠듯해서 스왑을 잡거나 Jenkins를 로컬에 둔다 |
 | docker.sock 마운트 | Jenkins 침해 시 VM 전체 위험 | 초기 비밀번호 변경, 가입 차단, 관리자 화면 접근 제한 |
 | Jenkins 보안 vs webhook | 관리자 화면을 IP로 제한하면 GitHub webhook도 막힌다 | Caddy에서 webhook 경로(`/jenkins/github-webhook/`)만 공개하고 나머지는 내 IP로 제한. 또는 초기에는 수동 빌드 |
 | CI 테스트 DB | 현재 테스트는 `localhost:5433` 공유 Postgres 전제(Testcontainers 미사용) | 파이프라인에서 테스트용 Postgres 컨테이너를 띄우고 `DB_NAME`/포트 지정 |

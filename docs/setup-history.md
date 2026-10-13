@@ -18,6 +18,8 @@
 - 2026-10-01 — 컨테이너 이미지 추가 사용(모두 Docker 이미지, 호스트 설치 없음) — `eclipse-temurin:21-jdk-alpine`/`21-jre-alpine`(backend 빌드·실행), `node:22-alpine`·`caddy:2-alpine`(UI 빌드·서빙), `postgres:17`(운영 compose·CI 테스트 DB), `jenkins/jenkins:lts-jdk21`(Jenkins), `docker:cli`(Jenkins 이미지에 docker CLI·compose 플러그인 복사용).
 - 2026-10-01 — 로컬 Jenkins 컨테이너 구축 — 파일: `deploy/jenkins/{Dockerfile,plugins.txt,casc.yaml,docker-compose.yml}`, 저장소 루트 `Jenkinsfile`. 이미지에 docker CLI·compose·node 22·pnpm 10 포함, 플러그인은 `workflow-aggregator`, `git`, `configuration-as-code`, `job-dsl`. 설정은 JCasC로 자동화(셋업 위저드 생략, `admin` 계정 비밀번호는 환경변수 `JENKINS_ADMIN_PASSWORD`). 로컬 연습 전용 옵션 `GitSCM.ALLOW_LOCAL_CHECKOUT=true`(file:// 저장소 체크아웃)는 운영(GitHub)에서 제거한다. 겪은 문제: Job DSL에서 `remote { ... }`와 `branches(...)`를 한 줄에 쓰면 Groovy가 체이닝으로 해석해 Jenkins 부팅이 실패(두 줄로 분리해 해결).
 
+- 2026-10-02 — Oracle Cloud(Always Free) 계정 가입, Home Region `ap-osaka-1`(오사카) — 이유: 무료 배포 3단계. API 키 쌍을 만들어 개인키를 `~/.oci/oci_api_key.pem`(권한 600, **저장소 밖**)에 보관, VM 접속용 SSH 키 `~/.ssh/oracle_vm`(ed25519)을 생성. 키는 사용자당 3개까지라 `api-key-count` 한도 에러가 났으면 안 쓰는 키를 삭제한다. `infra/oracle/` Terraform 코드 작성(provider `oracle/oci ~> 7.0`, `terraform init` 완료). 필요한 변수는 `infra/oracle/terraform.tfvars.example` 참조(실제 `terraform.tfvars`는 git 제외).
+
 ---
 
 ## 2. 환경 복구 절차 (현재 기준 최신 상태로 계속 갱신, 순서대로 실행하면 전체 환경이 재현되어야 함)
