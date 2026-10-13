@@ -209,6 +209,8 @@ describe('MainLayout', () => {
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => expect(screen.getByRole('link', { name: '투자자 추가' })).toHaveFocus())
       await userEvent.keyboard('{ArrowDown}')
+      expect(screen.getByRole('link', { name: '증권사 관리' })).toHaveFocus()
+      await userEvent.keyboard('{ArrowDown}')
       expect(screen.getByRole('link', { name: '증권사 연동' })).toHaveFocus()
     })
 

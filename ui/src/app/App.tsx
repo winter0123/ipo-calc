@@ -28,6 +28,7 @@ const InvestmentHistoryPage = lazy(
 )
 const BrokerSyncPage = lazy(() => import('../pages/BrokerSyncPage/BrokerSyncPage.tsx'))
 const AdminAccountsPage = lazy(() => import('../pages/AdminAccountsPage/AdminAccountsPage.tsx'))
+const SecuritiesPage = lazy(() => import('../pages/SecuritiesPage/SecuritiesPage.tsx'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx'))
 const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
@@ -46,6 +47,7 @@ function App() {
           path="/securities-accounts/register/:investorId"
           element={<SecuritiesAccountRegisterPage />}
         />
+        <Route path="/securities" element={<SecuritiesPage />} />
         <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
         <Route path="/subscriptions" element={<SubscriptionListPage />} />
         <Route path="/allocations/register" element={<AllocationRegisterPage />} />

@@ -11,6 +11,7 @@ const GATED_PREFIXES = [
   '/profits',
   '/broker-sync',
   '/securities-accounts',
+  '/securities',
 ]
 
 function isInvestorScoped(pathname: string): boolean {
