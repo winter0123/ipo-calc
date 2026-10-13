@@ -85,6 +85,20 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 - **키 교체·만료**: 서비스 사용기간 만료일(발급일+1년)이 지나면 상태가 `EXPIRED`다. 증권사에서 갱신하면 키가 바뀌므로 `PUT /securities-accounts/{id}/api-credential`로 새 키를 넣는다(D-B-018·019). 증권사가 인증을 거절하면 424로 키 갱신을 안내한다(D-B-020).
 - **증권사 쪽 수명**: 접근토큰 24시간은 서버가 자동 갱신한다. 서비스 사용기간은 신청일부터 1년이고 갱신하면 앱키·시크릿이 새로 발급되니 다시 연결해야 한다. 3개월 이상 미거래면 서비스가 해지될 수 있다(D-B-012).
 
+### 6.1 증권사(provider) 3종 (조회 전용)
+
+인증정보의 `apiProvider`가 매도 조회 소스(`BrokerSaleSource`)와 토큰 발급기(`BrokerTokenIssuer`)를 고른다. 매칭 이후(`BrokerSaleSummary` → 미리보기/확정)는 공통이다. 주문·정정·취소 API는 어느 어댑터에도 없고 `BrokerReadOnlyArchitectureTest`가 POST 허용 클래스(토큰 발급 3개 + 키움·LS TR 조회 2개)와 주문 경로 문자열을 검사한다.
+
+| provider | 설정 | 조회 | 비고 |
+|---|---|---|---|
+| `KIS` | `app.kis.base-url` | 기간별매매손익 `TTTC8715R`(GET) | 계좌번호 10자리 필요. 사용기간 1년(`EXPIRED` 계산) |
+| `KIWOOM` | `app.kiwoom.base-url`(모의 `mockapi.kiwoom.com`) | `ka10073` `POST /api/dostk/acnt`, **종목코드 필수**라 배정 종목마다 순차 호출 | 계좌번호 파라미터 없음(앱키에 묶임). 서버 IP 등록 필요 — 토큰·조회 실패 메시지에 안내. 사용기간 만료 계산 안 함 |
+| `LS` | `app.ls.base-url` | `t0151` `POST /stock/accno`, 하루 단위라 **거래일마다**(주말·`market_holidays` 제외) 순차 호출 | 한 번에 31일까지(넘으면 400, 기간 미지정 시 최근 30일). 사용기간 만료 계산 안 함 |
+
+- **실호출로 확인해야 할 항목(미검증)**: 키움 — `cntr_pric`이 평균 체결가인지, 수수료·세금 부호, 연속조회 응답 헤더 대소문자, 초당 5회 제한 실측. LS — `date`가 과거 임의 일자를 받는지, `medosu` 값("매도" 문자열/`1`), `amt`·`fee`·`tax`·`argtax` 의미, 연속조회 `cts_*`·`tr_cont`, 성공 코드 `rsp_cd`, 계좌 지정 필요 여부, 초당 2회 제한 실측. 두 어댑터 클래스 주석의 `ponytail:`에 같은 목록이 있다.
+- 키움 조회는 우리 배정의 종목만 부르므로 미리보기의 "배정 없는 매도(unmatched)"는 KIS와 달리 나오지 않는다.
+- 시드: `V22`가 키움증권을 `KIWOOM`, LS증권(없으면 추가)을 `LS`로 켠다.
+
 ## 7. 가입 운영(비공개) (2026-10-01)
 
 KIS 이용 조건상 일반 배포가 불확실해서(`docs/work-log/broker-readonly-api-pilot.md` D-B-029) 기본을 **비공개 운영**으로 둔다.

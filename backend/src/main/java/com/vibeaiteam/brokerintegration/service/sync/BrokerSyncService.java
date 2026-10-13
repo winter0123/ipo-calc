@@ -1,7 +1,7 @@
 package com.vibeaiteam.brokerintegration.service.sync;
 
-import com.vibeaiteam.brokerintegration.adapter.BrokerQueryPort;
-import com.vibeaiteam.brokerintegration.adapter.kis.KisCredentials;
+import com.vibeaiteam.brokerintegration.adapter.BrokerFetchContext;
+import com.vibeaiteam.brokerintegration.adapter.BrokerSaleSource;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncConfirmRequest;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewItem;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewResponse;
@@ -15,7 +15,7 @@ import com.vibeaiteam.brokerintegration.service.credential.ApiCredentialService;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerSaleSummary;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerTransactionMatcher;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerTransactionMatcher.MatchReport;
-import com.vibeaiteam.brokerintegration.service.matching.KisTradeProfitMapper;
+import com.vibeaiteam.brokerintegration.service.matching.MatchCandidate;
 import com.vibeaiteam.brokerintegration.service.matching.MatchCandidateAssembler;
 import com.vibeaiteam.brokerintegration.service.matching.MatchResult;
 import com.vibeaiteam.brokerintegration.service.ratelimit.SlidingWindowRateLimiter;
@@ -30,8 +30,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,15 +63,12 @@ public class BrokerSyncService {
     new SlidingWindowRateLimiter.Limit(30, Duration.ofHours(1))
   };
 
-  private static final int CANO_LENGTH = 8;
-  private static final int ACCOUNT_NUMBER_LENGTH = 10;
-
   private final ApiCredentialService apiCredentialService;
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
   private final BrokerSecretEncryptor brokerSecretEncryptor;
   private final AccountNumberEncryptor accountNumberEncryptor;
   private final BrokerTokenService tokenService;
-  private final BrokerQueryPort brokerQueryPort;
+  private final List<BrokerSaleSource> saleSources;
   private final SaleService saleService;
   private final MatchCandidateAssembler candidateAssembler;
   private final Clock clock;
@@ -103,7 +102,7 @@ public class BrokerSyncService {
     LocalDate end = to == null ? today : to;
     LocalDate start = from == null ? end.minusDays(DEFAULT_LOOKBACK_DAYS) : from;
     validateRange(start, end, today);
-    SecuritiesAccount account =
+    final SecuritiesAccount account =
         apiCredentialService.requireOwnedSecuritiesAccount(securitiesAccountId);
     SecuritiesAccountApiCredential credential =
         credentialRepository
@@ -115,19 +114,34 @@ public class BrokerSyncService {
       throw new BrokerConnectionUnavailableException("브로커 API 연동이 설정되지 않았습니다.");
     }
 
-    rateLimiter.acquire("preview:" + securitiesAccountId, PREVIEW_LIMITS);
-    List<BrokerSaleSummary> summaries =
-        KisTradeProfitMapper.toSaleSummaries(
-            brokerQueryPort.queryPeriodTradeProfit(
-                securitiesAccountId,
-                toKisCredentials(account, credential),
-                tokenService.getValidToken(credential),
-                start,
-                end));
+    BrokerSaleSource source = findSource(credential.getApiProvider());
+    if (ChronoUnit.DAYS.between(start, end) > source.maxRangeDays()) {
+      if (from != null) {
+        throw new ApiCredentialValidationException(source.rangeLimitMessage());
+      }
+      start = end.minusDays(source.maxRangeDays());
+    }
 
-    MatchReport report =
-        BrokerTransactionMatcher.match(
-            summaries, candidateAssembler.candidates(securitiesAccountId));
+    rateLimiter.acquire("preview:" + securitiesAccountId, PREVIEW_LIMITS);
+    List<MatchCandidate> candidates = candidateAssembler.candidates(securitiesAccountId);
+    Set<String> stockCodes =
+        candidates.stream()
+            .map(MatchCandidate::stockCode)
+            .filter(code -> code != null && !code.isBlank())
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    List<BrokerSaleSummary> summaries =
+        source.fetchSales(
+            new BrokerFetchContext(
+                securitiesAccountId,
+                brokerSecretEncryptor.decrypt(credential.getAppKeyEncrypted()),
+                brokerSecretEncryptor.decrypt(credential.getAppSecretEncrypted()),
+                accountNumberEncryptor.decrypt(account.getAccountNumber()).replaceAll("\\D", ""),
+                tokenService.getValidToken(credential),
+                stockCodes),
+            start,
+            end);
+
+    MatchReport report = BrokerTransactionMatcher.match(summaries, candidates);
     List<SyncPreviewItem> matched = new ArrayList<>();
     List<SyncPreviewItem> unmatched = new ArrayList<>();
     for (MatchResult result : report.results()) {
@@ -186,17 +200,10 @@ public class BrokerSyncService {
         result.reason());
   }
 
-  private KisCredentials toKisCredentials(
-      SecuritiesAccount account, SecuritiesAccountApiCredential credential) {
-    String digits =
-        accountNumberEncryptor.decrypt(account.getAccountNumber()).replaceAll("\\D", "");
-    if (digits.length() != ACCOUNT_NUMBER_LENGTH) {
-      throw new ApiCredentialValidationException("계좌번호가 8자리+2자리 형식이 아니라 증권사 조회를 할 수 없습니다.");
-    }
-    return new KisCredentials(
-        brokerSecretEncryptor.decrypt(credential.getAppKeyEncrypted()),
-        brokerSecretEncryptor.decrypt(credential.getAppSecretEncrypted()),
-        digits.substring(0, CANO_LENGTH),
-        digits.substring(CANO_LENGTH));
+  private BrokerSaleSource findSource(String provider) {
+    return saleSources.stream()
+        .filter(s -> s.provider().equals(provider))
+        .findFirst()
+        .orElseThrow(() -> new ApiCredentialValidationException("지원하지 않는 증권사 연동입니다."));
   }
 }

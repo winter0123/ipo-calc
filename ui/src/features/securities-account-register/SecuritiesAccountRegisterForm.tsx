@@ -134,7 +134,8 @@ export default function SecuritiesAccountRegisterForm() {
           </span>
         )}
         <p className={styles.hint}>
-          숫자만 입력하면 자동으로 하이픈이 삽입됩니다. 한국투자증권은 10자리(8자리+2자리)입니다.
+          숫자만 입력하면 자동으로 하이픈이 삽입됩니다. 한국투자증권 연동에는 10자리(8자리+2자리)가
+          필요하며, 키움·LS증권은 계좌번호 없이 앱키로 조회합니다.
         </p>
       </div>
 

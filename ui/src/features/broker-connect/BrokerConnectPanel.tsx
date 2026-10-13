@@ -18,6 +18,12 @@ const STATUS_LABEL = {
   DISCONNECTED: '연결 안 됨',
 } as const
 
+// 증권사별 연결 전 안내. 확인된 사실만 적는다.
+const PROVIDER_NOTICE: Record<string, string> = {
+  KIWOOM: '키움 REST API 사용 신청과 서버 IP 등록이 필요합니다.',
+  LS: 'LS증권 OPEN API 사용 신청이 필요하며, 한 번에 31일까지 조회할 수 있습니다.',
+}
+
 const EXPIRY_WARNING_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -47,6 +53,9 @@ export default function BrokerConnectPanel({
 
   const connected = data.connectionStatus !== 'DISCONNECTED'
   const provider = data.supportedProvider
+  // 사용기간 1년 규칙은 한국투자증권(KIS)만 확인됐다. 다른 증권사는 만료 안내를 보여 주지 않는다.
+  const isKis = (data.apiProvider ?? provider) === 'KIS'
+  const providerNotice = PROVIDER_NOTICE[data.apiProvider ?? provider ?? '']
   const keyErrors = {
     400: (e: { serverMessage?: string }) => e.serverMessage,
     403: '이 증권계좌에 대한 권한이 없습니다.',
@@ -85,9 +94,10 @@ export default function BrokerConnectPanel({
       </h2>
       <p className={styles.notice}>
         조회 전용으로만 사용됩니다. 주문·정정·취소는 하지 않으며, 입력한 키는 암호화해 저장하고
-        화면에 다시 보여주지 않습니다. 접근토큰(1일)은 서버가 자동으로 갱신하고, 증권사 서비스
-        사용기간은 신청일부터 1년입니다.
+        화면에 다시 보여주지 않습니다. 접근토큰은 서버가 자동으로 갱신합니다.
+        {isKis && ' 증권사 서비스 사용기간은 신청일부터 1년입니다.'}
       </p>
+      {providerNotice && <p className={styles.notice}>{providerNotice}</p>}
       <p>
         상태: <strong>{STATUS_LABEL[data.connectionStatus]}</strong>
         {data.accountNumber && <span> · 계좌 {data.accountNumber}</span>}
@@ -124,6 +134,7 @@ export default function BrokerConnectPanel({
               pending={replace.isPending}
               errorMessage={replaceError}
               today={today}
+              showIssuedOn={isKis}
               onSubmit={submitReplace}
             />
           )}
@@ -148,6 +159,7 @@ export default function BrokerConnectPanel({
           pending={register.isPending}
           errorMessage={registerError}
           today={today}
+          showIssuedOn={isKis}
           onSubmit={submitRegister}
         />
       ) : (

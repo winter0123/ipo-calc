@@ -107,8 +107,13 @@ class SecuritiesFirmApiColumnsMigrationTest {
     assertThat(kis.get().getApiReadonlyOnly()).as("한국투자증권의 api_readonly_only=TRUE").isTrue();
     assertThat(kis.get().getApiExternalCode()).as("한국투자증권의 api_external_code=NULL").isNull();
 
+    // V23이 키움증권(KIWOOM)·LS증권(LS)의 API 연동을 켠다. V15 시드가 만든 나머지는 그대로 FALSE여야 한다.
     for (SecuritiesFirm firm : activeFirms) {
-      if (!"한국투자증권".equals(firm.getName())) {
+      if ("키움증권".equals(firm.getName())) {
+        assertThat(firm.getApiProvider()).as("키움증권의 api_provider=KIWOOM").isEqualTo("KIWOOM");
+      } else if ("LS증권".equals(firm.getName())) {
+        assertThat(firm.getApiProvider()).as("LS증권의 api_provider=LS").isEqualTo("LS");
+      } else if (!"한국투자증권".equals(firm.getName())) {
         assertThat(firm.getApiSupported()).as("%s는 api_supported=FALSE", firm.getName()).isFalse();
         assertThat(firm.getApiProvider()).as("%s는 api_provider=NULL", firm.getName()).isNull();
         assertThat(firm.getApiAuthType()).as("%s는 api_auth_type=NULL", firm.getName()).isNull();

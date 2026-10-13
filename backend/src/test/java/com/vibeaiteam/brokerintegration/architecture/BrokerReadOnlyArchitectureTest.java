@@ -12,6 +12,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import com.vibeaiteam.brokerintegration.adapter.BrokerQueryPort;
+import com.vibeaiteam.brokerintegration.adapter.BrokerSaleSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -45,9 +46,19 @@ class BrokerReadOnlyArchitectureTest {
   /** 아키텍처 규칙이 적용되는 대상 패키지. */
   private static final String ADAPTER_PACKAGE = "..brokerintegration.adapter..";
 
-  /** POST가 유일하게 예외로 허용되는 클래스(접근토큰 발급). */
-  private static final String KIS_AUTH_CLIENT =
-      "com.vibeaiteam.brokerintegration.adapter.kis.KisAuthClient";
+  /**
+   * POST가 예외로 허용되는 클래스. 접근토큰 발급(세 증권사)과, 조회가 POST인 키움·LS의 TR 조회 클라이언트뿐이다. 나머지(KIS 조회 포함)는 GET만 쓸 수
+   * 있고, 여기 있는 클래스도 put/patch/delete/method는 못 쓴다.
+   */
+  private static final String ADAPTER_ROOT = "com.vibeaiteam.brokerintegration.adapter.";
+
+  private static final String[] POST_ALLOWED_CLASSES = {
+    ADAPTER_ROOT + "kis.KisAuthClient",
+    ADAPTER_ROOT + "kiwoom.KiwoomAuthClient",
+    ADAPTER_ROOT + "kiwoom.KiwoomTradeProfitClient",
+    ADAPTER_ROOT + "ls.LsAuthClient",
+    ADAPTER_ROOT + "ls.LsDailyTradeClient",
+  };
 
   /** 검사 대상 메인 소스 경로(테스트는 Gradle의 backend 프로젝트 디렉터리가 작업 디렉터리다). */
   private static final Path MAIN_SRC_ROOT =
@@ -63,6 +74,10 @@ class BrokerReadOnlyArchitectureTest {
     "order" + "-rvsecncl",
     "order" + "-resv",
     "order" + "-credit",
+    // 키움 주문 TR(kt10000~)·경로, LS 주문 경로
+    "kt100" + "0",
+    "dostk" + "/ordr",
+    "stock" + "/order",
   };
 
   private static final JavaClasses MAIN_CLASSES =
@@ -77,22 +92,32 @@ class BrokerReadOnlyArchitectureTest {
             .that()
             .resideInAPackage(ADAPTER_PACKAGE)
             .and()
-            .doNotHaveFullyQualifiedName(KIS_AUTH_CLIENT)
+            .doNotHaveFullyQualifiedName(POST_ALLOWED_CLASSES[0])
+            .and()
+            .doNotHaveFullyQualifiedName(POST_ALLOWED_CLASSES[1])
+            .and()
+            .doNotHaveFullyQualifiedName(POST_ALLOWED_CLASSES[2])
+            .and()
+            .doNotHaveFullyQualifiedName(POST_ALLOWED_CLASSES[3])
+            .and()
+            .doNotHaveFullyQualifiedName(POST_ALLOWED_CLASSES[4])
             .should()
             .callMethodWhere(isForbiddenHttpCall())
             .because(
-                "조회 전용 어댑터는 GET만 호출할 수 있다. POST는 접근토큰 발급(KisAuthClient)만 예외이며 "
+                "조회 전용 어댑터는 GET만 호출할 수 있다. POST는 접근토큰 발급과 키움·LS TR 조회 클라이언트만 예외이며 "
                     + "put/patch/delete/method 호출은 어떤 클래스에서도 허용되지 않는다(AC-1820).");
 
     rule.check(MAIN_CLASSES);
   }
 
   @Test
-  void authClient_mustNotCallNonGetHttpMethodsExceptPost() {
+  void postAllowedClasses_mustNotCallNonGetHttpMethodsExceptPost() {
     ArchRule rule =
         noClasses()
-            .that()
-            .haveFullyQualifiedName(KIS_AUTH_CLIENT)
+            .that(
+                describe(
+                    "POST 허용 클래스",
+                    c -> java.util.Arrays.asList(POST_ALLOWED_CLASSES).contains(c.getName())))
             .should()
             .callMethodWhere(
                 describe(
@@ -101,9 +126,7 @@ class BrokerReadOnlyArchitectureTest {
                         call.getTargetOwner().isAssignableTo(RestClient.class)
                             && FORBIDDEN_HTTP_METHODS.contains(call.getName())
                             && !AUTH_CLIENT_ALLOWED_HTTP_METHODS.contains(call.getName())))
-            .because(
-                "KisAuthClient는 접근토큰 발급 POST만 호출할 수 있고 put/patch/delete/method 호출은 금지된다"
-                    + "(AC-1820).");
+            .because("POST 허용 클래스는 POST만 호출할 수 있고 put/patch/delete/method 호출은 금지된다" + "(AC-1820).");
 
     rule.check(MAIN_CLASSES);
   }
@@ -129,6 +152,40 @@ class BrokerReadOnlyArchitectureTest {
     assertThat(BrokerQueryPort.class.getDeclaredMethods())
         .as("BrokerQueryPort의 메서드는 조회 메서드여야 한다. 주문 메서드가 추가되면 이 테스트가 실패한다.")
         .hasSize(1);
+  }
+
+  @Test
+  void brokerSaleSource_methodNamesMustNotContainOrderKeywords() {
+    ArchRule rule =
+        methods()
+            .that()
+            .areDeclaredIn(BrokerSaleSource.class)
+            .should()
+            .haveNameNotMatching(ORDER_KEYWORD_PATTERN)
+            .because("BrokerSaleSource에는 조회 메서드만 선언되어야 한다.");
+
+    rule.check(MAIN_CLASSES);
+  }
+
+  @Test
+  void brokerSaleSource_mustNotDeclareMethodsBeyondDeclaredContract() {
+    assertThat(
+            java.util.Arrays.stream(BrokerSaleSource.class.getDeclaredMethods())
+                .map(java.lang.reflect.Method::getName))
+        .as("BrokerSaleSource에 메서드가 추가되면 조회 메서드인지 사람이 재검토해야 한다.")
+        .containsExactlyInAnyOrder("provider", "fetchSales", "maxRangeDays", "rangeLimitMessage");
+  }
+
+  @Test
+  void adapterSources_everySaleSourceAndIssuerLivesInAdapterPackage() {
+    // 새 증권사 어댑터가 POST 허용 목록 밖에서 RestClient를 쓰면 첫 규칙이 실패한다. 여기서는 어댑터 패키지가 실제로 검사 대상에 들어갔는지 확인한다.
+    assertThat(
+            MAIN_CLASSES.contain(
+                "com.vibeaiteam.brokerintegration.adapter.kiwoom.KiwoomTradeProfitClient"))
+        .isTrue();
+    assertThat(
+            MAIN_CLASSES.contain("com.vibeaiteam.brokerintegration.adapter.ls.LsDailyTradeClient"))
+        .isTrue();
   }
 
   @Test

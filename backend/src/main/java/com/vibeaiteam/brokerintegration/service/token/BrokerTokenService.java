@@ -1,7 +1,7 @@
 package com.vibeaiteam.brokerintegration.service.token;
 
+import com.vibeaiteam.brokerintegration.adapter.BrokerTokenIssuer;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisAccessToken;
-import com.vibeaiteam.brokerintegration.adapter.kis.KisAuthClient;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
@@ -9,15 +9,18 @@ import com.vibeaiteam.brokerintegration.repository.credential.SecuritiesAccountA
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * 브로커(한국투자증권) 접근토큰 캐시 서비스.
+ * 브로커(KIS·키움·LS) 접근토큰 캐시 서비스. 증권사별 발급은 {@link BrokerTokenIssuer}가 맡고 캐시·락·5분 마진은 모두 공유한다.
  *
  * <p>KIS 접근토큰은 유효기간이 1일이고 재발급이 분당 1회로 제한된다. 그래서 발급한 토큰을 {@link BrokerSecretEncryptor}로 암호화해 인증정보
  * 엔티티의 {@code accessTokenEncrypted}에 두고, {@code tokenExpiresAt}과 함께 재사용한다. 캐시가 없거나 만료 임박이면
@@ -47,7 +50,7 @@ public class BrokerTokenService {
 
   private static final Logger log = LoggerFactory.getLogger(BrokerTokenService.class);
 
-  private final KisAuthClient authClient;
+  private final Map<String, BrokerTokenIssuer> issuers;
   private final BrokerSecretEncryptor secretEncryptor;
   private final SecuritiesAccountApiCredentialRepository credentialRepository;
   private final Clock clock;
@@ -58,17 +61,19 @@ public class BrokerTokenService {
   /**
    * 생성자.
    *
-   * @param authClient 접근토큰 발급 클라이언트
+   * @param issuers 증권사별 접근토큰 발급 클라이언트
    * @param secretEncryptor 시크릿 암호화 유틸리티
    * @param credentialRepository 인증정보 리포지터리
    * @param clock 시각 기준
    */
   public BrokerTokenService(
-      KisAuthClient authClient,
+      List<BrokerTokenIssuer> issuers,
       BrokerSecretEncryptor secretEncryptor,
       SecuritiesAccountApiCredentialRepository credentialRepository,
       Clock clock) {
-    this.authClient = authClient;
+    this.issuers =
+        issuers.stream()
+            .collect(Collectors.toMap(BrokerTokenIssuer::provider, Function.identity()));
     this.secretEncryptor = secretEncryptor;
     this.credentialRepository = credentialRepository;
     this.clock = clock;
@@ -163,9 +168,13 @@ public class BrokerTokenService {
     String appKey = secretEncryptor.decrypt(credential.getAppKeyEncrypted());
     String appSecret = secretEncryptor.decrypt(credential.getAppSecretEncrypted());
 
+    BrokerTokenIssuer issuer = issuers.get(credential.getApiProvider());
+    if (issuer == null) {
+      throw new BrokerApiException("unsupported_provider", "지원하지 않는 증권사 연동입니다.");
+    }
     KisAccessToken issued;
     try {
-      issued = authClient.issueToken(appKey, appSecret);
+      issued = issuer.issueToken(appKey, appSecret);
     } catch (BrokerApiException e) {
       // 실패 사실을 상태로 남기지 않는다(재시도 차단 없음). 예외 메시지에 시크릿이 없으므로 상태 코드만 남긴다.
       log.warn(

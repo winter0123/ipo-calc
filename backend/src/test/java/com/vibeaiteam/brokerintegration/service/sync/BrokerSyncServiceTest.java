@@ -14,9 +14,12 @@ import static org.mockito.Mockito.when;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
+import com.vibeaiteam.brokerintegration.adapter.BrokerFetchContext;
 import com.vibeaiteam.brokerintegration.adapter.BrokerQueryPort;
+import com.vibeaiteam.brokerintegration.adapter.BrokerSaleSource;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisAccessToken;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisCredentials;
+import com.vibeaiteam.brokerintegration.adapter.kis.KisSaleSource;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfit;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitDetail;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncConfirmRequest;
@@ -78,25 +81,30 @@ class BrokerSyncServiceTest {
   private final SaleService saleService = mock(SaleService.class);
 
   private BrokerSyncService service;
+  private BrokerSecretEncryptor secretEncryptor;
+  private AccountNumberEncryptor accountEncryptor;
+
+  private BrokerSyncService newService(List<BrokerSaleSource> sources) {
+    return new BrokerSyncService(
+        apiCredentialService,
+        credentialRepository,
+        secretEncryptor,
+        accountEncryptor,
+        tokenService,
+        sources,
+        saleService,
+        new MatchCandidateAssembler(
+            subscriptionRepository, allocationRepository, ipoRepository, saleRepository),
+        Clock.fixed(
+            TODAY.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
+        new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
+  }
 
   @BeforeEach
   void setUp() {
-    BrokerSecretEncryptor secretEncryptor = new BrokerSecretEncryptor(newKey());
-    AccountNumberEncryptor accountEncryptor = new AccountNumberEncryptor(newKey());
-    service =
-        new BrokerSyncService(
-            apiCredentialService,
-            credentialRepository,
-            secretEncryptor,
-            accountEncryptor,
-            tokenService,
-            port,
-            saleService,
-            new MatchCandidateAssembler(
-                subscriptionRepository, allocationRepository, ipoRepository, saleRepository),
-            Clock.fixed(
-                TODAY.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul")),
-            new SlidingWindowRateLimiter(Clock.systemDefaultZone()));
+    secretEncryptor = new BrokerSecretEncryptor(newKey());
+    accountEncryptor = new AccountNumberEncryptor(newKey());
+    service = newService(List.of(new KisSaleSource(port)));
 
     when(apiCredentialService.requireOwnedSecuritiesAccount(ACCOUNT_ID))
         .thenReturn(
@@ -111,6 +119,7 @@ class BrokerSyncServiceTest {
                 SecuritiesAccountApiCredential.builder()
                     .id(1L)
                     .securitiesAccountId(ACCOUNT_ID)
+                    .apiProvider("KIS")
                     .appKeyEncrypted(secretEncryptor.encrypt("dummy-key"))
                     .appSecretEncrypted(secretEncryptor.encrypt("dummy-secret"))
                     .build()));
@@ -230,6 +239,99 @@ class BrokerSyncServiceTest {
     assertThrows(RateLimitExceededException.class, () -> service.preview(ACCOUNT_ID));
     verify(port, org.mockito.Mockito.times(1))
         .queryPeriodTradeProfit(any(), any(KisCredentials.class), any(), any(), any());
+  }
+
+  /** provider별 소스 선택을 확인하는 가짜 소스. 받은 입력을 기록하고 정해진 결과를 돌려준다. */
+  private static final class FakeSource implements BrokerSaleSource {
+    private final String provider;
+    private final int maxRangeDays;
+    private BrokerFetchContext lastContext;
+    private LocalDate lastFrom;
+
+    FakeSource(String provider, int maxRangeDays) {
+      this.provider = provider;
+      this.maxRangeDays = maxRangeDays;
+    }
+
+    @Override
+    public String provider() {
+      return provider;
+    }
+
+    @Override
+    public int maxRangeDays() {
+      return maxRangeDays;
+    }
+
+    @Override
+    public String rangeLimitMessage() {
+      return "한도 초과";
+    }
+
+    @Override
+    public List<com.vibeaiteam.brokerintegration.service.matching.BrokerSaleSummary> fetchSales(
+        BrokerFetchContext context, LocalDate from, LocalDate to) {
+      lastContext = context;
+      lastFrom = from;
+      return List.of();
+    }
+  }
+
+  private void useProvider(String provider) {
+    when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            ACCOUNT_ID))
+        .thenReturn(
+            List.of(
+                SecuritiesAccountApiCredential.builder()
+                    .id(1L)
+                    .securitiesAccountId(ACCOUNT_ID)
+                    .apiProvider(provider)
+                    .appKeyEncrypted(secretEncryptor.encrypt("dummy-key"))
+                    .appSecretEncrypted(secretEncryptor.encrypt("dummy-secret"))
+                    .build()));
+  }
+
+  @Test
+  void previewPicksTheSourceByCredentialProviderAndPassesStockCodes() {
+    FakeSource kiwoom = new FakeSource("KIWOOM", 3650);
+    FakeSource ls = new FakeSource("LS", 30);
+    service = newService(List.of(new KisSaleSource(port), kiwoom, ls));
+    useProvider("KIWOOM");
+
+    service.preview(ACCOUNT_ID);
+
+    assertThat(kiwoom.lastContext).isNotNull();
+    assertThat(kiwoom.lastContext.stockCodes()).containsExactly(STOCK_CODE);
+    assertThat(kiwoom.lastContext.accountNumber()).isEqualTo("1234567801");
+    assertThat(ls.lastContext).isNull();
+    verifyNoInteractions(port);
+  }
+
+  @Test
+  void previewRejectsAnUnsupportedProvider() {
+    service = newService(List.of(new KisSaleSource(port)));
+    useProvider("NOPE");
+
+    assertThrows(ApiCredentialValidationException.class, () -> service.preview(ACCOUNT_ID));
+    verifyNoInteractions(port);
+  }
+
+  @Test
+  void previewUsesTheSourceRangeLimit() {
+    FakeSource ls = new FakeSource("LS", 30);
+    service = newService(List.of(ls));
+    useProvider("LS");
+
+    // 기간을 주지 않으면 소스 한도까지만 줄여서 조회한다.
+    service.preview(ACCOUNT_ID);
+    assertThat(ls.lastFrom).isEqualTo(TODAY.minusDays(30));
+
+    // 직접 고른 기간이 한도(31일)를 넘으면 400이다.
+    ApiCredentialValidationException e =
+        assertThrows(
+            ApiCredentialValidationException.class,
+            () -> service.preview(ACCOUNT_ID, TODAY.minusDays(31), TODAY));
+    assertThat(e.getMessage()).isEqualTo("한도 초과");
   }
 
   @Test
