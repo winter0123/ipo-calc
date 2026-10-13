@@ -14,10 +14,9 @@ import {
   ipoPriceInfo,
   sortIposForSubscription,
 } from './subscriptionForm.ts'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 type FormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
-
-const today = () => new Date().toLocaleDateString('sv-SE')
 
 export default function SubscriptionRegisterForm() {
   // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
@@ -36,7 +35,7 @@ export default function SubscriptionRegisterForm() {
     )
   }
 
-  return <SubscriptionForm ipos={sortIposForSubscription(ipos ?? [], today())} />
+  return <SubscriptionForm ipos={sortIposForSubscription(ipos ?? [], toLocalYmd())} />
 }
 
 function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
@@ -61,7 +60,7 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
     getFieldState,
   } = useForm<FormValues>({
     mode: 'onSubmit',
-    defaultValues: { subscribedAt: today(), ipoId: presetIpo?.id, depositAmount: Number.NaN },
+    defaultValues: { subscribedAt: toLocalYmd(), ipoId: presetIpo?.id, depositAmount: Number.NaN },
   })
 
   const watchedIpoId = useWatch({ control, name: 'ipoId' })

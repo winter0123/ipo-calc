@@ -5,6 +5,7 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
 import styles from './IpoDetailPage.module.css'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 export default function IpoDetailPage() {
   const { ipoId } = useParams<{ ipoId: string }>()
@@ -53,9 +54,7 @@ export default function IpoDetailPage() {
 
   const getStatus = (ipoData: typeof ipo) => {
     if (!ipoData) return { label: '알 수 없음', className: styles.statusUnknown }
-    // 한국 시간 기준 오늘(로컬 날짜). toISOString은 UTC라 오전 9시 전에 하루 전 날짜가 된다.
-    const now = new Date()
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const today = toLocalYmd()
     const start = ipoData.subscriptionStartDate.split('T')[0]
     const end = ipoData.subscriptionEndDate.split('T')[0]
     const listing = ipoData.listingDate ? ipoData.listingDate.split('T')[0] : null

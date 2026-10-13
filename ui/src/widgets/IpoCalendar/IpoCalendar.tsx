@@ -10,6 +10,7 @@ import {
 import { type Ipo } from '@/entities/ipo/index.ts'
 import { useMarketHolidays } from '@/entities/market-holiday/index.ts'
 import styles from './IpoCalendar.module.css'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -37,10 +38,6 @@ interface IpoCalendarProps {
   initialMonth?: number
   visibleTypes?: ReadonlySet<CalendarEventType>
   onVisibleTypesChange?: (next: Set<CalendarEventType>) => void
-}
-
-function toDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function getMonthDay(dateStr: string): { month: number; day: number } {
@@ -341,7 +338,7 @@ export default function IpoCalendar({
                     </span>
                   </>
                 </Link>
-                {event.type === 'SUBSCRIPTION' && event.endDate >= toDateKey(today) && (
+                {event.type === 'SUBSCRIPTION' && event.endDate >= toLocalYmd(today) && (
                   <Link
                     to={`/subscriptions/register?ipoId=${event.ipoId}`}
                     className={styles.registerLink}

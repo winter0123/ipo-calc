@@ -7,16 +7,14 @@ import {
 } from '@/features/profit-view/index.ts'
 import styles from './ProfitViewPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
-
-const pad = (n: number) => String(n).padStart(2, '0')
-const toDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 const PRESETS = [
   {
     label: '이번 달',
     period: () => {
       const t = new Date()
-      return { from: toDay(new Date(t.getFullYear(), t.getMonth(), 1)), to: toDay(t) }
+      return { from: toLocalYmd(new Date(t.getFullYear(), t.getMonth(), 1)), to: toLocalYmd(t) }
     },
   },
   {
@@ -24,8 +22,8 @@ const PRESETS = [
     period: () => {
       const t = new Date()
       return {
-        from: toDay(new Date(t.getFullYear(), t.getMonth() - 1, 1)),
-        to: toDay(new Date(t.getFullYear(), t.getMonth(), 0)),
+        from: toLocalYmd(new Date(t.getFullYear(), t.getMonth() - 1, 1)),
+        to: toLocalYmd(new Date(t.getFullYear(), t.getMonth(), 0)),
       }
     },
   },
@@ -33,7 +31,7 @@ const PRESETS = [
     label: '올해',
     period: () => {
       const t = new Date()
-      return { from: toDay(new Date(t.getFullYear(), 0, 1)), to: toDay(t) }
+      return { from: toLocalYmd(new Date(t.getFullYear(), 0, 1)), to: toLocalYmd(t) }
     },
   },
   { label: '전체', period: () => ({ from: '', to: '' }) },
