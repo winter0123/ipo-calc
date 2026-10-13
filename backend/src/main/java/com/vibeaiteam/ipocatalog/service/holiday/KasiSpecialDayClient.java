@@ -1,8 +1,5 @@
 package com.vibeaiteam.ipocatalog.service.holiday;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -12,6 +9,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 한국천문연구원 특일 정보 API 클라이언트.
@@ -65,10 +66,8 @@ public class KasiSpecialDayClient {
   }
 
   private static ObjectMapper createObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
     // items.item이 단일 객체일 때도 배열로 처리되도록 설정
-    mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-    return mapper;
+    return JsonMapper.builder().enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY).build();
   }
 
   /**
@@ -143,10 +142,10 @@ public class KasiSpecialDayClient {
     try {
       JsonNode root = objectMapper.readTree(responseBody);
       JsonNode header = root.path("response").path("header");
-      String resultCode = header.path("resultCode").asText();
+      String resultCode = header.path("resultCode").asString();
 
       if (!NORMAL_RESULT_CODE.equals(resultCode)) {
-        String resultMsg = header.path("resultMsg").asText("알 수 없는 오류");
+        String resultMsg = header.path("resultMsg").asString("알 수 없는 오류");
         log.error(
             "KASI API 비정상 응답: solYear={}, resultCode={}, resultMsg={}",
             solYear,
@@ -160,7 +159,7 @@ public class KasiSpecialDayClient {
       JsonNode itemsNode = body.path("items");
 
       // items가 빈 문자열인 경우 (0건)
-      if (itemsNode.isTextual() && itemsNode.asText().isBlank()) {
+      if (itemsNode.isString() && itemsNode.asString().isBlank()) {
         log.debug("KASI API 응답: solYear={}, 휴일 항목 0건", solYear);
         return List.of();
       }
@@ -201,13 +200,13 @@ public class KasiSpecialDayClient {
 
   /** 단일 item 노드를 HolidayItem으로 파싱. isHoliday="Y"인 것만 반환, 나머지는 null. */
   private HolidayItem parseItem(JsonNode item) {
-    String isHoliday = item.path("isHoliday").asText();
+    String isHoliday = item.path("isHoliday").asString();
     if (!"Y".equals(isHoliday)) {
       return null;
     }
 
     // locdate는 정수(20260101) 또는 문자열("20260101")일 수 있음
-    String locdateStr = item.path("locdate").asText();
+    String locdateStr = item.path("locdate").asString();
     if (locdateStr.isBlank()) {
       return null;
     }
@@ -221,7 +220,7 @@ public class KasiSpecialDayClient {
       return null;
     }
 
-    String name = item.path("dateName").asText();
+    String name = item.path("dateName").asString();
     if (name.isBlank()) {
       name = "특일"; // 기본값
     }

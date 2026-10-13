@@ -8,7 +8,7 @@
 
 | 영역 | 기준 |
 |---|---|
-| Backend | Java 21, Spring Boot 3.5.16, Spring Data JPA, Spring Security, Flyway, PostgreSQL |
+| Backend | Java 21, Spring Boot 4.1.1, Spring Data JPA, Spring Security, Flyway, PostgreSQL |
 | 인프라 | Docker Compose, PostgreSQL 17 컨테이너, 호스트 포트 5433 |
 | 패키지 관리 | Gradle Wrapper |
 

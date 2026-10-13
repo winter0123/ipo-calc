@@ -1,7 +1,5 @@
 package com.vibeaiteam.accountauthentication.config.ratelimit;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponses;
 import jakarta.servlet.FilterChain;
@@ -14,6 +12,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /** 공개 조회와 로그인·가입 요청에 IP별 분당 요청 한도를 적용하는 필터. */
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -154,7 +154,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     ErrorResponse body = ErrorResponse.builder().error(ERROR_CODE).message(ERROR_MESSAGE).build();
     try {
       return objectMapper.writeValueAsString(body);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("제한 응답 본문을 만들 수 없습니다", e);
     }
   }

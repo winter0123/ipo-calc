@@ -140,7 +140,7 @@ public class OpenDartCorpDisclosureClient {
       }
 
       allItems.addAll(response.list());
-      totalPages = response.total_page();
+      totalPages = response.total_page() == null ? 0 : response.total_page();
       pageNo++;
 
     } while (pageNo <= totalPages);
@@ -248,9 +248,9 @@ public class OpenDartCorpDisclosureClient {
   private record OpenDartListResponse(
       String status,
       String message,
-      int page_no,
-      int page_count,
-      int total_count,
-      int total_page,
+      Integer page_no,
+      Integer page_count,
+      Integer total_count,
+      Integer total_page,
       List<OpenDartDisclosureItem> list) {}
 }

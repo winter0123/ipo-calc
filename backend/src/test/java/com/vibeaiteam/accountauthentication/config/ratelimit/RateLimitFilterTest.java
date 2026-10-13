@@ -2,7 +2,6 @@ package com.vibeaiteam.accountauthentication.config.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.controller.dto.ErrorResponse;
 import jakarta.servlet.FilterChain;
 import java.time.Clock;
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import tools.jackson.databind.ObjectMapper;
 
 /** 요청 제한 필터와 고정 윈도 제한기의 단위 동작을 검증한다. */
 class RateLimitFilterTest {

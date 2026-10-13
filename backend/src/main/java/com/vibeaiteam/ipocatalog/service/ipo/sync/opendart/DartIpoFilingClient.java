@@ -1,7 +1,5 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
 import java.io.ByteArrayInputStream;
@@ -19,6 +17,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * OpenDART 공모 공시 조회 클라이언트.
@@ -39,7 +41,7 @@ public class DartIpoFilingClient {
 
   private final RestClient restClient;
   private final OpenDartApiProperties properties;
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = JsonMapper.builder().build();
   private final long maxUnzippedBytes;
   private final RequestThrottle throttle;
 
@@ -128,9 +130,9 @@ public class DartIpoFilingClient {
     try {
       return Optional.of(
           new FilingRef(
-              item.path("rcept_no").asText(),
-              item.path("report_nm").asText(),
-              LocalDate.parse(item.path("rcept_dt").asText(), DATE)));
+              item.path("rcept_no").asString(),
+              item.path("report_nm").asString(),
+              LocalDate.parse(item.path("rcept_dt").asString(), DATE)));
     } catch (RuntimeException e) {
       return Optional.empty();
     }
@@ -210,7 +212,7 @@ public class DartIpoFilingClient {
               Long parValue = null;
               List<Underwriter> underwriters = new ArrayList<>();
               for (JsonNode group : json.path("group")) {
-                String title = group.path("title").asText();
+                String title = group.path("title").asString();
                 JsonNode first = group.path("list").path(0);
                 if ("증권의종류".equals(title) && parValue == null) {
                   parValue = toLong(first.path("fv"));
@@ -218,8 +220,8 @@ public class DartIpoFilingClient {
                   for (JsonNode u : group.path("list")) {
                     underwriters.add(
                         new Underwriter(
-                            u.path("actnmn").asText(null),
-                            u.path("actsen").asText(null),
+                            u.path("actnmn").asString(null),
+                            u.path("actsen").asString(null),
                             toLong(u.path("udtcnt"))));
                   }
                 }
@@ -230,7 +232,7 @@ public class DartIpoFilingClient {
 
   /** 쉼표를 지우고 숫자로 바꾼다. "-"·빈 값·숫자 아님은 null. */
   private static Long toLong(JsonNode node) {
-    String text = node.asText("").replace(",", "").trim();
+    String text = node.asString("").replace(",", "").trim();
     return text.matches("-?\\d+") ? Long.valueOf(text) : null;
   }
 
@@ -254,8 +256,8 @@ public class DartIpoFilingClient {
         return Optional.empty();
       }
       JsonNode json = objectMapper.readTree(body);
-      return "000".equals(json.path("status").asText()) ? Optional.of(json) : Optional.empty();
-    } catch (RestClientException | IOException e) {
+      return "000".equals(json.path("status").asString()) ? Optional.of(json) : Optional.empty();
+    } catch (RestClientException | JacksonException e) {
       return Optional.empty(); // 메시지에 crtfc_key가 든 URL이 있어 남기지 않는다
     }
   }
