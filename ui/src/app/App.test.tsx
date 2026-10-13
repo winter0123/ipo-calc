@@ -99,3 +99,36 @@ describe('App 랜드마크', () => {
     },
   )
 })
+
+describe('App 접근 가드', () => {
+  function renderAs(role: 'USER' | 'ADMIN', path: string) {
+    vi.mocked(apiFetch).mockImplementation(async (url: unknown) => {
+      if (url === '/auth/me') return { accountId: 1, email: 'a@b.c', name: null, role }
+      return []
+    })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('일반 사용자가 /admin/*에 가면 권한 없음 안내를 본다', async () => {
+    renderAs('USER', '/admin/accounts')
+    expect(await screen.findByText('관리자만 볼 수 있는 화면입니다.')).toBeInTheDocument()
+  })
+
+  it('로그인한 사용자가 /login에 가면 대시보드로 간다', async () => {
+    renderAs('USER', '/login')
+    expect(await screen.findByText('DashboardPage')).toBeInTheDocument()
+    expect(screen.queryByText('LoginPage')).not.toBeInTheDocument()
+  })
+
+  it('로그인한 사용자가 /signup에 가면 대시보드로 간다', async () => {
+    renderAs('ADMIN', '/signup')
+    expect(await screen.findByText('DashboardPage')).toBeInTheDocument()
+  })
+})

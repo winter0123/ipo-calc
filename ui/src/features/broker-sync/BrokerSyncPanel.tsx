@@ -61,6 +61,7 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
 
   const handleQuery = () => {
     setSavedCount(null)
+    confirm.reset()
     if (submitted && submitted.from === draft.from && submitted.to === draft.to) {
       void preview.refetch()
     } else {
@@ -79,7 +80,8 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
     },
   })
   const confirmError = toErrorMessage(confirm.error, {
-    byStatus: { 400: (e) => e.serverMessage, 409: (e) => e.message },
+    byStatus: { 400: (e) => e.serverMessage, 409: (e) => e.serverMessage },
+    fallback: '매도 내역을 저장하지 못했습니다. 다시 조회한 뒤 시도해 주세요.',
   })
   const data = preview.data
 

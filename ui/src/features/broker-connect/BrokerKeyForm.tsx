@@ -20,7 +20,7 @@ interface Props {
   onSubmit: (values: KeyFormValues) => void
 }
 
-// 앱키·앱시크릿은 화면에 다시 보여주지 않는 password 입력이고, 제출 뒤 입력값을 비운다(부모가 key로 다시 마운트).
+// 앱키·앱시크릿은 화면에 다시 보여주지 않는 password 입력이다. 제출하면 성공·실패와 관계없이 앱시크릿을 즉시 비운다(앱키는 재시도를 위해 유지).
 export default function BrokerKeyForm({
   idPrefix,
   submitLabel,
@@ -34,12 +34,20 @@ export default function BrokerKeyForm({
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const {
     register: field,
+    resetField,
     handleSubmit,
     formState: { errors },
   } = useForm<KeyFormValues>({ mode: 'onSubmit', defaultValues: { keyIssuedOn: today } })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className={styles.form} noValidate>
+    <form
+      onSubmit={handleSubmit((values) => {
+        onSubmit(values)
+        resetField('appSecret', { defaultValue: '' })
+      })}
+      className={styles.form}
+      noValidate
+    >
       <div className={styles.field}>
         <label htmlFor={`${idPrefix}-app-key`}>앱키</label>
         <input

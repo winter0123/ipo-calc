@@ -118,6 +118,7 @@ describe('SecuritiesAccountRegisterForm', () => {
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('****-****-****-3456'))
+      expect(alertSpy).not.toHaveBeenCalledWith(expect.stringContaining('1234-5678'))
     })
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard')

@@ -20,9 +20,9 @@ export default function IpoRegisterForm() {
   const onSubmit = (data: IpoRegisterRequest) => {
     // 빈 선택 입력은 undefined로 변환
     const submitData = {
-      companyName: data.companyName,
-      ipoName: data.ipoName,
-      stockCode: data.stockCode || undefined,
+      companyName: data.companyName.trim(),
+      ipoName: data.ipoName.trim(),
+      stockCode: data.stockCode?.trim().toUpperCase() || undefined,
       roundLabel: data.roundLabel || undefined,
       lowerBandPrice: cleanNumber(data.lowerBandPrice),
       upperBandPrice: cleanNumber(data.upperBandPrice),
@@ -37,16 +37,36 @@ export default function IpoRegisterForm() {
 
   const formErrorMessage = toErrorMessage(error, {
     byStatus: {
+      400: (e) => e.serverMessage,
       403: '관리자만 공모주를 등록할 수 있습니다.',
       409: (e) => e.serverMessage,
     },
     fallback: '공모주를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   })
 
-  const validateNotNegative = (v: unknown) =>
-    v === undefined || v === null || v === '' || Number.isNaN(Number(v)) || Number(v) >= 0
+  // 가격·수량은 비워 두거나 0보다 큰 정수여야 한다. (확정가는 밴드 밖일 수 있어 밴드와 비교하지 않는다)
+  const validatePositiveInt = (v: unknown) =>
+    v === undefined ||
+    v === null ||
+    v === '' ||
+    Number.isNaN(Number(v)) ||
+    (Number.isInteger(Number(v)) && Number(v) > 0)
       ? undefined
-      : '0 이상이어야 합니다.'
+      : '0보다 큰 정수여야 합니다.'
+
+  const validateRequiredTrim = (message: string) => (v: unknown) =>
+    (typeof v === 'string' && v.trim() !== '') || message
+
+  const validateStockCode = (v: unknown) =>
+    !v || /^[A-Za-z0-9]{6}$/.test(String(v).trim())
+      ? undefined
+      : '종목코드는 6자리 영문·숫자입니다.'
+
+  const validateListingAfterEnd = (v: unknown) => {
+    const end = getValues('subscriptionEndDate')
+    if (!end || !v) return undefined
+    return String(v) >= end ? undefined : '상장일은 청약 종료일보다 빠를 수 없습니다.'
+  }
 
   const validateEndDateAfterStart = (v: unknown) => {
     const start = getValues('subscriptionStartDate')
@@ -87,6 +107,7 @@ export default function IpoRegisterForm() {
           aria-describedby={errors.companyName ? 'companyName-error' : undefined}
           {...register('companyName', {
             required: '회사명을 입력해 주세요.',
+            validate: validateRequiredTrim('회사명을 입력해 주세요.'),
             maxLength: { value: 255, message: '회사명은 255자 이하로 입력해 주세요.' },
           })}
           disabled={isPending}
@@ -109,6 +130,7 @@ export default function IpoRegisterForm() {
           aria-describedby={errors.ipoName ? 'ipoName-error' : undefined}
           {...register('ipoName', {
             required: '공모주명을 입력해 주세요.',
+            validate: validateRequiredTrim('공모주명을 입력해 주세요.'),
             maxLength: { value: 255, message: '공모주명은 255자 이하로 입력해 주세요.' },
           })}
           disabled={isPending}
@@ -128,6 +150,7 @@ export default function IpoRegisterForm() {
           aria-invalid={!!errors.stockCode}
           aria-describedby={errors.stockCode ? 'stockCode-error' : undefined}
           {...register('stockCode', {
+            validate: validateStockCode,
             maxLength: { value: 255, message: '종목코드는 255자 이하로 입력해 주세요.' },
           })}
           disabled={isPending}
@@ -163,13 +186,13 @@ export default function IpoRegisterForm() {
         <input
           id="lowerBandPrice"
           type="number"
-          min="0"
+          min="1"
           step="1"
           aria-invalid={!!errors.lowerBandPrice}
           aria-describedby={errors.lowerBandPrice ? 'lowerBandPrice-error' : undefined}
           {...register('lowerBandPrice', {
             valueAsNumber: true,
-            validate: validateNotNegative,
+            validate: validatePositiveInt,
           })}
           disabled={isPending}
         />
@@ -185,13 +208,13 @@ export default function IpoRegisterForm() {
         <input
           id="upperBandPrice"
           type="number"
-          min="0"
+          min="1"
           step="1"
           aria-invalid={!!errors.upperBandPrice}
           aria-describedby={errors.upperBandPrice ? 'upperBandPrice-error' : undefined}
           {...register('upperBandPrice', {
             valueAsNumber: true,
-            validate: (v) => validateNotNegative(v) ?? validateLowerBandNotGreater(v),
+            validate: (v) => validatePositiveInt(v) ?? validateLowerBandNotGreater(v),
           })}
           disabled={isPending}
         />
@@ -207,13 +230,13 @@ export default function IpoRegisterForm() {
         <input
           id="fixedPrice"
           type="number"
-          min="0"
+          min="1"
           step="1"
           aria-invalid={!!errors.fixedPrice}
           aria-describedby={errors.fixedPrice ? 'fixedPrice-error' : undefined}
           {...register('fixedPrice', {
             valueAsNumber: true,
-            validate: validateNotNegative,
+            validate: validatePositiveInt,
           })}
           disabled={isPending}
         />
@@ -276,7 +299,7 @@ export default function IpoRegisterForm() {
           type="date"
           aria-invalid={!!errors.listingDate}
           aria-describedby={errors.listingDate ? 'listingDate-error' : undefined}
-          {...register('listingDate')}
+          {...register('listingDate', { validate: validateListingAfterEnd })}
           disabled={isPending}
         />
         {errors.listingDate && (
@@ -291,13 +314,13 @@ export default function IpoRegisterForm() {
         <input
           id="offeringShareCount"
           type="number"
-          min="0"
+          min="1"
           step="1"
           aria-invalid={!!errors.offeringShareCount}
           aria-describedby={errors.offeringShareCount ? 'offeringShareCount-error' : undefined}
           {...register('offeringShareCount', {
             valueAsNumber: true,
-            validate: validateNotNegative,
+            validate: validatePositiveInt,
           })}
           disabled={isPending}
         />
