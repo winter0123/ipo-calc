@@ -14,7 +14,7 @@ export interface UpcomingEvent {
 }
 
 /** 오늘부터 7일 안의 청약 시작·마감·환불·상장 일정을 날짜순으로 최대 limit건. */
-export function buildUpcomingEvents(ipos: Ipo[], today: Date, limit = 8): UpcomingEvent[] {
+export function buildUpcomingEvents(ipos: Ipo[], today: Date, limit = 5): UpcomingEvent[] {
   const from = toLocalYmd(today)
   const to = toLocalYmd(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7))
   const order: Record<UpcomingKind, number> = { '청약 시작': 0, '청약 마감': 1, 환불: 2, 상장: 3 }

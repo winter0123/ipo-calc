@@ -14,8 +14,8 @@ function getProfitClass(value: number): string {
 }
 
 export default function ProfitSummaryRow({ totals }: { totals: ProfitTotals }) {
-  const cell = (value: number, signed = false) => (
-    <td className={`${styles.number} ${signed ? getProfitClass(value) : ''}`}>
+  const cell = (label: string, value: number, signed = false) => (
+    <td data-label={label} className={`${styles.number} ${signed ? getProfitClass(value) : ''}`}>
       {value.toLocaleString()}
     </td>
   )
@@ -24,12 +24,12 @@ export default function ProfitSummaryRow({ totals }: { totals: ProfitTotals }) {
       <td colSpan={3} className={styles.label}>
         합계
       </td>
-      {cell(totals.saleAmount)}
-      {cell(totals.acquisitionAmount)}
-      {cell(totals.fee)}
-      {cell(totals.tax)}
-      {cell(totals.realizedProfit, true)}
-      {cell(totals.finalProfit, true)}
+      {cell('매도금액', totals.saleAmount)}
+      {cell('취득금액', totals.acquisitionAmount)}
+      {cell('공모주수수료', totals.fee)}
+      {cell('세금 및 기타', totals.tax)}
+      {cell('실현손익', totals.realizedProfit, true)}
+      {cell('최종수익금', totals.finalProfit, true)}
     </tr>
   )
 }

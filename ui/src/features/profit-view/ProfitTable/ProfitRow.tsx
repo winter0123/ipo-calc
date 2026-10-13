@@ -17,17 +17,33 @@ function getProfitClass(value: number): string {
 export default function ProfitRow({ profit }: ProfitRowProps) {
   return (
     <tr className={styles.row}>
-      <td>{formatDay(profit.saleDate)}</td>
-      <td>{profit.investorName}</td>
-      <td className={styles.number}>{formatNumber(profit.quantity)}</td>
-      <td className={styles.number}>{formatNumber(profit.saleAmount)}</td>
-      <td className={styles.number}>{formatNumber(profit.matchedAcquisitionAmount)}</td>
-      <td className={styles.number}>{formatNumber(profit.saleFee)}</td>
-      <td className={styles.number}>{formatNumber(profit.saleTax)}</td>
-      <td className={`${styles.number} ${getProfitClass(profit.realizedProfit)}`}>
+      <td data-label="매도일">{formatDay(profit.saleDate)}</td>
+      <td data-label="투자자">{profit.investorName}</td>
+      <td data-label="수량" className={styles.number}>
+        {formatNumber(profit.quantity)}
+      </td>
+      <td data-label="매도금액" className={styles.number}>
+        {formatNumber(profit.saleAmount)}
+      </td>
+      <td data-label="취득금액" className={styles.number}>
+        {formatNumber(profit.matchedAcquisitionAmount)}
+      </td>
+      <td data-label="공모주수수료" className={styles.number}>
+        {formatNumber(profit.saleFee)}
+      </td>
+      <td data-label="세금 및 기타" className={styles.number}>
+        {formatNumber(profit.saleTax)}
+      </td>
+      <td
+        data-label="실현손익"
+        className={`${styles.number} ${getProfitClass(profit.realizedProfit)}`}
+      >
         {formatNumber(profit.realizedProfit)}
       </td>
-      <td className={`${styles.number} ${getProfitClass(profit.afterTaxProfit)}`}>
+      <td
+        data-label="최종수익금"
+        className={`${styles.number} ${getProfitClass(profit.afterTaxProfit)}`}
+      >
         {formatNumber(profit.afterTaxProfit)}
       </td>
     </tr>

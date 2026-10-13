@@ -79,3 +79,9 @@
 
 /* 태블릿 */
 /* 데스크톱 */
+
+.rowHint {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  color: var(--ink-muted);
+}

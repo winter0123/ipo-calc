@@ -116,12 +116,12 @@ describe('DashboardHome', () => {
 })
 
 describe('buildUpcomingEvents', () => {
-  it('최대 8건으로 자르고 날짜순으로 정렬한다', () => {
+  it('최대 5건으로 자르고 날짜순으로 정렬한다', () => {
     const ipos = Array.from({ length: 6 }, (_, i) =>
       ipo({ id: i + 1, subscriptionStartDate: '2026-10-15', subscriptionEndDate: '2026-10-16' }),
     )
     const events = buildUpcomingEvents(ipos, new Date('2026-10-13T09:00:00'))
-    expect(events).toHaveLength(8)
+    expect(events).toHaveLength(5)
     expect(events[0].date).toBe('2026-10-15')
   })
 

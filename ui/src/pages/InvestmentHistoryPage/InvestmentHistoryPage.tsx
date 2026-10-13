@@ -121,7 +121,14 @@ export default function InvestmentHistoryPage() {
 
         {!isLoading && !error && items.length === 0 && <EmptyState onResetFilters={handleReset} />}
 
-        {!isLoading && !error && items.length > 0 && <InvestmentHistoryTable items={items} />}
+        {!isLoading && !error && items.length > 0 && (
+          <>
+            <p className={styles.rowHint}>
+              행을 누르면 청약·배정·매도 상세와 수정·삭제가 열립니다.
+            </p>
+            <InvestmentHistoryTable items={items} />
+          </>
+        )}
       </div>
     </div>
   )
