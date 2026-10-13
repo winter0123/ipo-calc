@@ -12,6 +12,7 @@ import com.vibeaiteam.accountauthentication.repository.account.AccountRepository
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -32,37 +33,43 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+  private static final int MAX_FAILED_ATTEMPTS = 5;
+  private static final int LOCK_DURATION_MINUTES = 30;
+
   private final AccountRepository accountRepository;
   private final PasswordEncoder passwordEncoder;
-  private final FailedLoginService failedLoginService;
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final Clock clock;
   private final SessionCookieWriter sessionCookieWriter;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
-  /** 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다. */
-  @Transactional
+  /**
+   * 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다. 외부 트랜잭션을 두지 않는다: 각 DB 작업이 짧은 자체 트랜잭션이라 요청이
+   * 커넥션을 한 번에 하나만 쓰고, bcrypt 검증 동안은 커넥션을 쥐지 않는다(동시 오답 요청으로 풀이 마르지 않는다).
+   */
   public void login(
       LoginRequest request,
       HttpServletRequest httpServletRequest,
       HttpServletResponse httpServletResponse) {
     String email = request.getEmail().toLowerCase();
+    LocalDateTime now = LocalDateTime.now(clock);
 
     Account account = accountRepository.findByEmail(email);
 
-    // 계정이 존재하지 않거나 비밀번호가 틀린 경우 동일한 에러 메시지 반환 (계정 존재 여부 노출 방지)
-    if (account == null
-        || !passwordEncoder.matches(request.getPassword(), account.getPasswordHash())) {
-      if (account != null) {
-        failedLoginService.recordFailedLogin(account);
-      }
-      throw new InvalidCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다");
+    // 잠긴 계정은 비밀번호를 맞춰도 틀려도 로그인할 수 없다(시도로 잠금이 연장되지도 않는다).
+    if (account != null && account.isAccountLocked(now)) {
+      throw new AccountLockedException("계정이 잠겼습니다. 관리자에게 문의하세요");
     }
 
-    // 계정 잠금 상태 확인
-    if (account.isAccountLocked(LocalDateTime.now(clock))) {
-      throw new AccountLockedException("계정이 잠겼습니다. 관리자에게 문의하세요");
+    // 계정이 존재하지 않거나 비밀번호가 틀린 경우 동일한 에러 메시지 반환 (계정 존재 여부 노출 방지)
+    if (account == null
+        || !passwordMatches(request.getPassword(), account.getPasswordHash())) {
+      if (account != null) {
+        accountRepository.recordFailedLogin(
+            account.getId(), now, MAX_FAILED_ATTEMPTS, now.plusMinutes(LOCK_DURATION_MINUTES));
+      }
+      throw new InvalidCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다");
     }
 
     // 비밀번호가 맞아도 관리자 승인 전이면 로그인시키지 않는다(실패 횟수에는 넣지 않는다).
@@ -70,12 +77,7 @@ public class AuthService {
       throw new AccountPendingApprovalException("관리자 승인 대기 중입니다");
     }
 
-    // 로그인 성공 - 실패 횟수 리셋, last_login_at 업데이트
-    account.resetFailedLoginAttempts();
-    account.setLockedUntil(null);
-    account.setLastLoginAt(LocalDateTime.now(clock));
-    account.setUpdatedAt(LocalDateTime.now(clock));
-    accountRepository.saveAndFlush(account);
+    accountRepository.recordLoginSuccess(account.getId(), now);
 
     createSession(httpServletRequest, httpServletResponse, account);
   }
@@ -111,11 +113,22 @@ public class AuthService {
     sessionCookieWriter.expire(httpServletResponse);
   }
 
+  /** 72바이트를 넘는 입력은 bcrypt에 넘기지 않고 불일치로 본다(가입·변경에서 막으므로 맞을 수 없다). */
+  private boolean passwordMatches(String raw, String hash) {
+    return raw.getBytes(StandardCharsets.UTF_8).length <= PasswordPolicy.MAX_BYTES
+        && passwordEncoder.matches(raw, hash);
+  }
+
   private void createSession(
       HttpServletRequest httpServletRequest,
       HttpServletResponse httpServletResponse,
       Account account) {
-    final HttpSession session = httpServletRequest.getSession(true);
+    // 로그인 전에 받은 세션 ID를 그대로 쓰면 세션 고정 공격이 가능하므로 기존 세션이 있으면 ID를 바꾼다.
+    final boolean hadSession = httpServletRequest.getSession(false) != null;
+    httpServletRequest.getSession(true);
+    if (hadSession) {
+      httpServletRequest.changeSessionId();
+    }
 
     UserDetails userDetails =
         User.builder()
@@ -141,6 +154,6 @@ public class AuthService {
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
 
-    sessionCookieWriter.issueIfAbsent(httpServletResponse, session.getId());
+    sessionCookieWriter.issueIfAbsent(httpServletResponse, httpServletRequest.getSession().getId());
   }
 }

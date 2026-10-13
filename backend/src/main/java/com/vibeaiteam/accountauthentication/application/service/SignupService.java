@@ -8,20 +8,18 @@ import com.vibeaiteam.accountauthentication.controller.dto.SignupResponse;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.exception.DuplicateEmailException;
 import com.vibeaiteam.accountauthentication.exception.SignupClosedException;
-import com.vibeaiteam.accountauthentication.exception.ValidationFailedException;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
@@ -38,12 +36,9 @@ public class SignupService {
   private final Clock clock;
   private final SessionCookieWriter sessionCookieWriter;
   private final SignupPolicy signupPolicy;
+  private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
-
-  private static final Pattern PASSWORD_PATTERN =
-      Pattern.compile(
-          "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,}$");
 
   /** 이메일 중복을 확인하고 계정을 생성한다. */
   public SignupResponse signup(
@@ -60,7 +55,7 @@ public class SignupService {
       throw new DuplicateEmailException("이미 사용 중인 이메일입니다");
     }
 
-    validatePassword(request.getPassword());
+    PasswordPolicy.validate("password", request.getPassword());
 
     String passwordHash = passwordEncoder.encode(request.getPassword());
 
@@ -90,18 +85,16 @@ public class SignupService {
         .build();
   }
 
-  private void validatePassword(String password) {
-    if (!PASSWORD_PATTERN.matcher(password).matches()) {
-      throw new ValidationFailedException(
-          "password", "비밀번호는 최소 8자 이상이며 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다");
-    }
-  }
-
   private void createSession(
       HttpServletRequest httpServletRequest,
       HttpServletResponse httpServletResponse,
       Account account) {
-    final HttpSession session = httpServletRequest.getSession(true);
+    // 가입 전에 받은 세션 ID를 그대로 쓰면 세션 고정 공격이 가능하므로 기존 세션이 있으면 ID를 바꾼다.
+    final boolean hadSession = httpServletRequest.getSession(false) != null;
+    httpServletRequest.getSession(true);
+    if (hadSession) {
+      httpServletRequest.changeSessionId();
+    }
 
     UserDetails userDetails =
         User.builder()
@@ -118,8 +111,12 @@ public class SignupService {
     context.setAuthentication(authentication);
     SecurityContextHolder.setContext(context);
 
+    // 세션 레지스트리에 등록해 두어야 승인 취소 때 이 세션도 끊긴다.
+    sessionAuthenticationStrategy.onAuthentication(
+        authentication, httpServletRequest, httpServletResponse);
+
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
 
-    sessionCookieWriter.issueIfAbsent(httpServletResponse, session.getId());
+    sessionCookieWriter.issueIfAbsent(httpServletResponse, httpServletRequest.getSession().getId());
   }
 }

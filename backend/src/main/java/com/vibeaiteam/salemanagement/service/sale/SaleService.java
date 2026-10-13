@@ -2,6 +2,7 @@ package com.vibeaiteam.salemanagement.service.sale;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
+import com.vibeaiteam.accountauthentication.util.validation.InputLimits;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.allocationmanagement.service.ownership.AllocationOwnership;
@@ -56,7 +57,7 @@ public class SaleService {
 
     // (3) 누적 매도수량 검증: (기존 합계 + 신규 quantity) ≤ allocatedQuantity
     Long newQuantity = request.getQuantity();
-    if (existingQuantitySum + newQuantity > allocation.getAllocatedQuantity()) {
+    if (newQuantity > allocation.getAllocatedQuantity() - existingQuantitySum) {
       throw new SaleAllocationExceededException(
           "누적 매도수량이 배정수량을 초과합니다. 기존 합계: "
               + existingQuantitySum
@@ -134,7 +135,7 @@ public class SaleService {
 
     // (4) 누적 매도수량 재검증: (기존 합계(자기자신 제외) + 수정 quantity) ≤ allocatedQuantity
     Long newQuantity = request.getQuantity() != null ? request.getQuantity() : sale.getQuantity();
-    if (existingQuantitySum + newQuantity > allocation.getAllocatedQuantity()) {
+    if (newQuantity > allocation.getAllocatedQuantity() - existingQuantitySum) {
       throw new SaleAllocationExceededException(
           "누적 매도수량이 배정수량을 초과합니다. 기존 합계(자기자신 제외): "
               + existingQuantitySum
@@ -172,10 +173,32 @@ public class SaleService {
     return SaleResponse.from(saved);
   }
 
+  // 합산·곱셈 오버플로를 막는 상한(하한 검증은 호출부에서 한다)
+  private void validateUpperBounds(
+      Long quantity, Long price, Long amount, Long fee, Long tax, Long otherCost) {
+    if (quantity != null && quantity > InputLimits.MAX_QUANTITY) {
+      throw new SaleValidationException("quantity는 " + InputLimits.MAX_QUANTITY + " 이하여야 합니다.");
+    }
+    String[] names = {"price", "amount", "fee", "tax", "otherCost"};
+    Long[] values = {price, amount, fee, tax, otherCost};
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] != null && values[i] > InputLimits.MAX_AMOUNT) {
+        throw new SaleValidationException(names[i] + "는 " + InputLimits.MAX_AMOUNT + " 이하여야 합니다.");
+      }
+    }
+  }
+
   private void validateUpdateRequest(SaleUpdateRequest request) {
     if (request == null) {
       throw new SaleValidationException("매도 수정 정보는 필수입니다.");
     }
+    validateUpperBounds(
+        request.getQuantity(),
+        request.getPrice(),
+        request.getAmount(),
+        request.getFee(),
+        request.getTax(),
+        request.getOtherCost());
     // quantity가 제공된 경우 0 초과 검증
     if (request.getQuantity() != null && request.getQuantity() <= 0) {
       throw new SaleValidationException("quantity는 0 초과여야 합니다.");
@@ -211,6 +234,13 @@ public class SaleService {
     if (request.getSaleDate() == null) {
       throw new SaleValidationException("saleDate는 필수입니다.");
     }
+    validateUpperBounds(
+        request.getQuantity(),
+        request.getPrice(),
+        request.getAmount(),
+        request.getFee(),
+        request.getTax(),
+        request.getOtherCost());
     // AC-003: quantity는 0 초과여야 함
     if (request.getQuantity() <= 0) {
       throw new SaleValidationException("quantity는 0 초과여야 합니다.");

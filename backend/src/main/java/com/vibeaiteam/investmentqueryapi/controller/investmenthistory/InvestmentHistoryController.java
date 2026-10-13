@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/investment-history")
 public class InvestmentHistoryController {
 
+  private static final int MAX_PAGE = 100_000;
+
   private final InvestmentHistoryQueryService queryService;
 
   /** 조회 서비스를 주입받아 생성한다. */
@@ -35,8 +37,8 @@ public class InvestmentHistoryController {
     if (size < 1 || size > 100) {
       throw new InvestmentQueryValidationException("size는 1 이상 100 이하여야 합니다.");
     }
-    if (page < 0) {
-      throw new InvestmentQueryValidationException("page는 0 이상이어야 합니다.");
+    if (page < 0 || page > MAX_PAGE) {
+      throw new InvestmentQueryValidationException("page는 0 이상 " + MAX_PAGE + " 이하여야 합니다.");
     }
 
     Page<InvestmentHistoryDto> pageResult =

@@ -41,7 +41,8 @@ public class AdminAccountService {
         approved == null
             ? accountRepository.findAllByOrderByCreatedAtAsc()
             : accountRepository.findByApprovedOrderByCreatedAtAsc(approved);
-    return accounts.stream().map(AdminAccountService::toResponse).toList();
+    LocalDateTime now = LocalDateTime.now(clock);
+    return accounts.stream().map(account -> toResponse(account, now)).toList();
   }
 
   /**
@@ -78,19 +79,35 @@ public class AdminAccountService {
     log.info("계정 승인 취소: accountId={}", accountId);
   }
 
+  /**
+   * 로그인 실패로 잠긴 계정의 잠금을 풀고 실패 횟수를 0으로 되돌린다. 잠겨 있지 않아도 그대로 성공한다.
+   *
+   * @param accountId 대상 계정 ID
+   */
+  @Transactional
+  public void unlock(Long accountId) {
+    Account account = find(accountId);
+    account.resetFailedLoginAttempts();
+    account.setLockedUntil(null);
+    account.setUpdatedAt(LocalDateTime.now(clock));
+    accountRepository.save(account);
+    log.info("계정 잠금 해제: accountId={}", accountId);
+  }
+
   private Account find(Long accountId) {
     return accountRepository
         .findById(accountId)
         .orElseThrow(() -> new AccountNotFoundException("계정을 찾을 수 없습니다"));
   }
 
-  private static AdminAccountResponse toResponse(Account account) {
+  private static AdminAccountResponse toResponse(Account account, LocalDateTime now) {
     return new AdminAccountResponse(
         account.getId(),
         account.getEmail(),
         account.getName(),
         account.getRole().name(),
         account.isApproved(),
-        account.getCreatedAt());
+        account.getCreatedAt(),
+        account.isAccountLocked(now));
   }
 }

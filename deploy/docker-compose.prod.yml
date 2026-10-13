@@ -30,7 +30,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vibe_ai_team
       DB_PASSWORD: ${DB_PASSWORD}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
-      APP_REMEMBER_ME_KEY: ${APP_REMEMBER_ME_KEY}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       APP_SIGNUP_MODE: ${APP_SIGNUP_MODE:-APPROVAL}
       # 증권사 앱키·시크릿 암호화 키(증권사 연동 사용 시 필수, openssl rand -base64 32)

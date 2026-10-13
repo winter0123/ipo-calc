@@ -92,7 +92,7 @@
 
 - multi-stage: 1단계 Gradle(JDK)로 `bootJar` 빌드 → 2단계 JRE 슬림 이미지에서 jar 실행.
 - **ARM64(aarch64)** 베이스 이미지를 사용한다(Oracle Ampere). 멀티아키 이미지를 쓰면 로컬 맥(Apple Silicon)과도 동일하다.
-- 환경변수로 주입(이미지에 굽지 않는다): `DB_PASSWORD`, `APP_ENCRYPTION_KEY`(32바이트 키의 Base64), `APP_REMEMBER_ME_KEY`, `SESSION_COOKIE_SECURE=true`, 가입 모드 `APP_SIGNUP_MODE`(운영 기본 `APPROVAL`).
+- 환경변수로 주입(이미지에 굽지 않는다): `DB_PASSWORD`, `APP_ENCRYPTION_KEY`(32바이트 키의 Base64), `SESSION_COOKIE_SECURE=true`, 가입 모드 `APP_SIGNUP_MODE`(운영 기본 `APPROVAL`).
 - 비root 사용자로 실행한다.
 
 ### 4.3 UI 이미지 (`ui/Dockerfile`)

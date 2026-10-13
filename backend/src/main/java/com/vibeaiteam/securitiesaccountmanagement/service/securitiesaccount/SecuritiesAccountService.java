@@ -47,6 +47,16 @@ public class SecuritiesAccountService {
   private final OwnershipGuard ownershipGuard;
   private final Clock clock;
 
+  private static final int ACCOUNT_NUMBER_MAX_LENGTH = 50;
+  private static final int ACCOUNT_NAME_MAX_LENGTH = 255;
+
+  private void validateAccountName(String accountName) {
+    if (accountName != null && accountName.length() > ACCOUNT_NAME_MAX_LENGTH) {
+      throw new SecuritiesAccountValidationException(
+          "accountName은 " + ACCOUNT_NAME_MAX_LENGTH + "자 이하여야 합니다.");
+    }
+  }
+
   /** 증권계좌를 등록한다. */
   @Transactional
   public SecuritiesAccountResponse register(SecuritiesAccountRegisterRequest request) {
@@ -57,6 +67,13 @@ public class SecuritiesAccountService {
     if (investorId == null || securitiesFirmId == null || plainAccountNumber == null) {
       throw new SecuritiesAccountValidationException(
           "investorId, securitiesFirmId, accountNumber는 필수 입력값입니다.");
+    }
+
+    validateAccountName(request.getAccountName());
+    // 암호문이 컬럼(255자)을 넘지 않도록 원문 길이를 제한한다.
+    if (plainAccountNumber.length() > ACCOUNT_NUMBER_MAX_LENGTH) {
+      throw new SecuritiesAccountValidationException(
+          "accountNumber는 " + ACCOUNT_NUMBER_MAX_LENGTH + "자 이하여야 합니다.");
     }
 
     requireOwnedInvestor(investorId);
@@ -161,6 +178,7 @@ public class SecuritiesAccountService {
       account.setSecuritiesFirmId(request.getSecuritiesFirmId());
     }
 
+    validateAccountName(request.getAccountName());
     if (request.getAccountName() != null) {
       account.setAccountName(request.getAccountName());
     }

@@ -171,12 +171,10 @@ class PrivateSignupApprovalTest {
     assertThat(revoke.getResponse().getStatus()).isEqualTo(204);
     assertThat(login(member, PASSWORD, new MockHttpSession()).getResponse().getStatus())
         .isEqualTo(403);
-    // 만료된 세션은 동시 세션 필터가 /login?expired로 보낸다(302).
     MvcResult afterRevoke = mockMvc.perform(get("/investors").session(memberSession)).andReturn();
     assertThat(afterRevoke.getResponse().getStatus())
         .as("취소된 계정의 기존 세션은 더 이상 쓸 수 없다")
-        .isIn(302, 401, 403);
-    assertThat(afterRevoke.getResponse().getRedirectedUrl()).isIn(null, "/login?expired");
+        .isEqualTo(401);
   }
 
   @Test

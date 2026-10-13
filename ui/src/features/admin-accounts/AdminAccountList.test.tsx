@@ -15,6 +15,7 @@ const account = (over: Record<string, unknown>) => ({
   role: 'USER',
   approved: false,
   createdAt: '2026-10-01T09:30:00',
+  locked: false,
   ...over,
 })
 
@@ -85,5 +86,20 @@ describe('AdminAccountList', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('관리자만 볼 수 있는 화면입니다.')
     expect(writes()).toHaveLength(0)
+  })
+
+  it('잠긴 계정에만 잠금 해제 버튼이 보이고 누르면 해제 요청을 보낸다', async () => {
+    setup([
+      account({ id: 9, email: 'locked@example.com', approved: true, locked: true }),
+      account({ id: 10, email: 'free@example.com', approved: true }),
+    ])
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'locked@example.com 잠금 해제' }),
+    )
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith('/admin/accounts/9/unlock', { method: 'POST' }),
+    )
+    expect(screen.queryByRole('button', { name: 'free@example.com 잠금 해제' })).toBeNull()
   })
 })

@@ -3,6 +3,7 @@ package com.vibeaiteam.subscriptionmanagement.service.subscription;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.exception.HasChildRecordsException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
+import com.vibeaiteam.accountauthentication.util.validation.InputLimits;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipErrors;
 import com.vibeaiteam.investormanagement.service.ownership.OwnershipGuard;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
@@ -131,6 +132,7 @@ public class SubscriptionService {
     if (updatedDepositAmount != null && updatedDepositAmount < 0) {
       throw new SubscriptionValidationException("depositAmount는 음수일 수 없습니다.");
     }
+    validateUpperBounds(updatedQuantity, updatedDepositAmount, request.getMemo());
     if (updatedQuantity != null) {
       long allocated = subscriptionRepository.activeAllocatedQuantity(id);
       if (updatedQuantity < allocated) {
@@ -271,6 +273,23 @@ public class SubscriptionService {
     }
     if (request.getDepositAmount() < 0) {
       throw new SubscriptionValidationException("depositAmount는 음수일 수 없습니다.");
+    }
+    validateUpperBounds(request.getQuantity(), request.getDepositAmount(), request.getMemo());
+  }
+
+  // 수량·금액 상한과 메모 길이(오버플로·500 방지)
+  private void validateUpperBounds(Long quantity, Long depositAmount, String memo) {
+    if (quantity != null && quantity > InputLimits.MAX_QUANTITY) {
+      throw new SubscriptionValidationException(
+          "quantity는 " + InputLimits.MAX_QUANTITY + " 이하여야 합니다.");
+    }
+    if (depositAmount != null && depositAmount > InputLimits.MAX_AMOUNT) {
+      throw new SubscriptionValidationException(
+          "depositAmount는 " + InputLimits.MAX_AMOUNT + " 이하여야 합니다.");
+    }
+    if (memo != null && memo.length() > InputLimits.MAX_MEMO_LENGTH) {
+      throw new SubscriptionValidationException(
+          "memo는 " + InputLimits.MAX_MEMO_LENGTH + "자 이하여야 합니다.");
     }
   }
 

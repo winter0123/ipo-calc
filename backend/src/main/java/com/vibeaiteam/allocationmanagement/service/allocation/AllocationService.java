@@ -3,6 +3,7 @@ package com.vibeaiteam.allocationmanagement.service.allocation;
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.accountauthentication.exception.HasChildRecordsException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
+import com.vibeaiteam.accountauthentication.util.validation.InputLimits;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationResponse;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationUpdateRequest;
@@ -29,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AllocationService {
+
+  private static final int TEXT_MAX_LENGTH = 255;
 
   private static final OwnershipErrors OWNERSHIP_ERRORS =
       new OwnershipErrors(AllocationNotFoundException::new, AllocationForbiddenException::new);
@@ -90,6 +93,24 @@ public class AllocationService {
       throw new AllocationValidationException(
           "subscriptionId, allocatedQuantity, allocatedAt는 필수입니다.");
     }
+    validateAmountAndText(
+        request.getAllocationPrice(), request.getAllocationMethod(), request.getNote());
+  }
+
+  // 금액 상한과 텍스트 길이(DB 컬럼 255자 — 넘으면 500이 되므로 400으로 막는다)
+  private void validateAmountAndText(Long allocationPrice, String allocationMethod, String note) {
+    if (allocationPrice != null
+        && (allocationPrice < 0 || allocationPrice > InputLimits.MAX_AMOUNT)) {
+      throw new AllocationValidationException(
+          "allocationPrice는 0 이상 " + InputLimits.MAX_AMOUNT + " 이하여야 합니다.");
+    }
+    if (allocationMethod != null && allocationMethod.length() > TEXT_MAX_LENGTH) {
+      throw new AllocationValidationException(
+          "allocationMethod는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
+    }
+    if (note != null && note.length() > TEXT_MAX_LENGTH) {
+      throw new AllocationValidationException("note는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
+    }
   }
 
   // AC-003: 배정수량은 0 이상이며, 청약수량(subscription.quantity)을 초과할 수 없다 (D-A-005, 단순 값 검증).
@@ -150,6 +171,7 @@ public class AllocationService {
     if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < 0) {
       throw new AllocationValidationException("allocatedQuantity는 0 이상이어야 합니다.");
     }
+    validateAmountAndText(updatedAllocationPrice, updatedAllocationMethod, updatedNote);
 
     // 같은 청약을 다시 지정하면 이동이 아니다
     boolean moving =
