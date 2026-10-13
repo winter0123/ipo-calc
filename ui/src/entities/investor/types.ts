@@ -1,10 +1,5 @@
 import { z } from 'zod'
 
-export interface InvestorRegisterRequest {
-  displayName: string
-  relationship?: InvestorRelationship
-}
-
 export type InvestorRelationship = 'SELF' | 'SPOUSE' | 'PARENT' | 'CHILD' | 'OTHER'
 
 export const investorResponseSchema = z.object({

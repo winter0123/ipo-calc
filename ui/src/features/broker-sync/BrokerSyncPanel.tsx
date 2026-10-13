@@ -10,6 +10,7 @@ import Button from '@/shared/components/Button/Button.tsx'
 import MatchedTable from './MatchedTable.tsx'
 import { useConfirmSync } from './useConfirmSync.ts'
 import styles from './BrokerSyncPanel.module.css'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 const REASON_TEXT: Record<UnmatchedReason, string> = {
   NO_ALLOCATION_FOR_STOCK: '이 종목의 배정 기록이 없습니다 — 수동으로 등록해 주세요.',
@@ -27,8 +28,6 @@ const LS_RANGE = { lookbackDays: 30, maxDays: 30, label: '기본 최근 30일, �
 const DEFAULT_RANGE = { lookbackDays: 365, maxDays: 3650, label: '기본 최근 1년, 최대 10년' }
 type RangeRule = typeof DEFAULT_RANGE
 
-const toDateInput = (date: Date) => date.toLocaleDateString('en-CA')
-
 function rangeError(range: SyncRange, today: string, rule: RangeRule): string | null {
   if (!range.from || !range.to) return '조회 기간을 입력해 주세요.'
   if (range.to > today) return '조회 종료일은 오늘 이후일 수 없습니다.'
@@ -42,7 +41,7 @@ function rangeError(range: SyncRange, today: string, rule: RangeRule): string | 
 }
 
 export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAccountId: number }) {
-  const today = toDateInput(new Date())
+  const today = toLocalYmd(new Date())
   const credential = useBrokerCredential(securitiesAccountId)
   const rule =
     (credential.data?.apiProvider ?? credential.data?.supportedProvider) === 'LS'
@@ -53,7 +52,7 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
   // 직접 고르기 전에는 증권사 규칙의 기본 기간을 보여 준다(연결 정보가 늦게 와도 따라간다).
   const defaultFrom = new Date()
   defaultFrom.setDate(defaultFrom.getDate() - rule.lookbackDays)
-  const draft = edited ?? { from: toDateInput(defaultFrom), to: today }
+  const draft = edited ?? { from: toLocalYmd(defaultFrom), to: today }
   const [submitted, setSubmitted] = useState<SyncRange | null>(null)
   const [savedCount, setSavedCount] = useState<number | null>(null)
   const preview = useSyncPreview(securitiesAccountId, submitted)

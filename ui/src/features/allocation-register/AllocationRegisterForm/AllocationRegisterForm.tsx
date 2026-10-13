@@ -7,6 +7,7 @@ import { type AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import styles from './AllocationRegisterForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 export default function AllocationRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -30,7 +31,7 @@ export default function AllocationRegisterForm() {
   } = useForm<AllocationRegisterRequest>({
     mode: 'onSubmit',
     defaultValues: {
-      allocatedAt: new Date().toLocaleDateString('sv-SE'),
+      allocatedAt: toLocalYmd(),
       allocationPrice: Number.NaN,
     },
   })

@@ -10,6 +10,7 @@ import {
   useReplaceBrokerCredential,
 } from './useBrokerConnect.ts'
 import styles from './BrokerConnectPanel.module.css'
+import { toLocalYmd } from '@/shared/lib/date.ts'
 
 const STATUS_LABEL = {
   CONNECTED: '연결됨',
@@ -27,8 +28,6 @@ const PROVIDER_NOTICE: Record<string, string> = {
 const EXPIRY_WARNING_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
 
-const toDateInput = (date: Date) => date.toLocaleDateString('en-CA')
-
 function daysUntil(isoDate: string, today: string) {
   return Math.round((Date.parse(isoDate) - Date.parse(today)) / DAY_MS)
 }
@@ -44,7 +43,7 @@ export default function BrokerConnectPanel({
   const register = useRegisterBrokerCredential(securitiesAccountId)
   const replace = useReplaceBrokerCredential(securitiesAccountId)
   const disconnect = useDisconnectBrokerCredential(securitiesAccountId)
-  const today = toDateInput(new Date())
+  const today = toLocalYmd(new Date())
 
   if (isLoading) return <p role="status">연결 상태를 불러오는 중...</p>
   if (loadError || !data) {
