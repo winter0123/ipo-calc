@@ -30,7 +30,8 @@
 - **품질·운영(#384~#390)**: Spring Boot 3.5.16, N+1 회귀 테스트(`QueryCountTest`), open-in-view 끔, 접근성 위반 0(25화면×2폭), UI 의존성 취약점 0. **운영 `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY`를 채워야 동기화·증권사 연동이 동작**(#385).
 - **테스트·CI(#392~#399)**: E2E 18개(수정·삭제·공모주 상세·증권사 관리·수익 그래프 추가), 커버리지 도구(백엔드 JaCoCo `jacocoTestReport`, UI `test:coverage`), checkstyle 경고 0을 빌드가 강제, Jenkins가 checkstyle·format:check·build까지 검사. 처음 쓰는 사용자 빈 상태 안내(#398).
 - **운영(#402~#404)**: 화면 응답 보안 헤더(CSP 등), DB 백업·복원 스크립트(`scripts/backup-db.sh` — 운영 VM cron 등록은 사용자 몫, 배포 문서 참고), backend 헬스체크. 로컬 운영 스택은 반드시 Jenkins로만 재배포(직접 compose up 하면 DB 비밀번호가 달라 깨짐).
-- **보증**: 백엔드 946 테스트(분기 87.7%)·checkstyle 경고 0, UI 611 테스트, E2E 18/18, Jenkins #10 SUCCESS.
+- **리뷰 결함 수정(#408·#409)**: 매도·배정·청약 수량 검증은 부모 행 비관적 잠금(동시 요청 대비), DART 원문 실패 시 저장 안 함, 취소 거부 errorCode `HAS_CHILD_RECORDS`. 수익 확인 CSV 내보내기(#407).
+- **보증**: 백엔드 954 테스트·checkstyle 경고 0, UI 620 테스트, E2E 18/18.
 
 ## 인계 요약 (2026-10-12, 모델 교체 직전) — 최신, 새 세션은 이 절부터 읽는다
 
