@@ -42,6 +42,10 @@ backend/Dockerfile, .dockerignore   Gradle bootJar → JRE alpine, 비root
 ui/Dockerfile, Caddyfile, .dockerignore   pnpm 빌드(VITE_API_BASE_URL=/api) → Caddy 이미지
 deploy/docker-compose.prod.yml      postgres + backend + web(Caddy), 시크릿은 deploy/.env
 deploy/.env.example                 필요한 환경변수 이름 목록 (.env는 git 제외)
+                                    운영에서 채울 것: DB_PASSWORD, APP_ENCRYPTION_KEY, APP_REMEMBER_ME_KEY, SITE_ADDRESS,
+                                    APP_ENCRYPTION_BROKER_KEY(증권사 연동), OPENDART_API_KEY(공모주 일정·상세),
+                                    DATA_GO_KR_SERVICE_KEY(휴장일). 키가 비면 해당 동기화만 건너뜀.
+                                    배포 직후 관리자로 POST /api/ipos/insight/sync 1회(공모주 상세 즉시 채움)
 deploy/jenkins/                     Dockerfile(docker CLI·compose·node·pnpm), plugins.txt, casc.yaml(JCasC+Job DSL), docker-compose.yml
 Jenkinsfile                         백엔드 테스트(ci-pg) → UI lint/typecheck/test → compose 배포 → smoke
 infra/oracle/                       (미커밋) Terraform: VCN·IGW·라우트·보안리스트·서브넷·VM, cloud-init

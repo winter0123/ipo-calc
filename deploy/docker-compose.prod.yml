@@ -26,6 +26,14 @@ services:
       APP_REMEMBER_ME_KEY: ${APP_REMEMBER_ME_KEY}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       APP_SIGNUP_MODE: ${APP_SIGNUP_MODE:-APPROVAL}
+      # 증권사 앱키·시크릿 암호화 키(증권사 연동 사용 시 필수, openssl rand -base64 32)
+      APP_ENCRYPTION_BROKER_KEY: ${APP_ENCRYPTION_BROKER_KEY:-}
+      # 공모주 일정·상세(DART) 동기화. 비면 동기화가 건너뛰어짐
+      OPENDART_API_KEY: ${OPENDART_API_KEY:-}
+      # 휴장일 동기화(공공데이터포털 한국천문연구원 특일 정보). 비면 기본 데이터만
+      DATA_GO_KR_SERVICE_KEY: ${DATA_GO_KR_SERVICE_KEY:-}
+      # 앞단 Caddy가 X-Forwarded-For를 붙이고 backend는 외부에 포트를 열지 않으므로 실제 방문자 IP로 요청 제한
+      APP_RATE_LIMIT_TRUST_FORWARDED: ${APP_RATE_LIMIT_TRUST_FORWARDED:-true}
 
   web:
     build: ../ui
