@@ -17,7 +17,8 @@ import {
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
   resolveIpoPrice,
-} from './saleMath.ts'
+  toSalePayload,
+} from '@/entities/sale/index.ts'
 
 /** 폼 입력값. 숫자 칸은 비어 있으면 NaN이다(valueAsNumber). */
 interface SaleFormValues {
@@ -149,15 +150,7 @@ export default function SaleRegisterForm() {
   }
 
   const onSubmit = (data: SaleFormValues) => {
-    mutate({
-      allocationId: data.allocationId,
-      quantity: data.quantity,
-      price: data.price,
-      amount: data.price * data.quantity,
-      saleDate: `${data.saleDate}T09:00`,
-      fee: isNum(data.ipoFee) ? data.ipoFee : 0,
-      tax: isNum(data.otherFees) ? data.otherFees : 0,
-    })
+    mutate({ allocationId: data.allocationId, ...toSalePayload(data) })
   }
 
   const formErrorMessage = toErrorMessage(error, {

@@ -8,7 +8,7 @@ import {
   type Subscription,
 } from '@/entities/subscription/index.ts'
 import { getAllocation, updateAllocation, type Allocation } from '@/entities/allocation/index.ts'
-import { getSale, updateSale, type Sale } from '@/entities/sale/index.ts'
+import { getSale, toSalePayload, updateSale, type Sale } from '@/entities/sale/index.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import { useRecordMutation } from './useRecordMutation.ts'
@@ -292,17 +292,7 @@ interface SaleValues {
 
 function SaleForm({ record, onClose }: { record: Sale; onClose: () => void }) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
-  // 등록 화면과 같은 매핑: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타
-  const save = useRecordMutation((data: SaleValues) =>
-    updateSale(record.id, {
-      quantity: data.quantity,
-      price: data.price,
-      amount: data.price * data.quantity,
-      saleDate: at9(data.saleDate),
-      fee: isNum(data.ipoFee) ? data.ipoFee : 0,
-      tax: isNum(data.otherFees) ? data.otherFees : 0,
-    }),
-  )
+  const save = useRecordMutation((data: SaleValues) => updateSale(record.id, toSalePayload(data)))
   const {
     register,
     control,
