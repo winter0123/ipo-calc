@@ -615,8 +615,9 @@ class AllocationControllerTest {
   void updateAllocationWithNewSubscriptionIdReturns200AndValidatesQuantity() throws Exception {
     // Given: 존재하는 배정 기록과 다른 Subscription (AC-012, subscriptionId 변경 시 재검증)
     signupAndLogin();
-    Long subscriptionId1 = createSubscription(100L);
-    Long subscriptionId2 = createSubscription(200L); // 청약수량 200
+    Long[] subs = createTwoSubscriptionsOfSameInvestor(100L, 200L); // 같은 투자자, 청약수량 200
+    Long subscriptionId1 = subs[0];
+    Long subscriptionId2 = subs[1];
     MvcResult created = registerAllocation(validRequest(subscriptionId1));
     Long allocationId = ((Number) readBody(created).get("id")).longValue();
 
@@ -732,6 +733,92 @@ class AllocationControllerTest {
             .build());
   }
 
+  // 배정 이동(다른 청약으로 subscriptionId 변경) 테스트
+
+  private Long registerAllocationId(Long subscriptionId) throws Exception {
+    return ((Number) readBody(registerAllocation(validRequest(subscriptionId))).get("id"))
+        .longValue();
+  }
+
+  private MvcResult patchAllocation(Long id, Map<String, Object> body) throws Exception {
+    return mockMvc
+        .perform(
+            patch("/allocations/{id}", id)
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+        .andReturn();
+  }
+
+  // 같은 투자자·계좌의 서로 다른 IPO 청약 두 건(각각 100주)을 만들어 id를 반환한다.
+  private Long[] createTwoSubscriptionsOfSameInvestor(long firstQuantity, long secondQuantity)
+      throws Exception {
+    Long investorId = registerInvestorAndGetId();
+    Long accountId = registerSecuritiesAccount(investorId, registerFirm());
+    return new Long[] {
+      createSubscriptionForInvestor(investorId, accountId, createIpo(), firstQuantity),
+      createSubscriptionForInvestor(investorId, accountId, createIpo(), secondQuantity)
+    };
+  }
+
+  @Test
+  void moveAllocationToOtherSubscriptionOfSameInvestorReturns200() throws Exception {
+    signupAndLogin();
+    Long[] subs = createTwoSubscriptionsOfSameInvestor(100L, 100L);
+    Long allocationId = registerAllocationId(subs[0]);
+
+    MvcResult result = patchAllocation(allocationId, Map.of("subscriptionId", subs[1]));
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    assertThat(allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId())
+        .isEqualTo(subs[1]);
+  }
+
+  @Test
+  void moveAllocationToSubscriptionWithActiveAllocationReturns409() throws Exception {
+    signupAndLogin();
+    Long[] subs = createTwoSubscriptionsOfSameInvestor(100L, 100L);
+    Long allocationId = registerAllocationId(subs[0]);
+    registerAllocation(validRequest(subs[1]));
+
+    MvcResult result = patchAllocation(allocationId, Map.of("subscriptionId", subs[1]));
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    assertError(result, "DUPLICATE_ALLOCATION");
+    assertThat(allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId())
+        .isEqualTo(subs[0]);
+  }
+
+  @Test
+  void moveAllocationExceedingNewSubscriptionQuantityReturns400() throws Exception {
+    signupAndLogin();
+    Long[] subs = createTwoSubscriptionsOfSameInvestor(100L, 30L);
+    Long allocationId = registerAllocationId(subs[0]);
+
+    // 배정수량 50 > 새 청약수량 30
+    assertValidationError(patchAllocation(allocationId, Map.of("subscriptionId", subs[1])));
+  }
+
+  @Test
+  void moveAllocationWithSalesReturns400() throws Exception {
+    signupAndLogin();
+    Long[] subs = createTwoSubscriptionsOfSameInvestor(100L, 100L);
+    Long allocationId = registerAllocationId(subs[0]);
+    saveSale(allocationId, 10L);
+
+    assertValidationError(patchAllocation(allocationId, Map.of("subscriptionId", subs[1])));
+  }
+
+  @Test
+  void moveAllocationToOtherInvestorsSubscriptionReturns400() throws Exception {
+    signupAndLogin();
+    Long first = createSubscription(100L);
+    Long second = createSubscription(100L);
+    Long allocationId = registerAllocationId(first);
+
+    assertValidationError(patchAllocation(allocationId, Map.of("subscriptionId", second)));
+  }
+
   @Test
   void updateAllocationBelowSoldQuantityReturns400() throws Exception {
     // Given: 배정 50주 중 30주를 이미 매도
@@ -781,8 +868,9 @@ class AllocationControllerTest {
     MvcResult result =
         mockMvc.perform(delete("/allocations/{id}", allocationId).session(session)).andReturn();
 
-    // Then: 409, 배정은 그대로 ACTIVE
+    // Then: 409 HAS_CHILD_RECORDS, 배정은 그대로 ACTIVE
     assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    assertError(result, "HAS_CHILD_RECORDS");
     assertThat(allocationRepository.findById(allocationId).orElseThrow().getStatus())
         .isEqualTo(RecordStatus.ACTIVE);
   }
@@ -800,8 +888,9 @@ class AllocationControllerTest {
             .perform(delete("/subscriptions/{id}", subscriptionId).session(session))
             .andReturn();
 
-    // Then: 409, 청약은 그대로 ACTIVE
+    // Then: 409 HAS_CHILD_RECORDS, 청약은 그대로 ACTIVE
     assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    assertError(result, "HAS_CHILD_RECORDS");
     assertThat(subscriptionRepository.findById(subscriptionId).orElseThrow().getStatus())
         .isEqualTo(RecordStatus.ACTIVE);
   }

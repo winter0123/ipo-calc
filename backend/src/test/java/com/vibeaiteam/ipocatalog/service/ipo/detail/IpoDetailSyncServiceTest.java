@@ -122,7 +122,7 @@ class IpoDetailSyncServiceTest {
   }
 
   @Test
-  void oneFailureDoesNotStopOthers() {
+  void oneFailureDoesNotStopOthers() throws IOException {
     when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
         .thenReturn(List.of(ipo(1L, "00000001", null), ipo(2L, "00000002", null)));
     when(filingClient.findLatestOfferingDocument("00000001", TODAY))
@@ -130,7 +130,7 @@ class IpoDetailSyncServiceTest {
     when(filingClient.findLatestOfferingDocument("00000002", TODAY))
         .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
     when(detailRepository.findById(2L)).thenReturn(Optional.empty());
-    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.empty());
+    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.of(fixture()));
     when(disclosureClient.getCompanyOverview("00000002")).thenReturn(Optional.empty());
     when(filingClient.fetchEquityOffering("00000002", TODAY)).thenReturn(Optional.empty());
 
@@ -156,7 +156,7 @@ class IpoDetailSyncServiceTest {
   }
 
   @Test
-  void savesWhenStoredDetailHasDifferentFiling() {
+  void savesWhenStoredDetailHasDifferentFiling() throws IOException {
     when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
         .thenReturn(List.of(ipo(1L, "00000001", null)));
     when(filingClient.findLatestOfferingDocument("00000001", TODAY))
@@ -164,13 +164,61 @@ class IpoDetailSyncServiceTest {
     when(detailRepository.findById(1L))
         .thenReturn(
             Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo("20260101000001").build()));
-    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.empty());
+    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.of(fixture()));
     when(disclosureClient.getCompanyOverview("00000001")).thenReturn(Optional.empty());
     when(filingClient.fetchEquityOffering("00000001", TODAY)).thenReturn(Optional.empty());
 
     assertThat(service.syncRecent()).isEqualTo(1);
 
     verify(filingClient).downloadDocument(RCEPT);
+  }
+
+  @Test
+  void doesNotSaveWhenDocumentDownloadFails() {
+    when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(ipo(1L, "00000001", null)));
+    when(filingClient.findLatestOfferingDocument("00000001", TODAY))
+        .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
+    when(detailRepository.findById(1L)).thenReturn(Optional.empty());
+    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.empty());
+
+    assertThat(service.syncRecent()).isZero();
+
+    verify(detailService, never()).save(any(), any());
+  }
+
+  @Test
+  void keepsStoredCompanyAndOfferingWhenLookupsFail() throws IOException {
+    when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(ipo(1L, "00000001", null)));
+    when(filingClient.findLatestOfferingDocument("00000001", TODAY))
+        .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
+    IpoDetail stored =
+        IpoDetail.builder()
+            .ipoId(1L)
+            .sourceRceptNo("20260101000001")
+            .ceoName("김대표")
+            .establishedOn(LocalDate.of(2015, 10, 27))
+            .address("서울")
+            .parValue(500L)
+            .underwriters(List.of(new IpoDetailSnapshot.Underwriter("케이비증권", "대표", 1L)))
+            .build();
+    when(detailRepository.findById(1L)).thenReturn(Optional.of(stored));
+    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.of(fixture()));
+    when(disclosureClient.getCompanyOverview("00000001")).thenReturn(Optional.empty());
+    when(filingClient.fetchEquityOffering("00000001", TODAY)).thenReturn(Optional.empty());
+
+    assertThat(service.syncRecent()).isEqualTo(1);
+
+    ArgumentCaptor<IpoDetailSnapshot> captor = ArgumentCaptor.forClass(IpoDetailSnapshot.class);
+    verify(detailService).save(eq(1L), captor.capture());
+    IpoDetailSnapshot s = captor.getValue();
+    assertThat(s.sourceRceptNo()).isEqualTo(RCEPT);
+    assertThat(s.ceoName()).isEqualTo("김대표");
+    assertThat(s.establishedOn()).isEqualTo(LocalDate.of(2015, 10, 27));
+    assertThat(s.address()).isEqualTo("서울");
+    assertThat(s.parValue()).isEqualTo(500L);
+    assertThat(s.underwriters()).hasSize(1);
   }
 
   @Test

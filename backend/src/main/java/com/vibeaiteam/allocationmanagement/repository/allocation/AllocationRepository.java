@@ -2,9 +2,11 @@ package com.vibeaiteam.allocationmanagement.repository.allocation;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -22,6 +24,11 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
           + "AND s.deletedAt IS NULL AND s.status = "
           + RecordStatus.ACTIVE_HQL)
   long sumActiveSaleQuantity(@Param("allocationId") Long allocationId);
+
+  /** 수량 한도 검증을 직렬화하려고 배정 행을 비관적 쓰기 잠금(SELECT ... FOR UPDATE)으로 읽는다. 호출 트랜잭션이 끝날 때까지 유지된다. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT a FROM Allocation a WHERE a.id = :id")
+  Optional<Allocation> findByIdForUpdate(@Param("id") Long id);
 
   /** ID 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다. */
   Optional<Allocation> findByIdAndDeletedAtIsNull(Long id);

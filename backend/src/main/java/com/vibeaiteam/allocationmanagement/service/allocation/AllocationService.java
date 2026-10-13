@@ -1,6 +1,7 @@
 package com.vibeaiteam.allocationmanagement.service.allocation;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.exception.HasChildRecordsException;
 import com.vibeaiteam.accountauthentication.util.security.SecurityUtils;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.vibeaiteam.allocationmanagement.controller.allocation.dto.AllocationResponse;
@@ -43,6 +44,9 @@ public class AllocationService {
   @Transactional
   public AllocationResponse register(AllocationRegisterRequest request) {
     validateRequest(request);
+
+    // 청약수량 대비 검증을 직렬화하려고 청약 행을 먼저 잠근다
+    subscriptionRepository.findByIdForUpdate(request.getSubscriptionId());
 
     // Subscription 존재(404) + 소유권(403) 검증
     Subscription subscription = findOwnedSubscription(request.getSubscriptionId());
@@ -132,6 +136,8 @@ public class AllocationService {
    */
   @Transactional
   public AllocationResponse update(Long id, AllocationUpdateRequest request) {
+    // 매도 등록과 같은 배정 행 잠금으로 직렬화한다
+    allocationRepository.findByIdForUpdate(id);
     Allocation allocation = findOwnedAllocation(id);
 
     Long updatedSubscriptionId = request.getSubscriptionId();
@@ -145,18 +151,35 @@ public class AllocationService {
       throw new AllocationValidationException("allocatedQuantity는 0 이상이어야 합니다.");
     }
 
-    Long finalSubscriptionId =
-        updatedSubscriptionId != null ? updatedSubscriptionId : allocation.getSubscriptionId();
+    // 같은 청약을 다시 지정하면 이동이 아니다
+    boolean moving =
+        updatedSubscriptionId != null
+            && !updatedSubscriptionId.equals(allocation.getSubscriptionId());
+    long soldQuantity = allocationRepository.sumActiveSaleQuantity(allocation.getId());
 
-    // subscriptionId가 새로 제공된 경우에만 존재 여부 재검증 (미제공 시 기존값 유지, 재검증하지 않음)
-    if (updatedSubscriptionId != null) {
-      Subscription subscription = findOwnedSubscription(updatedSubscriptionId);
-      if (updatedAllocatedQuantity != null
-          && updatedAllocatedQuantity > subscription.getQuantity()) {
+    if (moving) {
+      subscriptionRepository.findByIdForUpdate(updatedSubscriptionId);
+      Subscription targetSubscription = findOwnedSubscription(updatedSubscriptionId);
+      Subscription current =
+          subscriptionOwnership.requireOwnedIncludingDeleted(
+              allocation.getSubscriptionId(), OWNERSHIP_ERRORS);
+      if (!current.getInvestorId().equals(targetSubscription.getInvestorId())) {
+        throw new AllocationValidationException("다른 투자자의 청약으로는 배정을 옮길 수 없습니다.");
+      }
+      if (soldQuantity > 0) {
+        throw new AllocationValidationException("매도 기록이 있는 배정은 다른 청약으로 옮길 수 없습니다.");
+      }
+      checkDuplicate(updatedSubscriptionId);
+      long finalQuantity =
+          updatedAllocatedQuantity != null
+              ? updatedAllocatedQuantity
+              : allocation.getAllocatedQuantity();
+      if (finalQuantity > targetSubscription.getQuantity()) {
         throw new AllocationValidationException("allocatedQuantity는 청약수량을 초과할 수 없습니다.");
       }
     } else if (updatedAllocatedQuantity != null) {
-      // subscriptionId 변경 없으나 allocatedQuantity만 변경된 경우 기존 subscription 기준으로 검증
+      // 청약 변경 없이 allocatedQuantity만 변경된 경우 기존 subscription 기준으로 검증
+      subscriptionRepository.findByIdForUpdate(allocation.getSubscriptionId());
       Subscription subscription =
           subscriptionRepository
               .findByIdAndDeletedAtIsNull(allocation.getSubscriptionId())
@@ -166,15 +189,12 @@ public class AllocationService {
       }
     }
 
-    if (updatedAllocatedQuantity != null) {
-      long soldQuantity = allocationRepository.sumActiveSaleQuantity(allocation.getId());
-      if (updatedAllocatedQuantity < soldQuantity) {
-        throw new AllocationValidationException(
-            "배정수량은 이미 매도한 수량(" + soldQuantity + "주)보다 작을 수 없습니다.");
-      }
+    if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < soldQuantity) {
+      throw new AllocationValidationException(
+          "배정수량은 이미 매도한 수량(" + soldQuantity + "주)보다 작을 수 없습니다.");
     }
 
-    if (updatedSubscriptionId != null) {
+    if (moving) {
       allocation.setSubscriptionId(updatedSubscriptionId);
     }
     if (updatedAllocatedQuantity != null) {
@@ -195,7 +215,7 @@ public class AllocationService {
 
     allocation.setUpdatedAt(LocalDateTime.now(clock));
     try {
-      Allocation saved = allocationRepository.save(allocation);
+      Allocation saved = allocationRepository.saveAndFlush(allocation);
       return AllocationResponse.from(saved);
     } catch (DataIntegrityViolationException ex) {
       throw new AllocationConflictException("이미 등록된 배정 기록입니다.");
@@ -211,7 +231,7 @@ public class AllocationService {
   public void cancel(Long id) {
     Allocation allocation = findOwnedAllocation(id);
     if (allocationRepository.sumActiveSaleQuantity(id) > 0) {
-      throw new AllocationConflictException("매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.");
+      throw new HasChildRecordsException("매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.");
     }
     LocalDateTime now = LocalDateTime.now(clock);
     allocation.setStatus(RecordStatus.CANCELLED);
