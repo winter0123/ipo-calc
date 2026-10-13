@@ -19,6 +19,7 @@ const item = (over: Record<string, unknown>) => ({
   tax: 230,
   allocationId: 30,
   reason: null,
+  allocationHasActiveSale: false,
   ...over,
 })
 
@@ -189,6 +190,17 @@ describe('BrokerSyncPanel', () => {
     expect(screen.getByLabelText('2026-09-30 0123A4 공모주수수료')).toHaveValue('0')
     // 다른 배정의 첫 매도는 다시 2000원
     expect(screen.getByLabelText('2026-09-30 ZZZ999 공모주수수료')).toHaveValue('2000')
+  })
+
+  it('배정에 활성 매도가 이미 있으면 첫 행도 공모주수수료 0원으로 시작한다', async () => {
+    setup({
+      matched: [item({ allocationHasActiveSale: true })],
+      unmatched: [],
+      allocationsWithoutStockCode: [],
+    })
+    await clickQuery()
+
+    expect(await screen.findByLabelText('2026-09-30 0123A4 공모주수수료')).toHaveValue('0')
   })
 
   it('선택을 모두 해제하거나 숫자가 아니면 확정할 수 없다', async () => {

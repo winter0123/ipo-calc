@@ -424,4 +424,33 @@ class BrokerTransactionMatcherTest {
       assertThat(result.allocationId()).isEqualTo(1L);
     }
   }
+
+  @Test
+  @DisplayName("S1: 종목코드는 정규화해 비교한다(A 접두사·공백·소문자·0 채움)")
+  void matchesAfterStockCodeNormalization() {
+    BrokerSaleSummary summary =
+        new BrokerSaleSummary(TRADE_DATE_2026_09_30, "A005930", 10, 1000, 0, 0);
+    MatchCandidate candidate = new MatchCandidate(1L, " 5930 ", 10, List.of());
+
+    MatchReport report = BrokerTransactionMatcher.match(List.of(summary), List.of(candidate));
+
+    assertThat(report.results().get(0).isMatched()).isTrue();
+  }
+
+  @Test
+  @DisplayName("S2: 같은 배정의 여러 날 매도는 날짜순으로 남은 수량을 차감한다")
+  void laterSalesSeeEarlierSalesOfTheSameAllocation() {
+    BrokerSaleSummary later = new BrokerSaleSummary(TRADE_DATE_2026_09_30, "005930", 6, 600, 0, 0);
+    BrokerSaleSummary earlier =
+        new BrokerSaleSummary(TRADE_DATE_2026_09_29, "005930", 6, 600, 0, 0);
+    MatchCandidate candidate = new MatchCandidate(1L, "005930", 10, List.of());
+
+    MatchReport report =
+        BrokerTransactionMatcher.match(List.of(later, earlier), List.of(candidate));
+
+    // 결과는 입력 순서: 뒤 날짜는 초과, 앞 날짜는 성공
+    assertThat(report.results().get(0).reason())
+        .isEqualTo(UnmatchedReason.QUANTITY_EXCEEDS_ALLOCATION);
+    assertThat(report.results().get(1).isMatched()).isTrue();
+  }
 }

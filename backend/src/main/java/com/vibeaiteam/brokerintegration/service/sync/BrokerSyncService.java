@@ -6,6 +6,7 @@ import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncConfirmRequest;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewItem;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
+import com.vibeaiteam.brokerintegration.exception.ApiCredentialConflictException;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialNotFoundException;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationException;
 import com.vibeaiteam.brokerintegration.exception.BrokerConnectionUnavailableException;
@@ -15,6 +16,7 @@ import com.vibeaiteam.brokerintegration.service.credential.ApiCredentialService;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerSaleSummary;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerTransactionMatcher;
 import com.vibeaiteam.brokerintegration.service.matching.BrokerTransactionMatcher.MatchReport;
+import com.vibeaiteam.brokerintegration.service.matching.ExistingSale;
 import com.vibeaiteam.brokerintegration.service.matching.MatchCandidate;
 import com.vibeaiteam.brokerintegration.service.matching.MatchCandidateAssembler;
 import com.vibeaiteam.brokerintegration.service.matching.MatchResult;
@@ -30,8 +32,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -144,8 +148,13 @@ public class BrokerSyncService {
     MatchReport report = BrokerTransactionMatcher.match(summaries, candidates);
     List<SyncPreviewItem> matched = new ArrayList<>();
     List<SyncPreviewItem> unmatched = new ArrayList<>();
+    Set<Long> allocationsWithSale =
+        candidates.stream()
+            .filter(c -> !c.existingSales().isEmpty())
+            .map(MatchCandidate::allocationId)
+            .collect(Collectors.toSet());
     for (MatchResult result : report.results()) {
-      (result.isMatched() ? matched : unmatched).add(toItem(result));
+      (result.isMatched() ? matched : unmatched).add(toItem(result, allocationsWithSale));
     }
     return new SyncPreviewResponse(matched, unmatched, report.candidatesWithoutStockCode());
   }
@@ -164,9 +173,41 @@ public class BrokerSyncService {
       throw new ApiCredentialValidationException("확정할 매도 목록이 비어 있습니다.");
     }
     Set<Long> accountAllocationIds = candidateAssembler.allocationIds(securitiesAccountId);
+    LocalDate today = LocalDate.now(clock);
     for (SaleRegisterRequest sale : request.sales()) {
       if (sale == null || !accountAllocationIds.contains(sale.getAllocationId())) {
         throw new ApiCredentialValidationException("이 증권계좌의 배정이 아닌 매도는 확정할 수 없습니다.");
+      }
+      if (sale.getSaleDate() != null && sale.getSaleDate().toLocalDate().isAfter(today)) {
+        throw new ApiCredentialValidationException("매도일은 오늘 이후일 수 없습니다.");
+      }
+      if (sale.getAmount() == null && sale.getPrice() != null && sale.getQuantity() != null) {
+        try {
+          sale.setAmount(Math.multiplyExact(sale.getPrice(), sale.getQuantity()));
+        } catch (ArithmeticException e) {
+          throw new ApiCredentialValidationException("단가×수량이 너무 큽니다.");
+        }
+      }
+    }
+    // 같은 미리보기를 두 번(또는 동시에) 확정해도 매도가 중복 저장되지 않도록, 배정 행을 잠근 뒤 같은 날 활성 매도를 확인한다.
+    Set<Long> ids =
+        request.sales().stream()
+            .map(SaleRegisterRequest::getAllocationId)
+            .collect(Collectors.toSet());
+    candidateAssembler.lockAllocations(ids);
+    Map<Long, List<ExistingSale>> existing = candidateAssembler.existingSales(ids);
+    Set<String> seen = new HashSet<>();
+    for (SaleRegisterRequest sale : request.sales()) {
+      if (sale.getSaleDate() == null) {
+        continue; // 필수값 검증은 SaleService가 400으로 처리한다
+      }
+      LocalDate date = sale.getSaleDate().toLocalDate();
+      boolean duplicate =
+          !BrokerTransactionMatcher.existingSalesOn(
+                  existing.getOrDefault(sale.getAllocationId(), List.of()), date)
+              .isEmpty();
+      if (duplicate || !seen.add(sale.getAllocationId() + ":" + date)) {
+        throw new ApiCredentialConflictException("이미 같은 날 매도가 등록돼 있습니다. 미리보기를 다시 불러와 확인해 주세요.");
       }
     }
     return request.sales().stream().map(saleService::register).toList();
@@ -184,7 +225,7 @@ public class BrokerSyncService {
     }
   }
 
-  private SyncPreviewItem toItem(MatchResult result) {
+  private SyncPreviewItem toItem(MatchResult result, Set<Long> allocationsWithSale) {
     BrokerSaleSummary s = result.summary();
     // ponytail: 단가는 금액÷수량 반올림 근사값이다. 증권사 평균단가(sll_pric)를 쓰려면 매퍼가 가중평균을 합산해야 한다.
     long price = Math.round((double) s.amount() / s.quantity());
@@ -197,7 +238,8 @@ public class BrokerSyncService {
         s.fee(),
         s.tax(),
         result.allocationId(),
-        result.reason());
+        result.reason(),
+        allocationsWithSale.contains(result.allocationId()));
   }
 
   private BrokerSaleSource findSource(String provider) {

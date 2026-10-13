@@ -38,7 +38,8 @@ export default function MatchedTable({ items, pending, onConfirm }: Props) {
     const seenAllocations = new Set<number | null>()
     return Object.fromEntries(
       items.map((item) => {
-        const first = !seenAllocations.has(item.allocationId)
+        // 이미 활성 매도가 있는 배정은 공모주수수료가 이미 계상됐으므로 첫 행도 0원으로 시작한다.
+        const first = !item.allocationHasActiveSale && !seenAllocations.has(item.allocationId)
         seenAllocations.add(item.allocationId)
         return [
           rowKey(item),

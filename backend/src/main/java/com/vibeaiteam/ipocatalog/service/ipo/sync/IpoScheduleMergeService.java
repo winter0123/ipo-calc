@@ -1,6 +1,7 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.validation.StockCodes;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
@@ -130,7 +131,8 @@ public class IpoScheduleMergeService {
   }
 
   /** 단일 종목 일정 병합. 병합 여부(true/false)를 반환. */
-  private boolean mergeSingle(UstockPlusScheduleDates s, List<Ipo> nullStockCodeCandidates) {
+  private boolean mergeSingle(UstockPlusScheduleDates raw, List<Ipo> nullStockCodeCandidates) {
+    UstockPlusScheduleDates s = raw.withStockCode(StockCodes.normalize(raw.stockCode()));
     // (a) 종목코드로 직접 매칭
     Optional<Ipo> byStockCode =
         ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(

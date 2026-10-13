@@ -16,4 +16,10 @@ public record UstockPlusScheduleDates(
     String stockName,
     LocalDate listingDate,
     LocalDate allotmentDate,
-    LocalDate refundDate) {}
+    LocalDate refundDate) {
+
+  /** 종목코드만 바꾼 사본을 돌려준다. */
+  public UstockPlusScheduleDates withStockCode(String code) {
+    return new UstockPlusScheduleDates(code, stockName, listingDate, allotmentDate, refundDate);
+  }
+}

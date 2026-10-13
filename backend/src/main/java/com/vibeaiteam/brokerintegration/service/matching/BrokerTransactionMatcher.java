@@ -1,8 +1,10 @@
 package com.vibeaiteam.brokerintegration.service.matching;
 
+import com.vibeaiteam.accountauthentication.util.validation.StockCodes;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,27 +40,33 @@ public final class BrokerTransactionMatcher {
     Map<String, List<MatchCandidate>> candidatesByStockCode = new HashMap<>();
 
     for (MatchCandidate candidate : candidates) {
-      if (candidate.stockCode() == null) {
+      String code = StockCodes.normalize(candidate.stockCode());
+      if (code == null) {
         candidatesWithoutStockCode.add(candidate.allocationId());
       } else {
-        candidatesByStockCode
-            .computeIfAbsent(candidate.stockCode(), k -> new ArrayList<>())
-            .add(candidate);
+        candidatesByStockCode.computeIfAbsent(code, k -> new ArrayList<>()).add(candidate);
       }
     }
 
-    List<MatchResult> results = new ArrayList<>(summaries.size());
-
-    // 각 브로커 요약에 대해 순차적으로 처리 (입력 순서 유지)
-    for (BrokerSaleSummary summary : summaries) {
-      MatchResult result =
+    // 같은 배정의 남은 수량은 날짜순으로 차감한다(뒤쪽 매도가 앞쪽 매도를 고려하도록). 결과는 입력 순서를 유지한다.
+    MatchResult[] results = new MatchResult[summaries.size()];
+    Map<Long, Long> consumed = new HashMap<>();
+    List<Integer> order = new ArrayList<>();
+    for (int i = 0; i < results.length; i++) {
+      order.add(i);
+    }
+    order.sort(Comparator.comparing(i -> summaries.get(i).tradeDate()));
+    for (int i : order) {
+      BrokerSaleSummary summary = summaries.get(i);
+      results[i] =
           matchSummaryToCandidates(
               summary,
-              candidatesByStockCode.getOrDefault(summary.stockCode(), Collections.emptyList()));
-      results.add(result);
+              candidatesByStockCode.getOrDefault(
+                  StockCodes.normalize(summary.stockCode()), Collections.emptyList()),
+              consumed);
     }
 
-    return new MatchReport(results, candidatesWithoutStockCode);
+    return new MatchReport(List.of(results), candidatesWithoutStockCode);
   }
 
   /**
@@ -66,10 +74,13 @@ public final class BrokerTransactionMatcher {
    *
    * @param summary 브로커 매도 집계
    * @param stockCodeCandidates 해당 종목코드에 대한 배정 후보 목록
+   * @param consumed 이번 조회에서 앞선 날짜 매도가 이미 차지한 배정별 수량(성공 시 누적한다)
    * @return 매칭 결과
    */
   private static MatchResult matchSummaryToCandidates(
-      BrokerSaleSummary summary, List<MatchCandidate> stockCodeCandidates) {
+      BrokerSaleSummary summary,
+      List<MatchCandidate> stockCodeCandidates,
+      Map<Long, Long> consumed) {
     // 1. stockCode가 같은 후보를 찾는다
     if (stockCodeCandidates.isEmpty()) {
       // 0건 → NO_ALLOCATION_FOR_STOCK
@@ -88,14 +99,11 @@ public final class BrokerTransactionMatcher {
     // 그 후보의 existingSales 중 saleDate == summary.tradeDate 인 것들의 합계를 구한다
     long totalQuantity = 0;
     long totalAmount = 0;
-    boolean hasExistingSaleForDate = false;
-
-    for (ExistingSale existingSale : candidate.existingSales()) {
-      if (existingSale.saleDate().equals(tradeDate)) {
-        hasExistingSaleForDate = true;
-        totalQuantity += existingSale.quantity();
-        totalAmount += existingSale.amount();
-      }
+    List<ExistingSale> onDate = existingSalesOn(candidate.existingSales(), tradeDate);
+    boolean hasExistingSaleForDate = !onDate.isEmpty();
+    for (ExistingSale existingSale : onDate) {
+      totalQuantity += existingSale.quantity();
+      totalAmount += existingSale.amount();
     }
 
     if (!hasExistingSaleForDate) {
@@ -103,10 +111,14 @@ public final class BrokerTransactionMatcher {
       // 매칭 성공
       long totalExistingQuantity =
           candidate.existingSales().stream().mapToLong(ExistingSale::quantity).sum();
-      long remainingQuantity = candidate.allocatedQuantity() - totalExistingQuantity;
+      long remainingQuantity =
+          candidate.allocatedQuantity()
+              - totalExistingQuantity
+              - consumed.getOrDefault(candidate.allocationId(), 0L);
 
       if (remainingQuantity >= summary.quantity()) {
         // 매칭 성공
+        consumed.merge(candidate.allocationId(), summary.quantity(), Long::sum);
         return new MatchResult(summary, candidate.allocationId(), null);
       } else {
         // 수량 초과
@@ -127,6 +139,18 @@ public final class BrokerTransactionMatcher {
             summary, candidate.allocationId(), UnmatchedReason.SPLIT_SALE_MISMATCH);
       }
     }
+  }
+
+  /**
+   * 해당 일자의 활성 매도만 골라낸다. 미리보기(ALREADY_REGISTERED·SPLIT_SALE_MISMATCH 판정)와 확정(중복 거부)이 같은 규칙을 쓰도록
+   * 공유한다.
+   *
+   * @param sales 배정의 활성 매도
+   * @param date 매도일
+   * @return 그 날짜의 매도 목록
+   */
+  public static List<ExistingSale> existingSalesOn(List<ExistingSale> sales, LocalDate date) {
+    return sales.stream().filter(s -> s.saleDate().equals(date)).toList();
   }
 
   /** 매칭 결과를 담는 레포트. */

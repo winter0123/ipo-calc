@@ -1,6 +1,7 @@
 package com.vibeaiteam.ipocatalog.service.ipo;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.validation.StockCodes;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
@@ -76,7 +77,9 @@ public class IpoService {
     final String computedIpoName =
         updatedIpoName != null ? updatedIpoName.trim() : ipo.getIpoName();
     final String computedStockCode =
-        updatedStockCodeRaw != null ? normalizeOptional(updatedStockCodeRaw) : ipo.getStockCode();
+        updatedStockCodeRaw != null
+            ? StockCodes.normalize(updatedStockCodeRaw)
+            : ipo.getStockCode();
     final String computedRoundLabel =
         updatedRoundLabel != null ? normalizeOptional(updatedRoundLabel) : ipo.getRoundLabel();
     final LocalDate computedSubscriptionStartDate =
@@ -177,7 +180,7 @@ public class IpoService {
 
     String companyName = request.getCompanyName().trim();
     String ipoName = request.getIpoName().trim();
-    String stockCode = normalizeOptional(request.getStockCode());
+    String stockCode = StockCodes.normalize(request.getStockCode());
     String roundLabel = normalizeOptional(request.getRoundLabel());
     LocalDate subscriptionStartDate = request.getSubscriptionStartDate();
     LocalDate subscriptionEndDate = request.getSubscriptionEndDate();
