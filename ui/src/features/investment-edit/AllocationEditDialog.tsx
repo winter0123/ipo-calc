@@ -30,6 +30,7 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<AllocationValues>({
     defaultValues: {
@@ -43,7 +44,22 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
 
   return (
     <EditForm
-      onSubmit={handleSubmit((data) => save.mutate(data, { onSuccess: onClose }))}
+      onSubmit={handleSubmit((data) => {
+        // 서버의 부분 수정은 빈 값을 '안 바꿈'으로 받는다. 있던 값을 비우면 저장돼도 그대로 남으므로 막는다.
+        if (record.allocationPrice != null && !isNum(data.allocationPrice)) {
+          setError('allocationPrice', {
+            message: '배정단가는 비울 수 없습니다. 값을 입력해 주세요.',
+          })
+          return
+        }
+        if (record.allocationMethod && !data.allocationMethod) {
+          setError('allocationMethod', {
+            message: '배정방식은 비울 수 없습니다. 하나를 골라 주세요.',
+          })
+          return
+        }
+        save.mutate(data, { onSuccess: onClose })
+      })}
       pending={save.isPending}
       error={save.error}
       onClose={onClose}
@@ -63,10 +79,18 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
           {...register('allocatedAt', { required: '배정일을 입력해 주세요.' })}
         />
       </Field>
-      <Field id="edit-allocationPrice" label="배정단가 (선택)">
+      <Field
+        id="edit-allocationPrice"
+        label="배정단가 (선택)"
+        error={errors.allocationPrice?.message}
+      >
         <MoneyInput id="edit-allocationPrice" control={control} name="allocationPrice" />
       </Field>
-      <Field id="edit-allocationMethod" label="배정방식 (선택)">
+      <Field
+        id="edit-allocationMethod"
+        label="배정방식 (선택)"
+        error={errors.allocationMethod?.message}
+      >
         <select id="edit-allocationMethod" {...register('allocationMethod')}>
           <option value="">배정방식 선택</option>
           <option value="PROPORTIONAL">비례배정</option>

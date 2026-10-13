@@ -45,5 +45,7 @@ export function useRevealAccountNumber() {
   return useMutation({
     mutationFn: async (id: number) =>
       (await apiFetch<{ accountNumber: string }>(`${BASE}/${id}/account-number`)).accountNumber,
+    // 평문 계좌번호가 화면을 떠난 뒤 mutation 캐시에 남지 않게 바로 버린다.
+    gcTime: 0,
   })
 }
