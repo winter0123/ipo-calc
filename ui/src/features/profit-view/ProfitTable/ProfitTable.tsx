@@ -3,12 +3,11 @@ import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import ProfitRow from './ProfitRow.tsx'
 import ProfitSummaryRow from './ProfitSummaryRow.tsx'
 import styles from './ProfitTable.module.css'
+import { formatWon } from '@/shared/lib/format.ts'
 
 interface ProfitTableProps {
   sales: SaleProfitRow[]
 }
-
-const won = (value: number) => `${value.toLocaleString()}원`
 
 export default function ProfitTable({ sales }: ProfitTableProps) {
   if (sales.length === 0) {
@@ -42,12 +41,12 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
       <div className={styles.cards}>
         <div className={styles.card}>
           <div className={styles.cardLabel}>합계 매도금액</div>
-          <div className={styles.cardValue}>{won(totals.saleAmount)}</div>
+          <div className={styles.cardValue}>{formatWon(totals.saleAmount)}</div>
         </div>
         <div className={styles.card}>
           <div className={styles.cardLabel}>최종수익금</div>
           <div className={`${styles.cardValue} ${negative(totals.finalProfit)}`}>
-            {won(totals.finalProfit)}
+            {formatWon(totals.finalProfit)}
           </div>
         </div>
         <div className={styles.card}>

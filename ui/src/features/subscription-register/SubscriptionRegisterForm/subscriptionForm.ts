@@ -1,4 +1,6 @@
 import type { Ipo } from '@/entities/ipo/index.ts'
+import { formatWon } from '@/shared/lib/format.ts'
+import { dateOnly } from '@/shared/lib/date.ts'
 
 const DEPOSIT_RATE = 0.5
 
@@ -8,15 +10,13 @@ export function formatDate(value: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('ko-KR')
 }
 
-const won = (value: number) => `${value.toLocaleString('ko-KR')}원`
-
 /** 증거금 계산에 쓰는 공모가: 확정가가 없으면 밴드 상단. 모르면 undefined. */
 const basePrice = (ipo: Ipo) => ipo.fixedPrice ?? ipo.upperBandPrice ?? undefined
 
 export function ipoPriceInfo(ipo: Ipo): string {
-  if (ipo.fixedPrice != null) return `공모가 ${won(ipo.fixedPrice)}`
+  if (ipo.fixedPrice != null) return `공모가 ${formatWon(ipo.fixedPrice)}`
   if (ipo.lowerBandPrice != null && ipo.upperBandPrice != null) {
-    return `희망 공모가 ${won(ipo.lowerBandPrice)} ~ ${won(ipo.upperBandPrice)}`
+    return `희망 공모가 ${formatWon(ipo.lowerBandPrice)} ~ ${formatWon(ipo.upperBandPrice)}`
   }
   return '공모가 미정'
 }
@@ -31,9 +31,9 @@ export function depositFor(ipo: Ipo | undefined, quantity: number): number | und
 /** 청약 진행 중 → 예정(빠른 순) → 마감(최근 순) 순서. today는 'YYYY-MM-DD'. */
 export function sortIposForSubscription(ipos: Ipo[], today: string): Ipo[] {
   const rank = (ipo: Ipo) =>
-    ipo.subscriptionEndDate.slice(0, 10) < today
+    dateOnly(ipo.subscriptionEndDate) < today
       ? 2
-      : ipo.subscriptionStartDate.slice(0, 10) > today
+      : dateOnly(ipo.subscriptionStartDate) > today
         ? 1
         : 0
   return [...ipos].sort((a, b) => {

@@ -3,10 +3,9 @@ import { RecordActions } from '@/features/investment-edit/index.ts'
 import { Link } from 'react-router-dom'
 import { statusLabel } from './statusLabel.ts'
 import styles from './InvestmentHistoryDetail.module.css'
+import { formatWon } from '@/shared/lib/format.ts'
 
-function formatWon(value: number | null): string {
-  return value === null ? '-' : `${value.toLocaleString()}원`
-}
+const won = (value: number | null): string => (value === null ? '-' : formatWon(value))
 
 interface InvestmentHistoryDetailProps {
   detail: InvestmentHistoryItem
@@ -56,7 +55,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
         <div className={styles.dlRow}>
           <dt>공모가</dt>
-          <dd>{formatWon(detail.ipoFixedPrice)}</dd>
+          <dd>{won(detail.ipoFixedPrice)}</dd>
         </div>
         <div className={styles.dlRow}>
           <dt>청약수량</dt>
@@ -98,7 +97,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
               <dt>배정 가격</dt>
               <dd>
                 {detail.allocation.allocationPrice !== null
-                  ? detail.allocation.allocationPrice.toLocaleString() + '원'
+                  ? formatWon(detail.allocation.allocationPrice)
                   : '-'}
               </dd>
             </div>
@@ -134,9 +133,9 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
               {detail.sales.map((sale) => (
                 <tr key={sale.id}>
                   <td data-label="수량">{sale.quantity}</td>
-                  <td data-label="금액">{formatWon(sale.amount)}</td>
-                  <td data-label="공모주수수료">{formatWon(sale.fee)}</td>
-                  <td data-label="세금 및 기타">{formatWon(sale.tax)}</td>
+                  <td data-label="금액">{won(sale.amount)}</td>
+                  <td data-label="공모주수수료">{won(sale.fee)}</td>
+                  <td data-label="세금 및 기타">{won(sale.tax)}</td>
                   <td data-label="상태">{statusLabel(sale.status)}</td>
                   <td data-label="매도일">{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
                   <td data-label="관리">

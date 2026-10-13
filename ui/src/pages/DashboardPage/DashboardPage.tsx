@@ -17,6 +17,7 @@ import { EmptyState } from '@/widgets/EmptyState/index.ts'
 import { DashboardCardGroup } from '@/widgets/DashboardCardGroup/index.ts'
 import styles from './DashboardPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+import { formatWon } from '@/shared/lib/format.ts'
 
 const EMPTY_SUMMARY = {
   totalInvestmentAmount: 0,
@@ -37,7 +38,7 @@ function AmountList({ items }: { items: AmountListItem[] }) {
     <ul className={styles.list}>
       {items.map((item) => (
         <li key={item.key}>
-          {item.label}: {item.amount.toLocaleString()}원
+          {item.label}: {formatWon(item.amount)}
         </li>
       ))}
     </ul>

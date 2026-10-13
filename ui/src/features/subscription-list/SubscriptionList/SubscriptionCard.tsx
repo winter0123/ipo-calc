@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import styles from './SubscriptionList.module.css'
+import { formatShares } from '@/shared/lib/format.ts'
 
 interface SubscriptionCardProps {
   item: InvestmentHistoryItem
@@ -25,7 +26,7 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
       <dl className={styles.cardBody}>
         <div className={styles.cardRow}>
           <dt>청약수량</dt>
-          <dd>{item.subscriptionQuantity.toLocaleString()}주</dd>
+          <dd>{formatShares(item.subscriptionQuantity)}</dd>
         </div>
         <div className={styles.cardRow}>
           <dt>청약일</dt>
@@ -35,11 +36,11 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
           <>
             <div className={styles.cardRow}>
               <dt>배정 수량</dt>
-              <dd>{allocation.allocatedQuantity.toLocaleString()}주</dd>
+              <dd>{formatShares(allocation.allocatedQuantity)}</dd>
             </div>
             <div className={styles.cardRow}>
               <dt>남은 수량</dt>
-              <dd>{remaining.toLocaleString()}주</dd>
+              <dd>{formatShares(remaining)}</dd>
             </div>
           </>
         )}

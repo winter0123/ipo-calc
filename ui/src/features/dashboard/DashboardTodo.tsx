@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useAllInvestmentHistory } from '@/entities/subscription/index.ts'
 import styles from './DashboardHome.module.css'
+import { formatShares } from '@/shared/lib/format.ts'
 
 export default function DashboardTodo() {
   const { current, isLoading: investorLoading } = useCurrentInvestor()
@@ -42,8 +43,7 @@ export default function DashboardTodo() {
         {needSale.map((i) => (
           <li key={`s-${i.id}`} className={styles.row}>
             <span>
-              {i.ipoName ?? '공모주'} · 아직 안 판 수량{' '}
-              {(i.remainingQuantity ?? 0).toLocaleString()}주
+              {i.ipoName ?? '공모주'} · 아직 안 판 수량 {formatShares(i.remainingQuantity ?? 0)}
             </span>
             <Link to={`/sales/register?subscriptionId=${i.id}`}>매도 등록</Link>
           </li>

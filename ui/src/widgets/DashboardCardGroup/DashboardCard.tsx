@@ -1,4 +1,5 @@
 import styles from './DashboardCard.module.css'
+import { formatWon } from '@/shared/lib/format.ts'
 
 interface DashboardCardProps {
   label: string
@@ -9,7 +10,7 @@ interface DashboardCardProps {
 function formatValue(value: number, format: string): string {
   switch (format) {
     case 'currency':
-      return `${value.toLocaleString()}원`
+      return formatWon(value)
     case 'percent':
       return `${value.toFixed(1)}%`
     case 'count':

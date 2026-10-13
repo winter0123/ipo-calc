@@ -1,4 +1,6 @@
 import { type Ipo } from '@/entities/ipo/index.ts'
+import { formatWon } from '@/shared/lib/format.ts'
+import { dateOnly } from '@/shared/lib/date.ts'
 
 export type CalendarEventType = 'SUBSCRIPTION' | 'REFUND' | 'LISTING'
 
@@ -22,14 +24,10 @@ export interface BarSegment {
   continuesAfter: boolean
 }
 
-function parseDateOnly(dateStr: string): string {
-  return dateStr.split('T')[0]
-}
-
 function getPriceDisplay(ipo: Ipo): string | undefined {
   const { fixedPrice, lowerBandPrice, upperBandPrice } = ipo
   if (fixedPrice !== null && fixedPrice > 0) {
-    return `${fixedPrice.toLocaleString()}원`
+    return formatWon(fixedPrice)
   }
   if (
     lowerBandPrice !== null &&
@@ -53,10 +51,10 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
   const targetEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
   for (const ipo of ipos) {
-    const subStartDate = parseDateOnly(ipo.subscriptionStartDate)
-    const subEndDate = parseDateOnly(ipo.subscriptionEndDate)
-    const listingDate = ipo.listingDate ? parseDateOnly(ipo.listingDate) : null
-    const refundDate = ipo.refundDate ? parseDateOnly(ipo.refundDate) : null
+    const subStartDate = dateOnly(ipo.subscriptionStartDate)
+    const subEndDate = dateOnly(ipo.subscriptionEndDate)
+    const listingDate = ipo.listingDate ? dateOnly(ipo.listingDate) : null
+    const refundDate = ipo.refundDate ? dateOnly(ipo.refundDate) : null
 
     const actualSubEndDate = subEndDate < subStartDate ? subStartDate : subEndDate
 
