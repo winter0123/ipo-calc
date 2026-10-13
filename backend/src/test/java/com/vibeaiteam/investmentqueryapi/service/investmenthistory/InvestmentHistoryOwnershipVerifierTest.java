@@ -19,9 +19,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * InvestmentHistoryOwnershipVerifier 단위 테스트
@@ -40,13 +40,13 @@ class InvestmentHistoryOwnershipVerifierTest {
 
   @Autowired private InvestmentHistoryOwnershipVerifier ownershipVerifier;
 
-  @MockBean private SecurityUtils securityUtils;
+  @MockitoBean private SecurityUtils securityUtils;
 
-  @MockBean private InvestorRepository investorRepository;
+  @MockitoBean private InvestorRepository investorRepository;
 
-  @MockBean private SecuritiesAccountRepository securitiesAccountRepository;
+  @MockitoBean private SecuritiesAccountRepository securitiesAccountRepository;
 
-  @MockBean private SubscriptionRepository subscriptionRepository;
+  @MockitoBean private SubscriptionRepository subscriptionRepository;
 
   private static final Long CURRENT_ACCOUNT_ID = 1L;
   private static final Long OTHER_ACCOUNT_ID = 2L;

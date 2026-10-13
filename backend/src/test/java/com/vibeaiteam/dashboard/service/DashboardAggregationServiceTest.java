@@ -35,8 +35,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * DashboardAggregationService 단위 테스트
@@ -52,21 +52,21 @@ class DashboardAggregationServiceTest {
 
   @Autowired private DashboardAggregationService dashboardAggregationService;
 
-  @MockBean private DashboardOwnershipVerifier ownershipVerifier;
+  @MockitoBean private DashboardOwnershipVerifier ownershipVerifier;
 
-  @MockBean private SaleRepository saleRepository;
+  @MockitoBean private SaleRepository saleRepository;
 
-  @MockBean private AllocationRepository allocationRepository;
+  @MockitoBean private AllocationRepository allocationRepository;
 
-  @MockBean private SubscriptionRepository subscriptionRepository;
+  @MockitoBean private SubscriptionRepository subscriptionRepository;
 
-  @MockBean private InvestorRepository investorRepository;
+  @MockitoBean private InvestorRepository investorRepository;
 
-  @MockBean private SecuritiesAccountRepository securitiesAccountRepository;
+  @MockitoBean private SecuritiesAccountRepository securitiesAccountRepository;
 
-  @MockBean private SecuritiesFirmRepository securitiesFirmRepository;
+  @MockitoBean private SecuritiesFirmRepository securitiesFirmRepository;
 
-  @MockBean private IpoRepository ipoRepository;
+  @MockitoBean private IpoRepository ipoRepository;
 
   private void setupEmptyMocks() {
     when(ownershipVerifier.getCurrentAccountId()).thenReturn(1L);

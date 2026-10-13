@@ -11,9 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * AC 인용: docs/breakdown/account-authentication.md "2. Account 도메인 및 보안 기초 설정" -
@@ -25,7 +25,7 @@ class CustomUserDetailsServiceTest {
 
   @Autowired private CustomUserDetailsService customUserDetailsService;
 
-  @MockBean private AccountRepository accountRepository;
+  @MockitoBean private AccountRepository accountRepository;
 
   private Account account;
 

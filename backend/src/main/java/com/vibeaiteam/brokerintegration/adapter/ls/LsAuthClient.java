@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.vibeaiteam.brokerintegration.adapter.BrokerTokenIssuer;
 import com.vibeaiteam.brokerintegration.adapter.kis.KisAccessToken;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -59,7 +60,8 @@ public class LsAuthClient implements BrokerTokenIssuer {
           restClient
               .post()
               .uri(TOKEN_PATH)
-              .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+              .contentType(
+                  new MediaType(MediaType.APPLICATION_FORM_URLENCODED, StandardCharsets.UTF_8))
               .body(form)
               .retrieve()
               .body(TokenResponse.class);
