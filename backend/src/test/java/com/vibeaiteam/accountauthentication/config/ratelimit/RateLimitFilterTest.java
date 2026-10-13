@@ -152,6 +152,86 @@ class RateLimitFilterTest {
     }
   }
 
+  @Test
+  void contextPathIsStrippedBeforeMatchingGroup() throws Exception {
+    MutableClock clock = MutableClock.at(START);
+    RateLimitFilter filter = filter(properties(1, 20, false), clock);
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/ipos");
+    request.setContextPath("/api");
+    request.setRemoteAddr("198.51.100.7");
+
+    for (int expected : new int[] {200, 429}) {
+      MockHttpServletResponse response = new MockHttpServletResponse();
+      filter.doFilter(request, response, (req, res) -> {});
+      assertThat(response.getStatus()).isEqualTo(expected);
+    }
+  }
+
+  @Test
+  void pathPrefixLookalikesAreNotRateLimited() throws Exception {
+    RateLimitFilter filter = filter(properties(1, 1, false), MutableClock.at(START));
+
+    for (String uri : new String[] {"/iposx", "/market-holidaysx", "/ipos-admin"}) {
+      for (int i = 0; i < 3; i++) {
+        assertThat(call(filter, "GET", uri, "198.51.100.7", null).getStatus()).isEqualTo(200);
+      }
+    }
+    // 가입·로그인 경로의 GET은 인증 그룹이 아니다.
+    for (int i = 0; i < 3; i++) {
+      assertThat(call(filter, "GET", "/auth/login", "198.51.100.7", null).getStatus())
+          .isEqualTo(200);
+    }
+  }
+
+  @Test
+  void trustedForwardedHeaderAcceptsIpv6ButRejectsMalformedAddresses() throws Exception {
+    RateLimitFilter filter = filter(properties(1, 20, true), MutableClock.at(START));
+    String remote = "198.51.100.7";
+
+    // IPv6 첫 값은 그 값으로 센다: 같은 값은 두 번째에 막히고 remoteAddr 카운터는 비어 있다.
+    assertThat(call(filter, "GET", "/ipos", remote, "2001:db8::1").getStatus()).isEqualTo(200);
+    assertThat(call(filter, "GET", "/ipos", remote, "2001:db8::1").getStatus()).isEqualTo(429);
+
+    // 잘못된 값들은 모두 remoteAddr로 세므로 첫 호출만 통과하고 이후는 막힌다.
+    String[] malformed = {
+      "1.2.3", "1.2.3.4.5", "256.1.1.1", "1..3.4", "1234.1.1.1", "a.b.c.d", "gg::1",
+      "1.2.3.-4", "x".repeat(46)
+    };
+    assertThat(call(filter, "GET", "/ipos", remote, malformed[0]).getStatus()).isEqualTo(200);
+    for (String bad : malformed) {
+      assertThat(call(filter, "GET", "/ipos", remote, bad).getStatus())
+          .as(bad)
+          .isEqualTo(429);
+    }
+  }
+
+  @Test
+  void limiterEvictsExpiredWindowsOnlyAfterKeyCountExceedsThreshold() {
+    MutableClock clock = MutableClock.at(START);
+    FixedWindowRateLimiter limiter = new FixedWindowRateLimiter(clock);
+    for (int i = 0; i < 10_001; i++) {
+      limiter.tryAcquire("old-" + i, 5);
+    }
+    clock.advanceSeconds(60);
+    // 새 윈도에서 키 수가 임계값을 넘은 채로 호출하면 지난 윈도 항목이 정리된다.
+    limiter.tryAcquire("fresh", 1);
+    assertThat(limiter.tryAcquire("fresh", 1).allowed()).isFalse();
+    // 정리된 키는 새 윈도에서 다시 1부터 센다.
+    assertThat(limiter.tryAcquire("old-0", 1).allowed()).isTrue();
+  }
+
+  @Test
+  void limiterReportsMinimumOneSecondRetryAtWindowEnd() {
+    MutableClock clock = MutableClock.at(START.plusMillis(59_999));
+    FixedWindowRateLimiter limiter = new FixedWindowRateLimiter(clock);
+    limiter.tryAcquire("k", 1);
+
+    FixedWindowRateLimiter.Decision d = limiter.tryAcquire("k", 1);
+
+    assertThat(d.allowed()).isFalse();
+    assertThat(d.retryAfterSeconds()).isEqualTo(1L);
+  }
+
   private void exhaustPublicRead(RateLimitFilter filter, String ip) throws Exception {
     exhaustPublicRead(filter, ip, null);
   }
