@@ -19,3 +19,11 @@ export interface Allocation {
   createdAt: string
   updatedAt: string
 }
+
+export interface AllocationUpdateRequest {
+  allocatedQuantity?: number
+  allocatedAt?: string
+  allocationMethod?: string
+  allocationPrice?: number
+  note?: string
+}

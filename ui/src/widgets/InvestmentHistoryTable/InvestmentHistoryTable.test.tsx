@@ -23,7 +23,9 @@ function renderTable(items: InvestmentHistoryItem[]) {
 function renderDetail(detail: InvestmentHistoryItem, onClose: () => void = () => {}) {
   return render(
     <MemoryRouter>
-      <InvestmentHistoryDetail detail={detail} onClose={onClose} />
+      <QueryClientProvider client={new QueryClient()}>
+        <InvestmentHistoryDetail detail={detail} onClose={onClose} />
+      </QueryClientProvider>
     </MemoryRouter>,
   )
 }
