@@ -18,7 +18,7 @@
 | 2 | 로컬 Jenkins + `Jenkinsfile` 파이프라인 | 완료, **main에 병합**(#302). 실패 시 배포 중단까지 검증함 |
 | 3 | Oracle Cloud에 VM을 Terraform으로 생성 | **막힘: VM 생성이 용량 부족으로 계속 실패**(§5) |
 | 4 | 파이프라인을 VM으로 이전, webhook, Jenkins를 운영 compose에 합침 | 3단계 대기 |
-| 5 | DB 백업·모니터링 | 후속 |
+| 5 | DB 백업(`scripts/backup-db.sh`·`restore-db.sh`) / 모니터링 | 백업 완료, 모니터링 후속 |
 
 ### 미커밋 변경 (main 작업 트리에만 있음 — 가장 먼저 처리할 것)
 
@@ -123,3 +123,25 @@ terraform apply -auto-approve -var ocpus=2 -var memory_gbs=12   # 안 되면 ocp
 3. VM 접속(`ssh -i ~/.ssh/oracle_vm ubuntu@<IP>`) → Docker 동작 확인 → DuckDNS IP 갱신 → 앱 기동 → HTTPS 확인.
 4. 파이프라인을 VM 대상으로 이전(Jenkins는 로컬 유지 시 SSH로 배포하는 방식으로 변경 필요), webhook 연결.
 5. 각 단계마다 `docs/setup-history.md`·work-log 갱신.
+
+## DB 백업·복원
+
+운영 VM에서 매일 백업(압축 덤프, 최근 14개 보관, 폴더 권한 700·파일 600):
+
+```bash
+scripts/backup-db.sh                       # ~/vibe-backups/vibe_ai_team_YYYYMMDD_HHMMSS.sql.gz
+crontab -e                                 # 아래 한 줄 추가(매일 03:30)
+30 3 * * * /home/ubuntu/vibe-ai-team/scripts/backup-db.sh >> /home/ubuntu/vibe-backups/backup.log 2>&1
+```
+
+복원(대상 DB를 덮어씀, `restore` 입력 확인):
+
+```bash
+docker compose -p vibe-prod -f deploy/docker-compose.prod.yml stop backend
+scripts/restore-db.sh ~/vibe-backups/vibe_ai_team_20261013_033000.sql.gz
+docker compose -p vibe-prod -f deploy/docker-compose.prod.yml start backend
+```
+
+- 백업 파일은 VM 디스크에만 있으므로 **주기적으로 VM 밖(내 PC 등)으로 복사**한다(`scp`). VM을 잃으면 백업도 같이 잃는다.
+- 백업에는 암호화된 계좌번호·증권사 키가 들어 있다. 복원해도 **같은 `APP_ENCRYPTION_KEY`·`APP_ENCRYPTION_BROKER_KEY`가 있어야** 읽을 수 있으니 키는 백업과 다른 곳에 보관한다.
+- 검증(2026-10-13): 로컬 운영 스택에서 백업 → 별도 DB(`restore_check`)에 복원 → 표별 건수·마이그레이션 이력 25건 일치, 보관 개수 동작 확인.
