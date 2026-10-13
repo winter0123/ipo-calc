@@ -127,8 +127,8 @@ public class AllocationService {
 
   /**
    * SF-4: 배정 기록의 일부 필드만 부분 수정한다(SubscriptionService.update / IpoService.update와 동일한 패턴). 제공된 필드만
-   * 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다. 시점 제약은 없음(D-A-007). 매도(Sale) 연결 시 수량 축소 제한은
-   * Epic 8 구현 시 함께 추가할 예정으로 이번 SF에서는 확장 지점만 남겨 둔다(work-log에 "Epic 8 구현 시 추가 예정" 명시).
+   * 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다. 시점 제약은 없음(D-A-007). 배정수량은 이미 매도한
+   * 수량보다 작게 바꿀 수 없다.
    */
   @Transactional
   public AllocationResponse update(Long id, AllocationUpdateRequest request) {
@@ -166,9 +166,13 @@ public class AllocationService {
       }
     }
 
-    // 매도(Sale) 연결 시 수량 축소 제한 — Epic 8 구현 시 SaleService를 주입받아 확장 예정.
-    // 현재는 allocationId 기반 Subscription의 quantity 비교 검증만 수행한다.
-    // TODO(Epic 8): SaleService 주입 후 연결된 매도수량 합계 < 신규 allocatedQuantity 시 400 반환 로직 추가
+    if (updatedAllocatedQuantity != null) {
+      long soldQuantity = allocationRepository.sumActiveSaleQuantity(allocation.getId());
+      if (updatedAllocatedQuantity < soldQuantity) {
+        throw new AllocationValidationException(
+            "배정수량은 이미 매도한 수량(" + soldQuantity + "주)보다 작을 수 없습니다.");
+      }
+    }
 
     if (updatedSubscriptionId != null) {
       allocation.setSubscriptionId(updatedSubscriptionId);
@@ -206,6 +210,9 @@ public class AllocationService {
   @Transactional
   public void cancel(Long id) {
     Allocation allocation = findOwnedAllocation(id);
+    if (allocationRepository.sumActiveSaleQuantity(id) > 0) {
+      throw new AllocationConflictException("매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.");
+    }
     LocalDateTime now = LocalDateTime.now(clock);
     allocation.setStatus(RecordStatus.CANCELLED);
     allocation.setDeletedAt(now);

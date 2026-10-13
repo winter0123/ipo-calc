@@ -189,6 +189,9 @@ public class SubscriptionService {
   @Transactional
   public void cancel(Long id) {
     Subscription subscription = findOwnedSubscription(id);
+    if (subscriptionRepository.hasActiveAllocation(id)) {
+      throw new SubscriptionConflictException("배정 기록이 있는 청약은 취소할 수 없습니다. 배정을 먼저 취소해 주세요.");
+    }
     LocalDateTime now = LocalDateTime.now(clock);
     subscription.setStatus(RecordStatus.CANCELLED);
     subscription.setDeletedAt(now);

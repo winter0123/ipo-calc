@@ -17,6 +17,8 @@ import com.vibeaiteam.investormanagement.domain.model.investor.Investor;
 import com.vibeaiteam.investormanagement.repository.investor.InvestorRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.salemanagement.domain.model.sale.Sale;
+import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
 import com.vibeaiteam.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.vibeaiteam.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.vibeaiteam.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
@@ -81,6 +83,8 @@ class AllocationControllerTest {
 
   @Autowired private AllocationRepository allocationRepository;
 
+  @Autowired private SaleRepository saleRepository;
+
   private String testEmail;
   private String testPassword;
   private String testName;
@@ -118,6 +122,11 @@ class AllocationControllerTest {
             allocationRepository.findAll().stream()
                 .filter(a -> subscriptionIds.contains(a.getSubscriptionId()))
                 .toList();
+        List<Long> allocationIds = allocations.stream().map(Allocation::getId).toList();
+        saleRepository.deleteAll(
+            saleRepository.findAll().stream()
+                .filter(sale -> allocationIds.contains(sale.getAllocationId()))
+                .toList());
         allocationRepository.deleteAll(allocations);
         subscriptionRepository.deleteAll(subscriptions);
         securitiesAccountRepository.deleteAll(accounts);
@@ -704,6 +713,97 @@ class AllocationControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(overQuantityWithSubChange)))
             .andReturn());
+  }
+
+  private void saveSale(Long allocationId, long quantity) {
+    LocalDateTime now = LocalDateTime.now();
+    saleRepository.saveAndFlush(
+        Sale.builder()
+            .allocationId(allocationId)
+            .quantity(quantity)
+            .price(12000L)
+            .amount(12000L * quantity)
+            .saleDate(now)
+            .fee(0L)
+            .tax(0L)
+            .otherCost(0L)
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
+  }
+
+  @Test
+  void updateAllocationBelowSoldQuantityReturns400() throws Exception {
+    // Given: 배정 50주 중 30주를 이미 매도
+    signupAndLogin();
+    Long subscriptionId = createSubscription(100L);
+    Long allocationId =
+        ((Number) readBody(registerAllocation(validRequest(subscriptionId))).get("id")).longValue();
+    saveSale(allocationId, 30L);
+
+    // When/Then: 29주로 줄이면 400, 30주(판 만큼)는 200
+    Map<String, Object> below = new LinkedHashMap<>();
+    below.put("allocatedQuantity", 29);
+    MvcResult rejected =
+        mockMvc
+            .perform(
+                patch("/allocations/{id}", allocationId)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(below)))
+            .andReturn();
+    assertValidationError(rejected);
+    assertThat(utf8Body(rejected)).contains("이미 매도한 수량(30주)");
+
+    Map<String, Object> equal = new LinkedHashMap<>();
+    equal.put("allocatedQuantity", 30);
+    MvcResult accepted =
+        mockMvc
+            .perform(
+                patch("/allocations/{id}", allocationId)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(equal)))
+            .andReturn();
+    assertThat(accepted.getResponse().getStatus()).isEqualTo(200);
+  }
+
+  @Test
+  void cancelAllocationWithSalesReturns409() throws Exception {
+    // Given: 매도 기록이 있는 배정
+    signupAndLogin();
+    Long subscriptionId = createSubscription(100L);
+    Long allocationId =
+        ((Number) readBody(registerAllocation(validRequest(subscriptionId))).get("id")).longValue();
+    saveSale(allocationId, 10L);
+
+    // When: DELETE /allocations/{id}
+    MvcResult result =
+        mockMvc.perform(delete("/allocations/{id}", allocationId).session(session)).andReturn();
+
+    // Then: 409, 배정은 그대로 ACTIVE
+    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    assertThat(allocationRepository.findById(allocationId).orElseThrow().getStatus())
+        .isEqualTo(RecordStatus.ACTIVE);
+  }
+
+  @Test
+  void cancelSubscriptionWithAllocationReturns409() throws Exception {
+    // Given: 배정이 있는 청약
+    signupAndLogin();
+    Long subscriptionId = createSubscription(100L);
+    registerAllocation(validRequest(subscriptionId));
+
+    // When: DELETE /subscriptions/{id}
+    MvcResult result =
+        mockMvc
+            .perform(delete("/subscriptions/{id}", subscriptionId).session(session))
+            .andReturn();
+
+    // Then: 409, 청약은 그대로 ACTIVE
+    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    assertThat(subscriptionRepository.findById(subscriptionId).orElseThrow().getStatus())
+        .isEqualTo(RecordStatus.ACTIVE);
   }
 
   @Test
