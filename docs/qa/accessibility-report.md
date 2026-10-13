@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 13. 오후 7:15:44
+검사 일시: 2026. 10. 13. 오후 8:10:56
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:60926
+대상 URL: http://127.0.0.1:57290
 
 ## 요약
 
-- 검사한 화면: 51개
+- 검사한 화면: 59개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -91,7 +91,7 @@
 
 ### profit-view@mobile (/profits/view)
 
-✅ **위반 0건** (passes: 45, incomplete: 1, inapplicable: 44)
+✅ **위반 0건** (passes: 44, incomplete: 1, inapplicable: 45)
 
 ### investments@desktop (/investments)
 
@@ -111,11 +111,11 @@
 
 ### broker-sync@desktop (/broker-sync)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
 
 ### broker-sync@mobile (/broker-sync)
 
-✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
 
 ### admin-accounts-pending@desktop (/admin/accounts)
 
@@ -163,7 +163,7 @@
 
 ### profits-graph@mobile (/profits/view)
 
-✅ **위반 0건** (passes: 45, incomplete: 1, inapplicable: 44)
+✅ **위반 0건** (passes: 44, incomplete: 1, inapplicable: 45)
 
 ### investments-detail-panel@desktop (/investments)
 
@@ -216,6 +216,38 @@
 ### keyboard-edit-dialog (/investments)
 
 ✅ **위반 0건** (passes: 0, incomplete: 0, inapplicable: 0)
+
+### empty-account-dashboard@desktop (/dashboard)
+
+✅ **위반 0건** (passes: 39, incomplete: 1, inapplicable: 50)
+
+### empty-account-dashboard@mobile (/dashboard)
+
+✅ **위반 0건** (passes: 39, incomplete: 1, inapplicable: 50)
+
+### empty-account-investments@desktop (/investments)
+
+✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+
+### empty-account-investments@mobile (/investments)
+
+✅ **위반 0건** (passes: 33, incomplete: 1, inapplicable: 56)
+
+### empty-account-profits-view@desktop (/profits/view)
+
+✅ **위반 0건** (passes: 30, incomplete: 1, inapplicable: 59)
+
+### empty-account-profits-view@mobile (/profits/view)
+
+✅ **위반 0건** (passes: 30, incomplete: 1, inapplicable: 59)
+
+### empty-account-subscriptions-register@desktop (/subscriptions/register)
+
+✅ **위반 0건** (passes: 30, incomplete: 1, inapplicable: 59)
+
+### empty-account-subscriptions-register@mobile (/subscriptions/register)
+
+✅ **위반 0건** (passes: 30, incomplete: 1, inapplicable: 59)
 
 ---
 

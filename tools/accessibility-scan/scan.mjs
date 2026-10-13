@@ -258,6 +258,16 @@ async function setupTradeStates(page, context) {
       fee: 600,
       tax: 920,
     })
+    // 휴대폰 수익 카드형을 매도 2건으로 확인하기 위한 두 번째 매도
+    await call('POST', '/sales', {
+      allocationId: alloc.id,
+      quantity: 10,
+      price: 15000,
+      amount: 150000,
+      saleDate: `${day(-1)}T10:00:00`,
+      fee: 200,
+      tax: 345,
+    })
     execFileSync('docker', ['exec', dbContainer, 'psql', '-U', dbUser, '-d', dbName, '-c', `INSERT INTO ipo_details (ipo_id, source_rcept_no, source_report_name, synced_at, ceo_name, established_on, address, par_value, capital_stock,
   largest_shareholder_name, largest_shareholder_ratio, institutional_competition_rate, lock_up_commitment_ratio, financials, float_schedule, underwriters, created_at, updated_at)
   SELECT id, '20260101000001', '투자설명서', now(), '가나다', DATE '2015-03-02', '서울특별시 예시구 예시로 100', 500, 3500000000,
@@ -344,6 +354,33 @@ async function keyboardCheck(page) {
     console.log(`  ${name}: FAIL - ${error.message}`)
     return { page: name, path: '/investments', error: error.message, violations: [] }
   }
+}
+
+// 가입 직후 계정(투자자 0명)의 안내 화면을 별도 컨텍스트로 스캔한다.
+async function scanEmptyAccount(browser) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, locale: 'ko-KR', colorScheme: 'light' })
+  const p = await ctx.newPage()
+  const out = []
+  try {
+    await p.goto(`${baseUrl}/signup`, { waitUntil: 'networkidle' })
+    await p.fill('#email', `testempty${Date.now()}@example.com`)
+    await p.fill('#password', 'testpassword123!')
+    await p.fill('#name', 'Empty Scanner')
+    await p.click('button[type="submit"]')
+    await p.waitForURL('**/investors/register*', { timeout: 15000 })
+    for (const path of ['/dashboard', '/investments', '/profits/view', '/subscriptions/register']) {
+      for (const vp of viewports) {
+        await p.setViewportSize({ width: vp.width, height: vp.height })
+        out.push(await scanPage(p, { name: `empty-account${path.replaceAll('/', '-')}@${vp.name}`, path }))
+        console.log(`  ${out.at(-1).page}: ${out.at(-1).violations.length} violations`)
+      }
+    }
+  } catch (error) {
+    console.log(`투자자 0명 스캔 실패: ${error.message}`)
+    out.push({ page: 'empty-account', path: '/signup', error: error.message, violations: [] })
+  }
+  await ctx.close()
+  return out
 }
 
 async function scanPage(page, pageInfo) {
@@ -451,6 +488,7 @@ async function main() {
   }
   
   if (loggedIn) results.push(await keyboardCheck(page))
+  results.push(...(await scanEmptyAccount(browser)))
 
   await context.close()
   await browser.close()
