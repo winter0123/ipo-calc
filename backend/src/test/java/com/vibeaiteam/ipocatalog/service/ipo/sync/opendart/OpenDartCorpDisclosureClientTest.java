@@ -318,6 +318,151 @@ class OpenDartCorpDisclosureClientTest {
     assertThat(result).hasSize(3);
   }
 
+  private static String item(String corp, String receptNo, String date) {
+    return "{\"corp_code\":\""
+        + corp
+        + "\",\"corp_name\":\"n\",\"report_nm\":\"증권신고서(지분증권)\",\"rcept_no\":\""
+        + receptNo
+        + "\","
+        + (date == null ? "" : "\"rcept_dt\":\"" + date + "\",")
+        + "\"rm\":\"\"}";
+  }
+
+  private static String listBody(String... items) {
+    return "{\"status\":\"000\",\"message\":\"정상\",\"page_no\":1,\"total_page\":1,\"list\":["
+        + String.join(",", items)
+        + "]}";
+  }
+
+  @Test
+  void searchByDateRange_emptyResponseBody_throwsNullApiException() {
+    expectListRequest("");
+
+    assertThatThrownBy(
+            () -> client.searchByDateRange(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 29)))
+        .isInstanceOfSatisfying(
+            OpenDartApiException.class, e -> assertThat(e.getStatusCode()).isEqualTo("null"));
+  }
+
+  @Test
+  void searchByDateRange_status000WithoutList_returnsEmpty() {
+    expectListRequest("{\"status\":\"000\",\"message\":\"정상\"}");
+
+    assertThat(client.searchByDateRange(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 29)))
+        .isEmpty();
+    mockServer.verify();
+  }
+
+  @Test
+  void searchByDateRange_sameCorpTwice_keepsLatestRegardlessOfOrder() {
+    expectListRequest(
+        listBody(
+            item("00000001", "A-old", "20260901"),
+            item("00000001", "A-new", "20260905"),
+            item("00000002", "B-new", "20260908"),
+            item("00000002", "B-old", "20260902")));
+
+    List<OpenDartDisclosureItem> result =
+        client.searchByDateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10));
+
+    // 접수일 내림차순으로 법인당 최신 1건만 남는다.
+    assertThat(result)
+        .extracting(OpenDartDisclosureItem::getRceptNo)
+        .containsExactly("B-new", "A-new");
+  }
+
+  @Test
+  void searchByDateRange_missingReceiptDate_loserIsOlderOne() {
+    // 접수일이 없는 항목은 있는 항목보다 오래된 것으로 본다(앞뒤 순서 모두).
+    expectListRequest(
+        listBody(
+            item("00000001", "A-nodate", null),
+            item("00000001", "A-dated", "20260905"),
+            item("00000002", "B-dated", "20260906"),
+            item("00000002", "B-nodate", null)));
+
+    List<OpenDartDisclosureItem> result =
+        client.searchByDateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10));
+
+    assertThat(result).extracting(OpenDartDisclosureItem::getRceptNo)
+        .containsExactly("B-dated", "A-dated");
+  }
+
+  @Test
+  void searchByDateRange_differentCorpWithoutReceiptDate_sortsItLastWithoutError() {
+    // 다른 법인 중 하나만 접수일이 없어도 정렬에서 예외 없이 맨 뒤로 간다.
+    expectListRequest(
+        listBody(item("00000001", "A-nodate", null), item("00000002", "B-dated", "20260906")));
+
+    List<OpenDartDisclosureItem> result =
+        client.searchByDateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10));
+
+    assertThat(result)
+        .extracting(OpenDartDisclosureItem::getRceptNo)
+        .containsExactly("B-dated", "A-nodate");
+  }
+
+  @Test
+  void getCompanyOverview_success_parsesFields() {
+    expectOverview(
+        "{\"status\":\"000\",\"ceo_nm\":\"김성포\",\"est_dt\":\"20151027\",\"adres\":\"성남\"}");
+
+    assertThat(client.getCompanyOverview("01749559"))
+        .hasValueSatisfying(
+            o -> {
+              assertThat(o.ceoName()).isEqualTo("김성포");
+              assertThat(o.establishedOn()).isEqualTo("20151027");
+              assertThat(o.address()).isEqualTo("성남");
+            });
+    mockServer.verify();
+  }
+
+  @Test
+  void getCompanyOverview_nonZeroStatus_returnsEmpty() {
+    expectOverview("{\"status\":\"013\",\"message\":\"없음\"}");
+
+    assertThat(client.getCompanyOverview("01749559")).isEmpty();
+  }
+
+  @Test
+  void getCompanyOverview_emptyBody_returnsEmpty() {
+    expectOverview("");
+
+    assertThat(client.getCompanyOverview("01749559")).isEmpty();
+  }
+
+  @Test
+  void getCompanyOverview_httpFailure_returnsEmptyWithoutThrowing() {
+    mockServer
+        .expect(requestTo(containsString("/api/company.json")))
+        .andRespond(withException(new IOException("boom crtfc_key=test-api-key")));
+
+    assertThat(client.getCompanyOverview("01749559")).isEmpty();
+  }
+
+  @Test
+  void getCompanyOverview_invalidCorpCodeOrMissingKey_neverCallsApi() {
+    OpenDartCorpDisclosureClient noKey =
+        new OpenDartCorpDisclosureClient(
+            restClient,
+            new OpenDartApiProperties("", "https://opendart.fss.or.kr"),
+            Clock.systemDefaultZone(),
+            new RequestThrottle(0));
+
+    assertThat(noKey.getCompanyOverview("01749559")).isEmpty();
+    assertThat(client.getCompanyOverview(null)).isEmpty();
+    assertThat(client.getCompanyOverview("1234")).isEmpty();
+    assertThat(client.getCompanyOverview("1234567a")).isEmpty();
+    mockServer.verify(); // 기대 요청이 없으므로 호출이 있었다면 위에서 이미 실패한다.
+  }
+
+  private void expectOverview(String body) {
+    mockServer
+        .expect(requestTo(containsString("/api/company.json")))
+        .andExpect(requestTo(containsString("corp_code=01749559")))
+        .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+  }
+
   private OpenDartDisclosureItem findByCorpCode(
       List<OpenDartDisclosureItem> list, String corpCode) {
     return list.stream().filter(i -> corpCode.equals(i.getCorpCode())).findFirst().orElse(null);

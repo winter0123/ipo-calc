@@ -285,6 +285,60 @@ class BrokerTokenServiceTest {
     assertThat(credential.toString()).doesNotContain(ISSUED_TOKEN, DUMMY_APP_KEY, DUMMY_APP_SECRET);
   }
 
+  @Test
+  void getValidToken_nullCredentialOrNullId_throwsIllegalArgument() {
+    SecuritiesAccountApiCredential noId =
+        SecuritiesAccountApiCredential.builder().apiProvider("KIS").build();
+
+    assertThatThrownBy(() -> service.getValidToken((SecuritiesAccountApiCredential) null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> service.getValidToken(noId))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> service.getValidToken((Long) null))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(authClient, never()).issueToken(anyString(), anyString());
+  }
+
+  @Test
+  void getValidToken_blankCachedTokenOrMissingExpiry_issuesNewToken() {
+    stubSuccessfulIssuance();
+    // 토큰은 있는데 만료 시각이 없는 경우와, 토큰이 공백인 경우 모두 캐시로 인정하지 않는다.
+    credential = buildCredential(secretEncryptor.encrypt(CACHED_TOKEN), null);
+    assertThat(service.getValidToken(credential).token()).isEqualTo(ISSUED_TOKEN);
+
+    credential = buildCredential("  ", LocalDateTime.now(clock).plusHours(12));
+    assertThat(service.getValidToken(credential).token()).isEqualTo(ISSUED_TOKEN);
+  }
+
+  @Test
+  void getValidToken_expiredExactlyAtMargin_issuesNewToken() {
+    // 만료까지 정확히 5분이면 isAfter가 false라 재발급한다(경계값).
+    credential =
+        buildCredential(
+            secretEncryptor.encrypt(CACHED_TOKEN), LocalDateTime.now(clock).plusMinutes(5));
+    stubSuccessfulIssuance();
+
+    assertThat(service.getValidToken(credential).token()).isEqualTo(ISSUED_TOKEN);
+  }
+
+  @Test
+  void getValidToken_unsupportedProvider_throwsWithoutCallingIssuer() {
+    credential =
+        SecuritiesAccountApiCredential.builder()
+            .id(CREDENTIAL_ID)
+            .apiProvider("UNKNOWN")
+            .appKeyEncrypted(secretEncryptor.encrypt(DUMMY_APP_KEY))
+            .appSecretEncrypted(secretEncryptor.encrypt(DUMMY_APP_SECRET))
+            .build();
+
+    assertThatThrownBy(() -> service.getValidToken(credential))
+        .isInstanceOfSatisfying(
+            BrokerApiException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo("unsupported_provider"));
+    verify(authClient, never()).issueToken(anyString(), anyString());
+    verify(credentialRepository, never()).save(any(SecuritiesAccountApiCredential.class));
+  }
+
   private void stubSuccessfulIssuance() {
     when(authClient.issueToken(anyString(), anyString()))
         .thenReturn(new KisAccessToken(ISSUED_TOKEN, LocalDateTime.now(clock).plusDays(1)));

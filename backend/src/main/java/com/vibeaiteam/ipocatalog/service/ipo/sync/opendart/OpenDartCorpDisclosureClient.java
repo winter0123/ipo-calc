@@ -220,7 +220,12 @@ public class OpenDartCorpDisclosureClient {
 
     // 3단계: rcept_dt 내림차순 정렬 (최신순)
     return latestByCorpCode.values().stream()
-        .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptDt).reversed())
+        // 접수일이 비어 있는 항목은 맨 뒤로(null 비교로 동기화 전체가 멈추지 않게)
+        .sorted(
+            Comparator.comparing(
+                OpenDartDisclosureItem::getRceptDt,
+                Comparator.nullsFirst(Comparator.<String>naturalOrder()))
+                .reversed())
         .toList();
   }
 

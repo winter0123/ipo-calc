@@ -137,4 +137,64 @@ class IpoDetailSyncServiceTest {
     assertThat(service.syncRecent()).isEqualTo(1);
     verify(detailService).save(eq(2L), any());
   }
+
+  @Test
+  void skipsNonTargetsAndIposWithoutFiling() {
+    when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(
+            List.of(
+                ipo(1L, null, null),
+                ipo(2L, "00000002", TODAY.minusDays(31)),
+                ipo(3L, "00000003", null)));
+    when(filingClient.findLatestOfferingDocument("00000003", TODAY)).thenReturn(Optional.empty());
+
+    assertThat(service.syncRecent()).isZero();
+
+    verify(filingClient, never()).findLatestOfferingDocument(eq("00000002"), any());
+    verify(filingClient, never()).downloadDocument(anyString());
+    verify(detailService, never()).save(any(), any());
+  }
+
+  @Test
+  void savesWhenStoredDetailHasDifferentFiling() {
+    when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(ipo(1L, "00000001", null)));
+    when(filingClient.findLatestOfferingDocument("00000001", TODAY))
+        .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
+    when(detailRepository.findById(1L))
+        .thenReturn(
+            Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo("20260101000001").build()));
+    when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.empty());
+    when(disclosureClient.getCompanyOverview("00000001")).thenReturn(Optional.empty());
+    when(filingClient.fetchEquityOffering("00000001", TODAY)).thenReturn(Optional.empty());
+
+    assertThat(service.syncRecent()).isEqualTo(1);
+
+    verify(filingClient).downloadDocument(RCEPT);
+  }
+
+  @Test
+  void blankOrInvalidCompanyFieldsBecomeNull() {
+    FilingRef filing = new FilingRef(RCEPT, "투자설명서", TODAY);
+    com.vibeaiteam.ipocatalog.service.ipo.detail.dart.ParsedFiling parsed =
+        new com.vibeaiteam.ipocatalog.service.ipo.detail.dart.DartFilingParser().parse(null);
+
+    IpoDetailSnapshot blank =
+        IpoDetailSyncService.toSnapshot(
+            filing, parsed, new OpenDartCompanyOverview("000", "  ", " ", ""), null);
+    IpoDetailSnapshot badDate =
+        IpoDetailSyncService.toSnapshot(
+            filing, parsed, new OpenDartCompanyOverview("000", " 홍길동 ", "2015-10", " 서울 "), null);
+    IpoDetailSnapshot noCompany = IpoDetailSyncService.toSnapshot(filing, parsed, null, null);
+
+    assertThat(blank.ceoName()).isNull();
+    assertThat(blank.establishedOn()).isNull();
+    assertThat(blank.address()).isNull();
+    assertThat(badDate.ceoName()).isEqualTo("홍길동");
+    assertThat(badDate.establishedOn()).isNull();
+    assertThat(badDate.address()).isEqualTo("서울");
+    assertThat(noCompany.ceoName()).isNull();
+    assertThat(noCompany.parValue()).isNull();
+    assertThat(noCompany.underwriters()).isEmpty();
+  }
 }

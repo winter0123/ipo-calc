@@ -3,6 +3,7 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.EquityOffering;
@@ -213,5 +214,117 @@ class DartIpoFilingClientTest {
     assertThat(client.fetchEquityOffering(null, TODAY)).isEmpty();
     assertThat(client.downloadDocument("2026100700")).isEmpty();
     mockServer.verify(); // 기대한 호출이 없으므로 어떤 요청도 나가지 않았음을 확인
+  }
+
+  @Test
+  void 공시_목록이_여러_페이지면_모든_페이지에서_가장_최신을_고른다() {
+    expectJson(
+        "page_no=1",
+        "{\"status\":\"000\",\"total_page\":2,\"list\":["
+            + item("20260901000001", "투자설명서", "20260901")
+            + "]}");
+    expectJson(
+        "page_no=2",
+        "{\"status\":\"000\",\"total_page\":2,\"list\":["
+            + item("20261005000009", "투자설명서", "20261005")
+            + "]}");
+
+    assertThat(client.findLatestOfferingDocument("00123456", TODAY))
+        .map(FilingRef::rceptNo)
+        .contains("20261005000009");
+    mockServer.verify();
+  }
+
+  @Test
+  void 접수일_형식이_깨진_공시는_건너뛴다() {
+    expectJson(
+        "/api/list.json",
+        "{\"status\":\"000\",\"total_page\":1,\"list\":["
+            + item("20261001000001", "투자설명서", "not-a-date")
+            + ","
+            + item("20260901000002", "투자설명서", "20260901")
+            + "]}");
+
+    assertThat(client.findLatestOfferingDocument("00123456", TODAY))
+        .map(FilingRef::rceptNo)
+        .contains("20260901000002");
+  }
+
+  @Test
+  void 호출_실패나_깨진_JSON이면_예외_없이_empty() {
+    mockServer
+        .expect(requestTo(containsString("/api/list.json")))
+        .andRespond(withException(new IOException("boom crtfc_key=test-api-key")));
+    expectJson("/api/estkRs.json", "{not json");
+
+    assertThat(client.findLatestOfferingDocument("00123456", TODAY)).isEmpty();
+    assertThat(client.fetchEquityOffering("00123456", TODAY)).isEmpty();
+  }
+
+  @Test
+  void 문서_호출_실패나_빈_본문이면_empty() {
+    mockServer
+        .expect(requestTo(containsString("/api/document.xml")))
+        .andRespond(withException(new IOException("boom crtfc_key=test-api-key")));
+    expectJson("/api/document.xml", "");
+
+    assertThat(client.downloadDocument("20261007000003")).isEmpty();
+    assertThat(client.downloadDocument("20261007000003")).isEmpty();
+  }
+
+  @Test
+  void 항목이_없는_ZIP이거나_깨진_ZIP이면_empty() {
+    mockServer
+        .expect(requestTo(containsString("/api/document.xml")))
+        .andRespond(
+            withSuccess(
+                new byte[] {'P', 'K', 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                MediaType.APPLICATION_OCTET_STREAM));
+    mockServer
+        .expect(requestTo(containsString("/api/document.xml")))
+        .andRespond(
+            withSuccess(new byte[] {'P', 'K', 3, 4, 1, 2}, MediaType.APPLICATION_OCTET_STREAM));
+
+    assertThat(client.downloadDocument("20261007000003")).isEmpty();
+    assertThat(client.downloadDocument("20261007000003")).isEmpty();
+  }
+
+  @Test
+  void 먼저_나온_항목이_더_크면_뒤의_작은_항목은_무시한다() throws IOException {
+    mockServer
+        .expect(requestTo(containsString("/api/document.xml")))
+        .andRespond(
+            withSuccess(
+                zip("a.xml", "가장 긴 본문", "b.xml", "짧음"), MediaType.APPLICATION_OCTET_STREAM));
+
+    assertThat(client.downloadDocument("20261007000003")).contains("가장 긴 본문");
+  }
+
+  @Test
+  void 증권의종류_그룹이_여럿이면_첫_액면가를_쓰고_인수인_그룹이_없으면_빈_목록이다() {
+    expectJson(
+        "/api/estkRs.json",
+        "{\"status\":\"000\",\"group\":["
+            + "{\"title\":\"증권의종류\",\"list\":[{\"fv\":\"500\"}]},"
+            + "{\"title\":\"증권의종류\",\"list\":[{\"fv\":\"100\"}]},"
+            + "{\"title\":\"모집또는매출에관한일반사항\",\"list\":[{}]}]}");
+
+    EquityOffering offering = client.fetchEquityOffering("00123456", TODAY).orElseThrow();
+
+    assertThat(offering.parValue()).isEqualTo(500L);
+    assertThat(offering.underwriters()).isEmpty();
+  }
+
+  @Test
+  void 운영용_생성자는_빌더로_클라이언트를_만든다() {
+    DartIpoFilingClient prod =
+        new DartIpoFilingClient(
+            RestClient.builder(),
+            new OpenDartApiProperties("", "https://opendart.fss.or.kr"),
+            new RequestThrottle(0),
+            1000,
+            1000);
+
+    assertThat(prod.downloadDocument("20261007000003")).isEmpty(); // 키 없음 -> 호출 없이 empty
   }
 }
