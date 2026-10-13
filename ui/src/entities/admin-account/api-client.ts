@@ -15,6 +15,10 @@ export function approveAccount(accountId: number): Promise<void> {
   return apiFetch<void>(`/admin/accounts/${accountId}/approve`, { method: 'POST' })
 }
 
+export function unlockAccount(accountId: number): Promise<void> {
+  return apiFetch<void>(`/admin/accounts/${accountId}/unlock`, { method: 'POST' })
+}
+
 export function revokeAccount(accountId: number): Promise<void> {
   return apiFetch<void>(`/admin/accounts/${accountId}/revoke`, { method: 'POST' })
 }

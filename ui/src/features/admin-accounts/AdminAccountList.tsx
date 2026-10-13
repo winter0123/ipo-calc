@@ -4,6 +4,7 @@ import {
   adminAccountKeys,
   approveAccount,
   revokeAccount,
+  unlockAccount,
   useAdminAccounts,
 } from '@/entities/admin-account/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -19,9 +20,10 @@ export default function AdminAccountList() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: adminAccountKeys.all })
   const approve = useMutation({ mutationFn: approveAccount, onSuccess: refresh })
   const revoke = useMutation({ mutationFn: revokeAccount, onSuccess: refresh })
+  const unlock = useMutation({ mutationFn: unlockAccount, onSuccess: refresh })
 
   const loadError = toErrorMessage(error, { byStatus: { 403: '관리자만 볼 수 있는 화면입니다.' } })
-  const actionError = toErrorMessage(approve.error ?? revoke.error, {
+  const actionError = toErrorMessage(approve.error ?? revoke.error ?? unlock.error, {
     byStatus: { 400: (e) => e.serverMessage, 404: '계정을 찾을 수 없습니다.' },
   })
 
@@ -64,8 +66,21 @@ export default function AdminAccountList() {
                   <td>{account.name ?? '-'}</td>
                   <td>{account.role}</td>
                   <td>{formatDate(account.createdAt)}</td>
-                  <td>{account.approved ? '승인됨' : '승인 대기'}</td>
                   <td>
+                    {account.approved ? '승인됨' : '승인 대기'}
+                    {account.locked ? ' · 잠김' : ''}
+                  </td>
+                  <td>
+                    {account.locked && (
+                      <Button
+                        variant="secondary"
+                        aria-label={`${account.email} 잠금 해제`}
+                        disabled={unlock.isPending}
+                        onClick={() => unlock.mutate(account.id)}
+                      >
+                        잠금 해제
+                      </Button>
+                    )}
                     {account.approved ? (
                       <Button
                         variant="secondary"

@@ -3,10 +3,7 @@ package com.vibeaiteam.accountauthentication.config.security;
 import com.vibeaiteam.accountauthentication.config.ratelimit.RateLimitFilter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,7 +24,6 @@ import org.springframework.security.web.authentication.session.RegisterSessionAu
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 /** Spring Security 설정. 세션 기반 인증을 사용하고 미인증 요청에는 401을 반환한다. */
-@Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -35,10 +32,8 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
-      @Value("${app.remember-me.key:}") String rememberMeKey,
       ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
       throws Exception {
-    String effectiveRememberMeKey = resolveRememberMeKey(rememberMeKey);
     // 제한 필터가 없으면(비활성) 건너뛴다. 로그인·가입 시도를 세션·인가 처리보다 먼저 거절하기 위한 위치다.
     RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
     if (rateLimitFilter != null) {
@@ -47,8 +42,6 @@ public class SecurityConfig {
     http.authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
-                        "/login",
-                        "/logout",
                         "/accounts",
                         "/auth/login",
                         "/auth/logout",
@@ -89,26 +82,22 @@ public class SecurityConfig {
                               .getWriter()
                               .write("{\"error\":\"FORBIDDEN\",\"message\":\"관리자 권한이 필요합니다\"}");
                         }))
-        .formLogin(form -> form.loginPage("/login").permitAll())
-        .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").permitAll())
+        // 로그인·로그아웃은 /auth/login·/auth/logout(컨트롤러)뿐이다. 폼 로그인·remember-me·기본 /logout은 쓰지 않는다
+        // (폼 로그인은 잠금·요청 제한을 우회하고, remember-me는 로그아웃 뒤에도 인증을 되살린다).
+        .formLogin(AbstractHttpConfigurer::disable)
+        .rememberMe(AbstractHttpConfigurer::disable)
+        .logout(AbstractHttpConfigurer::disable)
         .sessionManagement(
             session ->
                 session
                     .maximumSessions(1)
                     .maxSessionsPreventsLogin(false)
                     .sessionRegistry(sessionRegistry())
-                    .expiredUrl("/login?expired"))
-        .rememberMe(remember -> remember.key(effectiveRememberMeKey).tokenValiditySeconds(1209600));
+                    // 다른 곳에서 로그인해 만료된 세션도 API답게 401로 답한다(302 리다이렉트 아님).
+                    .expiredSessionStrategy(
+                        event -> event.getResponse().setStatus(HttpStatus.UNAUTHORIZED.value())));
 
     return http.build();
-  }
-
-  private static String resolveRememberMeKey(String configured) {
-    if (configured != null && !configured.isBlank()) {
-      return configured;
-    }
-    log.warn("APP_REMEMBER_ME_KEY가 설정되지 않아 기동마다 임의 키를 생성한다. 재시작하면 기존 remember-me 쿠키는 무효가 된다.");
-    return UUID.randomUUID().toString() + UUID.randomUUID();
   }
 
   /** 동시 세션 관리를 위한 세션 레지스트리 빈. */

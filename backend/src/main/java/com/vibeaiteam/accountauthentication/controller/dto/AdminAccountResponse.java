@@ -11,6 +11,13 @@ import java.time.LocalDateTime;
  * @param role 역할(USER, ADMIN)
  * @param approved 승인 여부
  * @param createdAt 가입 시각
+ * @param locked 로그인 실패로 지금 잠겨 있는지
  */
 public record AdminAccountResponse(
-    Long id, String email, String name, String role, boolean approved, LocalDateTime createdAt) {}
+    Long id,
+    String email,
+    String name,
+    String role,
+    boolean approved,
+    LocalDateTime createdAt,
+    boolean locked) {}

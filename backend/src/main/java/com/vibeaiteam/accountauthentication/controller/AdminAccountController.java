@@ -34,6 +34,13 @@ public class AdminAccountController {
     return ResponseEntity.noContent().build();
   }
 
+  /** 로그인 실패로 잠긴 계정의 잠금을 푼다. */
+  @PostMapping("/{accountId}/unlock")
+  public ResponseEntity<Void> unlock(@PathVariable Long accountId) {
+    adminAccountService.unlock(accountId);
+    return ResponseEntity.noContent().build();
+  }
+
   /** 계정의 승인을 취소하고 로그인 세션을 끝낸다. */
   @PostMapping("/{accountId}/revoke")
   public ResponseEntity<Void> revoke(@PathVariable Long accountId) {

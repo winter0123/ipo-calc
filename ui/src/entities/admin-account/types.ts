@@ -7,6 +7,7 @@ export const adminAccountSchema = z.object({
   role: z.string(),
   approved: z.boolean(),
   createdAt: z.string(),
+  locked: z.boolean().default(false),
 })
 
 export type AdminAccount = z.infer<typeof adminAccountSchema>

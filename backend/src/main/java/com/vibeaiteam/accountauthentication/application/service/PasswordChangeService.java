@@ -61,29 +61,7 @@ public class PasswordChangeService {
   }
 
   private void validateNewPassword(String newPassword) {
-    if (newPassword == null || newPassword.length() < 8) {
-      throw new ValidationFailedException("newPassword", "비밀번호는 최소 8자 이상이어야 합니다");
-    }
-
-    boolean hasLetter = false;
-    boolean hasDigit = false;
-    boolean hasSpecial = false;
-
-    for (char c : newPassword.toCharArray()) {
-      if (Character.isLetter(c)) {
-        hasLetter = true;
-      } else if (Character.isDigit(c)) {
-        hasDigit = true;
-      } else {
-        hasSpecial = true;
-      }
-    }
-
-    int typesCount = (hasLetter ? 1 : 0) + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0);
-    if (typesCount < 2) {
-      throw new ValidationFailedException(
-          "newPassword", "비밀번호는 최소 8자 이상이며 영문, 숫자, 특수문자 중 2종류 이상을 포함해야 합니다");
-    }
+    PasswordPolicy.validate("newPassword", newPassword);
   }
 
   private void validateConfirmPassword(String newPassword, String confirmPassword) {

@@ -38,6 +38,7 @@ public class InvestorService {
   public InvestorResponse register(InvestorRegisterRequest request) {
     Long accountId = securityUtils.getCurrentAccountId();
     String displayName = validateDisplayName(request.getDisplayName());
+    validateRelationshipLength(request.getRelationship());
 
     LocalDateTime now = LocalDateTime.now(clock);
     Investor investor =
@@ -130,7 +131,16 @@ public class InvestorService {
     return displayName.trim();
   }
 
+  private static final int RELATIONSHIP_MAX_LENGTH = 20;
+
+  private void validateRelationshipLength(String relationship) {
+    if (relationship != null && relationship.length() > RELATIONSHIP_MAX_LENGTH) {
+      throw new InvestorValidationException("관계는 최대 20자까지 가능합니다.");
+    }
+  }
+
   private String normalizeRelationship(String relationship) {
+    validateRelationshipLength(relationship);
     if (relationship == null || relationship.isEmpty()) {
       return null;
     }
