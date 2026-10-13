@@ -81,3 +81,10 @@ export interface InvestmentHistoryFilters {
   page?: number
   size?: number
 }
+
+export interface SubscriptionUpdateRequest {
+  quantity?: number
+  depositAmount?: number
+  subscribedAt?: string
+  memo?: string
+}

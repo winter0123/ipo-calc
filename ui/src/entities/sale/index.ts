@@ -1,2 +1,2 @@
-export { createSale } from './api-client.ts'
-export type { SaleRegisterRequest } from './types.ts'
+export { createSale, deleteSale, getSale, updateSale } from './api-client.ts'
+export type { Sale, SaleRegisterRequest, SaleUpdateRequest } from './types.ts'

@@ -1,4 +1,5 @@
 import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
+import { RecordActions } from '@/features/investment-edit/index.ts'
 import { Link } from 'react-router-dom'
 import { statusLabel } from './statusLabel.ts'
 import styles from './InvestmentHistoryDetail.module.css'
@@ -71,6 +72,13 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
       </dl>
 
+      <RecordActions
+        kind="subscription"
+        id={detail.id}
+        label={`${detail.ipoName ?? '이'} 청약`}
+        onDeleted={onClose}
+      />
+
       {nextAction && (
         <Link to={nextAction.to} className={styles.actionLink}>
           {nextAction.label}
@@ -98,6 +106,11 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
               <dd>{statusLabel(detail.allocation.allocationStatus)}</dd>
             </div>
           </dl>
+          <RecordActions
+            kind="allocation"
+            id={detail.allocation.id}
+            label={`배정 ${detail.allocation.allocatedQuantity}주`}
+          />
         </div>
       )}
 
@@ -113,6 +126,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
                 <th scope="col">세금 및 기타</th>
                 <th scope="col">상태</th>
                 <th scope="col">매도일</th>
+                <th scope="col">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -124,6 +138,9 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
                   <td>{formatWon(sale.tax)}</td>
                   <td>{statusLabel(sale.status)}</td>
                   <td>{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
+                  <td>
+                    <RecordActions kind="sale" id={sale.id} label={`매도 ${sale.quantity}주`} />
+                  </td>
                 </tr>
               ))}
             </tbody>

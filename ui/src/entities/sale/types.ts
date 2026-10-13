@@ -23,3 +23,5 @@ export interface Sale {
   createdAt: string
   updatedAt: string
 }
+
+export type SaleUpdateRequest = Partial<Omit<SaleRegisterRequest, 'allocationId'>>

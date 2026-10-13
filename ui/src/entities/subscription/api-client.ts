@@ -7,6 +7,7 @@ import type {
   InvestmentHistoryItem,
   Subscription,
   SubscriptionRegisterRequest,
+  SubscriptionUpdateRequest,
 } from './types.ts'
 
 export async function createSubscription(data: SubscriptionRegisterRequest): Promise<Subscription> {
@@ -64,4 +65,22 @@ export async function getSubscriptionDetail(
   signal?: AbortSignal,
 ): Promise<InvestmentHistoryItem> {
   return apiGetParsed(`/investment-history/${subscriptionId}`, investmentHistoryItemSchema, signal)
+}
+
+export async function getSubscription(id: number): Promise<Subscription> {
+  return apiFetch<Subscription>(`/subscriptions/${id}`)
+}
+
+export async function updateSubscription(
+  id: number,
+  data: SubscriptionUpdateRequest,
+): Promise<Subscription> {
+  return apiFetch<Subscription>(`/subscriptions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteSubscription(id: number): Promise<void> {
+  return apiFetch<void>(`/subscriptions/${id}`, { method: 'DELETE' })
 }

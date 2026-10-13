@@ -1,2 +1,7 @@
-export { createAllocation } from './api-client.ts'
-export type { AllocationRegisterRequest } from './types.ts'
+export {
+  createAllocation,
+  deleteAllocation,
+  getAllocation,
+  updateAllocation,
+} from './api-client.ts'
+export type { Allocation, AllocationRegisterRequest, AllocationUpdateRequest } from './types.ts'
