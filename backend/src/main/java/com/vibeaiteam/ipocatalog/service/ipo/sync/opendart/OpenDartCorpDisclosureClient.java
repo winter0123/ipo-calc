@@ -1,5 +1,6 @@
 package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 
+import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartCompanyOverview;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -9,6 +10,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -146,6 +148,37 @@ public class OpenDartCorpDisclosureClient {
 
     // 지분증권 증권신고서만 필터링 + 정정/발행조건확정 디듀프
     return filterAndDeduplicate(allItems);
+  }
+
+  /**
+   * 기업개황(대표이사·설립일·주소)을 조회한다. 키가 없거나 호출이 실패하면 빈 값이다(상세 화면 보조 정보라 예외를 올리지 않는다).
+   *
+   * @param corpCode DART 고유번호(8자리)
+   * @return 기업개황
+   */
+  public Optional<OpenDartCompanyOverview> getCompanyOverview(String corpCode) {
+    if (properties.isApiKeyMissing() || corpCode == null || !corpCode.matches("\\d{8}")) {
+      return Optional.empty();
+    }
+    try {
+      enforceRateLimit();
+      OpenDartCompanyOverview overview =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder ->
+                      uriBuilder
+                          .path("/api/company.json")
+                          .queryParam("crtfc_key", properties.getApiKey())
+                          .queryParam("corp_code", corpCode)
+                          .build())
+              .retrieve()
+              .body(OpenDartCompanyOverview.class);
+      return Optional.ofNullable(overview).filter(o -> "000".equals(o.status()));
+    } catch (RestClientException e) {
+      // 예외 메시지에 crtfc_key가 담긴 URL이 들어가므로 남기지 않는다.
+      return Optional.empty();
+    }
   }
 
   private void validateApiKey() {

@@ -151,3 +151,67 @@
     0 0 0 2px var(--surface),
     0 0 0 4px var(--link);
 }
+
+.insightSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.insightTitle {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.insightNote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.insightNote a {
+  color: var(--link);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.insightTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.insightTable th,
+.insightTable td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.insightTable th:first-child {
+  text-align: left;
+}
+
+.insightTable tbody th {
+  background-color: transparent;
+  font-weight: 600;
+}
+
+.insightTable thead th {
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.insightTable tbody tr:last-child th,
+.insightTable tbody tr:last-child td {
+  border-bottom: none;
+}

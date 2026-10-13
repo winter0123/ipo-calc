@@ -385,6 +385,15 @@ class IpoControllerTest {
   }
 
   @Test
+  void getInsightIsPublicAndReturns404ForUnknownIpo() throws Exception {
+    // 로그인 없이 호출(공개 GET /ipos/**). 없는 공모주는 외부 호출 없이 404.
+    MvcResult result = mockMvc.perform(get("/ipos/{id}/insight", 9999L)).andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(404);
+    assertError(result, "NOT_FOUND");
+  }
+
+  @Test
   void getIpoByIdDeletedReturns404() throws Exception {
     signupAndLogin();
     Map<String, Object> request = validRequest();

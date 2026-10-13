@@ -1,10 +1,12 @@
 package com.vibeaiteam.ipocatalog.controller.ipo;
 
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoImportResponse;
+import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoInsightResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoCsvImportService;
+import com.vibeaiteam.ipocatalog.service.ipo.IpoInsightService;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class IpoController {
 
   private final IpoService ipoService;
   private final IpoCsvImportService ipoCsvImportService;
+  private final IpoInsightService ipoInsightService;
 
   /** 비활성화되지 않은(삭제되지 않은) IPO 목록을 최신 기준·생성일 내림차순으로 조회해 반환한다. */
   @GetMapping
@@ -43,6 +46,17 @@ public class IpoController {
   public ResponseEntity<IpoResponse> getById(@PathVariable Long id) {
     IpoResponse response = ipoService.getById(id);
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 공모주 상세 화면의 부가 정보(기업정보·수요예측·증권사별 청약·최근 실적)를 조회한다. 로그인 없이 열린다(GET /ipos/**).
+   *
+   * @param id 공모주 ID
+   * @return 부가 정보(모르는 값은 null). 없는 공모주는 404
+   */
+  @GetMapping("/{id}/insight")
+  public ResponseEntity<IpoInsightResponse> getInsight(@PathVariable Long id) {
+    return ResponseEntity.ok(ipoInsightService.getInsight(id));
   }
 
   /** IPO ID로 해당 IPO의 회사명/공모명 등을 수정하고, 수정된 IPO 정보를 반환한다. 존재하지 않으면 404를 반환한다. */

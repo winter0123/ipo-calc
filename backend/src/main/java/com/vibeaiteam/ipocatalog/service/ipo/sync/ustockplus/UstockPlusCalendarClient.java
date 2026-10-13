@@ -2,12 +2,15 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.dto.UstockPlusCalendarItem;
+import com.vibeaiteam.ipocatalog.service.ipo.sync.ustockplus.dto.UstockPlusIpoDetail;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +33,8 @@ public class UstockPlusCalendarClient {
   private static final String ORIGIN = "https://ustock.naver.com";
   private static final String REFERER = "https://ustock.naver.com/service/ipo";
   private static final String PATH = "/v2/ipo/calendars";
+  private static final String DETAIL_PATH = "/v2/ipo/stocks/{stockCode}";
+  private static final Pattern STOCK_CODE = Pattern.compile("[0-9A-Z]{6}");
   private static final long MAX_RANGE_DAYS = 89;
   private static final long REQUEST_INTERVAL_MS = 70;
   private static final Map<String, Integer> SLOTS =
@@ -96,6 +101,29 @@ public class UstockPlusCalendarClient {
     } catch (RuntimeException e) {
       log.warn("ustockplus 호출 실패: {}", e.getClass().getSimpleName());
       return Collections.emptyList();
+    }
+  }
+
+  /**
+   * 종목 하나의 공모 상세(수요예측·증권사별 청약·최근 실적·회사 소개)를 조회한다. 실패하거나 종목코드 형식이 아니면 빈 값이다.
+   *
+   * @param stockCode 6자리 종목코드(상장 전 코드는 영문 포함 가능)
+   * @return 공모 상세
+   */
+  public Optional<UstockPlusIpoDetail> fetchIpoDetail(String stockCode) {
+    if (stockCode == null || !STOCK_CODE.matcher(stockCode).matches()) {
+      return Optional.empty();
+    }
+    try {
+      enforceRateLimit();
+      return Optional.ofNullable(
+          restClient.get().uri(DETAIL_PATH, stockCode).retrieve().body(UstockPlusIpoDetail.class));
+    } catch (RestClientResponseException e) {
+      log.warn("ustockplus 상세 호출 실패: status={}", e.getStatusCode().value());
+      return Optional.empty();
+    } catch (RuntimeException e) {
+      log.warn("ustockplus 상세 호출 실패: {}", e.getClass().getSimpleName());
+      return Optional.empty();
     }
   }
 
