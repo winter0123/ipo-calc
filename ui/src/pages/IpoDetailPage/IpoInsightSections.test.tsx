@@ -5,31 +5,28 @@ import IpoInsightSections from './IpoInsightSections.tsx'
 import type { IpoInsight } from '@/entities/ipo/index.ts'
 
 const EMPTY: IpoInsight = {
-  description: null,
-  keywords: [],
+  syncedAt: '2026-10-13T17:00:00',
+  sourceReportName: '[기재정정]투자설명서',
+  sourceUrl: null,
   ceoName: null,
   establishedOn: null,
   address: null,
-  demandForecastStartDate: null,
-  demandForecastEndDate: null,
+  parValue: null,
+  capitalStock: null,
+  largestShareholderName: null,
+  largestShareholderRatio: null,
   institutionalCompetitionRate: null,
   lockUpCommitmentRatio: null,
-  protectedShareRatio: null,
-  floatShareRatio: null,
-  listedShares: null,
-  offeringShares: null,
-  marketCapAtOfferPrice: null,
-  recentSales: null,
-  recentNetProfit: null,
-  registrationStatementUrl: null,
-  brokers: [],
+  financials: [],
+  floatSchedule: [],
+  underwriters: [],
 }
 
 function renderWith(body: unknown, status = 200) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })))
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <IpoInsightSections ipoId={7} />
+      <IpoInsightSections ipoId={7} listingDate="2026-10-22" />
     </QueryClientProvider>,
   )
 }
@@ -37,41 +34,43 @@ function renderWith(body: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('IpoInsightSections', () => {
-  it('수요예측·증권사별 청약·기업정보·실적을 단위와 함께 보여 준다', async () => {
+  it('수요예측·해제일·기업정보·손익계산서·인수단·출처를 보여 준다', async () => {
     renderWith({
       ...EMPTY,
-      description: '생체 소재 의료기기',
-      keywords: ['의료기기'],
+      sourceUrl: 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=1',
       ceoName: '김성포',
-      establishedOn: '2015-10-27',
-      demandForecastStartDate: '2026-09-16',
-      demandForecastEndDate: '2026-09-22',
+      parValue: 100,
+      capitalStock: 2308265000,
+      largestShareholderName: '김성포',
+      largestShareholderRatio: 30.1,
       institutionalCompetitionRate: 1096.56,
       lockUpCommitmentRatio: 30.62,
-      protectedShareRatio: 76.67,
-      floatShareRatio: 23.33,
-      recentSales: 23786847000,
-      recentNetProfit: 7287888000,
-      registrationStatementUrl: 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=1',
-      brokers: [
-        {
-          name: '하나증권',
-          shares: 213000,
-          equalSharesPerPerson: null,
-          proportionalCompetitionRate: null,
-        },
+      financials: [
+        { period: '제11기', revenue: 23786846687, operatingProfit: -855758727, netIncome: null },
       ],
+      floatSchedule: [{ label: '상장 후 3개월 뒤', shares: 6347310, ratio: 23.33 }],
+      underwriters: [{ name: 'KB증권', role: '대표', shares: 4000000 }],
     })
 
     expect(await screen.findByText('1,096.56:1')).toBeInTheDocument()
     expect(screen.getByText('30.62%')).toBeInTheDocument()
-    expect(screen.getByText('76.67% / 23.33%')).toBeInTheDocument()
-    expect(screen.getByText('2026-09-16 ~ 2026-09-22')).toBeInTheDocument()
-    expect(screen.getByText('237.9억원')).toBeInTheDocument()
-    expect(screen.getByText('김성포')).toBeInTheDocument()
-    const brokers = screen.getByRole('region', { name: '증권사별 청약' })
-    expect(within(brokers).getByText('213,000주')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '증권신고서 보기' })).toHaveAttribute(
+    expect(screen.getByText('김성포 (30.1%)')).toBeInTheDocument()
+    expect(screen.getByText('23.1억원')).toBeInTheDocument()
+    expect(screen.getByText('100원')).toBeInTheDocument()
+    const float = screen.getByRole('region', { name: '유통가능 물량 표' })
+    expect(within(float).getByText('2027-01-22')).toBeInTheDocument()
+    expect(within(float).getByText('6,347,310주')).toBeInTheDocument()
+    const fin = screen.getByRole('region', { name: '손익계산서 표(억원)' })
+    expect(within(fin).getByText('237.9')).toBeInTheDocument()
+    expect(within(fin).getByText('-8.6').className).toMatch(/negative/)
+    expect(within(fin).getByText('-')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: '인수단 표' })).getByText('4,000,000주'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/금융감독원 DART \[기재정정\]투자설명서 · 2026-10-13 기준/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '공시 원문 보기' })).toHaveAttribute(
       'rel',
       'noopener noreferrer',
     )
@@ -81,9 +80,15 @@ describe('IpoInsightSections', () => {
     renderWith({ ...EMPTY, ceoName: '홍길동' })
 
     expect(await screen.findByText('홍길동')).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: '수요예측·공모' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: '증권사별 청약' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '증권신고서 보기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '수요예측' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '손익계산서' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '공시 원문 보기' })).not.toBeInTheDocument()
+  })
+
+  it('syncedAt이 null이면 안내만 보인다', async () => {
+    renderWith({ ...EMPTY, syncedAt: null })
+
+    expect(await screen.findByText('아직 공시 정보를 가져오지 않았습니다.')).toBeInTheDocument()
   })
 
   it('조회 실패 시 안내만 보인다', async () => {

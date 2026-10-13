@@ -153,7 +153,7 @@ export default function IpoDetailPage() {
         </div>
       </dl>
 
-      <IpoInsightSections ipoId={id} />
+      <IpoInsightSections ipoId={id} listingDate={ipo!.listingDate?.split('T')[0] ?? null} />
 
       <nav className={styles.actions} aria-label="공모주 상세 액션">
         <Link to="/ipo-calendar" className={styles.secondaryLink}>

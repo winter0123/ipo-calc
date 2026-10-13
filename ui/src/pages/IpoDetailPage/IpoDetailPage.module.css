@@ -215,3 +215,7 @@
 .insightTable tbody tr:last-child td {
   border-bottom: none;
 }
+
+.negative {
+  color: var(--danger);
+}
