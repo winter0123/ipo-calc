@@ -2,11 +2,11 @@ package com.vibeaiteam.accountauthentication.config.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 요청 제한 설정이 필터 빈을 만들고 서블릿 자동 등록을 막는지 검증한다.

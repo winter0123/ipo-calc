@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
@@ -17,15 +16,16 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
 /** GET /auth/me: 현재 로그인 계정의 역할을 화면이 알 수 있게 한다. */
 @SpringBootTest
@@ -89,7 +89,7 @@ class CurrentAccountTest {
     Map<String, Object> userBody =
         objectMapper.readValue(
             user.getResponse().getContentAsString(StandardCharsets.UTF_8),
-            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+            new tools.jackson.core.type.TypeReference<Map<String, Object>>() {});
     assertThat(userBody.get("role")).isEqualTo("USER");
     assertThat(userBody).containsOnlyKeys("accountId", "email", "name", "role");
     String adminJson = admin.getResponse().getContentAsString(StandardCharsets.UTF_8);

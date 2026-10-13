@@ -1,4 +1,8 @@
 spring:
+  jackson:
+    # Jackson 3 기본값(속성 알파벳 정렬)이 아닌 클래스 선언 순서로 응답 필드를 유지한다(Boot 3.x 동작).
+    mapper:
+      sort-properties-alphabetically: false
   application:
     name: account-authentication
   servlet:

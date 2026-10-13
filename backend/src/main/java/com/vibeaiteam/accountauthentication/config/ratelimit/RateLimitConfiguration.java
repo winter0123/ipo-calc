@@ -1,12 +1,13 @@
 package com.vibeaiteam.accountauthentication.config.ratelimit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * IP별 요청 제한 필터를 등록한다.
@@ -27,7 +28,7 @@ public class RateLimitConfiguration {
   @Bean
   public RateLimitFilter rateLimitFilter(
       RateLimitProperties properties, Clock clock, ObjectProvider<ObjectMapper> objectMapper) {
-    ObjectMapper mapper = objectMapper.getIfAvailable(ObjectMapper::new);
+    ObjectMapper mapper = objectMapper.getIfAvailable(() -> JsonMapper.builder().build());
     return new RateLimitFilter(properties, new FixedWindowRateLimiter(clock), mapper);
   }
 

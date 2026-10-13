@@ -3,13 +3,13 @@ package com.vibeaiteam.brokerintegration.service.matching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfit;
 import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitResponse;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /** {@link KisTradeProfitMapper} 단위 테스트. 픽스처는 실응답 형태를 따른 더미 값이다. */
 class KisTradeProfitMapperTest {

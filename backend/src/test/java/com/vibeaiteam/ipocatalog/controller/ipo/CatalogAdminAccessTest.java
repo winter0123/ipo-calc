@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibeaiteam.accountauthentication.AccountAuthenticationApplication;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
@@ -18,16 +17,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
+import tools.jackson.databind.ObjectMapper;
 
 /** 공용 카탈로그(IPO·증권사) 쓰기는 ADMIN 전용이고 읽기는 로그인 사용자 전체에 열려 있다. */
 @SpringBootTest
@@ -65,7 +65,7 @@ class CatalogAdminAccessTest {
   void nonAdminCannotWriteCatalogAndGets403() throws Exception {
     signupAndLogin();
 
-    for (MockHttpServletRequestBuilder request : writeRequests()) {
+    for (AbstractMockHttpServletRequestBuilder<?> request : writeRequests()) {
       var response = mockMvc.perform(request.session(session)).andReturn().getResponse();
       assertThat(response.getStatus()).as(request.toString()).isEqualTo(403);
       assertThat(response.getContentAsString()).contains("\"error\":\"FORBIDDEN\"");
@@ -125,9 +125,9 @@ class CatalogAdminAccessTest {
         .isEqualTo(200);
   }
 
-  private MockHttpServletRequestBuilder[] writeRequests() {
+  private AbstractMockHttpServletRequestBuilder<?>[] writeRequests() {
     String json = "{}";
-    return new MockHttpServletRequestBuilder[] {
+    return new AbstractMockHttpServletRequestBuilder<?>[] {
       post("/ipos").contentType(MediaType.APPLICATION_JSON).content(json),
       patch("/ipos/1").contentType(MediaType.APPLICATION_JSON).content(json),
       delete("/ipos/1"),

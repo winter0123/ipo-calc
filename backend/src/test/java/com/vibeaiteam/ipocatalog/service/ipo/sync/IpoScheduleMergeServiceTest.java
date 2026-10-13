@@ -23,7 +23,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,7 +45,7 @@ class IpoScheduleMergeServiceTest {
 
   private IpoScheduleMergeService mergeService;
 
-  @Captor private ArgumentCaptor<Ipo> ipoCaptor;
+  private final ArgumentCaptor<Ipo> ipoCaptor = ArgumentCaptor.forClass(Ipo.class);
 
   private static final LocalDate TODAY = LocalDate.of(2026, 10, 15);
   private static final RecordStatus STATUS_ACTIVE = RecordStatus.ACTIVE;

@@ -2,11 +2,11 @@ package com.vibeaiteam.testsupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 컨트롤러 테스트가 공통으로 쓰는 가입·로그인 도우미.
