@@ -259,9 +259,22 @@ class OpenDartEquitySecuritiesClientTest {
     assertThat(result).hasSize(1);
     OpenDartEquitySecurityDetail detail = result.get(0);
     assertThat(detail.getSubscriptionStartDate()).isNull();
+    assertThat(detail.getAllotmentDate()).isNull();
+    assertThat(detail.getRefundDate()).isNull();
     assertThat(detail.getOfferingShareCount()).isNull();
     assertThat(detail.getOfferPrice()).isNull();
     assertThat(detail.getTotalOfferingAmount()).isNull();
+  }
+
+  @Test
+  void getEquitySecurityDetail_mapsAsandAndPymdToAllotmentAndRefundDate() throws IOException {
+    expectEstkRsRequest(readFixture("ds006-optonix.json"));
+
+    OpenDartEquitySecurityDetail detail = client.getEquitySecurityDetail("01658035").get(0);
+
+    mockServer.verify();
+    assertThat(detail.getAllotmentDate()).isEqualTo(java.time.LocalDate.of(2026, 11, 10));
+    assertThat(detail.getRefundDate()).isEqualTo(java.time.LocalDate.of(2026, 11, 10));
   }
 
   private String readFixture(String fileName) throws IOException {

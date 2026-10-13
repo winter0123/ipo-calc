@@ -151,6 +151,70 @@ class IpoSyncServiceTest {
     assertThat(saved.getStatus()).isEqualTo(RecordStatus.ACTIVE);
   }
 
+  private OpenDartEquitySecurityDetail createDetailWithDates(String asand, String pymd) {
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("01658035")
+            .corpName("옵토닉스")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("2,200,000")
+            .slprc("10,000")
+            .asand(asand)
+            .pymd(pymd)
+            .build();
+    detail.parseDerivedFields();
+    return detail;
+  }
+
+  @Test
+  void sync_createsNewIpo_withAllotmentAndRefundDateFromDart() {
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
+    when(equitySecuritiesClient.getEquitySecurityDetail("01658035"))
+        .thenReturn(List.of(createDetailWithDates("2026년 11월 10일", "2026년 11월 10일")));
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+    when(ipoRepository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            "옵토닉스", LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+
+    syncService.sync(7);
+
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    assertThat(ipoCaptor.getValue().getRefundDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+  }
+
+  @Test
+  void sync_updatesExistingIpo_dartDatesOverrideOldValues_butDashKeepsExisting() {
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
+    // 배정일은 DART가 값을 주고, 환불일은 "-"라 읽을 수 없음
+    when(equitySecuritiesClient.getEquitySecurityDetail("01658035"))
+        .thenReturn(List.of(createDetailWithDates("2026년 11월 10일", "-")));
+    Ipo existing =
+        Ipo.builder()
+            .id(1L)
+            .companyName("옵토닉스")
+            .ipoName("옵토닉스")
+            .corpCode("01658035")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .allotmentDate(LocalDate.of(2026, 11, 9)) // 예전 ustockplus 값
+            .refundDate(LocalDate.of(2026, 11, 11)) // 예전 ustockplus 값
+            .status(RecordStatus.ACTIVE)
+            .syncSource("OPENDART+USTOCKPLUS")
+            .build();
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(existing));
+
+    syncService.sync(7);
+
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    assertThat(ipoCaptor.getValue().getRefundDate()).isEqualTo(LocalDate.of(2026, 11, 11));
+  }
+
   @Test
   void sync_singleDateSbd_usesNextBusinessDayForEndDate() {
     // given: 단일 날짜 sbd → 종료일은 다음 영업일
