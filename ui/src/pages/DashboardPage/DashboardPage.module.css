@@ -85,3 +85,23 @@
   color: var(--ink-muted);
   font-size: 14px;
 }
+
+.investors {
+  display: flex;
+  flex-direction: column;
+}
+
+.investors[open] > .investorsSummary {
+  margin-bottom: var(--space-6);
+}
+
+.investors > section + section {
+  margin-top: var(--space-6);
+}
+
+.investorsSummary {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}

@@ -112,22 +112,30 @@ export default function DashboardPage() {
               </h2>
               <DashboardCardGroup summary={summary} />
             </section>
-            {sections.map((section) => (
-              <section
-                key={section.id}
-                aria-labelledby={`dash-investor-${section.id}`}
-                className={styles.section}
-              >
-                <h2 id={`dash-investor-${section.id}`} className={styles.sectionTitle}>
-                  {section.name}
-                </h2>
-                {section.hasSales ? (
-                  <DashboardCardGroup summary={section.summary} />
-                ) : (
-                  <p className={styles.noSales}>아직 매도 기록이 없습니다.</p>
-                )}
-              </section>
-            ))}
+            {sections.length > 0 && (
+              // 투자자가 많으면 길어지므로 4명 이상일 때는 접힌 채로 시작한다.
+              <details className={styles.investors} open={sections.length <= 3}>
+                <summary className={styles.investorsSummary}>
+                  투자자별 ({sections.length}명)
+                </summary>
+                {sections.map((section) => (
+                  <section
+                    key={section.id}
+                    aria-labelledby={`dash-investor-${section.id}`}
+                    className={styles.section}
+                  >
+                    <h2 id={`dash-investor-${section.id}`} className={styles.sectionTitle}>
+                      {section.name}
+                    </h2>
+                    {section.hasSales ? (
+                      <DashboardCardGroup summary={section.summary} />
+                    ) : (
+                      <p className={styles.noSales}>아직 매도 기록이 없습니다.</p>
+                    )}
+                  </section>
+                ))}
+              </details>
+            )}
           </div>
         )
       }

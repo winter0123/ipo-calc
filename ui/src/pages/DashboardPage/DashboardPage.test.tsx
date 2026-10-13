@@ -239,6 +239,34 @@ describe('DashboardPage', () => {
     // 매도 기록이 없는 투자자는 큰 카드 대신 한 줄 요약
     expect(screen.getByText('아직 매도 기록이 없습니다.')).toBeInTheDocument()
     expect(screen.getAllByText('총 투자금')).toHaveLength(2)
+    expect(screen.getByText('투자자별 (2명)').closest('details')).toHaveAttribute('open')
+  })
+
+  it('투자자가 4명 이상이면 투자자별 구역을 접은 채로 시작한다', async () => {
+    vi.mocked(useDashboardSummary).mockReturnValue(
+      asResult({
+        data: {
+          totalInvestmentAmount: 1,
+          totalPreTaxProfit: 0,
+          totalAfterTaxProfit: 0,
+          totalProfitRate: 0,
+          participationCount: 1,
+        },
+        isLoading: false,
+        error: null,
+      }),
+    )
+    vi.mocked(useDashboardByInvestor).mockReturnValue(
+      asResult({ data: [], isLoading: false, error: null }),
+    )
+    vi.mocked(useInvestors).mockReturnValue(
+      asResult({ data: [1, 2, 3, 4].map((id) => ({ id, displayName: `투자자${id}` })) }),
+    )
+
+    renderPage()
+    await waitForLoaded()
+
+    expect(screen.getByText('투자자별 (4명)').closest('details')).not.toHaveAttribute('open')
   })
 
   it('로딩 상태를 표시함', async () => {
