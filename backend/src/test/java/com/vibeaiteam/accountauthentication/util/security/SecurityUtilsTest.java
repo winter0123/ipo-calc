@@ -12,10 +12,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * AC 인용: docs/work-log/investor-management.md (D-I-007) - SecurityUtils.getCurrentAccountId()는 인증된
@@ -30,7 +30,7 @@ class SecurityUtilsTest {
 
   @Autowired private SecurityUtils securityUtils;
 
-  @MockBean private AccountRepository accountRepository;
+  @MockitoBean private AccountRepository accountRepository;
 
   @AfterEach
   void tearDown() {

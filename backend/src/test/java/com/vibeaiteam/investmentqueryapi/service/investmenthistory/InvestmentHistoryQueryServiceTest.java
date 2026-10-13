@@ -42,13 +42,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 /**
@@ -65,23 +65,23 @@ class InvestmentHistoryQueryServiceTest {
 
   @Autowired private InvestmentHistoryQueryService queryService;
 
-  @MockBean private SecurityUtils securityUtils;
+  @MockitoBean private SecurityUtils securityUtils;
 
-  @MockBean private InvestmentHistoryOwnershipVerifier ownershipVerifier;
+  @MockitoBean private InvestmentHistoryOwnershipVerifier ownershipVerifier;
 
-  @MockBean private AllocationRepository allocationRepository;
+  @MockitoBean private AllocationRepository allocationRepository;
 
-  @MockBean private SaleRepository saleRepository;
+  @MockitoBean private SaleRepository saleRepository;
 
-  @MockBean private IpoRepository ipoRepository;
+  @MockitoBean private IpoRepository ipoRepository;
 
-  @MockBean private SubscriptionRepository subscriptionRepository;
+  @MockitoBean private SubscriptionRepository subscriptionRepository;
 
-  @MockBean private InvestorRepository investorRepository;
+  @MockitoBean private InvestorRepository investorRepository;
 
-  @MockBean private SecuritiesAccountRepository securitiesAccountRepository;
+  @MockitoBean private SecuritiesAccountRepository securitiesAccountRepository;
 
-  @MockBean private SecuritiesFirmRepository securitiesFirmRepository;
+  @MockitoBean private SecuritiesFirmRepository securitiesFirmRepository;
 
   private static final Long CURRENT_ACCOUNT_ID = 1L;
   private static final Long OTHER_ACCOUNT_ID = 2L;

@@ -1,6 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "3.3.4"
-    id("io.spring.dependency-management") version "1.1.6"
+    id("org.springframework.boot") version "3.5.16"
+    id("io.spring.dependency-management") version "1.1.7"
     id("java")
     id("checkstyle")
     id("com.diffplug.spotless") version "6.25.0"
@@ -25,8 +25,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.postgresql:postgresql")
-    implementation("org.flywaydb:flyway-core:10.20.1")
-    implementation("org.flywaydb:flyway-database-postgresql:10.20.1")
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.apache.commons:commons-csv:1.14.1")
     
     // Lombok for reducing boilerplate (optional but recommended)

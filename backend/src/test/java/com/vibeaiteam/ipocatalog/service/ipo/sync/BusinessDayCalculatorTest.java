@@ -14,9 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** {@link BusinessDayCalculator} 테스트 (Mock Repository 사용). */
 @SpringBootTest
@@ -24,7 +24,7 @@ import org.springframework.test.context.ContextConfiguration;
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
 class BusinessDayCalculatorTest {
 
-  @MockBean private MarketHolidayRepository marketHolidayRepository;
+  @MockitoBean private MarketHolidayRepository marketHolidayRepository;
 
   @Autowired private BusinessDayCalculator calculator;
 

@@ -32,10 +32,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** {@link IpoSyncService} 단위 테스트. */
@@ -44,17 +44,17 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ContextConfiguration(classes = AccountAuthenticationApplication.class)
 class IpoSyncServiceTest {
 
-  @MockBean private OpenDartCorpDisclosureClient corpDisclosureClient;
+  @MockitoBean private OpenDartCorpDisclosureClient corpDisclosureClient;
 
-  @MockBean private OpenDartEquitySecuritiesClient equitySecuritiesClient;
+  @MockitoBean private OpenDartEquitySecuritiesClient equitySecuritiesClient;
 
-  @MockBean private IpoRepository ipoRepository;
+  @MockitoBean private IpoRepository ipoRepository;
 
-  @MockBean private BusinessDayCalculator businessDayCalculator;
+  @MockitoBean private BusinessDayCalculator businessDayCalculator;
 
-  @MockBean private IpoScheduleMergeService ipoScheduleMergeService;
+  @MockitoBean private IpoScheduleMergeService ipoScheduleMergeService;
 
-  @MockBean private UstockPlusCalendarClient ustockPlusCalendarClient;
+  @MockitoBean private UstockPlusCalendarClient ustockPlusCalendarClient;
 
   // TransactionTemplate은 실제 빈 사용 (Mock으로 람다 인자 캡처 시 타입 문제 발생)
   @Autowired private TransactionTemplate transactionTemplate;

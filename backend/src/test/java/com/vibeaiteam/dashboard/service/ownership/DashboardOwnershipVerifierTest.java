@@ -23,9 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * DashboardOwnershipVerifier 단위 테스트
@@ -42,15 +42,15 @@ class DashboardOwnershipVerifierTest {
 
   @Autowired private DashboardOwnershipVerifier ownershipVerifier;
 
-  @MockBean private SecurityUtils securityUtils;
+  @MockitoBean private SecurityUtils securityUtils;
 
-  @MockBean private SaleRepository saleRepository;
+  @MockitoBean private SaleRepository saleRepository;
 
-  @MockBean private AllocationRepository allocationRepository;
+  @MockitoBean private AllocationRepository allocationRepository;
 
-  @MockBean private SubscriptionRepository subscriptionRepository;
+  @MockitoBean private SubscriptionRepository subscriptionRepository;
 
-  @MockBean private InvestorRepository investorRepository;
+  @MockitoBean private InvestorRepository investorRepository;
 
   private static final Long CURRENT_ACCOUNT_ID = 1L;
   private static final Long OTHER_ACCOUNT_ID = 2L;
