@@ -5,7 +5,7 @@ import styles from './DashboardHome.module.css'
 import { formatShares } from '@/shared/lib/format.ts'
 
 export default function DashboardTodo() {
-  const { current, isLoading: investorLoading } = useCurrentInvestor()
+  const { current, investors, isLoading: investorLoading } = useCurrentInvestor()
   const { data, isLoading, error } = useAllInvestmentHistory(
     current ? { investorId: current.id } : {},
     { enabled: !!current },
@@ -17,6 +17,12 @@ export default function DashboardTodo() {
   const renderBody = () => {
     if (investorLoading || (current && isLoading))
       return <p className={styles.muted}>불러오는 중...</p>
+    if (!current && investors.length === 0)
+      return (
+        <p className={styles.muted}>
+          먼저 <Link to="/investors/register">투자자를 등록</Link>해 주세요.
+        </p>
+      )
     if (!current)
       return <p className={styles.muted}>상단에서 투자자를 선택하면 할 일을 보여 드립니다.</p>
     if (error) {

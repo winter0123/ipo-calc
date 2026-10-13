@@ -69,3 +69,13 @@
     font-size: 18px;
   }
 }
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.hint a {
+  color: var(--link);
+}
