@@ -51,6 +51,8 @@ tasks.test {
 
 checkstyle {
     toolVersion = "10.19.0"
+    // 경고(google_checks의 기본 심각도)도 0건이어야 한다 — 위반이 쌓이지 않게 빌드에서 막는다.
+    maxWarnings = 0
     configFile = file("config/checkstyle/checkstyle.xml")
     configProperties = mapOf(
         "org.checkstyle.google.suppressionfilter.config" to
