@@ -22,7 +22,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -102,7 +104,16 @@ public class SecuritiesAccountService {
             : securitiesAccountRepository.findByInvestorIdAndStatus(
                 investorId, RecordStatus.valueOf(normalized));
 
-    return accounts.stream().map(this::toMaskedResponse).toList();
+    // 증권사 이름은 한 번에 읽어 계좌 수와 무관하게 쿼리 수를 일정하게 유지한다.
+    Map<Long, String> firmNames =
+        securitiesFirmRepository
+            .findAllById(
+                accounts.stream().map(SecuritiesAccount::getSecuritiesFirmId).distinct().toList())
+            .stream()
+            .collect(Collectors.toMap(SecuritiesFirm::getId, SecuritiesFirm::getName));
+    return accounts.stream()
+        .map(a -> toMaskedResponse(a, firmNames.get(a.getSecuritiesFirmId())))
+        .toList();
   }
 
   /** ID로 증권계좌를 조회한다. */
@@ -246,8 +257,6 @@ public class SecuritiesAccountService {
   }
 
   private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {
-    String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
-    String maskedAccountNumber = AccountNumberMasker.mask(plainAccountNumber);
     // 표시용 조회이므로 findById(deletedAt 필터 없음)를 쓴다 - 증권사가 비활성화돼도
     // 기존에 연결된 계좌는 그대로 유지되므로(architecture.md), 이름도 계속 보여야 한다.
     String securitiesFirmName =
@@ -255,6 +264,13 @@ public class SecuritiesAccountService {
             .findById(account.getSecuritiesFirmId())
             .map(SecuritiesFirm::getName)
             .orElse(null);
+    return toMaskedResponse(account, securitiesFirmName);
+  }
+
+  private SecuritiesAccountResponse toMaskedResponse(
+      SecuritiesAccount account, String securitiesFirmName) {
+    String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
+    String maskedAccountNumber = AccountNumberMasker.mask(plainAccountNumber);
     return SecuritiesAccountResponse.from(account, maskedAccountNumber, securitiesFirmName);
   }
 
