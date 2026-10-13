@@ -28,7 +28,8 @@
 - **운영 방식**: Orca 새 worktree 워커 대신 하위 에이전트 + 고정 작업공간 재사용(node_modules 재설치 방지).
 - **리팩토링(#375~#382)**: 외부 API 클라이언트 공용 도우미(OpenDART 간격 공유 결함 수정), 표시 함수 `shared/lib/format.ts`·`dateOnly`, 매도 매핑 `entities/sale`의 `toSalePayload`, 예외는 `ApiException`+`GlobalExceptionHandler`(새 예외는 이걸 상속), 매도 등록 폼·수정 대화상자 분리. 원격 브랜치는 `main`만 남김.
 - **품질·운영(#384~#390)**: Spring Boot 3.5.16, N+1 회귀 테스트(`QueryCountTest`), open-in-view 끔, 접근성 위반 0(25화면×2폭), UI 의존성 취약점 0. **운영 `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY`를 채워야 동기화·증권사 연동이 동작**(#385).
-- **보증**: 백엔드 844 테스트·checkstyle 경고 0, UI 584 테스트, E2E 14/14.
+- **테스트·CI(#392~#399)**: E2E 18개(수정·삭제·공모주 상세·증권사 관리·수익 그래프 추가), 커버리지 도구(백엔드 JaCoCo `jacocoTestReport`, UI `test:coverage`), checkstyle 경고 0을 빌드가 강제, Jenkins가 checkstyle·format:check·build까지 검사. 처음 쓰는 사용자 빈 상태 안내(#398).
+- **보증**: 백엔드 946 테스트(분기 87.7%)·checkstyle 경고 0, UI 611 테스트, E2E 18/18, Jenkins #7 SUCCESS.
 
 ## 인계 요약 (2026-10-12, 모델 교체 직전) — 최신, 새 세션은 이 절부터 읽는다
 
