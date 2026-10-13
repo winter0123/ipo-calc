@@ -95,15 +95,39 @@
     gap: var(--space-2);
   }
 
-  .salesTable {
-    font-size: 12px;
-    overflow-x: auto;
+  /* 좁은 화면: 표 대신 행마다 카드로 쌓아 관리 버튼까지 보이게 한다 */
+  .salesTable thead {
+    position: absolute;
+    left: -9999px;
+  }
+
+  .salesTable,
+  .salesTable tbody,
+  .salesTable tr,
+  .salesTable td {
     display: block;
   }
 
-  .salesTable th,
   .salesTable td {
-    padding: var(--space-1) var(--space-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+  }
+
+  .salesTable td::before {
+    content: attr(data-label);
+    font-weight: 600;
+  }
+
+  .salesTable tr {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .salesTable td {
+    border-bottom: none;
   }
 }
 
@@ -140,9 +164,9 @@
 }
 
 .actionLink {
-  align-self: flex-start;
-  display: inline-block;
-  margin: var(--space-3) 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: var(--space-2) var(--space-4);
   background-color: var(--primary);
   color: var(--on-primary);
@@ -154,4 +178,17 @@
 
 .actionLink:hover {
   background-color: var(--primary-hover);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }

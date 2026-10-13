@@ -24,7 +24,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         : null
 
   return (
-    <div className={styles.detail}>
+    <div className={`${styles.detail} ${styles.stack}`}>
       <header className={styles.header}>
         <h2 className={styles.title}>청약 상세</h2>
         <button
@@ -72,18 +72,19 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
         </div>
       </dl>
 
-      <RecordActions
-        kind="subscription"
-        id={detail.id}
-        label={`${detail.ipoName ?? '이'} 청약`}
-        onDeleted={onClose}
-      />
-
-      {nextAction && (
-        <Link to={nextAction.to} className={styles.actionLink}>
-          {nextAction.label}
-        </Link>
-      )}
+      <div className={styles.actionRow}>
+        <RecordActions
+          kind="subscription"
+          id={detail.id}
+          label={`${detail.ipoName ?? '이'} 청약`}
+          onDeleted={onClose}
+        />
+        {nextAction && (
+          <Link to={nextAction.to} className={styles.actionLink}>
+            {nextAction.label}
+          </Link>
+        )}
+      </div>
 
       {detail.allocation && (
         <div className={styles.nestedGroup}>
@@ -132,13 +133,13 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
             <tbody>
               {detail.sales.map((sale) => (
                 <tr key={sale.id}>
-                  <td>{sale.quantity}</td>
-                  <td>{formatWon(sale.amount)}</td>
-                  <td>{formatWon(sale.fee)}</td>
-                  <td>{formatWon(sale.tax)}</td>
-                  <td>{statusLabel(sale.status)}</td>
-                  <td>{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
-                  <td>
+                  <td data-label="수량">{sale.quantity}</td>
+                  <td data-label="금액">{formatWon(sale.amount)}</td>
+                  <td data-label="공모주수수료">{formatWon(sale.fee)}</td>
+                  <td data-label="세금 및 기타">{formatWon(sale.tax)}</td>
+                  <td data-label="상태">{statusLabel(sale.status)}</td>
+                  <td data-label="매도일">{new Date(sale.soldAt).toLocaleDateString('ko-KR')}</td>
+                  <td data-label="관리">
                     <RecordActions kind="sale" id={sale.id} label={`매도 ${sale.quantity}주`} />
                   </td>
                 </tr>
