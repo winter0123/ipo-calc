@@ -1,0 +1,138 @@
+-- 모든 테이블·컬럼에 한글 설명(COMMENT)을 붙인다. DBeaver 등 DB 도구에서 바로 읽히게 하려는 것으로, 데이터·스키마는 바뀌지 않는다.
+-- ipo_details는 V24에서 이미 붙였으므로 제외한다. 문구는 엔티티 Javadoc과 같은 뜻이다.
+
+COMMENT ON TABLE accounts IS '로그인 계정(사용자). 가입 승인·권한을 함께 관리한다';
+COMMENT ON COLUMN accounts.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN accounts.email IS '로그인 이메일. 소문자로 저장, 중복 불가';
+COMMENT ON COLUMN accounts.password_hash IS '비밀번호 해시(BCrypt). 원문 비밀번호는 저장하지 않는다';
+COMMENT ON COLUMN accounts.name IS '사용자 이름(가입 시 입력)';
+COMMENT ON COLUMN accounts.failed_login_attempts IS '연속 로그인 실패 횟수. 성공하면 0으로 초기화';
+COMMENT ON COLUMN accounts.locked_until IS '로그인 잠금 해제 시각. 이 시각 전까지 로그인 불가, NULL이면 잠금 없음';
+COMMENT ON COLUMN accounts.created_at IS '생성 시각';
+COMMENT ON COLUMN accounts.updated_at IS '마지막 수정 시각';
+COMMENT ON COLUMN accounts.last_login_at IS '마지막 로그인 성공 시각';
+COMMENT ON COLUMN accounts.role IS '권한. USER(일반) / ADMIN(관리자: 가입 승인·공모주 등록)';
+COMMENT ON COLUMN accounts.approved IS '관리자 가입 승인 여부. FALSE면 로그인 불가';
+
+COMMENT ON TABLE investors IS '투자자(계정 주인 본인 또는 가족 등 청약 대상 인물)';
+COMMENT ON COLUMN investors.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN investors.account_id IS '이 투자자를 등록한 로그인 계정 ID(accounts.id). 소유권 판단 기준';
+COMMENT ON COLUMN investors.display_name IS '화면에 보이는 투자자 이름(최대 50자). 예: 본인, 아내';
+COMMENT ON COLUMN investors.relationship IS '계정 주인과의 관계. SELF(본인) / SPOUSE(배우자) / PARENT(부모) / CHILD(자녀) / OTHER(기타), 없으면 NULL';
+COMMENT ON COLUMN investors.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN investors.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN investors.created_at IS '생성 시각';
+COMMENT ON COLUMN investors.updated_at IS '마지막 수정 시각';
+
+COMMENT ON TABLE securities_firms IS '증권사 기준정보. 매도 내역 자동 가져오기(조회 API) 지원 여부도 함께 보관한다';
+COMMENT ON COLUMN securities_firms.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN securities_firms.name IS '증권사 이름. 예: 한국투자증권';
+COMMENT ON COLUMN securities_firms.external_code IS '외부 기관 코드(증권사 식별용). 선택';
+COMMENT ON COLUMN securities_firms.business_registration_number IS '사업자등록번호. 선택';
+COMMENT ON COLUMN securities_firms.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN securities_firms.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN securities_firms.created_at IS '생성 시각';
+COMMENT ON COLUMN securities_firms.updated_at IS '마지막 수정 시각';
+COMMENT ON COLUMN securities_firms.api_supported IS '매도 내역 자동 가져오기(조회 API) 지원 여부. TRUE면 연동 대상';
+COMMENT ON COLUMN securities_firms.api_provider IS '연동 구현 구분값. KIS / KIWOOM / LS. 미지원이면 NULL';
+COMMENT ON COLUMN securities_firms.api_auth_type IS 'API 인증 방식. 예: APP_KEY_SECRET(앱키+시크릿)';
+COMMENT ON COLUMN securities_firms.api_readonly_only IS '조회 전용 여부. 주문 기능은 쓰지 않으므로 항상 TRUE';
+COMMENT ON COLUMN securities_firms.api_external_code IS '증권사 API 쪽 식별 코드. 선택';
+
+COMMENT ON TABLE securities_accounts IS '증권계좌. 투자자가 증권사에 가진 계좌';
+COMMENT ON COLUMN securities_accounts.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN securities_accounts.investor_id IS '계좌 주인 투자자 ID(investors.id)';
+COMMENT ON COLUMN securities_accounts.securities_firm_id IS '증권사 ID(securities_firms.id)';
+COMMENT ON COLUMN securities_accounts.account_number IS '계좌번호(암호화 저장). 화면에는 마스킹해서 보여 주고 수정할 수 없다';
+COMMENT ON COLUMN securities_accounts.account_name IS '계좌 별칭. 예: 주력 계좌. 선택';
+COMMENT ON COLUMN securities_accounts.is_default IS '이 투자자의 기본 계좌 여부. 투자자당 하나만 TRUE';
+COMMENT ON COLUMN securities_accounts.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN securities_accounts.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN securities_accounts.created_at IS '생성 시각';
+COMMENT ON COLUMN securities_accounts.updated_at IS '마지막 수정 시각';
+
+COMMENT ON TABLE ipos IS '공모주 기준정보(청약·배정·환불·상장 일정과 공모가). DART 동기화 또는 관리자 등록';
+COMMENT ON COLUMN ipos.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN ipos.company_name IS '회사명';
+COMMENT ON COLUMN ipos.ipo_name IS '공모주 이름(화면 표시용 종목명)';
+COMMENT ON COLUMN ipos.stock_code IS '종목코드(6자리). 상장 전이면 NULL일 수 있다. 증권사 매도 내역 매칭에 쓴다';
+COMMENT ON COLUMN ipos.round_label IS '회차 표시. 예: 1회차. 선택';
+COMMENT ON COLUMN ipos.lower_band_price IS '희망 공모가 하단(원)';
+COMMENT ON COLUMN ipos.upper_band_price IS '희망 공모가 상단(원)';
+COMMENT ON COLUMN ipos.fixed_price IS '확정 공모가(원)';
+COMMENT ON COLUMN ipos.subscription_start_date IS '청약 시작일';
+COMMENT ON COLUMN ipos.subscription_end_date IS '청약 종료일';
+COMMENT ON COLUMN ipos.listing_date IS '상장일. 대시보드·수익 확인의 기간(월·연) 판단 기준';
+COMMENT ON COLUMN ipos.offering_share_count IS '공모 주식 수(주)';
+COMMENT ON COLUMN ipos.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN ipos.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN ipos.created_at IS '생성 시각';
+COMMENT ON COLUMN ipos.updated_at IS '마지막 수정 시각';
+COMMENT ON COLUMN ipos.corp_code IS 'DART 고유번호(8자리). 공시 기반 일정 동기화에 쓴다';
+COMMENT ON COLUMN ipos.sync_source IS '자동 동기화 출처. OPENDART / OPENDART+USTOCKPLUS, 관리자가 직접 등록했으면 NULL';
+COMMENT ON COLUMN ipos.last_synced_at IS '마지막 자동 동기화 시각';
+COMMENT ON COLUMN ipos.allotment_date IS '배정 발표일';
+COMMENT ON COLUMN ipos.refund_date IS '환불일(증거금 반환일)';
+
+COMMENT ON TABLE subscriptions IS '청약 기록. 이미 증권사를 통해 완료된 청약 결과를 사후에 수동 입력한 기록';
+COMMENT ON COLUMN subscriptions.id IS '청약 고유 식별자(Long IDENTITY)';
+COMMENT ON COLUMN subscriptions.investor_id IS '청약한 투자자 ID(investors.id)';
+COMMENT ON COLUMN subscriptions.securities_account_id IS '청약에 쓴 증권계좌 ID(securities_accounts.id)';
+COMMENT ON COLUMN subscriptions.ipo_id IS '청약한 공모주 ID(ipos.id)';
+COMMENT ON COLUMN subscriptions.quantity IS '청약수량(주 단위, 0 초과)';
+COMMENT ON COLUMN subscriptions.deposit_amount IS '증거금 납입액(원 단위, 0 이상 — 사용자가 입력한 사실 기록)';
+COMMENT ON COLUMN subscriptions.subscribed_at IS '청약일시(사후 기록이므로 미래 시각도 허용)';
+COMMENT ON COLUMN subscriptions.memo IS '메모(선택, 예: "비대면 청약")';
+COMMENT ON COLUMN subscriptions.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN subscriptions.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN subscriptions.created_at IS '생성 시각';
+COMMENT ON COLUMN subscriptions.updated_at IS '마지막 수정 시각';
+
+COMMENT ON TABLE allocations IS '배정 결과 기록. 이미 확정된 배정 결과를 사후에 수동 입력한 기록';
+COMMENT ON COLUMN allocations.id IS '배정 고유 식별자(Long IDENTITY)';
+COMMENT ON COLUMN allocations.subscription_id IS '연결된 청약 기록 ID(subscriptions.id). 활성 배정은 청약당 1건';
+COMMENT ON COLUMN allocations.allocated_quantity IS '배정수량(주 단위, 0 이상)';
+COMMENT ON COLUMN allocations.allocated_at IS '배정일시(사후 기록이므로 과거/현재/미래 시각 모두 허용)';
+COMMENT ON COLUMN allocations.allocation_method IS '배정방식 메모(선택, 자유 텍스트 — Enum 아님, 예: 균등배정)';
+COMMENT ON COLUMN allocations.allocation_price IS '배정단가(원 단위, 0 이상, 선택)';
+COMMENT ON COLUMN allocations.note IS '비고(선택)';
+COMMENT ON COLUMN allocations.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN allocations.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN allocations.created_at IS '생성 시각';
+COMMENT ON COLUMN allocations.updated_at IS '마지막 수정 시각';
+
+COMMENT ON TABLE sales IS '분할 매도 기록. 이미 증권사를 통해 완료된 매도 결과를 사후에 수동 입력한 기록';
+COMMENT ON COLUMN sales.id IS '매도 고유 식별자(Long IDENTITY)';
+COMMENT ON COLUMN sales.allocation_id IS '매도한 배정 ID(allocations.id). 한 배정을 여러 번 나눠 팔 수 있다';
+COMMENT ON COLUMN sales.quantity IS '매도수량(주 단위, 0 초과)';
+COMMENT ON COLUMN sales.price IS '매도단가(원 단위, 0 이상, 선택)';
+COMMENT ON COLUMN sales.amount IS '매도금액(원 단위) = 매도단가 × 수량, 선택';
+COMMENT ON COLUMN sales.sale_date IS '매도일. 화면에서는 날짜만 받고 09:00을 붙여 저장한다';
+COMMENT ON COLUMN sales.fee IS '공모주 수수료(원, 청약 수수료 등. 기본 2,000원). 매도 입력 개편(2026-10-02) 전에 저장된 행은 매도 수수료 의미';
+COMMENT ON COLUMN sales.tax IS '세금 및 기타 수수료(원, 증권거래세+매도 수수료 등). 개편(2026-10-02) 전에 저장된 행은 세금만';
+COMMENT ON COLUMN sales.other_cost IS '기타 비용(원). 값이 있으면 수익 계산에서 빼지만, 지금 화면은 입력받지 않는다(API로만 들어옴)';
+COMMENT ON COLUMN sales.status IS '레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다';
+COMMENT ON COLUMN sales.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN sales.created_at IS '생성 시각';
+COMMENT ON COLUMN sales.updated_at IS '마지막 수정 시각';
+
+COMMENT ON TABLE market_holidays IS 'KRX 휴장일. 한국천문연구원 특일 정보 API와 KRX 고유 규칙(근로자의 날, 연말 휴장일)을 합쳐 관리';
+COMMENT ON COLUMN market_holidays.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN market_holidays.holiday_date IS '휴장일. 중복 불가';
+COMMENT ON COLUMN market_holidays.name IS '휴장일 이름. 예: 신정, 설날 연휴, 근로자의 날';
+COMMENT ON COLUMN market_holidays.source IS '출처. SEED(초기 데이터) / KASI_API(한국천문연구원 API) / RULE(KRX 규칙 보완)';
+COMMENT ON COLUMN market_holidays.created_at IS '생성 시각';
+
+COMMENT ON TABLE securities_account_api_credentials IS '증권계좌별 브로커 API 인증정보(앱키/앱시크릿/접근토큰) 암호화 저장. 계좌당 활성 1건';
+COMMENT ON COLUMN securities_account_api_credentials.id IS 'PK. DB가 자동으로 매기는 번호';
+COMMENT ON COLUMN securities_account_api_credentials.securities_account_id IS '증권계좌 ID(securities_accounts.id)';
+COMMENT ON COLUMN securities_account_api_credentials.api_provider IS '브로커 어댑터 식별자. KIS / KIWOOM / LS';
+COMMENT ON COLUMN securities_account_api_credentials.app_key_encrypted IS '앱키 암호문(AES-256-GCM, Base64(IV+ciphertext))';
+COMMENT ON COLUMN securities_account_api_credentials.app_secret_encrypted IS '앱시크릿 암호문(AES-256-GCM, Base64(IV+ciphertext))';
+COMMENT ON COLUMN securities_account_api_credentials.access_token_encrypted IS '접근토큰 암호문(NULL 가능, AES-256-GCM, Base64(IV+ciphertext))';
+COMMENT ON COLUMN securities_account_api_credentials.token_expires_at IS '접근토큰 만료 시각(NULL 가능)';
+COMMENT ON COLUMN securities_account_api_credentials.status IS '인증정보 상태. ACTIVE / INACTIVE';
+COMMENT ON COLUMN securities_account_api_credentials.deleted_at IS '소프트 삭제 시각. NULL이면 살아 있는 레코드';
+COMMENT ON COLUMN securities_account_api_credentials.created_at IS '생성 시각';
+COMMENT ON COLUMN securities_account_api_credentials.updated_at IS '마지막 수정 시각';
+COMMENT ON COLUMN securities_account_api_credentials.key_issued_on IS '증권사 API 키 발급일(사용자 입력, 기본은 등록일). 만료 안내 계산에 사용';
