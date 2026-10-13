@@ -46,6 +46,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *             offeringShareCount}, 시작/종료일, {@code syncSource="OPENDART"}, {@code lastSyncedAt=now},
  *             {@code status="ACTIVE"}, created++
  *       </ol>
+ *   <li>{@code allotmentDate}는 DART 배정공고일(asand), {@code refundDate}는 납입기일(pymd)로 채운다 (못 읽으면 기존
+ *       값 유지)
  *   <li>{@code fixedPrice}, {@code listingDate}는 동기화가 절대 덮어쓰지 않음 (수동 입력 보호; 갱신 시 null로 지우지도 않음)
  *   <li>IPO 1건 처리 실패({@code DataIntegrityViolationException} 등)는 그 건만 failures에 기록하고 다음 건으로 계속 (건별
  *       독립 트랜잭션)
@@ -285,7 +287,7 @@ public class IpoSyncService {
         return;
       }
       // 자동 동기화 레코드 → 갱신 (fixedPrice, listingDate 보존)
-      updateExistingIpo(existing, corpName, offerPrice, offeringShareCount, startDate, endDate);
+      updateExistingIpo(existing, corpName, detail, startDate, endDate);
       result.setUpdated(result.getUpdated() + 1);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
       return;
@@ -316,6 +318,8 @@ public class IpoSyncService {
             .subscriptionStartDate(startDate)
             .subscriptionEndDate(endDate)
             .listingDate(null) // 동기화가 절대 설정하지 않음
+            .allotmentDate(detail.getAllotmentDate()) // DART 배정공고일
+            .refundDate(detail.getRefundDate()) // DART 납입기일
             .offeringShareCount(offeringShareCount)
             .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
@@ -338,22 +342,28 @@ public class IpoSyncService {
   private void updateExistingIpo(
       Ipo existing,
       String corpName,
-      Long offerPrice,
-      Long offeringShareCount,
+      OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
       LocalDate endDate) {
 
     existing.setCompanyName(corpName);
     existing.setIpoName(corpName);
-    if (offerPrice != null) {
-      existing.setLowerBandPrice(offerPrice);
-      existing.setUpperBandPrice(offerPrice);
+    if (detail.getOfferPrice() != null) {
+      existing.setLowerBandPrice(detail.getOfferPrice());
+      existing.setUpperBandPrice(detail.getOfferPrice());
     }
-    if (offeringShareCount != null) {
-      existing.setOfferingShareCount(offeringShareCount);
+    if (detail.getOfferingShareCount() != null) {
+      existing.setOfferingShareCount(detail.getOfferingShareCount());
     }
     existing.setSubscriptionStartDate(startDate);
     existing.setSubscriptionEndDate(endDate);
+    // DART가 값을 주면 공식 값으로 덮어쓰고, 못 읽으면 기존 값(ustockplus 보충분)을 지우지 않음
+    if (detail.getAllotmentDate() != null) {
+      existing.setAllotmentDate(detail.getAllotmentDate());
+    }
+    if (detail.getRefundDate() != null) {
+      existing.setRefundDate(detail.getRefundDate());
+    }
     // fixedPrice, listingDate는 절대 수정하지 않음 (수동 입력 보호)
     existing.setSyncSource(SYNC_SOURCE_OPENDART);
     existing.setLastSyncedAt(LocalDateTime.now(clock));

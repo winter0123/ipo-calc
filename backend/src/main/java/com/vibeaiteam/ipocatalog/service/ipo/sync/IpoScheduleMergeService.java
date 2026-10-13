@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * ustockplus 일정(상장예정일·배정일·환불일)을 기존 IPO 레코드에 병합하는 서비스.
+ * ustockplus 일정(상장예정일, DART에 없을 때의 배정일·환불일)을 기존 IPO 레코드에 병합하는 서비스.
  *
  * <p>OpenDART로 생성된 IPO 레코드는 stockCode가 null인 상태로 저장된다(신규 상장 회사는 공시 시점에 종목코드가 없기 때문). 이 서비스는
  * ustockplus에서 조회한 종목코드·종목명·일정을 이용해 기존 레코드를 찾아 stockCode와 세 날짜를 채운다.
@@ -33,7 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>수동 등록 보호: syncSource가 null인 레코드는 절대 수정하지 않음 (종목코드 매칭 경우도 동일)
  *   <li>채우기 규칙:
  *       <ul>
- *         <li>allotmentDate, refundDate: ustockplus 값이 null이 아니면 덮어씀
+ *         <li>allotmentDate, refundDate: DART 값이 우선이라 대상이 null일 때만 ustockplus 값으로 보충(덮어쓰지 않음)
  *         <li>listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움(이미 값이 있으면 수동 입력으로 간주해 보존).
  *             ustockplus 값이 null이면 해당 필드는 건드리지 않음
  *       </ul>
@@ -202,21 +202,16 @@ public class IpoScheduleMergeService {
   private boolean applyScheduleDates(Ipo target, UstockPlusScheduleDates s) {
     boolean changed = false;
 
-    // allotmentDate: ustockplus 값이 null이 아니면 덮어씀
-    if (s.allotmentDate() != null) {
-      if (target.getAllotmentDate() == null
-          || !target.getAllotmentDate().equals(s.allotmentDate())) {
-        target.setAllotmentDate(s.allotmentDate());
-        changed = true;
-      }
+    // allotmentDate: DART 값이 우선이므로 비어 있을 때만 ustockplus 값으로 보충
+    if (s.allotmentDate() != null && target.getAllotmentDate() == null) {
+      target.setAllotmentDate(s.allotmentDate());
+      changed = true;
     }
 
-    // refundDate: ustockplus 값이 null이 아니면 덮어씀
-    if (s.refundDate() != null) {
-      if (target.getRefundDate() == null || !target.getRefundDate().equals(s.refundDate())) {
-        target.setRefundDate(s.refundDate());
-        changed = true;
-      }
+    // refundDate: 위와 동일
+    if (s.refundDate() != null && target.getRefundDate() == null) {
+      target.setRefundDate(s.refundDate());
+      changed = true;
     }
 
     // listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움

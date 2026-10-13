@@ -58,6 +58,12 @@ public class OpenDartEquitySecurityDetail {
   /** 청약기일 종료일 파싱 결과 (기간 문자열이면 종료일, 단일 날짜/파싱 실패 시 {@code null}). */
   private LocalDate subscriptionEndDate;
 
+  /** 배정공고일(asand) 파싱 결과 (일자까지 읽히지 않으면 {@code null}). */
+  private LocalDate allotmentDate;
+
+  /** 납입기일(pymd) 파싱 결과. 공모주 환불일은 보통 납입기일과 같다 (일자까지 읽히지 않으면 {@code null}). */
+  private LocalDate refundDate;
+
   /** 증권수량 파싱 결과 (파싱 실패 시 {@code null}). */
   private Long offeringShareCount;
 
@@ -71,6 +77,8 @@ public class OpenDartEquitySecurityDetail {
   public void parseDerivedFields() {
     this.subscriptionStartDate = parseSbdStartDate(this.sbd);
     this.subscriptionEndDate = parseSbdEndDate(this.sbd);
+    this.allotmentDate = parseFullDate(this.asand);
+    this.refundDate = parseFullDate(this.pymd);
     this.offeringShareCount = parseNumber(this.stkcnt);
     this.offerPrice = parseNumber(this.slprc);
     this.totalOfferingAmount = parseNumber(this.slta);
@@ -114,6 +122,19 @@ public class OpenDartEquitySecurityDetail {
     }
     String secondDatePart = parts[1].trim();
     return parseKoreanDate(secondDatePart);
+  }
+
+  /** "2026년 11월 05일" 형식만 허용한다. "-", 월만 있는 값, 형식 이상은 {@code null} (엉뚱한 1일로 채우지 않기 위함). */
+  private static LocalDate parseFullDate(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    try {
+      return LocalDate.parse(
+          raw.trim(), DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREAN));
+    } catch (DateTimeParseException e) {
+      return null;
+    }
   }
 
   /**

@@ -404,6 +404,43 @@ class IpoScheduleMergeServiceTest {
   }
 
   @Test
+  void merge_doesNotOverwriteDartAllotmentAndRefund_butFillsListingDate() {
+    // given: DART 값이 이미 있고 ustockplus는 다른 값을 줌
+    Ipo existing =
+        createAutoSyncIpo(
+            1L,
+            "01658035",
+            "진코스텍",
+            "250030",
+            null,
+            LocalDate.of(2026, 11, 10),
+            LocalDate.of(2026, 11, 10));
+    when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("250030", STATUS_ACTIVE))
+        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+            STATUS_ACTIVE))
+        .thenReturn(List.of());
+    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(30), TODAY.plusDays(59)))
+        .thenReturn(
+            List.of(
+                createSchedule(
+                    "250030",
+                    "진코스텍",
+                    LocalDate.of(2026, 11, 20),
+                    LocalDate.of(2026, 11, 9),
+                    LocalDate.of(2026, 11, 12))));
+
+    int merged = mergeService.merge(TODAY);
+
+    assertThat(merged).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo saved = ipoCaptor.getValue();
+    assertThat(saved.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 20));
+    assertThat(saved.getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    assertThat(saved.getRefundDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+  }
+
+  @Test
   void merge_continuesOnSingleItemException() {
     // given: 첫 번째 항목에서 예외 발생, 두 번째 정상
     Ipo existing1 = createAutoSyncIpo(1L, "01658035", "진코스텍", "250030", null, null, null);

@@ -130,4 +130,38 @@ class OpenDartEquitySecurityDetailTest {
     assertThat(detail.getOfferPrice()).isNull();
     assertThat(detail.getTotalOfferingAmount()).isNull();
   }
+
+  @Test
+  void parseDerivedFields_asandAndPymd_mapToAllotmentAndRefundDate() {
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .asand("2026년 10월 15일")
+            .pymd("2026년 10월 15일")
+            .build();
+
+    detail.parseDerivedFields();
+
+    assertThat(detail.getAllotmentDate()).isEqualTo(LocalDate.of(2026, 10, 15));
+    assertThat(detail.getRefundDate()).isEqualTo(LocalDate.of(2026, 10, 15));
+  }
+
+  @Test
+  void parseDerivedFields_dashMonthOnlyOrGarbageAllotmentRefund_returnsNull() {
+    OpenDartEquitySecurityDetail dash =
+        OpenDartEquitySecurityDetail.builder().asand("-").pymd("-").build();
+    OpenDartEquitySecurityDetail monthOnly =
+        OpenDartEquitySecurityDetail.builder().asand("2026년 10월").pymd("알 수 없음").build();
+    OpenDartEquitySecurityDetail missing = OpenDartEquitySecurityDetail.builder().build();
+
+    dash.parseDerivedFields();
+    monthOnly.parseDerivedFields();
+    missing.parseDerivedFields();
+
+    assertThat(dash.getAllotmentDate()).isNull();
+    assertThat(dash.getRefundDate()).isNull();
+    assertThat(monthOnly.getAllotmentDate()).isNull(); // 월만 있는 값을 1일로 채우지 않음
+    assertThat(monthOnly.getRefundDate()).isNull();
+    assertThat(missing.getAllotmentDate()).isNull();
+    assertThat(missing.getRefundDate()).isNull();
+  }
 }
