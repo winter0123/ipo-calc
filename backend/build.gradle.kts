@@ -43,6 +43,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // test 프로필을 쓰지 않는 테스트도 기동 시 외부 동기화(공공 API)를 하지 않게 막는다.
+    // direnv의 DATA_GO_KR_SERVICE_KEY로 실제 휴장일이 들어와 휴장일 테스트가 실행 순서에 따라 깨졌다.
+    systemProperty("app.holiday-sync.enabled", "false")
+    systemProperty("app.ipo-sync.enabled", "false")
 }
 
 checkstyle {
