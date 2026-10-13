@@ -6,5 +6,6 @@ export type {
   InvestmentHistoryResponse,
   SubscriptionRegisterRequest,
 } from './types.ts'
+export { useAllInvestmentHistory } from './useAllInvestmentHistory.ts'
 export { useInvestmentHistory } from './useInvestmentHistory.ts'
 export { useInvestmentHistoryDetail } from './useInvestmentHistoryDetail.ts'

@@ -10,7 +10,7 @@ vi.mock('@/entities/subscription/index.ts')
 vi.mock('@/entities/ipo/index.ts')
 
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { useInvestmentHistory } from '@/entities/subscription/index.ts'
+import { useAllInvestmentHistory } from '@/entities/subscription/index.ts'
 import { useIpos } from '@/entities/ipo/index.ts'
 
 const as = <T,>(v: unknown) => v as T
@@ -38,8 +38,8 @@ const item = (o: Record<string, unknown>) => ({
 
 function setup(history: unknown[], ipos: Ipo[], current: unknown = { id: 7 }) {
   vi.mocked(useCurrentInvestor).mockReturnValue(as({ current, isLoading: false }))
-  vi.mocked(useInvestmentHistory).mockReturnValue(
-    as({ data: { content: history }, isLoading: false, error: null }),
+  vi.mocked(useAllInvestmentHistory).mockReturnValue(
+    as({ data: history, isLoading: false, error: null }),
   )
   vi.mocked(useIpos).mockReturnValue(as({ data: ipos, isLoading: false, error: null }))
   render(

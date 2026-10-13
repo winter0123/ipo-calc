@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
-import { getInvestmentHistory, getSubscriptionDetail } from './api-client.ts'
+import {
+  getAllInvestmentHistory,
+  getInvestmentHistory,
+  getSubscriptionDetail,
+} from './api-client.ts'
 
 const stub = (body: unknown) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
@@ -48,5 +52,30 @@ describe('subscription api-client 응답 검증', () => {
     await expect(getSubscriptionDetail(1)).resolves.toEqual(ITEM)
     stub({ ...ITEM, sales: 'none' })
     await expect(getSubscriptionDetail(1)).rejects.toBeInstanceOf(ZodError)
+  })
+})
+
+describe('getAllInvestmentHistory', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('마지막 페이지까지 size 100으로 이어 읽어 합친다', async () => {
+    const page = (n: number, id: number) => ({
+      content: [{ ...ITEM, id }],
+      totalElements: 2,
+      totalPages: 2,
+      number: n,
+      size: 100,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(0, 1))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(page(1, 2))))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const items = await getAllInvestmentHistory({ investorId: 7 })
+
+    expect(items.map((i) => i.id)).toEqual([1, 2])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[1][0])).toContain('page=1&size=100')
   })
 })

@@ -1,16 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { useInvestmentHistory } from '@/entities/subscription/index.ts'
+import { useAllInvestmentHistory } from '@/entities/subscription/index.ts'
 import styles from './DashboardHome.module.css'
 
 export default function DashboardTodo() {
   const { current, isLoading: investorLoading } = useCurrentInvestor()
-  const { data, isLoading, error } = useInvestmentHistory(
-    // ponytail: 서버 size 상한 100건까지만 본다. 청약이 100건을 넘으면 페이지를 이어 읽거나 서버에 할 일 API를 둔다.
-    current ? { investorId: current.id, size: 100 } : {},
+  const { data, isLoading, error } = useAllInvestmentHistory(
+    current ? { investorId: current.id } : {},
     { enabled: !!current },
   )
-  const items = data?.content ?? []
+  const items = data ?? []
   const needAllocation = items.filter((i) => i.allocation === null)
   const needSale = items.filter((i) => i.allocation !== null && (i.remainingQuantity ?? 0) > 0)
 

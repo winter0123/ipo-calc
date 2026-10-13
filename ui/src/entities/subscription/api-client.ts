@@ -41,6 +41,19 @@ export async function getInvestmentHistory(
   )
 }
 
+/** 서버 size 상한(100)으로 마지막 페이지까지 이어 읽어 전체 목록을 돌려준다. */
+export async function getAllInvestmentHistory(
+  filters: Omit<InvestmentHistoryFilters, 'page' | 'size'> = {},
+  signal?: AbortSignal,
+): Promise<InvestmentHistoryItem[]> {
+  const items: InvestmentHistoryItem[] = []
+  for (let page = 0; ; page++) {
+    const res = await getInvestmentHistory({ ...filters, page, size: 100 }, signal)
+    items.push(...res.content)
+    if (page + 1 >= res.totalPages) return items
+  }
+}
+
 /**
  * GET /investment-history/{subscriptionId} — Epic 11(investment-query-api) 구현 완료.
  * 배정 등록 화면 진입 시 청약 상세 조회용으로 사용된다(참고 표시용 청약수량 추출).
