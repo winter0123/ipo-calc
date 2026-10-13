@@ -1,4 +1,7 @@
 {$SITE_ADDRESS} {
+	# 공모주 목록 등 JSON·JS 응답 압축(전송량이 서버 처리보다 병목 — 1,500건 목록 665KB 측정)
+	encode zstd gzip
+
 	# 정적 화면 응답에도 보안 헤더(API 응답은 Spring Security가 붙인다).
 	# 화면은 외부 자원을 쓰지 않으므로 같은 출처만 허용. 인라인 style 속성(React·차트)만 예외.
 	header {
