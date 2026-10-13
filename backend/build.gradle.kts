@@ -48,6 +48,8 @@ tasks.test {
     // direnv의 DATA_GO_KR_SERVICE_KEY로 실제 휴장일이 들어와 휴장일 테스트가 실행 순서에 따라 깨졌다.
     systemProperty("app.holiday-sync.enabled", "false")
     systemProperty("app.ipo-sync.enabled", "false")
+    // 앱 시계(ClockConfig)가 Asia/Seoul이라 테스트 JVM도 맞춘다. CI(UTC)에서 한국 자정 전후로 "오늘"이 하루 어긋나 깨지던 문제.
+    systemProperty("user.timezone", "Asia/Seoul")
     finalizedBy(tasks.jacocoTestReport)
 }
 

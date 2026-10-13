@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -66,7 +67,7 @@ public class SecuritiesAccountApiCredential {
   /** 키 발급일(증권사 서비스 신청일). 한국투자증권 사용기간 1년 만료 안내 계산에 쓴다. */
   @Column(name = "key_issued_on", nullable = false)
   @Builder.Default
-  private LocalDate keyIssuedOn = LocalDate.now();
+  private LocalDate keyIssuedOn = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
   /** 레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다. */
   @Column(name = "status", nullable = false, length = 10)
