@@ -1311,6 +1311,113 @@ async function scenario18(browser) {
   }
 }
 
+async function rawPost(context, path, options) {
+  const response = await context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, { method: 'POST', ...options })
+  return { status: response.status(), body: await response.text() }
+}
+
+async function signupApi(browser, email, name) {
+  const setup = await browser.newContext()
+  try {
+    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name })
+  } finally {
+    await setup.close()
+  }
+}
+
+async function scenario19(browser) {
+  const email = uniqueEmail()
+  await signupApi(browser, email, 'E2E Guard')
+  const { context, page } = await openContext(browser)
+  try {
+    const attempt = await login(page, email, PASSWORD)
+    if (!attempt.ok) throw new Error(`로그인 실패: 상태=${attempt.status}`)
+    await goto(page, '/login')
+    if (!(await waitForUrl(page, '**/dashboard'))) throw new Error(`로그인 상태에서 /login이 /dashboard로 가지 않음: ${page.url()}`)
+    await goto(page, '/admin/accounts')
+    await expectText(page, '관리자만 볼 수 있는 화면입니다.', '일반 사용자 관리자 화면')
+    await page.getByRole('button', { name: '로그아웃' }).click()
+    if (!(await waitForUrl(page, '**/login'))) throw new Error(`로그아웃 뒤 /login 이동 실패: ${page.url()}`)
+    await page.waitForSelector('form #email')
+    await goto(page, '/dashboard')
+    if (!(await waitForUrl(page, '**/login'))) throw new Error(`로그아웃 뒤 /dashboard가 /login으로 가지 않음: ${page.url()}`)
+    return '로그인 상태 /login→/dashboard, 일반 사용자 /admin/accounts 차단, 로그아웃→/login, 이후 /dashboard→/login'
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario20(browser) {
+  const adminEmail = uniqueEmail()
+  const memberEmail = uniqueEmail()
+  await signupApi(browser, adminEmail, 'E2E Admin')
+  await signupApi(browser, memberEmail, 'E2E Locked')
+  promoteToAdmin(adminEmail)
+
+  const member = await browser.newContext()
+  try {
+    for (let i = 1; i <= 5; i += 1) {
+      const r = await rawPost(member, '/auth/login', {
+        data: { email: memberEmail, password: WRONG_PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (r.status !== 401) throw new Error(`틀린 비밀번호 ${i}회차가 401이 아님: ${r.status} ${r.body}`)
+    }
+  } finally {
+    await member.close()
+  }
+
+  const { context, page } = await openContext(browser)
+  try {
+    const locked = await login(page, memberEmail, PASSWORD)
+    if (locked.ok) throw new Error('5회 실패 뒤 올바른 비밀번호로 로그인됨')
+    await expectText(page, '계정이 잠겼습니다', '잠금 안내 문구')
+  } finally {
+    await context.close()
+  }
+
+  const admin = await openContext(browser)
+  try {
+    const attempt = await login(admin.page, adminEmail, PASSWORD)
+    if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
+    await goto(admin.page, '/admin/accounts')
+    await admin.page.getByRole('heading', { name: '가입 승인 관리' }).waitFor()
+    await admin.page.getByLabel('승인 대기만 보기').uncheck()
+    const row = admin.page.getByRole('row').filter({ hasText: memberEmail })
+    await row.waitFor()
+    if (!(await row.innerText()).includes('잠김')) throw new Error('해당 계정 행에 잠김 표시 없음')
+    await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).click()
+    await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).waitFor({ state: 'detached' })
+  } finally {
+    await admin.context.close()
+  }
+
+  const again = await openContext(browser)
+  try {
+    const attempt = await login(again.page, memberEmail, PASSWORD)
+    if (!attempt.ok) throw new Error(`잠금 해제 뒤 로그인 실패: 상태=${attempt.status} 화면=${attempt.texts.join(' | ')}`)
+  } finally {
+    await again.context.close()
+  }
+  return '틀린 비밀번호 5회 → 올바른 비밀번호도 잠금 문구로 거부, 관리자 화면 잠김 표시 → 잠금 해제 → 로그인 성공'
+}
+
+async function scenario21(browser) {
+  const email = uniqueEmail()
+  await signupApi(browser, email, 'E2E Form')
+  const context = await browser.newContext()
+  try {
+    const r = await rawPost(context, '/login', { form: { username: email, password: PASSWORD } })
+    const me = await context.request.fetch(`${BASE_URL}${API_PREFIX}/auth/me`)
+    if (me.status() !== 401) {
+      throw new Error(`폼 로그인 뒤 /auth/me가 401이 아님: 폼 응답=${r.status} /auth/me=${me.status()}`)
+    }
+    return `POST /login 폼 응답 ${r.status}, 이후 /auth/me 401(세션 없음)`
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -1330,6 +1437,9 @@ const SCENARIOS = [
   ['E2E-16', '공모주 상세: 공시 정보(수요예측·락업 일정·손익계산서)', scenario16],
   ['E2E-17', '증권사 관리: 계좌 등록 → 보기/숨기기 → 이름 수정 → 삭제', scenario17],
   ['E2E-18', '수익 확인: 기간별 연·월·일 전환과 그래프', scenario18],
+  ['E2E-19', '인증: 로그아웃과 화면 가드', scenario19],
+  ['E2E-20', '인증: 로그인 잠금 → 관리자 해제', scenario20],
+  ['E2E-21', '인증: 폼 로그인 경로 차단', scenario21],
 ]
 
 function printResults() {
