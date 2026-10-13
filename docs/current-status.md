@@ -6,9 +6,9 @@
 
 **제품**: 공모주 청약·배정·매도 기록과 수익 계산(상장일 기준 기간), 공모주 일정 달력(DART·KASI 자동 수집), 공모주 상세(DART 투자설명서 기반 수요예측·락업 일정·재무·인수단, 매일 05:00), 증권사 매도 자동 가져오기(한국투자·키움·LS, 조회 전용), 증권사 관리, 수익 그래프·CSV, 관리자(가입 승인·잠금 해제·공모주 등록·CSV 가져오기).
 
-**기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·배포·스모크).
+**기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·E2E·배포·스모크).
 
-**보증**: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 22, 접근성 63화면 위반 0, Jenkins #18. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
+**보증**: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 22(Jenkins 배포 전 단계로도 실행, #439), 접근성 63화면 위반 0, Jenkins #19. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
 
 **운영 전 사용자 몫**
 - `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY` 채우기(`deploy/.env.example`). `APP_REMEMBER_ME_KEY`는 더 이상 불필요.
