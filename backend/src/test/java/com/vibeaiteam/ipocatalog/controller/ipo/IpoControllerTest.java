@@ -14,7 +14,10 @@ import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
+import com.vibeaiteam.ipocatalog.repository.ipo.IpoDetailRepository;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailService;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSnapshot;
 import com.vibeaiteam.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -51,6 +54,10 @@ class IpoControllerTest {
 
   @Autowired private IpoRepository ipoRepository;
 
+  @Autowired private IpoDetailRepository ipoDetailRepository;
+
+  @Autowired private IpoDetailService ipoDetailService;
+
   private String testEmail;
   private String testPassword;
   private String testName;
@@ -67,6 +74,7 @@ class IpoControllerTest {
 
   @AfterEach
   void tearDown() {
+    ipoDetailRepository.deleteAll();
     ipoRepository.deleteAll();
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
@@ -382,6 +390,84 @@ class IpoControllerTest {
 
     assertThat(result.getResponse().getStatus()).isEqualTo(404);
     assertError(result, "NOT_FOUND");
+  }
+
+  @Test
+  void getInsightIsPublicAndReturnsStoredDetailInContractShape() throws Exception {
+    LocalDateTime now = LocalDateTime.now();
+    Ipo ipo =
+        ipoRepository.save(
+            Ipo.builder()
+                .companyName("상세회사")
+                .ipoName("상세공모-" + System.nanoTime())
+                .subscriptionStartDate(java.time.LocalDate.of(2026, 10, 1))
+                .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    ipoDetailService.save(
+        ipo.getId(),
+        new IpoDetailSnapshot(
+            "20261007000328",
+            "[기재정정]투자설명서",
+            "김성포",
+            java.time.LocalDate.of(2015, 10, 27),
+            "경기도",
+            100L,
+            2308265000L,
+            "김성포",
+            new java.math.BigDecimal("30.10"),
+            new java.math.BigDecimal("1096.56"),
+            new java.math.BigDecimal("30.62"),
+            List.of(new IpoDetailSnapshot.Financial("제11기", 23786846687L, null, 7287887715L)),
+            List.of(
+                new IpoDetailSnapshot.FloatStep(
+                    "상장일 유통가능", 6347310L, new java.math.BigDecimal("23.33"))),
+            List.of(new IpoDetailSnapshot.Underwriter("KB증권", "대표", 4000000L))));
+
+    // 로그인 없이 호출(공개 GET /ipos/**)
+    MvcResult result = mockMvc.perform(get("/ipos/{id}/insight", ipo.getId())).andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    assertThat(body.get("sourceUrl"))
+        .isEqualTo("https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261007000328");
+    assertThat(body.get("ceoName")).isEqualTo("김성포");
+    assertThat(body.get("establishedOn")).isEqualTo("2015-10-27");
+    assertThat(body.get("parValue")).isEqualTo(100);
+    assertThat(((Number) body.get("largestShareholderRatio")).doubleValue()).isEqualTo(30.10);
+    assertThat(body.get("syncedAt")).isNotNull();
+    Map<String, Object> fin = ((List<Map<String, Object>>) body.get("financials")).get(0);
+    assertThat(fin.get("period")).isEqualTo("제11기");
+    assertThat(fin.get("operatingProfit")).isNull();
+    assertThat(((List<?>) body.get("floatSchedule"))).hasSize(1);
+    assertThat(((List<Map<String, Object>>) body.get("underwriters")).get(0).get("role"))
+        .isEqualTo("대표");
+  }
+
+  @Test
+  void getInsightWithoutStoredDetailReturnsNullsAndEmptyArrays() throws Exception {
+    LocalDateTime now = LocalDateTime.now();
+    Ipo ipo =
+        ipoRepository.save(
+            Ipo.builder()
+                .companyName("빈상세")
+                .ipoName("빈상세-" + System.nanoTime())
+                .subscriptionStartDate(java.time.LocalDate.of(2026, 10, 1))
+                .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+    MvcResult result = mockMvc.perform(get("/ipos/{id}/insight", ipo.getId())).andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = readBody(result);
+    assertThat(body.get("syncedAt")).isNull();
+    assertThat(body.get("sourceUrl")).isNull();
+    assertThat((List<?>) body.get("financials")).isEmpty();
+    assertThat((List<?>) body.get("floatSchedule")).isEmpty();
+    assertThat((List<?>) body.get("underwriters")).isEmpty();
   }
 
   @Test

@@ -6,8 +6,8 @@ import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoCsvImportService;
-import com.vibeaiteam.ipocatalog.service.ipo.IpoInsightService;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,7 +32,7 @@ public class IpoController {
 
   private final IpoService ipoService;
   private final IpoCsvImportService ipoCsvImportService;
-  private final IpoInsightService ipoInsightService;
+  private final IpoDetailService ipoDetailService;
 
   /** 비활성화되지 않은(삭제되지 않은) IPO 목록을 최신 기준·생성일 내림차순으로 조회해 반환한다. */
   @GetMapping
@@ -56,7 +56,7 @@ public class IpoController {
    */
   @GetMapping("/{id}/insight")
   public ResponseEntity<IpoInsightResponse> getInsight(@PathVariable Long id) {
-    return ResponseEntity.ok(ipoInsightService.getInsight(id));
+    return ResponseEntity.ok(ipoDetailService.getInsight(id));
   }
 
   /** IPO ID로 해당 IPO의 회사명/공모명 등을 수정하고, 수정된 IPO 정보를 반환한다. 존재하지 않으면 404를 반환한다. */
