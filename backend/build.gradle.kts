@@ -3,6 +3,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("java")
     id("checkstyle")
+    id("jacoco")
     id("com.diffplug.spotless") version "6.25.0"
 }
 
@@ -47,6 +48,15 @@ tasks.test {
     // direnv의 DATA_GO_KR_SERVICE_KEY로 실제 휴장일이 들어와 휴장일 테스트가 실행 순서에 따라 깨졌다.
     systemProperty("app.holiday-sync.enabled", "false")
     systemProperty("app.ipo-sync.enabled", "false")
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+    }
 }
 
 checkstyle {

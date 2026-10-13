@@ -171,6 +171,7 @@ class BrokerReadOnlyArchitectureTest {
   void brokerSaleSource_mustNotDeclareMethodsBeyondDeclaredContract() {
     assertThat(
             java.util.Arrays.stream(BrokerSaleSource.class.getDeclaredMethods())
+                .filter(m -> !m.isSynthetic())
                 .map(java.lang.reflect.Method::getName))
         .as("BrokerSaleSource에 메서드가 추가되면 조회 메서드인지 사람이 재검토해야 한다.")
         .containsExactlyInAnyOrder("provider", "fetchSales", "maxRangeDays", "rangeLimitMessage");
