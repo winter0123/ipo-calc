@@ -1060,6 +1060,257 @@ async function scenario14(browser) {
   return '투자자 2명: 선택 화면 → 선택 → 전환기 값·새로고침 유지, 대시보드 접근'
 }
 
+// ---- 최근 기능 시나리오(15~18): 각자 계정을 만들어 서로 독립 ----
+
+// 계정·투자자·증권계좌·공모주(ADMIN 승격)를 만들고 stage까지(sub/alloc/sale) 거래를 API로 채운다.
+async function buildFixture(browser, { stage, listingDate, ipoCount = 1 }) {
+  const email = uniqueEmail()
+  const tag = `${Date.now()}-${Math.floor(Math.random() * 1000)}`
+  const setup = await browser.newContext()
+  const fx = { email, ipoNames: [], ipoIds: [] }
+  try {
+    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E New' })
+    await apiLogin(setup, email)
+    const firms = await api(setup, 'GET', '/securities-firms')
+    const investor = await api(setup, 'POST', '/investors', { displayName: 'E2E 신규기능' })
+    const account = await api(setup, 'POST', '/securities-accounts', {
+      investorId: investor.id,
+      securitiesFirmId: firms[0].id,
+      accountNumber: ACCOUNT_NUMBER,
+      isDefault: true,
+    })
+    fx.firms = firms
+    fx.investor = investor
+    fx.account = account
+    promoteToAdmin(email)
+    await apiLogin(setup, email)
+    for (let i = 0; i < ipoCount; i++) {
+      const name = `E2E신규-${tag}-${i}`
+      const ipo = await api(setup, 'POST', '/ipos', {
+        companyName: name,
+        ipoName: name,
+        subscriptionStartDate: localDate(),
+        subscriptionEndDate: localDate(),
+        fixedPrice: 10000,
+        offeringShareCount: 1000000,
+        ...(listingDate ? { listingDate } : {}),
+      })
+      fx.ipoNames.push(name)
+      fx.ipoIds.push(ipo.id)
+    }
+    if (stage) {
+      fx.sub = await api(setup, 'POST', '/subscriptions', {
+        investorId: investor.id,
+        securitiesAccountId: account.id,
+        ipoId: fx.ipoIds[0],
+        quantity: 100,
+        depositAmount: 500000,
+        subscribedAt: localDateTime(),
+      })
+      if (stage !== 'sub') {
+        fx.alloc = await api(setup, 'POST', '/allocations', {
+          subscriptionId: fx.sub.id,
+          allocatedQuantity: 100,
+          allocatedAt: localDateTime(10),
+          allocationPrice: 10000,
+        })
+      }
+      if (stage === 'sale') {
+        fx.sale = await api(setup, 'POST', '/sales', {
+          allocationId: fx.alloc.id,
+          quantity: 30,
+          price: 15000,
+          amount: 450000,
+          saleDate: localDateTime(14),
+          fee: 100,
+          tax: 50,
+        })
+      }
+    }
+  } finally {
+    await setup.close()
+  }
+  return fx
+}
+
+async function loginFixture(browser, fx) {
+  const { context, page } = await openContext(browser)
+  const attempt = await login(page, fx.email, PASSWORD)
+  if (!attempt.ok) {
+    await context.close()
+    throw new Error(`로그인 실패: 상태=${attempt.status}`)
+  }
+  return { context, page }
+}
+
+async function expectText(page, text, what, timeout = 10000) {
+  const ok = await waitFor(async () => (await page.locator('body').innerText()).includes(text), timeout)
+  if (!ok) throw new Error(`${what}: "${text}" 가 보이지 않음`)
+}
+
+async function scenario15(browser) {
+  const fx = await buildFixture(browser, { stage: 'sale' })
+  const { context, page } = await loginFixture(browser, fx)
+  try {
+    await goto(page, '/investments')
+    await page.getByRole('row', { name: new RegExp(fx.ipoNames[0]) }).click()
+    await page.getByRole('heading', { name: '청약 상세' }).waitFor()
+
+    // 매도 수량 수정(30 → 20)
+    await page.getByRole('button', { name: '매도 수정' }).click()
+    const dialog = page.getByRole('dialog', { name: '매도 수정' })
+    await dialog.waitFor()
+    await dialog.locator('#edit-sale-quantity').fill('20')
+    await dialog.getByRole('button', { name: '저장' }).click()
+    await dialog.waitFor({ state: 'detached' })
+    const salesCell = page.locator('td[data-label="수량"]').first()
+    if (!(await waitFor(async () => (await salesCell.innerText()).trim() === '20'))) {
+      throw new Error(`매도 수량 수정 미반영: 실제=${await salesCell.innerText()}`)
+    }
+
+    // 청약 수량을 배정 수량(100)보다 작게 수정 → 거부 안내
+    await page.getByRole('button', { name: '청약 수정' }).click()
+    const subDialog = page.getByRole('dialog', { name: '청약 수정' })
+    await subDialog.waitFor()
+    await subDialog.locator('#edit-quantity').fill('50')
+    await subDialog.getByRole('button', { name: '저장' }).click()
+    await subDialog.getByRole('alert').filter({ hasText: '이미 배정받은 수량' }).waitFor()
+    await subDialog.getByRole('button', { name: '취소' }).click()
+    await subDialog.waitFor({ state: 'detached' })
+
+    const confirm = async () => {
+      const d = page.getByRole('alertdialog')
+      await d.waitFor()
+      await d.getByRole('button', { name: '삭제' }).click()
+      await d.waitFor({ state: 'detached' })
+    }
+
+    // 매도가 남은 배정은 삭제 불가
+    await page.getByRole('button', { name: '배정 삭제' }).click()
+    await confirm()
+    await page.getByRole('alert').filter({ hasText: '매도 기록이 있는 배정은 취소할 수 없습니다' }).waitFor()
+
+    // 매도 → 배정 → 청약 순서로 삭제
+    await page.getByRole('button', { name: '매도 삭제' }).click()
+    await confirm()
+    await page.getByRole('button', { name: '매도 삭제' }).waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: '배정 삭제' }).click()
+    await confirm()
+    await page.getByRole('button', { name: '배정 삭제' }).waitFor({ state: 'detached' })
+    await page.getByRole('button', { name: '청약 삭제' }).click()
+    await confirm()
+    await page.getByRole('heading', { name: '청약 상세' }).waitFor({ state: 'detached' })
+    if (!(await waitFor(async () => (await page.getByRole('row', { name: new RegExp(fx.ipoNames[0]) }).count()) === 0))) {
+      throw new Error('청약 삭제 뒤에도 목록에 행이 남음')
+    }
+    return '매도 수량 30→20 반영, 청약<배정 수정 거부, 매도 있는 배정 삭제 거부, 매도→배정→청약 삭제'
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario16(browser) {
+  const fx = await buildFixture(browser, { listingDate: '2030-01-15', ipoCount: 2 })
+  runSql(`INSERT INTO ipo_details (ipo_id, source_rcept_no, source_report_name, synced_at, ceo_name, established_on, address, par_value, capital_stock,
+    largest_shareholder_name, largest_shareholder_ratio, institutional_competition_rate, lock_up_commitment_ratio, financials, float_schedule, underwriters, created_at, updated_at)
+    VALUES (${fx.ipoIds[0]}, '20260101000001', '투자설명서', now(), '가나다', DATE '2015-03-02', '서울특별시 예시구 예시로 100', 500, 3500000000,
+    '예시홀딩스', 52.30, 850.40, 31.20,
+    '[{"period":"제11기(2025년12월말)","revenue":24800000000,"operatingProfit":3300000000,"netIncome":2700000000}]',
+    '[{"label":"상장일 유통가능","shares":4200000,"ratio":38.50},{"label":"상장 후 1개월 유통가능","shares":5100000,"ratio":46.80}]',
+    '[{"name":"예시증권","role":"대표","shares":700000}]', now(), now())`)
+  const { context, page } = await openContext(browser) // 로그인 없이
+  try {
+    await goto(page, `/ipos/${fx.ipoIds[0]}`)
+    for (const title of ['수요예측', '유통가능 물량(락업 해제) 일정', '손익계산서']) {
+      await page.getByRole('heading', { name: title }).waitFor({ timeout: 15000 })
+    }
+    // 상장일 2030-01-15 + 1개월 = 2030-02-15
+    await expectText(page, '2030-02-15', '예상 해제일')
+    await expectText(page, '850.4:1', '기관 경쟁률')
+    await goto(page, `/ipos/${fx.ipoIds[1]}`)
+    await expectText(page, '아직 공시 정보를 가져오지 않았습니다', '시드 없는 공모주 안내', 15000)
+    return '비로그인 상세: 수요예측·락업 일정·손익계산서 구역과 예상 해제일 2030-02-15, 시드 없으면 안내 문구'
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario17(browser) {
+  const fx = await buildFixture(browser, {})
+  // 계좌 없는 상태에서 시작하도록 기본 계좌를 지운다
+  const ctx = await browser.newContext()
+  try {
+    await apiLogin(ctx, fx.email)
+    await api(ctx, 'DELETE', `/securities-accounts/${fx.account.id}`)
+  } finally {
+    await ctx.close()
+  }
+  const { context, page } = await loginFixture(browser, fx)
+  try {
+    const firm = fx.firms[1] ?? fx.firms[0]
+    await goto(page, '/securities')
+    await page.getByRole('heading', { name: '증권사 관리' }).waitFor()
+    await page.getByRole('button', { name: `${firm.name} 계좌 등록` }).click()
+    const form = page.getByRole('form', { name: `${firm.name} 계좌 등록` })
+    await form.getByLabel('계좌번호').fill(ACCOUNT_NUMBER)
+    await form.getByRole('button', { name: '등록', exact: true }).click()
+    const mine = page.getByRole('region', { name: '등록한 증권사' })
+    await mine.getByRole('heading', { name: firm.name }).waitFor()
+
+    const row = mine.locator('li', { hasText: firm.name }).locator('li').first()
+    const digits = async () => (await row.innerText()).replace(/\D/g, '')
+    if ((await digits()).includes(ACCOUNT_NUMBER)) throw new Error('번호가 숨김 상태에서 전체 노출됨')
+    await row.getByRole('button', { name: /계좌번호 보기/ }).click()
+    if (!(await waitFor(async () => (await digits()).includes(ACCOUNT_NUMBER)))) {
+      throw new Error(`번호 보기 실패: 실제=${await row.innerText()}`)
+    }
+    await row.getByRole('button', { name: '숨기기' }).click()
+    if (!(await waitFor(async () => !(await digits()).includes(ACCOUNT_NUMBER)))) throw new Error('숨기기 실패')
+
+    await row.getByRole('button', { name: '계좌 수정' }).click()
+    const edit = page.getByRole('form', { name: `${firm.name} 계좌 수정` })
+    await edit.getByLabel('계좌명 (선택)').fill('주력 계좌')
+    await edit.getByRole('button', { name: '저장' }).click()
+    await mine.getByText('주력 계좌', { exact: true }).waitFor()
+
+    await mine.getByRole('button', { name: '주력 계좌 삭제' }).click()
+    const d = page.getByRole('alertdialog')
+    await d.getByRole('button', { name: '삭제' }).click()
+    await mine.waitFor({ state: 'detached' })
+    return `${firm.name}: 다른 증권사 그리드에서 등록 → 등록한 증권사로 이동, 번호 보기/숨기기, 이름 수정, 삭제`
+  } finally {
+    await context.close()
+  }
+}
+
+async function scenario18(browser) {
+  const fx = await buildFixture(browser, { stage: 'sale', listingDate: localDate() })
+  const { context, page } = await loginFixture(browser, fx)
+  try {
+    await goto(page, '/profits/view')
+    const section = page.getByRole('region', { name: '기간별 수익' })
+    await section.waitFor({ timeout: 15000 })
+    // 최종수익금 = 450,000 − 10,000×30 − 100 − 50 = 149,850
+    const total = section.locator('tfoot tr')
+    const notes = []
+    for (const label of ['연', '월', '일']) {
+      await section.getByRole('button', { name: label, exact: true }).click()
+      if (!(await waitFor(async () => (await section.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed')) === 'true'))) {
+        throw new Error(`${label} 버튼 전환 안 됨`)
+      }
+      const text = (await total.innerText()).replace(/\s+/g, ' ')
+      if (!text.includes('149,850') || !text.includes('450,000')) {
+        throw new Error(`${label} 합계 불일치: "${text}"`)
+      }
+      notes.push(label)
+    }
+    if ((await section.locator('svg').count()) === 0) throw new Error('그래프 SVG 없음')
+    return `연·월·일 전환(${notes.join('/')}) 모두 합계 매도금액 450,000 / 최종수익금 149,850, 그래프 SVG 존재`
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -1075,6 +1326,10 @@ const SCENARIOS = [
   ['E2E-12', '증권사 연동: 진입 링크 → 연결 → 키 교체 → 해제', scenario12],
   ['E2E-13', '비공개 운영: 승인 대기 로그인 차단 → 관리자 승인 → 로그인', scenario13],
   ['E2E-14', '현재 투자자: 2명이면 직접 선택 → 전환 → 새로고침 유지', scenario14],
+  ['E2E-15', '투자 내역: 매도 수정 → 거부 안내 → 매도·배정·청약 삭제', scenario15],
+  ['E2E-16', '공모주 상세: 공시 정보(수요예측·락업 일정·손익계산서)', scenario16],
+  ['E2E-17', '증권사 관리: 계좌 등록 → 보기/숨기기 → 이름 수정 → 삭제', scenario17],
+  ['E2E-18', '수익 확인: 기간별 연·월·일 전환과 그래프', scenario18],
 ]
 
 function printResults() {
