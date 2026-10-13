@@ -22,6 +22,13 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
           + RecordStatus.ACTIVE_HQL)
   boolean hasActiveAllocation(@Param("subscriptionId") Long subscriptionId);
 
+  /** 청약에 걸린 ACTIVE 배정 수량(없으면 0). 순환을 피하려고 엔티티 이름으로만 조회한다. */
+  @Query(
+      "SELECT COALESCE(MAX(a.allocatedQuantity), 0) FROM Allocation a "
+          + "WHERE a.subscriptionId = :subscriptionId AND a.deletedAt IS NULL AND a.status = "
+          + RecordStatus.ACTIVE_HQL)
+  long activeAllocatedQuantity(@Param("subscriptionId") Long subscriptionId);
+
   /** ID 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다. */
   Optional<Subscription> findByIdAndDeletedAtIsNull(Long id);
 

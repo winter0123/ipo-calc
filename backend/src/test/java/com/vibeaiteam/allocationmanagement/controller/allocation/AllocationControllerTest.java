@@ -807,6 +807,85 @@ class AllocationControllerTest {
   }
 
   @Test
+  void updateSubscriptionQuantityBelowAllocatedReturns400() throws Exception {
+    // Given: 청약 100주에 50주 배정
+    signupAndLogin();
+    Long subscriptionId = createSubscription(100L);
+    registerAllocation(validRequest(subscriptionId));
+
+    // When/Then: 49주로 줄이면 400, 50주는 200
+    MvcResult rejected =
+        mockMvc
+            .perform(
+                patch("/subscriptions/{id}", subscriptionId)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"quantity\":49}"))
+            .andReturn();
+    assertValidationError(rejected);
+    assertThat(utf8Body(rejected)).contains("이미 배정받은 수량(50주)");
+    MvcResult accepted =
+        mockMvc
+            .perform(
+                patch("/subscriptions/{id}", subscriptionId)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"quantity\":50}"))
+            .andReturn();
+    assertThat(accepted.getResponse().getStatus()).isEqualTo(200);
+  }
+
+  @Test
+  void subscriptionWithAnotherInvestorsAccountReturns400() throws Exception {
+    // Given: 같은 로그인 계정의 투자자 둘, 각자 계좌
+    signupAndLogin();
+    Long investorA = registerInvestorAndGetId();
+    Long investorB = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long accountA = registerSecuritiesAccount(investorA, firmId);
+    Long accountB = registerSecuritiesAccount(investorB, firmId);
+    Long ipoId = createIpo();
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("investorId", investorA);
+    body.put("securitiesAccountId", accountB);
+    body.put("ipoId", ipoId);
+    body.put("quantity", 10);
+    body.put("depositAmount", 1000);
+    body.put("subscribedAt", "2026-10-01T09:00:00");
+
+    // When/Then: A 투자자 + B 계좌로 등록하면 400
+    assertValidationError(
+        mockMvc
+            .perform(
+                post("/subscriptions")
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(body)))
+            .andReturn());
+
+    // 올바른 계좌로 만든 뒤 투자자만 B로 바꾸는 수정도 400
+    body.put("securitiesAccountId", accountA);
+    MvcResult created =
+        mockMvc
+            .perform(
+                post("/subscriptions")
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(body)))
+            .andReturn();
+    assertThat(created.getResponse().getStatus()).isEqualTo(201);
+    Long subscriptionId = ((Number) readBody(created).get("id")).longValue();
+    assertValidationError(
+        mockMvc
+            .perform(
+                patch("/subscriptions/{id}", subscriptionId)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"investorId\":" + investorB + "}"))
+            .andReturn());
+  }
+
+  @Test
   void updateAllocationNotFoundReturns404() throws Exception {
     // Given: 존재하지 않는 배정 ID (AC-014)
     signupAndLogin();

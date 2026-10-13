@@ -54,7 +54,7 @@ public class SubscriptionService {
     validateInvestorOwnership(investorId);
 
     // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)
-    validateSecuritiesAccountOwnership(securitiesAccountId);
+    requireAccountOfInvestor(validateSecuritiesAccountOwnership(securitiesAccountId), investorId);
 
     // IPO 존재 검증만 수행(전역 기준정보 — 계정과 무관, 삭제되지 않은 IPO만 허용)
     validateIpoExists(ipoId);
@@ -116,7 +116,7 @@ public class SubscriptionService {
   public SubscriptionResponse update(Long id, SubscriptionUpdateRequest request) {
     final Subscription subscription = findOwnedSubscription(id);
 
-    Long updatedInvestorId = request.getInvestorId();
+    final Long updatedInvestorId = request.getInvestorId();
     final Long updatedSecuritiesAccountId = request.getSecuritiesAccountId();
     final Long updatedIpoId = request.getIpoId();
     Long updatedQuantity = request.getQuantity();
@@ -127,6 +127,13 @@ public class SubscriptionService {
     }
     if (updatedDepositAmount != null && updatedDepositAmount < 0) {
       throw new SubscriptionValidationException("depositAmount는 음수일 수 없습니다.");
+    }
+    if (updatedQuantity != null) {
+      long allocated = subscriptionRepository.activeAllocatedQuantity(id);
+      if (updatedQuantity < allocated) {
+        throw new SubscriptionValidationException(
+            "청약수량은 이미 배정받은 수량(" + allocated + "주)보다 작을 수 없습니다.");
+      }
     }
 
     // 새로 제공된 경우에만 존재/소유권을 재검증한다 (미제공 시 기존값 유지, 재검증하지 않음)
@@ -147,6 +154,11 @@ public class SubscriptionService {
             ? updatedSecuritiesAccountId
             : subscription.getSecuritiesAccountId();
     Long finalIpoId = updatedIpoId != null ? updatedIpoId : subscription.getIpoId();
+
+    if (updatedInvestorId != null || updatedSecuritiesAccountId != null) {
+      requireAccountOfInvestor(
+          validateSecuritiesAccountOwnership(finalSecuritiesAccountId), finalInvestorId);
+    }
 
     checkDuplicate(finalInvestorId, finalSecuritiesAccountId, finalIpoId, id);
 
@@ -210,7 +222,7 @@ public class SubscriptionService {
   }
 
   // SecuritiesAccount 존재/2단계 소유권 검증 — SecuritiesAccountService.getById 패턴(존재+미삭제 404)
-  private void validateSecuritiesAccountOwnership(Long securitiesAccountId) {
+  private SecuritiesAccount validateSecuritiesAccountOwnership(Long securitiesAccountId) {
     SecuritiesAccount account =
         securitiesAccountRepository
             .findByIdAndDeletedAtIsNull(securitiesAccountId)
@@ -219,6 +231,14 @@ public class SubscriptionService {
         account.getInvestorId(),
         () -> new SubscriptionNotFoundException("증권계좌를 찾을 수 없습니다."),
         () -> new SubscriptionForbiddenException("계정 소유권이 없습니다."));
+    return account;
+  }
+
+  // 같은 로그인 계정이어도 다른 투자자의 계좌로 청약을 기록하면 투자자별 집계가 어긋난다.
+  private static void requireAccountOfInvestor(SecuritiesAccount account, Long investorId) {
+    if (!account.getInvestorId().equals(investorId)) {
+      throw new SubscriptionValidationException("증권계좌가 이 투자자의 계좌가 아닙니다.");
+    }
   }
 
   // IPO 존재 검증만 수행(전역 기준정보 — 계정과 무관, 삭제되지 않은 IPO만 허용)
