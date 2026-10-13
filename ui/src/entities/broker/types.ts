@@ -34,6 +34,7 @@ export const syncPreviewItemSchema = z.object({
   tax: z.number(),
   allocationId: z.number().nullable(),
   reason: unmatchedReasonSchema.nullable(),
+  allocationHasActiveSale: z.boolean().default(false),
 })
 
 export type SyncPreviewItem = z.infer<typeof syncPreviewItemSchema>

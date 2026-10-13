@@ -1,5 +1,6 @@
 package com.vibeaiteam.brokerintegration.adapter;
 
+import com.vibeaiteam.accountauthentication.util.validation.StockCodes;
 import com.vibeaiteam.brokerintegration.exception.BrokerApiException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -115,11 +116,8 @@ public final class BrokerHttp {
    * @throws com.vibeaiteam.brokerintegration.exception.BrokerApiException 코드가 비었을 때
    */
   public static String stockCode(String raw) {
-    String code = raw == null ? "" : raw.trim();
-    if (code.length() == 7 && (code.charAt(0) == 'A' || code.charAt(0) == 'a')) {
-      code = code.substring(1);
-    }
-    if (code.isEmpty()) {
+    String code = StockCodes.normalize(raw);
+    if (code == null) {
       throw new BrokerApiException(INVALID, "종목코드가 비어 있다");
     }
     return code;

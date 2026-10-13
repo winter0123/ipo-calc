@@ -25,6 +25,7 @@ import com.vibeaiteam.brokerintegration.adapter.kis.dto.KisPeriodTradeProfitDeta
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncConfirmRequest;
 import com.vibeaiteam.brokerintegration.controller.sync.dto.SyncPreviewResponse;
 import com.vibeaiteam.brokerintegration.domain.model.credential.SecuritiesAccountApiCredential;
+import com.vibeaiteam.brokerintegration.exception.ApiCredentialConflictException;
 import com.vibeaiteam.brokerintegration.exception.ApiCredentialValidationException;
 import com.vibeaiteam.brokerintegration.exception.RateLimitExceededException;
 import com.vibeaiteam.brokerintegration.infrastructure.encryption.BrokerSecretEncryptor;
@@ -393,5 +394,97 @@ class BrokerSyncServiceTest {
 
     assertThat(response.matched()).isEmpty();
     assertThat(response.unmatched().get(0).reason()).isEqualTo(UnmatchedReason.ALREADY_REGISTERED);
+  }
+
+  private static Sale existingSale(LocalDateTime date) {
+    return Sale.builder()
+        .id(1L)
+        .allocationId(ALLOCATION_ID)
+        .quantity(4L)
+        .amount(40_000L)
+        .saleDate(date)
+        .build();
+  }
+
+  private static SaleRegisterRequest confirmSale(LocalDateTime date, Long amount) {
+    return SaleRegisterRequest.builder()
+        .allocationId(ALLOCATION_ID)
+        .quantity(4L)
+        .price(10_000L)
+        .amount(amount)
+        .saleDate(date)
+        .build();
+  }
+
+  @Test
+  void confirmRejectsASaleOnADayThatAlreadyHasAnActiveSale() {
+    when(saleRepository.findByAllocationIdInAndStatus(anyList(), any()))
+        .thenReturn(List.of(existingSale(LocalDateTime.of(2026, 9, 30, 9, 0))));
+
+    assertThrows(
+        ApiCredentialConflictException.class,
+        () ->
+            service.confirm(
+                ACCOUNT_ID,
+                new SyncConfirmRequest(
+                    List.of(confirmSale(LocalDateTime.of(2026, 9, 30, 0, 0), 40_000L)))));
+    verifyNoInteractions(saleService);
+  }
+
+  @Test
+  void confirmRejectsTwoSalesOfTheSameAllocationAndDayInOneRequest() {
+    LocalDateTime day = LocalDateTime.of(2026, 9, 30, 0, 0);
+
+    assertThrows(
+        ApiCredentialConflictException.class,
+        () ->
+            service.confirm(
+                ACCOUNT_ID,
+                new SyncConfirmRequest(
+                    List.of(confirmSale(day, 40_000L), confirmSale(day, 40_000L)))));
+    verifyNoInteractions(saleService);
+  }
+
+  @Test
+  void confirmRejectsFutureSaleDate() {
+    assertThrows(
+        ApiCredentialValidationException.class,
+        () ->
+            service.confirm(
+                ACCOUNT_ID,
+                new SyncConfirmRequest(
+                    List.of(confirmSale(LocalDateTime.of(2026, 10, 2, 0, 0), 40_000L)))));
+    verifyNoInteractions(saleService);
+  }
+
+  @Test
+  void confirmFillsMissingAmountWithPriceTimesQuantityAndAllowsDatesBeforeAllocation() {
+    SaleRegisterRequest sale = confirmSale(LocalDateTime.of(2020, 1, 1, 0, 0), null);
+
+    service.confirm(ACCOUNT_ID, new SyncConfirmRequest(List.of(sale)));
+
+    assertThat(sale.getAmount()).isEqualTo(40_000L);
+    verify(saleService).register(sale);
+  }
+
+  @Test
+  void previewFlagsAllocationsThatAlreadyHaveAnActiveSale() {
+    when(saleRepository.findByAllocationIdInAndStatus(anyList(), any()))
+        .thenReturn(List.of(existingSale(LocalDateTime.of(2026, 9, 29, 0, 0))));
+    when(allocationRepository.findBySubscriptionIdIn(anyList()))
+        .thenReturn(
+            List.of(
+                Allocation.builder()
+                    .id(ALLOCATION_ID)
+                    .subscriptionId(20L)
+                    .allocatedQuantity(20L)
+                    .status(RecordStatus.ACTIVE)
+                    .build()));
+    stubBrokerRows(sellRow("20260930", STOCK_CODE));
+
+    SyncPreviewResponse response = service.preview(ACCOUNT_ID);
+
+    assertThat(response.matched()).hasSize(1);
+    assertThat(response.matched().get(0).allocationHasActiveSale()).isTrue();
   }
 }

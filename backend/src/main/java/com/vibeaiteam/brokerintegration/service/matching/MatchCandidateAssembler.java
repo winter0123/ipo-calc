@@ -1,6 +1,7 @@
 package com.vibeaiteam.brokerintegration.service.matching;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
+import com.vibeaiteam.accountauthentication.util.validation.StockCodes;
 import com.vibeaiteam.allocationmanagement.domain.model.allocation.Allocation;
 import com.vibeaiteam.allocationmanagement.repository.allocation.AllocationRepository;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
@@ -10,6 +11,7 @@ import com.vibeaiteam.salemanagement.repository.sale.SaleRepository;
 import com.vibeaiteam.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.vibeaiteam.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,33 +83,55 @@ public class MatchCandidateAssembler {
             .stream()
             .collect(Collectors.toMap(Ipo::getId, i -> i));
     List<Allocation> allocations = loadAllocations(securitiesAccountId);
-    Map<Long, List<ExistingSale>> salesByAllocation = new HashMap<>();
-    if (!allocations.isEmpty()) {
-      for (Sale sale :
-          saleRepository.findByAllocationIdInAndStatus(
-              allocations.stream().map(Allocation::getId).toList(), RecordStatus.ACTIVE)) {
-        salesByAllocation
-            .computeIfAbsent(sale.getAllocationId(), k -> new ArrayList<>())
-            .add(
-                new ExistingSale(
-                    sale.getId(),
-                    sale.getSaleDate().toLocalDate(),
-                    sale.getQuantity(),
-                    sale.getAmount() == null ? 0 : sale.getAmount(),
-                    sale.getFee() == null ? 0 : sale.getFee(),
-                    sale.getTax() == null ? 0 : sale.getTax()));
-      }
-    }
+    Map<Long, List<ExistingSale>> salesByAllocation =
+        existingSales(allocations.stream().map(Allocation::getId).toList());
     return allocations.stream()
         .map(
             a -> {
               Ipo ipo = ipoById.get(subscriptionById.get(a.getSubscriptionId()).getIpoId());
               return new MatchCandidate(
                   a.getId(),
-                  ipo == null ? null : ipo.getStockCode(),
+                  ipo == null ? null : StockCodes.normalize(ipo.getStockCode()),
                   a.getAllocatedQuantity(),
                   salesByAllocation.getOrDefault(a.getId(), List.of()));
             })
         .toList();
+  }
+
+  /**
+   * 배정 행을 ID 순서로 잠근다(매도 등록과 같은 잠금). 호출한 트랜잭션이 끝날 때까지 유지된다.
+   *
+   * @param allocationIds 잠글 배정 ID
+   */
+  public void lockAllocations(Collection<Long> allocationIds) {
+    allocationIds.stream().sorted().forEach(allocationRepository::findByIdForUpdate);
+  }
+
+  /**
+   * 배정별 활성 매도를 조회한다.
+   *
+   * @param allocationIds 대상 배정 ID
+   * @return 배정 ID별 활성 매도 목록(매도가 없는 배정은 키가 없다)
+   */
+  public Map<Long, List<ExistingSale>> existingSales(Collection<Long> allocationIds) {
+    Map<Long, List<ExistingSale>> salesByAllocation = new HashMap<>();
+    if (allocationIds.isEmpty()) {
+      return salesByAllocation;
+    }
+    for (Sale sale :
+        saleRepository.findByAllocationIdInAndStatus(
+            new ArrayList<>(allocationIds), RecordStatus.ACTIVE)) {
+      salesByAllocation
+          .computeIfAbsent(sale.getAllocationId(), k -> new ArrayList<>())
+          .add(
+              new ExistingSale(
+                  sale.getId(),
+                  sale.getSaleDate().toLocalDate(),
+                  sale.getQuantity(),
+                  sale.getAmount() == null ? 0 : sale.getAmount(),
+                  sale.getFee() == null ? 0 : sale.getFee(),
+                  sale.getTax() == null ? 0 : sale.getTax()));
+    }
+    return salesByAllocation;
   }
 }
