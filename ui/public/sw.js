@@ -9,7 +9,7 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { body: event.data ? event.data.text() : '' }
   }
-  const title = data.title || '투자 관리 시스템'
+  const title = data.title || '공모주계산기'
   event.waitUntil(
     self.registration
       .showNotification(title, {

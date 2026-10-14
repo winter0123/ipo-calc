@@ -63,7 +63,7 @@ export default function MainLayout() {
           <span className={styles.logo} aria-hidden="true">
             <Waves size={20} />
           </span>
-          <span className={styles.siteName}>투자 관리 시스템</span>
+          <span className={styles.siteName}>공모주계산기</span>
         </div>
         {currentAccount && <InvestorSwitcher />}
         {(currentAccount || isGuest) && (

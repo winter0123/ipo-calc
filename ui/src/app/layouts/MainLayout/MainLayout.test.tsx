@@ -265,7 +265,7 @@ describe('MainLayout', () => {
   it('헤더에 사이트 이름이 표시됨', () => {
     renderLayout()
 
-    expect(screen.getByText('투자 관리 시스템')).toBeInTheDocument()
+    expect(screen.getByText('공모주계산기')).toBeInTheDocument()
   })
 
   describe('로그아웃 버튼', () => {
