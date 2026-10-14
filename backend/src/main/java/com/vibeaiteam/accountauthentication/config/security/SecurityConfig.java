@@ -22,6 +22,8 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 
 /** Spring Security 설정. 세션 기반 인증을 사용하고 미인증 요청에는 401을 반환한다. */
 @Configuration
@@ -32,7 +34,8 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
-      ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
+      ObjectProvider<RateLimitFilter> rateLimitFilterProvider,
+      SessionRegistry sessionRegistry)
       throws Exception {
     // 제한 필터가 없으면(비활성) 건너뛴다. 로그인·가입 시도를 세션·인가 처리보다 먼저 거절하기 위한 위치다.
     RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
@@ -87,12 +90,14 @@ public class SecurityConfig {
         .formLogin(AbstractHttpConfigurer::disable)
         .rememberMe(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
+        // 401만 돌려주는 API라 "원래 요청 저장"이 필요 없다. 켜 두면 인증 안 된 요청마다 세션(DB 행)이 생긴다.
+        .requestCache(cache -> cache.disable())
         .sessionManagement(
             session ->
                 session
                     .maximumSessions(1)
                     .maxSessionsPreventsLogin(false)
-                    .sessionRegistry(sessionRegistry())
+                    .sessionRegistry(sessionRegistry)
                     // 다른 곳에서 로그인해 만료된 세션도 API답게 401로 답한다(302 리다이렉트 아님).
                     .expiredSessionStrategy(
                         event -> event.getResponse().setStatus(HttpStatus.UNAUTHORIZED.value())));
@@ -100,10 +105,18 @@ public class SecurityConfig {
     return http.build();
   }
 
-  /** 동시 세션 관리를 위한 세션 레지스트리 빈. */
+  /**
+   * 동시 세션 관리를 위한 세션 레지스트리 빈. 세션이 DB(Spring Session JDBC)에 있으므로 레지스트리도 DB 기준이어야 재시작 뒤에도
+   * 비밀번호 변경·승인 취소 때 다른 세션을 끊을 수 있다.
+   */
   @Bean
-  public SessionRegistry sessionRegistry() {
-    return new SessionRegistryImpl();
+  public SessionRegistry sessionRegistry(
+      ObjectProvider<FindByIndexNameSessionRepository<?>> sessionRepository) {
+    FindByIndexNameSessionRepository<?> repository = sessionRepository.getIfAvailable();
+    // 세션 저장소가 없는 JPA 슬라이스 테스트에서만 메모리 레지스트리로 대체된다.
+    return repository == null
+        ? new SessionRegistryImpl()
+        : new SpringSessionBackedSessionRegistry<>(repository);
   }
 
   /** 세션 생성·소멸 이벤트를 발행하는 빈. */

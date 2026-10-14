@@ -107,29 +107,8 @@ class SessionCookieTest {
 
   @Test
   void secureFlagFollowsConfiguration() {
-    MockHttpServletResponse secureResponse = new MockHttpServletResponse();
-    new SessionCookieWriter(true, "Lax").issueIfAbsent(secureResponse, "abc");
-    assertThat(secureResponse.getHeader("Set-Cookie"))
-        .contains("Secure")
-        .contains("HttpOnly")
-        .contains("SameSite=Lax");
-
     MockHttpServletResponse secureLogout = new MockHttpServletResponse();
     new SessionCookieWriter(true, "Lax").expire(secureLogout);
     assertThat(secureLogout.getHeader("Set-Cookie")).contains("Secure").contains("Max-Age=0");
-
-    MockHttpServletResponse plainResponse = new MockHttpServletResponse();
-    new SessionCookieWriter(false, "Lax").issueIfAbsent(plainResponse, "abc");
-    assertThat(plainResponse.getHeader("Set-Cookie")).doesNotContain("Secure");
-  }
-
-  @Test
-  void doesNotAddDuplicateWhenContainerAlreadySetSessionCookie() {
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    response.addHeader("Set-Cookie", "JSESSIONID=fromcontainer; Path=/; HttpOnly");
-
-    new SessionCookieWriter(false, "Lax").issueIfAbsent(response, "abc");
-
-    assertThat(response.getHeaders("Set-Cookie")).hasSize(1);
   }
 }

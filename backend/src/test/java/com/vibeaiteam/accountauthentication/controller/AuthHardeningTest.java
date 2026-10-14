@@ -7,10 +7,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
 import com.vibeaiteam.accountauthentication.domain.model.account.AccountRole;
 import com.vibeaiteam.accountauthentication.repository.account.AccountRepository;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -30,10 +32,14 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.session.Session;
+import org.springframework.session.SessionRepository;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
 
 /** 인증 보안 강화 회귀: 로그인 동시성, 실패 횟수 원자성, 잠금 해제, 폼 로그인 차단, 세션 고정, 비밀번호 정책. */
@@ -51,6 +57,7 @@ class AuthHardeningTest {
   @Autowired private AccountRepository accountRepository;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private SessionRegistry sessionRegistry;
+  @Autowired private JdbcIndexedSessionRepository sessionRepository;
 
   private final List<String> createdEmails = new ArrayList<>();
   private String nonce;
@@ -243,38 +250,65 @@ class AuthHardeningTest {
         .isEqualTo(401);
   }
 
+  /** 로그인 전에 받은 (익명) 세션 ID를 쿠키로 보낸 요청의 응답에서 새 세션 ID를 꺼낸다. 같은 ID면 세션 고정이 가능하다는 뜻. */
+  private String sessionIdAfter(MockHttpServletRequestBuilder request, Session before)
+      throws Exception {
+    String cookie =
+        Base64.getEncoder().encodeToString(before.getId().getBytes(StandardCharsets.UTF_8));
+    MvcResult result =
+        mockMvc.perform(request.cookie(new Cookie("JSESSIONID", cookie))).andReturn();
+    assertThat(result.getResponse().getStatus()).isIn(200, 201);
+    String header =
+        result.getResponse().getHeaders("Set-Cookie").stream()
+            .filter(h -> h.startsWith("JSESSIONID="))
+            .findFirst()
+            .orElseThrow();
+    String value = header.substring("JSESSIONID=".length()).split(";", 2)[0];
+    return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private Session anonymousSession() {
+    SessionRepository raw = sessionRepository;
+    Session session = raw.createSession();
+    raw.save(session);
+    return session;
+  }
+
   @Test
   void loginChangesTheSessionIdIssuedBeforeLogin() throws Exception {
     String email = createAccount("fixation", AccountRole.USER);
-    MockHttpSession session = new MockHttpSession();
-    String before = session.getId();
+    Session before = anonymousSession();
 
-    assertThat(login(email, PASSWORD, session).getResponse().getStatus()).isEqualTo(200);
+    String after =
+        sessionIdAfter(
+            post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(Map.of("email", email, "password", PASSWORD))),
+            before);
 
-    assertThat(session.getId()).isNotEqualTo(before);
+    assertThat(after).isNotEqualTo(before.getId());
+    assertThat(sessionRepository.findById(before.getId())).as("로그인 전 세션은 버려진다").isNull();
   }
 
   @Test
   void signupChangesSessionIdAndRegistersTheSessionInTheRegistry() throws Exception {
     String email = "signup-" + nonce + "@example.com";
     createdEmails.add(email);
-    MockHttpSession session = new MockHttpSession();
-    String before = session.getId();
+    Session before = anonymousSession();
 
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/accounts")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        objectMapper.writeValueAsString(
-                            Map.of("email", email, "password", PASSWORD, "name", "가입")))
-                    .session(session))
-            .andReturn();
+    String after =
+        sessionIdAfter(
+            post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        Map.of("email", email, "password", PASSWORD, "name", "가입"))),
+            before);
 
-    assertThat(result.getResponse().getStatus()).isEqualTo(201);
-    assertThat(session.getId()).isNotEqualTo(before);
-    assertThat(sessionRegistry.getSessionInformation(session.getId())).isNotNull();
+    assertThat(after).isNotEqualTo(before.getId());
+    assertThat(sessionRegistry.getSessionInformation(after)).isNotNull();
   }
 
   @Test

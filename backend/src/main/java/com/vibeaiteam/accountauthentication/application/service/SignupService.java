@@ -2,7 +2,6 @@ package com.vibeaiteam.accountauthentication.application.service;
 
 import com.vibeaiteam.accountauthentication.config.SignupMode;
 import com.vibeaiteam.accountauthentication.config.SignupPolicy;
-import com.vibeaiteam.accountauthentication.config.security.SessionCookieWriter;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupRequest;
 import com.vibeaiteam.accountauthentication.controller.dto.SignupResponse;
 import com.vibeaiteam.accountauthentication.domain.model.account.Account;
@@ -34,7 +33,6 @@ public class SignupService {
   private final AccountRepository accountRepository;
   private final PasswordEncoder passwordEncoder;
   private final Clock clock;
-  private final SessionCookieWriter sessionCookieWriter;
   private final SignupPolicy signupPolicy;
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final SecurityContextRepository securityContextRepository =
@@ -116,7 +114,5 @@ public class SignupService {
         authentication, httpServletRequest, httpServletResponse);
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
-
-    sessionCookieWriter.issueIfAbsent(httpServletResponse, httpServletRequest.getSession().getId());
   }
 }
