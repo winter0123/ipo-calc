@@ -5,6 +5,7 @@ import com.vibeaiteam.ipocatalog.domain.model.ipo.IpoDetail;
 import com.vibeaiteam.ipocatalog.exception.IpoNotFoundException;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoDetailRepository;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.dart.DartFilingParser;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +45,7 @@ public class IpoDetailService {
             .orElseGet(() -> IpoDetail.builder().ipoId(ipoId).createdAt(now).build());
     detail.setSourceRceptNo(snapshot.sourceRceptNo());
     detail.setSourceReportName(snapshot.sourceReportName());
+    detail.setParserVersion(DartFilingParser.VERSION);
     detail.setSyncedAt(now);
     detail.setCeoName(snapshot.ceoName());
     detail.setEstablishedOn(snapshot.establishedOn());

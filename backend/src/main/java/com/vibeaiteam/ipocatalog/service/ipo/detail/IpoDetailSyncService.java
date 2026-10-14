@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
  * 공모주 상세 정보를 금융감독원 DART에서 가져와 {@code ipo_details}에 저장한다.
  *
  * <p>공모주마다 최신 투자설명서(없으면 증권신고서) 원문을 파싱하고, 기업개황(대표이사·설립일·주소)과 지분증권 주요정보(액면가·인수단)를
- * 합친다. 이미 같은 공시(접수번호)로 저장했으면 원문을 다시 내려받지 않는다. 대상은 DART 고유번호가 있고 상장 전이거나 상장 후 30일
- * 이내인 공모주다.
+ * 합친다. 이미 같은 공시(접수번호)를 같은 파서 버전으로 저장했으면 원문을 다시 내려받지 않는다.
+ * 대상은 DART 고유번호가 있고 상장 전이거나 상장 후 30일 이내인 공모주다.
  */
 @Service
 @Slf4j
@@ -113,7 +113,10 @@ public class IpoDetailSyncService {
     String rceptNo = filing.get().rceptNo();
     Optional<IpoDetail> existing = detailRepository.findById(ipo.getId());
     boolean unchanged =
-        existing.map(IpoDetail::getSourceRceptNo).filter(rceptNo::equals).isPresent();
+        existing
+            .filter(d -> rceptNo.equals(d.getSourceRceptNo()))
+            .filter(d -> d.getParserVersion() >= DartFilingParser.VERSION)
+            .isPresent();
     if (unchanged) {
       return false;
     }

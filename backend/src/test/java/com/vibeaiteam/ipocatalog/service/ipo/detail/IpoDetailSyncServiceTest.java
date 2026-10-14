@@ -13,6 +13,7 @@ import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.IpoDetail;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoDetailRepository;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
+import com.vibeaiteam.ipocatalog.service.ipo.detail.dart.DartFilingParser;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.EquityOffering;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.FilingRef;
@@ -103,12 +104,28 @@ class IpoDetailSyncServiceTest {
     when(filingClient.findLatestOfferingDocument("01749559", TODAY))
         .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
     when(detailRepository.findById(1L))
-        .thenReturn(Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo(RCEPT).build()));
+        .thenReturn(Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo(RCEPT)
+            .parserVersion(DartFilingParser.VERSION).build()));
 
     assertThat(service.syncRecent()).isZero();
 
     verify(filingClient, never()).downloadDocument(anyString());
     verify(detailService, never()).save(any(), any());
+  }
+
+  @Test
+  void reparsesSameFilingWhenSavedByOlderParser() {
+    Ipo ms = ipo(1L, "01749559", null);
+    when(ipoRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(ms));
+    when(filingClient.findLatestOfferingDocument("01749559", TODAY))
+        .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
+    when(detailRepository.findById(1L))
+        .thenReturn(Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo(RCEPT)
+            .parserVersion(DartFilingParser.VERSION - 1).build()));
+
+    service.syncRecent();
+
+    verify(filingClient).downloadDocument(RCEPT);
   }
 
   @Test
