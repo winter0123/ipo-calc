@@ -144,7 +144,7 @@ KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 �
 - **시도 횟수 제한(D-B-026)**: 키 등록·교체 계정당 10분 5회, 미리보기 증권계좌당 10초 1회·시간당 30회(메모리 구현, 서버 1대 기준).
 - **서버 암호화 키 버전 관리(D-B-028)**: 계좌번호·증권사 시크릿 키를 `v<번호>`로 관리하고 `APP_ENCRYPTION_ROTATE_ON_STARTUP=true` 기동으로 전체를 새 버전으로 다시 암호화한다. 실기동 점검 통과.
 - **비공개 운영(D-B-029)**: 가입 모드 기본 `APPROVAL`(관리자 승인 뒤 로그인), 승인은 `/admin/accounts`. 첫 관리자는 DB에서 `UPDATE accounts SET role='ADMIN', approved=TRUE ...`. 로컬 개발·E2E는 `APP_SIGNUP_MODE=OPEN`. 백엔드 test 747건, UI 371건, E2E 13/13, axe 18개 화면·상태 0건. 일반 배포는 KIS 약관 원문·법률 검토 전까지 보류.
-- **사용자 가이드**: `docs/user-guides/manual/index.html` 통합 가이드(8개 섹션, 화면 20개의 데스크톱·모바일 스크린샷). 스크린샷은 `tools/screenshot-guide/run.sh`로 재생성한다(이전의 Epic별 가이드 5개를 대체).
+- **사용자 가이드**: `docs/user-guides/manual/` 가이드(`pc.html`·`mobile.html` 두 판, 각 8개 섹션, 화면 20개의 데스크톱·모바일 스크린샷, `index.html`은 선택 화면). 스크린샷은 `tools/screenshot-guide/run.sh`로 재생성한다(이전의 Epic별 가이드 5개를 대체).
 - **KIS 500의 정체(D-B-030)**: 초당 거래건수 제한(`EGW00201`)이며 이 오류에 한해 자동 재시도한다. 연속조회는 이 계정(10년 42행)으로는 다중 페이지를 만들 수 없어 실검증 불가(D-B-031).
 - **UI 바다 테마(2026-10-01)**: 사용자 지정 4색(#439BF5·#ABF7EE·#FFFFFF·#B9E68B)을 디자인 토큰으로 전체 적용(`docs/guide-frontend.md` 8절), 카드 레이아웃·Pretendard·lucide 아이콘·로그인한 계정에만 메뉴. UI 375 테스트, E2E 13/13, axe 18개 0건. 피그마 연동은 사용자 OAuth 승인이 필요해 보류.
 - **사용자 결정 대기**: 외부 사용자에게 열 때의 키 보관 책임·유출 대응(D-B-013), KIS 제휴 문의 여부.
