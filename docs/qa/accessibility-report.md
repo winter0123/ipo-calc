@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 14. 오전 10:13:47
+검사 일시: 2026. 10. 14. 오후 2:01:16
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:50199
+대상 URL: http://127.0.0.1:57252
 
 ## 요약
 
-- 검사한 화면: 59개
+- 검사한 화면: 61개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -116,6 +116,14 @@
 ### broker-sync@mobile (/broker-sync)
 
 ✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
+
+### notifications@desktop (/notifications)
+
+✅ **위반 0건** (passes: 36, incomplete: 1, inapplicable: 53)
+
+### notifications@mobile (/notifications)
+
+✅ **위반 0건** (passes: 36, incomplete: 1, inapplicable: 53)
 
 ### admin-accounts-pending@desktop (/admin/accounts)
 
