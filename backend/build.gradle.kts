@@ -30,6 +30,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
+    // 웹 푸시(VAPID + 메시지 암호화). 최신 5.1.2(2025-02), 암호화는 BouncyCastle 사용
+    implementation("nl.martijndwars:web-push:5.1.2") {
+        // 구형 jdk15on 대신 유지보수되는 jdk18on을 쓴다(패키지명 같음)
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15on")
+    }
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
+    // preparePost 시그니처가 쓰는 타입(web-push는 런타임 의존으로만 선언). jose4j는 구버전 0.7.9 대신 최신으로 올린다
+    implementation("org.apache.httpcomponents:httpclient:4.5.14")
+    implementation("org.bitbucket.b_c:jose4j:0.9.6")
     
     // Lombok for reducing boilerplate (optional but recommended)
     implementation("org.projectlombok:lombok")
@@ -49,6 +58,7 @@ tasks.test {
     // direnv의 DATA_GO_KR_SERVICE_KEY로 실제 휴장일이 들어와 휴장일 테스트가 실행 순서에 따라 깨졌다.
     systemProperty("app.holiday-sync.enabled", "false")
     systemProperty("app.ipo-sync.enabled", "false")
+    systemProperty("app.notification.enabled", "false")
     // 앱 시계(ClockConfig)가 Asia/Seoul이라 테스트 JVM도 맞춘다. CI(UTC)에서 한국 자정 전후로 "오늘"이 하루 어긋나 깨지던 문제.
     systemProperty("user.timezone", "Asia/Seoul")
     finalizedBy(tasks.jacocoTestReport)

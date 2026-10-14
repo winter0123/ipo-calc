@@ -1421,6 +1421,33 @@ async function scenario21(browser) {
   }
 }
 
+async function scenario22(browser) {
+  const email = uniqueEmail()
+  await signupApi(browser, email, 'E2E Notify')
+  const { context, page } = await openContext(browser)
+  try {
+    const attempt = await login(page, email, PASSWORD)
+    if (!attempt.ok) throw new Error(`로그인 실패: 상태=${attempt.status}`)
+    await page.getByRole('button', { name: '설정' }).click()
+    await page.getByRole('link', { name: '알림 설정' }).click()
+    if (!(await waitForUrl(page, '**/notifications'))) throw new Error(`알림 설정 이동 실패: ${page.url()}`)
+    await page.getByRole('heading', { name: '알림 설정', level: 1 }).waitFor()
+    const deadline = page.getByRole('checkbox', { name: /청약 마감 당일 알림/ })
+    await deadline.waitFor()
+    if (!(await deadline.isChecked())) throw new Error('청약 마감 알림이 기본으로 켜져 있지 않음')
+    await deadline.uncheck()
+    await expectText(page, '저장했습니다.', '알림 종류 저장')
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    const after = page.getByRole('checkbox', { name: /청약 마감 당일 알림/ })
+    await after.waitFor()
+    if (await after.isChecked()) throw new Error('새로고침 뒤에도 꺼진 상태가 유지되지 않음')
+    if (!(await page.getByRole('checkbox', { name: /상장일 알림/ }).isChecked())) throw new Error('상장일 알림이 함께 꺼짐')
+    return '설정 메뉴 → 알림 설정 이동, 청약 마감 알림 끄기 저장 → 새로고침 후 유지(상장일 알림은 그대로)'
+  } finally {
+    await context.close()
+  }
+}
+
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -1443,6 +1470,7 @@ const SCENARIOS = [
   ['E2E-19', '인증: 로그아웃과 화면 가드', scenario19],
   ['E2E-20', '인증: 로그인 잠금 → 관리자 해제', scenario20],
   ['E2E-21', '인증: 폼 로그인 경로 차단', scenario21],
+  ['E2E-22', '알림 설정: 종류 끄기 저장 → 새로고침 유지', scenario22],
 ]
 
 function printResults() {

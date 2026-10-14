@@ -28,6 +28,7 @@ const pages = [
   { name: 'investments', path: '/investments', needsAuth: true },
   { name: 'dashboard', path: '/dashboard', needsAuth: true },
   { name: 'broker-sync', path: '/broker-sync', needsAuth: true },
+  { name: 'notifications', path: '/notifications', needsAuth: true },
 ]
 
 const viewports = [
@@ -518,7 +519,7 @@ async function main() {
 
   // 화면을 조용히 건너뛰면 '위반 0'이 거짓 안심이 된다(#421 가드 이후 실제로 그랬음). 기대 수보다 적게 검사했거나
   // 건너뜀·오류·위반이 있으면 실패 코드로 끝낸다. 화면을 추가·삭제하면 MIN_SCANNED도 맞춘다.
-  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 59)
+  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 61)
   const scannedCount = results.filter((r) => !r.skipped && !r.error).length
   const problems = results.filter((r) => r.skipped || r.error || (r.violations?.length ?? 0) > 0)
   if (scannedCount < MIN_SCANNED || problems.length > 0) {

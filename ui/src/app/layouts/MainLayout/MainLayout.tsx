@@ -26,6 +26,7 @@ const SETTINGS_ITEMS = [
   { to: '/investors/register', label: '투자자 추가' },
   { to: '/securities', label: '증권사 관리' },
   { to: '/broker-sync', label: '증권사 연동' },
+  { to: '/notifications', label: '알림 설정' },
 ]
 
 const ADMIN_ITEMS = [
