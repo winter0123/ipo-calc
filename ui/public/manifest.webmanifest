@@ -1,7 +1,7 @@
 {
-  "name": "투자 관리 시스템",
-  "short_name": "투자 관리",
-  "description": "공모주 청약·배정·매도 수익 관리",
+  "name": "공모주계산기",
+  "short_name": "공모주계산기",
+  "description": "공모주 청약·배정·매도를 기록하면 수수료·세금까지 반영한 수익을 계산합니다",
   "lang": "ko",
   "start_url": "/",
   "scope": "/",
