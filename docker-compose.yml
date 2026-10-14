@@ -1,8 +1,8 @@
-name: ipocalc
+name: ipo-calc
 services:
   postgres:
     image: postgres:17
-    container_name: ipocalc-postgres-dev
+    container_name: ipo-calc-postgres-dev
     restart: unless-stopped
     environment:
       POSTGRES_DB: vibe_ai_team

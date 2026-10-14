@@ -1,10 +1,10 @@
 # 로컬 연습용 Jenkins. 4단계에서 운영 compose로 합친다.
-name: ipocalc
+name: ipo-calc
 services:
   jenkins:
     build: .
     restart: unless-stopped
-    container_name: ipocalc-jenkins-dev
+    container_name: ipo-calc-jenkins-dev
     # Docker Desktop(mac)의 docker.sock은 root 그룹. Linux VM에서는 DOCKER_GID=$(stat -c %g /var/run/docker.sock)
     group_add:
       - "${DOCKER_GID:-0}"

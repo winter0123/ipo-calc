@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "ipocalc CI"
+  systemMessage: "ipo-calc CI"
   securityRealm:
     local:
       allowsSignup: false

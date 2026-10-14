@@ -94,7 +94,7 @@
 ### 픽스처와 실행 조건 (시나리오 7~10)
 
 - 공모주 등록은 ADMIN 전용(#242)이고 UI에 공모주 등록 화면이 없다. 그래서 거래 계정을 API로 만들고(`POST /accounts`, 투자자, 증권계좌), DB에서 `accounts.role='ADMIN'`으로 승격한 뒤 재로그인해 `POST /ipos`로 공모주를 만든다. 그 뒤 같은 계정으로 청약·배정·매도를 **UI에서** 진행한다.
-- 필요한 환경변수: `E2E_DB_NAME`(승격 대상 DB, 예 `vibe_slot_2`, 필수), `E2E_DB_CONTAINER`(기본 `ipocalc-postgres-dev`), `E2E_DB_USER`(기본 `vibe`), `E2E_API_PREFIX`(기본 `/api-proxy`). `docker exec ... psql`을 쓰므로 로컬 Postgres 컨테이너가 떠 있어야 한다. `E2E_DB_NAME`이 없으면 7~10은 사유를 밝히고 FAIL한다.
+- 필요한 환경변수: `E2E_DB_NAME`(승격 대상 DB, 예 `vibe_slot_2`, 필수), `E2E_DB_CONTAINER`(기본 `ipo-calc-postgres-dev`), `E2E_DB_USER`(기본 `vibe`), `E2E_API_PREFIX`(기본 `/api-proxy`). `docker exec ... psql`을 쓰므로 로컬 Postgres 컨테이너가 떠 있어야 한다. `E2E_DB_NAME`이 없으면 7~10은 사유를 밝히고 FAIL한다.
 - 예: `cd tools/e2e && BASE_URL=http://127.0.0.1:<프론트포트> E2E_DB_NAME=vibe_slot_2 pnpm run e2e`
 
 ## 재실측 결과 (수정 후, #224 병합 뒤)
