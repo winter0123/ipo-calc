@@ -89,3 +89,30 @@ export const ipoSyncResultSchema = z.object({
 })
 
 export type IpoSyncResult = z.infer<typeof ipoSyncResultSchema>
+
+// 동기화 상태 객체 (POST /ipos/sync 및 GET /ipos/sync/status)
+export const ipoSyncStatusSchema = z.object({
+  state: z.enum(['IDLE', 'RUNNING', 'DONE', 'FAILED']),
+  fromMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable(),
+  toMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .nullable(),
+  monthsDone: z.number().int().nonnegative().nullable(),
+  monthsTotal: z.number().int().nonnegative().nullable(),
+  startedAt: z
+    .string()
+    .nullable()
+    .refine((val) => val === null || !isNaN(Date.parse(val)), { message: 'Invalid datetime' }),
+  finishedAt: z
+    .string()
+    .nullable()
+    .refine((val) => val === null || !isNaN(Date.parse(val)), { message: 'Invalid datetime' }),
+  result: ipoSyncResultSchema.nullable(),
+  error: z.string().nullable(),
+})
+
+export type IpoSyncStatus = z.infer<typeof ipoSyncStatusSchema>

@@ -91,6 +91,35 @@ public class IpoDetailSyncService {
     return saved;
   }
 
+  /**
+   * 주어진 공모주 목록에 대해 상세 동기화를 수행한다. 범위 실행에서 생성/갱신된 공모주만 대상으로 한다.
+   *
+   * <p>대상 선정 기준은 {@link #isTarget(Ipo, LocalDate)}와 동일하다(corpCode 있고 상장 전이거나 상장 후 30일 이내).
+   * 기존 {@link #syncOne(Ipo, LocalDate)} 로직을 재사용하되, 파서 버전 규칙도 그대로 유지한다.
+   *
+   * @param ipos 동기화할 공모주 리스트
+   * @return 새로 저장(갱신)한 공모주 수
+   */
+  public int syncForIpos(List<Ipo> ipos) {
+    LocalDate today = LocalDate.now(clock);
+    int saved = 0;
+    for (Ipo ipo : ipos) {
+      if (!isTarget(ipo, today)) {
+        continue;
+      }
+      try {
+        if (syncOne(ipo, today)) {
+          saved++;
+        }
+      } catch (RuntimeException e) {
+        // 외부 호출 예외 메시지에 키가 든 URL이 섞일 수 있어 클래스명만 남긴다.
+        log.warn("공모주 상세 동기화 실패: ipoId={}, {}", ipo.getId(), e.getClass().getSimpleName());
+      }
+    }
+    log.info("지정 공모주 상세 동기화 완료: saved={}, targetCount={}", saved, ipos.size());
+    return saved;
+  }
+
   static boolean isTarget(Ipo ipo, LocalDate today) {
     return ipo.getCorpCode() != null
         && (ipo.getListingDate() == null

@@ -44,17 +44,20 @@ public class SecurityConfig {
     }
     http.authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(
-                        "/accounts",
-                        "/auth/login",
-                        "/auth/logout",
-                        "/css/**",
-                        "/js/**",
-                        "/error")
-                    .permitAll()
-                    // 공개 조회 허용 (공모주 달력·휴장일: 로그인 불필요)
-                    .requestMatchers(HttpMethod.GET, "/ipos", "/ipos/**", "/market-holidays")
-                    .permitAll()
+            auth.requestMatchers(
+                    "/accounts",
+                    "/auth/login",
+                    "/auth/logout",
+                    "/css/**",
+                    "/js/**",
+                    "/error")
+                .permitAll()
+                // 동기화 상태 조회는 ADMIN만 (GET /ipos/sync/**)
+                .requestMatchers(HttpMethod.GET, "/ipos/sync/**")
+                .hasRole("ADMIN")
+                // 공개 조회 허용 (공모주 달력·휴장일: 로그인 불필요)
+                .requestMatchers(HttpMethod.GET, "/ipos", "/ipos/**", "/market-holidays")
+                .permitAll()
                     // 가입 승인 관리는 ADMIN만.
                     .requestMatchers("/admin/**")
                     .hasRole("ADMIN")

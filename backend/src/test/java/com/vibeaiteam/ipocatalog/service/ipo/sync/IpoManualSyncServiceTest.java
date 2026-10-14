@@ -3,6 +3,7 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,7 @@ import com.vibeaiteam.ipocatalog.exception.OpenDartKeyMissingException;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSyncService;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import java.util.ArrayList;
+import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,8 @@ class IpoManualSyncServiceTest {
   private IpoSyncService sync;
   private IpoDetailSyncService detail;
   private OpenDartApiProperties props;
+  private IpoSyncStateManager stateManager;
+  private Executor executor;
   private IpoManualSyncService service;
 
   @BeforeEach
@@ -31,7 +35,13 @@ class IpoManualSyncServiceTest {
     sync = mock(IpoSyncService.class);
     detail = mock(IpoDetailSyncService.class);
     props = new OpenDartApiProperties("dummy", "http://localhost");
-    service = new IpoManualSyncService(sync, detail, props);
+    stateManager = mock(IpoSyncStateManager.class);
+    executor = mock(Executor.class);
+    doAnswer(inv -> {
+      ((Runnable) inv.getArgument(0)).run();
+      return null;
+    }).when(executor).execute(any(Runnable.class));
+    service = new IpoManualSyncService(sync, detail, props, stateManager, executor);
     ReflectionTestUtils.setField(service, "daysBack", 90);
     when(sync.runExclusively(any()))
         .thenAnswer(i -> ((Supplier<?>) i.getArgument(0)).get());
@@ -73,7 +83,7 @@ class IpoManualSyncServiceTest {
 
   @Test
   void missingKeyThrowsBeforeAnyCall() {
-    service = new IpoManualSyncService(sync, detail, new OpenDartApiProperties(" ", "http://x"));
+    service = new IpoManualSyncService(sync, detail, new OpenDartApiProperties(" ", "http://x"), stateManager, executor);
 
     assertThatThrownBy(() -> service.syncNow()).isInstanceOf(OpenDartKeyMissingException.class);
     verify(sync, never()).sync(any(Integer.class));

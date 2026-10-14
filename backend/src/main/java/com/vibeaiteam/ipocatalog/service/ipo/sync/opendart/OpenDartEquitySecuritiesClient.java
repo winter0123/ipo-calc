@@ -53,7 +53,7 @@ public class OpenDartEquitySecuritiesClient {
   }
 
   /**
-   * 특정 회사의 증권신고서-지분증권 상세 정보를 조회한다.
+   * 특정 회사의 증권신고서-지분증권 상세 정보를 조회한다(기본: 오늘-365일~오늘).
    *
    * @param corpCode 회사고유번호 (8자리)
    * @return 파싱된 {@link OpenDartEquitySecurityDetail} 리스트 (여러 건일 수 있음, 보통 1건)
@@ -62,9 +62,24 @@ public class OpenDartEquitySecuritiesClient {
    * @throws OpenDartApiException 기타 API 오류인 경우
    */
   public List<OpenDartEquitySecurityDetail> getEquitySecurityDetail(String corpCode) {
+    return getEquitySecurityDetail(corpCode, LocalDate.now().minusDays(365), LocalDate.now());
+  }
+
+  /**
+   * 특정 회사의 증권신고서-지분증권 상세 정보를 지정된 기간으로 조회한다.
+   *
+   * @param corpCode 회사고유번호 (8자리)
+   * @param startDate 조회 시작일 (포함)
+   * @param endDate 조회 종료일 (포함)
+   * @return 파싱된 {@link OpenDartEquitySecurityDetail} 리스트
+   * @throws IllegalStateException API 키가 설정되지 않은 경우
+   * @throws OpenDartAuthenticationException 인증키 오류(status 011)인 경우
+   * @throws OpenDartApiException 기타 API 오류인 경우
+   */
+  public List<OpenDartEquitySecurityDetail> getEquitySecurityDetail(
+      String corpCode, LocalDate startDate, LocalDate endDate) {
     validateApiKey();
     throttle.acquire();
-    LocalDate today = LocalDate.now();
 
     OpenDartEstkRsResponse response;
     try {
@@ -77,9 +92,8 @@ public class OpenDartEquitySecuritiesClient {
                           .path(ENDPOINT_PATH)
                           .queryParam("crtfc_key", properties.getApiKey())
                           .queryParam("corp_code", corpCode)
-                          // DS006은 조회 기간(bgn_de·end_de)이 필수다. 없으면 "필수값 누락" 오류
-                          .queryParam("bgn_de", today.minusDays(365).format(DATE))
-                          .queryParam("end_de", today.format(DATE))
+                          .queryParam("bgn_de", startDate.format(DATE))
+                          .queryParam("end_de", endDate.format(DATE))
                           .build())
               .retrieve()
               .body(OpenDartEstkRsResponse.class);
