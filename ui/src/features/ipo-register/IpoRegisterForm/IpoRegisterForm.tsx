@@ -20,7 +20,6 @@ export default function IpoRegisterForm() {
   const onSubmit = (data: IpoRegisterRequest) => {
     // 빈 선택 입력은 undefined로 변환
     const submitData = {
-      companyName: data.companyName.trim(),
       ipoName: data.ipoName.trim(),
       stockCode: data.stockCode?.trim().toUpperCase() || undefined,
       roundLabel: data.roundLabel || undefined,
@@ -96,29 +95,6 @@ export default function IpoRegisterForm() {
       aria-label="공모주 등록 폼"
       noValidate
     >
-      <div className={styles.field}>
-        <label htmlFor="companyName">
-          회사명 <span className={styles.required}>(필수)</span>
-        </label>
-        <input
-          id="companyName"
-          type="text"
-          aria-invalid={!!errors.companyName}
-          aria-describedby={errors.companyName ? 'companyName-error' : undefined}
-          {...register('companyName', {
-            required: '회사명을 입력해 주세요.',
-            validate: validateRequiredTrim('회사명을 입력해 주세요.'),
-            maxLength: { value: 255, message: '회사명은 255자 이하로 입력해 주세요.' },
-          })}
-          disabled={isPending}
-        />
-        {errors.companyName && (
-          <span id="companyName-error" className={styles.error} aria-live="polite">
-            {String(errors.companyName.message)}
-          </span>
-        )}
-      </div>
-
       <div className={styles.field}>
         <label htmlFor="ipoName">
           공모주명 <span className={styles.required}>(필수)</span>

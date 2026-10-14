@@ -178,8 +178,13 @@ public class IpoService {
   public IpoResponse register(IpoRegisterRequest request) {
     validateRequest(request);
 
-    String companyName = request.getCompanyName().trim();
     String ipoName = request.getIpoName().trim();
+    String companyName = request.getCompanyName();
+    if (companyName == null || companyName.trim().isEmpty()) {
+      companyName = ipoName;
+    } else {
+      companyName = companyName.trim();
+    }
     String stockCode = StockCodes.normalize(request.getStockCode());
     String roundLabel = normalizeOptional(request.getRoundLabel());
     LocalDate subscriptionStartDate = request.getSubscriptionStartDate();
@@ -230,7 +235,10 @@ public class IpoService {
       throw new IpoValidationException("IPO 등록 정보는 필수입니다.");
     }
 
-    validateRequiredName("companyName", request.getCompanyName());
+    // companyName은 선택: 미입력 시 ipoName으로 자동 채움. 입력 시에만 길이 검증
+    if (request.getCompanyName() != null) {
+      validateRequiredName("companyName", request.getCompanyName());
+    }
     validateRequiredName("ipoName", request.getIpoName());
 
     if (request.getSubscriptionStartDate() == null) {

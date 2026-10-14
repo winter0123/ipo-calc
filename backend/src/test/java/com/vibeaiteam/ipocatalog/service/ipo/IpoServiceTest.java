@@ -185,7 +185,6 @@ class IpoServiceTest {
 
     IpoRegisterRequest ok =
         IpoRegisterRequest.builder()
-            .companyName("회사")
             .ipoName("공모")
             .subscriptionStartDate(START)
             .subscriptionEndDate(END)
@@ -208,6 +207,58 @@ class IpoServiceTest {
     ok.setSubscriptionEndDate(END);
     ok.setOfferingShareCount(-5L);
     assertThatThrownBy(() -> service.register(ok)).hasMessageContaining("offeringShareCount");
+    verify(repository, never()).save(any(Ipo.class));
+  }
+
+  @Test
+  void register_withoutCompanyName_usesIpoNameAsCompanyName() {
+    IpoRegisterRequest request =
+        IpoRegisterRequest.builder()
+            .ipoName("  테스트공모  ")
+            .subscriptionStartDate(START)
+            .subscriptionEndDate(END)
+            .build();
+    when(repository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            "테스트공모", START, RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+    when(repository.save(any(Ipo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    IpoResponse response = service.register(request);
+
+    assertThat(response.getCompanyName()).isEqualTo("테스트공모");
+    assertThat(response.getIpoName()).isEqualTo("테스트공모");
+  }
+
+  @Test
+  void register_withCompanyName_usesProvidedCompanyName() {
+    IpoRegisterRequest request =
+        IpoRegisterRequest.builder()
+            .companyName("  별도회사  ")
+            .ipoName("테스트공모")
+            .subscriptionStartDate(START)
+            .subscriptionEndDate(END)
+            .build();
+    when(repository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            "테스트공모", START, RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+    when(repository.save(any(Ipo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    IpoResponse response = service.register(request);
+
+    assertThat(response.getCompanyName()).isEqualTo("별도회사");
+    assertThat(response.getIpoName()).isEqualTo("테스트공모");
+  }
+
+  @Test
+  void register_companyNameTooLong_isRejected() {
+    IpoRegisterRequest request =
+        IpoRegisterRequest.builder()
+            .companyName("가".repeat(256))
+            .ipoName("공모")
+            .subscriptionStartDate(START)
+            .subscriptionEndDate(END)
+            .build();
+    assertThatThrownBy(() -> service.register(request)).hasMessageContaining("companyName");
     verify(repository, never()).save(any(Ipo.class));
   }
 

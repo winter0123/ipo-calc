@@ -92,7 +92,8 @@ class IpoControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(201);
     Map<String, Object> response = readBody(result);
     assertThat(response.get("id")).isNotNull();
-    assertThat(response.get("companyName")).isEqualTo("기업A");
+    // companyName 미제공 시 ipoName으로 자동 저장
+    assertThat(response.get("companyName")).isEqualTo("공모주A");
     assertThat(response.get("ipoName")).isEqualTo("공모주A");
     assertThat(response.get("stockCode")).isEqualTo("123456");
     assertThat(response.get("roundLabel")).isEqualTo("1차");
@@ -115,15 +116,17 @@ class IpoControllerTest {
   }
 
   @Test
-  void registerIpoWithMissingCompanyNameReturns400() throws Exception {
+  void registerIpoWithProvidedCompanyNameUsesProvidedValue() throws Exception {
     signupAndLogin();
     Map<String, Object> request = validRequest();
-    request.remove("companyName");
+    request.put("companyName", "별도기업");
 
     MvcResult result = registerIpo(request);
 
-    assertValidationError(result);
-    assertThat(ipoRepository.count()).isZero();
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> response = readBody(result);
+    assertThat(response.get("companyName")).isEqualTo("별도기업");
+    assertThat(response.get("ipoName")).isEqualTo("공모주A");
   }
 
   @Test
@@ -650,7 +653,8 @@ class IpoControllerTest {
     Long id = ((Number) readBody(registered).get("id")).longValue();
 
     Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
-    updateRequest.put("companyName", "기업A");
+    // 등록 시 companyName 미제공으로 ipoName과 같아짐
+    updateRequest.put("companyName", "공모주A");
     updateRequest.put("ipoName", "공모주A");
     updateRequest.put("stockCode", "123456");
     updateRequest.put("subscriptionStartDate", "2026-10-01");
@@ -665,7 +669,7 @@ class IpoControllerTest {
             .andReturn();
 
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
-    assertThat(readBody(result).get("companyName")).isEqualTo("기업A");
+    assertThat(readBody(result).get("companyName")).isEqualTo("공모주A");
   }
 
   @Test
@@ -983,7 +987,6 @@ class IpoControllerTest {
 
   private Map<String, Object> validRequest() {
     Map<String, Object> request = new java.util.LinkedHashMap<>();
-    request.put("companyName", "기업A");
     request.put("ipoName", "공모주A");
     request.put("stockCode", "123456");
     request.put("roundLabel", "1차");
