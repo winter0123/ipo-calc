@@ -8,8 +8,9 @@
 오진으로 작업 중인 워커를 죽이는 비용이 자동 재배정의 이득보다 크다.
 
 사용:
-  scripts/orca-worker-watchdog.py                 # 1회 점검
+  scripts/orca-worker-watchdog.py                 # 1회 점검 (이 repo의 모든 worktree)
   scripts/orca-worker-watchdog.py --loop 120      # 120초마다 반복(별도 터미널에서 실행)
+  scripts/orca-worker-watchdog.py --tree-filter "문자열"  # 수동 필터(문자열 포함 worktree만)
   scripts/orca-worker-watchdog.py --selftest
 
 종료 코드: 0=모두 정상, 1=문제 있는 워커 있음
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -34,6 +36,11 @@ ERROR_PATTERNS = re.compile(
     r"|Endpoint is unavailable|Upstream request failed"
     r'|"code":\s*50[0-4]|\[50[0-4]\]|Timeout Occurred|Streaming response failed|server_error',
     re.IGNORECASE,
+)
+# OpenCode 권한 질문: "Permission required" + "Allow once"/"Allow always"/"Reject" 선택 줄
+PERM_PATTERN = re.compile(
+    r"Permission required.*?(Allow once|Allow always|Reject)",
+    re.IGNORECASE | re.DOTALL,
 )
 # OpenCode 상태줄: "Build · Laguna S 2.1 (free) OpenRouter" — 지정 모델과 실제 모델 대조용.
 MODEL_LINE = re.compile(r"Build\s*·\s*(.+?)(?:\s*\(free\))?(?:\s+OpenRouter)?\s*$", re.MULTILINE)
@@ -52,8 +59,66 @@ def orca(*args: str) -> dict | None:
     return payload.get("result") if payload.get("ok") else None
 
 
+def get_repo_id() -> str | None:
+    """현재 git 저장소의 repoId를 얻는다. 실패하면 None."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = subprocess.run(
+        ["git", "-C", script_dir, "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True, timeout=10
+    )
+    if repo_root.returncode != 0:
+        return None
+    toplevel = repo_root.stdout.strip()
+    res = orca("worktree", "show", "--worktree", f"path:{toplevel}", "--json")
+    if not res:
+        return None
+    worktree = res.get("worktree") or {}
+    return worktree.get("repoId")
+
+
+def filter_workers_by_repo(workers: list[dict], repo_id: str | None, tree_filter: str | None) -> list[tuple[str, str]]:
+    """워커 목록을 repoId 접두사 및/또는 수동 필터로 거른다."""
+    rows = []
+    for worker in workers:
+        tree = (worker.get("resource") or {}).get("worktreeId", "")
+        if worker.get("dispatchStatus") != "dispatched":
+            continue
+        if repo_id:
+            # 기본: 이 repo의 모든 worktree (repoId:: 접두사)
+            if not tree.startswith(f"{repo_id}::"):
+                continue
+            # 수동 필터도 주어지면 추가로 적용 (AND)
+            if tree_filter and tree_filter not in tree:
+                continue
+        elif tree_filter:
+            # 폴백: repoId 없을 때만 문자열 포함 필터
+            if tree_filter not in tree:
+                continue
+        else:
+            continue
+        rows.append((worker["dispatchId"], tree.rsplit("/", 1)[-1]))
+    return rows
+
+
 def classify(tail: str, idle_min: float, stall_min: float, dispatch_id: str | None = None) -> tuple[str, str]:
     """터미널 꼬리 텍스트와 무출력 시간으로 상태를 판정한다."""
+    # 권한 질문 우선 (사람이 처리해야 하므로 ERROR보다 높게)
+    perm_hit = PERM_PATTERN.search(tail)
+    if perm_hit:
+        if dispatch_id and dispatch_id in _esc_interrupt_missing_since:
+            del _esc_interrupt_missing_since[dispatch_id]
+        # 질문 대상 한 줄 추출 (Permission required 앞뒤)
+        lines = tail.splitlines()
+        perm_line = ""
+        for i, line in enumerate(lines):
+            if "Permission required" in line:
+                # 현재 줄과 다음 줄(선택지) 포함
+                perm_line = line.strip()
+                if i + 1 < len(lines):
+                    perm_line += " ← " + lines[i + 1].strip()
+                break
+        return "PERM", f"권한 질문: {perm_line}" if perm_line else "권한 질문"
+
     hit = ERROR_PATTERNS.search(tail)
     if hit:
         # 에러가 감지되면 추적 상태 초기화
@@ -84,16 +149,12 @@ def classify(tail: str, idle_min: float, stall_min: float, dispatch_id: str | No
     return "OK", ""
 
 
-def active_dispatches(tree_filter: str) -> list[tuple[str, str]]:
+def active_dispatches(repo_id: str | None, tree_filter: str | None) -> list[tuple[str, str]]:
     res = orca("orchestration", "worker-list", "--json", "--limit", "100")
     if not res:
         return []
-    rows = []
-    for worker in res.get("workers", []):
-        tree = (worker.get("resource") or {}).get("worktreeId", "")
-        if tree_filter in tree and worker.get("dispatchStatus") == "dispatched":
-            rows.append((worker["dispatchId"], tree.rsplit("/", 1)[-1]))
-    return rows
+    workers = res.get("workers", [])
+    return filter_workers_by_repo(workers, repo_id, tree_filter)
 
 
 def inspect(dispatch: str, stall_min: float) -> tuple[str, str]:
@@ -115,11 +176,13 @@ def inspect(dispatch: str, stall_min: float) -> tuple[str, str]:
     return status, f"{detail} {why}".strip()
 
 
-def run_once(tree_filter: str, stall_min: float, status_path: str) -> int:
+def run_once(repo_id: str | None, tree_filter: str | None, stall_min: float, status_path: str, warn_msg: str | None = None) -> int:
     stamp = time.strftime("%Y-%m-%d %H:%M:%S")
     lines = [f"# {stamp} 점검"]
+    if warn_msg:
+        lines[0] += f" ⚠ {warn_msg}"
     problems = 0
-    for dispatch, tree in active_dispatches(tree_filter):
+    for dispatch, tree in active_dispatches(repo_id, tree_filter):
         status, detail = inspect(dispatch, stall_min)
         if status != "OK":
             problems += 1
@@ -170,13 +233,51 @@ def selftest() -> int:
 
     # 모델 라인 테스트
     assert MODEL_LINE.findall("Build · Laguna S 2.1 (free) OpenRouter")[-1] == "Laguna S 2.1"
+
+    # PERM 테스트 (권한 질문 우선)
+    perm_screen = """Permission required
+The agent wants to access an external directory.
+Allow once
+Allow always
+Reject"""
+    assert classify(perm_screen, 1, 8, "d_perm")[0] == "PERM"
+    # 권한 질문이 있으면 ERROR보다 우선
+    perm_with_error = perm_screen + "\nrate-limited"
+    assert classify(perm_with_error, 1, 8, "d_perm")[0] == "PERM"
+    # 일반 화면은 OK
+    assert classify("정상 작업 중", 1, 8, None)[0] == "OK"
+
+    # 필터 함수 테스트
+    test_workers = [
+        {"dispatchId": "d1", "resource": {"worktreeId": "repo1::/path/vibe-w1"}, "dispatchStatus": "dispatched"},
+        {"dispatchId": "d2", "resource": {"worktreeId": "repo1::/path/orca/workspaces/vibe-ai-team/vibe-w2"}, "dispatchStatus": "dispatched"},
+        {"dispatchId": "d3", "resource": {"worktreeId": "repo2::/path/other"}, "dispatchStatus": "dispatched"},
+        {"dispatchId": "d4", "resource": {"worktreeId": "repo1::/path/vibe-w3"}, "dispatchStatus": "completed"},  # dispatched 아님
+    ]
+    # repoId 접두사로 필터링
+    result = filter_workers_by_repo(test_workers, "repo1", None)
+    assert len(result) == 2
+    assert set(d for d, _ in result) == {"d1", "d2"}
+    # 다른 repo는 제외
+    result = filter_workers_by_repo(test_workers, "repo2", None)
+    assert len(result) == 1
+    assert result[0][0] == "d3"
+    # 수동 문자열 필터 (repoId 없을 때)
+    result = filter_workers_by_repo(test_workers, None, "vibe-ai-team")
+    assert len(result) == 1
+    assert result[0][0] == "d2"
+    # repoId와 수동 필터 모두 주면 둘 다 적용 (AND)
+    result = filter_workers_by_repo(test_workers, "repo1", "vibe-ai-team")
+    assert len(result) == 1
+    assert result[0][0] == "d2"
+
     print("selftest OK")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tree-filter", default="vibe-ai-team", help="이 문자열이 포함된 worktree만 점검")
+    parser.add_argument("--tree-filter", default=None, help="수동 필터: 이 문자열이 포함된 worktree만 점검 (repoId 자동 감지 실패 시 폴백)")
     parser.add_argument("--stall-min", type=float, default=8, help="무출력 몇 분부터 정지로 볼지")
     parser.add_argument("--status-file", default="/tmp/orca-worker-status.txt")
     parser.add_argument("--loop", type=int, metavar="SECONDS", help="주기적으로 반복 실행")
@@ -185,10 +286,17 @@ def main() -> int:
 
     if args.selftest:
         return selftest()
+
+    repo_id = get_repo_id()
+    warn_msg = None
+    if not repo_id:
+        warn_msg = "repoId 자동 감지 실패 — 문자열 필터로 대체"
+        if not args.tree_filter:
+            warn_msg += " (--tree-filter 미지정, 모든 워커 점검 안 함)"
     if not args.loop:
-        return run_once(args.tree_filter, args.stall_min, args.status_file)
+        return run_once(repo_id, args.tree_filter, args.stall_min, args.status_file, warn_msg)
     while True:
-        run_once(args.tree_filter, args.stall_min, args.status_file)
+        run_once(repo_id, args.tree_filter, args.stall_min, args.status_file, warn_msg)
         time.sleep(args.loop)
 
 
