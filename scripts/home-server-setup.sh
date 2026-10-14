@@ -6,8 +6,8 @@
 #          OPENDART_API_KEY 등을 환경변수로 주면 .env의 빈 칸에 채운다. 값은 출력하지 않는다.
 set -euo pipefail
 
-REPO_URL=${1:-${REPO_URL:-https://github.com/winter0123/ipocalc.git}}
-INSTALL_DIR=${2:-${INSTALL_DIR:-$HOME/ipocalc}}
+REPO_URL=${1:-${REPO_URL:-https://github.com/winter0123/ipo-calc.git}}
+INSTALL_DIR=${2:-${INSTALL_DIR:-$HOME/ipo-calc}}
 DISABLE_SLEEP=${DISABLE_SLEEP:-1}
 DRY_RUN=${DRY_RUN:-0}
 step() { printf '\n==> %s\n' "$*"; }

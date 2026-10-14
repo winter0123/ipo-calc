@@ -24,7 +24,7 @@
 
 ### 미커밋 변경 (main 작업 트리에만 있음 — 가장 먼저 처리할 것)
 
-`/Users/joy/IdeaProjects/ipocalc`(main 체크아웃)에 아래가 **커밋되지 않은 채** 있다. 다른 체크아웃/worktree에서는 보이지 않는다.
+`/Users/joy/IdeaProjects/ipo-calc`(main 체크아웃)에 아래가 **커밋되지 않은 채** 있다. 다른 체크아웃/worktree에서는 보이지 않는다.
 
 - `infra/oracle/` 전체(Terraform 코드) — `.tf` 6개, `cloud-init.yaml`, `terraform.tfvars.example`
 - `docs/setup-history.md`(Oracle 가입·키 항목 1줄), `docs/architecture/free-deployment-terraform-jenkins.md`(무료 한도 정정), 이 문서
@@ -133,7 +133,7 @@ terraform apply -auto-approve -var ocpus=2 -var memory_gbs=12   # 안 되면 ocp
 ```bash
 scripts/backup-db.sh                       # ~/vibe-backups/vibe_ai_team_YYYYMMDD_HHMMSS.sql.gz
 crontab -e                                 # 아래 한 줄 추가(매일 03:30)
-30 3 * * * /home/ubuntu/ipocalc/scripts/backup-db.sh >> /home/ubuntu/vibe-backups/backup.log 2>&1
+30 3 * * * /home/ubuntu/ipo-calc/scripts/backup-db.sh >> /home/ubuntu/vibe-backups/backup.log 2>&1
 ```
 
 복원(대상 DB를 덮어씀, `restore` 입력 확인):
