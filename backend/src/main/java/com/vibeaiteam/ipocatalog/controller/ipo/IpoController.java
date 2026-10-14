@@ -7,6 +7,8 @@ import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailService;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSyncService;
+import com.vibeaiteam.ipocatalog.service.ipo.sync.IpoManualSyncResult;
+import com.vibeaiteam.ipocatalog.service.ipo.sync.IpoManualSyncService;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class IpoController {
   private final IpoService ipoService;
   private final IpoDetailService ipoDetailService;
   private final IpoDetailSyncService ipoDetailSyncService;
+  private final IpoManualSyncService ipoManualSyncService;
 
   /** 비활성화되지 않은(삭제되지 않은) IPO 목록을 최신 기준·생성일 내림차순으로 조회해 반환한다. */
   @GetMapping
@@ -54,6 +57,16 @@ public class IpoController {
   @GetMapping("/{id}/insight")
   public ResponseEntity<IpoInsightResponse> getInsight(@PathVariable Long id) {
     return ResponseEntity.ok(ipoDetailService.getInsight(id));
+  }
+
+  /**
+   * 공모주 목록(DART·일정 병합)과 상세 정보를 지금 바로 가져온다. 관리자 전용(POST /ipos/**). 수십 초~수 분 걸린다.
+   *
+   * @return 생성·갱신·건너뜀·실패·상세 저장 건수와 중단 여부. 이미 실행 중이면 409, 키 없으면 503
+   */
+  @PostMapping("/sync")
+  public ResponseEntity<IpoManualSyncResult> syncNow() {
+    return ResponseEntity.ok(ipoManualSyncService.syncNow());
   }
 
   /**

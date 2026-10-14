@@ -76,3 +76,16 @@ export const ipoInsightSchema = z.object({
 })
 
 export type IpoInsight = z.infer<typeof ipoInsightSchema>
+
+// 관리자 "지금 가져오기"(POST /ipos/sync) 결과 요약.
+export const ipoSyncResultSchema = z.object({
+  created: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  failed: z.number(),
+  scheduleMerged: z.number(),
+  detailSaved: z.number(),
+  aborted: z.boolean(),
+})
+
+export type IpoSyncResult = z.infer<typeof ipoSyncResultSchema>

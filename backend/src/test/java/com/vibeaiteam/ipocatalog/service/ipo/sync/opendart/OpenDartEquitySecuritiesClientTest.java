@@ -50,6 +50,9 @@ class OpenDartEquitySecuritiesClientTest {
   private void expectEstkRsRequest(String responseBody) {
     mockServer
         .expect(requestTo(containsString("/api/estkRs.json")))
+        // DS006은 조회 기간이 필수 — 없으면 실서버가 "필수값 누락" 오류를 낸다
+        .andExpect(requestTo(containsString("bgn_de=")))
+        .andExpect(requestTo(containsString("end_de=")))
         .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
   }

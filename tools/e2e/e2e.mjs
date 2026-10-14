@@ -1388,6 +1388,9 @@ async function scenario20(browser) {
     if (!(await row.innerText()).includes('잠김')) throw new Error('해당 계정 행에 잠김 표시 없음')
     await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).click()
     await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).waitFor({ state: 'detached' })
+    // 지금 가져오기 버튼은 보이는지만 확인(실제 DART 호출이라 누르지 않는다)
+    await goto(admin.page, '/admin/ipos')
+    await admin.page.getByRole('button', { name: 'DART에서 지금 가져오기' }).waitFor()
   } finally {
     await admin.context.close()
   }

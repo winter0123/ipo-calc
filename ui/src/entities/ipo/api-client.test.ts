@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
-import { fetchIpos, fetchIpo, registerIpo } from './api-client.ts'
+import { fetchIpos, fetchIpo, registerIpo, syncIposNow } from './api-client.ts'
 
 const stub = (body: unknown) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
@@ -66,5 +66,32 @@ describe('registerIpo', () => {
       subscriptionEndDate: '2026-02-02',
     }
     await expect(registerIpo(req)).resolves.toEqual(createdIpo)
+  })
+})
+
+describe('syncIposNow', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const RESULT = {
+    created: 1,
+    updated: 2,
+    skipped: 3,
+    failed: 0,
+    scheduleMerged: 4,
+    detailSaved: 5,
+    aborted: false,
+  }
+
+  it('POST /ipos/sync를 호출하고 결과를 반환한다', async () => {
+    stub(RESULT)
+    await expect(syncIposNow()).resolves.toEqual(RESULT)
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toMatch(/\/ipos\/sync$/)
+    expect(init?.method).toBe('POST')
+  })
+
+  it('필드가 빠지면 ZodError로 거부한다', async () => {
+    stub({ created: 1 })
+    await expect(syncIposNow()).rejects.toBeInstanceOf(ZodError)
   })
 })

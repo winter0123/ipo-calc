@@ -3,6 +3,8 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync.opendart;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport;
 import com.vibeaiteam.ipocatalog.service.support.HttpClientSupport.RequestThrottle;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +23,7 @@ import org.springframework.web.client.RestClientException;
 public class OpenDartEquitySecuritiesClient {
 
   private static final String ENDPOINT_PATH = "/api/estkRs.json";
+  private static final DateTimeFormatter DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
   private final RestClient restClient;
   private final OpenDartApiProperties properties;
@@ -61,6 +64,7 @@ public class OpenDartEquitySecuritiesClient {
   public List<OpenDartEquitySecurityDetail> getEquitySecurityDetail(String corpCode) {
     validateApiKey();
     throttle.acquire();
+    LocalDate today = LocalDate.now();
 
     OpenDartEstkRsResponse response;
     try {
@@ -73,6 +77,9 @@ public class OpenDartEquitySecuritiesClient {
                           .path(ENDPOINT_PATH)
                           .queryParam("crtfc_key", properties.getApiKey())
                           .queryParam("corp_code", corpCode)
+                          // DS006은 조회 기간(bgn_de·end_de)이 필수다. 없으면 "필수값 누락" 오류
+                          .queryParam("bgn_de", today.minusDays(365).format(DATE))
+                          .queryParam("end_de", today.format(DATE))
                           .build())
               .retrieve()
               .body(OpenDartEstkRsResponse.class);
