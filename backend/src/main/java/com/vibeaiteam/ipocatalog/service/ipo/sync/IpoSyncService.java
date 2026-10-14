@@ -2,6 +2,7 @@ package com.vibeaiteam.ipocatalog.service.ipo.sync;
 
 import com.vibeaiteam.accountauthentication.domain.model.RecordStatus;
 import com.vibeaiteam.ipocatalog.domain.model.ipo.Ipo;
+import com.vibeaiteam.ipocatalog.exception.IpoSyncBusyException;
 import com.vibeaiteam.ipocatalog.repository.ipo.IpoRepository;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
@@ -15,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -75,13 +78,37 @@ public class IpoSyncService {
   private final IpoScheduleMergeService ipoScheduleMergeService;
   private final Clock clock;
 
+  /** 동기화 중복 실행 방지(스케줄러·관리자 수동 실행 공용). 같은 스레드는 재진입한다. */
+  private final ReentrantLock runLock = new ReentrantLock();
+
   /**
-   * 최근 지정된 일수 내 IPO 정보를 동기화한다.
+   * 락을 잡고 작업을 실행한다. 이미 다른 동기화가 돌고 있으면 기다리지 않고 {@link IpoSyncBusyException}.
+   *
+   * @param task 락 안에서 실행할 작업
+   * @return 작업 결과
+   */
+  public <T> T runExclusively(Supplier<T> task) {
+    if (!runLock.tryLock()) {
+      throw new IpoSyncBusyException();
+    }
+    try {
+      return task.get();
+    } finally {
+      runLock.unlock();
+    }
+  }
+
+  /**
+   * 최근 지정된 일수 내 IPO 정보를 동기화한다(동시 실행 시 {@link IpoSyncBusyException}).
    *
    * @param daysBack 조회할 과거 일수 (예: 90 → 최근 90일)
    * @return 동기화 결과
    */
   public IpoSyncResult sync(int daysBack) {
+    return runExclusively(() -> doSync(daysBack));
+  }
+
+  private IpoSyncResult doSync(int daysBack) {
     IpoSyncResult result =
         IpoSyncResult.builder()
             .created(0)

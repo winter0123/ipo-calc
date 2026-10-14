@@ -792,4 +792,35 @@ class IpoSyncServiceTest {
         .isEqualTo(LocalDate.of(2026, 11, 12));
     assertThat(ipoCaptor.getValue().getUpperBandPrice()).isEqualTo(12_000L);
   }
+
+  @Test
+  void runExclusively_rejectsOtherThreadButAllowsReentry() throws Exception {
+    String reentered = syncService.runExclusively(() -> syncService.runExclusively(() -> "ok"));
+    assertThat(reentered).isEqualTo("ok");
+
+    java.util.concurrent.atomic.AtomicReference<Throwable> other =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    syncService.runExclusively(
+        () -> {
+          Thread t =
+              new Thread(
+                  () -> {
+                    try {
+                      syncService.runExclusively(() -> null);
+                    } catch (RuntimeException e) {
+                      other.set(e);
+                    }
+                  });
+          t.start();
+          try {
+            t.join();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          return null;
+        });
+
+    assertThat(other.get())
+        .isInstanceOf(com.vibeaiteam.ipocatalog.exception.IpoSyncBusyException.class);
+  }
 }
