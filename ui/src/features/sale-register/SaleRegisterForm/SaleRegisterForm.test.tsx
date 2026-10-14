@@ -11,6 +11,30 @@ vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 
+// 캡처 읽기: 브라우저 OCR과 파서 결과만 흉내 낸다(파서 자체는 entities/sale 테스트가 검증).
+vi.mock('@/shared/lib/ocr/recognizeImages.ts', () => ({
+  recognizeImages: vi.fn(async () => [{ width: 1125, height: 2436, words: [] }]),
+}))
+vi.mock('@/entities/sale/index.ts', async () => ({
+  ...(await vi.importActual<object>('@/entities/sale/index.ts')),
+  parseCapture: () => ({
+    kind: 'A_detail',
+    broker: 'KIS',
+    records: [
+      {
+        stockName: '카카오뱅크',
+        stockCode: '323410',
+        saleDate: '2026-10-25',
+        quantity: 30,
+        salePrice: 12000,
+        fee: 5,
+        tax: 20,
+        realizedProfit: 59975,
+      },
+    ],
+  }),
+}))
+
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -116,6 +140,7 @@ function defaultMock(overrides: { ipo?: unknown; detail?: unknown } = {}) {
     const p = String(path)
     const isGet = !options || options.method === 'GET' || options.method === undefined
     if (p === '/investors' && isGet) return INVESTORS
+    if (p === '/ipos' && isGet) return [IPO]
     if (p === '/ipos/10' && isGet) return overrides.ipo ?? IPO
     if (p === '/investment-history/1' && isGet) return overrides.detail ?? ALLOCATION_DETAIL
     if (p.startsWith('/investment-history') && isGet) return SUBSCRIPTION_HISTORY
@@ -509,5 +534,22 @@ describe('SaleRegisterForm', () => {
         expect(screen.getByText('네트워크 연결을 확인해 주세요.')).toBeInTheDocument()
       })
     })
+  })
+
+  it('캡처를 올리면 청약을 찾아 값을 채우고 "캡처에서 채움"을 표시한다(저장은 하지 않는다)', async () => {
+    defaultMock()
+    renderForm()
+    const input = await screen.findByLabelText(/캡처 \(여러 장 가능\)/)
+    await waitFor(() => expect(input).toBeEnabled())
+    await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }))
+
+    await waitFor(() => expect(screen.getByLabelText('매도수량')).toHaveValue(30))
+    expect(screen.getByLabelText('매도단가')).toHaveValue('12,000')
+    expect(screen.getByLabelText('매도일')).toHaveValue('2026-10-25')
+    expect(screen.getByLabelText(/세금 및 기타 수수료/)).toHaveValue('25')
+    expect(screen.getByLabelText('실현손익')).toHaveValue('59,975')
+    expect(screen.getByLabelText('청약')).toHaveValue('1')
+    expect(screen.getAllByText('캡처에서 채움').length).toBeGreaterThanOrEqual(4)
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

@@ -46,5 +46,5 @@ export default [
     },
   },
   prettierConfig,
-  { ignores: ['dist/', 'node_modules/', 'build/', 'coverage/', 'public/'] },
+  { ignores: ['dist/', 'node_modules/', 'build/', 'coverage/', 'public/', 'scripts/'] },
 ]

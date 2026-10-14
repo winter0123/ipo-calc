@@ -1,4 +1,5 @@
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
+import CapturedBadge from './CapturedBadge.tsx'
 import styles from './SaleRegisterForm.module.css'
 import { won, type SaleForm } from './useSaleForm.ts'
 
@@ -24,6 +25,7 @@ export default function SaleBasicFields({ f }: { f: SaleForm }) {
           })}
           disabled={isPending}
         />
+        <CapturedBadge f={f} name="quantity" />
         {errors.quantity ? (
           <span id="quantity-error" className={styles.error} aria-live="polite">
             {String(errors.quantity.message)}
@@ -49,6 +51,7 @@ export default function SaleBasicFields({ f }: { f: SaleForm }) {
           allowNegative // 음수를 입력하면 지우지 않고 검증 메시지로 알린다
           disabled={isPending}
         />
+        <CapturedBadge f={f} name="price" />
         {errors.price ? (
           <span id="price-error" className={styles.error} aria-live="polite">
             {String(errors.price.message)}
@@ -74,6 +77,7 @@ export default function SaleBasicFields({ f }: { f: SaleForm }) {
           })}
           disabled={isPending}
         />
+        <CapturedBadge f={f} name="saleDate" />
         {errors.saleDate ? (
           <span id="saleDate-error" className={styles.error} aria-live="polite">
             {String(errors.saleDate.message)}
