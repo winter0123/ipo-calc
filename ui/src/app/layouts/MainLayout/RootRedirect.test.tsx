@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -14,7 +15,14 @@ function renderRoot() {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
+          <Route
+            path="/"
+            element={
+              <Suspense fallback={null}>
+                <RootRedirect />
+              </Suspense>
+            }
+          />
           <Route path="/dashboard" element={<div>대시보드 화면</div>} />
           <Route path="/ipo-calendar" element={<div>일정 화면</div>} />
         </Routes>
@@ -37,9 +45,15 @@ describe('RootRedirect', () => {
     expect(await screen.findByText('대시보드 화면')).toBeInTheDocument()
   })
 
-  it('로그인 전이면 공모주 일정으로 이동', async () => {
+  it('로그인 전이면 주소는 그대로 두고 서비스 소개 페이지를 보여줌', async () => {
     vi.mocked(apiFetch).mockRejectedValue(new ApiError(401, 'Unauthorized'))
     renderRoot()
-    expect(await screen.findByText('일정 화면')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      '공모주 수익, 수수료와 세금까지 빼고 계산합니다',
+    )
+    expect(screen.queryByText('일정 화면')).not.toBeInTheDocument()
+    // 소개 페이지가 계정 조회를 다시 구독해 재조회가 반복되지 않는다
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(apiFetch).toHaveBeenCalledTimes(1)
   })
 })

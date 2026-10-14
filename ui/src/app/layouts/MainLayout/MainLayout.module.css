@@ -462,3 +462,82 @@
     display: none;
   }
 }
+
+/* 비로그인: 로그인·가입하기는 메뉴 줄이 아니라 헤더 우측 끝 버튼 */
+.authActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.loginButton,
+.signupButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.loginButton {
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  background: transparent;
+}
+
+.loginButton:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.signupButton {
+  color: var(--on-primary);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+.signupButton:hover {
+  background: #123d6a;
+}
+
+.loginButton:focus-visible,
+.signupButton:focus-visible {
+  outline: 3px solid var(--white);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--ink);
+}
+
+@media (max-width: 900px) {
+  .authActions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .menuButtonGuest {
+    order: 3;
+    margin-left: 0;
+  }
+
+  .loginButton,
+  .signupButton {
+    padding: 0 var(--space-3);
+    font-size: 14px;
+  }
+}
+
+/* 소개 페이지: 앱 화면용 흰 카드 없이 풀폭 섹션으로 그린다 */
+.mainWide,
+.mainWide > * {
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

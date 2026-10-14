@@ -2,8 +2,10 @@ import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout/MainLayout.tsx'
 import { AdminOnly, GuestOnly } from './layouts/MainLayout/RouteGuards.tsx'
+import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import RootRedirect from './layouts/MainLayout/RootRedirect.tsx'
 
+const LandingPage = lazy(() => import('../pages/LandingPage/LandingPage.tsx'))
 const LoginPage = lazy(() => import('../pages/LoginPage/LoginPage.tsx'))
 const SignupPage = lazy(() => import('../pages/SignupPage/SignupPage.tsx'))
 const InvestorRegisterPage = lazy(
@@ -36,11 +38,17 @@ const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarP
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
 const IpoRegisterPage = lazy(() => import('../pages/IpoRegisterPage/IpoRegisterPage.tsx'))
 
+function AboutRoute() {
+  const { data: currentAccount } = useCurrentAccount()
+  return <LandingPage loggedIn={Boolean(currentAccount)} />
+}
+
 function App() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<RootRedirect />} />
+        <Route path="/about" element={<AboutRoute />} />
         <Route
           path="/login"
           element={

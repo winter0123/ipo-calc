@@ -96,18 +96,30 @@ describe('MainLayout', () => {
     expect(screen.queryByRole('navigation', { name: '주요 메뉴' })).not.toBeInTheDocument()
   })
 
-  it('로그인 전에는 공모주 일정·로그인·가입하기만 보이고 로그아웃은 없음', async () => {
+  it('로그인 전 메뉴에는 서비스 소개·공모주 일정만 있고 로그인·가입하기는 헤더 우측 버튼임', async () => {
     renderLayout()
 
     const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((l) => l.textContent),
+    ).toEqual(['서비스 소개', '공모주 일정'])
+    expect(within(nav).getByRole('link', { name: '서비스 소개' })).toHaveAttribute('href', '/about')
     expect(within(nav).getByRole('link', { name: '공모주 일정' })).toHaveAttribute(
       'href',
       '/ipo-calendar',
     )
-    expect(within(nav).getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login')
-    expect(within(nav).getByRole('link', { name: '가입하기' })).toHaveAttribute('href', '/signup')
     expect(within(nav).queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: '대시보드' })).not.toBeInTheDocument()
+
+    const header = screen.getByRole('banner')
+    const login = within(header).getByRole('link', { name: '로그인' })
+    const signup = within(header).getByRole('link', { name: '가입하기' })
+    expect(login).toHaveAttribute('href', '/login')
+    expect(signup).toHaveAttribute('href', '/signup')
+    expect(nav).not.toContainElement(login)
+    expect(nav).not.toContainElement(signup)
   })
 
   it('관리자에게만 가입 승인 링크가 보임', async () => {
@@ -151,7 +163,14 @@ describe('MainLayout', () => {
       const names = within(nav)
         .getAllByRole('link')
         .map((a) => a.textContent)
-      expect(names).toEqual(['대시보드', '공모주 일정', '청약', '투자 내역', '수익 확인'])
+      expect(names).toEqual([
+        '대시보드',
+        '공모주 일정',
+        '청약',
+        '투자 내역',
+        '수익 확인',
+        '서비스 소개',
+      ])
       expect(within(nav).getByRole('button', { name: '새로 기록' })).toHaveAttribute(
         'aria-expanded',
         'false',

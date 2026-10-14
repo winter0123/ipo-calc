@@ -1,6 +1,6 @@
 import { Suspense, useState } from 'react'
 import { Menu, Waves, X, LogOut } from 'lucide-react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/subscriptions', label: '청약' },
   { to: '/investments', label: '투자 내역' },
   { to: '/profits/view', label: '수익 확인' },
+  { to: '/about', label: '서비스 소개' },
 ]
 
 const RECORD_ITEMS = [
@@ -35,9 +36,8 @@ const ADMIN_ITEMS = [
 ]
 
 const GUEST_ITEMS = [
+  { to: '/about', label: '서비스 소개' },
   { to: '/ipo-calendar', label: '공모주 일정' },
-  { to: '/login', label: '로그인' },
-  { to: '/signup', label: '가입하기' },
 ]
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -48,6 +48,7 @@ export default function MainLayout() {
   const isGuest = !isPending && !currentAccount
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const isWide = pathname === '/' || pathname === '/about'
   const logoutMutation = useLogout()
   // 메뉴를 연 경로를 기억해 두면 페이지가 바뀔 때 자동으로 닫힌다
   const [openedAt, setOpenedAt] = useState<string | null>(null)
@@ -69,7 +70,9 @@ export default function MainLayout() {
           <>
             <button
               type="button"
-              className={styles.menuButton}
+              className={
+                isGuest ? `${styles.menuButton} ${styles.menuButtonGuest}` : styles.menuButton
+              }
               aria-expanded={menuOpen}
               aria-controls="primary-nav"
               onClick={() => setOpenedAt(menuOpen ? null : pathname)}
@@ -114,10 +117,23 @@ export default function MainLayout() {
                 </button>
               )}
             </nav>
+            {isGuest && (
+              <div className={styles.authActions}>
+                <Link to="/login" className={styles.loginButton}>
+                  로그인
+                </Link>
+                <Link to="/signup" className={styles.signupButton}>
+                  가입하기
+                </Link>
+              </div>
+            )}
           </>
         )}
       </header>
-      <main id="main-content" className={styles.main}>
+      <main
+        id="main-content"
+        className={isWide ? `${styles.main} ${styles.mainWide}` : styles.main}
+      >
         <Suspense fallback={<p role="status">불러오는 중...</p>}>
           {currentAccount ? <GatedOutlet /> : <Outlet />}
         </Suspense>

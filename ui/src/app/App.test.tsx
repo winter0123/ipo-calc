@@ -9,6 +9,7 @@ import { ApiError } from '@/shared/api/apiError.ts'
 // MainLayout이 현재 계정(/auth/me)을 조회한다. 이 테스트는 라우팅만 보므로 로그인 전(401)으로 둔다.
 vi.mock('@/shared/api/client.ts', () => ({ apiFetch: vi.fn() }))
 
+vi.mock('../pages/LandingPage/LandingPage.tsx', () => ({ default: () => <div>LandingPage</div> }))
 vi.mock('../pages/LoginPage/LoginPage.tsx', () => ({ default: () => <div>LoginPage</div> }))
 vi.mock('../pages/SignupPage/SignupPage.tsx', () => ({ default: () => <div>SignupPage</div> }))
 vi.mock('../pages/InvestorRegisterPage/InvestorRegisterPage.tsx', () => ({
@@ -47,7 +48,8 @@ vi.mock('../pages/SecuritiesPage/SecuritiesPage.tsx', () => ({
 }))
 
 const ROUTES: Array<[string, string]> = [
-  ['/', 'IpoCalendarPage'],
+  ['/', 'LandingPage'],
+  ['/about', 'LandingPage'],
   ['/login', 'LoginPage'],
   ['/signup', 'SignupPage'],
   ['/investors/register', 'InvestorRegisterPage'],
