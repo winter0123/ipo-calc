@@ -8,7 +8,7 @@
 
 **기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·E2E·배포·스모크).
 
-**보증**: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 21(#443 CSV 제거 후), 접근성 59화면 위반 0 — 둘 다 Jenkins 배포 전 단계(#439·#442), Jenkins #21. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
+**보증(10-14 오후 갱신)**: Jenkins #28 SUCCESS — 백엔드 테스트·E2E 22·접근성 61화면 위반 0. 이전: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 21(#443 CSV 제거 후), 접근성 59화면 위반 0 — 둘 다 Jenkins 배포 전 단계(#439·#442), Jenkins #21. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
 
 **운영 전 사용자 몫**
 - `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY` 채우기(`deploy/.env.example`). `APP_REMEMBER_ME_KEY`는 더 이상 불필요.
@@ -20,7 +20,7 @@
 
 **보류(외부 대기)**: eslint 10·TypeScript 7(플러그인 미지원), 상장일 공식 API(없음 — ustockplus 유지).
 
-**작업 방식**: 메인 체크아웃은 main 유지, 고정 작업공간 `../vibe-w1~w3` + 하위 에이전트, 로컬 운영 스택은 Jenkins로만 재배포, E2E·접근성·캡처는 DB 슬롯 4 공유(동시 실행 금지). 상세 기록은 `docs/daily-log/2026_10_13.md`.
+**작업 방식(10-14 오후~)**: Orca 오케스트레이션 + OpenCode 무료 모델 워커, `scripts/orca-worker-watchdog.py --loop 120` + `scripts/orca-coord-watch.sh <run>`, 작업 중 테스트는 바뀐 부분만. 컨테이너는 compose 프로젝트 `vibe-ai-team`, 이름 `-dev`/`-prod`. 이전: 메인 체크아웃은 main 유지, 고정 작업공간 `../vibe-w1~w3` + 하위 에이전트, 로컬 운영 스택은 Jenkins로만 재배포, E2E·접근성·캡처는 DB 슬롯 4 공유(동시 실행 금지). 상세 기록은 `docs/daily-log/2026_10_13.md`.
 
 ## 사용성 개선 (2026-10-13) — 최신
 
