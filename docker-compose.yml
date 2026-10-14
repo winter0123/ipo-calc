@@ -1,8 +1,8 @@
-name: vibe-ai-team
+name: ipocalc
 services:
   postgres:
     image: postgres:17
-    container_name: vibe-ai-team-postgres-dev
+    container_name: ipocalc-postgres-dev
     restart: unless-stopped
     environment:
       POSTGRES_DB: vibe_ai_team

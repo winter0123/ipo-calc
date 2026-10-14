@@ -13,7 +13,7 @@ const LAST4 = ACCOUNT_NUMBER.slice(-4)
 const MISSING_INVESTOR_ID = '999999'
 const API_PREFIX = process.env.E2E_API_PREFIX ?? '/api-proxy'
 const DB_NAME = process.env.E2E_DB_NAME
-const DB_CONTAINER = process.env.E2E_DB_CONTAINER ?? 'vibe-ai-team-postgres-dev'
+const DB_CONTAINER = process.env.E2E_DB_CONTAINER ?? 'ipocalc-postgres-dev'
 const DB_USER = process.env.E2E_DB_USER ?? 'vibe'
 
 const results = []

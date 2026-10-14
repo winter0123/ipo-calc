@@ -6,8 +6,8 @@
 #          OPENDART_API_KEY 등을 환경변수로 주면 .env의 빈 칸에 채운다. 값은 출력하지 않는다.
 set -euo pipefail
 
-REPO_URL=${1:-${REPO_URL:-https://github.com/winter0123/vibe-ai-team.git}}
-INSTALL_DIR=${2:-${INSTALL_DIR:-$HOME/vibe-ai-team}}
+REPO_URL=${1:-${REPO_URL:-https://github.com/winter0123/ipocalc.git}}
+INSTALL_DIR=${2:-${INSTALL_DIR:-$HOME/ipocalc}}
 DISABLE_SLEEP=${DISABLE_SLEEP:-1}
 DRY_RUN=${DRY_RUN:-0}
 step() { printf '\n==> %s\n' "$*"; }
@@ -127,8 +127,8 @@ fi
 # ---------- 6. 기동 ----------
 step "6/10 스택 기동 (첫 빌드는 10분 안팎)"
 PORT=$(get HTTP_PORT); PORT=${PORT:-18080}
-dc() { (cd "$DEPLOY" && "${DOCKER[@]}" compose -p vibe-ai-team "${FILES[@]}" "$@"); }
-  if [ "$DRY_RUN" = 1 ]; then echo "    [DRY_RUN] docker compose -p vibe-ai-team ${FILES[*]} up -d --build"
+dc() { (cd "$DEPLOY" && "${DOCKER[@]}" compose -p ipocalc "${FILES[@]}" "$@"); }
+  if [ "$DRY_RUN" = 1 ]; then echo "    [DRY_RUN] docker compose -p ipocalc ${FILES[*]} up -d --build"
 else
   dc up -d --build
   echo "    backend healthy 대기(최대 10분)..."
@@ -137,9 +137,9 @@ else
     st=$("${DOCKER[@]}" inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo none)
     [ "$st" = healthy ] && break; sleep 5
   done
-   [ "$st" = healthy ] || die "backend가 healthy가 되지 않았다(상태: $st). 'docker compose -p vibe-ai-team logs backend'로 확인하라."
+   [ "$st" = healthy ] || die "backend가 healthy가 되지 않았다(상태: $st). 'docker compose -p ipocalc logs backend'로 확인하라."
   curl -fsS -o /dev/null "http://localhost:$PORT/" && echo "    웹 응답 OK (http://localhost:$PORT)" \
-     || echo "    경고: http://localhost:$PORT 응답 없음. docker compose -p vibe-ai-team ps 확인."
+     || echo "    경고: http://localhost:$PORT 응답 없음. docker compose -p ipocalc ps 확인."
 fi
 
 # ---------- 7. 부팅 자동 시작 ----------
@@ -195,7 +195,7 @@ cat <<MSG
 
 설치 완료.
   접속 주소     : $URL
-   첫 관리자     : 앱에서 가입 후  PG_CONTAINER=vibe-ai-team-postgres-prod $REPO/scripts/promote-admin.sh <이메일>
+   첫 관리자     : 앱에서 가입 후  PG_CONTAINER=ipocalc-postgres-prod $REPO/scripts/promote-admin.sh <이메일>
                   (다시 로그인 후 관리자로 POST /api/ipos/insight/sync 1회)
   업데이트      : $REPO/scripts/home-server-update.sh
   키 보관       : $ENV_FILE 의 APP_ENCRYPTION_* 키를 PC 밖에도 보관하라.

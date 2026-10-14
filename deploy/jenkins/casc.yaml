@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "vibe-ai-team CI"
+  systemMessage: "ipocalc CI"
   securityRealm:
     local:
       allowsSignup: false
