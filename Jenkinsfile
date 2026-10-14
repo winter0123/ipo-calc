@@ -26,9 +26,9 @@ pipeline {
         }
       }
     }
-    stage('E2E') {
+    stage('E2E + A11y') {
       steps {
-        // 일회용 DB(ci-e2e-pg) + 빈 포트 백엔드/vite 로 Playwright 시나리오 전체 실행. 하나라도 FAIL이면 run.sh가 1로 종료.
+        // 일회용 DB(ci-e2e-pg) + 빈 포트 백엔드/vite 로 Playwright 시나리오 전체 실행 후 접근성 스캔. 하나라도 FAIL이면 run.sh가 1로 종료.
         sh '''
           docker rm -f ci-e2e-pg || true
           docker run -d --name ci-e2e-pg --network ci-net \
@@ -36,6 +36,12 @@ pipeline {
           until docker exec ci-e2e-pg pg_isready -U vibe -d vibe_e2e; do sleep 1; done
           E2E_DB_CONTAINER=ci-e2e-pg E2E_DB_NAME=vibe_e2e E2E_JDBC_URL=jdbc:postgresql://ci-e2e-pg:5432/vibe_e2e \
             DB_PASSWORD=vibe_local_password tools/e2e/run.sh
+        '''
+        // 같은 컨테이너의 DB를 비우고 접근성 스캔(63화면 미달·위반이면 1로 종료 → 배포 중단).
+        sh '''
+          docker exec ci-e2e-pg psql -U vibe -d postgres -c "DROP DATABASE vibe_e2e WITH (FORCE)" -c "CREATE DATABASE vibe_e2e"
+          E2E_DB_CONTAINER=ci-e2e-pg E2E_DB_NAME=vibe_e2e E2E_JDBC_URL=jdbc:postgresql://ci-e2e-pg:5432/vibe_e2e \
+            DB_PASSWORD=vibe_local_password tools/accessibility-scan/run-scan.sh
         '''
       }
       post { always { sh 'docker rm -f ci-e2e-pg || true' } }

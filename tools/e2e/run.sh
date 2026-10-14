@@ -2,45 +2,12 @@
 # E2E 전체 실행: DB 슬롯 4 리셋 → 빈 포트로 백엔드(가입 OPEN, 외부 동기화 끔, 요청 제한 크게)·vite 기동 → tools/e2e 실행 → 정리.
 # 사용법(저장소 어디서든): DB_PASSWORD=vibe_local_password tools/e2e/run.sh
 # CI(Jenkins): E2E_DB_CONTAINER=<일회용 pg 컨테이너> E2E_JDBC_URL=jdbc:postgresql://<컨테이너>:5432/<DB> [E2E_DB_NAME=<DB>] 를 주면
-#   슬롯 리셋을 건너뛰고 그 DB를 쓴다(컨테이너 생명주기는 호출자 몫).
+#   슬롯 리셋을 건너뛰고 그 DB를 쓴다(컨테이너 생명주기는 호출자 몫). 기동·정리는 tools/lib/stack.sh.
 # 실패한 시나리오가 있으면 종료 코드 1. 접근성 스캔·가이드 캡처와 같은 슬롯 4를 쓰므로 동시에 돌리지 않는다.
 set -uo pipefail
-ROOT=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+source "$(dirname "$0")/../lib/stack.sh"
 cd "$ROOT"
-: "${DB_PASSWORD:=vibe_local_password}"
-free_port() { node -e "const s=require('net').createServer().listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})"; }
-API=$(free_port); WEB=$(free_port); TMP=$(mktemp -d)
-cleanup() {
-  # lsof 없는 CI 이미지에서도 동작하도록 포트가 박힌 명령줄로 찾는다(gradle 클라이언트·java·vite).
-  pkill -f -- "server.port=$API" 2>/dev/null || true
-  pkill -f -- "--port $WEB" 2>/dev/null || true
-  rm -f "$ROOT/ui/vite.scan.config.ts"
-}
-trap cleanup EXIT
-if [ -z "${E2E_DB_CONTAINER:-}" ]; then
-  scripts/db-slot.sh reset 4 | tail -1
-  DBN=vibe_slot_4
-else
-  DBN=${E2E_DB_NAME:-vibe_ai_team}
-fi
-cat > ui/vite.scan.config.ts <<CFG
-import { defineConfig, mergeConfig } from 'vite'
-import base from './vite.config.ts'
-export default mergeConfig(base, defineConfig({
-  server: { proxy: { '/api-proxy': { target: 'http://127.0.0.1:${API}', rewrite: (p) => p.replace(/^\/api-proxy/, '') } } },
-}))
-CFG
-KEY=$(head -c 32 /dev/urandom | base64); BKEY=$(head -c 32 /dev/urandom | base64)
-([ -z "${E2E_JDBC_URL:-}" ] || export SPRING_DATASOURCE_URL="$E2E_JDBC_URL"; cd backend && DB_NAME="$DBN" DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$KEY" APP_ENCRYPTION_BROKER_KEY="$BKEY" \
-  APP_IPO_SYNC_ENABLED=false APP_HOLIDAY_SYNC_ENABLED=false \
-  APP_RATE_LIMIT_AUTH_PER_MINUTE=100000 APP_RATE_LIMIT_PUBLIC_READ_PER_MINUTE=100000 APP_SIGNUP_MODE=OPEN \
-  SERVER_PORT="$API" ./gradlew bootRun --args="--server.port=$API" >"$TMP/backend.log" 2>&1) &
-(cd ui && VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts --host 127.0.0.1 --port "$WEB" --strictPort >"$TMP/vite.log" 2>&1) &
-for _ in $(seq 1 120); do
-  curl -s -o /dev/null "http://127.0.0.1:$API/auth/me" && curl -s -o /dev/null "http://127.0.0.1:$WEB/login" && break
-  sleep 2
-done
-curl -s -o /dev/null "http://127.0.0.1:$API/auth/me" || { echo "백엔드 기동 실패"; tail -30 "$TMP/backend.log"; exit 1; }
+stack_up OPEN
 cd tools/e2e && ([ -d node_modules ] || pnpm install --frozen-lockfile >/dev/null 2>&1)
 BASE_URL="http://127.0.0.1:$WEB" E2E_DB_NAME="$DBN" pnpm run e2e > "$TMP/e2e.log" 2>&1
 rc=$?
