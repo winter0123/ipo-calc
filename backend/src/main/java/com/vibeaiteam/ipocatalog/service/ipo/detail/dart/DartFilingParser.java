@@ -18,6 +18,9 @@ import java.util.regex.Pattern;
  */
 public class DartFilingParser {
 
+  /** 파싱 규칙을 바꾸면 올린다. 저장된 상세보다 높으면 같은 공시도 다시 파싱한다. */
+  public static final int VERSION = 1;
+
   private static final Pattern TABLE = Pattern.compile("<TABLE[^>]*>(.*?)</TABLE>", Pattern.DOTALL);
   private static final Pattern ROW = Pattern.compile("<TR[^>]*>(.*?)</TR>", Pattern.DOTALL);
   private static final Pattern CELL =
@@ -26,11 +29,21 @@ public class DartFilingParser {
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern ENTITY = Pattern.compile("&(#x?[0-9a-fA-F]+|[a-zA-Z]+);");
   private static final Pattern SPACES = Pattern.compile("[\\s\\u00a0]+");
-  private static final Pattern NUM = Pattern.compile("^\\(?-?[\\d,]+(\\.\\d+)?\\)?$");
+  private static final Pattern NUM = Pattern.compile("^[(△▲]?-?[\\d,]+(\\.\\d+)?\\)?$");
   private static final Pattern SUMMARY_TITLE = Pattern.compile("요약\\s*재무\\s*정보");
-  private static final Pattern PERIOD = Pattern.compile("(제\\s*\\d+\\s*기|20\\d\\d\\s*년)");
+  private static final Pattern PERIOD = Pattern.compile("(제\\s*\\d+\\s*기|20\\d\\d\\s*(년|연도))");
   private static final Pattern UNIT = Pattern.compile("단위\\s*[:：]\\s*(백만원|천원|원)");
-  private static final Set<String> NOT_NAMES = Set.of("최대주주", "최대주주등", "보통주", "우선주", "-");
+  // "Ⅰ. 매출액", "1. 자본금", "ㆍ자본금" 같은 항목 번호·글머리 접두
+  private static final Pattern ROW_NO =
+      Pattern.compile("^[ㆍ·•]?(?:(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX]+|\\d+)[.．])?");
+  // "경쟁률", "경쟁률주2)", "경쟁률(주2)" — 각주 표시가 붙은 라벨도 받는다
+  private static final Pattern RATE_LABEL = Pattern.compile("경쟁률(\\(?주\\d+\\)?)?");
+  // 최대주주 행을 가리키는 칸: "최대주주", "최대주주 등", "최대주주 본인"
+  private static final Set<String> LARGEST = Set.of("최대주주", "최대주주등", "최대주주본인");
+  private static final Set<String> NOT_NAMES =
+      Set.of("최대주주", "최대주주등", "최대주주본인", "본인", "보통주", "우선주", "-");
+  private static final Pattern NUM_SHARES = Pattern.compile("^[\\d,.]+주?$");
+  private static final Pattern DECIMAL = Pattern.compile("^\\d+\\.\\d+$");
 
   /** 원문 한 표. pos는 원문 안의 시작 위치다. */
   private record Table(int pos, List<List<String>> rows) {}
@@ -127,12 +140,13 @@ public class DartFilingParser {
     if (cell == null) {
       return null;
     }
-    String c = cell.replace("%", "").trim();
+    String c = cell.replace("%", "").replaceFirst("주$", "").trim();
     if (!NUM.matcher(c).matches()) {
       return null;
     }
-    boolean negative = c.startsWith("(") || c.startsWith("-");
-    BigDecimal v = new BigDecimal(c.replaceAll("[()\\-,]", ""));
+    boolean negative = c.startsWith("(") || c.startsWith("-") || c.startsWith("△")
+        || c.startsWith("▲");
+    BigDecimal v = new BigDecimal(c.replaceAll("[()\\-,△▲]", ""));
     return negative ? v.negate() : v;
   }
 
@@ -203,14 +217,19 @@ public class DartFilingParser {
     return row == null || col >= row.size() ? null : won(row.get(col), unit);
   }
 
-  /** 첫 열(공백 제거, 앞의 "연결" 제거)이 조건에 맞는 첫 행. */
+  /** 첫 열(공백 제거, 앞의 항목 번호·"연결" 제거)이 조건에 맞는 첫 행. */
   private static List<String> row(List<List<String>> rows, Predicate<String> p) {
     for (List<String> r : rows) {
-      if (!r.isEmpty() && p.test(r.get(0).replace(" ", "").replaceFirst("^연결", ""))) {
+      if (!r.isEmpty() && p.test(rowName(r.get(0)))) {
         return r;
       }
     }
     return null;
+  }
+
+  private static String rowName(String cell) {
+    String n = ROW_NO.matcher(cell.replace(" ", "")).replaceFirst("");
+    return n.replaceFirst("^연결", "");
   }
 
   private static List<String> firstPeriodHeader(List<List<String>> rows) {
@@ -256,23 +275,49 @@ public class DartFilingParser {
     for (Table t : tables) {
       List<FloatStep> steps = new ArrayList<>();
       for (List<String> r : t.rows()) {
-        if (r.size() >= 2 && r.get(0).contains("유통가능") && r.get(0).contains("상장")
+        if (r.size() >= 2 && r.get(0).replace(" ", "").contains("유통가능")
+            && r.get(0).contains("상장")
             && number(r.get(1)) != null) {
           steps.add(new FloatStep(r.get(0), number(r.get(1)).longValue(),
               r.size() > 2 ? number(r.get(2)) : null));
         }
       }
       if (steps.size() >= 2) {
-        return steps;
+        return cumulative(steps);
       }
     }
     return null;
   }
 
+  /** 주식수·비율 각각, 앞 단계보다 줄어들면 증분으로 적힌 표로 보고 누적으로 바꾼다. */
+  private static List<FloatStep> cumulative(List<FloatStep> steps) {
+    boolean sharesIncr = false;
+    boolean ratioIncr = false;
+    for (int i = 1; i < steps.size(); i++) {
+      FloatStep a = steps.get(i - 1);
+      FloatStep b = steps.get(i);
+      sharesIncr |= b.shares() < a.shares();
+      ratioIncr |= a.ratio() != null && b.ratio() != null && b.ratio().compareTo(a.ratio()) < 0;
+    }
+    List<FloatStep> out = new ArrayList<>();
+    long shares = 0;
+    BigDecimal ratio = BigDecimal.ZERO;
+    for (FloatStep st : steps) {
+      shares = sharesIncr ? shares + st.shares() : st.shares();
+      if (ratioIncr) {
+        ratio = st.ratio() == null || ratio == null ? null : ratio.add(st.ratio());
+      } else {
+        ratio = st.ratio();
+      }
+      out.add(new FloatStep(st.label(), shares, ratio));
+    }
+    return out;
+  }
+
   private static BigDecimal competitionRate(List<Table> tables) {
     for (Table t : tables) {
       for (List<String> r : t.rows()) {
-        if (!r.isEmpty() && r.get(0).replace(" ", "").equals("경쟁률")) {
+        if (!r.isEmpty() && RATE_LABEL.matcher(r.get(0).replace(" ", "")).matches()) {
           BigDecimal last = null;
           for (String c : r) {
             if (NUM.matcher(c).matches()) {
@@ -291,11 +336,12 @@ public class DartFilingParser {
   // 합계 열 수량 기준: (1 - 미확약/합계) × 100.
   private static BigDecimal lockUpCommitment(List<Table> tables) {
     for (Table t : tables) {
-      if (t.rows().isEmpty() || !t.rows().get(0).contains("합계")) {
+      if (t.rows().isEmpty()
+          || t.rows().get(0).stream().noneMatch(c -> c.replace(" ", "").equals("합계"))) {
         continue;
       }
       List<String> un = row(t.rows(), n -> n.equals("미확약"));
-      List<String> total = row(t.rows(), n -> n.startsWith("합계"));
+      List<String> total = row(t.rows(), n -> n.equals("계") || n.startsWith("합계"));
       if (un == null || total == null || un.size() < 2 || total.size() < 2) {
         continue;
       }
@@ -315,16 +361,21 @@ public class DartFilingParser {
 
   private static String[] largest(List<Table> tables) {
     for (Table t : tables) {
-      boolean sale = t.rows().stream().limit(3).flatMap(List::stream)
-          .anyMatch(c -> c.contains("매각") || c.contains("의무보유") || c.contains("유통"));
+      boolean sale = t.rows().stream().limit(3).flatMap(List::stream).map(c -> c.replace(" ", ""))
+          .anyMatch(c -> c.contains("매각") || c.contains("의무보유") || c.contains("유통")
+              || c.contains("공모전") || c.contains("공모후"));
       if (!sale) {
         continue;
       }
       for (List<String> r : t.rows()) {
-        if (r.contains("최대주주")) {
-          String name = r.stream().filter(c -> !c.isEmpty() && !NOT_NAMES.contains(c)
-              && !NUM.matcher(c).matches() && !c.endsWith("%")).findFirst().orElse(null);
-          String pct = r.stream().filter(c -> c.endsWith("%")).findFirst().orElse(null);
+        if (r.stream().anyMatch(c -> LARGEST.contains(c.replace(" ", "")))) {
+          String name = r.stream()
+              .filter(c -> !c.isEmpty() && !NOT_NAMES.contains(c.replace(" ", ""))
+                  && !NUM_SHARES.matcher(c).matches() && !c.endsWith("%"))
+              .findFirst().orElse(null);
+          String pct = r.stream().filter(c -> c.endsWith("%")).findFirst()
+              .orElseGet(() -> r.stream().filter(c -> DECIMAL.matcher(c).matches()).findFirst()
+                  .orElse(null));
           return new String[] {name, pct};
         }
       }

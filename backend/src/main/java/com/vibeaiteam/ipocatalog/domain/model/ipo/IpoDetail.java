@@ -43,6 +43,10 @@ public class IpoDetail {
   @Column(name = "source_report_name", length = 200)
   private String sourceReportName;
 
+  /** 저장 당시 DART 공시 파서 버전. 파서가 바뀌면 같은 공시도 다시 파싱한다. */
+  @Column(name = "parser_version", nullable = false)
+  private int parserVersion;
+
   /** 공시에서 마지막으로 가져온 시각. */
   @Column(name = "synced_at")
   private LocalDateTime syncedAt;
