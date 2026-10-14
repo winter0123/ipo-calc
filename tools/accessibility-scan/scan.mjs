@@ -370,6 +370,20 @@ async function keyboardCheck(page) {
   }
 }
 
+// 비로그인 소개 페이지(/)는 로그인 세션과 분리된 컨텍스트로 스캔한다(로그인 상태면 대시보드로 가 버린다).
+async function scanLanding(browser) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, locale: 'ko-KR', colorScheme: 'light' })
+  const p = await ctx.newPage()
+  const out = []
+  for (const vp of viewports) {
+    await p.setViewportSize({ width: vp.width, height: vp.height })
+    out.push(await scanPage(p, { name: `landing@${vp.name}`, path: '/' }))
+    console.log(`  ${out.at(-1).page}: ${out.at(-1).violations.length} violations`)
+  }
+  await ctx.close()
+  return out
+}
+
 // 가입 직후 계정(투자자 0명)의 안내 화면을 별도 컨텍스트로 스캔한다.
 async function scanEmptyAccount(browser) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, locale: 'ko-KR', colorScheme: 'light' })
@@ -502,6 +516,7 @@ async function main() {
   }
   
   if (loggedIn) results.push(await keyboardCheck(page))
+  results.push(...(await scanLanding(browser)))
   results.push(...(await scanEmptyAccount(browser)))
 
   await context.close()
@@ -519,7 +534,7 @@ async function main() {
 
   // 화면을 조용히 건너뛰면 '위반 0'이 거짓 안심이 된다(#421 가드 이후 실제로 그랬음). 기대 수보다 적게 검사했거나
   // 건너뜀·오류·위반이 있으면 실패 코드로 끝낸다. 화면을 추가·삭제하면 MIN_SCANNED도 맞춘다.
-  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 61)
+  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 63)
   const scannedCount = results.filter((r) => !r.skipped && !r.error).length
   const problems = results.filter((r) => r.skipped || r.error || (r.violations?.length ?? 0) > 0)
   if (scannedCount < MIN_SCANNED || problems.length > 0) {
