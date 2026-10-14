@@ -1,32 +1,24 @@
 /*
- * 바다 테마 디자인 토큰.
- * 브랜드 4색(#439BF5 바다 파랑, #ABF7EE 아쿠아, #FFFFFF 흰색, #B9E68B 라임)은 면·강조에 쓴다.
- * 브랜드 파랑 위의 흰 글자는 대비가 2.9:1이라 AA(4.5:1)에 못 미치므로, 글자·링크·테두리에는 같은 계열의
- * 진한 파생색을 쓴다(대비는 WCAG 계산값, 값 옆 주석).
+ * 디자인 토큰: 색은 primary 하나 + 회색 계열 + 의미 색(성공·위험·경고)만 쓴다. 장식용 그라데이션·색 면은 쓰지 않는다.
+ * 대비는 WCAG 계산값(값 옆 주석).
  */
 :root {
-  /* 브랜드 */
-  --sea: #439bf5;
-  --aqua: #abf7ee;
   --white: #ffffff;
-  --lime: #b9e68b;
 
   /* 글자·링크 (파생색) */
-  --ink: #0b2a4a; /* 흰 배경 14.5:1, 브랜드 파랑 5.0:1 */
-  --ink-muted: #3e5a75; /* 흰 배경 7.2:1 */
+  --ink: #1b2430; /* 흰 배경 16:1 */
+  --ink-muted: #4a5565; /* 흰 배경 7.5:1 */
   --link: #1f6bc0; /* 흰 배경 5.4:1 */
   --link-hover: #185aa3; /* 흰 배경 6.9:1 */
 
   /* 면 */
   --surface: #ffffff;
-  --surface-soft: #f3fbff;
-  --surface-aqua: #e8fefb;
-  --surface-sea: #eaf4fe;
-  --surface-lime: #eef9dc;
+  --surface-soft: #f7f8fa;
+  --surface-sea: #eef3fb; /* primary 옅은 틴트: 선택·호버 */
 
   /* 선 */
-  --border: #d5e7f4;
-  --border-strong: #5f8db8; /* 입력창 등 UI 경계, 흰 배경 3.5:1 */
+  --border: #e2e6ec;
+  --border-strong: #7b8696; /* 입력창 등 UI 경계, 흰 배경 3.6:1 */
 
   /* 기본 동작(버튼 등): 브랜드 파랑을 한 단계 진하게 한 "깊은 바다". 흰 글자 5.0:1 */
   --primary: #1e6fcb;
@@ -34,13 +26,12 @@
   --primary-active: #154e92;
   --on-primary: #ffffff;
 
-  /* 바탕·헤더: 연한 아쿠아 바탕 위에 흰 카드를 올려 깊이를 준다 */
-  --page-bg: #eff9fd;
-  --header-bg: linear-gradient(100deg, #439bf5 0%, #7ccff3 58%, #abf7ee 100%);
+  /* 바탕: 옅은 회색 위에 1px 선의 흰 카드 */
+  --page-bg: #f6f7f9;
 
   /* 상태 */
   --success-bg: #e9f8d4;
-  --success-border: var(--lime);
+  --success-border: #b7d99a;
   --success-ink: #2e5a0b;
   --danger: #b3261e;
   --danger-bg: #fdecea;
@@ -48,7 +39,7 @@
   --warning-bg: #fff3d1;
   --warning-border: #f0c24b;
   --warning-ink: #6b4300;
-  --info-bg: var(--surface-aqua);
+  --info-bg: var(--surface-sea);
 
   /* 간격: 8pt 그리드(4pt 보조) — 화면별로 임의 값을 쓰지 않는다 */
   --space-1: 4px;
@@ -60,12 +51,12 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* 모양: 카드는 1px 선과 바다색이 살짝 도는 부드러운 그림자로 띄운다 */
+  /* 모양: 카드는 1px 선으로 구분하고 그림자는 팝업에만 쓴다 */
   --radius-sm: 8px; /* 버튼·입력창 */
   --radius: 12px; /* 카드 */
   --radius-lg: 16px;
-  --shadow-card: 0 1px 2px rgba(11, 42, 74, 0.05), 0 14px 32px -18px rgba(31, 107, 192, 0.35);
-  --shadow-pop: 0 16px 40px rgba(11, 42, 74, 0.2);
+  --shadow-card: none;
+  --shadow-pop: 0 8px 24px rgba(27, 36, 48, 0.12);
   --focus-ring: 0 0 0 3px rgba(67, 155, 245, 0.45);
 
   /* 레이아웃 */
@@ -256,7 +247,7 @@ th {
 }
 
 tbody tr:hover td {
-  background: var(--surface-aqua);
+  background: var(--surface-sea);
 }
 
 @media (max-width: 1024px) {

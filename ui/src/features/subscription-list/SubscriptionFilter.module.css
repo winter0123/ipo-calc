@@ -20,7 +20,7 @@
 }
 
 .button:hover {
-  border-color: var(--sea);
+  border-color: var(--primary);
 }
 
 .button[aria-pressed='true'] {
