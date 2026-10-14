@@ -231,3 +231,95 @@
   white-space: normal;
   min-width: 72px;
 }
+
+/* 유통가능 일정 카드: 휴대폰에서만 보이고, 그때 표는 숨긴다. */
+.lockupCards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+}
+
+.lockupCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-3) var(--space-4);
+}
+
+.lockupHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  font-size: 14px;
+}
+
+.lockupHead span {
+  color: var(--ink-muted);
+}
+
+.lockupStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lockupStats dt {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.lockupStats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.lockupBar {
+  height: 4px;
+  margin-top: var(--space-2);
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.lockupBar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+@media (max-width: 640px) {
+  .lockupCards {
+    display: grid;
+  }
+
+  .desktopOnly {
+    display: none;
+  }
+}
+
+.periodList {
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.periodList div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+
+.periodList dt {
+  color: var(--ink-muted);
+}
+
+.periodList dd {
+  margin: 0;
+  font-weight: 600;
+}
