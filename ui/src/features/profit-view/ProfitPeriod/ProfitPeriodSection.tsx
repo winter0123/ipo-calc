@@ -1,3 +1,4 @@
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 import { lazy, Suspense, useState } from 'react'
 import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import { groupProfits, type PeriodUnit } from './groupProfits.ts'
@@ -33,7 +34,7 @@ export default function ProfitPeriodSection({
     }),
     { count: 0, saleAmount: 0, profit: 0 },
   )
-  const neg = (v: number) => (v < 0 ? styles.negative : '')
+  const neg = profitToneClass
 
   return (
     <section aria-labelledby="profitPeriodTitle" className={styles.section}>

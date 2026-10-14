@@ -84,10 +84,6 @@ th.numeric {
   font-variant-numeric: tabular-nums;
 }
 
-.negative {
-  color: var(--danger);
-}
-
 .emptyLink {
   display: inline-block;
   margin-top: var(--space-3);

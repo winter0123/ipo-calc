@@ -1,3 +1,4 @@
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import { otherFeesFromRealizedProfit, DEFAULT_IPO_FEE } from '@/entities/sale/index.ts'
 import CapturedBadge from './CapturedBadge.tsx'
@@ -114,7 +115,7 @@ export default function SaleProfitFields({ f }: { f: SaleForm }) {
         <output
           htmlFor="realizedProfit ipoFee"
           aria-live="polite"
-          className={`${styles.summaryValue} ${finalAmount !== undefined && finalAmount < 0 ? styles.negative : ''}`}
+          className={`${styles.summaryValue} ${finalAmount === undefined ? '' : profitToneClass(finalAmount)}`}
         >
           {finalAmount === undefined ? '-' : won(finalAmount)}
         </output>

@@ -1,3 +1,4 @@
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 import { Link } from 'react-router-dom'
 import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import ProfitRow from './ProfitRow.tsx'
@@ -35,7 +36,6 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
     totals.acquisitionAmount > 0
       ? `${((totals.finalProfit / totals.acquisitionAmount) * 100).toFixed(2)}%`
       : '-'
-  const negative = (v: number) => (v < 0 ? styles.negative : '')
 
   return (
     <>
@@ -46,13 +46,13 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
         </div>
         <div className={styles.card}>
           <div className={styles.cardLabel}>최종수익금</div>
-          <div className={`${styles.cardValue} ${negative(totals.finalProfit)}`}>
+          <div className={`${styles.cardValue} ${profitToneClass(totals.finalProfit)}`}>
             {formatWon(totals.finalProfit)}
           </div>
         </div>
         <div className={styles.card}>
           <div className={styles.cardLabel}>수익률</div>
-          <div className={`${styles.cardValue} ${negative(totals.finalProfit)}`}>{rate}</div>
+          <div className={`${styles.cardValue} ${profitToneClass(totals.finalProfit)}`}>{rate}</div>
         </div>
       </div>
       <div className={styles.tableWrapper} role="region" aria-label="매도별 수익 표" tabIndex={0}>
