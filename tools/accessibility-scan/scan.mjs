@@ -185,18 +185,6 @@ async function setupAdminStates(browser, page) {
         },
       },
       { name: 'admin-ipo-register', path: '/admin/ipos', needsAuth: true },
-      { name: 'admin-ipo-import', path: '/admin/ipos/import', needsAuth: true },
-      {
-        name: 'admin-ipo-import-result',
-        path: '/admin/ipos/import',
-        needsAuth: true,
-        prepare: async (p) => {
-          const csv = 'companyName,ipoName,subscriptionStartDate,subscriptionEndDate\n스캔전자,scan-import,2026-12-02,2026-12-03\n스캔전자,scan-bad,2026/12/02,2026-12-03\n'
-          await p.getByLabel('CSV 파일').setInputFiles({ name: 'scan.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
-          await p.getByRole('button', { name: '가져오기', exact: true }).click()
-          await p.getByRole('status').filter({ hasText: '성공' }).waitFor()
-        },
-      },
     ]
   } catch (error) {
     console.log(`관리자 화면 스캔 준비 실패(건너뜀): ${error.message}`)
@@ -530,7 +518,7 @@ async function main() {
 
   // 화면을 조용히 건너뛰면 '위반 0'이 거짓 안심이 된다(#421 가드 이후 실제로 그랬음). 기대 수보다 적게 검사했거나
   // 건너뜀·오류·위반이 있으면 실패 코드로 끝낸다. 화면을 추가·삭제하면 MIN_SCANNED도 맞춘다.
-  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 63)
+  const MIN_SCANNED = Number(process.env.A11Y_MIN_SCANNED ?? 59)
   const scannedCount = results.filter((r) => !r.skipped && !r.error).length
   const problems = results.filter((r) => r.skipped || r.error || (r.violations?.length ?? 0) > 0)
   if (scannedCount < MIN_SCANNED || problems.length > 0) {

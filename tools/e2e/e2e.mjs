@@ -1418,64 +1418,6 @@ async function scenario21(browser) {
   }
 }
 
-// "한글공모전자"를 CP949(엑셀 기본 저장)로 인코딩한 바이트 — Node에 iconv 의존성이 없어 미리 만든 값을 쓴다.
-const CP949_COMPANY = Buffer.from('c7d1b1dbb0f8b8f0c0fcc0da', 'hex')
-
-function cp949Csv(ipoName) {
-  const line = (start) => [CP949_COMPANY, Buffer.from(`,${ipoName},${start},2026-12-03\n`)]
-  return Buffer.concat([
-    Buffer.from('companyName,ipoName,subscriptionStartDate,subscriptionEndDate\n'),
-    ...line('2026-12-02'),
-    ...line('2026/12/02'), // 날짜 형식 오류 행
-  ])
-}
-
-async function scenario22(browser) {
-  const adminEmail = uniqueEmail()
-  const memberEmail = uniqueEmail()
-  await signupApi(browser, adminEmail, 'E2E CsvAdmin')
-  await signupApi(browser, memberEmail, 'E2E CsvMember')
-  promoteToAdmin(adminEmail)
-  const ipoName = `csv-${Date.now()}`
-
-  const admin = await openContext(browser)
-  try {
-    const attempt = await login(admin.page, adminEmail, PASSWORD)
-    if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
-    // 관리자 메뉴 링크로 진입
-    const nav = admin.page.getByRole('navigation', { name: '주요 메뉴' })
-    await nav.getByRole('button', { name: '관리자' }).click()
-    await nav.getByRole('link', { name: '공모주 CSV 가져오기' }).click()
-    if (!(await waitForUrl(admin.page, '**/admin/ipos/import'))) throw new Error(`메뉴 이동 실패: ${admin.page.url()}`)
-    await admin.page.getByLabel('CSV 파일').setInputFiles({
-      name: 'ipos.csv',
-      mimeType: 'text/csv',
-      buffer: cp949Csv(ipoName),
-    })
-    await admin.page.getByRole('button', { name: '가져오기', exact: true }).click()
-    await expectText(admin.page, '성공 1건 · 실패 1건', '결과 요약')
-    await admin.page.getByRole('row').filter({ hasText: /^3/ }).waitFor()
-    const ipos = await api(admin.context, 'GET', '/ipos')
-    const ipo = ipos.find((i) => i.ipoName === ipoName)
-    if (!ipo || ipo.companyName !== '한글공모전자') {
-      throw new Error(`한글 회사명 불일치: ${JSON.stringify(ipo)}`)
-    }
-  } finally {
-    await admin.context.close()
-  }
-
-  const member = await openContext(browser)
-  try {
-    const attempt = await login(member.page, memberEmail, PASSWORD)
-    if (!attempt.ok) throw new Error(`일반 사용자 로그인 실패: 상태=${attempt.status}`)
-    await goto(member.page, '/admin/ipos/import')
-    await expectText(member.page, '관리자만 볼 수 있는 화면입니다.', '일반 사용자 차단 문구')
-  } finally {
-    await member.context.close()
-  }
-  return 'CP949 CSV(한글 회사명) 업로드 → 성공 1건·실패 1건(3행 표), API에 한글 회사명 정상, 일반 사용자는 관리자 전용 문구'
-}
-
 const SCENARIOS = [
   ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
@@ -1498,7 +1440,6 @@ const SCENARIOS = [
   ['E2E-19', '인증: 로그아웃과 화면 가드', scenario19],
   ['E2E-20', '인증: 로그인 잠금 → 관리자 해제', scenario20],
   ['E2E-21', '인증: 폼 로그인 경로 차단', scenario21],
-  ['E2E-22', '관리자: 공모주 CSV 가져오기(CP949·행별 실패)', scenario22],
 ]
 
 function printResults() {

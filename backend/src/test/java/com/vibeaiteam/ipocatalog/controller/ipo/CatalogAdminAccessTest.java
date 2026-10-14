@@ -3,7 +3,6 @@ package com.vibeaiteam.ipocatalog.controller.ipo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -22,7 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -131,8 +129,6 @@ class CatalogAdminAccessTest {
       post("/ipos").contentType(MediaType.APPLICATION_JSON).content(json),
       patch("/ipos/1").contentType(MediaType.APPLICATION_JSON).content(json),
       delete("/ipos/1"),
-      multipart("/ipos/import")
-          .file(new MockMultipartFile("file", "a.csv", "text/csv", new byte[0])),
       post("/securities-firms").contentType(MediaType.APPLICATION_JSON).content(json),
       patch("/securities-firms/1").contentType(MediaType.APPLICATION_JSON).content(json),
       delete("/securities-firms/1")

@@ -33,7 +33,6 @@ const SecuritiesPage = lazy(() => import('../pages/SecuritiesPage/SecuritiesPage
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx'))
 const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
-const IpoImportPage = lazy(() => import('../pages/IpoImportPage/IpoImportPage.tsx'))
 const IpoRegisterPage = lazy(() => import('../pages/IpoRegisterPage/IpoRegisterPage.tsx'))
 
 function App() {
@@ -86,14 +85,6 @@ function App() {
           element={
             <AdminOnly>
               <IpoRegisterPage />
-            </AdminOnly>
-          }
-        />
-        <Route
-          path="/admin/ipos/import"
-          element={
-            <AdminOnly>
-              <IpoImportPage />
             </AdminOnly>
           }
         />

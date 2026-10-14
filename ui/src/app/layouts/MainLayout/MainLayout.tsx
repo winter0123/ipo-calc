@@ -31,7 +31,6 @@ const SETTINGS_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/accounts', label: '가입 승인' },
   { to: '/admin/ipos', label: '공모주 등록' },
-  { to: '/admin/ipos/import', label: '공모주 CSV 가져오기' },
 ]
 
 const GUEST_ITEMS = [

@@ -170,3 +170,5 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### Epic 5 (ipo-catalog) 전체 완료
 SF-1~SF-6이 모두 GREEN으로 마무리되어 Epic 5 전체 완료. 커밋/푸시/PR은 Master가 직접 검증 후 처리.
+
+- 2026-10-14 사용자 결정으로 공모주 CSV 가져오기 제거(공모주는 관리자 수동 등록만).
