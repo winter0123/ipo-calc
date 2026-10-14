@@ -1,4 +1,5 @@
 import styles from './SaleRegisterForm.module.css'
+import CaptureImport from './CaptureImport.tsx'
 import SubscriptionPicker from './SubscriptionPicker.tsx'
 import SaleBasicFields from './SaleBasicFields.tsx'
 import SaleProfitFields from './SaleProfitFields.tsx'
@@ -17,6 +18,7 @@ export default function SaleRegisterForm() {
       <p className={styles.hint}>
         투자자: <strong>{f.current?.displayName ?? '선택 안 됨'}</strong>
       </p>
+      <CaptureImport f={f} />
       <SubscriptionPicker f={f} />
       <SaleBasicFields f={f} />
       <SaleProfitFields f={f} />

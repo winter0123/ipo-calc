@@ -1,5 +1,6 @@
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import { otherFeesFromRealizedProfit, DEFAULT_IPO_FEE } from '@/entities/sale/index.ts'
+import CapturedBadge from './CapturedBadge.tsx'
 import styles from './SaleRegisterForm.module.css'
 import { isNum, won, type SaleForm } from './useSaleForm.ts'
 
@@ -25,6 +26,7 @@ export default function SaleProfitFields({ f }: { f: SaleForm }) {
           allowNegative
           disabled={isPending}
         />
+        <CapturedBadge f={f} name="otherFees" />
         {errors.otherFees ? (
           <span id="otherFees-error" className={styles.error} aria-live="polite">
             {String(errors.otherFees.message)}
@@ -64,6 +66,7 @@ export default function SaleProfitFields({ f }: { f: SaleForm }) {
           allowNegative
           disabled={isPending}
         />
+        <CapturedBadge f={f} name="realizedProfit" />
         {errors.realizedProfit ? (
           <span id="realizedProfit-error" className={styles.error} aria-live="polite">
             {String(errors.realizedProfit.message)}

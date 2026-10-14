@@ -11,3 +11,16 @@ export {
   resolveIpoPrice,
   toSalePayload,
 } from './saleMath.ts'
+export {
+  holds as captureChecks,
+  parse as parseCapture,
+  mergeRecords as mergeCaptureRecords,
+} from './capture/captureParser.ts'
+export type { SaleRecord as CaptureRecord, Word as CaptureWord } from './capture/captureParser.ts'
+export {
+  captureToFill,
+  looksRegistered,
+  matchSubscriptions,
+  type CaptureFill,
+  type MatchCandidate,
+} from './capture/captureMatch.ts'
