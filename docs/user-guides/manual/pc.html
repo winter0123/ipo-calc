@@ -75,6 +75,10 @@
     <section id="start">
       <h2>1. 시작하기</h2>
       <p>사이트 주소로 처음 들어오면(로그인하지 않은 상태) <strong>서비스 소개</strong> 페이지가 열려 어떤 기능이 있는지 볼 수 있고, 로그인하지 않아도 공모주 일정을 둘러볼 수 있습니다. <strong>로그인</strong>과 <strong>가입하기</strong>는 화면 오른쪽 위 버튼입니다. 로그인한 뒤에도 메뉴의 <strong>서비스 소개</strong>로 다시 볼 수 있습니다.</p>
+      <div class="shot"><figure>
+        <img src="screenshots/landing-desktop.png" alt="서비스 소개(랜딩) 화면" loading="lazy">
+        <figcaption>서비스 소개(랜딩) 화면 — 비로그인 상태에서 처음 보이는 페이지</figcaption>
+      </figure></div>
       <p>공모주계산기 서비스는 투자자의 청약부터 배정, 매도까지의 전 과정을 기록하고 최종 수익을 계산해 주는 도구입니다. 하나의 로그인 계정으로 여러 투자자를 관리하고, 각 투자자의 여러 증권사 계좌에서 발생한 거래를 지속적으로 기록할 수 있습니다.</p>
       <ol>
         <li>투자자 등록 (본인, 가족 등)</li>
@@ -380,6 +384,7 @@
     <section id="profit">
       <h2>6. 수익 확인하기</h2>
       <p>매도까지 기록하면 수익이 자동으로 계산됩니다. 계산은 <strong>매도한 수량만큼의 배정분</strong>을 기준으로 합니다(팔지 않은 주식은 수익에 들어가지 않습니다).</p>
+      <p class="note"><strong>손익 색상.</strong> 이익(수익)은 <strong>빨강</strong>, 손실은 <strong>파랑</strong>으로 표시됩니다. 대시보드·수익 확인·투자 내역·기간별 수익 그래프 등 모든 화면에서 동일하게 적용됩니다.</p>
       <div class="table-wrap"><table>
         <thead><tr><th>항목</th><th>계산</th></tr></thead>
         <tbody>
@@ -515,7 +520,8 @@
       <div class="shot"><figure><img src="screenshots/admin-accounts-desktop.png" alt="가입 승인 관리 화면" loading="lazy"><figcaption>가입 승인</figcaption></figure></div>
 
       <h3>공모주 직접 등록</h3>
-      <p>공모주 일정은 자동으로 채워지지만, 빠진 공모주가 있으면 관리자가 <strong>공모주 등록</strong> 화면에서 직접 추가합니다. <strong>공모주명</strong>, <strong>청약 시작일</strong>, <strong>청약 종료일</strong>이 필수이고 종목코드, 회차, 희망 공모가 하단·상단, 확정 공모가, 상장일, 공모 주식 수는 선택입니다. 회사명은 공모주명으로 자동 저장됩니다. <strong>공모주 등록</strong> 버튼을 누르면 공모주 일정 화면으로 이동합니다.</p>
+      <p>공모주 일정은 자동으로 채워지지만, 빠진 공모주가 있으면 관리자가 <strong>공모주 등록</strong> 화면에서 직접 추가합니다. <strong>공모주명</strong>, <strong>청약 시작일</strong>, <strong>청약 종료일</strong>이 필수이고 종목코드, 회차, 희망 공모가 하단·상단, 확정 공모가, 상장일, 공모 주식 수는 선택입니다. 회사명은 공모주명으로 자동 저장됩니다.</p>
+      <p>또한 <strong>DART에서 가져오기</strong> 버튼으로 금융감독원 공시 정보를 자동 입력할 수 있습니다. <strong>시작 월</strong>과 <strong>끝 월</strong>을 선택해 기간을 지정하면(기본은 올해 1월부터 이번 달까지, 최대 24개월) 해당 기간의 공모주 공시 정보를 조회해 표시하고, 진행 상황이 막대와 함께 실시간으로 나옵니다. 원하는 공모주를 골라 <strong>등록</strong>을 누르면 공모주 일정 화면으로 이동합니다.</p>
       <div class="table-wrap"><table>
         <thead><tr><th>표시되는 문구</th><th>해결 방법</th></tr></thead>
         <tbody>
