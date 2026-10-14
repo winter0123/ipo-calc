@@ -45,7 +45,9 @@ const day = (offset, time = '09:00:00') => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}${time ? 'T' + time : ''}`
 }
 
-// 1) 가입 화면 → 승인 대기 안내 → 로그인 화면(로그아웃 상태)
+// 1) 랜딩 페이지(비로그인 상태, '/' 경로) → 가입 화면 → 승인 대기 안내 → 로그인 화면(로그아웃 상태)
+await go('/')
+await shot('landing')
 await go('/signup')
 await shot('signup')
 await page.fill('#email', admin)
