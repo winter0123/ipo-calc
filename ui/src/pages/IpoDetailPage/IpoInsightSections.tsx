@@ -43,16 +43,25 @@ function Table({
   label,
   head,
   children,
+  cards,
 }: {
   title: string
   label: string
   head: string[]
   children: ReactNode
+  /** 휴대폰(≤640px)에서 표 대신 보이는 목록. 표는 CSS로 숨긴다. */
+  cards?: ReactNode
 }) {
   return (
     <section className={styles.insightSection} aria-label={title}>
       <h2 className={styles.insightTitle}>{title}</h2>
-      <div className={styles.tableWrap} role="region" aria-label={label} tabIndex={0}>
+      {cards}
+      <div
+        className={`${styles.tableWrap} ${cards ? styles.desktopOnly : ''}`}
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+      >
         <table className={styles.insightTable}>
           <thead>
             <tr>
@@ -83,6 +92,33 @@ function FloatSchedule({
       title="유통가능 물량(락업 해제) 일정"
       label="유통가능 물량 표"
       head={['시점', '예상 해제일', '누적 유통가능 주식수', '비율']}
+      cards={
+        <ul className={styles.lockupCards} aria-label="유통가능 물량 목록">
+          {rows.map((r, i) => (
+            <li key={`${r.label}-${i}`} className={styles.lockupCard}>
+              <div className={styles.lockupHead}>
+                <strong>{r.label}</strong>
+                <span>예상 해제일 {expectedUnlockDate(listingDate, r.label) ?? '-'}</span>
+              </div>
+              <dl className={styles.lockupStats}>
+                <div>
+                  <dt>누적 유통가능 주식수</dt>
+                  <dd>{shares(r.shares) ?? '-'}</dd>
+                </div>
+                <div>
+                  <dt>비율</dt>
+                  <dd>{percent(r.ratio) ?? '-'}</dd>
+                </div>
+              </dl>
+              {r.ratio !== null && (
+                <div className={styles.lockupBar} aria-hidden="true">
+                  <span style={{ width: `${Math.min(100, Math.max(0, r.ratio))}%` }} />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      }
     >
       {rows.map((r, i) => (
         <tr key={`${r.label}-${i}`}>
@@ -108,6 +144,28 @@ function Financials({ rows }: { rows: IpoInsight['financials'] }) {
       title="손익계산서"
       label="손익계산서 표(억원)"
       head={['(억원)', ...rows.map((r) => r.period)]}
+      cards={
+        <ul className={styles.lockupCards} aria-label="손익계산서 목록(억원)">
+          {lines.map(([name, key]) => (
+            <li key={key} className={styles.lockupCard}>
+              <strong>{name} (억원)</strong>
+              <dl className={styles.periodList}>
+                {rows.map((r, i) => {
+                  const v = r[key]
+                  return (
+                    <div key={i}>
+                      <dt>{r.period}</dt>
+                      <dd className={v !== null && v < 0 ? styles.negative : undefined}>
+                        {v === null ? '-' : eok(v)}
+                      </dd>
+                    </div>
+                  )
+                })}
+              </dl>
+            </li>
+          ))}
+        </ul>
+      }
     >
       {lines.map(([name, key]) => (
         <tr key={key}>
