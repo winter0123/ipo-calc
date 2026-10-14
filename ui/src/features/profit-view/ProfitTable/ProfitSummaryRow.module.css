@@ -36,4 +36,8 @@
   .summaryRow td:first-child {
     font-size: 15px;
   }
+
+  .label {
+    text-align: left !important;
+  }
 }

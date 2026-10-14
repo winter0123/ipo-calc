@@ -137,23 +137,31 @@ th.numeric {
   }
 
   .table tbody tr {
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
   }
 
+  /* 라벨 위·값 아래 2단. 마지막(최종수익금)과 합계 칸은 한 줄 전체 폭. */
   .table tbody td {
     display: flex;
-    justify-content: space-between;
-    gap: var(--space-2);
-    text-align: right;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .table tbody td:nth-child(9),
+  .table tbody td[colspan] {
+    grid-column: 1 / -1;
   }
 
   .table tbody td::before {
     content: attr(data-label);
     color: var(--ink-muted);
+    font-size: 12px;
     font-weight: 400;
-    text-align: left;
   }
 }

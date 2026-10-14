@@ -60,7 +60,7 @@
 
 .detailGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -68,9 +68,15 @@
   padding: var(--space-5);
 }
 
-@media (min-width: 641px) {
+/* 휴대폰: 짧은 값은 2단, 주소·최대주주처럼 긴 값만 한 줄 전체 폭. */
+@media (max-width: 640px) {
   .detailGrid {
-    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4) var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .wide {
+    grid-column: 1 / -1;
   }
 }
 

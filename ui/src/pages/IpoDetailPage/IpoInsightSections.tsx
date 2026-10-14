@@ -12,6 +12,9 @@ const eok = (v: number) => (v / 100_000_000).toLocaleString('ko-KR', { maximumFr
 const capital = (v: number | null) =>
   v === null ? null : v >= 100_000_000 ? `${eok(v)}억원` : `${num(v / 1_000_000)}백만원`
 
+// 휴대폰 2단 그리드에서 한 줄 전체를 쓰는 긴 값.
+const wideLabels = new Set(['주소', '최대주주'])
+
 type Row = [label: string, value: ReactNode]
 
 function Section({ title, rows }: { title: string; rows: Row[] }) {
@@ -22,7 +25,10 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
       <h2 className={styles.insightTitle}>{title}</h2>
       <dl className={styles.detailGrid}>
         {shown.map(([label, value]) => (
-          <div key={label} className={styles.detailItem}>
+          <div
+            key={label}
+            className={`${styles.detailItem} ${wideLabels.has(label) ? styles.wide : ''}`}
+          >
             <dt>{label}</dt>
             <dd>{value}</dd>
           </div>
