@@ -112,10 +112,6 @@
   color: var(--ink);
 }
 
-.negative {
-  color: var(--danger);
-}
-
 .help {
   margin-top: var(--space-1);
 }

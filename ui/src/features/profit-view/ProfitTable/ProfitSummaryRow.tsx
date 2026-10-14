@@ -1,3 +1,4 @@
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 import styles from './ProfitSummaryRow.module.css'
 
 export interface ProfitTotals {
@@ -9,13 +10,9 @@ export interface ProfitTotals {
   finalProfit: number
 }
 
-function getProfitClass(value: number): string {
-  return value < 0 ? styles.negative : ''
-}
-
 export default function ProfitSummaryRow({ totals }: { totals: ProfitTotals }) {
   const cell = (label: string, value: number, signed = false) => (
-    <td data-label={label} className={`${styles.number} ${signed ? getProfitClass(value) : ''}`}>
+    <td data-label={label} className={`${styles.number} ${signed ? profitToneClass(value) : ''}`}>
       {value.toLocaleString()}
     </td>
   )

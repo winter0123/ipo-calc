@@ -1,3 +1,4 @@
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 import type { SaleProfitRow } from '../useAllInvestorProfits.ts'
 import { formatDay } from './formatDay.ts'
 import styles from './ProfitRow.module.css'
@@ -8,10 +9,6 @@ interface ProfitRowProps {
 
 function formatNumber(value: number | null): string {
   return value === null ? '-' : value.toLocaleString()
-}
-
-function getProfitClass(value: number): string {
-  return value < 0 ? styles.negative : ''
 }
 
 export default function ProfitRow({ profit }: ProfitRowProps) {
@@ -36,13 +33,13 @@ export default function ProfitRow({ profit }: ProfitRowProps) {
       </td>
       <td
         data-label="실현손익"
-        className={`${styles.number} ${getProfitClass(profit.realizedProfit)}`}
+        className={`${styles.number} ${profitToneClass(profit.realizedProfit)}`}
       >
         {formatNumber(profit.realizedProfit)}
       </td>
       <td
         data-label="최종수익금"
-        className={`${styles.number} ${getProfitClass(profit.afterTaxProfit)}`}
+        className={`${styles.number} ${profitToneClass(profit.afterTaxProfit)}`}
       >
         {formatNumber(profit.afterTaxProfit)}
       </td>

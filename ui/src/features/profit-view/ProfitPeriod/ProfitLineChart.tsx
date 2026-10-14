@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { PROFIT_TONE_VAR, profitTone } from '@/shared/lib/profitTone.ts'
 import type { PeriodGroup } from './groupProfits.ts'
 
 // 큰 값은 만원 단위로 줄여 축 폭을 아낀다.
@@ -44,7 +45,15 @@ export default function ProfitLineChart({ data }: { data: PeriodGroup[] }) {
           name="최종수익금"
           stroke="var(--primary)"
           strokeWidth={2}
-          dot={{ r: 3, fill: 'var(--primary)' }}
+          dot={({ key, cx, cy, payload }) => (
+            <circle
+              key={key}
+              cx={cx}
+              cy={cy}
+              r={4}
+              fill={PROFIT_TONE_VAR[profitTone((payload as PeriodGroup).profit)]}
+            />
+          )}
           isAnimationActive={false}
         />
       </LineChart>

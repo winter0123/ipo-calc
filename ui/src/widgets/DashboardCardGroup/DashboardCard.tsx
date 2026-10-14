@@ -1,10 +1,13 @@
 import styles from './DashboardCard.module.css'
 import { formatWon } from '@/shared/lib/format.ts'
+import { profitToneClass } from '@/shared/lib/profitTone.ts'
 
 interface DashboardCardProps {
   label: string
   value: number
   format: 'currency' | 'percent' | 'count'
+  /** 손익 값이면 부호에 따라 색을 입힌다. */
+  signed?: boolean
 }
 
 function formatValue(value: number, format: string): string {
@@ -20,11 +23,14 @@ function formatValue(value: number, format: string): string {
   }
 }
 
-export default function DashboardCard({ label, value, format }: DashboardCardProps) {
+export default function DashboardCard({ label, value, format, signed }: DashboardCardProps) {
   return (
     <div className={styles.card}>
       <span className={styles.label}>{label}</span>
-      <span className={styles.value} aria-label={`${label}: ${formatValue(value, format)}`}>
+      <span
+        className={`${styles.value} ${signed ? profitToneClass(value) : ''}`}
+        aria-label={`${label}: ${formatValue(value, format)}`}
+      >
         {formatValue(value, format)}
       </span>
     </div>

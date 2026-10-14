@@ -12,10 +12,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.negative {
-  color: var(--danger);
-}
-
 @media (max-width: 640px) {
   .row td {
     padding: var(--space-2) var(--space-3);

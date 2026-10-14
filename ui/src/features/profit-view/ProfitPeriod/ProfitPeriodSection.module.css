@@ -90,10 +90,6 @@
   text-align: right;
 }
 
-.negative {
-  color: var(--danger);
-}
-
 @media (max-width: 640px) {
   .table {
     font-size: 12px;

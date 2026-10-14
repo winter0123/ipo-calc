@@ -33,6 +33,9 @@
   --success-bg: #e9f8d4;
   --success-border: #b7d99a;
   --success-ink: #2e5a0b;
+  /* 손익: 국내 관례(이익 빨강·손실 파랑). 흰 배경 대비 5.1:1 / 5.5:1. 오류는 --danger */
+  --gain: #cf2e2e;
+  --loss: #1f63d6;
   --danger: #b3261e;
   --danger-bg: #fdecea;
   --danger-border: #f2b8b5;
@@ -265,4 +268,12 @@ tbody tr:hover td {
     transition: none !important;
     animation: none !important;
   }
+}
+
+html .profit-gain {
+  color: var(--gain);
+}
+
+html .profit-loss {
+  color: var(--loss);
 }
