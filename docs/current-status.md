@@ -305,7 +305,7 @@ KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 �
 - `backend-4`: 마지막 브랜치 `winter0123/checkstyle-test-cleanup`(병합 완료, PR #202, 현재 `origin/main` detached). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
 - `frontend-4`: 마지막 브랜치 `winter0123/e19-sf2-ipo-calendar`(병합 완료, PR #201, `origin/main` detached).
 - `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
-- 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
+- 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres-dev`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
 
 ## 2026-09-30 세션 요약 (다음 세션 인계용)
 

@@ -5,7 +5,7 @@
 set -euo pipefail
 FILE=${1:?백업 파일 경로가 필요합니다}
 DB=${2:-vibe_ai_team}
-CONTAINER=${BACKUP_CONTAINER:-vibe-ai-team-prod-postgres-1}
+CONTAINER=${BACKUP_CONTAINER:-vibe-ai-team-postgres-prod}
 [ -f "$FILE" ] || { echo "파일 없음: $FILE" >&2; exit 1; }
 gzip -t "$FILE"
 if [ "${RESTORE_YES:-}" != "1" ]; then

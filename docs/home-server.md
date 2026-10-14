@@ -52,7 +52,7 @@ cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 
 "운영은 Jenkins로만 재배포"라는 기존 규칙의 이유는 **DB 비밀번호 일치**다. Postgres는 볼륨을 처음 만들 때의 `DB_PASSWORD`를 데이터 안에 굳히므로, Jenkins와 사람이 서로 다른 `.env`로 올리면 backend가 DB에 못 붙는다. 그래서 "배포 경로를 하나로" 통일하는 것이 본질이고, 그 하나가 꼭 Jenkins일 필요는 없다.
 
-집 PC에서는 **직접 `docker compose`를 그 하나의 경로로 쓰기로 정했다.** 이유: Jenkins 파이프라인은 백엔드 테스트·E2E·접근성까지 돌려 메모리·시간이 크고 로컬 Postgres(5433)·로컬 경로 체크아웃 가정이 있어 남는 PC에 과하다. 테스트는 개발 맥에서 PR 단계에 이미 통과시킨 `main`만 받아 올린다. 규칙: 이 PC에서는 항상 아래 같은 명령(프로젝트 이름 `vibe-ai-team`, 같은 `deploy/.env`)만 쓴다. 컨테이너 이름이 `vibe-ai-team-prod-postgres-1`이 돼 백업 스크립트 기본값과 맞는다.
+집 PC에서는 **직접 `docker compose`를 그 하나의 경로로 쓰기로 정했다.** 이유: Jenkins 파이프라인은 백엔드 테스트·E2E·접근성까지 돌려 메모리·시간이 크고 로컬 Postgres(5433)·로컬 경로 체크아웃 가정이 있어 남는 PC에 과하다. 테스트는 개발 맥에서 PR 단계에 이미 통과시킨 `main`만 받아 올린다. 규칙: 이 PC에서는 항상 아래 같은 명령(프로젝트 이름 `vibe-ai-team`, 같은 `deploy/.env`)만 쓴다. 컨테이너 이름이 `vibe-ai-team-postgres-prod`이 돼 백업 스크립트 기본값과 맞는다.
 
 ```bash
 cd ~/vibe-ai-team/deploy
@@ -92,7 +92,7 @@ cd ~/vibe-ai-team/deploy
 앱에서 가입한 뒤(가입은 기본 `APPROVAL`이라 승인 대기), 운영 컨테이너를 대상으로 승격한다.
 
 ```bash
-PG_CONTAINER=vibe-ai-team-prod-postgres-1 scripts/promote-admin.sh 내이메일@example.com
+PG_CONTAINER=vibe-ai-team-postgres-prod scripts/promote-admin.sh 내이메일@example.com
 ```
 
 다시 로그인한 뒤 관리자로 `POST /api/ipos/insight/sync`를 1회 실행해 공모주 일정을 채운다.
@@ -109,7 +109,7 @@ mkdir -p ~/vibe-backups && crontab -e
 
 **PC 밖 복사(선택, 권장)**: 디스크가 죽으면 백업도 같이 사라진다. `sudo apt install rclone` → `rclone config`로 구글 드라이브 원격(예: `gdrive`) 생성 → cron 줄 앞에 `BACKUP_REMOTE=gdrive:vibe-backups`를 붙이면 새 백업을 `rclone copy` 한다(원격 복사 실패 시 종료 코드 2와 로그). 덤프에는 암호화된 증권사 키가 들어 있으니 계정은 본인 전용으로 쓰고, `APP_ENCRYPTION_*` 키 없이는 그 값을 못 푼다는 점을 기억한다.
 
-**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec vibe-ai-team-prod-postgres-1 createdb -U vibe rehearsal` → `scripts/restore-db.sh ~/vibe-backups/<최신>.sql.gz rehearsal` → `docker exec vibe-ai-team-prod-postgres-1 psql -U vibe -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U vibe rehearsal`. 실제 장애 복구는 `docker compose -p vibe-ai-team ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
+**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec vibe-ai-team-postgres-prod createdb -U vibe rehearsal` → `scripts/restore-db.sh ~/vibe-backups/<최신>.sql.gz rehearsal` → `docker exec vibe-ai-team-postgres-prod psql -U vibe -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U vibe rehearsal`. 실제 장애 복구는 `docker compose -p vibe-ai-team ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
 
 ## 9. 업데이트 방법
 

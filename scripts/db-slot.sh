@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-CONTAINER="vibe-ai-team-postgres"
+CONTAINER="vibe-ai-team-postgres-dev"
 DB_USER="vibe"
 ADMIN_DB="vibe_ai_team"
 SLOT_MIN=1

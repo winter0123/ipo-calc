@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# 운영 DB(deploy/docker-compose.prod.yml의 postgres) 백업. 압축 덤프를 날짜별로 남기고 오래된 것은 지운다.
+# 운영 DB(deploy/docker-compose.prod.yml의 postgres-prod) 백업. 압축 덤프를 날짜별로 남기고 오래된 것은 지운다.
 # 사용법: scripts/backup-db.sh [백업 폴더(기본 ~/vibe-backups)] [보관 개수(기본 14)]
 # PC 밖 사본: BACKUP_REMOTE=gdrive:vibe-backups 처럼 rclone 원격을 주면 새 백업을 rclone copy 한다(선택, rclone 필요).
 # 매일 자동: crontab -e 에  `30 3 * * * /path/to/repo/scripts/backup-db.sh >> ~/vibe-backups/backup.log 2>&1`
 set -euo pipefail
 DIR=${1:-$HOME/vibe-backups}
 KEEP=${2:-14}
-CONTAINER=${BACKUP_CONTAINER:-vibe-ai-team-prod-postgres-1}
+CONTAINER=${BACKUP_CONTAINER:-vibe-ai-team-postgres-prod}
 DB=${BACKUP_DB:-vibe_ai_team}
 mkdir -p "$DIR"
 chmod 700 "$DIR"

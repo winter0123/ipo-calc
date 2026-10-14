@@ -32,7 +32,7 @@
 3. `direnv allow` (direnv 미설치 시 `.envrc`의 `export`를 셸 프로파일에 직접 반영)
 
 ### 인프라 기동
-4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `vibe-ai-team-postgres`, DB명 `vibe_ai_team`, 사용자 `vibe`, **호스트 포트 `5433`**(컨테이너 내부는 5432, 다른 프로젝트의 컨테이너와 충돌 회피), 볼륨 `postgres_data`). 기동 전 `docker ps`로 5433 포트가 비어있는지 먼저 확인 권장.
+4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `vibe-ai-team-postgres-dev`, DB명 `vibe_ai_team`, 사용자 `vibe`, **호스트 포트 `5433`**(컨테이너 내부는 5432, 다른 프로젝트의 컨테이너와 충돌 회피), 볼륨 `postgres_data`). 기동 전 `docker ps`로 5433 포트가 비어있는지 먼저 확인 권장.
 
 ### 백엔드
 5. Gradle 설치: `brew install gradle` (시스템에 Gradle이 없으면 `backend/`의 Gradle Wrapper가 이미 커밋되어 있으므로 보통 불필요 — wrapper가 없거나 재생성해야 할 때만 설치)
@@ -44,7 +44,7 @@
 
 ### 테스트용 슬롯 DB (2026-09-30 추가)
 
-같은 Postgres 컨테이너(`vibe-ai-team-postgres`) 안에 슬롯 DB `vibe_slot_1`~`vibe_slot_4`를 두고 백엔드 테스트를 격리한다. 슬롯 1~3은 워커, 4는 Master 검증용이다.
+같은 Postgres 컨테이너(`vibe-ai-team-postgres-dev`) 안에 슬롯 DB `vibe_slot_1`~`vibe_slot_4`를 두고 백엔드 테스트를 격리한다. 슬롯 1~3은 워커, 4는 Master 검증용이다.
 
 1. 슬롯 초기화(없으면 생성): `scripts/db-slot.sh reset <1-4>` — 마지막 줄에 `DB_NAME=vibe_slot_N`을 출력한다. `scripts/db-slot.sh list`로 존재 여부를 본다.
 2. 테스트 실행: `DB_NAME=vibe_slot_N DB_PASSWORD=<로컬비밀번호> ./gradlew test --rerun`
