@@ -1,4 +1,4 @@
-// 통합 사용자 가이드(docs/user-guides/manual)용 스크린샷을 더미 데이터로 만든다. run.sh가 백엔드·프론트를 띄운 뒤 호출한다.
+// 사용자 가이드(docs/user-guides/manual, pc.html·mobile.html)용 스크린샷을 더미 데이터로 만든다. run.sh가 백엔드·프론트를 띄운 뒤 호출한다.
 // 백엔드는 APP_SIGNUP_MODE=APPROVAL, DB는 슬롯 4(vibe_slot_4)를 쓴다. 증권사 조회 미리보기는 더미 응답으로 대체한다(실제 호출 없음).
 import { chromium } from 'playwright'
 import { execFileSync } from 'node:child_process'

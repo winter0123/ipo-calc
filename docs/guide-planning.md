@@ -32,7 +32,7 @@ planning은 backend/frontend의 완료를 기다리지 않는다. backend 또는
 
 ## 4. 프론트엔드 사용자 가이드
 
-사용자 가이드는 **통합 문서 한 개**(`docs/user-guides/manual/index.html`, 외부 CDN 없는 순수 HTML)로 유지한다. 화면이 바뀌거나 추가되는 프론트엔드 SF가 병합되면 해당 섹션의 문구·스크린샷을 같은 PR 흐름에서 고친다.
+사용자 가이드는 **PC판·휴대폰판 두 문서**(`docs/user-guides/manual/` — `index.html`은 선택 화면, 본문은 PC판 `pc.html`·휴대폰판 `mobile.html` 두 파일, 외부 CDN 없는 순수 HTML)로 유지한다. 화면이 바뀌거나 추가되는 프론트엔드 SF가 병합되면 해당 섹션의 문구·스크린샷을 같은 PR 흐름에서 고친다.
 
 - 스크린샷은 `tools/screenshot-guide/run.sh`가 만든다(빈 포트로 백엔드·프론트를 띄우고 슬롯 DB 4에 더미 데이터를 넣은 뒤 데스크톱 1280px·모바일 390px을 `manual/screenshots/`에 쓴다). 새 화면은 `tools/screenshot-guide/capture.mjs`에 장면을 추가한다. 증권사 조회 미리보기는 더미 응답으로 대체하며 실제 증권사를 호출하지 않는다.
 - 문구는 **소스에서 그대로** 옮긴다(`ui/src/features/*`의 라벨·오류 문구·`NAV_ITEMS`). 소스에서 확인하지 못한 기능은 쓰지 않는다. 오류 표의 "해결 방법"은 오류 문구를 되풀이하지 않고 사용자가 할 일을 쓴다.
