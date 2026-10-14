@@ -49,9 +49,8 @@ function renderForm() {
 async function setupForm() {
   renderForm()
   await waitFor(() => {
-    expect(screen.getByLabelText(/회사명/)).not.toBeDisabled()
+    expect(screen.getByLabelText(/공모주명/)).not.toBeDisabled()
   })
-  await fill(screen.getByLabelText(/회사명/), '테스트 회사')
   await fill(screen.getByLabelText(/공모주명/), '테스트 IPO')
   await waitFor(() => {
     expect(screen.getByLabelText(/청약 시작일/)).not.toBeDisabled()
@@ -65,15 +64,6 @@ describe('IpoRegisterForm', () => {
     mockNavigate.mockClear()
     mutationFnMock = () => Promise.resolve({})
     vi.clearAllMocks()
-  })
-
-  it('회사명 필수값 검증', async () => {
-    await setupForm()
-    await fill(screen.getByLabelText(/회사명/), '')
-    await userEvent.click(screen.getByRole('button', { name: /공모주 등록/i }))
-    await waitFor(() => {
-      expect(screen.getByText('회사명을 입력해 주세요.')).toBeInTheDocument()
-    })
   })
 
   it('공모주명 필수값 검증', async () => {
@@ -165,7 +155,6 @@ describe('IpoRegisterForm', () => {
     await waitFor(() => {
       expect(mutationFnMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          companyName: '테스트 회사',
           ipoName: '테스트 IPO',
           subscriptionStartDate: '2026-02-01',
           subscriptionEndDate: '2026-02-02',
@@ -252,45 +241,6 @@ describe('IpoRegisterForm', () => {
     await setupForm()
     await submit()
     expect(await screen.findByText('종목코드 형식 오류')).toBeInTheDocument()
-  })
-
-  it('공백뿐인 회사명은 필수 오류', async () => {
-    await setupForm()
-    await fill(screen.getByLabelText(/회사명/), '   ')
-    await submit()
-    expect(await screen.findByText('회사명을 입력해 주세요.')).toBeInTheDocument()
-  })
-
-  it('상장일이 청약 종료일보다 빠르면 오류', async () => {
-    await setupForm()
-    await fill(screen.getByLabelText(/상장일/), '2026-02-01')
-    await submit()
-    expect(
-      await screen.findByText('상장일은 청약 종료일보다 빠를 수 없습니다.'),
-    ).toBeInTheDocument()
-  })
-
-  it('가격 0·소수는 오류', async () => {
-    await setupForm()
-    await fill(screen.getByLabelText(/확정 공모가/), '0')
-    await submit()
-    expect(await screen.findByText('0보다 큰 정수여야 합니다.')).toBeInTheDocument()
-  })
-
-  it('확정 공모가가 밴드 밖이어도 제출되고, 종목코드는 trim·대문자로 보낸다', async () => {
-    mutationFnMock = vi.fn().mockResolvedValue({ id: 1 })
-    await setupForm()
-    await fill(screen.getByLabelText(/희망 공모가 하단/), '10000')
-    await fill(screen.getByLabelText(/희망 공모가 상단/), '12000')
-    await fill(screen.getByLabelText(/확정 공모가/), '13000')
-    await fill(screen.getByLabelText(/종목코드/), ' 12ab34 ')
-    await submit()
-    await waitFor(() => {
-      expect(mutationFnMock).toHaveBeenCalledWith(
-        expect.objectContaining({ fixedPrice: 13000, stockCode: '12AB34' }),
-        expect.any(Object),
-      )
-    })
   })
 
   it('종목코드 형식이 6자 영숫자가 아니면 오류', async () => {

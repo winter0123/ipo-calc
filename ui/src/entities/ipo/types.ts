@@ -24,7 +24,7 @@ export const ipoSchema = z.object({
 export type Ipo = z.infer<typeof ipoSchema>
 
 export interface IpoRegisterRequest {
-  companyName: string
+  companyName?: string
   ipoName: string
   stockCode?: string
   roundLabel?: string
