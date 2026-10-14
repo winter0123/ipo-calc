@@ -1,4 +1,4 @@
-# vibe-ai-team 프로젝트 에이전트 운영 안내서
+# ipocalc 프로젝트 에이전트 운영 안내서
 
 > 이 문서는 이 저장소에만 적용되며 **Master(코디네이터)가 읽는다.** 공통 규칙은 루트 [AGENTS.md](../AGENTS.md)에 있고, 이 문서는 그 규칙을 공모주 투자 수익 관리 서비스의 실제 스택·Orca 환경·무료 모델 운영 방식으로 구체화한다. 역할별 기술스택·검증 명령·구현 규칙은 이 문서에 없고 `docs/guide-backend.md`/`guide-frontend.md`/`guide-planning.md`에 있다 — Master는 워커 spec을 쓸 때 해당 가이드에서 검증 명령을 그대로 복사해 넣는다.
 >
