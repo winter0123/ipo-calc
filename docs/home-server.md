@@ -2,6 +2,22 @@
 
 현재 운영 계획은 Oracle VM이 아니라 **집에 남는 PC + Docker**다. 무료, 공유기 포트포워딩 없이 HTTPS로 접속한다. 시크릿 값은 이 문서에 적지 않는다.
 
+## 0. 빠른 설치: 스크립트 한 번
+
+우분투(22.04/24.04)에서 아래만 치면 Docker 설치, 저장소, `deploy/.env`(DB 비밀번호·암호화 키 자동 생성), 스택 기동, 백업 cron(매일 03:30), 절전 끄기까지 끝난다. 여러 번 실행해도 안전하고 기존 `.env` 값은 덮어쓰지 않는다.
+
+```bash
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/winter0123/vibe-ai-team.git ~/vibe-ai-team   # 비공개면 gh auth login 또는 배포 키
+~/vibe-ai-team/scripts/home-server-setup.sh
+```
+
+- 처음 실행하면 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`(와 쓰는 터널 키 `TS_AUTHKEY` 또는 `TUNNEL_TOKEN`)가 비었다고 알려 주고 종료한다. `deploy/.env`를 채우고 같은 명령을 다시 실행한다. 환경변수로 주어도 된다(`OPENDART_API_KEY=... scripts/home-server-setup.sh`).
+- 터널은 `TUNNEL=tailscale|cloudflared|none`으로 고르거나, 생략하면 `.env`에 들어 있는 키로 추론한다(없으면 LAN 전용).
+- 절전 끄기를 원치 않으면 `DISABLE_SLEEP=0`. 첫 관리자 만들기·업데이트(`scripts/home-server-update.sh`: 백업 후 pull, 재빌드, healthy 확인, `PRUNE=1`이면 이미지 정리)는 설치 끝에 안내된다.
+
+아래 1장부터는 **직접 하려면** 따르는 수동 절차이자 스크립트가 하는 일의 설명이다.
+
 ## 1. 준비물
 
 - 상시 켜 둘 PC 한 대: RAM 4GB 이상(8GB 권장, 첫 빌드는 Gradle·pnpm 때문에 메모리를 쓴다), 여유 디스크 20GB 이상, 유선 LAN 권장.
