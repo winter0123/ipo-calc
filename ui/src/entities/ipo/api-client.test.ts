@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
-import { fetchIpos, fetchIpo, registerIpo, syncIposNow } from './api-client.ts'
+import { fetchIpos, fetchIpo, registerIpo, syncIposNow, getIpoSyncStatus } from './api-client.ts'
 
 const stub = (body: unknown) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body))))
@@ -72,26 +72,90 @@ describe('registerIpo', () => {
 describe('syncIposNow', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  const RESULT = {
-    created: 1,
-    updated: 2,
-    skipped: 3,
-    failed: 0,
-    scheduleMerged: 4,
-    detailSaved: 5,
-    aborted: false,
+  const STATUS = {
+    state: 'RUNNING',
+    fromMonth: '2026-01',
+    toMonth: '2026-10',
+    monthsDone: 3,
+    monthsTotal: 10,
+    startedAt: TS,
+    finishedAt: null,
+    result: {
+      created: 1,
+      updated: 2,
+      skipped: 3,
+      failed: 0,
+      scheduleMerged: 4,
+      detailSaved: 5,
+      aborted: false,
+    },
+    error: null,
   }
 
   it('POST /ipos/sync를 호출하고 결과를 반환한다', async () => {
-    stub(RESULT)
-    await expect(syncIposNow()).resolves.toEqual(RESULT)
+    stub(STATUS)
+    await expect(syncIposNow()).resolves.toEqual(STATUS)
     const [url, init] = vi.mocked(fetch).mock.calls[0]
     expect(String(url)).toMatch(/\/ipos\/sync$/)
     expect(init?.method).toBe('POST')
   })
 
+  it('범위를 지정하여 POST /ipos/sync를 호출한다', async () => {
+    stub(STATUS)
+    await expect(syncIposNow({ fromMonth: '2025-01', toMonth: '2026-12' })).resolves.toEqual(STATUS)
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toMatch(/\/ipos\/sync$/)
+    expect(init?.method).toBe('POST')
+    expect(init?.body).toBe(JSON.stringify({ fromMonth: '2025-01', toMonth: '2026-12' }))
+  })
+
+  it('본문이 없으면 기존 동작(최근 days-back)과 동일하게 동작한다', async () => {
+    stub(STATUS)
+    await expect(syncIposNow(undefined)).resolves.toEqual(STATUS)
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toMatch(/\/ipos\/sync$/)
+    expect(init?.method).toBe('POST')
+    expect(init?.body).toBeUndefined()
+  })
+
   it('필드가 빠지면 ZodError로 거부한다', async () => {
-    stub({ created: 1 })
+    stub({ state: 'RUNNING' })
     await expect(syncIposNow()).rejects.toBeInstanceOf(ZodError)
+  })
+})
+
+describe('getIpoSyncStatus', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const STATUS = {
+    state: 'IDLE',
+    fromMonth: null,
+    toMonth: null,
+    monthsDone: 0,
+    monthsTotal: 0,
+    startedAt: null,
+    finishedAt: null,
+    result: {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      scheduleMerged: 0,
+      detailSaved: 0,
+      aborted: false,
+    },
+    error: null,
+  }
+
+  it('GET /ipos/sync/status를 호출하고 결과를 반환한다', async () => {
+    stub(STATUS)
+    await expect(getIpoSyncStatus()).resolves.toEqual(STATUS)
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toMatch(/\/ipos\/sync\/status$/)
+  })
+
+  it('필드가 빠지면 ZodError로 거부한다', async () => {
+    stub({ state: 'IDLE' })
+    await expect(getIpoSyncStatus()).rejects.toBeInstanceOf(ZodError)
   })
 })
