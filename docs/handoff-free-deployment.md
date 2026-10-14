@@ -1,3 +1,5 @@
+> **현재 운영 계획은 집 PC — `docs/home-server.md`** (아래 Oracle VM 내용은 이력).
+
 # 인수인계: 무료 배포(Terraform + Docker + Jenkins) — 2026-10-12 기준
 
 > 이 문서만 읽고 이어서 작업할 수 있게 쓴 인수인계 문서다. 설계의 "왜"는 `docs/architecture/free-deployment-terraform-jenkins.md`, 시간순 기록은 `docs/work-log/free-deployment-terraform-jenkins.md`, 설치·복구 절차는 `docs/setup-history.md`를 본다. 시크릿 값(키, 비밀번호, OCID)은 이 문서에 적지 않았다.

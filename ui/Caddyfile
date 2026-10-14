@@ -1,3 +1,12 @@
+{
+	# 터널(Tailscale Funnel·Cloudflare Tunnel) 뒤에서만 TRUSTED_PROXIES=private_ranges 로 켠다.
+	# 기본값(루프백)은 어떤 외부 요청도 신뢰하지 않아 직접 노출 때와 동작이 같다.
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		client_ip_headers {$CLIENT_IP_HEADERS:X-Forwarded-For}
+	}
+}
+
 {$SITE_ADDRESS} {
 	# 공모주 목록 등 JSON·JS 응답 압축(전송량이 서버 처리보다 병목 — 1,500건 목록 665KB 측정)
 	encode zstd gzip
@@ -14,7 +23,10 @@
 		-Server
 	}
 	handle_path /api/* {
-		reverse_proxy backend:8080
+		# 위조 가능한 헤더 대신 Caddy가 판정한 실제 방문자 IP를 backend(요청 제한)로 넘긴다
+		reverse_proxy backend:8080 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	handle {
 		root * /srv/ui
