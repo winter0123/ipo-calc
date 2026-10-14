@@ -58,8 +58,8 @@
 1. `cd deploy && cp .env.example .env` 후 `DB_PASSWORD`, `APP_ENCRYPTION_KEY`, `APP_REMEMBER_ME_KEY`(둘 다 `openssl rand -base64 32`)를 채운다. `.env`는 git 제외. 로컬 http 테스트는 `SITE_ADDRESS=:80`, `SESSION_COOKIE_SECURE=false`. 포트가 충돌하면 `HTTP_PORT`/`HTTPS_PORT`를 바꾼다(기본 예시 18080/18443).
 2. 앱 기동: `docker compose -f docker-compose.prod.yml up -d --build` → `http://localhost:$HTTP_PORT`. UI는 `/api` 접두사로 API를 호출하고 Caddy가 접두사를 떼서 backend로 전달한다. backend의 DB 주소는 `SPRING_DATASOURCE_URL`로 덮어쓴다.
 3. 로컬 Jenkins: `.env`에 `JENKINS_ADMIN_PASSWORD`, `JOB_BRANCH`(빌드할 브랜치)를 추가하고 `docker compose -f jenkins/docker-compose.yml --env-file .env up -d --build` → `http://localhost:18081/jenkins`(포트는 `JENKINS_PORT`). 잡 `vibe-deploy`가 자동 생성된다. Jenkinsfile은 **git에 커밋된 내용**만 읽으므로 수정 후 커밋해야 반영된다.
-4. 파이프라인 단계: 백엔드 테스트(임시 Postgres `ci-pg`, 네트워크 `ci-net`) → UI lint·typecheck·test → `docker compose -p vibe-prod up -d --build` → smoke(`/auth/me`가 401).
-5. 정리: `docker compose -p vibe-prod -f docker-compose.prod.yml down -v` 및 `docker compose -f jenkins/docker-compose.yml --env-file .env down`.
+4. 파이프라인 단계: 백엔드 테스트(임시 Postgres `ci-pg`, 네트워크 `ci-net`) → UI lint·typecheck·test → `docker compose -p vibe-ai-team up -d --build` → smoke(`/auth/me`가 401).
+5. 정리: `docker compose -p vibe-ai-team -f docker-compose.prod.yml down -v` 및 `docker compose -p vibe-ai-team -f jenkins/docker-compose.yml --env-file .env down`.
 6. Linux VM에서는 Jenkins가 docker.sock에 접근하도록 `DOCKER_GID=$(stat -c %g /var/run/docker.sock)`를 지정한다(mac Docker Desktop은 기본값 0으로 동작).
 
 ---

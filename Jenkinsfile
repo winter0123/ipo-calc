@@ -1,15 +1,15 @@
 pipeline {
   agent any
   environment {
-    COMPOSE = 'docker compose -p vibe-prod -f deploy/docker-compose.prod.yml'
+    COMPOSE = 'docker compose -p vibe-ai-team -f deploy/docker-compose.prod.yml'
     CI_DB = 'jdbc:postgresql://ci-pg:5432/vibe_ai_team'
   }
   stages {
     stage('Test backend') {
       steps {
         sh '''
-          docker rm -f ci-pg || true
-          docker run -d --name ci-pg --network ci-net \
+          docker rm -f -v ci-pg || true
+          docker run -d --name ci-pg --network ci-net --label com.docker.compose.project=vibe-ai-team \
             -e POSTGRES_DB=vibe_ai_team -e POSTGRES_USER=vibe -e POSTGRES_PASSWORD=vibe_local_password postgres:17
           until docker exec ci-pg pg_isready -U vibe -d vibe_ai_team; do sleep 1; done
           cd backend
@@ -17,7 +17,7 @@ pipeline {
             ./gradlew test checkstyleMain checkstyleTest --no-daemon
         '''
       }
-      post { always { sh 'docker rm -f ci-pg || true' } }
+      post { always { sh 'docker rm -f -v ci-pg || true' } }
     }
     stage('Test ui') {
       steps {
@@ -30,8 +30,8 @@ pipeline {
       steps {
         // 일회용 DB(ci-e2e-pg) + 빈 포트 백엔드/vite 로 Playwright 시나리오 전체 실행 후 접근성 스캔. 하나라도 FAIL이면 run.sh가 1로 종료.
         sh '''
-          docker rm -f ci-e2e-pg || true
-          docker run -d --name ci-e2e-pg --network ci-net \
+          docker rm -f -v ci-e2e-pg || true
+          docker run -d --name ci-e2e-pg --network ci-net --label com.docker.compose.project=vibe-ai-team \
             -e POSTGRES_DB=vibe_e2e -e POSTGRES_USER=vibe -e POSTGRES_PASSWORD=vibe_local_password postgres:17
           until docker exec ci-e2e-pg pg_isready -U vibe -d vibe_e2e; do sleep 1; done
           E2E_DB_CONTAINER=ci-e2e-pg E2E_DB_NAME=vibe_e2e E2E_JDBC_URL=jdbc:postgresql://ci-e2e-pg:5432/vibe_e2e \
@@ -44,7 +44,7 @@ pipeline {
             DB_PASSWORD=vibe_local_password tools/accessibility-scan/run-scan.sh
         '''
       }
-      post { always { sh 'docker rm -f ci-e2e-pg || true' } }
+      post { always { sh 'docker rm -f -v ci-e2e-pg || true' } }
     }
     stage('Deploy') {
       steps { sh '$COMPOSE up -d --build' }
@@ -54,7 +54,7 @@ pipeline {
         // 비로그인 /auth/me 가 401 이면 backend가 떠서 DB·마이그레이션까지 통과한 것
         sh '''
           for i in $(seq 1 30); do
-            if $COMPOSE exec -T backend wget -S -O /dev/null http://localhost:8080/auth/me 2>&1 | grep -q "HTTP/1.1 401"; then
+            if $COMPOSE exec -T prod-backend wget -S -O /dev/null http://localhost:8080/auth/me 2>&1 | grep -q "HTTP/1.1 401"; then
               echo "smoke OK"; exit 0
             fi
             sleep 2

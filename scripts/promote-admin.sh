@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 계정을 ADMIN으로 승격하고 승인한다. 사용: scripts/promote-admin.sh <이메일> [DB 이름(기본 vibe_ai_team)]
-# 기본은 로컬 개발 컨테이너(vibe-ai-team-postgres). 운영 스택이면 PG_CONTAINER=vibe-prod-postgres-1 을 앞에 붙인다. 승격 뒤 해당 계정은 다시 로그인해야 한다.
+# 기본은 로컬 개발 컨테이너(vibe-ai-team-postgres). 운영 스택이면 PG_CONTAINER=vibe-ai-team-prod-postgres-1 을 앞에 붙인다. 승격 뒤 해당 계정은 다시 로그인해야 한다.
 set -euo pipefail
 
 EMAIL="${1:?사용법: scripts/promote-admin.sh <이메일> [DB 이름]}"

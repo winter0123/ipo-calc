@@ -6,7 +6,7 @@
 set -euo pipefail
 DIR=${1:-$HOME/vibe-backups}
 KEEP=${2:-14}
-CONTAINER=${BACKUP_CONTAINER:-vibe-prod-postgres-1}
+CONTAINER=${BACKUP_CONTAINER:-vibe-ai-team-prod-postgres-1}
 DB=${BACKUP_DB:-vibe_ai_team}
 mkdir -p "$DIR"
 chmod 700 "$DIR"

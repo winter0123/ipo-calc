@@ -15,12 +15,12 @@ services:
       - tailscale_state:/var/lib/tailscale
       - ./tailscale-serve.json:/config/serve.json:ro
     depends_on:
-      - web
+      - prod-web
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
-  web:
+  prod-web:
     environment:
       # TLS는 터널이 종료하므로 Caddy는 HTTP(:80)만 받는다(자동 HTTPS·리다이렉트 없음)
       SITE_ADDRESS: ":80"

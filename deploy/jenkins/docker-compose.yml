@@ -1,4 +1,5 @@
 # 로컬 연습용 Jenkins. 4단계에서 운영 compose로 합친다.
+name: vibe-ai-team
 services:
   jenkins:
     build: .
@@ -29,3 +30,4 @@ networks:
 
 volumes:
   jenkins_home:
+    name: jenkins_jenkins_home
