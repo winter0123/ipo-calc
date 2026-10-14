@@ -8,7 +8,7 @@
 
 **기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·E2E·배포·스모크).
 
-**보증**: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 22(Jenkins 배포 전 단계로도 실행, #439), 접근성 63화면 위반 0, Jenkins #19. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
+**보증**: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 21(#443 CSV 제거 후), 접근성 59화면 위반 0 — 둘 다 Jenkins 배포 전 단계(#439·#442), Jenkins #21. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
 
 **운영 전 사용자 몫**
 - `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY` 채우기(`deploy/.env.example`). `APP_REMEMBER_ME_KEY`는 더 이상 불필요.
@@ -16,7 +16,7 @@
 - 증권사(KIS·키움·LS) 실제 키로 1회 조회 확인(키움은 서버 IP 등록). 실호출로 확인 못 한 필드는 `docs/guide-backend.md` 6.1.
 - (10-13 세션에서 OpenDART·공공데이터 키 값이 세션 출력에 노출됨 — 재발급 권장)
 
-**결정됨(2026-10-14)**: 관리자가 고친 자동 수집 공모주는 보호하지 않는다 — 다음 동기화가 DART 값으로 덮어씀(공모가·상장일만 보존, 현행 유지).
+**결정됨(2026-10-14)**: 관리자가 고친 자동 수집 공모주는 보호하지 않는다 — 다음 동기화가 DART 값으로 덮어씀(공모가·상장일만 보존, 현행 유지).  관리자가 **직접 등록한** 공모주(syncSource 없음, DART에 없는 종목 포함)는 어떤 동기화도 건드리지 않는다(기존 동작, `IpoSyncServiceTest`·`IpoScheduleMergeServiceTest`로 보장).
 
 **보류(외부 대기)**: eslint 10·TypeScript 7(플러그인 미지원), 상장일 공식 API(없음 — ustockplus 유지).
 
