@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-CONTAINER="ipocalc-postgres-dev"
+CONTAINER="ipo-calc-postgres-dev"
 DB_USER="vibe"
 ADMIN_DB="vibe_ai_team"
 SLOT_MIN=1

@@ -21,7 +21,7 @@ case "$TUNNEL" in
   none) ;;
   *) echo "TUNNEL 값 오류: $TUNNEL" >&2; exit 1 ;;
 esac
-dc() { (cd "$DEPLOY" && "${DOCKER[@]}" compose -p ipocalc "${FILES[@]}" "$@"); }
+dc() { (cd "$DEPLOY" && "${DOCKER[@]}" compose -p ipo-calc "${FILES[@]}" "$@"); }
 
 echo "==> 1/4 배포 전 백업"
 "$REPO/scripts/backup-db.sh" || echo "경고: 백업 실패(처음 설치 직후가 아니면 중단을 고려하라)." >&2
@@ -35,6 +35,6 @@ for _ in $(seq 1 120); do
   st=$("${DOCKER[@]}" inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo none)
   [ "$st" = healthy ] && break; sleep 5
 done
-[ "$st" = healthy ] || { echo "backend 상태: $st. docker compose -p ipocalc logs backend 확인" >&2; exit 1; }
+[ "$st" = healthy ] || { echo "backend 상태: $st. docker compose -p ipo-calc logs backend 확인" >&2; exit 1; }
 echo "업데이트 완료."
 if [ "${PRUNE:-0}" = 1 ]; then "${DOCKER[@]}" image prune -f; else echo "(이전 이미지 정리: PRUNE=1 $0)"; fi

@@ -33,8 +33,8 @@
 
 ### 로컬에서 지금 돌고 있는 것
 
-- `ipocalc-{web,backend,postgres}-prod` — Jenkins가 배포한 앱 스택. `http://localhost:18080`
-- `ipocalc-jenkins-dev` — 로컬 Jenkins. `http://localhost:18081/jenkins`, 계정 `admin`, 비밀번호는 `deploy/.env`의 `JENKINS_ADMIN_PASSWORD`
+- `ipo-calc-{web,backend,postgres}-prod` — Jenkins가 배포한 앱 스택. `http://localhost:18080`
+- `ipo-calc-jenkins-dev` — 로컬 Jenkins. `http://localhost:18081/jenkins`, 계정 `admin`, 비밀번호는 `deploy/.env`의 `JENKINS_ADMIN_PASSWORD`
 - 정리 명령은 `docs/setup-history.md` "배포 스택 로컬 기동" 절에 있다. 사용자가 정리하라고 하기 전에는 내리지 않는다.
 
 ## 3. 만들어진 것 (파일 지도)
@@ -49,7 +49,7 @@ deploy/.env.example                 필요한 환경변수 이름 목록 (.env�
                                     DATA_GO_KR_SERVICE_KEY(휴장일). 키가 비면 해당 동기화만 건너뜀.
                                     배포 직후 관리자로 POST /api/ipos/insight/sync 1회(공모주 상세 즉시 채움)
 deploy/jenkins/                     Dockerfile(docker CLI·compose·node·pnpm·Playwright Chromium), plugins.txt, casc.yaml(JCasC+Job DSL), docker-compose.yml
-Jenkinsfile                         백엔드 테스트(ipocalc-postgres-ci-dev) → UI lint/typecheck/test → E2E+접근성 스캔(ipocalc-postgres-e2e-dev, tools/e2e/run.sh·tools/accessibility-scan/run-scan.sh) → compose 배포 → smoke
+Jenkinsfile                         백엔드 테스트(ipo-calc-postgres-ci-dev) → UI lint/typecheck/test → E2E+접근성 스캔(ipo-calc-postgres-e2e-dev, tools/e2e/run.sh·tools/accessibility-scan/run-scan.sh) → compose 배포 → smoke
 infra/oracle/                       (미커밋) Terraform: VCN·IGW·라우트·보안리스트·서브넷·VM, cloud-init
 ```
 
@@ -139,9 +139,9 @@ crontab -e                                 # 아래 한 줄 추가(매일 03:30)
 복원(대상 DB를 덮어씀, `restore` 입력 확인):
 
 ```bash
-docker compose -p ipocalc -f deploy/docker-compose.prod.yml stop backend
+docker compose -p ipo-calc -f deploy/docker-compose.prod.yml stop backend
 scripts/restore-db.sh ~/vibe-backups/vibe_ai_team_20261013_033000.sql.gz
-docker compose -p ipocalc -f deploy/docker-compose.prod.yml start backend
+docker compose -p ipo-calc -f deploy/docker-compose.prod.yml start backend
 ```
 
 - 백업 파일은 VM 디스크에만 있으므로 **주기적으로 VM 밖(내 PC 등)으로 복사**한다(`scp`). VM을 잃으면 백업도 같이 잃는다.

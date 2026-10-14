@@ -52,14 +52,14 @@ cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 
 "운영은 Jenkins로만 재배포"라는 기존 규칙의 이유는 **DB 비밀번호 일치**다. Postgres는 볼륨을 처음 만들 때의 `DB_PASSWORD`를 데이터 안에 굳히므로, Jenkins와 사람이 서로 다른 `.env`로 올리면 backend가 DB에 못 붙는다. 그래서 "배포 경로를 하나로" 통일하는 것이 본질이고, 그 하나가 꼭 Jenkins일 필요는 없다.
 
-집 PC에서는 **직접 `docker compose`를 그 하나의 경로로 쓰기로 정했다.** 이유: Jenkins 파이프라인은 백엔드 테스트·E2E·접근성까지 돌려 메모리·시간이 크고 로컬 Postgres(5433)·로컬 경로 체크아웃 가정이 있어 남는 PC에 과하다. 테스트는 개발 맥에서 PR 단계에 이미 통과시킨 `main`만 받아 올린다. 규칙: 이 PC에서는 항상 아래 같은 명령(프로젝트 이름 `ipocalc`, 같은 `deploy/.env`)만 쓴다. 컨테이너 이름이 `ipocalc-postgres-prod`이 돼 백업 스크립트 기본값과 맞는다.
+집 PC에서는 **직접 `docker compose`를 그 하나의 경로로 쓰기로 정했다.** 이유: Jenkins 파이프라인은 백엔드 테스트·E2E·접근성까지 돌려 메모리·시간이 크고 로컬 Postgres(5433)·로컬 경로 체크아웃 가정이 있어 남는 PC에 과하다. 테스트는 개발 맥에서 PR 단계에 이미 통과시킨 `main`만 받아 올린다. 규칙: 이 PC에서는 항상 아래 같은 명령(프로젝트 이름 `ipocalc`, 같은 `deploy/.env`)만 쓴다. 컨테이너 이름이 `ipo-calc-postgres-prod`이 돼 백업 스크립트 기본값과 맞는다.
 
 ```bash
 cd ~/ipocalc/deploy
-    docker compose -p ipocalc -f docker-compose.prod.yml up -d --build            # 터널 없음(LAN에서 http://PC주소:HTTP_PORT)
+    docker compose -p ipo-calc -f docker-compose.prod.yml up -d --build            # 터널 없음(LAN에서 http://PC주소:HTTP_PORT)
 ```
 
-첫 빌드는 10분 안팥. `docker compose -p ipocalc ps`에서 backend가 `healthy`면 정상이다. Jenkins(:18081)는 이 PC에 올리지 않는다. 올린다면 18081은 외부로 열지 않는다(11장).
+첫 빌드는 10분 안팥. `docker compose -p ipo-calc ps`에서 backend가 `healthy`면 정상이다. Jenkins(:18081)는 이 PC에 올리지 않는다. 올린다면 18081은 외부로 열지 않는다(11장).
 
 ## 6. 외부 접속 + HTTPS: 터널 중 하나 선택
 
@@ -72,7 +72,7 @@ cd ~/ipocalc/deploy
 3. Settings > Keys에서 인증키(auth key) 발급 → `deploy/.env`에 `TS_AUTHKEY`, 원하는 `TS_HOSTNAME` 기록.
 4. 실행:
    ```bash
-    docker compose -p ipocalc -f docker-compose.prod.yml -f docker-compose.tailscale.yml up -d --build
+    docker compose -p ipo-calc -f docker-compose.prod.yml -f docker-compose.tailscale.yml up -d --build
    ```
 5. 주소 `https://<TS_HOSTNAME>.<tailnet>.ts.net` 접속 확인. 인증키는 첫 등록에만 쓰이고 상태는 볼륨에 저장된다.
 
@@ -82,7 +82,7 @@ cd ~/ipocalc/deploy
 2. 터널의 Public hostname에 원하는 (서브)도메인, 서비스는 `HTTP` / `web:80`.
 3. 실행:
    ```bash
-    docker compose -p ipocalc -f docker-compose.prod.yml -f docker-compose.cloudflared.yml up -d --build
+    docker compose -p ipo-calc -f docker-compose.prod.yml -f docker-compose.cloudflared.yml up -d --build
    ```
 
 (override 없이 올리면 지금 로컬 운영 스택과 설정이 동일하다.) 이후 모든 `up`·`pull`·`down`에는 같은 `-f` 조합을 붙인다.
@@ -92,7 +92,7 @@ cd ~/ipocalc/deploy
 앱에서 가입한 뒤(가입은 기본 `APPROVAL`이라 승인 대기), 운영 컨테이너를 대상으로 승격한다.
 
 ```bash
-PG_CONTAINER=ipocalc-postgres-prod scripts/promote-admin.sh 내이메일@example.com
+PG_CONTAINER=ipo-calc-postgres-prod scripts/promote-admin.sh 내이메일@example.com
 ```
 
 다시 로그인한 뒤 관리자로 `POST /api/ipos/insight/sync`를 1회 실행해 공모주 일정을 채운다.
@@ -109,14 +109,14 @@ mkdir -p ~/vibe-backups && crontab -e
 
 **PC 밖 복사(선택, 권장)**: 디스크가 죽으면 백업도 같이 사라진다. `sudo apt install rclone` → `rclone config`로 구글 드라이브 원격(예: `gdrive`) 생성 → cron 줄 앞에 `BACKUP_REMOTE=gdrive:vibe-backups`를 붙이면 새 백업을 `rclone copy` 한다(원격 복사 실패 시 종료 코드 2와 로그). 덤프에는 암호화된 증권사 키가 들어 있으니 계정은 본인 전용으로 쓰고, `APP_ENCRYPTION_*` 키 없이는 그 값을 못 푼다는 점을 기억한다.
 
-**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec ipocalc-postgres-prod createdb -U vibe rehearsal` → `scripts/restore-db.sh ~/vibe-backups/<최신>.sql.gz rehearsal` → `docker exec ipocalc-postgres-prod psql -U vibe -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U vibe rehearsal`. 실제 장애 복구는 `docker compose -p ipocalc ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
+**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec ipo-calc-postgres-prod createdb -U vibe rehearsal` → `scripts/restore-db.sh ~/vibe-backups/<최신>.sql.gz rehearsal` → `docker exec ipo-calc-postgres-prod psql -U vibe -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U vibe rehearsal`. 실제 장애 복구는 `docker compose -p ipo-calc ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
 
 ## 9. 업데이트 방법
 
 ```bash
 cd ~/ipocalc && git pull --ff-only
-cd deploy && docker compose -p ipocalc -f docker-compose.prod.yml [-f 터널파일] up -d --build
-docker compose -p ipocalc ps          # backend healthy 확인
+cd deploy && docker compose -p ipo-calc -f docker-compose.prod.yml [-f 터널파일] up -d --build
+docker compose -p ipo-calc ps          # backend healthy 확인
 ```
 
 업데이트 전에 `scripts/backup-db.sh`를 한 번 돌린다. 이미지 정리: `docker image prune -f`. OS는 `sudo apt install unattended-upgrades`로 보안 패치를 자동화하고, 커널 업데이트 후엔 가끔 재부팅한다(스택은 자동 복귀).

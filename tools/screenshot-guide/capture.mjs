@@ -12,7 +12,7 @@ const stamp = Date.now()
 const admin = `guide-admin-${stamp}@example.com`
 const member = `guide-member-${stamp}@example.com`
 const sql = (q) =>
-  execFileSync('docker', ['exec', process.env.E2E_DB_CONTAINER ?? 'ipocalc-postgres-dev', 'psql', '-U', 'vibe', '-d', process.env.SLOT_DB ?? 'vibe_slot_4', '-c', q])
+  execFileSync('docker', ['exec', process.env.E2E_DB_CONTAINER ?? 'ipo-calc-postgres-dev', 'psql', '-U', 'vibe', '-d', process.env.SLOT_DB ?? 'vibe_slot_4', '-c', q])
 
 const browser = await chromium.launch({ headless: true })
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ko-KR' })

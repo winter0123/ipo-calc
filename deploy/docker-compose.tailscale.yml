@@ -2,7 +2,7 @@
 # 사용: docker compose -f docker-compose.prod.yml -f docker-compose.tailscale.yml up -d
 services:
   tailscale:
-    container_name: ipocalc-tailscale-prod
+    container_name: ipo-calc-tailscale-prod
     # 운영 서비스가 붙은 네트워크(docker-compose.prod.yml의 prod)에 있어야 web에 닿는다
     networks: [prod]
     image: tailscale/tailscale:stable
