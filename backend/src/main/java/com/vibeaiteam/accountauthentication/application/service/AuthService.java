@@ -153,7 +153,5 @@ public class AuthService {
     }
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
-
-    sessionCookieWriter.issueIfAbsent(httpServletResponse, httpServletRequest.getSession().getId());
   }
 }
