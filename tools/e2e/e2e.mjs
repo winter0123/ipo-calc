@@ -39,6 +39,9 @@ function pad(text, width) {
   return value + ' '.repeat(Math.max(0, width - textWidth(value)))
 }
 
+const diag = []
+let shots = 0
+
 async function openContext(browser) {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
@@ -46,6 +49,20 @@ async function openContext(browser) {
     colorScheme: 'light',
   })
   const page = await context.newPage()
+  // 실패 진단: 4xx/5xx 응답·콘솔 에러를 버퍼에 쌓고(FAIL 시 출력), E2E_ARTIFACTS 가 있으면 닫기 직전 스크린샷+URL 저장.
+  page.on('response', (res) => {
+    if (res.status() >= 400) diag.push(`${res.status()} ${res.request().method()} ${res.url()}`)
+  })
+  page.on('framenavigated', (f) => f === page.mainFrame() && diag.push(`nav: ${f.url()}`))
+  page.on('console', (m) => m.type() === 'error' && diag.push(`console: ${m.text()}`))
+  const close = context.close.bind(context)
+  context.close = async () => {
+    if (process.env.E2E_ARTIFACTS) {
+      diag.push(`url: ${page.url()}`)
+      await page.screenshot({ path: `${process.env.E2E_ARTIFACTS}/ctx-${++shots}.png`, fullPage: true }).catch(() => {})
+    }
+    return close()
+  }
   page.setDefaultTimeout(10000)
   page.setDefaultNavigationTimeout(20000)
   return { context, page }
@@ -127,6 +144,9 @@ async function login(page, email, password) {
   await submit(page)
 
   const ok = await waitForUrl(page, '**/dashboard', 15000)
+  // 라우터는 lazy 청크가 로드될 때까지 옛 경로를 유지하다 한꺼번에 전환한다. 그 전에 헤더 메뉴를 열면 전환 순간 메뉴가 닫혀
+  // 클릭이 타임아웃(E2E-12·13 간헐 실패, 콜드 vite 캐시인 CI에서 재현) → 본문 제목이 뜰 때까지 기다린다.
+  if (ok) await page.locator('#main-content h1').first().waitFor().catch(() => {})
   const response = await responsePromise
   const bodyText = response
     ? await withTimeout(response.text(), 10000, 'response.text 타임아웃').catch(() => '<본문 읽기 실패>')
@@ -1504,6 +1524,7 @@ async function main() {
   try {
     for (const [id, name, run] of SCENARIOS) {
       const startedAt = Date.now()
+      diag.length = 0
       let status
       let detail
       try {
@@ -1517,6 +1538,7 @@ async function main() {
         } catch {}
         browser = await launchBrowser()
         detail += ' / [browser] 재실행됨'
+        console.log(`[${id}] 진단(마지막 30건):\n${diag.slice(-30).join('\n')}`)
       }
       results.push({ id, name, status, detail })
       console.log(`[${id}] ${status} (${Date.now() - startedAt}ms)`)
