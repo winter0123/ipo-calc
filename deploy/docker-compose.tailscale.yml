@@ -1,0 +1,30 @@
+# Tailscale Funnel로 https://<TS_HOSTNAME>.<tailnet>.ts.net 공개(도메인·포트포워딩 불필요, TLS는 Tailscale이 종료).
+# 사용: docker compose -f docker-compose.prod.yml -f docker-compose.tailscale.yml up -d
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-vibe}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?TS_AUTHKEY 필요}
+      TS_HOSTNAME: ${TS_HOSTNAME:-vibe}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./tailscale-serve.json:/config/serve.json:ro
+    depends_on:
+      - web
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  web:
+    environment:
+      # TLS는 터널이 종료하므로 Caddy는 HTTP(:80)만 받는다(자동 HTTPS·리다이렉트 없음)
+      SITE_ADDRESS: ":80"
+      TRUSTED_PROXIES: private_ranges
+
+volumes:
+  tailscale_state:

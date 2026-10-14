@@ -12,7 +12,7 @@
 
 **운영 전 사용자 몫**
 - `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY` 채우기(`deploy/.env.example`). `APP_REMEMBER_ME_KEY`는 더 이상 불필요.
-- 실제 Oracle VM 배포, 백업 cron 등록(`scripts/backup-db.sh`, 배포 문서), 배포 직후 관리자로 `POST /api/ipos/insight/sync` 1회.
+- 집 PC 배포(`docs/home-server.md`: Docker 설치·터널·백업 cron 등록), 배포 직후 관리자로 `POST /api/ipos/insight/sync` 1회.
 - 증권사(KIS·키움·LS) 실제 키로 1회 조회 확인(키움은 서버 IP 등록). 실호출로 확인 못 한 필드는 `docs/guide-backend.md` 6.1.
 - (10-13 세션에서 OpenDART·공공데이터 키 값이 세션 출력에 노출됨 — 재발급 권장)
 
