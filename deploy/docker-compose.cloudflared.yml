@@ -8,12 +8,12 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:?TUNNEL_TOKEN 필요}
     depends_on:
-      - web
+      - prod-web
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
-  web:
+  prod-web:
     environment:
       SITE_ADDRESS: ":80"
       TRUSTED_PROXIES: private_ranges

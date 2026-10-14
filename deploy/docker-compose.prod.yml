@@ -5,8 +5,9 @@ x-logging: &logging
     max-size: "10m"
     max-file: "3"
 
+name: vibe-ai-team
 services:
-  postgres:
+  prod-postgres:
     image: postgres:17
     restart: unless-stopped
     logging: *logging
@@ -20,8 +21,12 @@ services:
       test: ["CMD-SHELL", "pg_isready -U vibe -d vibe_ai_team"]
       interval: 5s
       retries: 10
+    networks:
+      default:
+        aliases:
+          - postgres
 
-  backend:
+  prod-backend:
     build: ../backend
     restart: unless-stopped
     logging: *logging
@@ -33,7 +38,7 @@ services:
       retries: 5
       start_period: 40s
     depends_on:
-      postgres:
+      prod-postgres:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vibe_ai_team
@@ -53,13 +58,17 @@ services:
       APP_WEBPUSH_SUBJECT: ${APP_WEBPUSH_SUBJECT:-}
       # 앞단 Caddy가 X-Forwarded-For를 붙이고 backend는 외부에 포트를 열지 않으므로 실제 방문자 IP로 요청 제한
       APP_RATE_LIMIT_TRUST_FORWARDED: ${APP_RATE_LIMIT_TRUST_FORWARDED:-true}
+    networks:
+      default:
+        aliases:
+          - backend
 
-  web:
+  prod-web:
     build: ../ui
     restart: unless-stopped
     logging: *logging
     depends_on:
-      backend:
+      prod-backend:
         condition: service_healthy
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS}
@@ -68,7 +77,19 @@ services:
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - caddy_data:/data
+    networks:
+      default:
+        aliases:
+          - web
 
 volumes:
   pgdata:
+    name: vibe-prod_pgdata
   caddy_data:
+    name: vibe-prod_caddy_data
+
+# 같은 compose 프로젝트(vibe-ai-team)의 개발 DB(서비스 postgres)와 기본 네트워크를 공유하면
+# 운영 backend가 호스트명 postgres로 개발 DB에 붙을 수 있다 → 운영 전용 네트워크 이름을 고정한다.
+networks:
+  default:
+    name: vibe-prod_default

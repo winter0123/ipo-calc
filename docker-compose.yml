@@ -1,3 +1,4 @@
+name: vibe-ai-team
 services:
   postgres:
     image: postgres:17
