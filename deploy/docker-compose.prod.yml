@@ -9,6 +9,7 @@ name: vibe-ai-team
 services:
   prod-postgres:
     image: postgres:17
+    container_name: vibe-ai-team-postgres-prod
     restart: unless-stopped
     logging: *logging
     environment:
@@ -29,6 +30,7 @@ services:
   prod-backend:
     build: ../backend
     restart: unless-stopped
+    container_name: vibe-ai-team-backend-prod
     logging: *logging
     # 비로그인 /auth/me 가 401이면 앱·DB·마이그레이션까지 정상(Jenkins 스모크와 같은 기준)
     healthcheck:
@@ -66,6 +68,7 @@ services:
   prod-web:
     build: ../ui
     restart: unless-stopped
+    container_name: vibe-ai-team-web-prod
     logging: *logging
     depends_on:
       prod-backend:

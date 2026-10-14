@@ -195,7 +195,7 @@ cat <<MSG
 
 설치 완료.
   접속 주소     : $URL
-   첫 관리자     : 앱에서 가입 후  PG_CONTAINER=vibe-ai-team-prod-postgres-1 $REPO/scripts/promote-admin.sh <이메일>
+   첫 관리자     : 앱에서 가입 후  PG_CONTAINER=vibe-ai-team-postgres-prod $REPO/scripts/promote-admin.sh <이메일>
                   (다시 로그인 후 관리자로 POST /api/ipos/insight/sync 1회)
   업데이트      : $REPO/scripts/home-server-update.sh
   키 보관       : $ENV_FILE 의 APP_ENCRYPTION_* 키를 PC 밖에도 보관하라.

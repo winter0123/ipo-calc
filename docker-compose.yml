@@ -2,7 +2,7 @@ name: vibe-ai-team
 services:
   postgres:
     image: postgres:17
-    container_name: vibe-ai-team-postgres
+    container_name: vibe-ai-team-postgres-dev
     restart: unless-stopped
     environment:
       POSTGRES_DB: vibe_ai_team
