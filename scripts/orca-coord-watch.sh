@@ -14,10 +14,10 @@ INTERVAL=${INTERVAL:-60}
 touch "$SEEN"
 while true; do
   # 같은 디스패치·같은 판정은 한 번만 알린다(재시도 중인 모델이 매 점검마다 다시 뜨는 것 방지)
-  hits=$(grep -E '^(ERROR|STALL)' /tmp/orca-worker-status.txt 2>/dev/null | awk '{print $1, $3}' | sort -u | grep -vxF -f "$SEEN")
+  hits=$(grep -E '^(ERROR|STALL|PERM)' /tmp/orca-worker-status.txt 2>/dev/null | awk '{print $1, $3}' | sort -u | grep -vxF -f "$SEEN")
   if [ -n "$hits" ]; then
     echo "$hits" >> "$SEEN"
-    echo "== watchdog"; grep -E '^(ERROR|STALL)' /tmp/orca-worker-status.txt
+    echo "== watchdog"; grep -E '^(ERROR|STALL|PERM)' /tmp/orca-worker-status.txt
     exit 0
   fi
   # 이미 처리한 메시지 id(SEEN)는 다시 알리지 않는다

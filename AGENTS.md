@@ -301,11 +301,13 @@ orca orchestration task-list --json
 ```bash
 # 별도 터미널에서 한 번 띄워두고 세션 내내 돌린다
 scripts/orca-worker-watchdog.py --loop 120
+# 옵션 없이 실행하면 현재 git 저장소(repo)의 모든 worktree를 점검한다
+# 수동 필터가 필요할 때만: scripts/orca-worker-watchdog.py --tree-filter "문자열" --loop 120
 # 코디네이터는 원문 대신 이 요약만 읽는다
 cat /tmp/orca-worker-status.txt
 ```
 
-watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error` 등)와 무출력 정지(기본 8분)를 감지해 한 줄씩 적고, 실제 사용 중인 모델명도 같이 적는다(지정 모델과 다른 모델로 자동 폴백되는 사례가 반복 관찰됐다). **감지만 하고 재배정은 하지 않는다** — 오진으로 작업 중인 워커를 죽이는 비용이 자동화 이득보다 크기 때문에, 재배정 여부는 코디네이터가 판단한다.
+watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error` 등), 무출력 정지(기본 8분), **OpenCode 권한 질문(`Permission required` + `Allow once`/`Allow always`/`Reject`)**을 감지해 한 줄씩 적고, 실제 사용 중인 모델명도 같이 적는다(지정 모델과 다른 모델로 자동 폴백되는 사례가 반복 관찰됐다). **감지만 하고 재배정은 하지 않는다** — 오진으로 작업 중인 워커를 죽이는 비용이 자동화 이득보다 크기 때문에, 재배정 여부는 코디네이터가 판단한다.
 
 #### 코디네이터 알림(토큰 없이 대기)
 
@@ -321,7 +323,7 @@ watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rat
 
 규칙: 워커를 배정하면 알림 스크립트를 백그라운드로 켠다. 알림 1건을 처리한 뒤 **같은 턴에서 반드시 다시 켠다**(한 번 알리고 끝나는 구조라 안 켜면 감시가 멈춘다 — 2026-10-14 실사고). 처리한 메시지는 SEEN에 남으므로 다시 깨지 않는다.
 
-실행 예: `scripts/orca-worker-watchdog.py --loop 120`(별도 Orca 터미널) + `scripts/orca-coord-watch.sh <run_id>`(코디네이터의 백그라운드 명령).
+실행 예: `scripts/orca-worker-watchdog.py --loop 120`(별도 Orca 터미널, 옵션 없으면 현재 repo의 모든 worktree 점검) + `scripts/orca-coord-watch.sh <run_id>`(코디네이터의 백그라운드 명령).
 
 유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다.
 
