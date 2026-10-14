@@ -24,8 +24,11 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
-/** VAPID 키가 없는 서버: 구독·테스트는 503, 공개키 조회는 enabled=false, 해제·설정은 동작한다. */
-@SpringBootTest
+/**
+ * VAPID 키가 없는 서버: 구독·테스트는 503, 공개키 조회는 enabled=false, 해제·설정은 동작한다.
+ * 실행 환경(예: Jenkins 컨테이너)에 APP_WEBPUSH_* 가 있어도 키 없음 상태를 고정한다.
+ */
+@SpringBootTest(properties = {"app.webpush.public-key=", "app.webpush.private-key="})
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
