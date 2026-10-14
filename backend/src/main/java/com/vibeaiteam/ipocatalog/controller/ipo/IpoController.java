@@ -1,11 +1,9 @@
 package com.vibeaiteam.ipocatalog.controller.ipo;
 
-import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoImportResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoInsightResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoRegisterRequest;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoResponse;
 import com.vibeaiteam.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
-import com.vibeaiteam.ipocatalog.service.ipo.IpoCsvImportService;
 import com.vibeaiteam.ipocatalog.service.ipo.IpoService;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailService;
 import com.vibeaiteam.ipocatalog.service.ipo.detail.IpoDetailSyncService;
@@ -13,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,18 +19,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
-/** IPO(공모주) 기준정보에 대한 등록/조회/수정/비활성화/CSV 일괄등록 API를 제공한다. */
+/** IPO(공모주) 기준정보에 대한 등록/조회/수정/비활성화 API를 제공한다. */
 @RestController
 @RequestMapping("/ipos")
 @RequiredArgsConstructor
 public class IpoController {
 
   private final IpoService ipoService;
-  private final IpoCsvImportService ipoCsvImportService;
   private final IpoDetailService ipoDetailService;
   private final IpoDetailSyncService ipoDetailSyncService;
 
@@ -92,12 +86,5 @@ public class IpoController {
   public ResponseEntity<IpoResponse> register(@RequestBody IpoRegisterRequest request) {
     IpoResponse response = ipoService.register(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
-
-  /** multipart로 업로드된 CSV 파일을 파싱해 IPO를 일괄 등록하고, 처리 결과(등록/실패 건수 등)를 반환한다. */
-  @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<IpoImportResponse> importCsv(@RequestParam("file") MultipartFile file) {
-    IpoImportResponse response = ipoCsvImportService.importCsv(file);
-    return ResponseEntity.ok(response);
   }
 }

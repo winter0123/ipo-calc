@@ -29,7 +29,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
-    implementation("org.apache.commons:commons-csv:1.14.1")
     
     // Lombok for reducing boilerplate (optional but recommended)
     implementation("org.projectlombok:lombok")

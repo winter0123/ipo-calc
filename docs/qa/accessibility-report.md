@@ -1,12 +1,12 @@
 # 접근성 검사 보고서 (WCAG 2.1 AA / axe-core)
 
-검사 일시: 2026. 10. 14. 오전 6:53:39
+검사 일시: 2026. 10. 14. 오전 10:13:47
 검사 도구: axe-core @axe-core/playwright
-대상 URL: http://127.0.0.1:59903
+대상 URL: http://127.0.0.1:50199
 
 ## 요약
 
-- 검사한 화면: 63개
+- 검사한 화면: 59개
 - 건너뛴 화면: 0개
 - 오류 발생 화면: 0개
 - 총 위반 건수: 0건 (critical: 0, serious: 0, moderate: 0, minor: 0)
@@ -140,22 +140,6 @@
 ### admin-ipo-register@mobile (/admin/ipos)
 
 ✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
-
-### admin-ipo-import@desktop (/admin/ipos/import)
-
-✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
-
-### admin-ipo-import@mobile (/admin/ipos/import)
-
-✅ **위반 0건** (passes: 34, incomplete: 1, inapplicable: 55)
-
-### admin-ipo-import-result@desktop (/admin/ipos/import)
-
-✅ **위반 0건** (passes: 42, incomplete: 1, inapplicable: 47)
-
-### admin-ipo-import-result@mobile (/admin/ipos/import)
-
-✅ **위반 0건** (passes: 42, incomplete: 1, inapplicable: 47)
 
 ### ipo-calendar@desktop (/ipo-calendar)
 
