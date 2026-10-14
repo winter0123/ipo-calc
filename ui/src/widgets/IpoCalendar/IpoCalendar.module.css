@@ -262,7 +262,8 @@
 
 .dateCell.today .dateNumber {
   background: var(--primary);
-  color: var(--ink);
+  /* 진한 primary 배경 위라 흰 글자(검은 글자는 대비 3.1:1로 접근성 미달) */
+  color: var(--white);
   font-weight: 700;
 }
 
@@ -287,7 +288,7 @@
 
 .dateCell.today.hasHoliday .dateNumber {
   background: var(--primary);
-  color: var(--ink);
+  color: var(--white);
 }
 
 /* 막대 */
