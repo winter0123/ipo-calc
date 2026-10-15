@@ -7,6 +7,8 @@
 **제품**: '공모주계산기(IPO Calc)' 공모주 청약·배정·매도 기록과 수익 계산(상장일 기준 기간), 공모주 일정 달력(DART·KASI 자동 수집), 공모주 상세(DART 투자설명서 기반 수요예측·락업 일정·재무·인수단, 매일 05:00), 증권사 매도 자동 가져오기(한국투자·키움·LS, 조회 전용), 증권사 관리, 수익 그래프·CSV, 관리자(가입 승인·잠금 해제·공모주 등록·CSV 가져오기 — #443에서 제거, 공모주는 수동 등록만).
 - 소개 페이지·손익 색 관례·휴대폰 2단으로 화면 변경.
 
+**이름 통일(10-15, #477)**: 패키지 `com.ipocalc`, DB `ipo_calc`(사용자 `ipo`), 슬롯 `ipo_slot_N`, 볼륨 `ipo-calc-prod_*`, Jenkins 잡 `ipo-calc-deploy`. 운영 DB는 빈 상태로 새로 시작 — 첫 관리자 재지정 필요. 맥 폴더 `~/IdeaProjects/ipocalc`만 아직 안 바꿨다.
+
 **기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·E2E·배포·스모크).
 
 **보증(10-14 오후 갱신)**: Jenkins #28 SUCCESS — 백엔드 테스트·E2E 22·접근성 61화면 위반 0. 이전: 백엔드 1012(checkstyle 경고 0 강제), UI 652, E2E 21(#443 CSV 제거 후), 접근성 59화면 위반 0 — 둘 다 Jenkins 배포 전 단계(#439·#442), Jenkins #21. 전 영역 코드 리뷰 완료(10-13~14, 확정 결함 모두 수정).
