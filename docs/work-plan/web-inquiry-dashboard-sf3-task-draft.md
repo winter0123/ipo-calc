@@ -2,7 +2,7 @@
 
 > **게이트 문구(2026-09-28 갱신)**: **PR #157은 이미 main에 병합**되었고, **PR #168(Epic 16 SF-1)·PR #162(Epic 11 SF-3)·PR #167(Epic 12 SF-1)도 병합 완료**다. 따라서 "PR #157 병합 여부 재확인" 게이트는 **사라졌다**. ui/ 실제 파일 상태는 본 문서 5절 "드리프트 점검"에 `origin/main` 기준으로 대조해 반영했다. 남은 게이트는 **Epic 12 SF-2~4(`/summary`, `/by-investor`, `/by-securities-firm`, `/by-period`) 병합 확인**뿐이며, 병합되면 mock이 아닌 실연동으로 검증해야 한다.
 >
-> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java`
+> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/ipocalc/dashboard/controller/DashboardController.java`
 
 ---
 
@@ -112,7 +112,7 @@ Epic 16(web-inquiry-dashboard) SF-3 수행: 대시보드 화면(/dashboard)의 �
 - ui/src/pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx (로딩/에러 인라인 렌더링 패턴 정본 — shared Spinner/ErrorMessage가 없으므로 대신 참고)
 - ui/src/shared/api/client.ts (apiFetch 패턴 확인)
 - ui/src/features/dashboard/ (SF-4에서 생성될 훅들 — 현재는 없음, 인터페이스만 참고)
-- backend/src/main/java/com/vibeaiteam/dashboard/dto/ (SummaryDto, InvestorAggregationDto, SecuritiesFirmAggregationDto, PeriodAggregationDto — Epic 12 SF-1로 이미 병합됨)
+- backend/src/main/java/com/ipocalc/dashboard/dto/ (SummaryDto, InvestorAggregationDto, SecuritiesFirmAggregationDto, PeriodAggregationDto — Epic 12 SF-1로 이미 병합됨)
 
 ## 수정 가능 파일 (Editable Files)
 - ui/src/features/dashboard/DashboardTabs/DashboardTabs.tsx (신규)
@@ -245,7 +245,7 @@ ui/src/features/login/LoginForm.tsx:20:        navigate('/dashboard')
 
 ### 착수 전 확인 필요 (사용자 결정)
 
-1. **Epic 12 SF-2~4 병합 시점**: 이번 세션에 backend가 완료한다는 전제이므로, 병합 확인 후에는 mock이 아닌 **실연동으로 SF-3~5를 검증**해야 한다. 병합 여부는 `git log origin/main --oneline -- backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java`로 확인한다.
+1. **Epic 12 SF-2~4 병합 시점**: 이번 세션에 backend가 완료한다는 전제이므로, 병합 확인 후에는 mock이 아닌 **실연동으로 SF-3~5를 검증**해야 한다. 병합 여부는 `git log origin/main --oneline -- backend/src/main/java/com/ipocalc/dashboard/controller/DashboardController.java`로 확인한다.
 2. **shared 공용 컴포넌트 정책**: SF-3이 첫 진입점이므로 `Button`/`Spinner`/`ErrorMessage`를 여기서 만들지 않으면 SF-4/SF-5까지 화면마다 인라인 마크업이 중복된다.
 
 ---

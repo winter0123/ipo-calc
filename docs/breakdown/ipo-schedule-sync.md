@@ -58,7 +58,7 @@ SF-1 (OpenDART 클라이언트: DS001 공시검색 + DS006 지분증권 조회)
 
 ## SF-1: OpenDART 클라이언트 — 공시검색(DS001) + 증권신고서-지분증권(DS006)
 
-**범위**: `com.vibeaiteam.ipocatalog`(또는 신규 `iposchedulesync`) 패키지에 OpenDART 호출 클라이언트를 만든다. 2단계 조회 구조를 구현한다: ① DS001 공시검색으로 최근 N일 내 "증권신고서(지분증권)" 제출 회사 목록을 얻는다 → ② 각 회사의 `corp_code`로 DS006 지분증권 API를 호출해 상세 필드를 얻는다.
+**범위**: `com.ipocalc.ipocatalog`(또는 신규 `iposchedulesync`) 패키지에 OpenDART 호출 클라이언트를 만든다. 2단계 조회 구조를 구현한다: ① DS001 공시검색으로 최근 N일 내 "증권신고서(지분증권)" 제출 회사 목록을 얻는다 → ② 각 회사의 `corp_code`로 DS006 지분증권 API를 호출해 상세 필드를 얻는다.
 
 **산출물 파일 경로** (패키지명은 spec 단계에서 확정, 잠정 `ipoexternal` 또는 `ipocatalog.sync`):
 - `service/ipo/sync/opendart/OpenDartCorpDisclosureClient.java` — DS001 공시검색 호출(보고서명 필터: "증권신고서(지분증권)")
@@ -174,5 +174,5 @@ SF-1 (OpenDART 클라이언트: DS001 공시검색 + DS006 지분증권 조회)
 
 - **문서 의존성**: `docs/research/ipo-schedule-sync.md`(전체, 특히 7절), `docs/roadmap.md` 1.1절·6절
 - **모듈 소유권**: 이 Epic의 신규 서비스는 기존 `ipocatalog`(Epic 5) 패키지를 확장하는 형태로 두거나 별도 하위 패키지(`ipocatalog.sync`)로 분리한다 — 정확한 패키지 경로는 spec 단계에서 확정.
-- **검증 명령**: `docs/guide-backend.md` 2절 그대로(`DB_PASSWORD=vibe_local_password ./gradlew test --rerun && ./gradlew build`). 외부 API를 호출하는 클라이언트 테스트는 실제 네트워크 호출 없이 WireMock 또는 목(mock) 서버로 작성한다(CI/로컬 테스트가 외부 API 가용성에 의존하지 않도록).
+- **검증 명령**: `docs/guide-backend.md` 2절 그대로(`DB_PASSWORD=ipo_local_password ./gradlew test --rerun && ./gradlew build`). 외부 API를 호출하는 클라이언트 테스트는 실제 네트워크 호출 없이 WireMock 또는 목(mock) 서버로 작성한다(CI/로컬 테스트가 외부 API 가용성에 의존하지 않도록).
 - **금지사항**: ustockplus 호출 실패를 이유로 OpenDART 데이터 저장까지 막지 않는다(SF-2 특이사항 참고). 스케줄러가 테스트/CI 환경에서 자동 실행되지 않게 한다(SF-4).

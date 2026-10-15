@@ -91,9 +91,9 @@ gh pr view <PR번호> --json state,mergedAt
 
 | 작업공간       | 역할           | 기본 경로                                              |
 | ---------- | ------------ | -------------------------------------------------- |
-| `backend`  | 백엔드 구현 워커 1개           | `/Users/joy/orca/workspaces/vibe-ai-team/backend`  |
-| `frontend` | 프론트엔드 구현 워커 1개          | `/Users/joy/orca/workspaces/vibe-ai-team/frontend` |
-| `planning` | 조사·기획·설계 워커 1개          | `/Users/joy/orca/workspaces/vibe-ai-team/planning` |
+| `backend`  | 백엔드 구현 워커 1개           | `orca worktree list --json`  |
+| `frontend` | 프론트엔드 구현 워커 1개          | `orca worktree list --json` |
+| `planning` | 조사·기획·설계 워커 1개          | `orca worktree list --json` |
 
 
 독립 브랜치가 동시에 필요하면 `backend-2`, `backend-3`처럼 추가 작업공간을 만든다. 역할별 모든 `<역할>-N`을 합쳐 활성 워커는 최대 5개다. 새 워커를 만들기 직전에 `worker-list`로 실제 수를 세고, 독립 대기 작업 수와 여유 수만큼 한 번에 병렬 배정한다.
@@ -277,9 +277,7 @@ OpenCode가 OpenRouter 업스트림 429로 멈추면 화면에 에러 문구만 
 ```bash
 orca terminal read --terminal <handle> --json
 orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
-orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/backend --json
-orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/frontend --json
-orca terminal list --worktree path:/Users/joy/orca/workspaces/vibe-ai-team/planning --json
+orca terminal list --worktree path:<작업공간-절대경로> --json   # 경로는 orca worktree list --json으로 확인
 ```
 
 에러 이후 새 진행이 없거나, 같은 생각 문구가 반복되거나, 파일·커밋이 늘지 않으면 중지로 판단한다. 파일을 삭제하지 않고 새 무료 모델로 같은 태스크를 재배정한다. 비어 있는 작업공간은 `current-status.md`의 다음 큐와 1\~2 Epic 앞선 planning 준비 상태를 대조해 같은 점검 주기 안에 다음 작업을 배정하거나, 예외 사유를 기록한다.

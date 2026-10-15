@@ -8,4 +8,4 @@ runcmd:
   - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
   - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
   - netfilter-persistent save
-  - mkdir -p /opt/vibe && chown ubuntu:ubuntu /opt/vibe
+  - mkdir -p /opt/ipo-calc && chown ubuntu:ubuntu /opt/ipo-calc

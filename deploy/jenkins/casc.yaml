@@ -9,7 +9,7 @@ jenkins:
   authorizationStrategy: loggedInUsersCanDoAnything
 jobs:
   - script: >
-      pipelineJob('vibe-deploy') {
+      pipelineJob('ipo-calc-deploy') {
         definition {
           cpsScm {
             scm {

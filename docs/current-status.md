@@ -21,7 +21,7 @@
 
 **보류(외부 대기)**: eslint 10·TypeScript 7(플러그인 미지원), 상장일 공식 API(없음 — ustockplus 유지).
 
-**작업 방식(10-14 오후~)**: Orca 오케스트레이션 + OpenCode 무료 모델 워커, `scripts/orca-worker-watchdog.py --loop 120` + `scripts/orca-coord-watch.sh <run>`, 작업 중 테스트는 바뀐 부분만. 컨테이너는 compose 프로젝트 `vibe-ai-team`, 이름 `-dev`/`-prod`. 이전: 메인 체크아웃은 main 유지, 고정 작업공간 `../vibe-w1~w3` + 하위 에이전트, 로컬 운영 스택은 Jenkins로만 재배포, E2E·접근성·캡처는 DB 슬롯 4 공유(동시 실행 금지). 상세 기록은 `docs/daily-log/2026_10_13.md`.
+**작업 방식(10-14 오후~)**: Orca 오케스트레이션 + OpenCode 무료 모델 워커, `scripts/orca-worker-watchdog.py --loop 120` + `scripts/orca-coord-watch.sh <run>`, 작업 중 테스트는 바뀐 부분만. 컨테이너는 compose 프로젝트 `ipo-calc`, 이름 `-dev`/`-prod`. 이전: 메인 체크아웃은 main 유지, 로컬 운영 스택은 Jenkins로만 재배포, E2E·접근성·캡처는 DB 슬롯 4 공유(동시 실행 금지). 상세 기록은 `docs/daily-log/2026_10_13.md`.
 
 ## 사용성 개선 (2026-10-13) — 최신
 
@@ -35,7 +35,7 @@
 - **휴대폰(≤640px) 후속(#346·#347)**: 투자 내역 행을 라벨 있는 카드로, 대시보드 요약 카드 2×2, 수익 확인 날짜 나란히·기간 버튼 한 줄·요약 카드 한 줄, 달력 칸 안 공휴일 이름 숨김. 데스크톱 불변.
 - **배포 코드(#339)**: `infra/oracle/` Terraform(Oracle Cloud VM)과 `docs/handoff-free-deployment.md` 병합. 실제 VM 생성·운영 환경 변수·키 백업은 사용자 몫.
 - **할 일 전체 조회(#349)**: 대시보드 할 일이 청약 100건 상한 없이 마지막 페이지까지 이어 읽는다(`getAllInvestmentHistory`).
-- **배포 파이프라인 실동작 확인**: 로컬 Jenkins(`deploy/jenkins`, :18081) `vibe-deploy` 빌드 #4가 `main`(`94264f4`)으로 백엔드 테스트·UI 테스트·운영 compose 배포·스모크까지 SUCCESS, 로컬 운영 스택(:18080) 웹 200·`/api/auth/me` 401·`/api/ipos` 200. 실제 Oracle VM 배포는 아직 안 함.
+- **배포 파이프라인 실동작 확인**: 로컬 Jenkins(`deploy/jenkins`, :18081) `ipo-calc-deploy` 빌드 #4가 `main`(`94264f4`)으로 백엔드 테스트·UI 테스트·운영 compose 배포·스모크까지 SUCCESS, 로컬 운영 스택(:18080) 웹 200·`/api/auth/me` 401·`/api/ipos` 200. 실제 Oracle VM 배포는 아직 안 함.
 - **남은 것(사용자 몫)**: 운영 VM에 백업 cron 등록(`scripts/backup-db.sh`),  KIS·키움·LS 실제 키로 1회 조회 확인(키움은 서버 IP 등록), 실제 Oracle VM 배포, 상장일 공식 출처 없음(ustockplus 유지), 배포 후 관리자가 `POST /ipos/insight/sync` 1회 실행.
 - **기간 기준 = 공모주 상장일(#351, 사용자 결정)**: 대시보드 월별·연도별과 수익 확인 기간 필터는 매도일이 아니라 공모주 상장일로 판단한다(10월 상장을 11월에 팔아도 10월). 상장일이 없는 공모주만 매도일로 대체. 이로써 "한 배정이 여러 기간에 걸치는" 미결 문제도 사라졌다.
 - **증권사 관리 화면(#353)**: `/securities`(설정 → 증권사 관리, 현재 투자자 기준). 등록한 증권사(계좌 이름·가려진 번호, `번호 보기`는 그때만 서버 조회, 이름 수정·기본 지정·삭제=소프트 삭제)와 나머지 증권사 그리드(신규 등록). 증권사 목록에 15곳 추가(V22, 총 30곳). 계좌번호 자체는 수정 불가(서버 PATCH가 이름만 받음) → 바꾸려면 삭제 후 재등록.
@@ -77,7 +77,7 @@
 ### 사용자 선호·운영 규칙(이번 기간에 확인된 것)
 - 사용자는 짧게 지시한다("ㅇㅇ 진행", "너가 직접 해"). 모호하면 추측하지 말고 한 번 묻되(예: "기타 비용 등록도 없애" → 기능 삭제로 확인), 결정된 일은 끝까지 진행한다. 사용자가 알 수 없는 내부 ID를 입력·표시시키지 않는다(ID 입력칸·ID 열을 모두 제거했다).
 - **UI 변경은 실제 브라우저로 확인**한다(jsdom은 CSS 레이아웃을 못 잡는다). `tools/screenshot-guide/run.sh`로 화면을 캡처해 직접 열어 본다. 레이아웃·헤더 폭 문제(1280px/390px)를 이렇게 여러 번 잡았다.
-- 코디네이터는 메인 체크아웃(`/Users/joy/IdeaProjects/vibe-ai-team`, 항상 main)에서 작업하지 않는다. 구현은 `cost`·`sync`·`frontend` 작업공간에서 브랜치를 따서 하고 PR로 병합한다. 병합 후 브랜치·워커 터미널을 바로 정리한다.
+- 코디네이터는 메인 체크아웃(`/Users/joy/IdeaProjects/ipo-calc`, 항상 main)에서 작업하지 않는다. 구현은 `cost`·`sync`·`frontend` 작업공간에서 브랜치를 따서 하고 PR로 병합한다. 병합 후 브랜치·워커 터미널을 바로 정리한다.
 - **워커 사용법(현재 동작하는 경로)**: `worker-start --agent opencode --model ...`은 모델 선택을 검증하지 못해 거절된다. 대신 `orca terminal create --worktree path:<작업공간> --title <이름> --command 'OPENCODE_CONFIG=/Users/joy/.config/opencode/orca-worker.json opencode --model opencode/mimo-v2.6-flash-free'`로 터미널을 만들고 화면의 `Build · MiMo-V2.6-Flash Free` 줄을 확인한 뒤 `orca orchestration worker-start --spec "$(cat spec.md)" --terminal <handle> --worktree path:<작업공간> --json`으로 배정한다. 끝나면 `check --wait`로 `worker_done`을 받고, **워커 보고를 믿지 말고 diff를 읽고 검증 명령을 직접 다시 돌린 뒤** 커밋·PR·병합하고 `worker-release` + `orca terminal close`로 정리한다. 백엔드 워커는 슬롯 DB 1~3 중 배정, Master 검증은 슬롯 4.
 - 워커가 `Permission required` 프롬프트에서 멈추면(`worker-read`로 화면 확인) 프롬프트를 대신 누르지 말고 `orca-worker.json`에 좁은 allow 규칙만 추가한 뒤 새 터미널로 다시 배정한다(deny·유료 모델·비밀 파일은 건드리지 않는다). 이번에는 OpenCode 자체 임시 폴더(`/var/folders/**/opencode/**`)만 허용했다. 워커 spec에는 "JDK/Spring 내부를 javap로 파헤치지 않는다, 막히면 질문"을 넣는다.
 - 워커 spec은 `docs/worker-spec-template.md` 형식 + 범위 밖(spotlessApply 금지·슬롯 규칙·커밋 금지) + 검증 명령 복사. 빈 대기가 3번 이어지면 `worker-list`/`worker-read`로 실제 상태를 본다. 워커가 수정한 파일이 늘어나는지(`git status`)로도 진행을 확인할 수 있다.
@@ -213,7 +213,7 @@ KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 �
 1. **KIS 앱키를 `.env`에 넣는 일**(지금은 발급 불가). 그 뒤 Master가 실계좌를 1회 호출해 필드·`pdno` 형식을 확인하고 SF-4b → SF-5 → SF-6(프론트)을 진행한다. 변수 이름, 알려진 공모주 매도일, 숫자값을 출력에 볼지 형태만 볼지는 아직 답이 없다.
 2. ~~E17 SF-2(ustockplus) 폐기 여부~~: 해결. 사용자가 편입으로 확정했고 코드는 #211·#200에서 이미 연결돼 있다(이전의 "붙이지 않은 상태"라는 기록이 틀렸다). 단, OpenDART 루프가 중단되면(`OPENDART_API_KEY` 없음·한도 초과) ustockplus 병합은 실행되지 않는다. 비공식 API라 차단·스펙 변경 시 상장예정일·배정일·환불일만 비고 나머지는 정상 동작한다.
 
-**DB 슬롯 풀(#215)**: 슬롯 `vibe_slot_1~4`(1~3 워커, 4 Master). `scripts/db-slot.sh reset <n>` 후 `DB_NAME=vibe_slot_<n>`으로 테스트한다. **슬롯을 새로 만든 DB에서 전체 테스트가 622개 중 17개 실패한다** — V15 시드 증권사 14개와 테스트 하드코딩 이름 충돌, 그리고 `SecuritiesFirmControllerTest`의 tearDown이 시드 행을 삭제하는 기존 테스트 결함(#215가 만든 회귀 아님, Master가 슬롯 4에서 재현). 이 결함이 기본 공유 DB의 `securities_firms`가 0행이던 이유다. 별도 SF로 수정해 **#216으로 병합**했다(4개 클래스: 위 3개 + 그 수정으로 드러난 `SecuritiesFirmRepositoryTest`, 범위 확장은 Master 승인). Master가 슬롯 4를 reset한 직후 전체 테스트 650개 통과, reset 없이 재실행도 650개 통과, 시드 증권사 15개 보존, checkstyle 0을 직접 확인했다. 이제 슬롯은 reset 직후에도 전체 테스트가 통과해야 정상이다. 참고: 기본 공유 DB의 `securities_firms`는 과거 테스트가 시드를 지운 잔해라 0행일 수 있고 기능에는 영향이 없다.
+**DB 슬롯 풀(#215)**: 슬롯 `ipo_slot_1~4`(1~3 워커, 4 Master). `scripts/db-slot.sh reset <n>` 후 `DB_NAME=ipo_slot_<n>`으로 테스트한다. **슬롯을 새로 만든 DB에서 전체 테스트가 622개 중 17개 실패한다** — V15 시드 증권사 14개와 테스트 하드코딩 이름 충돌, 그리고 `SecuritiesFirmControllerTest`의 tearDown이 시드 행을 삭제하는 기존 테스트 결함(#215가 만든 회귀 아님, Master가 슬롯 4에서 재현). 이 결함이 기본 공유 DB의 `securities_firms`가 0행이던 이유다. 별도 SF로 수정해 **#216으로 병합**했다(4개 클래스: 위 3개 + 그 수정으로 드러난 `SecuritiesFirmRepositoryTest`, 범위 확장은 Master 승인). Master가 슬롯 4를 reset한 직후 전체 테스트 650개 통과, reset 없이 재실행도 650개 통과, 시드 증권사 15개 보존, checkstyle 0을 직접 확인했다. 이제 슬롯은 reset 직후에도 전체 테스트가 통과해야 정상이다. 참고: 기본 공유 DB의 `securities_firms`는 과거 테스트가 시드를 지운 잔해라 0행일 수 있고 기능에는 영향이 없다.
 
 **E2E 결함 수정 완료(#224, 2026-09-30)**: 아래 3건을 프론트에서 고쳐 병합했고, 재실측 결과 **6/6 PASS**다(`docs/qa/e2e-report.md` "재실측 결과"). E2E-6은 화면 문구만 맞췄고 응답은 여전히 400이다(백엔드 테스트가 400을 명시해 계약은 그대로, 404로 바꿀지는 별도 결정). `ui/` format:check 9개 파일도 정리했다.
 
@@ -306,7 +306,7 @@ KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 �
 - `backend-4`: 마지막 브랜치 `winter0123/checkstyle-test-cleanup`(병합 완료, PR #202, 현재 `origin/main` detached). 다음 세션은 `origin/main`에서 새 브랜치로 시작.
 - `frontend-4`: 마지막 브랜치 `winter0123/e19-sf2-ipo-calendar`(병합 완료, PR #201, `origin/main` detached).
 - `planning-5-2`: E17 spec 작업 워크스페이스(PR #191 병합 완료). 경로는 `orca worktree list --json`으로 재확인.
-- 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`vibe-ai-team-postgres-dev`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
+- 이번 세션의 워커 터미널은 모두 닫았고 진행 중인 워커 dispatch는 없다. 로컬 dev Postgres(`ipo-calc-postgres-dev`, localhost:5433)는 기동 중이며 공유 DB라 테스트를 병렬 실행하면 안 된다. 테스트가 남긴 잔여 행이 다른 테스트를 깨뜨릴 수 있으니 이상하면 먼저 DB 잔여 행을 확인한다.
 
 ## 2026-09-30 세션 요약 (다음 세션 인계용)
 
@@ -314,7 +314,7 @@ KIS 앱키가 채워져 BLOCKED가 풀렸다. Master가 `TTTC8715R`을 1회만 �
 
 **문서 정리(커밋 `8244941`)**: Epic 18 브레이크다운의 게이트 4건 조사 결과 반영(① 수수료·세금은 기간별매매손익현황 TTTC8715R만 있음/일자×종목 집계, ② "조회 전용"은 읽기전용 키가 아니라 쓰기 코드를 안 만든다는 뜻으로 확정, ③ 토큰은 만료시각까지 암호화 캐시, ④ 계좌번호는 CANO+ACNT_PRDT_CD 쿼리 파라미터). SF-5(`GET /ipo-schedule`)는 폐기하고 기존 `GET /ipos`를 씀 — 관련 문서(`docs/breakdown/ipo-schedule-sync.md`, `docs/spec/ipo-schedule-sync.md`, `docs/breakdown/posthoc-ux-redesign.md`, `docs/spec/posthoc-ux-redesign.md`, 로드맵) 전부 갱신.
 
-**checkstyle 재조사로 정정**: 이전 세션 기록의 "532건"은 정확했다(이번 세션 초반에 `--rerun`과 `--rerun-tasks`를 헷갈려 캐시된 결과를 "87건"으로 잘못 판단했던 적이 있음 — **checkstyle 재검증은 반드시 `--rerun-tasks`를 쓴다, `--rerun`은 이 프로젝트에서 무시된다**). 실제 내역: 테스트 코드 87건은 이번 세션에 직접 수정해 PR #202로 병합 완료(SummaryJavadoc 마침표, star import 전개, 라인 길이, 중괄호, 그리고 테스트 전용 관례를 인정하는 `config/checkstyle/checkstyle-suppressions.xml` 신설). **남은 것은 프로덕션 코드 약 440건(`MissingJavadocMethod` 276 + `MissingJavadocType` 152 + 기타)** — 사용자에게 규칙을 끌지 직접 채울지 물었고, **"규칙 끄지 말고 네가 직접 수정해"로 확정**. 다음 세션에서 이어서 진행: `backend-4`에서 `DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q`로 최신 위반 목록을 뽑고, Master(코디네이터)가 직접 public 클래스·메서드에 한 줄 Javadoc을 채운다(기계적 작업이라 워커에게 맡기기엔 방향 판단 여지가 적지만, 분량이 크면 워커 위임도 재고).
+**checkstyle 재조사로 정정**: 이전 세션 기록의 "532건"은 정확했다(이번 세션 초반에 `--rerun`과 `--rerun-tasks`를 헷갈려 캐시된 결과를 "87건"으로 잘못 판단했던 적이 있음 — **checkstyle 재검증은 반드시 `--rerun-tasks`를 쓴다, `--rerun`은 이 프로젝트에서 무시된다**). 실제 내역: 테스트 코드 87건은 이번 세션에 직접 수정해 PR #202로 병합 완료(SummaryJavadoc 마침표, star import 전개, 라인 길이, 중괄호, 그리고 테스트 전용 관례를 인정하는 `config/checkstyle/checkstyle-suppressions.xml` 신설). **남은 것은 프로덕션 코드 약 440건(`MissingJavadocMethod` 276 + `MissingJavadocType` 152 + 기타)** — 사용자에게 규칙을 끌지 직접 채울지 물었고, **"규칙 끄지 말고 네가 직접 수정해"로 확정**. 다음 세션에서 이어서 진행: `backend-4`에서 `DB_PASSWORD=ipo_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q`로 최신 위반 목록을 뽑고, Master(코디네이터)가 직접 public 클래스·메서드에 한 줄 Javadoc을 채운다(기계적 작업이라 워커에게 맡기기엔 방향 판단 여지가 적지만, 분량이 크면 워커 위임도 재고).
 
 **Epic 18 사용자 결정 3건 — 2026-09-30 확정**:
 1. 매도·수수료·세금 자동 채움은 `TTTC8715R` 기준, 같은 날 같은 종목 분할매도는 합산해 매칭(Master 권고안 채택).

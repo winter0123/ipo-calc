@@ -112,21 +112,21 @@ DS006 응답에 `stock_code` 필드가 있는지 **실제 API 호출로 확인 �
 ## 4. SF-1: OpenDART 클라이언트 — 상세 구현 명세
 
 ### 4.1 패키지·파일 경로 후보 (Master 최종 결정)
-기존 패키지 컨벤션 `com.vibeaiteam.ipocatalog.service.ipo.{subfeature}`를 따르는 후보:
+기존 패키지 컨벤션 `com.ipocalc.ipocatalog.service.ipo.{subfeature}`를 따르는 후보:
 
 | 후보 | Java 패키지 | 장점 |
 |---|---|---|
-| 후보 A (권장) | `com.vibeaiteam.ipocatalog.service.ipo.sync.opendart` | `service.ipo.sync.opendart` 하위 패키지로 외부 연동 클라이언트를 기존 ipocatalog service 계층에 배치. `dto`는 `com.vibeaiteam.ipocatalog.service.ipo.sync.opendart.dto`에 배치 |
-| 후보 B | `com.vibeaiteam.ipocatalog.infrastructure.opendart` | architecture 문서의 `infrastructure` 레이어와 정렬. 하지만 기존 코드에서 `ipocatalog` 패키지에는 `infrastructure` 하위 패키지가 없음(다른 Epic의 `securitiesaccountmanagement.infrastructure` 참조) |
+| 후보 A (권장) | `com.ipocalc.ipocatalog.service.ipo.sync.opendart` | `service.ipo.sync.opendart` 하위 패키지로 외부 연동 클라이언트를 기존 ipocatalog service 계층에 배치. `dto`는 `com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto`에 배치 |
+| 후보 B | `com.ipocalc.ipocatalog.infrastructure.opendart` | architecture 문서의 `infrastructure` 레이어와 정렬. 하지만 기존 코드에서 `ipocatalog` 패키지에는 `infrastructure` 하위 패키지가 없음(다른 Epic의 `securitiesaccountmanagement.infrastructure` 참조) |
 
-> **Master 결정 표시**: ✅ 후보 A (`com.vibeaiteam.ipocatalog.service.ipo.sync.opendart`)를 기본으로 하지만, Master가 직접 패키지 경로를 확정한다.
+> **Master 결정 표시**: ✅ 후보 A (`com.ipocalc.ipocatalog.service.ipo.sync.opendart`)를 기본으로 하지만, Master가 직접 패키지 경로를 확정한다.
 
 ### 4.2 산출물 파일 목록 (breakdown §SF-1과 동일)
 
-> **패키지**: `com.vibeaiteam.ipocatalog.service.ipo.sync.opendart` (후보 A, Master 최종 결정)
+> **패키지**: `com.ipocalc.ipocatalog.service.ipo.sync.opendart` (후보 A, Master 최종 결정)
 
 ```
-backend/src/main/java/com/vibeaiteam/ipocatalog/service/ipo/sync/opendart/
+backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/opendart/
 ├── OpenDartCorpDisclosureClient.java          — DS001 공시검색 호출(보고서명 필터: "증권신고서(지분증권)")
 ├── OpenDartEquitySecuritiesClient.java         — DS006 지분증권 상세 조회
 ├── OpenDartApiProperties.java                  — 설정 프로퍼티 (crtfc_key, base-url). 같은 패키지에 둔다(infrastructure.config는 ipocatalog에 없음)
@@ -269,8 +269,8 @@ public class OpenDartApiProperties {
 - 모든 OpenDART 호출은 조회 전용이다.
 
 ### 4.9 기존 코드와의 연동
-- `IpoRepository` (`com.vibeaiteam.ipocatalog.repository.ipo`) — SF-3에서 upsert 시 사용
-- `IpoCsvImportService`의 `IpoImportResponse`/`IpoImportFailure` 패턴(`com.vibeaiteam.ipocatalog.controller.ipo.dto`) — SF-3 `IpoSyncResult`/`IpoSyncFailure` DTO 패턴으로 재사용 권장
+- `IpoRepository` (`com.ipocalc.ipocatalog.repository.ipo`) — SF-3에서 upsert 시 사용
+- `IpoCsvImportService`의 `IpoImportResponse`/`IpoImportFailure` 패턴(`com.ipocalc.ipocatalog.controller.ipo.dto`) — SF-3 `IpoSyncResult`/`IpoSyncFailure` DTO 패턴으로 재사용 권장
 - `application.yml`의 `app.encryption.key: ${APP_ENCRYPTION_KEY:}` 패턴과 동일한 `${...:}` 빈 값 허용 방식 따름
 
 ## 5. SF-2: ustockplus.com 클라이언트 — 개요

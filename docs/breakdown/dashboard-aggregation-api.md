@@ -63,7 +63,7 @@ SF-1 (기반 계층: 응답 DTO 4종, 에러 프레임워크, 소유권 검증 �
 
 **선행 SF**: 없음 (첫 번째 SF). **단, 구현 착수 게이트로 Epic 10(main 머지)을 받는다** — ProfitCalculator의 메서드 시그니처가 SF-1에서 직접 호출되기 때문.
 
-**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.vibeaiteam.dashboard`):
+**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.ipocalc.dashboard`):
 - `dto/dashboard/SummaryDto.java` — 전체 집계 응답 DTO. 필드: totalInvestmentAmount(Long), totalPreTaxProfit(Long), totalAfterTaxProfit(Long), totalProfitRate(Double), participationCount(Integer)
 - `dto/dashboard/InvestorAggregationDto.java` — 투자자별 집계 응답 DTO. SummaryDto 필드 + investorId(Long), investorName(String)
 - `dto/dashboard/SecuritiesFirmAggregationDto.java` — 증권사별 집계 응답 DTO. SummaryDto 필드 + securitiesFirmId(Long), securitiesFirmName(String)
@@ -184,7 +184,7 @@ SF-1 (기반 계층: 응답 DTO 4종, 에러 프레임워크, 소유권 검증 �
     ─ 아니면 → 대기 (SF-1도 착수하지 않는다)
 ```
 
-- **왜 SF-1도 묶어 두는가**: 기술적으로 SF-1(DTO/에러/소유권 헬퍼/공통 데이터 준비)은 ProfitCalculator를 직접 참조하지 않을 수 있지만, `ProfitCalculator`의 메서드 시그니처와 반환값이 SF-1의 `loadCalculatedSales()` 설계를 결정하며, 전체 모듈이 `com.vibeaiteam.dashboard` 패키지로 하나의 브랜치에서 개발되므로 **Epic 10이 머지된 뒤에 한 번에 착수**한다. breakdown은 미리 확정해 두되, Subticket 생성·워커 배정은 게이트 이후에 한다
+- **왜 SF-1도 묶어 두는가**: 기술적으로 SF-1(DTO/에러/소유권 헬퍼/공통 데이터 준비)은 ProfitCalculator를 직접 참조하지 않을 수 있지만, `ProfitCalculator`의 메서드 시그니처와 반환값이 SF-1의 `loadCalculatedSales()` 설계를 결정하며, 전체 모듈이 `com.ipocalc.dashboard` 패키지로 하나의 브랜치에서 개발되므로 **Epic 10이 머지된 뒤에 한 번에 착수**한다. breakdown은 미리 확정해 두되, Subticket 생성·워커 배정은 게이트 이후에 한다
 - **Epic 10 머인 확인 후 첫 순서**: backend 워크스페이스에서 브랜치 `winter0123/dashboard-aggregation-api`를 `origin/main` 기준으로 신설 → SF-1부터 순차 구현 → 각 SF는 PR 후 main 머지 (12.4-1 기능 단위 병합)
 - **이 Epic의 계정 소유권 검증(AC-013)**: 모든 엔드포인트가 `SecurityUtils.getCurrentAccountId()` 기준으로 현재 Account 소유 데이터만 조회. `loadCalculatedSales()`의 `findAllByStatusAndInvestorAccountId("ACTIVE", currentAccountId)`가 핵심 필터이며, 이는 Epic 11의 D-Q-006 패턴과 동일
 

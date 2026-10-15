@@ -249,10 +249,10 @@ Reject"""
 
     # 필터 함수 테스트
     test_workers = [
-        {"dispatchId": "d1", "resource": {"worktreeId": "repo1::/path/vibe-w1"}, "dispatchStatus": "dispatched"},
-        {"dispatchId": "d2", "resource": {"worktreeId": "repo1::/path/orca/workspaces/vibe-ai-team/vibe-w2"}, "dispatchStatus": "dispatched"},
+        {"dispatchId": "d1", "resource": {"worktreeId": "repo1::/path/w1"}, "dispatchStatus": "dispatched"},
+        {"dispatchId": "d2", "resource": {"worktreeId": "repo1::/path/orca/workspaces/ipo-calc/w2"}, "dispatchStatus": "dispatched"},
         {"dispatchId": "d3", "resource": {"worktreeId": "repo2::/path/other"}, "dispatchStatus": "dispatched"},
-        {"dispatchId": "d4", "resource": {"worktreeId": "repo1::/path/vibe-w3"}, "dispatchStatus": "completed"},  # dispatched 아님
+        {"dispatchId": "d4", "resource": {"worktreeId": "repo1::/path/w3"}, "dispatchStatus": "completed"},  # dispatched 아님
     ]
     # repoId 접두사로 필터링
     result = filter_workers_by_repo(test_workers, "repo1", None)
@@ -263,11 +263,11 @@ Reject"""
     assert len(result) == 1
     assert result[0][0] == "d3"
     # 수동 문자열 필터 (repoId 없을 때)
-    result = filter_workers_by_repo(test_workers, None, "vibe-ai-team")
+    result = filter_workers_by_repo(test_workers, None, "ipo-calc")
     assert len(result) == 1
     assert result[0][0] == "d2"
     # repoId와 수동 필터 모두 주면 둘 다 적용 (AND)
-    result = filter_workers_by_repo(test_workers, "repo1", "vibe-ai-team")
+    result = filter_workers_by_repo(test_workers, "repo1", "ipo-calc")
     assert len(result) == 1
     assert result[0][0] == "d2"
 

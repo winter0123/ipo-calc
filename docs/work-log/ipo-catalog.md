@@ -17,7 +17,7 @@ Ipo는 Account 소유 엔티티가 아니라 모든 인증된 사용자에게 �
 
 ### 패키지 구조 결정
 
-`com.vibeaiteam.ipocatalog`를 루트 패키지로 사용 (Investor/SecuritiesFirm/SecuritiesAccount와 동일한 명명 스타일).
+`com.ipocalc.ipocatalog`를 루트 패키지로 사용 (Investor/SecuritiesFirm/SecuritiesAccount와 동일한 명명 스타일).
 
 ### SF 분해 (5.4, 총 6개, 순차 의존)
 
@@ -38,7 +38,7 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록, 중복 검사 �
 ## 2026-09-21 — SF-1 완료 (Ipo 엔티티/Repository/마이그레이션)
 
 ### 구현 내용
-- **패키지 구조**: `com.vibeaiteam.ipocatalog` 루트 패키지 사용
+- **패키지 구조**: `com.ipocalc.ipocatalog` 루트 패키지 사용
   - `domain/model/ipo/Ipo.java` — JPA 엔티티 (id Long IDENTITY, companyName/ipoName 필수, stockCode/roundLabel/lowerBandPrice/upperBandPrice/fixedPrice/listingDate/offeringShareCount 선택, subscriptionStartDate/subscriptionEndDate 필수, status 기본값 ACTIVE, deletedAt/createdAt/updatedAt)
   - `repository/ipo/IpoRepository.java` — `findByIdAndDeletedAtIsNull`, `findAllByDeletedAtIsNullOrderByCreatedAtDesc` 메서드 포함
 - **Flyway 마이그레이션**: `V5__create_ipos_table.sql` (기존 V4 다음 버전)
@@ -50,7 +50,7 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록, 중복 검사 �
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **147개 통과** (신규 7개 포함, 기존 테스트 영향 없음)
 - 마이그레이션 적용 및 엔티티 매핑 정상 확인
@@ -70,7 +70,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **160개 통과** (신규 13개 포함, 실패/에러 0)
 
@@ -93,7 +93,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **166개 통과** (신규 6개 포함, 기존 테스트 영향 없음, 실패/에러 0)
 
@@ -107,7 +107,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 통과 (기존 + 8개 추가, 실패 0)
 
@@ -132,7 +132,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **177개 통과** (신규 3개 포함, 실패/에러 0)
 
@@ -163,7 +163,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - 전체 테스트 스위트 **184개 통과** (신규 7개 포함, 실패/에러 0)
 - RED 단계에서 신규 7개 전원 실패 확인 후 GREEN 전환

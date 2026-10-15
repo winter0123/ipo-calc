@@ -61,7 +61,7 @@ Subscription에는 없음).
 
 ### 구현 내용 (Test-First: RED → GREEN)
 - **RED**: `SubscriptionRepositoryTest`를 먼저 작성하고 실행 — `Subscription`/`SubscriptionRepository`가 없어 컴파일 실패(20 errors)로 RED 확인.
-- **패키지 구조**: `com.vibeaiteam.subscriptionmanagement` 루트 패키지 (architecture.md 의 `domain.model.subscription`/`repository.subscription` 패키지 소유)
+- **패키지 구조**: `com.ipocalc.subscriptionmanagement` 루트 패키지 (architecture.md 의 `domain.model.subscription`/`repository.subscription` 패키지 소유)
   - `domain/model/subscription/Subscription.java` — JPA 엔티티 (id Long IDENTITY, investorId/securitiesAccountId/ipoId/quantity/depositAmount/subscribedAt 필수, memo 선택, status 기본값 ACTIVE, deletedAt/createdAt/updatedAt). 기존 `Ipo` 엔티티의 Lombok `@Builder`/`@Getter`/`@Setter`/`@NoArgsConstructor`/`@AllArgsConstructor` 패턴 동일 적용. memo는 마이그레이션의 `TEXT` 컬럼과 매핑.
   - `repository/subscription/SubscriptionRepository.java` — 다음 SF(등록 API)에서 즉시 쓸 조회 메서드 5종:
     1. `findByIdAndDeletedAtIsNull(Long)` — 상세 조회(논리 삭제 필터)
@@ -89,10 +89,10 @@ Subscription에는 없음).
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - **전체 테스트 스위트 192개 통과** (기존 184개 + 신규 8개, skipped 0 / failures 0 / errors 0)
-- 테스트 DB(vibe_ai_team@5433)에 Flyway V7 적용 확인(부분 유니크 인덱스 동작을 테스트 7·8로 검증, `ddl-auto: validate` 통과)
+- 테스트 DB(ipo_calc@5433)에 Flyway V7 적용 확인(부분 유니크 인덱스 동작을 테스트 7·8로 검증, `ddl-auto: validate` 통과)
 
 ### 다음 SF 예고 — SF-2: 청약 등록 API (POST /subscriptions)
 - `controller/subscription/SubscriptionController`, `service/subscription/SubscriptionService` 생성
@@ -133,7 +133,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - **전체 테스트 스위트 204개 통과** (기존 199개 + 신규 5개, failures 0 / errors 0 / skipped 0)
 - `SubscriptionControllerTest`: 12개 통과 (SF-2 등록 7 + SF-3 조회 5)
@@ -172,7 +172,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - **전체 테스트 스위트 210개 통과** (기존 204개 + 신규 6개, failures 0 / errors 0 / skipped 0)
 - `SubscriptionControllerTest`: 18개 통과 (SF-2 등록 7 + SF-3 조회 5 + SF-4 수정 6)
@@ -203,7 +203,7 @@ DB_PASSWORD=vibe_local_password ./gradlew test --rerun
 
 ### 테스트 실행 결과
 ```bash
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
 ```
 - **전체 테스트 스위트 214개 통과** (기존 210개 + 신규 4개, failures 0 / errors 0 / skipped 0)
 - `SubscriptionControllerTest`: 22개 통과 (SF-2 등록 7 + SF-3 조회 5 + SF-4 수정 6 + SF-5 취소 4)

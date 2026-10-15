@@ -1,0 +1,30 @@
+package com.ipocalc.dashboard.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/** 투자자별 집계 DTO. */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvestorAggregationDto {
+
+  private Long investorId;
+
+  private String investorName;
+
+  private Long totalInvestmentAmount;
+
+  private Long totalPreTaxProfit;
+
+  private Long totalAfterTaxProfit;
+
+  private Double totalProfitRate;
+
+  private Integer participationCount;
+}

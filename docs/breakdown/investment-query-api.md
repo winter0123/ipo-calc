@@ -43,12 +43,12 @@ SF-1 (기반 계층: 응답 DTO·에러 프레임워크·소유권 검증 헬퍼
 
 **선행 SF**: 없음 (첫 번째 SF)
 
-**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.vibeaiteam.investmentqueryapi` — cost-recording이 `com.vibeaiteam.costrecording`을 쓴 것과 동일한 명명 스타일):
+**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.ipocalc.investmentqueryapi` — cost-recording이 `com.ipocalc.costrecording`을 쓴 것과 동일한 명명 스타일):
 - `dto/investmenthistory/InvestmentHistoryDto.java` — 응답 1건(row) DTO. 필드: id, subscribedAt, ipoId, ipoName, ipoFixedPrice, subscriptionQuantity, subscriptionStatus, allocation(AllocationSummaryDto, nullable), sales(List<SaleSummaryDto>), remainingQuantity(Long, nullable)
 - `dto/investmenthistory/AllocationSummaryDto.java` — id, allocatedQuantity, allocationPrice(nullable), allocationStatus
 - `dto/investmenthistory/SaleSummaryDto.java` — id, quantity, amount, fee, tax, otherCost, status, soldAt
 - `exception/InvestmentQueryForbiddenException.java`, `InvestmentQueryNotFoundException.java`, `InvestmentQueryValidationException.java`, `InvestmentQueryExceptionHandler.java` — 참고: 기존 모듈의 SubscriptionExceptionHandler 패턴을 그대로 따른다. 403 응답은 spec의 `{ "error": "FORBIDDEN", "message": "해당 데이터에 접근 권한이 없습니다." }`
-- `service/investmenthistory/InvestmentHistoryOwnershipVerifier.java` — **소유권 재검증 헬퍼**. `SecurityContextHolder`(기존 `com.vibeaiteam.accountauthentication.util.security.SecurityUtils.getCurrentAccountId()`)로 현재 Account ID를 얻고, 필터 파라미터 3종(investorId/securitiesAccountId/ipoId)과 Subscription 단건의 소유권을 검증한다. 실패 시 InvestmentQueryForbiddenException(403)
+- `service/investmenthistory/InvestmentHistoryOwnershipVerifier.java` — **소유권 재검증 헬퍼**. `SecurityContextHolder`(기존 `com.ipocalc.accountauthentication.util.security.SecurityUtils.getCurrentAccountId()`)로 현재 Account ID를 얻고, 필터 파라미터 3종(investorId/securitiesAccountId/ipoId)과 Subscription 단건의 소유권을 검증한다. 실패 시 InvestmentQueryForbiddenException(403)
 - `repository/subscription/SubscriptionRepository.java` **확장**(Epic 6 모듈, read-only 메서드 추가 — Epic 6 워커는 SF-3 PR #105 머지로 이미 해제되어 충돌 없음):
   - `existsByIpoIdAndInvestorAccountId(Long ipoId, Long currentAccountId)` — ipoId 필터 소유권 재검증용 (architecture.md)
   - `findByInvestorAccountId(Long currentAccountId, Pageable)` — 필터 미지정 시 기본 조회 (architecture.md 183행)

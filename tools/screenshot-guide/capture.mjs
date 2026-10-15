@@ -1,5 +1,5 @@
 // 사용자 가이드(docs/user-guides/manual, pc.html·mobile.html)용 스크린샷을 더미 데이터로 만든다. run.sh가 백엔드·프론트를 띄운 뒤 호출한다.
-// 백엔드는 APP_SIGNUP_MODE=APPROVAL, DB는 슬롯 4(vibe_slot_4)를 쓴다. 증권사 조회 미리보기는 더미 응답으로 대체한다(실제 호출 없음).
+// 백엔드는 APP_SIGNUP_MODE=APPROVAL, DB는 슬롯 4(ipo_slot_4)를 쓴다. 증권사 조회 미리보기는 더미 응답으로 대체한다(실제 호출 없음).
 import { chromium } from 'playwright'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
@@ -12,7 +12,7 @@ const stamp = Date.now()
 const admin = `guide-admin-${stamp}@example.com`
 const member = `guide-member-${stamp}@example.com`
 const sql = (q) =>
-  execFileSync('docker', ['exec', process.env.E2E_DB_CONTAINER ?? 'ipo-calc-postgres-dev', 'psql', '-U', 'vibe', '-d', process.env.SLOT_DB ?? 'vibe_slot_4', '-c', q])
+  execFileSync('docker', ['exec', process.env.E2E_DB_CONTAINER ?? 'ipo-calc-postgres-dev', 'psql', '-U', 'ipo', '-d', process.env.SLOT_DB ?? 'ipo_slot_4', '-c', q])
 
 const browser = await chromium.launch({ headless: true })
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ko-KR' })

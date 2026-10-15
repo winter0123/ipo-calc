@@ -12,7 +12,7 @@
 >   - ui/src/features/subscription-register/, ui/src/features/allocation-register/, ui/src/features/sale-register/, ui/src/features/cost-register/
 >   - ui/src/pages/InvestorRegisterPage 계열, ui/src/pages/SecuritiesAccountRegisterPage 계열
 >   - docs/qa/accessibility-report.md
->   - ui/src/entities/dashboard/, backend/src/main/java/com/vibeaiteam/dashboard/
+>   - ui/src/entities/dashboard/, backend/src/main/java/com/ipocalc/dashboard/
 >   - docs/breakdown/, docs/spec/, docs/architecture/ 폴더의 기존 Epic 문서 형식
 
 ## 1. 현재 사용성 문제 목록화
@@ -125,7 +125,7 @@
 ## 4. 월별 투자 손익 집계 페이지 설계안
 
 ### 4.1 기존 API 분석
-- **현재 존재**: `GET /dashboard/by-period?unit=month&year=2026` (backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java lines 62-77)
+- **현재 존재**: `GET /dashboard/by-period?unit=month&year=2026` (backend/src/main/java/com/ipocalc/dashboard/controller/DashboardController.java lines 62-77)
 - **응답 형태**: PeriodAggregationDto 리스트 (월별 총투자금, 총세전/세후수익, 수익률, 참여건수)
 - **대시보드 월별 탭**: ui/src/features/dashboard/useDashboardByPeriod.ts에서 이미 이 API를 호출하여 사용
 

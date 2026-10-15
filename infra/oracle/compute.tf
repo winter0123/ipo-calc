@@ -18,7 +18,7 @@ data "oci_core_images" "ubuntu" {
 resource "oci_core_instance" "vm" {
   compartment_id      = var.tenancy_ocid
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain_index].name
-  display_name        = "vibe-vm"
+  display_name        = "ipo-calc-vm"
   shape               = local.shape
 
   shape_config {

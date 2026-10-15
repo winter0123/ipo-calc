@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # 고정 슬롯 DB 풀 관리 스크립트.
 #
-# 같은 Postgres 컨테이너 안에 슬롯 DB(vibe_slot_1 ~ vibe_slot_4)를 만들어 두고,
+# 같은 Postgres 컨테이너 안에 슬롯 DB(ipo_slot_1 ~ ipo_slot_4)를 만들어 두고,
 # 슬롯을 빌려 쓸 때마다 reset 으로 완전히 다시 만들어 이전 사용자의 마이그레이션 잔재를 지운다.
-# 기본 DB(vibe_ai_team)는 건드리지 않는다. DB_NAME 환경변수를 주지 않으면 yml의 기본값이 그대로 쓰인다.
+# 기본 DB(ipo_calc)는 건드리지 않는다. DB_NAME 환경변수를 주지 않으면 yml의 기본값이 그대로 쓰인다.
 #
-# 비밀번호는 이 스크립트에 쓰지 않는다. 컨테이너 내부 psql 은 로컬 접속으로 -U vibe 만으로 연결되며,
+# 비밀번호는 이 스크립트에 쓰지 않는다. 컨테이너 내부 psql 은 로컬 접속으로 -U ipo 만으로 연결되며,
 # 로컬 접속이 막힌 환경에서만 PGPASSWORD 환경변수를 주면 그 값이 사용된다.
 
 set -euo pipefail
 
 CONTAINER="ipo-calc-postgres-dev"
-DB_USER="vibe"
-ADMIN_DB="vibe_ai_team"
+DB_USER="ipo"
+ADMIN_DB="ipo_calc"
 SLOT_MIN=1
 SLOT_MAX=4
 
@@ -24,7 +24,7 @@ usage() {
 
 예:
   scripts/db-slot.sh reset 3
-  DB_NAME=vibe_slot_3 DB_PASSWORD=<로컬비밀번호> ./gradlew test --rerun
+  DB_NAME=ipo_slot_3 DB_PASSWORD=<로컬비밀번호> ./gradlew test --rerun
 EOF
 }
 
@@ -48,7 +48,7 @@ psql_exec() {
 
 cmd_reset() {
   local slot="$1"
-  local db="vibe_slot_$slot"
+  local db="ipo_slot_$slot"
   require_container
   # DROP 과 CREATE 는 같은 트랜잭션 블록에 들어갈 수 없어 psql 호출을 나눈다.
   psql_exec "DROP DATABASE IF EXISTS $db WITH (FORCE);"
@@ -59,10 +59,10 @@ cmd_reset() {
 cmd_list() {
   require_container
   local existing
-  existing="$(psql_exec "SELECT datname FROM pg_database WHERE datname ~ '^vibe_slot_[1-4]$' ORDER BY 1;")"
+  existing="$(psql_exec "SELECT datname FROM pg_database WHERE datname ~ '^ipo_slot_[1-4]$' ORDER BY 1;")"
   local slot db
   for slot in $(seq "$SLOT_MIN" "$SLOT_MAX"); do
-    db="vibe_slot_$slot"
+    db="ipo_slot_$slot"
     if printf '%s\n' "$existing" | grep -qx "$db"; then
       echo "$db: exists"
     else

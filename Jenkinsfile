@@ -2,7 +2,7 @@ pipeline {
   agent any
    environment {
      COMPOSE = 'docker compose -p ipo-calc -f deploy/docker-compose.prod.yml'
-     CI_DB = 'jdbc:postgresql://ipo-calc-postgres-ci-dev:5432/vibe_ai_team'
+     CI_DB = 'jdbc:postgresql://ipo-calc-postgres-ci-dev:5432/ipo_calc'
    }
   stages {
     stage('Test backend') {
@@ -10,10 +10,10 @@ pipeline {
          sh '''
            docker rm -f -v ipo-calc-postgres-ci-dev || true
            docker run -d --name ipo-calc-postgres-ci-dev --network ci-net --label com.docker.compose.project=ipo-calc \
-             -e POSTGRES_DB=vibe_ai_team -e POSTGRES_USER=vibe -e POSTGRES_PASSWORD=vibe_local_password postgres:17
-           until docker exec ipo-calc-postgres-ci-dev pg_isready -U vibe -d vibe_ai_team; do sleep 1; done
+             -e POSTGRES_DB=ipo_calc -e POSTGRES_USER=ipo -e POSTGRES_PASSWORD=ipo_local_password postgres:17
+           until docker exec ipo-calc-postgres-ci-dev pg_isready -U ipo -d ipo_calc; do sleep 1; done
           cd backend
-          SPRING_DATASOURCE_URL=$CI_DB SPRING_DATASOURCE_PASSWORD=vibe_local_password DB_PASSWORD=vibe_local_password \
+          SPRING_DATASOURCE_URL=$CI_DB SPRING_DATASOURCE_PASSWORD=ipo_local_password DB_PASSWORD=ipo_local_password \
             ./gradlew test checkstyleMain checkstyleTest --no-daemon
         '''
       }
@@ -32,16 +32,16 @@ pipeline {
          sh '''
            docker rm -f -v ipo-calc-postgres-e2e-dev || true
            docker run -d --name ipo-calc-postgres-e2e-dev --network ci-net --label com.docker.compose.project=ipo-calc \
-             -e POSTGRES_DB=vibe_e2e -e POSTGRES_USER=vibe -e POSTGRES_PASSWORD=vibe_local_password postgres:17
-           until docker exec ipo-calc-postgres-e2e-dev pg_isready -U vibe -d vibe_e2e; do sleep 1; done
-           E2E_DB_CONTAINER=ipo-calc-postgres-e2e-dev E2E_DB_NAME=vibe_e2e E2E_JDBC_URL=jdbc:postgresql://ipo-calc-postgres-e2e-dev:5432/vibe_e2e \
-             DB_PASSWORD=vibe_local_password tools/e2e/run.sh
+             -e POSTGRES_DB=ipo_e2e -e POSTGRES_USER=ipo -e POSTGRES_PASSWORD=ipo_local_password postgres:17
+           until docker exec ipo-calc-postgres-e2e-dev pg_isready -U ipo -d ipo_e2e; do sleep 1; done
+           E2E_DB_CONTAINER=ipo-calc-postgres-e2e-dev E2E_DB_NAME=ipo_e2e E2E_JDBC_URL=jdbc:postgresql://ipo-calc-postgres-e2e-dev:5432/ipo_e2e \
+             DB_PASSWORD=ipo_local_password tools/e2e/run.sh
         '''
         // 같은 컨테이너의 DB를 비우고 접근성 스캔(63화면 미달·위반이면 1로 종료 → 배포 중단).
          sh '''
-           docker exec ipo-calc-postgres-e2e-dev psql -U vibe -d postgres -c "DROP DATABASE vibe_e2e WITH (FORCE)" -c "CREATE DATABASE vibe_e2e"
-           E2E_DB_CONTAINER=ipo-calc-postgres-e2e-dev E2E_DB_NAME=vibe_e2e E2E_JDBC_URL=jdbc:postgresql://ipo-calc-postgres-e2e-dev:5432/vibe_e2e \
-             DB_PASSWORD=vibe_local_password tools/accessibility-scan/run-scan.sh
+           docker exec ipo-calc-postgres-e2e-dev psql -U ipo -d postgres -c "DROP DATABASE ipo_e2e WITH (FORCE)" -c "CREATE DATABASE ipo_e2e"
+           E2E_DB_CONTAINER=ipo-calc-postgres-e2e-dev E2E_DB_NAME=ipo_e2e E2E_JDBC_URL=jdbc:postgresql://ipo-calc-postgres-e2e-dev:5432/ipo_e2e \
+             DB_PASSWORD=ipo_local_password tools/accessibility-scan/run-scan.sh
         '''
       }
        post { always { sh 'docker rm -f -v ipo-calc-postgres-e2e-dev || true' } }

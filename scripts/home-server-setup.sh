@@ -158,10 +158,10 @@ else
   command -v crontab >/dev/null || { $SUDO apt-get install -y cron; $SUDO systemctl enable --now cron; }
   if crontab -l 2>/dev/null | grep -q "$REPO/scripts/backup-db.sh"; then ok "cron 이미 등록됨"
   else
-    mkdir -p "$HOME/vibe-backups"
+    mkdir -p "$HOME/ipo-calc-backups"
     # docker 그룹이 아직 적용 전이어도 cron은 새 세션이라 그룹이 적용된다
-    ( crontab -l 2>/dev/null || true; echo "30 3 * * * $REPO/scripts/backup-db.sh >> $HOME/vibe-backups/backup.log 2>&1" ) | crontab -
-    echo "    등록함. 로그: ~/vibe-backups/backup.log (PC 밖 사본은 docs/home-server.md 8장 BACKUP_REMOTE)"
+    ( crontab -l 2>/dev/null || true; echo "30 3 * * * $REPO/scripts/backup-db.sh >> $HOME/ipo-calc-backups/backup.log 2>&1" ) | crontab -
+    echo "    등록함. 로그: ~/ipo-calc-backups/backup.log (PC 밖 사본은 docs/home-server.md 8장 BACKUP_REMOTE)"
   fi
 fi
 
@@ -187,7 +187,7 @@ fi
 
 HOSTN=$(get TS_HOSTNAME)
 case "$TUNNEL" in
-  tailscale)   URL="https://${HOSTN:-vibe}.<tailnet>.ts.net  (Tailscale 콘솔에서 tailnet 이름 확인)" ;;
+  tailscale)   URL="https://${HOSTN:-ipo-calc}.<tailnet>.ts.net  (Tailscale 콘솔에서 tailnet 이름 확인)" ;;
   cloudflared) URL="Cloudflare 터널에 지정한 공개 호스트 이름" ;;
   *)           URL="http://<이 PC의 LAN 주소>:$PORT" ;;
 esac

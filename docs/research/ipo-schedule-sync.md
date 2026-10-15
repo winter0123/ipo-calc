@@ -14,7 +14,7 @@ Epic 17 "공모주 청약 일정 자동 동기화" 구현을 위한 사전 조�
 
 ## 출처
 - Master 사전조사 (2026-09-29, WebSearch로 확인) - 제공된 사실 기반
-- backend/src/main/java/com/vibeaiteam/ipocatalog/ (Epic 5 - 기존 IPO 기준정보 관리)
+- backend/src/main/java/com/ipocalc/ipocatalog/ (Epic 5 - 기존 IPO 기준정보 관리)
 - backend/src/main/resources/db/migration/ 중 IPO 관련 테이블 마이그레이션 파일
 - docs/research/, docs/spec/, docs/architecture/ 폴더의 기존 Epic 문서 형식(ipo-catalog, dashboard-aggregation-api 등)
 
