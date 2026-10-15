@@ -7,10 +7,10 @@ services:
     networks: [prod]
     image: tailscale/tailscale:stable
     restart: unless-stopped
-    hostname: ${TS_HOSTNAME:-vibe}
+    hostname: ${TS_HOSTNAME:-ipo-calc}
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:?TS_AUTHKEY 필요}
-      TS_HOSTNAME: ${TS_HOSTNAME:-vibe}
+      TS_HOSTNAME: ${TS_HOSTNAME:-ipo-calc}
       TS_STATE_DIR: /var/lib/tailscale
       TS_SERVE_CONFIG: /config/serve.json
       TS_USERSPACE: "true"

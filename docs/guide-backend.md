@@ -22,12 +22,12 @@ scripts/db-slot.sh reset 1
 
 # 2) 그 슬롯을 명시해서 검증한다.
 cd backend
-DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
-DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q
-DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
+DB_NAME=ipo_slot_1 DB_PASSWORD=ipo_local_password ./gradlew test --rerun
+DB_NAME=ipo_slot_1 DB_PASSWORD=ipo_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q
+DB_NAME=ipo_slot_1 DB_PASSWORD=ipo_local_password ./gradlew build
 ```
 
-`backend/src/main/resources/application.yml`과 `backend/src/test/resources/application-test.yml`의 datasource url은 `jdbc:postgresql://localhost:5433/${DB_NAME:vibe_ai_team}` 이다. 즉 **`DB_NAME`을 주지 않으면 기존과 완전히 동일하게 `vibe_ai_team`을 쓴다.** 슬롯은 `scripts/db-slot.sh`가 만드는 `vibe_slot_1`~`vibe_slot_4` 네 개뿐이고, 슬롯 용도 밖으로 늘리지 않는다. `scripts/db-slot.sh list`로 어떤 슬롯 DB가 이미 만들어져 있는지 볼 수 있다. 슬롯을 쓰지 않고 `DB_NAME` 없이 테스트를 돌리면 공유 DB에 Flyway 흔적을 남기므로 하지 않는다(5절 슬롯 규칙).
+`backend/src/main/resources/application.yml`과 `backend/src/test/resources/application-test.yml`의 datasource url은 `jdbc:postgresql://localhost:5433/${DB_NAME:ipo_calc}` 이다. 즉 **`DB_NAME`을 주지 않으면 기존과 완전히 동일하게 `ipo_calc`을 쓴다.** 슬롯은 `scripts/db-slot.sh`가 만드는 `ipo_slot_1`~`ipo_slot_4` 네 개뿐이고, 슬롯 용도 밖으로 늘리지 않는다. `scripts/db-slot.sh list`로 어떤 슬롯 DB가 이미 만들어져 있는지 볼 수 있다. 슬롯을 쓰지 않고 `DB_NAME` 없이 테스트를 돌리면 공유 DB에 Flyway 흔적을 남기므로 하지 않는다(5절 슬롯 규칙).
 
 **`--rerun`은 바로 앞 task 하나에만 적용된다.** `checkstyleMain checkstyleTest --rerun`처럼 task 여러 개에 쓰면 마지막 task만 다시 돌고 나머지는 캐시된 결과가 나온다(2026-09-30에 이 때문에 checkstyle 위반 수를 잘못 판단한 적이 있다). `test` 하나에는 `--rerun`으로 충분하고, task를 여러 개 검증할 때는 `--rerun-tasks`를 쓴다. 검증 결과를 PASS로 기록하기 전에 캐시된 결과가 아닌지 출력에서 `UP-TO-DATE`/`FROM-CACHE` 표시를 확인한다.
 
@@ -49,10 +49,10 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 
 ## 4. 재사용 가능한 공용 인프라 (Epic 2에서 확보, 계속 재사용)
 
-- `SecurityUtils.getCurrentAccountId()` (`com.vibeaiteam.accountauthentication.util.security`) — 계정 소유권 검증 헬퍼. 계정 소유 데이터가 있는 Epic만 사용, 글로벌 기준정보 Epic은 불필요.
-- 컴포넌트/엔티티/JPA 스캔 범위가 `com.vibeaiteam` 전체 — 새 Epic 패키지는 별도 스캔 설정 없이 바로 인식됨.
+- `SecurityUtils.getCurrentAccountId()` (`com.ipocalc.accountauthentication.util.security`) — 계정 소유권 검증 헬퍼. 계정 소유 데이터가 있는 Epic만 사용, 글로벌 기준정보 Epic은 불필요.
+- 컴포넌트/엔티티/JPA 스캔 범위가 `com.ipocalc` 전체 — 새 Epic 패키지는 별도 스캔 설정 없이 바로 인식됨.
 - CSRF 전역 비활성화 + `AuthenticationEntryPoint`(401) 설정 완료 — 새 쓰기 API마다 CSRF 예외 추가할 필요 없음.
-- `SuccessResponse`/`ErrorResponse` 공용 DTO(`com.vibeaiteam.accountauthentication.controller.dto`) 재사용 가능.
+- `SuccessResponse`/`ErrorResponse` 공용 DTO(`com.ipocalc.accountauthentication.controller.dto`) 재사용 가능.
 - (name, status) 복합 유니크 인덱스 패턴 — "활성 레코드끼리만 유니크" 요구사항이 있는 기준정보성 Epic에 재사용 가능.
 - AES-256-GCM 암호화 유틸(`securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor`) — JDK `javax.crypto`만 사용, 민감정보 암호화 필요 시 재사용.
 - 2단계 소유권 검증 패턴 — 대상 리소스가 `Investor`를 거쳐야 소유 계정을 알 수 있는 하위 리소스(예: SecuritiesAccount)에 재사용.
@@ -64,7 +64,7 @@ DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew build
 같은 실수가 워커가 바뀔 때마다 반복돼서 적어둔다. **Master는 backend spec의 [하지 말 것]에 이 절을 그대로 붙여 넣는다.**
 
 - **`./gradlew spotlessApply`를 실행하지 않는다.** 작업공간의 추적 파일 전체를 다시 포맷해 diff가 수백 파일로 부풀어 오른다. 실수로 실행했다면 곧바로 `git checkout -- backend`로 되돌리고 자기 변경만 다시 적용한다. 포맷 확인이 필요하면 `spotlessCheck`만 쓴다.
-- **테스트는 공유 DB(`localhost:5433/vibe_ai_team`)를 쓰지 않고 슬롯 DB를 쓴다.** 슬롯은 `vibe_slot_1`~`vibe_slot_4` 네 개이며 `scripts/db-slot.sh reset <n>`으로 빌리고, 같은 슬롯을 다시 쓰기 전에는 반드시 reset 한다. Master가 워커를 배정할 때 빈 슬롯(1~3 중 하나)을 함께 지정하고, **Master 자신의 검증은 슬롯 4를 쓴다.** 슬롯을 배정받지 않은 채 기본 DB(`vibe_ai_team`)로 테스트하지 않는다 — 기본 DB는 병합된 마이그레이션만 쌓인 dev 용이다. 슬롯마다 DB가 분리되므로 **마이그레이션이 든 SF도 슬롯이 다르면 동시에 진행할 수 있다.** 워커가 끝나면 슬롯은 회수한다(회수한 사람이 다음에 reset 한다). 이미 적용된 마이그레이션 파일의 이름·내용은 바꾸지 않는다(체크섬 불일치).
+- **테스트는 공유 DB(`localhost:5433/ipo_calc`)를 쓰지 않고 슬롯 DB를 쓴다.** 슬롯은 `ipo_slot_1`~`ipo_slot_4` 네 개이며 `scripts/db-slot.sh reset <n>`으로 빌리고, 같은 슬롯을 다시 쓰기 전에는 반드시 reset 한다. Master가 워커를 배정할 때 빈 슬롯(1~3 중 하나)을 함께 지정하고, **Master 자신의 검증은 슬롯 4를 쓴다.** 슬롯을 배정받지 않은 채 기본 DB(`ipo_calc`)로 테스트하지 않는다 — 기본 DB는 병합된 마이그레이션만 쌓인 dev 용이다. 슬롯마다 DB가 분리되므로 **마이그레이션이 든 SF도 슬롯이 다르면 동시에 진행할 수 있다.** 워커가 끝나면 슬롯은 회수한다(회수한 사람이 다음에 reset 한다). 이미 적용된 마이그레이션 파일의 이름·내용은 바꾸지 않는다(체크섬 불일치).
 - **Javadoc 첫 문장은 마침표로 끝낸다.** `SummaryJavadoc` 위반의 대부분이 이것이다. record 컴포넌트·compact constructor에도 필요하다.
 - **테스트가 남긴 행은 정리한다.** 슬롯을 reset 하면 남은 행은 지워지지만, 같은 슬롯을 reset 없이 재사용하면 다른 테스트가 시드 데이터를 지워서 테스트가 깨진다. `@Transactional` 롤백을 우선하고, 불가능하면 `@AfterEach`에서 직접 지운다. 시드에 의존하는 테스트는 스스로 필요한 데이터를 만든다.
 - **시크릿은 어디에도 남기지 않는다.** 키·토큰·앱시크릿은 로그, 예외 메시지, 테스트 출력, 보고서에 쓰지 않고 테스트에는 더미 값만 쓴다. `@ToString`은 시크릿 필드를 제외한다.

@@ -99,17 +99,17 @@ PG_CONTAINER=ipo-calc-postgres-prod scripts/promote-admin.sh 내이메일@exampl
 
 ## 8. 백업 (cron, PC 밖 사본, 복원 리허설)
 
-`scripts/backup-db.sh`는 압축 덤프를 날짜별로 `~/vibe-backups`에 남기고 최근 14개만 보관한다(보관 개수는 두 번째 인자).
+`scripts/backup-db.sh`는 압축 덤프를 날짜별로 `~/ipo-calc-backups`에 남기고 최근 14개만 보관한다(보관 개수는 두 번째 인자).
 
 ```bash
-mkdir -p ~/vibe-backups && crontab -e
+mkdir -p ~/ipo-calc-backups && crontab -e
 # 매일 03:30
-30 3 * * * /home/<사용자>/ipo-calc/scripts/backup-db.sh >> /home/<사용자>/vibe-backups/backup.log 2>&1
+30 3 * * * /home/<사용자>/ipo-calc/scripts/backup-db.sh >> /home/<사용자>/ipo-calc-backups/backup.log 2>&1
 ```
 
-**PC 밖 복사(선택, 권장)**: 디스크가 죽으면 백업도 같이 사라진다. `sudo apt install rclone` → `rclone config`로 구글 드라이브 원격(예: `gdrive`) 생성 → cron 줄 앞에 `BACKUP_REMOTE=gdrive:vibe-backups`를 붙이면 새 백업을 `rclone copy` 한다(원격 복사 실패 시 종료 코드 2와 로그). 덤프에는 암호화된 증권사 키가 들어 있으니 계정은 본인 전용으로 쓰고, `APP_ENCRYPTION_*` 키 없이는 그 값을 못 푼다는 점을 기억한다.
+**PC 밖 복사(선택, 권장)**: 디스크가 죽으면 백업도 같이 사라진다. `sudo apt install rclone` → `rclone config`로 구글 드라이브 원격(예: `gdrive`) 생성 → cron 줄 앞에 `BACKUP_REMOTE=gdrive:ipo-calc-backups`를 붙이면 새 백업을 `rclone copy` 한다(원격 복사 실패 시 종료 코드 2와 로그). 덤프에는 암호화된 증권사 키가 들어 있으니 계정은 본인 전용으로 쓰고, `APP_ENCRYPTION_*` 키 없이는 그 값을 못 푼다는 점을 기억한다.
 
-**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec ipo-calc-postgres-prod createdb -U vibe rehearsal` → `scripts/restore-db.sh ~/vibe-backups/<최신>.sql.gz rehearsal` → `docker exec ipo-calc-postgres-prod psql -U vibe -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U vibe rehearsal`. 실제 장애 복구는 `docker compose -p ipo-calc ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
+**복원 리허설(분기에 1회)**: 임시 DB로 복원해 본다 — `docker exec ipo-calc-postgres-prod createdb -U ipo rehearsal` → `scripts/restore-db.sh ~/ipo-calc-backups/<최신>.sql.gz rehearsal` → `docker exec ipo-calc-postgres-prod psql -U ipo -d rehearsal -c "select count(*) from accounts"`로 행이 보이는지 확인 → `dropdb -U ipo rehearsal`. 실제 장애 복구는 `docker compose -p ipo-calc ... stop backend` 후 같은 스크립트를 대상 DB 기본값으로 실행하고 backend를 다시 올린다.
 
 ## 9. 업데이트 방법
 

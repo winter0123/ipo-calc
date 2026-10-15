@@ -86,17 +86,17 @@ Sale 도메인에는 계산 로직을 두지 않는다.
    - `sumActiveQuantityByAllocationIdReturnsCorrectSum` — ACTIVE 수량 합계만 반환 (CANCELLED 제외)
 
 ### 확인 사항
-- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
+- `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
 - 전체 테스트 **247개 통과** (기존 241개 + 신규 6개)
 - Flyway 마이그레이션 V9 정상 적용 (V8 allocations 다음 순서)
 - FK 제약 `fk_sale_allocation` ON DELETE RESTRICT 정상 생성
 - allocation_id 유니크 제약 없음 확인 (분할 매도 지원)
 
 ### 변경 파일
-- `backend/src/main/java/com/vibeaiteam/salemanagement/domain/model/sale/Sale.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/repository/sale/SaleRepository.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/domain/model/sale/Sale.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/repository/sale/SaleRepository.java` (신규)
 - `backend/src/main/resources/db/migration/V9__create_sales_table.sql` (신규)
-- `backend/src/test/java/com/vibeaiteam/salemanagement/repository/sale/SaleRepositoryTest.java` (신규)
+- `backend/src/test/java/com/ipocalc/salemanagement/repository/sale/SaleRepositoryTest.java` (신규)
 
 ### 남은 작업
 - SF-2: 매도 등록 API (Controller, Service, DTO, 누적 매도수량 검증)
@@ -151,22 +151,22 @@ Sale 도메인에는 계산 로직을 두지 않는다.
    - `registerSaleWithInvalidPriceReturns400` — 선택 필드 음수값 검증 (400)
 
 ### 확인 사항
-- `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
+- `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test --rerun` 실행 결과 **BUILD SUCCESSFUL**
 - 전체 테스트 **254개 통과** (기존 247개 + 신규 7개)
 - 누적 매도수량 검증 로직이 `@Transactional` 안에서 검증→저장 순서로 안전하게 수행됨
 - 분할 매도(동일 Allocation에 여러 Sale 등록) 정상 동작 확인: 30+40+30=100 (배정수량 100)까지 등록 성공
 - 초과 시 400 반환 및 롤백 확인: 기존 60 + 신규 50 = 110 > 100 시 400, 기존 1건만 유지
 
 ### 변경 파일
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/dto/SaleRegisterRequest.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/dto/SaleResponse.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleValidationException.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleAllocationExceededException.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleNotFoundException.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/exception/SaleExceptionHandler.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/service/sale/SaleService.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/controller/sale/SaleController.java` (신규)
-- `backend/src/test/java/com/vibeaiteam/salemanagement/controller/sale/SaleControllerTest.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/dto/SaleRegisterRequest.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/dto/SaleResponse.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/exception/SaleValidationException.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/exception/SaleAllocationExceededException.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/exception/SaleNotFoundException.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/exception/SaleExceptionHandler.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/service/sale/SaleService.java` (신규)
+- `backend/src/main/java/com/ipocalc/salemanagement/controller/sale/SaleController.java` (신규)
+- `backend/src/test/java/com/ipocalc/salemanagement/controller/sale/SaleControllerTest.java` (신규)
 
 ### 남은 작업
 - SF-3: 매도 목록/상세 조회 API

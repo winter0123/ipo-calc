@@ -27,14 +27,14 @@
 
 ## 비공개 운영(가입 승인) 추가 후 재실측 (2026-10-01, Master 직접 실행)
 
-슬롯 DB `vibe_slot_4` reset 직후 빈 포트 스택(`APP_SIGNUP_MODE=OPEN`)으로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.
+슬롯 DB `ipo_slot_4` reset 직후 빈 포트 스택(`APP_SIGNUP_MODE=OPEN`)으로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.
 
 - **E2E: PASS 13 / FAIL 0**. E2E-13(신규) = 승인 대기 계정(DB로 `approved=false`)의 로그인이 403 `ACCOUNT_PENDING_APPROVAL`로 막힘 → 관리자(DB 승격)가 `/admin/accounts`에서 승인 → 승인 뒤 로그인 200. 백엔드는 가입 직후 로그인하는 기존 시나리오를 위해 `OPEN`으로 띄우고, 대기 상태는 DB로 만든다.
 - **axe: 16개 화면·상태 위반 0건**. `/admin/accounts` 승인 목록 표는 스캔 대상에 넣지 않았다(스캔 계정이 관리자가 아님, 미검증).
 
 ## 증권사 연동 화면 추가 후 재실측 (2026-10-01, Master 직접 실행)
 
-슬롯 DB `vibe_slot_4` reset 직후 빈 포트 백엔드(`APP_ENCRYPTION_BROKER_KEY` 설정)·프론트로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.
+슬롯 DB `ipo_slot_4` reset 직후 빈 포트 백엔드(`APP_ENCRYPTION_BROKER_KEY` 설정)·프론트로 `pnpm run e2e`와 axe 스캔을 1회씩 실행했다.
 
 - **E2E: PASS 12 / FAIL 0**. E2E-12(신규) = 헤더 링크 진입 → 투자자·증권계좌 선택 → 키 연결(앱키·시크릿 비노출, 사용기간 만료일 표시) → 키 교체 → 연결 해제. 외부 증권사는 호출하지 않는다(토큰은 동기화 조회 때만 발급).
 - **axe: 16개 화면·상태 위반 0건**(`/broker-sync`의 선택 전·연결됨·키 교체 폼·연결 폼 4개 상태 포함). 스캔 스크립트가 API로 투자자·KIS 증권계좌 2개를 만들고 한 계좌만 더미 키로 연결해 둔다(외부 증권사 호출 없음).
@@ -42,7 +42,7 @@
 
 ## E20 프런트 리팩토링 후 재실측 (2026-10-01, Master 직접 실행)
 
-슬롯 DB `vibe_slot_4` reset 직후, 빈 포트 백엔드·프론트(React Compiler 포함 실제 `vite.config.ts` + `/api-proxy`), `pnpm run e2e`와 axe 스캔을 각 1회 실행했다. 운영·공유 데이터는 쓰지 않았다.
+슬롯 DB `ipo_slot_4` reset 직후, 빈 포트 백엔드·프론트(React Compiler 포함 실제 `vite.config.ts` + `/api-proxy`), `pnpm run e2e`와 axe 스캔을 각 1회 실행했다. 운영·공유 데이터는 쓰지 않았다.
 
 - **E2E: PASS 11 / FAIL 0**(E2E-11 신규, D-9 기간 필터), **axe: 12개 화면 위반 0건**(로그인·회원가입 화면의 `incomplete` 1건이 0건으로 줄었다).
 - **첫 실행은 7/3이었다(E2E-3·4·6 FAIL)**. 원인은 제품이 아니라 E2E 스크립트: E20에서 폼 오류 영역을 `aria-live="polite"`에서 `role="alert"`로 바꿨는데(접근성 개선), 스크립트가 `[aria-live="polite"]`만 찾았다. 화면에는 오류가 표시되고 있었다. `errorTexts` 선택자를 `[aria-live="polite"], [role="alert"]`로 넓혀 해결했다. 컴파일러를 끈 상태에서도 같은 3건이 실패해 React Compiler와는 무관함을 확인했다.
@@ -50,9 +50,9 @@
 
 ## 거래 흐름 시나리오 7~10 (청약 → 배정 → 매도 → 대시보드)
 
-> **실행 일시**: 2026-10-01, 슬롯 DB `vibe_slot_2` reset 직후, 빈 포트 백엔드·프론트, `pnpm run e2e` 1회. 시나리오 1~6은 같은 실행에서 전부 PASS.
+> **실행 일시**: 2026-10-01, 슬롯 DB `ipo_slot_2` reset 직후, 빈 포트 백엔드·프론트, `pnpm run e2e` 1회. 시나리오 1~6은 같은 실행에서 전부 PASS.
 
-**총 10개 시나리오: PASS 10 / FAIL 0.** (2026-10-01, #247 병합 후 `E2E_DB_NAME=vibe_slot_4`로 재실행)
+**총 10개 시나리오: PASS 10 / FAIL 0.** (2026-10-01, #247 병합 후 `E2E_DB_NAME=ipo_slot_4`로 재실행)
 
 | ID | 시나리오 | 결과 |
 |----|----------|------|
@@ -94,8 +94,8 @@
 ### 픽스처와 실행 조건 (시나리오 7~10)
 
 - 공모주 등록은 ADMIN 전용(#242)이고 UI에 공모주 등록 화면이 없다. 그래서 거래 계정을 API로 만들고(`POST /accounts`, 투자자, 증권계좌), DB에서 `accounts.role='ADMIN'`으로 승격한 뒤 재로그인해 `POST /ipos`로 공모주를 만든다. 그 뒤 같은 계정으로 청약·배정·매도를 **UI에서** 진행한다.
-- 필요한 환경변수: `E2E_DB_NAME`(승격 대상 DB, 예 `vibe_slot_2`, 필수), `E2E_DB_CONTAINER`(기본 `ipo-calc-postgres-dev`), `E2E_DB_USER`(기본 `vibe`), `E2E_API_PREFIX`(기본 `/api-proxy`). `docker exec ... psql`을 쓰므로 로컬 Postgres 컨테이너가 떠 있어야 한다. `E2E_DB_NAME`이 없으면 7~10은 사유를 밝히고 FAIL한다.
-- 예: `cd tools/e2e && BASE_URL=http://127.0.0.1:<프론트포트> E2E_DB_NAME=vibe_slot_2 pnpm run e2e`
+- 필요한 환경변수: `E2E_DB_NAME`(승격 대상 DB, 예 `ipo_slot_2`, 필수), `E2E_DB_CONTAINER`(기본 `ipo-calc-postgres-dev`), `E2E_DB_USER`(기본 `ipo`), `E2E_API_PREFIX`(기본 `/api-proxy`). `docker exec ... psql`을 쓰므로 로컬 Postgres 컨테이너가 떠 있어야 한다. `E2E_DB_NAME`이 없으면 7~10은 사유를 밝히고 FAIL한다.
+- 예: `cd tools/e2e && BASE_URL=http://127.0.0.1:<프론트포트> E2E_DB_NAME=ipo_slot_2 pnpm run e2e`
 
 ## 재실측 결과 (수정 후, #224 병합 뒤)
 
@@ -109,7 +109,7 @@
 
 - E2E-6은 화면 문구만 spec에 맞췄다. 실제 응답 상태는 여전히 400이다(spec AC-011은 404). 백엔드 테스트(`SecuritiesAccountControllerTest` AC-003)가 400을 명시하고 있어 백엔드 계약은 바꾸지 않았다. 백엔드를 404로 바꿀지는 별도 결정 사항이다.
 - E2E-5·E2E-6의 인증이 이제 로그인 UI 성공으로 잡힌다(초기에는 회원가입 폴백이었음).
-- 재실측 환경: 슬롯 DB `vibe_slot_4` reset 직후, 빈 포트로 띄운 백엔드·프론트, `pnpm run e2e` 1회.
+- 재실측 환경: 슬롯 DB `ipo_slot_4` reset 직후, 빈 포트로 띄운 백엔드·프론트, `pnpm run e2e` 1회.
 
 ## 실행 방법
 
@@ -122,7 +122,7 @@ cd tools/e2e && pnpm run e2e
 이 스크립트는 백엔드와 프론트 개발 서버가 이미 떠 있다고 가정한다. 직접 띄우려면:
 
 1. **Postgres 컨테이너 기동 + 슬롯 DB reset**: `docker compose up -d`로 Postgres를 띄우고, `scripts/db-slot.sh reset <n>`으로 슬롯 DB를 초기화한다.
-2. **백엔드 기동**: 가입 직후 로그인하는 흐름을 쓰므로 `APP_SIGNUP_MODE=OPEN`과, IP별 요청 제한에 걸리지 않도록 `APP_RATE_LIMIT_AUTH_PER_MINUTE=100000`을 함께 지정한다(기본값은 비공개 운영용 `APPROVAL`). 빈 포트를 골라 `DB_NAME=vibe_slot_<n> DB_PASSWORD=... APP_ENCRYPTION_KEY=<32바이트 Base64> SERVER_PORT=<포트>` 환경변수와 함께 `backend/`에서 `./gradlew bootRun`을 실행한다.
+2. **백엔드 기동**: 가입 직후 로그인하는 흐름을 쓰므로 `APP_SIGNUP_MODE=OPEN`과, IP별 요청 제한에 걸리지 않도록 `APP_RATE_LIMIT_AUTH_PER_MINUTE=100000`을 함께 지정한다(기본값은 비공개 운영용 `APPROVAL`). 빈 포트를 골라 `DB_NAME=ipo_slot_<n> DB_PASSWORD=... APP_ENCRYPTION_KEY=<32바이트 Base64> SERVER_PORT=<포트>` 환경변수와 함께 `backend/`에서 `./gradlew bootRun`을 실행한다.
 3. **프론트 기동**: `ui/`에서 `/api-proxy`를 백엔드로 프록시하는 임시 vite 설정(`vite.scan.config.ts`)으로 프론트를 띄운다. `tools/accessibility-scan/run-scan.sh`가 하는 방식(빈 포트 선택 → 임시 vite config 작성 → `VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts` 실행)을 그대로 참고할 수 있다.
 4. **BASE_URL 지정**: 프론트 주소를 `tools/e2e/.base-url` 파일에 넣거나 `BASE_URL` 환경변수로 전달한다. 스크립트는 `BASE_URL` 환경변수가 있으면 그것을, 없으면 `.base-url` 파일 내용을 쓴다.
 

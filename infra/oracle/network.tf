@@ -1,13 +1,13 @@
 resource "oci_core_vcn" "main" {
   compartment_id = var.tenancy_ocid
   cidr_blocks    = ["10.0.0.0/16"]
-  display_name   = "vibe-vcn"
+  display_name   = "ipo-calc-vcn"
 }
 
 resource "oci_core_internet_gateway" "main" {
   compartment_id = var.tenancy_ocid
   vcn_id         = oci_core_vcn.main.id
-  display_name   = "vibe-igw"
+  display_name   = "ipo-calc-igw"
 }
 
 resource "oci_core_route_table" "public" {
@@ -23,7 +23,7 @@ resource "oci_core_route_table" "public" {
 resource "oci_core_security_list" "public" {
   compartment_id = var.tenancy_ocid
   vcn_id         = oci_core_vcn.main.id
-  display_name   = "vibe-public"
+  display_name   = "ipo-calc-public"
 
   egress_security_rules {
     destination = "0.0.0.0/0"
@@ -59,7 +59,7 @@ resource "oci_core_subnet" "public" {
   compartment_id    = var.tenancy_ocid
   vcn_id            = oci_core_vcn.main.id
   cidr_block        = "10.0.1.0/24"
-  display_name      = "vibe-public"
+  display_name      = "ipo-calc-public"
   route_table_id    = oci_core_route_table.public.id
   security_list_ids = [oci_core_security_list.public.id]
 }

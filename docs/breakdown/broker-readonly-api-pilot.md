@@ -209,6 +209,6 @@ SF-6 (프론트 — 계좌 연결 화면 + 동기화 미리보기 화면)
 ## 참고
 
 - **문서 의존성**: `docs/research/broker-readonly-api-pilot.md`(전체), `docs/roadmap.md` 1.1절·6절
-- **모듈 소유권**: 신규 패키지 `com.vibeaiteam.brokerintegration`. 계좌번호 암호화 인프라(`securitiesaccountmanagement.infrastructure.encryption`)를 참조하되, 의존 방향은 spec 단계에서 확정(research 5절 제약사항 6 — 공용 `infrastructure`로 이동할지 결정 필요).
+- **모듈 소유권**: 신규 패키지 `com.ipocalc.brokerintegration`. 계좌번호 암호화 인프라(`securitiesaccountmanagement.infrastructure.encryption`)를 참조하되, 의존 방향은 spec 단계에서 확정(research 5절 제약사항 6 — 공용 `infrastructure`로 이동할지 결정 필요).
 - **검증 명령**: `docs/guide-backend.md` 2절 그대로. 브로커 어댑터 테스트는 실제 네트워크 호출 없이 WireMock/스텁으로 작성(SF-3 특이사항).
 - **금지사항(전 SF 공통)**: 주문(매수/매도/정정/취소) API 코드 작성 금지, 응답 DTO에 평문 시크릿·토큰 포함 금지, `Cost` 자동 채움 시도 금지(1차 범위 제외), 자동 "등록"(사용자 확인 없이 Sale 생성) 금지.

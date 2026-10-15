@@ -11,7 +11,7 @@ const outputRoot = resolve(root, 'docs/qa')
 const apiPrefix = process.env.E2E_API_PREFIX ?? '/api-proxy'
 const dbName = process.env.E2E_DB_NAME ?? process.env.DB_NAME
 const dbContainer = process.env.E2E_DB_CONTAINER ?? 'ipo-calc-postgres-dev'
-const dbUser = process.env.E2E_DB_USER ?? 'vibe'
+const dbUser = process.env.E2E_DB_USER ?? 'ipo'
 let scanEmail = null
 
 const pages = [

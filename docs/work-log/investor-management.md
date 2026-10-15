@@ -32,13 +32,13 @@ architecture.md의 "DB 설계" 표가 상단 D-I-001 수정 안내(BIGINT 사용
 ### D-I-007: SecurityUtils는 아직 존재하지 않음 — Epic 2 SF-1에서 신설 필요
 architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountId()`가 이미 존재하는 것처럼 전제하고 있으나, 실제 Epic 1 구현을 확인한 결과 **존재하지 않음**. `util/security` 패키지는 `.gitkeep`만 있는 빈 디렉토리이고, `PasswordChangeService`/`AuthService`는 매번 `SecurityContextHolder.getContext().getAuthentication().getPrincipal()`을 직접 캐스팅해서 사용 중. 또한 `CustomUserDetailsService`가 만드는 `UserDetails`는 Spring Security 기본 `User` 객체라 `username`(= email)만 담고 있고 계정의 Long `id`는 포함하지 않음 — 즉 `getCurrentAccountId()`는 내부적으로 email → `AccountRepository.findByEmail(email).getId()` 조회를 거쳐야 한다.
 
-추가로 `AccountAuthenticationApplication`(`@SpringBootApplication`, 패키지 `com.vibeaiteam.accountauthentication`)이 기본 컴포넌트/JPA 스캔 범위이므로, Investor(및 향후 모든 Epic) 도메인 코드를 형제 패키지(`com.vibeaiteam.investormanagement` 등)에 두면 Spring이 전혀 스캔하지 못해 빈 등록/JPA 리포지토리 인식 실패가 발생한다. Epic 1의 이미 병합·테스트된 코드는 건드리지 않고, 메인 클래스에 `@ComponentScan(basePackages = "com.vibeaiteam")`, `@EntityScan(basePackages = "com.vibeaiteam")`, `@EnableJpaRepositories(basePackages = "com.vibeaiteam")`만 추가해 스캔 범위를 그룹 루트(`com.vibeaiteam`)로 넓히기로 결정.
+추가로 `AccountAuthenticationApplication`(`@SpringBootApplication`, 패키지 `com.ipocalc.accountauthentication`)이 기본 컴포넌트/JPA 스캔 범위이므로, Investor(및 향후 모든 Epic) 도메인 코드를 형제 패키지(`com.ipocalc.investormanagement` 등)에 두면 Spring이 전혀 스캔하지 못해 빈 등록/JPA 리포지토리 인식 실패가 발생한다. Epic 1의 이미 병합·테스트된 코드는 건드리지 않고, 메인 클래스에 `@ComponentScan(basePackages = "com.ipocalc")`, `@EntityScan(basePackages = "com.ipocalc")`, `@EnableJpaRepositories(basePackages = "com.ipocalc")`만 추가해 스캔 범위를 그룹 루트(`com.ipocalc`)로 넓히기로 결정.
 
-**결정**: Epic 2 SF-1을 "공통 인프라 확장"으로 정의해 (1) 위 3개 스캔 애너테이션 추가, (2) `com.vibeaiteam.accountauthentication.util.security.SecurityUtils`(이미 있는 빈 패키지 재사용) 신설 — `getCurrentAccountId(): Long`을 제공. 이 유틸리티는 Epic 2뿐 아니라 Epic 3~12 전체가 의존하므로 가장 먼저 완료해야 한다.
+**결정**: Epic 2 SF-1을 "공통 인프라 확장"으로 정의해 (1) 위 3개 스캔 애너테이션 추가, (2) `com.ipocalc.accountauthentication.util.security.SecurityUtils`(이미 있는 빈 패키지 재사용) 신설 — `getCurrentAccountId(): Long`을 제공. 이 유틸리티는 Epic 2뿐 아니라 Epic 3~12 전체가 의존하므로 가장 먼저 완료해야 한다.
 
 ### SF 분해 (5.4, 총 6개, 순차 의존)
-1. **SF-1: 공통 인프라 확장** — 컴포넌트/엔티티/JPA 스캔 범위를 `com.vibeaiteam`으로 확대, `SecurityUtils.getCurrentAccountId()` 신설
-2. **SF-2: Investor 엔티티/Repository/마이그레이션** — BIGINT IDENTITY, `com.vibeaiteam.investormanagement` 패키지 신설
+1. **SF-1: 공통 인프라 확장** — 컴포넌트/엔티티/JPA 스캔 범위를 `com.ipocalc`으로 확대, `SecurityUtils.getCurrentAccountId()` 신설
+2. **SF-2: Investor 엔티티/Repository/마이그레이션** — BIGINT IDENTITY, `com.ipocalc.investormanagement` 패키지 신설
 3. **SF-3: 투자자 등록 API** (POST /investors)
 4. **SF-4: 투자자 목록/상세 조회 API** (GET /investors, GET /investors/{id}) — SecurityUtils 기반 계정 소유권 검증(403) 포함
 5. **SF-5: 투자자 수정 API** (PATCH /investors/{id})
@@ -47,25 +47,25 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 ## 2026-09-21 — SF-2 (Investor 엔티티/Repository/마이그레이션) 구현 완료
 
 ### 완료 작업 (Test-First: RED 확인 → GREEN 확인)
-- [x] `src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` 작성(신규, 4개 테스트). RED(컴파일 실패) 먼저 확인 후 구현.
+- [x] `src/test/java/com/ipocalc/investormanagement/repository/investor/InvestorRepositoryTest.java` 작성(신규, 4개 테스트). RED(컴파일 실패) 먼저 확인 후 구현.
   - 기존 `AccountRepositoryTest` 패턴(`@DataJpaTest` + `@AutoConfigureTestDatabase(NONE)` + `@ActiveProfiles("test")`, 로컬 dev Postgres) 동일 적용.
-  - 형제 패키지(`com.vibeaiteam.investormanagement`)라 `@SpringBootConfiguration`을 못 찾는 문제가 있어 `@ContextConfiguration(classes = AccountAuthenticationApplication.class)` 추가로 해결.
-- [x] `src/main/java/com/vibeaiteam/investormanagement/domain/model/investor/Investor.java` 신설
+  - 형제 패키지(`com.ipocalc.investormanagement`)라 `@SpringBootConfiguration`을 못 찾는 문제가 있어 `@ContextConfiguration(classes = AccountAuthenticationApplication.class)` 추가로 해결.
+- [x] `src/main/java/com/ipocalc/investormanagement/domain/model/investor/Investor.java` 신설
   - `id` Long `@GeneratedValue(strategy = GenerationType.IDENTITY)` (Account.java와 동일)
   - `accountId` Long FK / `displayName` String NOT NULL(최대 50자) / `relationship` String nullable(20자) / `status` String NOT NULL `@Builder.Default "ACTIVE"` / `deletedAt` LocalDateTime nullable / `createdAt`·`updatedAt` LocalDateTime(애플리케이션 설정, `updatable=false`는 createdAt에만)
-- [x] `src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` 신설 — `extends JpaRepository<Investor, Long>`, `findByAccountIdAndStatus(Long, String)` 추가
+- [x] `src/main/java/com/ipocalc/investormanagement/repository/investor/InvestorRepository.java` 신설 — `extends JpaRepository<Investor, Long>`, `findByAccountIdAndStatus(Long, String)` 추가
 - [x] `src/main/resources/db/migration/V2__init_investor.sql` 신설 — PostgreSQL 문법만 사용(MySQL AUTO_INCREMENT/ENGINE/ON UPDATE 금지 준수). 유니크 제약 없음(D-I-004).
 
 ### 확인 사항 (검증 결과)
 - `./gradlew test` 전체 GREEN. 총 41개 테스트, 0 실패 0 에러(기존 37개 + 신규 4개).
-- **주의**: `DB_PASSWORD` 환경변수가 없으면 기존 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)가 "password authentication failed"로 실패한다. `DB_PASSWORD=vibe_local_password`를 지정하고 실행해야 전체 GREEN이 나온다(SF-1 이전부터 있던 환경 이슈, 본 SF 변경과 무관).
+- **주의**: `DB_PASSWORD` 환경변수가 없으면 기존 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)가 "password authentication failed"로 실패한다. `DB_PASSWORD=ipo_local_password`를 지정하고 실행해야 전체 GREEN이 나온다(SF-1 이전부터 있던 환경 이슈, 본 SF 변경과 무관).
 - docker exec로 실제 DB 확인: `investors` 테이블(BIGINT identity PK, FK accounts(id), VARCHAR(50)/20/10, status DEFAULT 'ACTIVE', 인덱스 2개, 유니크 제약 없음) 정상 생성, flyway_schema_history version=2 success=t.
 
 ### 변경 파일
-- `backend/src/main/java/com/vibeaiteam/investormanagement/domain/model/investor/Investor.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/domain/model/investor/Investor.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/repository/investor/InvestorRepository.java` (신규)
 - `backend/src/main/resources/db/migration/V2__init_investor.sql` (신규)
-- `backend/src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` (신규)
+- `backend/src/test/java/com/ipocalc/investormanagement/repository/investor/InvestorRepositoryTest.java` (신규)
 
 ### 남은 작업
 - SF-3 투자자 등록 API (POST /investors)부터 Controller/Service 작성. 본 SF에서는 Controller/Service 미작성(지시 준수).
@@ -99,21 +99,21 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
   - status=ACTIVE, createdAt/updatedAt=now(), deletedAt=null 명시 설정 (D-I-003)
 
 ### 확인 사항 (검증 결과)
-- `DB_PASSWORD=vibe_local_password ./gradlew test` 전체 **GREEN: 45개 테스트(11 suites), 0 실패 0 에러** (기존 41 + 신규 4)
+- `DB_PASSWORD=ipo_local_password ./gradlew test` 전체 **GREEN: 45개 테스트(11 suites), 0 실패 0 에러** (기존 41 + 신규 4)
 - D-I-006 변경(CSRF disable·401 진입점) 후 Epic 1 테스트 포함 전체 회귀 없음 확인.
 
 ### 변경 파일
-- `backend/src/main/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfig.java` (수정)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/InvestorController.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/dto/InvestorRegisterRequest.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/dto/InvestorResponse.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/service/investor/InvestorService.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorValidationException.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorExceptionHandler.java` (신규)
-- `backend/src/test/java/com/vibeaiteam/investormanagement/controller/investor/InvestorControllerTest.java` (신규)
-- `backend/src/test/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfigTest.java` (수정)
-- `backend/src/test/java/com/vibeaiteam/accountauthentication/config/security/DataIsolationTest.java` (수정)
-- `backend/src/test/java/com/vibeaiteam/accountauthentication/controller/PasswordChangeControllerTest.java` (수정)
+- `backend/src/main/java/com/ipocalc/accountauthentication/config/security/SecurityConfig.java` (수정)
+- `backend/src/main/java/com/ipocalc/investormanagement/controller/investor/InvestorController.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/controller/investor/dto/InvestorRegisterRequest.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/controller/investor/dto/InvestorResponse.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/service/investor/InvestorService.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/exception/InvestorValidationException.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/exception/InvestorExceptionHandler.java` (신규)
+- `backend/src/test/java/com/ipocalc/investormanagement/controller/investor/InvestorControllerTest.java` (신규)
+- `backend/src/test/java/com/ipocalc/accountauthentication/config/security/SecurityConfigTest.java` (수정)
+- `backend/src/test/java/com/ipocalc/accountauthentication/config/security/DataIsolationTest.java` (수정)
+- `backend/src/test/java/com/ipocalc/accountauthentication/controller/PasswordChangeControllerTest.java` (수정)
 
 ### 남은 작업
 - SF-4 투자자 목록/상세 조회 API (GET /investors, GET /investors/{id}, SecurityUtils 계정 소유권 403 검증)
@@ -142,18 +142,18 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
 - [x] 리포지토리 테스트 신규 2개: `findByAccountId` ACTIVE+INACTIVE 모두 반환 / 빈 결과 시 empty
 
 ### 확인 사항 (검증 결과)
-- `DB_PASSWORD=vibe_local_password ./gradlew test` 전체 **GREEN: 54개 테스트, 0 실패 0 에러** (기존 45 + 신규 9)
+- `DB_PASSWORD=ipo_local_password ./gradlew test` 전체 **GREEN: 54개 테스트, 0 실패 0 에러** (기존 45 + 신규 9)
 - `DB_PASSWORD` 미설정 시 기존 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용) 5건이 "password authentication failed"로 실패 — stash(변경 전 HEAD 기준) 재실행으로 **사전 존재 실패임을 재확인**. SF-4 변경과 무관한 환경 이슈. env var 지정 시 전체 GREEN.
 
 ### 변경 파일
-- `backend/src/main/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepository.java` (수정: findByAccountId 추가)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/service/investor/InvestorService.java` (수정: list/getById 추가)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/controller/investor/InvestorController.java` (수정: GET 2종 추가)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorExceptionHandler.java` (수정: 404/403 핸들러 추가)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorNotFoundException.java` (신규)
-- `backend/src/main/java/com/vibeaiteam/investormanagement/exception/InvestorForbiddenException.java` (신규)
-- `backend/src/test/java/com/vibeaiteam/investormanagement/controller/investor/InvestorControllerTest.java` (수정: GET 테스트 7개 추가)
-- `backend/src/test/java/com/vibeaiteam/investormanagement/repository/investor/InvestorRepositoryTest.java` (수정: findByAccountId 테스트 2개 추가)
+- `backend/src/main/java/com/ipocalc/investormanagement/repository/investor/InvestorRepository.java` (수정: findByAccountId 추가)
+- `backend/src/main/java/com/ipocalc/investormanagement/service/investor/InvestorService.java` (수정: list/getById 추가)
+- `backend/src/main/java/com/ipocalc/investormanagement/controller/investor/InvestorController.java` (수정: GET 2종 추가)
+- `backend/src/main/java/com/ipocalc/investormanagement/exception/InvestorExceptionHandler.java` (수정: 404/403 핸들러 추가)
+- `backend/src/main/java/com/ipocalc/investormanagement/exception/InvestorNotFoundException.java` (신규)
+- `backend/src/main/java/com/ipocalc/investormanagement/exception/InvestorForbiddenException.java` (신규)
+- `backend/src/test/java/com/ipocalc/investormanagement/controller/investor/InvestorControllerTest.java` (수정: GET 테스트 7개 추가)
+- `backend/src/test/java/com/ipocalc/investormanagement/repository/investor/InvestorRepositoryTest.java` (수정: findByAccountId 테스트 2개 추가)
 
 ### 남은 작업
 - SF-5 투자자 수정 API (PATCH /investors/{id})
@@ -185,10 +185,10 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
   - displayName이 null이 아닐 때만 검증·갱신(`validateDisplayName` 재사용), relationship이 null이 아닐 때만 갱신(빈 문자열은 `normalizeRelationship`으로 NULL 변환), 성공 시 `updatedAt`을 `LocalDateTime.now()`로 갱신 후 저장 (엣지 3/7 반영)
   - `InvestorController.update` (@PatchMapping("/{id}")) 추가, 200 OK + InvestorResponse 반환
   - 참고: spec의 PATCH 응답에 relationship 필드가 없어 InvestorResponse에는 추가하지 않음 (스펙 유지)
-- [x] 전체 검증: `DB_PASSWORD=vibe_local_password ./gradlew test` **GREEN: 61개 테스트, 0 실패 0 에러** (InvestorControllerTest 18건 포함)
+- [x] 전체 검증: `DB_PASSWORD=ipo_local_password ./gradlew test` **GREEN: 61개 테스트, 0 실패 0 에러** (InvestorControllerTest 18건 포함)
 
 ### 확인 사항 (검증 결과)
-- `DB_PASSWORD` 미설정 시 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)이 "password authentication failed"로 실패 — SF-4 때 이미 확인된 **사전 존재 환경 이슈** (이번 변경과 무관). env var 지정 시 전체 GREEN. `DB_PASSWORD=vibe_local_password` 값은 docker-compose.yml/application-test.yml에 이미 공개된 로컬 dev 값 사용.
+- `DB_PASSWORD` 미설정 시 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)이 "password authentication failed"로 실패 — SF-4 때 이미 확인된 **사전 존재 환경 이슈** (이번 변경과 무관). env var 지정 시 전체 GREEN. `DB_PASSWORD=ipo_local_password` 값은 docker-compose.yml/application-test.yml에 이미 공개된 로컬 dev 값 사용.
 - 변경 파일: `InvestorController.java`, `InvestorService.java`, `InvestorControllerTest.java` (수정), `InvestorUpdateRequest.java` (신규)
 - `git diff --check` 통과
 
@@ -215,7 +215,7 @@ architecture.md(및 이후 Epic 11/12 spec)가 `SecurityUtils.getCurrentAccountI
   - `InvestorService.deactivate(Long id)` 추가: `findOwnedInvestor(id)`로 소유권 검증 재사용(SF-4/SF-5와 동일한 404 "투자자를 찾을 수 없습니다."/403 "계정 소유권이 없습니다.") → status가 INACTIVE가 아닐 때만(status 전이 시에만) status=INACTIVE + deletedAt=now + updatedAt=now 설정 후 저장 → 이미 INACTIVE면 아무것도 변경하지 않고 그대로 반환(멱등성)
   - 응답: `SuccessResponse`(기존 PasswordChangeController가 쓰는 message-only DTO) `SuccessResponse.of("투자자가 비활성화되었습니다.")`, 200 OK
   - `InvestorController`에 `@DeleteMapping("/{id}")` 추가
-- [x] 전체 검증: `DB_PASSWORD=vibe_local_password ./gradlew test` **GREEN: 66개 테스트(11 suites), 0 실패 0 에러** (기존 61 + 신규 5)
+- [x] 전체 검증: `DB_PASSWORD=ipo_local_password ./gradlew test` **GREEN: 66개 테스트(11 suites), 0 실패 0 에러** (기존 61 + 신규 5)
 
 ### 확인 사항 (검증 결과)
 - `DB_PASSWORD` 미설정 시 `SecurityConfigTest`/`CustomUserDetailsServiceTest`(프로필 미지정, `application.yml`의 `${DB_PASSWORD}` 사용)이 "password authentication failed"로 실패 — SF-4 때부터 확인된 **사전 존재 환경 이슈** (이번 변경과 무관). env var 지정 시 전체 GREEN.

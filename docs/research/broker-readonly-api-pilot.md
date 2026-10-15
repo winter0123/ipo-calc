@@ -31,10 +31,10 @@
 
 **코드베이스**
 - `backend/src/main/resources/db/migration/V3__create_securities_firms_table.sql`
-- `backend/src/main/java/com/vibeaiteam/securitiesfirmcatalog/**` (Epic 3)
-- `backend/src/main/java/com/vibeaiteam/securitiesaccountmanagement/**` (Epic 4, `infrastructure.encryption.AccountNumberEncryptor` / `AccountNumberMasker`)
-- `backend/src/main/java/com/vibeaiteam/salemanagement/domain/model/sale/Sale.java`, `V9__create_sales_table.sql` (Epic 8)
-- `backend/src/main/java/com/vibeaiteam/costrecording/domain/model/cost/Cost.java`, `V10__create_costs_table.sql` (Epic 9)
+- `backend/src/main/java/com/ipocalc/securitiesfirmcatalog/**` (Epic 3)
+- `backend/src/main/java/com/ipocalc/securitiesaccountmanagement/**` (Epic 4, `infrastructure.encryption.AccountNumberEncryptor` / `AccountNumberMasker`)
+- `backend/src/main/java/com/ipocalc/salemanagement/domain/model/sale/Sale.java`, `V9__create_sales_table.sql` (Epic 8)
+- `backend/src/main/java/com/ipocalc/costrecording/domain/model/cost/Cost.java`, `V10__create_costs_table.sql` (Epic 9)
 - `backend/src/main/resources/db/migration/V5__create_ipos_table.sql`, `V7__create_subscriptions_table.sql`, `V8__create_allocations_table.sql` (자동 채움 매칭 키 확인용)
 - `backend/src/main/resources/application.yml` (Flyway / `ddl-auto: validate` / `app.encryption.key` / 로깅 레벨)
 - `backend/build.gradle.kts` (Spring Boot 3.3.4, `spring-boot-starter-web`만 존재 — `RestClient` 사용 가능, WebClient 없음)

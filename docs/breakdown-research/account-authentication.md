@@ -38,19 +38,19 @@ zsh: command not found: gradle
 services:
   postgres:
     image: postgres:17
-    container_name: vibe-ai-team-postgres
+    container_name: ipo-calc-postgres
     environment:
-      POSTGRES_DB: vibe_ai_team
-      POSTGRES_USER: vibe
-      POSTGRES_PASSWORD: vibe_local_password
+      POSTGRES_DB: ipo_calc
+      POSTGRES_USER: ipo
+      POSTGRES_PASSWORD: ipo_local_password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 ```
-- **DB명**: `vibe_ai_team`
-- **사용자**: `vibe`
-- **비밀번호**: `vibe_local_password` (로컬 개발용, `.env`로 관리 예정)
+- **DB명**: `ipo_calc`
+- **사용자**: `ipo`
+- **비밀번호**: `ipo_local_password` (로컬 개발용, `.env`로 관리 예정)
 - **포트**: `5432` (호스트 포트 매핑)
 - Spring Boot `application.yml`의 `spring.datasource` 설정에 **그대로 사용 가능**
 - Architecture.md의 DB 설계(Account 테이블 등)는 이 PostgreSQL 인스턴스 대상으로 생성하면 됨
@@ -104,7 +104,7 @@ services:
 ## 추가 제약
 
 1. **Gradle Wrapper 필수**: 시스템 Gradle 미설치 상태이므로 `./gradlew`로만 빌드/실행 가능
-2. **로컬 DB 비밀번호 관리**: `vibe_local_password`는 `.env` 또는 `application-local.yml`로 분리, Git 커밋 금지
+2. **로컬 DB 비밀번호 관리**: `ipo_local_password`는 `.env` 또는 `application-local.yml`로 분리, Git 커밋 금지
 3. **Java 21 고정**: `java -version` 확인된 버전과 `build.gradle.kts`의 `java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))` 일치 필수
 4. **단일 모듈 시작**: 멀티 모듈 분리 불필요 (Epic 1 범위 내 단일 JAR)
 5. **테스트 의존성**: `spring-boot-starter-test`, `spring-security-test`, `testcontainers` (PostgreSQL 통합 테스트용) 초기부터 포함 권장

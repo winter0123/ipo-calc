@@ -7,7 +7,7 @@ plugins {
     id("com.diffplug.spotless") version "6.25.0"
 }
 
-group = "com.vibeaiteam"
+group = "com.ipocalc"
 version = "0.0.1-SNAPSHOT"
 
 java {

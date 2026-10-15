@@ -131,16 +131,16 @@ terraform apply -auto-approve -var ocpus=2 -var memory_gbs=12   # 안 되면 ocp
 운영 VM에서 매일 백업(압축 덤프, 최근 14개 보관, 폴더 권한 700·파일 600):
 
 ```bash
-scripts/backup-db.sh                       # ~/vibe-backups/vibe_ai_team_YYYYMMDD_HHMMSS.sql.gz
+scripts/backup-db.sh                       # ~/ipo-calc-backups/ipo_calc_YYYYMMDD_HHMMSS.sql.gz
 crontab -e                                 # 아래 한 줄 추가(매일 03:30)
-30 3 * * * /home/ubuntu/ipo-calc/scripts/backup-db.sh >> /home/ubuntu/vibe-backups/backup.log 2>&1
+30 3 * * * /home/ubuntu/ipo-calc/scripts/backup-db.sh >> /home/ubuntu/ipo-calc-backups/backup.log 2>&1
 ```
 
 복원(대상 DB를 덮어씀, `restore` 입력 확인):
 
 ```bash
 docker compose -p ipo-calc -f deploy/docker-compose.prod.yml stop backend
-scripts/restore-db.sh ~/vibe-backups/vibe_ai_team_20261013_033000.sql.gz
+scripts/restore-db.sh ~/ipo-calc-backups/ipo_calc_20261013_033000.sql.gz
 docker compose -p ipo-calc -f deploy/docker-compose.prod.yml start backend
 ```
 

@@ -62,7 +62,7 @@
 **4. 버그 발견 및 수정**: 최초 구현 워커가 build.gradle.kts에 Kotlin JVM 플러그인(`kotlin("jvm")`, `kotlin("plugin.spring")`)과 `kotlin("kapt")("org.projectlombok:lombok")`을 잘못 추가함("Gradle Kotlin DSL" = 빌드 스크립트 문법을 "앱을 Kotlin으로 작성"으로 오해). Gradle 9.7.1에서 파싱 에러(`TaskContainer.invoke Unresolved reference`)로 빌드 실패. 별도 버그수정 티켓(task_7bc9f5524aa4)으로 Implementation 워커가 제거, 순수 Java 프로젝트로 정정.
 
 **5. 애플리케이션 설정**
-- `application.yml`: docker-compose.yml PostgreSQL 설정 반영(DB vibe_ai_team, 사용자 vibe, 포트 5432, 비밀번호는 `${DB_PASSWORD}` 환경변수 참조, 하드코딩 없음), Flyway 활성화, JPA ddl-auto: validate
+- `application.yml`: docker-compose.yml PostgreSQL 설정 반영(DB ipo_calc, 사용자 ipo, 포트 5432, 비밀번호는 `${DB_PASSWORD}` 환경변수 참조, 하드코딩 없음), Flyway 활성화, JPA ddl-auto: validate
 
 **6. 나머지**
 - `src/main/resources/db/migration/.gitkeep` (Flyway 마이그레이션 위치, SF-2에서 V1 작성 예정)
@@ -80,8 +80,8 @@ PASS — SF-1 완료. Gradle 10 호환성 관련 deprecation 경고가 있어 �
 - backend/build.gradle.kts, settings.gradle.kts, gradlew, gradlew.bat
 - backend/gradle/wrapper/gradle-wrapper.{jar,properties}
 - backend/src/main/resources/application.yml, db/migration/.gitkeep
-- backend/src/main/java/com/vibeaiteam/accountauthentication/AccountAuthenticationApplication.java
-- backend/src/main/java/com/vibeaiteam/accountauthentication/{controller,application/service,domain,domain/model/account,repository,repository/account,infrastructure,config/security,service/auth,util/security}/.gitkeep
+- backend/src/main/java/com/ipocalc/accountauthentication/AccountAuthenticationApplication.java
+- backend/src/main/java/com/ipocalc/accountauthentication/{controller,application/service,domain,domain/model/account,repository,repository/account,infrastructure,config/security,service/auth,util/security}/.gitkeep
 
 ### 다음 단계
 SF-2: Account 도메인 및 보안 기초 설정 (task_e3810229f545) 착수.
@@ -103,13 +103,13 @@ SF-2: Account 도메인 및 보안 기초 설정 (task_e3810229f545) 착수.
   - `service/auth/CustomUserDetailsService.java` — UserDetailsService 구현
 
 ### 중간에 발생한 문제 3건 (모두 Master가 진단·해결)
-1. **DB 포트 충돌**: 이 프로젝트와 무관한 다른 postgres 컨테이너가 호스트 포트 5432를 이미 점유 중이라 `vibe-ai-team-postgres`가 한 번도 기동되지 못함. 사용자 확인 후 호스트 포트를 5433으로 변경(`docker-compose.yml`, `docs/setup-history.md` 기록). `application.yml`의 datasource URL도 5433으로 수정.
+1. **DB 포트 충돌**: 이 프로젝트와 무관한 다른 postgres 컨테이너가 호스트 포트 5432를 이미 점유 중이라 `ipo-calc-postgres`가 한 번도 기동되지 못함. 사용자 확인 후 호스트 포트를 5433으로 변경(`docker-compose.yml`, `docs/setup-history.md` 기록). `application.yml`의 datasource URL도 5433으로 수정.
 2. **DB_PASSWORD 미전달**: Epic worktree에는 `.envrc`가 없어(gitignore 대상이라 worktree 생성 시 자동 복사 안 됨) 워커 터미널에 `DB_PASSWORD` 환경변수가 전달되지 않음. main 워크트리의 `.envrc`를 epic worktree에도 복사해 해결(둘 다 커밋 대상 아님).
 3. **Flyway가 PostgreSQL 17 미지원**: Spring Boot 3.3.4가 관리하는 flyway-core 10.10.0이 PostgreSQL 17을 인식하지 못함(`Unsupported Database: PostgreSQL 17.11`). `flyway-core:10.20.1`로 버전을 올리고, Flyway 10부터 별도 모듈로 분리된 `flyway-database-postgresql:10.20.1`을 추가 의존성으로 넣어 해결.
 4. (부수) `@DataJpaTest`가 기본적으로 임베디드 DB로 치환을 시도하다 실패 → `@AutoConfigureTestDatabase(replace = Replace.NONE)` + `@ActiveProfiles("test")` + `application-test.yml`로 실제 개발용 Postgres를 그대로 사용하도록 구성.
 
 ### 알려진 이슈 (다음 리뷰 단계에서 확인 필요)
-- `backend/src/test/resources/application-test.yml`에 개발용 DB 비밀번호(`vibe_local_password`)가 평문으로 들어가 있음. `docker-compose.yml`에도 이미 같은 값이 평문으로 있어 신규 노출 위험 증가는 적지만, 보안 리뷰(C그룹) 단계에서 `${DB_PASSWORD}` 환경변수 참조로 통일할지 확인 필요.
+- `backend/src/test/resources/application-test.yml`에 개발용 DB 비밀번호(`ipo_local_password`)가 평문으로 들어가 있음. `docker-compose.yml`에도 이미 같은 값이 평문으로 있어 신규 노출 위험 증가는 적지만, 보안 리뷰(C그룹) 단계에서 `${DB_PASSWORD}` 환경변수 참조로 통일할지 확인 필요.
 - 테스트가 Testcontainers(이미 테스트 의존성에는 포함됨)를 쓰지 않고 로컬에 떠 있는 실제 dev DB에 의존함 — CI 환경이나 여러 명이 동시에 테스트를 돌릴 때 격리가 안 될 수 있음. 후속 개선 후보.
 
 ### 실행한 검증
@@ -122,10 +122,10 @@ PASS — SF-2 완료.
 ### 변경된 파일
 - backend/build.gradle.kts (flyway 버전/모듈 추가)
 - backend/src/main/resources/application.yml (datasource URL 포트 수정)
-- backend/src/main/java/com/vibeaiteam/accountauthentication/domain/model/account/Account.java
-- backend/src/main/java/com/vibeaiteam/accountauthentication/repository/account/AccountRepository.java
-- backend/src/main/java/com/vibeaiteam/accountauthentication/config/security/SecurityConfig.java
-- backend/src/main/java/com/vibeaiteam/accountauthentication/service/auth/CustomUserDetailsService.java
+- backend/src/main/java/com/ipocalc/accountauthentication/domain/model/account/Account.java
+- backend/src/main/java/com/ipocalc/accountauthentication/repository/account/AccountRepository.java
+- backend/src/main/java/com/ipocalc/accountauthentication/config/security/SecurityConfig.java
+- backend/src/main/java/com/ipocalc/accountauthentication/service/auth/CustomUserDetailsService.java
 - backend/src/main/resources/db/migration/V1__init_account.sql
 - backend/src/test/resources/application-test.yml (신규)
 - backend/src/test/java/.../AccountRepositoryTest.java (테스트 DB 설정 어노테이션 추가)

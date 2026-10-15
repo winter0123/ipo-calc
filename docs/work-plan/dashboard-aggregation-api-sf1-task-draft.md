@@ -18,7 +18,7 @@
 
 **선행 SF**: 없음 (첫 번째 SF). **단, 구현 착수 게이트로 Epic 10(main 머지)을 받는다** — ProfitCalculator의 메서드 시그니처가 SF-1에서 직접 호출되기 때문.
 
-**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.vibeaiteam.dashboard`):
+**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.ipocalc.dashboard`):
 - `dto/dashboard/SummaryDto.java` — 전체 집계 응답 DTO. 필드: totalInvestmentAmount(Long), totalPreTaxProfit(Long), totalAfterTaxProfit(Long), totalProfitRate(Double), participationCount(Integer)
 - `dto/dashboard/InvestorAggregationDto.java` — 투자자별 집계 응답 DTO. SummaryDto 필드 + investorId(Long), investorName(String)
 - `dto/dashboard/SecuritiesFirmAggregationDto.java` — 증권사별 집계 응답 DTO. SummaryDto 필드 + securitiesFirmId(Long), securitiesFirmName(String)
@@ -126,8 +126,8 @@ Epic 12(dashboard-aggregation-api) SF-1 기반 계층을 구현한다. 이후 SF
 
 검증 명령 (docs/guide-backend.md 확인된 실제 명령):
 cd backend
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
-DB_PASSWORD=vibe_local_password ./gradlew build
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew build
 
 완료 조건 (Definition of Done):
 1. 위 산출물 파일 14종이 모두 생성되고 컴파일됨 (./gradlew build 통과)
@@ -154,8 +154,8 @@ DB_PASSWORD=vibe_local_password ./gradlew build
 
 ```bash
 cd backend
-DB_PASSWORD=vibe_local_password ./gradlew test --rerun
-DB_PASSWORD=vibe_local_password ./gradlew build
+DB_PASSWORD=ipo_local_password ./gradlew test --rerun
+DB_PASSWORD=ipo_local_password ./gradlew build
 ```
 
 > 로컬 환경·Docker·DB 복구 절차와 실제 환경 변수 이름은 `docs/setup-history.md`를 진실 소스로 사용한다. 시크릿 값은 문서·커밋·work-log 어디에도 쓰지 않는다.

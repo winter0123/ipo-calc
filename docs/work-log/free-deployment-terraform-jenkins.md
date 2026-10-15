@@ -41,7 +41,7 @@
 - **file:// 체크아웃 거부**: Git 플러그인이 로컬 경로를 보안상 막는다(`GitSCM.ALLOW_LOCAL_CHECKOUT`). 로컬 연습 compose에만 허용하고, 운영(GitHub)에서는 제거한다.
 - **Jenkins는 git에 커밋된 `Jenkinsfile`만 읽는다.** 수정 후 커밋하지 않으면 반영되지 않는다.
 - **CI 테스트 DB**: 백엔드 테스트는 `localhost:5433` 공유 Postgres 전제다. 파이프라인이 테스트 직전에 임시 Postgres `ci-pg`를 `ci-net` 네트워크에 띄우고 `SPRING_DATASOURCE_URL`/`SPRING_DATASOURCE_PASSWORD`로 덮어쓰며, `post { always }`로 정리한다(성공·실패 무관).
-- **검증 결과**: 빌드 #2 SUCCESS — 백엔드 테스트 통과(첫 실행 2분 8초), UI lint·typecheck·test 통과, `vibe-prod` 스택 기동, `http://localhost:18080` UI 200·`/api/auth/me` 401.
+- **검증 결과**: 빌드 #2 SUCCESS — 백엔드 테스트 통과(첫 실행 2분 8초), UI lint·typecheck·test 통과, `ipo-calc-prod` 스택 기동, `http://localhost:18080` UI 200·`/api/auth/me` 401.
 - **docker.sock 권한**: Docker Desktop(mac)에서는 `group_add: 0`으로 접근된다. Linux VM에서는 `DOCKER_GID`를 소켓의 GID로 맞춰야 한다(4단계에서 확인).
 - **아직 확인하지 못한 것**: 테스트를 일부러 실패시켰을 때 배포가 중단되는지, GitHub webhook 자동 트리거, `/jenkins` 접두사를 Caddy 뒤에서 쓸 때의 동작(로컬에서는 직접 접속만 확인).
 

@@ -25,7 +25,7 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 
 - 한 SF = 한 워커, **한 worktree = 한 워커**. 같은 트리에 둘을 붙이지 않는다.
 - 워커는 OpenCode + OpenRouter 무료 모델로 띄운다. OpenRouter 일일 한도가 소진되면 OpenCode Zen 무료 모델로 전환하되, 후보를 한 요청씩 먼저 시험한다. 사용자가 특정 모델 계열을 빼라고 하면 그 지시를 따른다(AGENTS.md 9장). **같은 시간대에 같은 모델을 두 워커에 배정하지 않는다**(`docs/ai-free-model.md` 참고). 터미널을 띄운 직후 `Build · <모델명>` 줄을 읽어 지정한 모델이 맞는지 확인하고, watchdog 상태 파일의 모델명으로도 대조한다.
-- backend 워커를 띄울 때 빈 슬롯(1~3)을 지정하고 spec의 검증 명령에 그 슬롯 번호(`scripts/db-slot.sh reset <n>` + `DB_NAME=vibe_slot_<n>`)를 넣는다. 워커가 끝나면 슬롯을 회수한다(다음 사용자가 reset 한다). Master 자신의 검증은 슬롯 4를 쓴다. (`docs/guide-backend.md` 2·5절)
+- backend 워커를 띄울 때 빈 슬롯(1~3)을 지정하고 spec의 검증 명령에 그 슬롯 번호(`scripts/db-slot.sh reset <n>` + `DB_NAME=ipo_slot_<n>`)를 넣는다. 워커가 끝나면 슬롯을 회수한다(다음 사용자가 reset 한다). Master 자신의 검증은 슬롯 4를 쓴다. (`docs/guide-backend.md` 2·5절)
 - backend spec의 [하지 말 것]에는 `docs/guide-backend.md` 5절(지뢰 목록)을 그대로 붙인다. 같은 패키지에서 이어지는 SF는 앞 SF 병합 뒤 같은 터미널에 이어 시킬 수 있다(`docs/worker-spec-template.md`).
 - 워커에게는 대화가 아니라 `docs/worker-spec-template.md` 형식의 **자기완결적 spec**을 준다. 무료 모델은 범위와 사실관계에서 실수하므로, spec에 토큰을 쓰는 게 나중에 교정 라운드를 도는 것보다 싸다.
 - 기다릴 때는 `check --wait --timeout-ms 3600000` 같은 **긴 blocking 하나**로 기다린다. 5분짜리 짧은 타임아웃으로 재시도를 반복하지 않는다 — 재시도마다 턴이 열려 토큰이 나간다.

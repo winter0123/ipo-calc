@@ -2,7 +2,7 @@
 
 > **게이트 문구(2026-09-28 갱신)**: **PR #157은 이미 main에 병합**되었고, **PR #168(Epic 16 SF-1)·PR #162(Epic 11 SF-3)·PR #167(Epic 12 SF-1)도 병합 완료**다. 따라서 "PR #157 병합 여부 재확인" 게이트는 **사라졌다**. ui/ 실제 파일 상태는 본 문서 5절 "드리프트 점검"에 `origin/main` 기준으로 대조해 반영했다. 남은 게이트는 **Epic 12 SF-2~4(`/summary`, `/by-investor`, `/by-securities-firm`, `/by-period`) 병합 확인**뿐이며, 병합되면 mock이 아닌 실연동으로 검증해야 한다.
 >
-> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java`
+> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/ipocalc/dashboard/controller/DashboardController.java`
 
 ---
 
@@ -33,7 +33,7 @@
 
 > 2026-09-28 드리프트 정정: 원문은 4개 API 모두 "Epic 12, **미구현**"이었다. Epic 12 SF-1 기반 계층은 병합(#167)됐고 나머지는 진행 중이므로 표현을 "Epic 12 SF-2~4에서 구현 예정"으로 바꾼다.
 >
-> **응답 DTO는 이미 확정되어 있다**: `backend/src/main/java/com/vibeaiteam/dashboard/dto/`의 `SummaryDto`, `InvestorAggregationDto`, `SecuritiesFirmAggregationDto`, `PeriodAggregationDto`(PR #167로 병합). `entities/dashboard/types.ts`는 이 4개 DTO의 필드를 그대로 선반영한다.
+> **응답 DTO는 이미 확정되어 있다**: `backend/src/main/java/com/ipocalc/dashboard/dto/`의 `SummaryDto`, `InvestorAggregationDto`, `SecuritiesFirmAggregationDto`, `PeriodAggregationDto`(PR #167로 병합). `entities/dashboard/types.ts`는 이 4개 DTO의 필드를 그대로 선반영한다.
 
 **특이사항** (breakdown.md, spec.md, architecture.md 종합):
 - **총투자금 정의**: 배정금액 단일 기준으로 정의되며(`Allocation.allocatedQuantity × allocationPrice`), 별도 선택 옵션이 존재하지 않음(D-W16-001).

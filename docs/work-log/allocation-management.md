@@ -59,10 +59,10 @@ MVP에서는 `allocationMethod` 자유 텍스트(선택 필드)로 기록한다.
 `winter0123/allocation-management` (backend-3 워크스페이스).
 
 **산출물**:
-- `backend/src/main/java/com/vibeaiteam/allocationmanagement/domain/model/allocation/Allocation.java`
+- `backend/src/main/java/com/ipocalc/allocationmanagement/domain/model/allocation/Allocation.java`
   — subscriptionmanagement의 Subscription.java와 동일 스타일(Lombok
   Builder/Getter/Setter, status 기본값 "ACTIVE")
-- `backend/src/main/java/com/vibeaiteam/allocationmanagement/repository/allocation/AllocationRepository.java`
+- `backend/src/main/java/com/ipocalc/allocationmanagement/repository/allocation/AllocationRepository.java`
   — `findByIdAndDeletedAtIsNull`, `findAllByDeletedAtIsNullOrderByCreatedAtDesc`,
   `findBySubscriptionIdAndStatusAndDeletedAtIsNull` (SF-2 중복 검사용)
 - `backend/src/main/resources/db/migration/V8__create_allocations_table.sql`
@@ -71,7 +71,7 @@ MVP에서는 `allocationMethod` 자유 텍스트(선택 필드)로 기록한다.
   부분 유니크 인덱스 `uk_allocation_active_subscription (subscription_id)
   WHERE status = 'ACTIVE'`, 조회 최적화 인덱스 2개. 테이블/컬럼 전체에
   한글 주석 추가(AGENTS.md 15장 규칙).
-- `backend/src/test/java/com/vibeaiteam/allocationmanagement/repository/allocation/AllocationRepositoryTest.java`
+- `backend/src/test/java/com/ipocalc/allocationmanagement/repository/allocation/AllocationRepositoryTest.java`
   — 저장/조회, 부분 유니크 인덱스 동작(ACTIVE 중복 시
   `DataIntegrityViolationException`, CANCELLED 후 재등록 허용) 검증. 총 6개
   테스트.
@@ -85,7 +85,7 @@ Subscription 행을 먼저 저장해야 한다(FK 위반 방지). 또한 subscri
 `ipoId`를 매번 다르게 줘야 한다(동일 조합으로 여러 건 만들면 테스트 데이터
 셋업 단계에서부터 유니크 위반 발생).
 
-**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test --rerun`
+**검증**: `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test --rerun`
 → BUILD SUCCESSFUL, 220 tests completed, 0 failed (기존 214개 + 신규 6개).
 
 **남은 작업**: SF-2(등록 API, Subscription 존재 검증 + ACTIVE 중복 검사)부터
@@ -129,7 +129,7 @@ subscriptionId미존재404/AC-004, ACTIVE중복409/AC-005, CANCELLED후재등록
 없으므로 "다른 계정 소유" 시나리오(403) 테스트는 작성하지 않았다 — 투자자/
 증권계좌/IPO/청약 등록은 모두 테스트 사전 준비 헬퍼로만 사용.
 
-**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+**검증**: `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test
 --rerun` → BUILD SUCCESSFUL, 226 tests completed, 0 failed (기존 220개 +
 신규 6개).
 
@@ -178,7 +178,7 @@ subscriptionId미존재404/AC-004, ACTIVE중복409/AC-005, CANCELLED후재등록
 - `getAllocationByIdNotFoundReturns404()` — 미존재 ID 404 (AC-011)
 테스트 헬퍼 `createSubscriptionForInvestor`, `readListBody` 추가.
 
-**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+**검증**: `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test
 --rerun` → BUILD SUCCESSFUL, 231 tests completed, 0 failed (기존 226개 +
 신규 5개).
 
@@ -232,7 +232,7 @@ breakdown 문서 명시대로 Epic 7 구현 시점에는 Sale 테이블이 없�
 - `updateCancelledAllocationReturns404()` — CANCELLED(deletedAt set)
   기록은 `findByIdAndDeletedAtIsNull`로 조회 안 되어 404 (일관성 검증)
 
-**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+**검증**: `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test
 --rerun` → BUILD SUCCESSFUL, 237 tests completed, 0 failed (기존 231개 +
 신규 6개).
 
@@ -272,7 +272,7 @@ breakdown 문서 명시대로 Epic 7 구현 시점에는 Sale 테이블이 없�
 - `cancelAlreadyCancelledAllocationReturns404()` — 이미 취소된 배정
   재취소 시 404 (일관성/자연 배제 검증)
 
-**검증**: `cd backend && DB_PASSWORD=vibe_local_password ./gradlew test
+**검증**: `cd backend && DB_PASSWORD=ipo_local_password ./gradlew test
 --rerun` → BUILD SUCCESSFUL, 241 tests completed, 0 failed (기존 237개 +
 신규 4개). **Epic 7(배정 결과 관리) 전체 SF-1~5 완료.**
 

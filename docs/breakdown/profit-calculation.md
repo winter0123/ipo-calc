@@ -30,7 +30,7 @@
 1. **자체 테이블/엔티티가 없다.** Sale(Epic 8) → Allocation(Epic 7) → Subscription(Epic 6) → Cost(Epic 9)/IPO(Epic 5)를 JOIN해 수익을 on-demand로 계산하는 **읽기 전용 계산 서비스**다. domain 계층에 Profit 엔티티나 ProfitRepository를 만들지 않고, 기존 5개 Repository(SaleRepository, CostRepository, AllocationRepository, SubscriptionRepository, IpoRepository)를 조합한다 (architecture.md "구성 컴포넌트").
 2. **Flyway 마이그레이션이 없다.** 이 Epic은 DB 스키마 변경이 전혀 없으므로, Epic 8/9의 breakdown(5개 SF, 엔티티→등록→조회→수정→취소 CRUD 구조)과 달리 쓰기 API도 없고 마이그레이션도 없다. 대신 **기반 계층 → 단일 계산 API → 집계 API** 순서로 3개 SF로 나눈다.
 3. **실현손익(Realized P&L)만 계산한다.** 이 Epic은 사용자가 실제 매도(Sale)한 건을 기반으로 수익을 계산한다. mark-to-market이나 현재 가격 대비 미실현 손익(unrealized P&L)은 범위 밖이다 (D-P-004). "분할 매도 시 안분"은 하나의 배정금액을 여러 매도 건에 나누어 배정하는 것이지, 미실현 이익과 무관하다.
-4. **SF-1도 구현 착수 게이트(Epic 8·9 머지)를 따른다.** 기술적으로 SF-1(DTO/에러/ProfitCalculator)은 Sale/Cost 엔티티를 직접 참조하지 않지만, ProfitCalculator의 메서드 시그니처가 CostRepository의 반환 타입에 묶여 있고, 전체 모듈이 `com.vibeaiteam.profitcalculation` 패키지로 하나의 브랜치에서 개발되므로 **Epic 8·9가 머지된 뒤에 한 번에 착수**한다. breakdown은 미리 확정해 두되, Subticket 생성·SF-1 브랜치 생성은 게이트 이후에 한다.
+4. **SF-1도 구현 착수 게이트(Epic 8·9 머지)를 따른다.** 기술적으로 SF-1(DTO/에러/ProfitCalculator)은 Sale/Cost 엔티티를 직접 참조하지 않지만, ProfitCalculator의 메서드 시그니처가 CostRepository의 반환 타입에 묶여 있고, 전체 모듈이 `com.ipocalc.profitcalculation` 패키지로 하나의 브랜치에서 개발되므로 **Epic 8·9가 머지된 뒤에 한 번에 착수**한다. breakdown은 미리 확정해 두되, Subticket 생성·SF-1 브랜치 생성은 게이트 이후에 한다.
 
 ---
 
@@ -60,7 +60,7 @@ SF-1 (기반 계층: 응답 DTO 2종, 에러 프레임워크, ProfitCalculator �
 
 **선행 SF**: 없음 (첫 번째 SF)
 
-**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.vibeaiteam.profitcalculation` — cost-recording이 `com.vibeaiteam.costrecording`을 쓴 것과 동일한 명명 스타일):
+**산출물 파일 경로** (architecture.md "모듈 소유권" 참고. 신규 모듈 루트 패키지는 `com.ipocalc.profitcalculation` — cost-recording이 `com.ipocalc.costrecording`을 쓴 것과 동일한 명명 스타일):
 
 - `dto/profit/ProfitDto.java` — 단일 매도건 수익 응답 DTO (id 없음). 필드: saleId(Long), saleDate(LocalDateTime), allocationId(Long), quantity(Long), saleAmount(Long), matchedAcquisitionAmount(Long), matchedCostAmount(Long), saleFee(Long), saleTax(Long), saleOtherCost(Long), preTaxProfit(Long), afterTaxProfit(Long). **모든 금액 필드는 Long (원 단위)** (D-P-005의 반올림 정책). null 허용 필드(fee/tax/otherCost)는 0으로 기본값 처리.
 - `dto/profit/InvestorProfitDto.java` — 투자자별 수익 목록 응답 DTO. 필드: investorId(Long), sales(List<ProfitDto>), totalSaleAmount(Long), totalPreTaxProfit(Long), totalAfterTaxProfit(Long).

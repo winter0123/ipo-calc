@@ -14,7 +14,7 @@ const MISSING_INVESTOR_ID = '999999'
 const API_PREFIX = process.env.E2E_API_PREFIX ?? '/api-proxy'
 const DB_NAME = process.env.E2E_DB_NAME
 const DB_CONTAINER = process.env.E2E_DB_CONTAINER ?? 'ipo-calc-postgres-dev'
-const DB_USER = process.env.E2E_DB_USER ?? 'vibe'
+const DB_USER = process.env.E2E_DB_USER ?? 'ipo'
 
 const results = []
 const shared = { account: null, seq: 0, trade: null }
@@ -524,7 +524,7 @@ async function apiLogin(context, email) {
 function runSql(statement) {
   if (!DB_NAME) {
     throw new Error(
-      'DB 직접 수정이 필요한 시나리오라 E2E_DB_NAME(예: vibe_slot_2) 환경변수를 지정해야 한다',
+      'DB 직접 수정이 필요한 시나리오라 E2E_DB_NAME(예: ipo_slot_2) 환경변수를 지정해야 한다',
     )
   }
   execFileSync('docker', ['exec', DB_CONTAINER, 'psql', '-U', DB_USER, '-d', DB_NAME, '-c', statement])

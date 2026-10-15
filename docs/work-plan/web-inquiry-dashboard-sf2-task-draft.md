@@ -2,7 +2,7 @@
 
 > **게이트 문구(2026-09-28 갱신)**: **PR #157은 이미 main에 병합**되었고, **PR #168(Epic 16 SF-1)·PR #162(Epic 11 SF-3)·PR #167(Epic 12 SF-1)도 병합 완료**다. 따라서 "PR #157 병합 여부 재확인" 게이트는 **사라졌다**. ui/ 실제 파일 상태는 본 문서 5절 "드리프트 점검"에 `origin/main` 기준으로 대조해 반영했다. 남은 게이트는 **Epic 12 SF-2~4(`/summary`, `/by-investor`, `/by-securities-firm`, `/by-period`) 병합 확인**뿐이며, 병합되면 mock이 아닌 실연동으로 검증해야 한다.
 >
-> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/vibeaiteam/dashboard/controller/DashboardController.java`
+> **확인 명령**: `git log origin/main --oneline -- backend/src/main/java/com/ipocalc/dashboard/controller/DashboardController.java`
 
 ---
 
@@ -118,7 +118,7 @@ Epic 16(web-inquiry-dashboard) SF-2 수행: 투자 내역 화면(/investments)�
 - ui/src/entities/subscription/types.ts, api-client.ts (기존 엔티티 타입/함수 재사용 — 수정 금지)
 - ui/src/features/investment-history/FilterBar/FilterBar.tsx, useInvestmentHistoryFilters.ts (SF-1 산출물 — 재사용, main에 존재)
 - ui/src/pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx (SF-1 산출물 — 업데이트 대상, main에 존재)
-- backend/src/main/java/com/vibeaiteam/investmentqueryapi/dto/investmenthistory/InvestmentHistoryDto.java (실제 응답 DTO 필드 확인용)
+- backend/src/main/java/com/ipocalc/investmentqueryapi/dto/investmenthistory/InvestmentHistoryDto.java (실제 응답 DTO 필드 확인용)
 
 ## 수정 가능 파일 (Editable Files)
 - ui/src/widgets/InvestmentHistoryTable/InvestmentHistoryTable.tsx (신규)
@@ -178,7 +178,7 @@ pnpm run build
 
 6. **실연동 검증**
    - GET /investment-history(목록, PR #153)와 GET /investment-history/{subscriptionId}(상세, PR #162)는 **모두 구현·병합 완료**이므로 mock이 아닌 실 API로 필터링/상세 조회/빈 상태/에러 플로우를 검증한다
-   - 실연동 착수 전 `backend/src/main/java/com/vibeaiteam/investmentqueryapi/dto/investmenthistory/InvestmentHistoryDto.java`와 `ui/src/entities/subscription/types.ts`의 필드 정합을 다시 확인할 것
+   - 실연동 착수 전 `backend/src/main/java/com/ipocalc/investmentqueryapi/dto/investmenthistory/InvestmentHistoryDto.java`와 `ui/src/entities/subscription/types.ts`의 필드 정합을 다시 확인할 것
 "
   --parent <EPIC_16_TASK_ID> \
   --deps '["<SF_1_TASK_ID>"]' \

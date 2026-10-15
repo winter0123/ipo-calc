@@ -24,7 +24,7 @@
 [범위 밖 — 건드리지 말 것]
 - <이미 병합된 기능, 공용 설정, 다른 Epic 패키지 등>
 - (backend) `docs/guide-backend.md` 5절 "워커가 자주 밟는 지뢰"를 그대로 복사해 붙인다 — spotlessApply 금지, 슬롯 DB 규칙, Javadoc 마침표 등
-- (backend) **코디네이터가 [검증] 명령에 지정한 슬롯 번호(DB_NAME)만 쓴다.** 슬롯이 적히지 않았다면 진행을 멈추고 "슬롯 몇 번을 쓰면 되나요?"를 되묻는다. 임의로 `DB_NAME`을 정하거나, 슬롯 없이 기본 DB(`vibe_ai_team`)로 테스트하지 않는다.
+- (backend) **코디네이터가 [검증] 명령에 지정한 슬롯 번호(DB_NAME)만 쓴다.** 슬롯이 적히지 않았다면 진행을 멈추고 "슬롯 몇 번을 쓰면 되나요?"를 되묻는다. 임의로 `DB_NAME`을 정하거나, 슬롯 없이 기본 DB(`ipo_calc`)로 테스트하지 않는다.
 
 [해야 할 일]
 1. <구체적 단계>
@@ -40,8 +40,8 @@
 [검증 — 반드시 이 명령을 그대로 실행하고 출력을 보고에 붙인다]
 <guide-<role>.md에서 복사한 실제 명령>
 예) scripts/db-slot.sh reset 1   # (backend) 코디네이터가 배정한 슬롯 번호로 먼저 reset — 배정된 번호만 쓴다
-예) DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew test --rerun
-예) DB_NAME=vibe_slot_1 DB_PASSWORD=vibe_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q   (task를 여러 개 쓸 때 `--rerun`은 마지막 task에만 적용되므로 `--rerun-tasks`)
+예) DB_NAME=ipo_slot_1 DB_PASSWORD=ipo_local_password ./gradlew test --rerun
+예) DB_NAME=ipo_slot_1 DB_PASSWORD=ipo_local_password ./gradlew checkstyleMain checkstyleTest --rerun-tasks -q   (task를 여러 개 쓸 때 `--rerun`은 마지막 task에만 적용되므로 `--rerun-tasks`)
 예) pnpm run test && pnpm run lint && pnpm run typecheck && pnpm run build
 
 [완료 조건]

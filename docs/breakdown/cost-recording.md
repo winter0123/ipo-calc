@@ -26,7 +26,7 @@ SF-1 (엔티티/Repository/마이그레이션) → SF-2 (등록 API, Subscriptio
 
 **선행 SF**: 없음 (첫 번째 SF)
 
-**산출물 파일 경로** (architecture.md "모듈 소유권", 루트 패키지 `com.vibeaiteam.costrecording` 참고 — ipo-catalog가 `com.vibeaiteam.ipocatalog`을 쓴 것과 동일한 명명 스타일):
+**산출물 파일 경로** (architecture.md "모듈 소유권", 루트 패키지 `com.ipocalc.costrecording` 참고 — ipo-catalog가 `com.ipocalc.ipocatalog`을 쓴 것과 동일한 명명 스타일):
 - `domain/model/cost/Cost.java` — JPA 엔티티 (id BIGINT GENERATED ALWAYS AS IDENTITY, subscriptionId FK(N:1), costType 자유 텍스트, amount 0 이상, incurredAt, memo null 허용, status ACTIVE/CANCELLED, deletedAt, createdAt, updatedAt)
 - `repository/cost/CostRepository.java` — Spring Data JPA 인터페이스 (deletedAt IS NULL 필터 기본 쿼리 — `findByIdAndDeletedAtIsNull`, `findAllByDeletedAtIsNullOrderByIncurredAtDescCreatedAtDesc`; 물리 삭제 메서드 노출 금지)
 - `flyway/V9__create_costs_table.sql` — 테이블 생성 + FK 제약(`fk_cost_subscription`, ON DELETE RESTRICT) + 인덱스(idx_cost_subscription_id, idx_cost_status)
