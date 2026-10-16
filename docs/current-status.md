@@ -2,12 +2,24 @@
 
 > 마지막 갱신: 2026-10-14 '한눈에 보기' 추가. 이전: 2026-10-13 사용성 개선·공모주 상세 DART 전환(#365~#373, 아래 최신 절), 그 아래 2026-10-12 인계 요약. 이전: 2026-10-01 E20 프런트 리팩토링 반영(위 최신 절), 직전은 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
 
+## 진행 중: Epic 21 상장일 시초가 자동 채움 (2026-10-16 중단 시점) — 재개는 여기부터
+
+- **목표**: 매도 등록의 처음 매도단가 = 상장일 시초가(없으면 공모가). 증권사 API 연동·캡처 OCR(#452, KIS·NH, 여러 장)은 선택 기능으로 유지.
+- **시세 출처**: 금융위 주식시세정보 **V2** `GetStockSecuritiesInfoService_V2/getStockPriceInfo_V2`(기존 `DATA_GO_KR_SERVICE_KEY`, V1은 403). 값은 문자열, 시초가=`mkp`, D+1 영업일 오후 반영, 상장 첫날 데이터 있음(실측). 공공누리 4유형 — 비영리 사용으로 확정. 영리화 시 사용자 본인 증권사 키로 조회하는 방식으로 전환(사용자 결정).
+- **결정**: 시가만 저장(종가 X), 관리자 수동 동기화 X, 배치 매일 14:30, 앱 내 재시도 없음(다음 날 재조회).
+- **Orca Run** `run_a75d91ab873b`(재개 시 `run-use --id`).
+  - planning: 작업공간 `~/orca/workspaces/ipo-calc/ipo-planning`(브랜치 `winter0123/sale-quick-entry-docs`), 문서 4개 `docs/{research,spec,architecture,breakdown}/listing-open-price.md` 미커밋. 후속 task `task_e0b52b9250e5`(실측·결정·라이선스·영리화 대안 반영) 진행 중이었음 — 반영 여부 diff로 확인.
+  - backend: 작업공간 `~/orca/workspaces/ipo-calc/ipo-backend`(브랜치 `winter0123/listing-open-price-backend`), task `task_218b3e090f21`(dispatch `ctx_ded832b6020f`, LongCat 2.5, 슬롯 1) 구현 중 미완 — V29·`service/ipo/openprice/`·IpoResponse 등 부분 작업 있음. 재개는 worker-abandon → 다른 모델 → `--retry-of` + 재개 문구.
+  - frontend task `task_0709efece4b3`(매도 폼 기본값)는 placeholder backend task `task_65293c46d678`에 걸려 있음 — backend 병합 뒤 그 placeholder를 completed로 닫고 상세 spec으로 배정.
+- **워커 관찰**: Nemotron 3 Ultra(OpenRouter)는 무응답 정지 → MiMo로 교체. watchdog이 이 정지를 STALL로 못 잡음(작업 중 표시가 계속 갱신) — 보완 필요.
+- **미커밋**: `terraform-study/`(Terraform 실습·가이드, 커밋 여부 사용자 결정 대기).
+
 ## 한눈에 보기 (2026-10-14 기준) — 새 세션은 여기부터
 
 **제품**: '공모주계산기(IPO Calc)' 공모주 청약·배정·매도 기록과 수익 계산(상장일 기준 기간), 공모주 일정 달력(DART·KASI 자동 수집), 공모주 상세(DART 투자설명서 기반 수요예측·락업 일정·재무·인수단, 매일 05:00), 증권사 매도 자동 가져오기(한국투자·키움·LS, 조회 전용), 증권사 관리, 수익 그래프·CSV, 관리자(가입 승인·잠금 해제·공모주 등록·CSV 가져오기 — #443에서 제거, 공모주는 수동 등록만).
 - 소개 페이지·손익 색 관례·휴대폰 2단으로 화면 변경.
 
-**이름 통일(10-15, #477)**: 패키지 `com.ipocalc`, DB `ipo_calc`(사용자 `ipo`), 슬롯 `ipo_slot_N`, 볼륨 `ipo-calc-prod_*`, Jenkins 잡 `ipo-calc-deploy`. 운영 DB는 빈 상태로 새로 시작 — 첫 관리자 재지정 필요. 맥 폴더 `~/IdeaProjects/ipocalc`만 아직 안 바꿨다.
+**이름 통일(10-15, #477)**: 패키지 `com.ipocalc`, DB `ipo_calc`(사용자 `ipo`), 슬롯 `ipo_slot_N`, 볼륨 `ipo-calc-prod_*`, Jenkins 잡 `ipo-calc-deploy`. 운영 DB는 빈 상태로 새로 시작 — 첫 관리자 재지정 필요. 맥 폴더도 이미 `~/IdeaProjects/ipo-calc`다.
 
 **기술**: Spring Boot 4.1(Jackson 3), PostgreSQL(Flyway V1~V25), React 19 + TS 6(FSD), Caddy(보안 헤더·압축), 로컬 Jenkins(테스트·checkstyle·UI 검사·E2E·배포·스모크).
 
