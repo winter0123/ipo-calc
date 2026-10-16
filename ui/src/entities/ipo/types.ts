@@ -10,6 +10,7 @@ export const ipoSchema = z.object({
   lowerBandPrice: z.number().nullable(),
   upperBandPrice: z.number().nullable(),
   fixedPrice: z.number().nullable(),
+  listingOpenPrice: z.number().nullish(),
   subscriptionStartDate: z.string(),
   subscriptionEndDate: z.string(),
   listingDate: z.string().nullable(),
