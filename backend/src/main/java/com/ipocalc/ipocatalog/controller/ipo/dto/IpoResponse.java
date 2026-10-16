@@ -33,6 +33,8 @@ public class IpoResponse {
 
   private Long fixedPrice;
 
+  private Long listingOpenPrice;
+
   private LocalDate subscriptionStartDate;
 
   private LocalDate subscriptionEndDate;
@@ -62,6 +64,7 @@ public class IpoResponse {
         .lowerBandPrice(ipo.getLowerBandPrice())
         .upperBandPrice(ipo.getUpperBandPrice())
         .fixedPrice(ipo.getFixedPrice())
+        .listingOpenPrice(ipo.getListingOpenPrice())
         .subscriptionStartDate(ipo.getSubscriptionStartDate())
         .subscriptionEndDate(ipo.getSubscriptionEndDate())
         .listingDate(ipo.getListingDate())
