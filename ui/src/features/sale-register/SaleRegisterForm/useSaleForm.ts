@@ -146,11 +146,16 @@ export function useSaleForm() {
       ipo?.fixedPrice ?? allocationData.ipoFixedPrice,
       allocation.allocationPrice,
     )
+    const openPrice =
+      typeof ipo?.listingOpenPrice === 'number' && ipo.listingOpenPrice > 0
+        ? ipo.listingOpenPrice
+        : null
+    const priceDefault = openPrice != null ? openPrice : basis
     const quantity = allocationData.remainingQuantity ?? allocation.allocatedQuantity
     const priorSales = allocationData.sales.some((sale) => sale.status === 'ACTIVE')
     const saleDate = listingDate(ipo?.listingDate)
     if (!getFieldState('quantity').isDirty && quantity > 0) setValue('quantity', quantity)
-    if (!getFieldState('price').isDirty && basis != null) setValue('price', basis)
+    if (!getFieldState('price').isDirty && priceDefault != null) setValue('price', priceDefault)
     if (!getFieldState('saleDate').isDirty && saleDate) setValue('saleDate', saleDate)
     // 공모주수수료는 배정 1건당 한 번이라, 이미 매도 기록이 있으면 0원으로 시작한다.
     if (!getFieldState('ipoFee').isDirty && priorSales) setValue('ipoFee', 0)
@@ -266,6 +271,10 @@ export function useSaleForm() {
     captured,
     captureNotes,
     capturePending: pendingCapture !== null && !selectedSubscriptionId,
+    openPrice:
+      typeof ipo?.listingOpenPrice === 'number' && ipo.listingOpenPrice > 0
+        ? ipo.listingOpenPrice
+        : null,
     ipoPrice,
     hasPriorSales,
     lastEdited,

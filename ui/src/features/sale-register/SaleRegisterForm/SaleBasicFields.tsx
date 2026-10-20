@@ -6,7 +6,7 @@ import { won, type SaleForm } from './useSaleForm.ts'
 /** 매도수량·매도단가·매도일. */
 export default function SaleBasicFields({ f }: { f: SaleForm }) {
   'use no memo'
-  const { errors, isPending, ipoPrice } = f
+  const { errors, isPending, ipoPrice, openPrice } = f
   return (
     <>
       <div className={styles.field}>
@@ -58,9 +58,11 @@ export default function SaleBasicFields({ f }: { f: SaleForm }) {
           </span>
         ) : (
           <span id="price-hint" className={styles.hint}>
-            {ipoPrice != null
-              ? `공모가 ${won(ipoPrice)}이 먼저 들어갑니다.`
-              : '공모가를 알 수 없어 비어 있습니다.'}
+            {openPrice != null
+              ? `상장일 시초가 ${won(openPrice)}이 먼저 들어갑니다. 실제 체결가로 고쳐 주세요.`
+              : ipoPrice != null
+                ? `공모가 ${won(ipoPrice)}이 먼저 들어갑니다.`
+                : '공모가를 알 수 없어 비어 있습니다.'}
           </span>
         )}
       </div>

@@ -29,6 +29,8 @@ app:
     enabled: false
   ipo-sync:
     enabled: false
+  open-price-sync:
+    enabled: false
   notification:
     enabled: false
   rate-limit:

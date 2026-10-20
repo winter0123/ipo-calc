@@ -64,6 +64,10 @@ public class Ipo {
   @Column(name = "fixed_price")
   private Long fixedPrice;
 
+  /** 상장일 시초가(원). 금융위 주식시세 API로 상장 다음 영업일 이후 채운다. 모르면 null. */
+  @Column(name = "listing_open_price")
+  private Long listingOpenPrice;
+
   /** 청약 시작일. */
   @Column(name = "subscription_start_date", nullable = false)
   private LocalDate subscriptionStartDate;
@@ -113,4 +117,9 @@ public class Ipo {
   /** 마지막 수정 시각. */
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
+
+  /** 상장일 시초가를 저장한다. null이면 기존 값을 지운다. */
+  public void updateListingOpenPrice(Long listingOpenPrice) {
+    this.listingOpenPrice = listingOpenPrice;
+  }
 }

@@ -553,3 +553,74 @@ describe('SaleRegisterForm', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 })
+
+describe('상장일 시초가로 매도단가 기본값(AC-2105~2108)', () => {
+  beforeEach(() => {
+    localStorage.setItem('currentInvestorId', '1')
+    mockNavigate.mockClear()
+    mutationFnMock = () => Promise.resolve({})
+  })
+
+  it('시초가가 있으면 매도단가 기본값이 시초가, 안내 문구에 "상장일 시초가" (AC-2105)', async () => {
+    defaultMock({
+      ipo: { ...IPO, listingOpenPrice: 15000 },
+      detail: ALLOCATION_DETAIL,
+    })
+    renderForm()
+    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
+    await fill(screen.getByLabelText('청약'), '1')
+    await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
+    expect(value('매도단가')).toBe('15000')
+    expect(
+      screen.getByText('상장일 시초가 15,000원이 먼저 들어갑니다. 실제 체결가로 고쳐 주세요.'),
+    ).toBeInTheDocument()
+  })
+
+  it('시초가가 없으면 기존 공모가 규칙(AC-2106)', async () => {
+    defaultMock({
+      ipo: { ...IPO, listingOpenPrice: null },
+    })
+    await setupForm()
+    expect(value('매도단가')).toBe('10000')
+    expect(screen.getByText('공모가 10,000원이 먼저 들어갑니다.')).toBeInTheDocument()
+  })
+
+  it('시초가가 0이면 공모가로 돌아간다 (AC-2106)', async () => {
+    defaultMock({
+      ipo: { ...IPO, listingOpenPrice: 0 },
+    })
+    await setupForm()
+    expect(value('매도단가')).toBe('10000')
+    expect(screen.getByText('공모가 10,000원이 먼저 들어갑니다.')).toBeInTheDocument()
+  })
+
+  it('시초가가 있어도 실현손익 계산 기준은 공모가(기존 동작 유지) (AC-2108, d)', async () => {
+    // 공모가 10000, 시초가 15000, 수량 30 → 실현손익 기본값 (15000-10000)*30 = 150000 (세금 0 기준)
+    defaultMock({
+      ipo: { ...IPO, listingOpenPrice: 15000 },
+    })
+    renderForm()
+    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
+    await fill(screen.getByLabelText('청약'), '1')
+    await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
+    expect(value('매도단가')).toBe('15000')
+    expect(value('실현손익')).toBe('150000')
+    expect(screen.getByRole('group', { name: '수익 요약' })).toHaveTextContent('148,000원')
+  })
+
+  it('사용자가 이미 고친 매도단가는 덮어쓰지 않는다 (AC-2107, e)', async () => {
+    defaultMock({
+      ipo: { ...IPO, listingOpenPrice: 15000 },
+    })
+    renderForm()
+    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
+    await fill(screen.getByLabelText('청약'), '1')
+    await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
+    // 사용자가 이미 고친 값(12000)을 넣고 다시 렌더링하지 않으므로 덮어쓰지 않아야 함
+    await fill(screen.getByLabelText('매도단가'), '12000')
+    await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('12,000'))
+  })
+})
