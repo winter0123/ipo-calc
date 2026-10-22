@@ -1,20 +1,15 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-10-14 '한눈에 보기' 추가. 이전: 2026-10-13 사용성 개선·공모주 상세 DART 전환(#365~#373, 아래 최신 절), 그 아래 2026-10-12 인계 요약. 이전: 2026-10-01 E20 프런트 리팩토링 반영(위 최신 절), 직전은 야간 자율 작업 후속(#240~#247 반영, E2E 10/10, 백엔드 테스트 690건). **Epic 1~16 완료, Epic 19 완료, Epic 17·18은 구현 진행 중(Epic 18은 KIS 앱키·실계좌 1회 호출 대기).** 리팩토링 5건(#227~#231)·대시보드 버그 2건(#233·#234)·UI 린트 정리(#236)·404 정정(#237)·보안 점검 후속(#238·#239) 병합, 백엔드 테스트 675건. 워크스페이스 경로는 이 문서를 믿지 말고 `orca worktree list --json`으로 재확인한다.
+> 마지막 갱신: 2026-10-22. 제품 도메인 세부 스냅샷과 과거 세션 기록은 아래 날짜가 붙은 절을 참고한다.
 
-## 진행 중: Epic 21 상장일 시초가 자동 채움 (2026-10-16 중단 시점) — 재개는 여기부터
+## 현재 운영·개발 환경
 
-- **목표**: 매도 등록의 처음 매도단가 = 상장일 시초가(없으면 공모가). 증권사 API 연동·캡처 OCR(#452, KIS·NH, 여러 장)은 선택 기능으로 유지.
-- **시세 출처**: 금융위 주식시세정보 **V2** `GetStockSecuritiesInfoService_V2/getStockPriceInfo_V2`(기존 `DATA_GO_KR_SERVICE_KEY`, V1은 403). 값은 문자열, 시초가=`mkp`, D+1 영업일 오후 반영, 상장 첫날 데이터 있음(실측). 공공누리 4유형 — 비영리 사용으로 확정. 영리화 시 사용자 본인 증권사 키로 조회하는 방식으로 전환(사용자 결정).
-- **결정**: 시가만 저장(종가 X), 관리자 수동 동기화 X, 배치 매일 14:30, 앱 내 재시도 없음(다음 날 재조회).
-- **Orca Run** `run_a75d91ab873b`(재개 시 `run-use --id`).
-  - planning: 작업공간 `~/orca/workspaces/ipo-calc/ipo-planning`(브랜치 `winter0123/sale-quick-entry-docs`), 문서 4개 `docs/{research,spec,architecture,breakdown}/listing-open-price.md` 미커밋. 후속 task `task_e0b52b9250e5`(실측·결정·라이선스·영리화 대안 반영) 진행 중이었음 — 반영 여부 diff로 확인.
-  - backend: 작업공간 `~/orca/workspaces/ipo-calc/ipo-backend`(브랜치 `winter0123/listing-open-price-backend`), task `task_218b3e090f21`(dispatch `ctx_ded832b6020f`, LongCat 2.5, 슬롯 1) 구현 중 미완 — V29·`service/ipo/openprice/`·IpoResponse 등 부분 작업 있음. 재개는 worker-abandon → 다른 모델 → `--retry-of` + 재개 문구.
-  - frontend task `task_0709efece4b3`(매도 폼 기본값)는 placeholder backend task `task_65293c46d678`에 걸려 있음 — backend 병합 뒤 그 placeholder를 completed로 닫고 상세 spec으로 배정.
-- **워커 관찰**: Nemotron 3 Ultra(OpenRouter)는 무응답 정지 → MiMo로 교체. watchdog이 이 정지를 STALL로 못 잡음(작업 중 표시가 계속 갱신) — 보완 필요.
-- **미커밋**: `terraform-study/`(Terraform 실습·가이드, 커밋 여부 사용자 결정 대기).
+- **운영**: 집의 Ubuntu 노트북에서 Docker 없이 운영한다. Java 21 백엔드는 JAR + systemd, PostgreSQL 17은 호스트 서비스, 프런트엔드는 정적 파일 + Caddy다. 개인 환경을 포함한 재배포 절차는 로컬 전용 `docs/deployment/ubuntu-home-server.md`에 있다(이 파일은 `.gitignore` 대상).
+- **개발 Docker**: 저장소 루트 `docker-compose.yml`만 유지한다. PostgreSQL 17 개발 DB를 호스트 포트 5433으로 제공한다. 백엔드와 UI는 로컬에서 직접 실행한다.
+- **정리**: 예전 운영 Compose·터널 설정·Dockerfile·Jenkins·Docker 기반 홈 서버 설치/업데이트/백업/복원 스크립트와 구형 `docs/home-server.md`를 제거했다. 로컬의 예전 운영 앱/Jenkins 컨테이너와 전용 이미지, 운영 PostgreSQL·Caddy 볼륨을 제거했다. 개발 DB와 Jenkins 볼륨 및 다른 저장소의 Docker 데이터는 유지했다.
+- **남은 운영 작업**: 호스트 PostgreSQL 백업·복원 절차를 새 배포 방식에 맞춰 마련한다. 현재 가이드의 남은 작업을 확인한다.
 
-## 한눈에 보기 (2026-10-14 기준) — 새 세션은 여기부터
+## 제품 현황 기록 (2026-10-14 스냅샷)
 
 **제품**: '공모주계산기(IPO Calc)' 공모주 청약·배정·매도 기록과 수익 계산(상장일 기준 기간), 공모주 일정 달력(DART·KASI 자동 수집), 공모주 상세(DART 투자설명서 기반 수요예측·락업 일정·재무·인수단, 매일 05:00), 증권사 매도 자동 가져오기(한국투자·키움·LS, 조회 전용), 증권사 관리, 수익 그래프·CSV, 관리자(가입 승인·잠금 해제·공모주 등록·CSV 가져오기 — #443에서 제거, 공모주는 수동 등록만).
 - 소개 페이지·손익 색 관례·휴대폰 2단으로 화면 변경.
@@ -76,7 +71,7 @@
 
 2026-10-02~10-12에 사용자 요청으로 병합한 #308~#337의 결과를 한 곳에 모은다. 상세 이력은 `docs/daily-log/2026_10_02.md`·`2026_10_08.md`·`2026_10_12.md`, 코드·테스트 기준은 `main`(2026-10-12 시점 `aae0b76`, #337)이다.
 
-### 지금 제품 상태
+### 당시 제품 상태
 - **구조**: 로그인 계정 1개 → 투자자 여러 명 → 증권계좌·청약·배정·매도. 청약·배정·매도·수익 확인·투자 내역·증권사 연동·청약 목록은 **헤더의 "현재 투자자"** 기준으로 동작한다(`ui/src/entities/investor/useCurrentInvestor.ts`, localStorage `currentInvestorId`). 투자자 1명이면 자동 선택, 2명 이상이면 `InvestorGate`에서 직접 골라야 화면이 열린다. 대시보드·공모주 일정·투자자 등록·관리자 화면은 계정 단위라 게이트 대상이 아니다(`app/layouts/MainLayout/InvestorGate.tsx`의 `GATED_PREFIXES`).
 - **금액 용어/계산**: 실현손익 = 매도금액 − 취득금액 − 세금 및 기타(공모주수수료 제외, 증권사 앱 기준), 최종수익금 = 실현손익 − 공모주수수료. 저장 매핑은 스키마 불변: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타, otherCost 미사용. 서버가 `realizedProfit`/`totalRealizedProfit`을 내려주고(`ProfitCalculator.calculateRealizedProfit`), 기존 `afterTaxProfit`=최종수익금이다. 예전에 저장된 매도(옛 의미: fee=매도수수료, tax=세금)는 **변환하지 않았다**(합계 동일, 필드 의미만 다름 — 사용자 결정: 그대로 둠).
 - **비용(cost) 기능은 삭제**: UI(#321)·백엔드 패키지/API/수익 안분(#327)·DB 테이블(V21, #332). 수익 = 매도금액 − 취득금액 − 공모주수수료 − 세금 및 기타. `matchedCostAmount` 필드도 없다.

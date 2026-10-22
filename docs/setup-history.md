@@ -22,45 +22,43 @@
 
 ---
 
-## 2. 환경 복구 절차 (현재 기준 최신 상태로 계속 갱신, 순서대로 실행하면 전체 환경이 재현되어야 함)
+## 2. 환경 복구 절차 (현재 기준)
 
 ### 사전 준비
 1. 저장소 클론: `git clone https://github.com/winter0123/ipo-calc.git`
-2. 환경변수 파일 준비: `.envrc`(direnv 사용 중)에 아래 값을 채운다. 실제 값은 이 문서에 적지 않는다.
-   - `JAVA_HOME` — 로컬 JDK 21 설치 경로 (예: Microsoft Build of OpenJDK 21)
-   - `DB_PASSWORD` — PostgreSQL 비밀번호 (docker-compose.yml의 `POSTGRES_PASSWORD`와 일치해야 함)
-3. `direnv allow` (direnv 미설치 시 `.envrc`의 `export`를 셸 프로파일에 직접 반영)
+2. 로컬 개발용 `.envrc`에 `JAVA_HOME`, `DB_PASSWORD`를 설정한다. 실제 값은 저장소에 기록하지 않는다.
+3. 프런트엔드 도구는 `ui/package.json`의 package manager 기준으로 설치한다.
 
-### 인프라 기동
-4. `docker compose up -d postgres` — PostgreSQL 17 컨테이너 기동 (컨테이너명 `ipo-calc-postgres-dev`, DB명 `ipo_calc`, 사용자 `ipo`, **호스트 포트 `5433`**(컨테이너 내부는 5432, 다른 프로젝트의 컨테이너와 충돌 회피), 볼륨 `postgres_data`). 기동 전 `docker ps`로 5433 포트가 비어있는지 먼저 확인 권장.
+### 로컬 개발 데이터베이스
 
-### 백엔드
-5. Gradle 설치: `brew install gradle` (시스템에 Gradle이 없으면 `backend/`의 Gradle Wrapper가 이미 커밋되어 있으므로 보통 불필요 — wrapper가 없거나 재생성해야 할 때만 설치)
-6. `cd backend && ./gradlew build` — Java 21, Spring Boot 3.3.4 기반 프로젝트 빌드(현재 `winter0123/account-authentication` 브랜치에서 진행 중, main에는 아직 merge 안 됨)
-7. 참고: 2026-09-20에 기존 `backend/` 스캐폴딩(과거 세션 산출물, 미승인 상태)을 한 번 삭제하고 Epic 1(account-authentication) SF-1에서 처음부터 재생성함.
+루트 Compose는 개발용 PostgreSQL만 실행한다. 운영 앱이나 운영 DB를 Compose로 기동하지 않는다.
 
-### 프론트엔드
-6. 아직 프론트엔드 코드 없음. 생성되면 `npm install && npm run dev` 형태로 이 절차에 추가한다.
+```bash
+docker compose up -d postgres
+```
+
+- 컨테이너: `ipo-calc-postgres-dev`
+- DB/계정: `ipo_calc` / `ipo`
+- 호스트 포트: `5433` (컨테이너 내부 `5432`)
+- 데이터 볼륨: `postgres_data`
+
+### 백엔드와 프런트엔드
+
+- 백엔드 빌드·개발 실행: `cd backend && ./gradlew build` 또는 `./gradlew bootRun`
+- 프런트엔드: `cd ui && pnpm install && pnpm dev`
+- 백엔드 테스트 슬롯 DB는 아래 테스트용 슬롯 DB 절차를 사용한다.
 
 ### 테스트용 슬롯 DB (2026-09-30 추가)
 
 같은 Postgres 컨테이너(`ipo-calc-postgres-dev`) 안에 슬롯 DB `ipo_slot_1`~`ipo_slot_4`를 두고 백엔드 테스트를 격리한다. 슬롯 1~3은 워커, 4는 Master 검증용이다.
 
 1. 슬롯 초기화(없으면 생성): `scripts/db-slot.sh reset <1-4>` — 마지막 줄에 `DB_NAME=ipo_slot_N`을 출력한다. `scripts/db-slot.sh list`로 존재 여부를 본다.
-2. 테스트 실행: `DB_NAME=ipo_slot_N DB_PASSWORD=<로컬비밀번호> ./gradlew test --rerun`
-3. `DB_NAME`을 주지 않으면 기본 DB(`ipo_calc`)를 쓴다 — 이 DB는 병합된 마이그레이션만 쌓인 dev 상태로만 유지한다.
-4. 슬롯을 reset 한 직후(마이그레이션이 처음부터 실행된 상태)에도 전체 테스트가 통과한다. 처음에는 V15 시드 증권사와 테스트 데이터가 충돌하는 기존 테스트가 실패했으나 #216에서 고쳤다. 새 테스트는 시드와 겹치지 않는 고유 이름을 쓰고 자기가 만든 행만 지운다.
+2. 테스트 실행: `DB_NAME=ipo_slot_N DB_PASSWORD=<로컬비밀번호> ./gradlew test`
+3. `DB_NAME`을 주지 않으면 기본 DB(`ipo_calc`)를 쓴다. 이 DB는 개발 전용으로 유지한다.
 
-### 배포 스택 로컬 기동 (2026-10-01 추가)
+### 운영 서버
 
-앱 전체(Postgres·backend·Caddy+UI)를 운영과 같은 구조로 로컬에서 띄우고, 로컬 Jenkins로 파이프라인을 돌리는 절차다. 환경변수 이름은 `deploy/.env.example` 참조(값은 적지 않는다).
-
-1. `cd deploy && cp .env.example .env` 후 `DB_PASSWORD`, `APP_ENCRYPTION_KEY`, `APP_REMEMBER_ME_KEY`(둘 다 `openssl rand -base64 32`)를 채운다. `.env`는 git 제외. 로컬 http 테스트는 `SITE_ADDRESS=:80`, `SESSION_COOKIE_SECURE=false`. 포트가 충돌하면 `HTTP_PORT`/`HTTPS_PORT`를 바꾼다(기본 예시 18080/18443).
-2. 앱 기동: `docker compose -f docker-compose.prod.yml up -d --build` → `http://localhost:$HTTP_PORT`. UI는 `/api` 접두사로 API를 호출하고 Caddy가 접두사를 떼서 backend로 전달한다. backend의 DB 주소는 `SPRING_DATASOURCE_URL`로 덮어쓴다.
-3. 로컬 Jenkins: `.env`에 `JENKINS_ADMIN_PASSWORD`, `JOB_BRANCH`(빌드할 브랜치)를 추가하고 `docker compose -f jenkins/docker-compose.yml --env-file .env up -d --build` → `http://localhost:18081/jenkins`(포트는 `JENKINS_PORT`). 잡 `ipo-calc-deploy`가 자동 생성된다. Jenkinsfile은 **git에 커밋된 내용**만 읽으므로 수정 후 커밋해야 반영된다.
-4. 파이프라인 단계: 백엔드 테스트(임시 Postgres `ci-pg`, 네트워크 `ci-net`) → UI lint·typecheck·test → `docker compose -p ipo-calc up -d --build` → smoke(`/auth/me`가 401).
-5. 정리: `docker compose -p ipo-calc -f docker-compose.prod.yml down -v` 및 `docker compose -p ipo-calc -f jenkins/docker-compose.yml --env-file .env down`.
-6. Linux VM에서는 Jenkins가 docker.sock에 접근하도록 `DOCKER_GID=$(stat -c %g /var/run/docker.sock)`를 지정한다(mac Docker Desktop은 기본값 0으로 동작).
+운영은 Docker를 사용하지 않는다. Ubuntu 호스트의 Java·PostgreSQL·systemd·Caddy 구성과 Ansible 재배포 순서는 개인 로컬 가이드 `docs/deployment/ubuntu-home-server.md`를 따른다. 이 개인 가이드는 접속 정보가 포함될 수 있어 Git에 올리지 않는다.
 
 ---
 
