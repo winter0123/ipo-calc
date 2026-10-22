@@ -2,6 +2,7 @@ package com.ipocalc.accountauthentication.controller.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,4 +28,13 @@ public class SignupRequest {
 
   @Size(max = 50, message = "이름은 최대 50자까지 가능합니다")
   private String name;
+
+  /** 본인 투자자 표시 이름. 비우면 name을 쓰고, 가입과 함께 투자자로 만든다. */
+  @Size(max = 50, message = "표시 이름은 최대 50자까지 가능합니다")
+  private String displayName;
+
+  /** 계정 주인과의 관계. 비우면 SELF. */
+  @Pattern(regexp = "SELF", message = "회원가입 투자자 관계는 본인(SELF)이어야 합니다")
+  @Size(max = 20, message = "관계는 최대 20자까지 가능합니다")
+  private String relationship;
 }

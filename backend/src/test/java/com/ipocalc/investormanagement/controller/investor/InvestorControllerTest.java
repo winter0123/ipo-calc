@@ -101,6 +101,8 @@ class InvestorControllerTest {
   private void signupAndLogin() throws Exception {
     AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
     accountId = accountRepository.findByEmail(testEmail).getId();
+    // 이 클래스는 POST /investors 동작을 독립 검증하므로 가입 시 자동 생성된 본인 투자자를 제거한다.
+    investorRepository.deleteAll(investorRepository.findByAccountId(accountId));
     AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
 
@@ -206,6 +208,20 @@ class InvestorControllerTest {
     assertThat(investors.get(0).getRelationship()).isEqualTo("SELF");
     assertThat(investors.get(0).getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(investors.get(0).getDeletedAt()).isNull();
+  }
+
+  @Test
+  void registerInvestorWithFriendRelationship() throws Exception {
+    signupAndLogin();
+
+    registerInvestor("친구투자자", "FRIEND");
+
+    assertThat(investorsOfAccount())
+        .singleElement()
+        .satisfies(investor -> {
+          assertThat(investor.getDisplayName()).isEqualTo("친구투자자");
+          assertThat(investor.getRelationship()).isEqualTo("FRIEND");
+        });
   }
 
   @Test
@@ -370,6 +386,7 @@ class InvestorControllerTest {
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
     assertThat(((Number) body.get("id")).longValue()).isEqualTo(investorId);
     assertThat(body.get("displayName")).isEqualTo("홍길동");
+    assertThat(body.get("relationship")).isEqualTo("SELF");
     assertThat(((Number) body.get("accountId")).longValue()).isEqualTo(accountId);
     assertThat(body.get("status")).isEqualTo("ACTIVE");
     assertThat(body.get("deletedAt")).isNull();

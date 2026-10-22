@@ -7,7 +7,8 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'SELF', label: '본인' },
-  { value: 'SPOUSE', label: '배우자' },
+  { value: 'PARTNER', label: '연인' },
+  { value: 'FRIEND', label: '친구' },
   { value: 'PARENT', label: '부모' },
   { value: 'CHILD', label: '자녀' },
   { value: 'OTHER', label: '기타' },
@@ -68,7 +69,7 @@ export default function InvestorRegisterForm() {
           {...register('relationship', {
             validate: (v) =>
               !v ||
-              ['SELF', 'SPOUSE', 'PARENT', 'CHILD', 'OTHER'].includes(v) ||
+              ['SELF', 'PARTNER', 'FRIEND', 'SPOUSE', 'PARENT', 'CHILD', 'OTHER'].includes(v) ||
               '유효한 관계를 선택해 주세요.',
           })}
         >

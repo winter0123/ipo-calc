@@ -26,6 +26,7 @@ async function fillAndSubmit() {
   await fill(screen.getByLabelText('이메일'), 'test@example.com')
   await fill(screen.getByLabelText('비밀번호'), 'passw0rd!')
   await fill(screen.getByLabelText('이름'), '홍길동')
+  await fill(screen.getByLabelText('표시 이름'), '홍길동')
   await userEvent.click(screen.getByRole('button', { name: /가입/i }))
 }
 

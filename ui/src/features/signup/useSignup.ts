@@ -5,6 +5,8 @@ export interface SignupRequest {
   email: string
   password: string
   name: string
+  displayName: string
+  relationship?: string
 }
 
 export function useSignup() {

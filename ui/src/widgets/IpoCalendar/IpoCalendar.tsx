@@ -25,6 +25,7 @@ const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
   'REFUND',
   'LISTING',
 ])
+const FIRST_SELECTABLE_YEAR = 2015
 
 interface IpoCalendarProps {
   ipos: Ipo[]
@@ -42,6 +43,10 @@ export default function IpoCalendar({
   onVisibleTypesChange,
 }: IpoCalendarProps) {
   const today = new Date()
+  const years = Array.from(
+    { length: today.getFullYear() - FIRST_SELECTABLE_YEAR + 3 },
+    (_, index) => FIRST_SELECTABLE_YEAR + index,
+  )
   const [{ year, month }, setCursor] = useState({
     year: initialYear ?? today.getFullYear(),
     month: initialMonth ?? today.getMonth() + 1,
@@ -127,9 +132,43 @@ export default function IpoCalendar({
         <button type="button" className={styles.navButton} onClick={prevMonth} aria-label="이전 달">
           ‹
         </button>
-        <h2 className={styles.monthTitle} aria-live="polite">
-          {year}년 {month}월
-        </h2>
+        <div className={styles.dateSelectors} aria-label="달력 날짜 선택">
+          <label className={styles.srOnly} htmlFor="calendar-year">
+            연도
+          </label>
+          <select
+            id="calendar-year"
+            aria-label="연도"
+            className={styles.dateSelect}
+            value={year}
+            onChange={(event) => moveTo(Number(event.target.value), month)}
+          >
+            {years.map((optionYear) => (
+              <option key={optionYear} value={optionYear}>
+                {optionYear}년
+              </option>
+            ))}
+          </select>
+          <label className={styles.srOnly} htmlFor="calendar-month">
+            월
+          </label>
+          <select
+            id="calendar-month"
+            aria-label="월"
+            className={styles.dateSelect}
+            value={month}
+            onChange={(event) => moveTo(year, Number(event.target.value))}
+          >
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((optionMonth) => (
+              <option key={optionMonth} value={optionMonth}>
+                {optionMonth}월
+              </option>
+            ))}
+          </select>
+          <span className={styles.srOnly} aria-live="polite">
+            {year}년 {month}월
+          </span>
+        </div>
         <button type="button" className={styles.navButton} onClick={nextMonth} aria-label="다음 달">
           ›
         </button>

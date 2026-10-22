@@ -1,3 +1,40 @@
 .container {
-  --page-max: 640px;
+  --page-max: 760px;
+}
+
+.count {
+  color: var(--ink-muted);
+}
+
+.investorList {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.investorRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 0.5fr) minmax(130px, 0.7fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.investorName {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .investorRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .investorRow > span:last-child {
+    grid-column: 1 / -1;
+  }
 }

@@ -18,11 +18,31 @@ const investor = (id: number, displayName: string) => ({
   updatedAt: '2026-01-01',
 })
 
-function setup(investors: object[], path = '/investments') {
+function setup(
+  investors: object[],
+  path = '/investments',
+  accounts: object[] = [
+    {
+      id: 10,
+      investorId: 1,
+      securitiesFirmId: 1,
+      securitiesFirmName: '증권사',
+      accountNumber: '1234',
+      accountName: null,
+      isDefault: true,
+      status: 'ACTIVE',
+      deletedAt: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    },
+  ],
+) {
   vi.mocked(apiFetch).mockImplementation(async (p: unknown) =>
-    String(p).startsWith('/investors')
+    String(p) === '/investors'
       ? investors
-      : { accountId: 1, email: 'a@b.com', name: '나', role: 'USER' },
+      : String(p).startsWith('/securities-accounts')
+        ? accounts
+        : { accountId: 1, email: 'a@b.com', name: '나', role: 'USER' },
   )
   render(
     <QueryClientProvider
@@ -34,6 +54,10 @@ function setup(investors: object[], path = '/investments') {
             <Route path="investments" element={<div>투자 내역 화면</div>} />
             <Route path="subscriptions" element={<div>청약 화면</div>} />
             <Route path="dashboard" element={<div>대시보드 화면</div>} />
+            <Route
+              path="securities-accounts/register/:investorId"
+              element={<div>증권계좌 등록 화면</div>}
+            />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -52,6 +76,18 @@ describe('현재 투자자 선택', () => {
     expect(await screen.findByText('투자 내역 화면')).toBeInTheDocument()
     expect(await screen.findByText('현재 투자자:')).toBeInTheDocument()
     expect(screen.getByRole('banner')).toHaveTextContent('홍길동')
+  })
+
+  it('현재 투자자의 증권계좌가 없으면 등록 안내 팝업을 띄운다', async () => {
+    setup([investor(1, '홍길동')], '/subscriptions', [])
+
+    expect(
+      await screen.findByRole('alertdialog', { name: '증권계좌를 먼저 등록해 주세요' }),
+    ).toBeVisible()
+    expect(screen.queryByText('청약 화면')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '증권계좌 등록' }))
+    expect(await screen.findByText('증권계좌 등록 화면')).toBeInTheDocument()
   })
 
   it('투자자가 0명이면 작업 화면 대신 투자자 등록 안내가 나온다', async () => {

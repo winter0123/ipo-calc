@@ -39,7 +39,7 @@ public class Investor {
   @Column(name = "display_name", nullable = false, length = 50)
   private String displayName;
 
-  /** 계정 주인과의 관계. SELF(본인) / SPOUSE(배우자) / PARENT(부모) / CHILD(자녀) / OTHER(기타), 없으면 null. */
+  /** 계정 주인과의 관계. SELF/PARTNER/FRIEND/PARENT/CHILD/OTHER이며, 기존 SPOUSE 값도 호환한다. */
   @Column(name = "relationship", length = 20)
   private String relationship;
 

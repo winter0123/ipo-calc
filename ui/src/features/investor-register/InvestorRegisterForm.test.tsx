@@ -77,6 +77,36 @@ describe('InvestorRegisterForm', () => {
     })
   })
 
+  it('연인과 친구 관계 선택지를 제공하고 친구 값을 전송한다', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      id: 1,
+      displayName: '친구투자자',
+      accountId: 100,
+      status: 'ACTIVE',
+      deletedAt: null,
+      createdAt: '2026-09-21T00:00:00Z',
+      updatedAt: '2026-09-21T00:00:00Z',
+    })
+    renderInvestorRegisterForm()
+
+    const relationship = screen.getByLabelText('관계')
+    expect(screen.getByRole('option', { name: '연인' })).toHaveValue('PARTNER')
+    expect(screen.getByRole('option', { name: '친구' })).toHaveValue('FRIEND')
+    expect(screen.queryByRole('option', { name: '배우자' })).not.toBeInTheDocument()
+    await fill(screen.getByLabelText('표시 이름'), '친구투자자')
+    await fill(relationship, 'FRIEND')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        '/investors',
+        expect.objectContaining({
+          body: JSON.stringify({ displayName: '친구투자자', relationship: 'FRIEND' }),
+        }),
+      ),
+    )
+  })
+
   it('빈 displayName 제출 시 필수 검증 메시지 표시 (클라이언트 사이드)', async () => {
     // 클라이언트 사이드 검증으로 API 호출 안 함 → 모킹 불필요
     renderInvestorRegisterForm()

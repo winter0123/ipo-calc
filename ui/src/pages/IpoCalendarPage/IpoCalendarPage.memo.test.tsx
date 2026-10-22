@@ -9,6 +9,9 @@ vi.mock('@/entities/ipo/index.ts', () => ({
   // 렌더마다 새 배열을 돌려줘도 visibleTypes 참조는 searchParams가 같으면 그대로여야 한다
   useIpos: () => ({ data: [{ id: 1 }], isLoading: false, error: null }),
 }))
+vi.mock('@/entities/current-account/index.ts', () => ({
+  useCurrentAccount: () => ({ data: undefined }),
+}))
 vi.mock('@/widgets/IpoCalendar/index.ts', () => ({
   IpoCalendar: ({ visibleTypes }: { visibleTypes: unknown }) => {
     seen.push(visibleTypes)

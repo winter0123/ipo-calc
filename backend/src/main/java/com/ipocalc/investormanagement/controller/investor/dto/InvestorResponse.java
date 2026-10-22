@@ -18,6 +18,7 @@ public class InvestorResponse {
 
   private Long id;
   private String displayName;
+  private String relationship;
   private Long accountId;
   private String status;
   private LocalDateTime deletedAt;
@@ -29,6 +30,7 @@ public class InvestorResponse {
     return InvestorResponse.builder()
         .id(investor.getId())
         .displayName(investor.getDisplayName())
+        .relationship(investor.getRelationship())
         .accountId(investor.getAccountId())
         .status(investor.getStatus().name())
         .deletedAt(investor.getDeletedAt())

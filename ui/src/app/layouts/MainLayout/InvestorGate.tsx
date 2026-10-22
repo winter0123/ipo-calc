@@ -1,5 +1,7 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
+import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 import styles from './MainLayout.module.css'
 
 // 투자자별로 작업하는 화면. 대시보드·공모주 일정·투자자 등록·관리자 화면은 계정 단위라 제외한다.
@@ -59,10 +61,32 @@ function NoInvestorGate() {
 // 로그인한 사용자의 본문. 선택이 필요하면 작업 화면 대신 선택 화면을 보여 준다.
 export function GatedOutlet() {
   const { pathname } = useLocation()
-  const { needsSelection, investors, isLoading } = useCurrentInvestor()
+  const navigate = useNavigate()
+  const { needsSelection, investors, current, isLoading } = useCurrentInvestor()
+  const accountsQuery = useSecuritiesAccounts(current?.id)
   if (!isInvestorScoped(pathname)) return <Outlet />
   if (needsSelection) return <InvestorGate />
   const selfGuided = pathname.startsWith('/investments') || pathname === '/securities'
   if (!isLoading && investors.length === 0 && !selfGuided) return <NoInvestorGate />
+  const needsSecuritiesAccount =
+    pathname !== '/securities' &&
+    !pathname.startsWith('/securities-accounts/register/') &&
+    current !== null &&
+    !accountsQuery.isLoading &&
+    !accountsQuery.isError &&
+    accountsQuery.data?.length === 0
+  if (needsSecuritiesAccount) {
+    return (
+      <ConfirmDialog
+        isOpen
+        title="증권계좌를 먼저 등록해 주세요"
+        message="청약·배정·매도 등의 기록을 시작하려면 현재 투자자의 증권계좌가 필요합니다. 증권계좌 등록 화면으로 이동할까요?"
+        confirmLabel="증권계좌 등록"
+        cancelLabel="나중에"
+        onConfirm={() => navigate(`/securities-accounts/register/${current.id}`)}
+        onCancel={() => navigate('/dashboard', { replace: true })}
+      />
+    )
+  }
   return <Outlet />
 }

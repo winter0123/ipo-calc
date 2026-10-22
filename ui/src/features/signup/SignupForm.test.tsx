@@ -34,7 +34,12 @@ function renderSignupForm() {
   )
 }
 
-async function fillAndSubmit(email: string, password: string, name: string) {
+async function fillAndSubmit(
+  email: string,
+  password: string,
+  name: string,
+  displayName = name || '표시이름',
+) {
   if (email !== undefined) {
     await fill(screen.getByLabelText('이메일'), email)
   }
@@ -44,12 +49,22 @@ async function fillAndSubmit(email: string, password: string, name: string) {
   if (name !== undefined) {
     await fill(screen.getByLabelText('이름'), name)
   }
+  if (displayName) {
+    await fill(screen.getByLabelText('표시 이름'), displayName)
+  }
   await userEvent.click(screen.getByRole('button', { name: /가입/i }))
 }
 
 describe('SignupForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('가입자의 관계는 본인으로 고정한다', () => {
+    renderSignupForm()
+
+    expect(screen.getByRole('option', { name: '본인' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '배우자' })).not.toBeInTheDocument()
   })
 
   it('비공개 운영에서 승인 대기 응답이면 이동하지 않고 안내를 보여준다', async () => {
@@ -76,27 +91,25 @@ describe('SignupForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('지금은 가입을 받지 않습니다')
   })
 
-  it('정상 제출 시 201 응답 후 /investors/register로 이동', async () => {
+  it('정상 제출 시 201 응답 후 /dashboard로 이동', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'test@example.com' })
     renderSignupForm()
 
-    await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
+    await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동', '길동')
 
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith(
-        '/accounts',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            email: 'test@example.com',
-            password: 'passw0rd!',
-            name: '홍길동',
-          }),
-        }),
-      )
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled())
+    const [url, options] = vi.mocked(apiFetch).mock.calls[0]
+    expect(url).toBe('/accounts')
+    expect(options).toMatchObject({ method: 'POST' })
+    expect(JSON.parse(String(options?.body))).toEqual({
+      relationship: 'SELF',
+      email: 'test@example.com',
+      password: 'passw0rd!',
+      name: '홍길동',
+      displayName: '길동',
     })
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/investors/register', expect.anything())
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
     })
   })
 

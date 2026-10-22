@@ -1,10 +1,12 @@
 import { z } from 'zod'
 
-export type InvestorRelationship = 'SELF' | 'SPOUSE' | 'PARENT' | 'CHILD' | 'OTHER'
+export type InvestorRelationship =
+  'SELF' | 'PARTNER' | 'FRIEND' | 'SPOUSE' | 'PARENT' | 'CHILD' | 'OTHER'
 
 export const investorResponseSchema = z.object({
   id: z.number(),
   displayName: z.string(),
+  relationship: z.string().nullable().optional(),
   accountId: z.number(),
   status: z.string(),
   deletedAt: z.string().nullable(),

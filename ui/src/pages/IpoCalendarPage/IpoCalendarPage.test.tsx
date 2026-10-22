@@ -68,6 +68,27 @@ describe('IpoCalendarPage', () => {
       if (typeof url === 'string' && url === '/ipos') {
         return Promise.resolve(ipoResponse)
       }
+      if (typeof url === 'string' && url === '/auth/me') {
+        return Promise.resolve({
+          accountId: 1,
+          email: 'admin@example.com',
+          name: '관리자',
+          role: 'ADMIN',
+        })
+      }
+      if (typeof url === 'string' && url === '/ipos/sync/status') {
+        return Promise.resolve({
+          state: 'IDLE',
+          fromMonth: null,
+          toMonth: null,
+          monthsDone: null,
+          monthsTotal: null,
+          startedAt: null,
+          finishedAt: null,
+          result: null,
+          error: null,
+        })
+      }
       return Promise.resolve([])
     })
   })
@@ -128,6 +149,15 @@ describe('IpoCalendarPage', () => {
     await waitFor(() => {
       expect(screen.getByText('표시할 공모주 일정이 없습니다.')).toBeInTheDocument()
     })
+  })
+
+  it('관리자에게는 일정 화면에서 DART 강제 동기화 패널을 표시한다', async () => {
+    setIpos([])
+    setHolidays([])
+    renderPage()
+
+    expect(await screen.findByRole('region', { name: 'DART 공모주 가져오기' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'DART에서 가져오기' })).toBeEnabled()
   })
 
   it('네트워크 오류 시 에러 메시지를 표시한다', async () => {

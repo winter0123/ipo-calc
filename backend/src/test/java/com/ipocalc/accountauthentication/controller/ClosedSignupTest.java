@@ -42,7 +42,15 @@ class ClosedSignupTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(
                         objectMapper.writeValueAsString(
-                            Map.of("email", email, "password", "securePass123!", "name", "닫힘"))))
+                            Map.of(
+                                "email",
+                                email,
+                                "password",
+                                "securePass123!",
+                                "name",
+                                "닫힘",
+                                "displayName",
+                                "닫힘"))))
             .andReturn();
 
     assertThat(result.getResponse().getStatus()).isEqualTo(403);
