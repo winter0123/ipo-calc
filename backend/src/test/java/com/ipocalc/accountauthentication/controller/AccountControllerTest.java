@@ -5,7 +5,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.domain.model.investor.Investor;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,17 +47,21 @@ class AccountControllerTest {
 
   @Autowired private AccountRepository accountRepository;
 
+  @Autowired private InvestorRepository investorRepository;
+
   @Autowired private PasswordEncoder passwordEncoder;
 
   private String testEmail;
   private String testPassword;
   private String testName;
+  private String testDisplayName;
 
   @BeforeEach
   void setUp() {
     testEmail = "testuser@example.com";
     testPassword = "securePass123!";
     testName = "테스트유저";
+    testDisplayName = "테스트본인";
   }
 
   @AfterEach
@@ -61,8 +69,23 @@ class AccountControllerTest {
     // 테스트에서 생성한 계정 정리 - email 중복 충돌 방지
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
+  }
+
+  private Map<String, String> validSignupRequest() {
+    return Map.of(
+        "email",
+        testEmail,
+        "password",
+        testPassword,
+        "name",
+        testName,
+        "displayName",
+        testDisplayName,
+        "relationship",
+        "SELF");
   }
 
   @Test
@@ -70,11 +93,7 @@ class AccountControllerTest {
     // Given: 유효한 회원가입 요청 데이터 (AC-001)
     // - 이메일: RFC 5322 형식, 비밀번호: 최소 8자, 영문+숫자+특수문자 포함
     // - 이름: 선택 사항
-    var request =
-        Map.of(
-            "email", testEmail,
-            "password", testPassword,
-            "name", testName);
+    var request = validSignupRequest();
 
     // When: POST /accounts 요청
     MvcResult result =
@@ -114,11 +133,7 @@ class AccountControllerTest {
             .build();
     accountRepository.saveAndFlush(existingAccount);
 
-    var request =
-        Map.of(
-            "email", testEmail,
-            "password", testPassword,
-            "name", testName);
+    var request = validSignupRequest();
 
     // When: 중복 이메일로 POST /accounts 요청
     MvcResult result =
@@ -145,9 +160,14 @@ class AccountControllerTest {
     // Given: 잘못된 이메일 형식 (AC-003)
     var request =
         Map.of(
-            "email", "invalid-email",
-            "password", testPassword,
-            "name", testName);
+            "email",
+            "invalid-email",
+            "password",
+            testPassword,
+            "name",
+            testName,
+            "displayName",
+            testDisplayName);
 
     // When: 잘못된 이메일로 POST /accounts 요청
     MvcResult result =
@@ -174,9 +194,14 @@ class AccountControllerTest {
     // Given: 정책 미달 비밀번호 (최소 8자 미만) (AC-003)
     var request =
         Map.of(
-            "email", "another@example.com",
-            "password", "123",
-            "name", testName);
+            "email",
+            "another@example.com",
+            "password",
+            "123",
+            "name",
+            testName,
+            "displayName",
+            testDisplayName);
 
     // When: 약한 비밀번호로 POST /accounts 요청
     MvcResult result =
@@ -201,11 +226,7 @@ class AccountControllerTest {
   @Test
   void signupSuccessCreatesSessionForSubsequentRequests() throws Exception {
     // Given: 유효한 회원가입 요청 데이터 (AC-001 연장 - 자동 로그인/세션 생성)
-    var request =
-        Map.of(
-            "email", testEmail,
-            "password", testPassword,
-            "name", testName);
+    var request = validSignupRequest();
 
     // When: POST /accounts 요청으로 회원가입 및 자동 로그인
     MvcResult signupResult =
@@ -223,5 +244,41 @@ class AccountControllerTest {
     assertThat(status).as("회원가입 성공 시 201을 반환해야 합니다").isEqualTo(201);
     assertThat(setCookieHeader).as("회원가입 성공 시 세션 쿠키가 발급되어야 합니다").isNotNull();
     assertThat(setCookieHeader).as("JSESSIONID 쿠키가 HttpOnly 속성을 가져야 합니다").contains("HttpOnly");
+  }
+
+  @Test
+  void signupCreatesSelfInvestorWithDisplayName() throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/accounts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(validSignupRequest())))
+            .andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Account account = accountRepository.findByEmail(testEmail);
+    assertThat(account).isNotNull();
+    List<Investor> investors = investorRepository.findByAccountId(account.getId());
+    assertThat(investors).hasSize(1);
+    assertThat(investors.get(0).getDisplayName()).isEqualTo(testDisplayName);
+    assertThat(investors.get(0).getRelationship()).isEqualTo("SELF");
+  }
+
+  @Test
+  void signupRejectsNonSelfInvestorRelationship() throws Exception {
+    Map<String, String> request = new HashMap<>(validSignupRequest());
+    request.put("relationship", "SPOUSE");
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/accounts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+            .andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(400);
+    assertThat(accountRepository.findByEmail(testEmail)).isNull();
   }
 }

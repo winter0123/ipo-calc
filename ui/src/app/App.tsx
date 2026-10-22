@@ -37,6 +37,7 @@ const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx')
 const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
 const IpoRegisterPage = lazy(() => import('../pages/IpoRegisterPage/IpoRegisterPage.tsx'))
+const MyPage = lazy(() => import('../pages/MyPage/MyPage.tsx'))
 
 function AboutRoute() {
   const { data: currentAccount } = useCurrentAccount()
@@ -67,6 +68,7 @@ function App() {
         />
         <Route path="/investors/register" element={<InvestorRegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/my-page" element={<MyPage />} />
         <Route
           path="/securities-accounts/register/:investorId"
           element={<SecuritiesAccountRegisterPage />}

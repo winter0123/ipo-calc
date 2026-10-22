@@ -4,6 +4,7 @@ import com.ipocalc.accountauthentication.config.SignupMode;
 import com.ipocalc.accountauthentication.config.SignupPolicy;
 import com.ipocalc.accountauthentication.controller.dto.SignupRequest;
 import com.ipocalc.accountauthentication.controller.dto.SignupResponse;
+import com.ipocalc.accountauthentication.domain.event.AccountSignedUpEvent;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.exception.DuplicateEmailException;
 import com.ipocalc.accountauthentication.exception.SignupClosedException;
@@ -13,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -34,11 +36,12 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final Clock clock;
   private final SignupPolicy signupPolicy;
+  private final ApplicationEventPublisher eventPublisher;
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
-  /** 이메일 중복을 확인하고 계정을 생성한다. */
+  /** 이메일 중복을 확인하고 계정을 생성한다. 본인 투자자는 가입 이벤트로 같이 만든다. */
   public SignupResponse signup(
       SignupRequest request,
       HttpServletRequest httpServletRequest,
@@ -71,6 +74,10 @@ public class SignupService {
 
     Account savedAccount = accountRepository.saveAndFlush(account);
 
+    String displayName = resolveDisplayName(request);
+    eventPublisher.publishEvent(
+        new AccountSignedUpEvent(savedAccount.getId(), displayName));
+
     if (autoApproved) {
       createSession(httpServletRequest, httpServletResponse, savedAccount);
     }
@@ -81,6 +88,16 @@ public class SignupService {
         .name(savedAccount.getName())
         .approved(autoApproved)
         .build();
+  }
+
+  private static String resolveDisplayName(SignupRequest request) {
+    if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
+      return request.getDisplayName().trim();
+    }
+    if (request.getName() != null && !request.getName().isBlank()) {
+      return request.getName().trim();
+    }
+    return "본인";
   }
 
   private void createSession(

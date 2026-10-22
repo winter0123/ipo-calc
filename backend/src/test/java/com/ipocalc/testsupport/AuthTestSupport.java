@@ -46,7 +46,17 @@ public final class AuthTestSupport {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        Map.of("email", email, "password", password, "name", name)))
+                        Map.of(
+                            "email",
+                            email,
+                            "password",
+                            password,
+                            "name",
+                            name,
+                            "displayName",
+                            name,
+                            "relationship",
+                            "SELF")))
                 .session(session))
         .andReturn();
   }

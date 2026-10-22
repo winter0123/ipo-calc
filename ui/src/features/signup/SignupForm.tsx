@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
-import { isValidEmail, isMinLength, passwordProblem } from '@/shared/lib/validators.ts'
+import {
+  isValidEmail,
+  isMinLength,
+  isValidDisplayName,
+  passwordProblem,
+} from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+
+const RELATIONSHIP_OPTIONS = [{ value: 'SELF', label: '본인' }] as const
 
 export default function SignupForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -16,7 +23,10 @@ export default function SignupForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SignupRequest>({ mode: 'onSubmit' })
+  } = useForm<SignupRequest>({
+    mode: 'onSubmit',
+    defaultValues: { relationship: 'SELF' },
+  })
 
   const onSubmit = (data: SignupRequest) => {
     mutate(data, {
@@ -27,7 +37,8 @@ export default function SignupForm() {
           setPendingApproval(true)
           return
         }
-        navigate('/investors/register', { state: { accountId: body.accountId } })
+        // 가입과 함께 본인 투자자가 생기므로 바로 대시보드로 간다.
+        navigate('/dashboard')
       },
     })
   }
@@ -113,6 +124,48 @@ export default function SignupForm() {
           {errors.name && (
             <span id="name-error" className={styles.error} aria-live="polite">
               {String(errors.name.message)}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="displayName">표시 이름</label>
+          <input
+            id="displayName"
+            type="text"
+            aria-invalid={!!errors.displayName}
+            aria-describedby={errors.displayName ? 'displayName-error' : undefined}
+            {...register('displayName', {
+              required: '표시 이름은 필수입니다.',
+              validate: (v) => isValidDisplayName(v) || '표시 이름은 50자 이하여야 합니다.',
+            })}
+          />
+          {errors.displayName && (
+            <span id="displayName-error" className={styles.error} aria-live="polite">
+              {String(errors.displayName.message)}
+            </span>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="relationship">관계</label>
+          <select
+            id="relationship"
+            aria-invalid={!!errors.relationship}
+            aria-describedby={errors.relationship ? 'relationship-error' : undefined}
+            {...register('relationship', {
+              validate: (v) => v === 'SELF' || '가입 계정의 관계는 본인으로 등록해야 합니다.',
+            })}
+          >
+            {RELATIONSHIP_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {errors.relationship && (
+            <span id="relationship-error" className={styles.error} aria-live="polite">
+              {String(errors.relationship.message)}
             </span>
           )}
         </div>

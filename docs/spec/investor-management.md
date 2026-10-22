@@ -3,6 +3,8 @@
 > **수정 사항(2026-09-20, Master 결정 D-I-001)**: 아래 문서 전반의 "UUID" 표기는 초안 작성 시점의 제안이며, 기존 Account 엔티티와의 일관성을 위해 최종적으로 **Long(IDENTITY, 정수 자동증가)** ID를 사용하기로 결정됨. 구현 시 "id: string (UUID)"는 "id: number"로 대체한다. 자세한 근거는 `docs/work-log/investor-management.md` D-I-001 참고.
 >
 > **수정 사항(2026-09-21, SF-3 구현 중 확인)**: 아래 JSON 예시의 필드명을 초안의 snake_case(`display_name`, `account_id`, `deleted_at`, `created_at`, `updated_at`)에서 **camelCase**(`displayName`, `accountId`, `deletedAt`, `createdAt`, `updatedAt`)로 일괄 수정함. Epic 1(`SignupResponse` 등 기존 DTO)이 이미 camelCase를 사용 중이므로 코드베이스 일관성을 위함.
+>
+> **수정 사항(2026-10-22)**: 투자자 조회 응답에 `relationship`(SELF/PARTNER/FRIEND/PARENT/CHILD/OTHER, nullable)을 포함한다. 마이페이지와 투자자 현황에서 가입자 본인 정보를 표시할 때 사용한다. 신규 입력은 `PARTNER`(연인)를 사용하며 기존 `SPOUSE` 값은 저장 데이터와 구버전 클라이언트 호환을 위해 유지하고 화면에서는 연인으로 표시한다.
 
 ## API 엔드포인트 목록 (요청/응답 형식 포함)
 
@@ -11,7 +13,7 @@
 ```json
 {
   "displayName": "string (필수, 1-50자)",
-  "relationship": "string (선택, enum: SELF, SPOUSE, PARENT, CHILD, OTHER)"
+  "relationship": "string (선택, enum: SELF, PARTNER, FRIEND, PARENT, CHILD, OTHER; 기존 SPOUSE 값 호환)"
 }
 ```
 
@@ -20,6 +22,7 @@
 {
   "id": "string (UUID)",
   "displayName": "string",
+  "relationship": "string (SELF/PARTNER/FRIEND/SPOUSE/PARENT/CHILD/OTHER, null 허용)",
   "accountId": "string (FK)",
   "status": "string (ACTIVE/INACTIVE)",
   "deletedAt": "null",
@@ -46,6 +49,7 @@
   {
     "id": "string (UUID)",
     "displayName": "string",
+    "relationship": "string (SELF/PARTNER/FRIEND/SPOUSE/PARENT/CHILD/OTHER, null 허용)",
     "accountId": "string (FK)",
     "status": "string (ACTIVE/INACTIVE)",
     "deletedAt": "null 또는 ISO 8601 datetime",
@@ -72,6 +76,7 @@
 {
   "id": "string (UUID)",
   "displayName": "string",
+  "relationship": "string (SELF/PARTNER/FRIEND/SPOUSE/PARENT/CHILD/OTHER, null 허용)",
   "accountId": "string (FK)",
   "status": "string (ACTIVE/INACTIVE)",
   "deletedAt": "null 또는 ISO 8601 datetime",
@@ -104,7 +109,7 @@
 ```json
 {
   "displayName": "string (선택, 1-50자)",
-  "relationship": "string (선택, enum: SELF, SPOUSE, PARENT, CHILD, OTHER)"
+  "relationship": "string (선택, enum: SELF, PARTNER, FRIEND, PARENT, CHILD, OTHER; 기존 SPOUSE 값 호환)"
 }
 ```
 

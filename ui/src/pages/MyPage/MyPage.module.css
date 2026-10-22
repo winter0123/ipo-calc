@@ -1,0 +1,43 @@
+.container {
+  --page-max: 640px;
+}
+
+.description,
+.note {
+  color: var(--ink-muted);
+}
+
+.profile {
+  margin: var(--space-5) 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.profile > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.profile dt {
+  color: var(--ink-muted);
+  font-weight: 650;
+}
+
+.profile dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin-top: var(--space-4);
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .profile > div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}

@@ -18,6 +18,7 @@ vi.mock('../pages/InvestorRegisterPage/InvestorRegisterPage.tsx', () => ({
 vi.mock('../pages/DashboardPage/DashboardPage.tsx', () => ({
   default: () => <div>DashboardPage</div>,
 }))
+vi.mock('../pages/MyPage/MyPage.tsx', () => ({ default: () => <div>MyPage</div> }))
 vi.mock('../pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx', () => ({
   default: () => <div>SecuritiesAccountRegisterPage</div>,
 }))
@@ -54,6 +55,7 @@ const ROUTES: Array<[string, string]> = [
   ['/signup', 'SignupPage'],
   ['/investors/register', 'InvestorRegisterPage'],
   ['/dashboard', 'DashboardPage'],
+  ['/my-page', 'MyPage'],
   ['/securities-accounts/register/1', 'SecuritiesAccountRegisterPage'],
   ['/subscriptions/register', 'SubscriptionRegisterPage'],
   ['/subscriptions', 'SubscriptionListPage'],

@@ -122,6 +122,7 @@ async function fillSignup(page, email, name = 'E2E User') {
   await page.fill('#email', email)
   await page.fill('#password', PASSWORD)
   await page.fill('#name', name)
+  await page.fill('#displayName', name)
 }
 
 async function submit(page) {
@@ -185,7 +186,7 @@ async function authenticate(page, account, notes) {
   const email = uniqueEmail()
   await fillSignup(page, email)
   await submit(page)
-  if (!(await waitForUrl(page, '**/investors/register', 15000))) {
+  if (!(await waitForUrl(page, '**/dashboard', 15000))) {
     const texts = await errorTexts(page)
     throw new Error(
       `대체 인증(회원가입) 실패: URL=${page.url()} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
@@ -202,7 +203,7 @@ async function ensureAccount(browser) {
     const email = uniqueEmail()
     await fillSignup(page, email)
     await submit(page)
-    const ok = await waitForUrl(page, '**/investors/register', 15000)
+    const ok = await waitForUrl(page, '**/dashboard', 15000)
     if (!ok) {
       const texts = await errorTexts(page)
       throw new Error(
@@ -230,43 +231,38 @@ async function scenario1(browser) {
     const notes = []
 
     await fillSignup(page, email, 'E2E User')
-    await submit(page)
-    if (!(await waitForUrl(page, '**/investors/register', 15000))) {
-      const texts = await errorTexts(page)
-      throw new Error(
-        `1단계 회원가입 실패: 기대=/investors/register 이동 vs 실제 URL=${page.url()} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
-      )
-    }
-    shared.account = { email, password: PASSWORD }
-    notes.push('회원가입 201 → /investors/register 이동 확인')
-
-    const investorResponse = page
+    const signupResponsePromise = page
       .waitForResponse(
         (res) =>
-          res.request().method() === 'POST' && new URL(res.url()).pathname.endsWith('/investors'),
+          res.request().method() === 'POST' && new URL(res.url()).pathname.endsWith('/accounts'),
         { timeout: 15000 },
       )
       .catch(() => null)
-
-    await page.fill('#displayName', 'E2E Investor')
     await submit(page)
-    const investorOk = await waitForUrl(page, '**/dashboard', 15000)
-    const response = await investorResponse
-    const body = response ? await response.json().catch(() => null) : null
-    const investorId = body && typeof body.id === 'number' ? body.id : null
-
-    if (!investorOk) {
+    if (!(await waitForUrl(page, '**/dashboard', 15000))) {
       const texts = await errorTexts(page)
       throw new Error(
-        `2단계 투자자 등록 실패: 기대=/dashboard 이동 vs 실제 URL=${page.url()} / POST /investors 상태=${response ? response.status() : '응답 없음'} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
+        `1단계 회원가입 실패: 기대=/dashboard 이동 vs 실제 URL=${page.url()} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
       )
     }
-    if (investorId === null) {
-      throw new Error(
-        `2단계 투자자 등록 응답에서 investorId 확인 불가: POST /investors 상태=${response ? response.status() : '응답 없음'}`,
-      )
+    const signupResponse = await signupResponsePromise
+    if (!signupResponse || signupResponse.status() !== 201) {
+      throw new Error(`회원가입 응답 확인 실패: POST /accounts 상태=${signupResponse?.status() ?? '응답 없음'}`)
     }
-    notes.push(`투자자 등록 201 → /dashboard 이동, investorId=${investorId}`)
+    const signupBody = await signupResponse.json().catch(() => null)
+    const investors = await api(context, 'GET', '/investors')
+    const selfInvestor = investors.find(
+      (investor) =>
+        investor.displayName === 'E2E User' &&
+        investor.relationship === 'SELF' &&
+        investor.accountId === signupBody?.accountId,
+    )
+    const investorId = selfInvestor?.id
+    if (typeof investorId !== 'number') {
+      throw new Error('가입 시 생성된 본인 투자자를 GET /investors에서 찾지 못함')
+    }
+    shared.account = { email, password: PASSWORD }
+    notes.push(`회원가입 201 → /dashboard, 본인 투자자 자동 생성 확인(investorId=${investorId})`)
 
     await goto(page, `/securities-accounts/register/${investorId}`)
     if (!(await waitForFirmsLoaded(page))) {
@@ -521,6 +517,16 @@ async function apiLogin(context, email) {
   await api(context, 'POST', '/auth/login', { email, password: PASSWORD })
 }
 
+async function createAccount(context, email, name) {
+  return api(context, 'POST', '/accounts', {
+    email,
+    password: PASSWORD,
+    name,
+    displayName: name,
+    relationship: 'SELF',
+  })
+}
+
 function runSql(statement) {
   if (!DB_NAME) {
     throw new Error(
@@ -542,11 +548,13 @@ async function ensureTrade(browser) {
   const investorName = 'E2E Trader'
   const setup = await browser.newContext()
   try {
-    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Trader' })
+    await createAccount(setup, email, 'E2E Trader')
     await apiLogin(setup, email)
     const firms = await api(setup, 'GET', '/securities-firms')
     if (!firms || firms.length === 0) throw new Error('증권사 목록이 비어 있음(시드 확인 필요)')
-    const investor = await api(setup, 'POST', '/investors', { displayName: investorName })
+    const investors = await api(setup, 'GET', '/investors')
+    const investor = investors.find((item) => item.displayName === investorName)
+    if (!investor) throw new Error('가입 시 생성된 거래용 본인 투자자를 찾지 못함')
     await api(setup, 'POST', '/securities-accounts', {
       investorId: investor.id,
       securitiesFirmId: firms[0].id,
@@ -905,12 +913,14 @@ async function scenario12(browser) {
   const email = uniqueEmail()
   const setup = await browser.newContext()
   try {
-    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Broker' })
+    await createAccount(setup, email, 'E2E Broker')
     await apiLogin(setup, email)
     const firms = await api(setup, 'GET', '/securities-firms')
     const kis = (firms ?? []).find((f) => f.name.includes('한국투자'))
     if (!kis) throw new Error('한국투자증권 시드가 없음(V15 확인 필요)')
-    const investor = await api(setup, 'POST', '/investors', { displayName: 'E2E Broker' })
+    const investors = await api(setup, 'GET', '/investors')
+    const investor = investors.find((item) => item.displayName === 'E2E Broker')
+    if (!investor) throw new Error('가입 시 생성된 증권사 연동용 본인 투자자를 찾지 못함')
     await api(setup, 'POST', '/securities-accounts', {
       investorId: investor.id,
       securitiesFirmId: kis.id,
@@ -977,8 +987,8 @@ async function scenario13(browser) {
   const memberEmail = uniqueEmail()
   const setup = await browser.newContext()
   try {
-    await api(setup, 'POST', '/accounts', { email: adminEmail, password: PASSWORD, name: 'E2E Admin' })
-    await api(setup, 'POST', '/accounts', { email: memberEmail, password: PASSWORD, name: 'E2E Waiting' })
+    await createAccount(setup, adminEmail, 'E2E Admin')
+    await createAccount(setup, memberEmail, 'E2E Waiting')
   } finally {
     await setup.close()
   }
@@ -1035,9 +1045,10 @@ async function scenario14(browser) {
   let firstId
   let secondId
   try {
-    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E Multi' })
+    await createAccount(setup, email, 'E2E Multi')
     await apiLogin(setup, email)
-    firstId = (await api(setup, 'POST', '/investors', { displayName: 'E2E 갑' })).id
+    firstId = (await api(setup, 'GET', '/investors')).find((investor) => investor.relationship === 'SELF')?.id
+    if (typeof firstId !== 'number') throw new Error('가입 시 생성된 본인 투자자를 찾지 못함')
     secondId = (await api(setup, 'POST', '/investors', { displayName: 'E2E 을' })).id
   } finally {
     await setup.close()
@@ -1089,10 +1100,11 @@ async function buildFixture(browser, { stage, listingDate, ipoCount = 1 }) {
   const setup = await browser.newContext()
   const fx = { email, ipoNames: [], ipoIds: [] }
   try {
-    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name: 'E2E New' })
+    await createAccount(setup, email, 'E2E New')
     await apiLogin(setup, email)
     const firms = await api(setup, 'GET', '/securities-firms')
-    const investor = await api(setup, 'POST', '/investors', { displayName: 'E2E 신규기능' })
+    const investor = (await api(setup, 'GET', '/investors')).find((item) => item.relationship === 'SELF')
+    if (!investor) throw new Error('가입 시 생성된 기능 테스트용 본인 투자자를 찾지 못함')
     const account = await api(setup, 'POST', '/securities-accounts', {
       investorId: investor.id,
       securitiesFirmId: firms[0].id,
@@ -1339,7 +1351,7 @@ async function rawPost(context, path, options) {
 async function signupApi(browser, email, name) {
   const setup = await browser.newContext()
   try {
-    await api(setup, 'POST', '/accounts', { email, password: PASSWORD, name })
+    await createAccount(setup, email, name)
   } finally {
     await setup.close()
   }
@@ -1469,7 +1481,7 @@ async function scenario22(browser) {
 }
 
 const SCENARIOS = [
-  ['E2E-1', '시나리오1: 회원가입 → 투자자 등록 → 증권계좌 등록', scenario1],
+  ['E2E-1', '시나리오1: 회원가입 → 본인 투자자 자동 생성 → 증권계좌 등록', scenario1],
   ['E2E-2', '시나리오2: 로그인 → 대시보드 접속', scenario2],
   ['E2E-3', '시나리오3: 잘못된 비밀번호 로그인 실패', scenario3],
   ['E2E-4', '시나리오4: 중복 이메일 회원가입', scenario4],

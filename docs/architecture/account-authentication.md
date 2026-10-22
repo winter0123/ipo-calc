@@ -69,9 +69,13 @@ infrastructure
 {
   "email": "user@example.com",
   "password": "securePassword123!",
-  "name": "김철수"
+  "name": "김철수",
+  "displayName": "김철수",
+  "relationship": "SELF"
 }
 ```
+
+`displayName`과 `relationship`은 최초 본인 투자자 생성에 사용한다. `relationship`을 생략하면 `SELF`로 저장하며, 투자자 생성은 계정 생성과 같은 트랜잭션에서 처리한다.
 
 #### 회원가입 응답 (성공)
 ```json

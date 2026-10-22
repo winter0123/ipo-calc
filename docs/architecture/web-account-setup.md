@@ -163,7 +163,7 @@ app/shared/
 
 ### 캐시 무효화 및 페이지 이동 처리
 
-- **회원가입 성공 후**: `useSignup`의 `onSuccess`에서 `queryClient.invalidateQueries`로 관련 캐시를 무효화하지 않으며, 대신 `router.push('/investors/register')`로 자동 이동을 수행한다. 회원가입은 신규 데이터 생성이므로 기존 캐시 무효화보다 네비게이션이 우선이다.
+- **회원가입 성공 후**: 백엔드가 가입 트랜잭션에서 계정 소유의 본인 투자자를 함께 생성한다. 승인된 계정은 자동 로그인 후 `/dashboard`로 이동하고, 승인이 필요한 계정은 승인 안내를 표시한다. 추가 가족 투자자만 `/investors/register`에서 등록한다.
 - **증권계좌 등록 성공 후**: `useSecuritiesAccountRegister`의 `onSuccess`에서 대시보드(`/dashboard`)로 이동한다. 증권계좌 목록이 표시되는 다른 화면이 있다면 해당 쿼리를 무효화한다.
 - **투자자 등록 성공 후**: `useInvestorRegister`의 `onSuccess`에서 대시보드(`/dashboard`)로 이동한다. 투자자 목록 쿼리 무효화는 별도 화면이 존재할 경우에만 수행.
 - **증권사 목록 조회**: `useSecuritiesFirms`는 `GET /securities-firms`를 `useQuery`로 실행하며, `staleTime`을 적절히 설정하여 증권계좌 등록 화면 진입 시 한 번만 조회되도록 한다.
@@ -296,7 +296,7 @@ app/shared/
 | **401 인터셉터와 라우터 의존성** | `shared/api/interceptors.ts`가 `router`(react-router-dom)를 참조하면 `shared` 레이어가 `pages`에 간접 의존하게 되어 FSD 규칙 위반 | 인터셉터에서 리다이렉트 로직을 `shared`에 두지 않고, 에러 상태를 반환한 뒤 `pages`/`features` 레벨에서 라우터 이동을 처리하거나, 라우터를 독립적 유틸로 분리 |
 | **세션 상태 동기화** | `credentials: 'include'`로 쿠키가 자동 전송되지만, 브라우저 간 탭 간 세션 동기화가 필요할 수 있음 | `storage` 이벤트 리스너나 `navigator.heartbeat` 등으로 탭 간 세션 상태를 동기화하는지 여부를 추후 결정 |
 | **하이픈 포맷터 Edge Case** | 사용자가 백스페이스로 중간 문자를 삭제하거나 붙여넣기를 했을 때 하이픈 위치가 어긋날 수 있음 | `format-hyphen` 함수에 모든 경우를 처리하고, 유닛 테스트로 커버. 입력값에서 숫자만 추출 후 재포맷하는 방식으로 일관성 유지 |
-| **투자자 ID 전파** | 회원가입 후 투자자 등록 화면으로 이동 시 `investorId`를 어떻게 전달할지 명확하지 않음 | sessionStorage/router state/url 파라미터 중 하나를 선택. `package.json`과 라우팅 설정 확인 후 결정 |
+| **최초 투자자 ID 전파** | 회원가입 시 생성되는 본인 투자자의 ID를 어떻게 확보할지 | 별도 전달 불필요. 로그인 후 `/investors` 목록을 조회해 계정 소유 투자자를 사용한다. |
 | **증권사 목록 조회 실패** | `GET /securities-firms` 실패 시 증권계좌 등록 화면이 로딩 상태에 머물 수 있음 | `useSecuritiesFirms`의 `onError`에서 에러 메시지 표시 및 재시도 옵션 제공 |
 | **FSD 레이어 간 순환 참조** | `features`가 `shared`의 `router` 유틸을 참조하거나, `entities`가 `features`를 참조하는 순환 발생 가능 | AGENTS.md FSD 규칙 엄격 적용. 의존성 방향을 수시로 점검 |
 

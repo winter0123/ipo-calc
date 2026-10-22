@@ -193,6 +193,15 @@ describe('IpoCalendar', () => {
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
   })
 
+  it('연도와 월 선택으로 원하는 달력 날짜로 바로 이동한다', async () => {
+    renderWithRouter(<IpoCalendar ipos={[makeIpo()]} initialYear={2026} initialMonth={10} />)
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '연도' }), '2025')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '3')
+
+    expect(screen.getByText('2025년 3월')).toBeInTheDocument()
+  })
+
   it('날짜 칸 클릭 시 상세 영역에 회사명이 나온다', async () => {
     const ipos = [
       makeIpo({ companyName: '테스트기업', subscriptionStartDate: '2026-10-05T09:00:00Z' }),

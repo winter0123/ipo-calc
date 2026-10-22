@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -47,6 +48,7 @@ class PasswordChangeControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @Autowired private AccountRepository accountRepository;
+  @Autowired private InvestorRepository investorRepository;
 
   @Autowired private PasswordEncoder passwordEncoder;
 
@@ -67,6 +69,7 @@ class PasswordChangeControllerTest {
   void tearDown() {
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

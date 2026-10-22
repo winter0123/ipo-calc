@@ -1,5 +1,5 @@
 import { Suspense, useState } from 'react'
-import { Menu, Waves, X, LogOut } from 'lucide-react'
+import { Waves, X, LogOut } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
@@ -24,8 +24,9 @@ const RECORD_ITEMS = [
 ]
 
 const SETTINGS_ITEMS = [
+  { to: '/my-page', label: '마이페이지' },
   { to: '/investors/register', label: '투자자 추가' },
-  { to: '/securities', label: '증권사 관리' },
+  { to: '/securities', label: '증권사 계좌 등록' },
   { to: '/broker-sync', label: '증권사 연동' },
   { to: '/notifications', label: '알림 설정' },
 ]
@@ -60,19 +61,14 @@ export default function MainLayout() {
       </a>
       <header className={styles.header}>
         <div className={styles.brand}>
+          {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
           <span className={styles.logo} aria-hidden="true">
             <Waves size={20} />
           </span>
-          <span className={styles.siteName}>공모주계산기</span>
-        </div>
-        {currentAccount && <InvestorSwitcher />}
-        {(currentAccount || isGuest) && (
-          <>
+          {(currentAccount || isGuest) && (
             <button
               type="button"
-              className={
-                isGuest ? `${styles.menuButton} ${styles.menuButtonGuest}` : styles.menuButton
-              }
+              className={styles.menuButton}
               aria-expanded={menuOpen}
               aria-controls="primary-nav"
               onClick={() => setOpenedAt(menuOpen ? null : pathname)}
@@ -80,54 +76,54 @@ export default function MainLayout() {
               {menuOpen ? (
                 <X aria-hidden="true" size={22} />
               ) : (
-                <Menu aria-hidden="true" size={22} />
+                <Waves aria-hidden="true" size={22} />
               )}
               <span className={styles.menuLabel}>메뉴</span>
             </button>
-            <nav
-              id="primary-nav"
-              aria-label="주요 메뉴"
-              className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
-            >
-              {(currentAccount ? NAV_ITEMS : GUEST_ITEMS).map((item) => (
-                <NavLink key={item.to} to={item.to} className={linkClass}>
-                  {item.label}
-                </NavLink>
-              ))}
-              {currentAccount && (
-                <>
-                  <NavGroup label="새로 기록" items={RECORD_ITEMS} />
-                  <NavGroup label="설정" items={SETTINGS_ITEMS} />
-                </>
-              )}
-              {currentAccount?.role === 'ADMIN' && <NavGroup label="관리자" items={ADMIN_ITEMS} />}
-              {currentAccount && (
-                <button
-                  type="button"
-                  className={styles.logout}
-                  onClick={() => {
-                    logoutMutation.mutate(undefined, {
-                      onSettled: () => navigate('/login', { replace: true }),
-                    })
-                  }}
-                  disabled={logoutMutation.isPending}
-                >
-                  <LogOut aria-hidden="true" size={16} />
-                  로그아웃
-                </button>
-              )}
-            </nav>
-            {isGuest && (
-              <div className={styles.authActions}>
-                <Link to="/login" className={styles.loginButton}>
-                  로그인
-                </Link>
-                <Link to="/signup" className={styles.signupButton}>
-                  가입하기
-                </Link>
-              </div>
+          )}
+          <span className={styles.siteName}>공모주계산기</span>
+        </div>
+        {(currentAccount || isGuest) && (
+          <nav
+            id="primary-nav"
+            aria-label="주요 메뉴"
+            className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
+          >
+            {(currentAccount ? NAV_ITEMS : GUEST_ITEMS).map((item) => (
+              <NavLink key={item.to} to={item.to} className={linkClass}>
+                {item.label}
+              </NavLink>
+            ))}
+            {currentAccount && <NavGroup label="새로 기록" items={RECORD_ITEMS} />}
+            {currentAccount?.role === 'ADMIN' && <NavGroup label="관리자" items={ADMIN_ITEMS} />}
+            {currentAccount && <NavGroup label="설정" items={SETTINGS_ITEMS} />}
+            {currentAccount && (
+              <button
+                type="button"
+                className={styles.logout}
+                onClick={() => {
+                  logoutMutation.mutate(undefined, {
+                    onSettled: () => navigate('/login', { replace: true }),
+                  })
+                }}
+                disabled={logoutMutation.isPending}
+              >
+                <LogOut aria-hidden="true" size={16} />
+                로그아웃
+              </button>
             )}
-          </>
+          </nav>
+        )}
+        {currentAccount && <InvestorSwitcher />}
+        {isGuest && (
+          <div className={styles.authActions}>
+            <Link to="/login" className={styles.loginButton}>
+              로그인
+            </Link>
+            <Link to="/signup" className={styles.signupButton}>
+              가입하기
+            </Link>
+          </div>
         )}
       </header>
       <main
