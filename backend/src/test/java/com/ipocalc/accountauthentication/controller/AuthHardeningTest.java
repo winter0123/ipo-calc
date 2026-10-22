@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -55,6 +56,7 @@ class AuthHardeningTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+  @Autowired private InvestorRepository investorRepository;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private SessionRegistry sessionRegistry;
   @Autowired private JdbcIndexedSessionRepository sessionRepository;
@@ -72,6 +74,7 @@ class AuthHardeningTest {
     for (String email : createdEmails) {
       Account account = accountRepository.findByEmail(email);
       if (account != null) {
+        investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
         accountRepository.delete(account);
       }
     }

@@ -11,9 +11,9 @@
 ## 최신 변경 (2026-10-22): 회원가입 시 본인 투자자 생성
 
 - 회원가입 폼에서 계정 이름과 투자자 등록에 쓰는 표시 이름을 받으며, 관계는 SELF(본인)로 고정한다.
-- 가입 서비스가 계정 저장 후 동기 이벤트를 발행하고, 같은 트랜잭션 안에서 ACTIVE 투자자를 생성한다. 승인 가입에서는 투자자도 생성하되 승인 전에는 로그인시키지 않는다.
+- 가입 서비스가 계정 저장 후 이벤트를 발행하고, 같은 트랜잭션 안에서 ACTIVE 투자자를 생성한다. 승인 가입에서는 투자자도 생성하되 승인 전에는 로그인시키지 않는다.
 - 승인된 사용자는 가입 직후 대시보드로 이동하므로 최초 본인 투자자를 별도 등록하지 않아도 된다. 투자자 등록 화면은 가족 등 추가 투자자 등록에 사용한다.
-- 관련 구현은 `SignupService`, `SelfInvestorOnSignupListener`, Flyway V30 및 `ui/src/features/signup/`에 있다. 계정 삭제 시 투자자 외래 키는 cascade로 정리한다.
+- 관련 구현은 `SignupService`, `SelfInvestorOnSignupListener`, Flyway V30~V32 및 `ui/src/features/signup/`에 있다. 계정 삭제 외래 키는 기존처럼 제한을 유지하며, 테스트 정리에서는 투자자를 명시적으로 삭제한다.
 
 ## 최신 변경 (2026-10-22): 마이페이지와 투자자 현황
 
@@ -28,6 +28,7 @@
 - **운영**: 집의 Ubuntu 노트북에서 Docker 없이 운영한다. Java 21 백엔드는 JAR + systemd, PostgreSQL 17은 호스트 서비스, 프런트엔드는 정적 파일 + Caddy다. 개인 환경을 포함한 재배포 절차는 로컬 전용 `docs/deployment/ubuntu-home-server.md`에 있다(이 파일은 `.gitignore` 대상).
 - **개발 Docker**: 저장소 루트 `docker-compose.yml`만 유지한다. PostgreSQL 17 개발 DB를 호스트 포트 5433으로 제공한다. 백엔드와 UI는 로컬에서 직접 실행한다.
 - **정리**: 예전 운영 Compose·터널 설정·Dockerfile·Jenkins·Docker 기반 홈 서버 설치/업데이트/백업/복원 스크립트와 구형 `docs/home-server.md`를 제거했다. 로컬의 예전 운영 앱/Jenkins 컨테이너와 전용 이미지, 운영 PostgreSQL·Caddy 볼륨을 제거했다. 개발 DB와 Jenkins 볼륨 및 다른 저장소의 Docker 데이터는 유지했다.
+- Caddy 설정은 `infra/caddy/` 아래로 모았으며 개인 홈 서버 설정은 Git에서 제외한다. 중복된 `ui/Caddyfile`은 제거했다.
 - **남은 운영 작업**: 호스트 PostgreSQL 백업·복원 절차를 새 배포 방식에 맞춰 마련한다. 현재 가이드의 남은 작업을 확인한다.
 
 ## 제품 현황 기록 (2026-10-14 스냅샷)

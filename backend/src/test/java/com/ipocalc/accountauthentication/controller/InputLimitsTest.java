@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +38,7 @@ class InputLimitsTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+  @Autowired private InvestorRepository investorRepository;
 
   private String email;
   private MockHttpSession session;
@@ -52,6 +54,7 @@ class InputLimitsTest {
   void tearDown() {
     var account = accountRepository.findByEmail(email);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

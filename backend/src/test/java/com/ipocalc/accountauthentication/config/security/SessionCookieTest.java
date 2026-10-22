@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -32,11 +33,13 @@ class SessionCookieTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+  @Autowired private InvestorRepository investorRepository;
 
   @AfterEach
   void tearDown() {
     Account account = accountRepository.findByEmail(EMAIL);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

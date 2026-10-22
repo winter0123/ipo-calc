@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import jakarta.servlet.http.Cookie;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +45,7 @@ class SessionPersistenceTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+  @Autowired private InvestorRepository investorRepository;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private JdbcTemplate jdbc;
 
@@ -52,6 +54,7 @@ class SessionPersistenceTest {
     jdbc.update("DELETE FROM spring_session WHERE principal_name = ?", EMAIL);
     Account account = accountRepository.findByEmail(EMAIL);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }
