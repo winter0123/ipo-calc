@@ -10,7 +10,7 @@ spring:
     # 만료 세션은 Spring Session이 매분 지운다(기본 cron). 스키마는 Flyway V27이 만든다.
     timeout: ${SESSION_TIMEOUT:30d}
   datasource:
-    url: jdbc:postgresql://localhost:5433/${DB_NAME:ipo_calc}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:ipo_calc}
     username: ipo
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
