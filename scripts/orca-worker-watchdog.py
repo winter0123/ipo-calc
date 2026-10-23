@@ -44,6 +44,12 @@ PERM_PATTERN = re.compile(
 )
 # OpenCode 상태줄: "Build · Laguna S 2.1 (free) OpenRouter" — 지정 모델과 실제 모델 대조용.
 MODEL_LINE = re.compile(r"Build\s*·\s*(.+?)(?:\s*\(free\))?(?:\s+OpenRouter)?\s*$", re.MULTILINE)
+# NVIDIA 도구 오류: "Function ... Not found for account ..." (대소문자/줄 포장 견딤)
+# 실제 function/account ID는 절대 상태 출력에 포함하지 않도록 별도 탐지 사용.
+NVIDIA_FUNC_ERROR = re.compile(
+    r"Function\b[\s\S]*?\bNot\s+found\s+for\s+account",
+    re.IGNORECASE,
+)
 
 
 def orca(*args: str) -> dict | None:
@@ -118,6 +124,13 @@ def classify(tail: str, idle_min: float, stall_min: float, dispatch_id: str | No
                     perm_line += " ← " + lines[i + 1].strip()
                 break
         return "PERM", f"권한 질문: {perm_line}" if perm_line else "권한 질문"
+
+    # NVIDIA Function/Account 오류 우선 탐지 (식별자 포함하지 않는 고정 분류 코드 사용)
+    nvidia_hit = NVIDIA_FUNC_ERROR.search(tail)
+    if nvidia_hit:
+        if dispatch_id and dispatch_id in _esc_interrupt_missing_since:
+            del _esc_interrupt_missing_since[dispatch_id]
+        return "ERROR", "분류=NVIDIA_FUNC_NOT_FOUND"
 
     hit = ERROR_PATTERNS.search(tail)
     if hit:
@@ -244,6 +257,21 @@ Reject"""
     # 권한 질문이 있으면 ERROR보다 우선
     perm_with_error = perm_screen + "\nrate-limited"
     assert classify(perm_with_error, 1, 8, "d_perm")[0] == "PERM"
+    # NVIDIA Function/Account 오류 탐지와 redaction 검증 (익명화된 더미 fixture)
+    dummy_nvidia = "[Nvidia] Function DUMMY_FUNC_001: Not found for account DUMMY_ACCOUNT_001."
+    assert classify(dummy_nvidia, 1, 8, None)[0] == "ERROR"
+    result_why = classify(dummy_nvidia, 1, 8, None)[1]
+    assert "분류=NVIDIA_FUNC_NOT_FOUND" in result_why
+    assert "DUMMY_FUNC_001" not in result_why
+    assert "DUMMY_ACCOUNT_001" not in result_why
+    # 줄 포장 견디는지 확인
+    dummy_wrapped = "[Nvidia] Function DUMMY_FUNC_002:\nNot found for account DUMMY_ACCOUNT_002."
+    assert classify(dummy_wrapped, 1, 8, None)[0] == "ERROR"
+    result_why_wrapped = classify(dummy_wrapped, 1, 8, None)[1]
+    assert "분류=NVIDIA_FUNC_NOT_FOUND" in result_why_wrapped
+    assert "DUMMY_FUNC_002" not in result_why_wrapped
+    assert "DUMMY_ACCOUNT_002" not in result_why_wrapped
+
     # 일반 화면은 OK
     assert classify("정상 작업 중", 1, 8, None)[0] == "OK"
 
