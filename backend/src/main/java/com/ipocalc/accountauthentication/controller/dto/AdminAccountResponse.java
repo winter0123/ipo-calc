@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
  * @param id 계정 ID
  * @param email 이메일
  * @param name 이름
+ * @param nickname 닉네임
  * @param role 역할(USER, ADMIN)
  * @param approved 승인 여부
  * @param createdAt 가입 시각
@@ -17,6 +18,7 @@ public record AdminAccountResponse(
     Long id,
     String email,
     String name,
+    String nickname,
     String role,
     boolean approved,
     LocalDateTime createdAt,

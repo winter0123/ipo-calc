@@ -38,6 +38,13 @@ const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarP
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
 const IpoRegisterPage = lazy(() => import('../pages/IpoRegisterPage/IpoRegisterPage.tsx'))
 const MyPage = lazy(() => import('../pages/MyPage/MyPage.tsx'))
+const AdminAnnouncementsPage = lazy(
+  () => import('../pages/AdminAnnouncementsPage/AdminAnnouncementsPage.tsx'),
+)
+const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage/AnnouncementsPage.tsx'))
+const AnnouncementDetailPage = lazy(
+  () => import('../pages/AnnouncementDetailPage/AnnouncementDetailPage.tsx'),
+)
 
 function AboutRoute() {
   const { data: currentAccount } = useCurrentAccount()
@@ -84,6 +91,8 @@ function App() {
         <Route path="/ipos/:ipoId" element={<IpoDetailPage />} />
         <Route path="/broker-sync" element={<BrokerSyncPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/announcements" element={<AnnouncementsPage />} />
+        <Route path="/announcements/:announcementId" element={<AnnouncementDetailPage />} />
         <Route
           path="/admin/accounts"
           element={
@@ -97,6 +106,14 @@ function App() {
           element={
             <AdminOnly>
               <IpoRegisterPage />
+            </AdminOnly>
+          }
+        />
+        <Route
+          path="/admin/announcements"
+          element={
+            <AdminOnly>
+              <AdminAnnouncementsPage />
             </AdminOnly>
           }
         />

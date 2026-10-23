@@ -4,6 +4,7 @@ export const currentAccountSchema = z.object({
   accountId: z.number(),
   email: z.string(),
   name: z.string().nullable(),
+  nickname: z.string(),
   role: z.enum(['USER', 'ADMIN']),
 })
 

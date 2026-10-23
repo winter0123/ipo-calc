@@ -65,6 +65,7 @@ public class SignupService {
             .email(email)
             .passwordHash(passwordHash)
             .name(request.getName())
+            .nickname(resolveNickname(request))
             .approved(autoApproved)
             .failedLoginAttempts(0)
             .lockedUntil(null)
@@ -74,9 +75,8 @@ public class SignupService {
 
     Account savedAccount = accountRepository.saveAndFlush(account);
 
-    String displayName = resolveDisplayName(request);
-    eventPublisher.publishEvent(
-        new AccountSignedUpEvent(savedAccount.getId(), displayName));
+    String investorNickname = resolveNickname(request);
+    eventPublisher.publishEvent(new AccountSignedUpEvent(savedAccount.getId(), investorNickname));
 
     if (autoApproved) {
       createSession(httpServletRequest, httpServletResponse, savedAccount);
@@ -86,13 +86,14 @@ public class SignupService {
         .accountId(savedAccount.getId())
         .email(savedAccount.getEmail())
         .name(savedAccount.getName())
+        .nickname(savedAccount.getNickname())
         .approved(autoApproved)
         .build();
   }
 
-  private static String resolveDisplayName(SignupRequest request) {
-    if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
-      return request.getDisplayName().trim();
+  private static String resolveNickname(SignupRequest request) {
+    if (request.getNickname() != null && !request.getNickname().isBlank()) {
+      return request.getNickname().trim();
     }
     if (request.getName() != null && !request.getName().isBlank()) {
       return request.getName().trim();

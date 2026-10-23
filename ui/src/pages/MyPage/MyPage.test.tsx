@@ -10,7 +10,13 @@ describe('MyPage', () => {
   it('가입 시 입력한 계정과 본인 투자자 정보를 보여주고 비밀번호는 보여주지 않는다', async () => {
     vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
       if (path === '/auth/me') {
-        return { accountId: 1, email: 'joy@example.com', name: '조이', role: 'USER' }
+        return {
+          accountId: 1,
+          email: 'joy@example.com',
+          name: '조이',
+          nickname: '조이닉',
+          role: 'USER',
+        }
       }
       if (path === '/investors') {
         return [
@@ -49,6 +55,7 @@ describe('MyPage', () => {
 
     expect(await screen.findByText('joy@example.com')).toBeInTheDocument()
     expect(screen.getByText('조이')).toBeInTheDocument()
+    expect(screen.getByText('조이닉')).toBeInTheDocument()
     expect(screen.getByText('기쁨투자자')).toBeInTheDocument()
     expect(screen.getByText('본인')).toBeInTheDocument()
     expect(screen.queryByText(/비밀번호/)).toHaveTextContent(

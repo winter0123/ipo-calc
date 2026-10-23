@@ -44,7 +44,9 @@ class NotificationDisabledTest {
 
   @AfterEach
   void tearDown() {
-    jdbc.update("DELETE FROM accounts WHERE id = ?", accountRepository.findByEmail(email).getId());
+    Long accountId = accountRepository.findByEmail(email).getId();
+    jdbc.update("DELETE FROM investors WHERE account_id = ?", accountId);
+    jdbc.update("DELETE FROM accounts WHERE id = ?", accountId);
   }
 
   @Test

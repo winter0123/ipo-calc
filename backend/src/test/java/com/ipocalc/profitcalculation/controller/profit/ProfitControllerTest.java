@@ -104,6 +104,9 @@ class ProfitControllerTest {
     allocationRepository.deleteAll(createdAllocations);
     subscriptionRepository.deleteAll(createdSubscriptions);
     investorRepository.deleteAll(createdInvestors);
+    createdOtherAccounts.forEach(
+        account ->
+            investorRepository.deleteAll(investorRepository.findByAccountId(account.getId())));
     accountRepository.deleteAll(createdOtherAccounts);
     securitiesFirmRepository.deleteAll(createdFirms);
     ipoRepository.deleteAll(createdIpos);
@@ -117,6 +120,7 @@ class ProfitControllerTest {
 
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

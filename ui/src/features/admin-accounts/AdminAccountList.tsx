@@ -52,7 +52,7 @@ export default function AdminAccountList() {
             <thead>
               <tr>
                 <th scope="col">이메일</th>
-                <th scope="col">이름</th>
+                <th scope="col">닉네임</th>
                 <th scope="col">역할</th>
                 <th scope="col">가입일</th>
                 <th scope="col">상태</th>
@@ -63,7 +63,7 @@ export default function AdminAccountList() {
               {data.map((account) => (
                 <tr key={account.id}>
                   <td>{account.email}</td>
-                  <td>{account.name ?? '-'}</td>
+                  <td>{account.nickname}</td>
                   <td>{account.role}</td>
                   <td>{formatDate(account.createdAt)}</td>
                   <td>

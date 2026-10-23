@@ -75,7 +75,8 @@ class AuthControllerTest {
         Map.of(
             "email", testEmail,
             "password", testPassword,
-            "name", testName);
+            "name", testName,
+            "nickname", testName);
     mockMvc.perform(
         post("/accounts")
             .contentType(MediaType.APPLICATION_JSON)
@@ -115,7 +116,8 @@ class AuthControllerTest {
         Map.of(
             "email", testEmail,
             "password", testPassword,
-            "name", testName);
+            "name", testName,
+            "nickname", testName);
     mockMvc.perform(
         post("/accounts")
             .contentType(MediaType.APPLICATION_JSON)
@@ -184,7 +186,8 @@ class AuthControllerTest {
         Map.of(
             "email", testEmail,
             "password", testPassword,
-            "name", testName);
+            "name", testName,
+            "nickname", testName);
     mockMvc.perform(
         post("/accounts")
             .contentType(MediaType.APPLICATION_JSON)

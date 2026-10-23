@@ -5,7 +5,7 @@ export interface SignupRequest {
   email: string
   password: string
   name: string
-  displayName: string
+  nickname: string
   relationship?: string
 }
 

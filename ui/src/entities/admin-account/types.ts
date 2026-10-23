@@ -4,6 +4,7 @@ export const adminAccountSchema = z.object({
   id: z.number(),
   email: z.string(),
   name: z.string().nullable(),
+  nickname: z.string(),
   role: z.string(),
   approved: z.boolean(),
   createdAt: z.string(),

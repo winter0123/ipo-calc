@@ -12,6 +12,7 @@ const account = (over: Record<string, unknown>) => ({
   id: 1,
   email: 'wait@example.com',
   name: '대기자',
+  nickname: '대기닉',
   role: 'USER',
   approved: false,
   createdAt: '2026-10-01T09:30:00',
@@ -36,6 +37,13 @@ function setup(rows: unknown[] | Error) {
 }
 
 describe('AdminAccountList', () => {
+  it('사용자 이름 대신 계정 닉네임을 표시한다', async () => {
+    setup([account({ nickname: '닉네임표시', name: '실명' })])
+
+    expect(await screen.findByText('닉네임표시')).toBeInTheDocument()
+    expect(screen.queryByText('실명')).not.toBeInTheDocument()
+  })
+
   beforeEach(() => {
     vi.mocked(apiFetch).mockReset()
   })

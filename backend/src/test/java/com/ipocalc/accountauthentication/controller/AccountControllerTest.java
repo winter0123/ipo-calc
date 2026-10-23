@@ -82,6 +82,8 @@ class AccountControllerTest {
         testPassword,
         "name",
         testName,
+        "nickname",
+        testDisplayName,
         "displayName",
         testDisplayName,
         "relationship",
@@ -114,6 +116,8 @@ class AccountControllerTest {
     assertThat(responseMap).containsKey("accountId");
     assertThat(responseMap).containsKey("email");
     assertThat(responseMap.get("email")).isEqualTo(testEmail);
+    assertThat(responseMap.get("name")).isEqualTo(testName);
+    assertThat(responseMap.get("nickname")).isEqualTo(testDisplayName);
     assertThat(responseMap).doesNotContainKey("passwordHash");
     assertThat(responseMap).doesNotContainKey("password");
   }
@@ -166,6 +170,8 @@ class AccountControllerTest {
             testPassword,
             "name",
             testName,
+            "nickname",
+            testDisplayName,
             "displayName",
             testDisplayName);
 
@@ -200,6 +206,8 @@ class AccountControllerTest {
             "123",
             "name",
             testName,
+            "nickname",
+            testDisplayName,
             "displayName",
             testDisplayName);
 
@@ -259,6 +267,7 @@ class AccountControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(201);
     Account account = accountRepository.findByEmail(testEmail);
     assertThat(account).isNotNull();
+    assertThat(account.getNickname()).isEqualTo(testDisplayName);
     List<Investor> investors = investorRepository.findByAccountId(account.getId());
     assertThat(investors).hasSize(1);
     assertThat(investors.get(0).getDisplayName()).isEqualTo(testDisplayName);

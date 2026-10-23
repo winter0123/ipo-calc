@@ -33,7 +33,7 @@
 1. Master Lead만 상시 존재하며, 워커는 목적이 있을 때만 만든다.
 2. 구현 전에는 조사 → 기획/Acceptance Criteria → 아키텍처/DB·API 설계 → Master 승인 순서를 지킨다.
 3. Epic은 구현 직전에 다시 세부 기능(SF)으로 분해한다. `docs/breakdown/[epic-slug].md` 없이는 구현을 시작하지 않는다.
-4. 독립 작업은 병렬이 기본이다. 배정 시점에 준비된 독립 작업이 둘 이상이면 역할별 모든 가용 워커 슬롯을 같은 배정 주기에 채운다. 기본 작업공간 셋 중 하나만 쓰거나 한 작업공간에 워커 하나만 두는 것은, 실제 의존성·파일 충돌·용량 제한의 근거가 있을 때만 허용되는 예외다.
+4. 독립 작업은 병렬이 기본이지만, 배정 전에 작업·모델·작업공간이 실제로 준비됐는지 확인한다. 준비된 독립 작업이 둘 이상이면 유효한 모델/작업공간 슬롯 안에서 한 배정 주기에 함께 시작한다. 모델 확인·전환이나 worktree 복구 비용이 작업 병렬 이득보다 큰 슬롯은 억지로 채우지 말고 이유와 재평가 시점을 기록한다.
 5. planning은 backend/frontend 구현 Epic보다 최소 1~2 Epic 앞선 조사·재분해·설계를 유지한다. Monitor 알림, 상태 확인, 사용자 상태 질문 때는 기다리는 워커만 보지 않고 세 기본 작업공간을 모두 점검한다.
 6. 워커의 완료 보고는 증거가 아니다. Master가 diff·테스트·빌드·문서를 직접 검증한다.
 7. 모든 검증 결과는 `PASS` / `FAIL` / `NOT_RUN` / `BLOCKED` 중 하나로 기록한다.
@@ -118,9 +118,9 @@ Master Lead는 요구사항 이해, 범위 통제, 워커 조율, 결과 검증,
 
 > **적용 시점**: 2026-09-28 세션은 아래 6.0.2의 팀장 계층으로 끝까지 진행한다. 이 절의 구조는 **다음 세션부터** 적용한다.
 
-**설계 원칙: Claude 토큰은 무료 모델이 못 믿을 두 지점 — 요구사항 정의와 검증 — 에만 쓴다. 대기·정지 감지 같은 기계적인 일은 셸이 한다.**
+**설계 원칙: claude/codex 토큰은 무료 모델이 못 믿을 두 지점 — 요구사항 정의와 검증 — 에만 쓴다. 대기·정지 감지 같은 기계적인 일은 셸이 한다.**
 
-- **구조**: Master(Claude 코디네이터, depth 0) → 워커(OpenCode + OpenRouter 무료 모델, depth 1) N개. 상시 팀장 세션을 두지 않는다. 동시에 살아있는 Claude 세션은 Master 하나뿐이다.
+- **구조**: Master(claude/codex 코디네이터, depth 0) → 워커(OpenCode + OpenRouter 무료 모델, depth 1) N개. 상시 팀장 세션을 두지 않는다. 동시에 살아있는 claude/codex 세션은 Master 하나뿐이다.
 - **작업공간**: 역할 고정 worktree 3~5개(7.2절). **한 트리에 워커는 하나만** 붙인다 — 두 워커가 같은 트리를 고치면 중간 충돌이 난다. 병렬 처리량은 팀장 계층이 아니라 이 작업공간 분리에서 나온다(2026-09-28 실측).
 - **워커 배정**: 한 SF = 한 워커. 단 같은 패키지에서 앞 SF 코드를 이어 쓰는 후속 SF는 앞 SF가 병합된 뒤 **같은 워커 터미널에 이어 시킬 수 있다**(조건은 `docs/worker-spec-template.md`의 "이어 쓰기 세션"). 워커에게는 대화가 아니라 **자기완결적 spec**을 던진다(`docs/worker-spec-template.md`). 무료 모델은 범위·사실관계에서 실수하므로, 좋은 spec 한 장이 나중의 교정 라운드보다 훨씬 싸다.
 - **의존성**: 세션 시작 때 `task-create --deps`로 로드맵 의존성을 한 번에 DAG로 정의한다. 선행 task가 `completed`가 되면 후속 task가 자동으로 `ready`가 되므로, "이제 시작해도 된다"를 매번 말로 전달하지 않는다.
@@ -136,7 +136,7 @@ Master Lead는 요구사항 이해, 범위 통제, 워커 조율, 결과 검증,
 Nested worker depth 한도가 2 이상인 프로젝트는 역할별 고정 작업공간마다 **상시 팀장 세션**(depth 1)을 두고 팀장이 워커(depth 2)를 관리하게 할 수 있다. 2026-09-28에 하루 동안 실제로 운영해본 결과는 다음과 같다.
 
 - **좋았던 점**: Epic 10·11·15가 한 세션에 완료되고 PR 7개(#156~#165)가 병합됐다. 팀장들이 자기 워커의 실수(회귀, 버그, 문서 사실 오류)를 스스로 잡아냈다.
-- **비쌌던 점**: Claude 세션 4개(Master+팀장 3)가 동시에 Pro 토큰을 태웠고, 그중 상당수 턴이 "아직 아무것도 없음, 계속 대기"였다. 팀장의 1차 검증은 Master가 병합 전에 어차피 재검증하므로 중복이었다. 세션 초반에는 팀장 2명이 규칙을 어기고 직접 코드·문서를 고쳐 Master가 개입해야 했다.
+- **비쌌던 점**: claude/codex 세션 4개(Master+팀장 3)가 동시에 Pro 토큰을 태웠고, 그중 상당수 턴이 "아직 아무것도 없음, 계속 대기"였다. 팀장의 1차 검증은 Master가 병합 전에 어차피 재검증하므로 중복이었다. 세션 초반에는 팀장 2명이 규칙을 어기고 직접 코드·문서를 고쳐 Master가 개입해야 했다.
 - **결론**: 마감이 촉박하고 여러 도메인을 동시에 밀어야 할 때만 쓴다. 평시에는 6.0의 단일 코디네이터 구조가 더 싸고 덜 깨진다. 이 계층을 쓰기로 했다면 아래 규칙을 그대로 따른다.
 
 - **생성**: Master가 각 고정 작업공간에 팀장을 한 번 생성한 뒤 세션 내내 유지한다. 팀장의 터미널 제목·역할 이름은 작업공간과 딱 떨어지게 짓는다(예: "backend 팀장", "frontend 팀장", "planning 팀장").
@@ -173,16 +173,16 @@ Nested worker depth 한도가 2 이상인 프로젝트는 역할별 고정 작�
 
 ### 7.1 병렬화 판단
 
-기본 작업공간 셋(예: backend, frontend, planning)은 순서대로 하나씩 쓰는 큐가 아니라 병렬 처리 용량이다. Master는 새 작업을 배정할 때 한 작업공간만 습관적으로 선택하지 말고, 세 역할 전체의 준비된 작업을 먼저 확인한다. 서로 독립적인 조사·기획·구현·테스트·리뷰 작업이 둘 이상이면 역할별 동시 워커 한도와 실제 여유까지 한 번에 배정한다.
+기본 작업공간 셋(예: backend, frontend, planning)은 순서대로 하나씩 쓰는 큐가 아니라 병렬 처리 용량이다. Master는 새 작업을 배정할 때 한 작업공간만 습관적으로 선택하지 말고, 세 역할 전체의 준비된 작업을 먼저 확인한다. 서로 독립적인 조사·기획·구현·테스트·리뷰 작업이 둘 이상이면 역할별 동시 워커 한도와 실제 여유까지 한 번에 배정한다. 단, 모델 가용성·동일 모델 중복 금지·작업공간 준비·예상 조율 비용을 포함해 실효 슬롯을 계산한다. 설정/모델 선택이 확인되지 않은 슬롯까지 수만 맞춰 배정하지 않는다.
 
 배정 직전에는 다음 절차를 따른다.
 
 1. `ready` 상태의 작업을 역할별로 나열하고, 각 작업의 선행 의존성·수정 파일·필요 브랜치를 확인한다.
-2. 서로 다른 파일을 다루며 선행 조건이 없는 작업은 모두 같은 배정 주기에 태스크와 워커를 만든다. 같은 브랜치에서 다른 파일만 작성하는 문서 작업은 한 작업공간에 여러 워커를 배정하고, 독립 PR·브랜치가 필요하면 필요한 수만큼 하위 worktree를 만든다.
-3. `orca orchestration worker-list --json`으로 역할별 모든 `<역할>-N` 작업공간의 활성 워커 수와 프로젝트 안내서의 역할별 한도를 확인한 뒤, `min(독립 준비 작업 수, 남은 슬롯 수)`만큼 배정한다.
+2. 서로 다른 파일을 다루며 선행 조건이 없는 작업은 같은 배정 주기에 묶는다. 단, 각 작업에 실제로 배정할 수 있는 서로 다른 무료 모델과 준비된 worktree/터미널이 확인된 경우에 시작한다. 같은 브랜치의 여러 문서를 여러 워커가 편집하면 파일 소유권을 명시하고, 독립 PR·브랜치가 필요할 때만 하위 worktree를 만든다.
+3. `orca orchestration worker-list --json`으로 활성 워커와 모델을 확인하고 프로젝트 안내서의 역할별 한도 및 준비 비용을 반영해 실효 슬롯 수를 계산한다. `min(독립 준비 작업 수, 실효 슬롯 수)`만큼 배정하며, 빈 슬롯을 채우기 위한 모델 전환이나 worktree 생성의 비용이 작업 이득보다 크면 시작하지 않는다.
 4. 워커가 끝나거나 중지되어 슬롯이 비면, 다른 워커가 모두 끝날 때까지 기다리지 않는다. 의존성과 충돌을 다시 확인한 뒤 다음 준비 작업으로 즉시 보충한다.
 
-따라서 독립 문서·독립 기능·서로 다른 파일을 다루는 작업은 역할별 동시 워커 한도 안에서 한 번에 배정한다. 독립 준비 작업이 둘 이상인데 워커를 하나만 배정하려면, 의존성·파일 충돌·상위 결정 대기·검증된 용량 제한 중 어느 이유인지와 다음 재평가 시점을 work-log에 기록한다. 단일 작업을 여러 워커에게 중복 배정하거나 같은 파일을 동시에 수정해 겉보기 병렬성을 만드는 것은 금지한다.
+독립 준비 작업이 둘 이상인데 일부만 배정하려면 의존성·파일 충돌·상위 결정 대기·무료 모델/작업공간 미준비·예상 조율 비용 중 이유와 다음 재평가 시점을 work-log에 기록한다. 단일 작업을 여러 워커에게 중복 배정하거나 같은 파일을 동시에 수정해 겉보기 병렬성을 만드는 것은 금지한다.
 
 같은 worktree를 여러 워커가 공유할 때는 각 워커의 수정 파일을 태스크에 명시하고, 워커는 배정 파일의 편집·검증만 한다. `git add`, `git commit`, 브랜치 전환, rebase는 공유 작업공간에서 동시에 수행하지 않는다. Master 또는 지정된 Git Manager 한 명을 통합 책임자로 정해, 모든 산출물을 검증한 뒤 순차로 stage·commit한다. 워커별 독립 커밋이 필요하면 해당 워커에 별도 worktree를 배정한다.
 
@@ -253,6 +253,8 @@ orca orchestration task-list --ready --brief
 
 모델 선택은 상속에 의존하지 않고 다음 둘 중 하나로 명시한다. 새 에이전트를 Orca가 시작하는 경로는 `worker-start --agent <agent> --model <model>`을 사용한다. 반대로 `terminal create --command '<agent> --model <model>'`로 모델을 고정한 기존 터미널을 배정하는 경로는 `worker-start --terminal <handle>`과 같은 worktree만 사용한다. `--terminal`과 `--agent`·`--model`을 함께 주지 않으며, 기존 터미널은 모델과 worktree가 맞는지 먼저 확인한다.
 
+OpenCode에서는 시작 뒤 모델 선택 UI에서 OpenRouter 무료 모델을 바꿀 수 있다. 이 방식을 쓰면 워커를 배정하기 전에 `opencode models`로 후보를 확인하고, 터미널에서 모델을 선택한 뒤 화면의 `Build · <모델명> OpenRouter` 줄을 읽어 실제 모델을 검증한다. 모델이 확인되기 전에는 해당 터미널에 작업을 배정하지 않는다. 동시 워커는 서로 다른 모델을 사용한다. 기존 워커의 모델을 바꿀 때는 UI로 변경한 뒤 Build 줄과 watchdog 상태 파일의 모델명을 함께 대조한다.
+
 ```bash
 orca orchestration worker-start --task <task_id> --worktree <selector> --agent <agent> --model <model> --json
 orca orchestration worker-show --dispatch <dispatch_id> --json
@@ -263,7 +265,7 @@ orca orchestration worker-abandon --dispatch <dispatch_id> --json
 orca orchestration task-update --id <task_id> --status completed --result '<결과 JSON>' --json
 ```
 
-프로젝트가 Claude Code 같은 에이전트를 터미널의 `--command`로 먼저 띄운 뒤 `--terminal`로 배정하는 방식이라면, 그 구체 절차는 프로젝트 안내서를 따른다. 한 worker가 어느 터미널·모델·작업공간에서 동작하는지 파일·명령 결과로 검증해야 한다.
+프로젝트가 claude/codex 같은 에이전트를 터미널의 `--command`로 먼저 띄운 뒤 `--terminal`로 배정하는 방식이라면, 그 구체 절차는 프로젝트 안내서를 따른다. 한 worker가 어느 터미널·모델·작업공간에서 동작하는지 파일·명령 결과로 검증해야 한다.
 
 ### 8.2 배분과 워커 메시지
 
@@ -281,22 +283,24 @@ orca orchestration send --from <핸들> --type worker_done --subject "완료: <�
 
 ### 8.3 완료 수집과 ACK
 
-`orca orchestration check`는 메시지 큐를 소비할 수 있다. 단순 조회에는 `--peek`을 쓰고, 실제 검증·병합까지 끝낸 메시지는 같은 턴에 ACK한다. 오래된 미확인 배치가 있으면 새 완료를 기다리기 전에 처리한다.
+Run을 재개할 때마다 `run-use --id <run_id>`로 다시 바인딩한다. 먼저 오래된 미확인 배치를 확인하고, 워커를 배정하기 전에 Run의 `coordinator_handle`을 기록한다. Orca terminal 밖의 셸 · exec에서 `check`를 실행하면 매번 `--terminal <coordinator_handle>`을 명시한다. `orca status --json`의 `caller`가 `null`이면 Orca terminal 안에서 실행 중인 것이 아니므로 handle 생략을 허용하지 않는다. 실제 coordinator terminal 안에서 실행할 때만 `--terminal`을 생략한다.
+
+완료는 워커 화면의 최종 답변이 아니라 현재 Dispatch의 `worker_done`으로 수집한다. 대기 명령은 올바른 Run과 coordinator handle로 한 번 실행해 유지한다. 각 메시지에서 Task ID·Dispatch ID·outcome을 현재 활성 작업과 대조하고, 기존 delivery가 반복되면 새 완료로 취급하지 않는다. `worker_done`이 오면 변경 파일·검증 결과를 직접 확인하고, 해당 terminal의 다음 소유자(즉시 재사용·명시적 보존·release)를 결정한 뒤 같은 delivery를 ACK한다. ACK 전에는 새 메시지를 기다리지 않는다.
 
 ```bash
 orca orchestration check --terminal <코디네이터-핸들> --peek --json
-orca orchestration check --terminal <코디네이터-핸들> --wait --types worker_done,escalation --timeout-ms 600000 --json
+orca orchestration check --terminal <코디네이터-핸들> --wait --types worker_done,escalation,question --timeout-ms 3600000 --json
 orca orchestration check --terminal <코디네이터-핸들> --ack <deliveryId> --json
 orca orchestration task-list --json
 ```
 
-`worker_done`이나 task 상태만으로 완료를 인정하지 않는다. diff, 테스트, 빌드, 문서, PR 병합 상태를 다시 확인한다.
+`worker_done`은 Task/Dispatch를 자동 정산한다. `task-list`와 `worker-list`에서 그 상태를 확인하고 보고된 ID·outcome이 메시지와 맞는지 검증한다. worker가 화면에 완료를 출력했는데 inbox 메시지가 없고 Task가 `dispatched`이면 아직 완료 응답을 받지 못한 상태다. 해당 Dispatch의 `worker-read`로 정확한 작업 상태를 확인하고 `orchestration send --to dispatch:<dispatch_id>`로 lifecycle 보고를 요청한다. worker가 idle 화면에서 보고를 누락했다면 활성 Dispatch를 새로 만들지 말고 기존 terminal에 inbox 확인 및 `worker_done` 전송만 요청한다. 확정된 `worker_done` 없이 Task를 성공으로 간주하지 않는다.
 
 ### 8.4 정지·토큰 초과·재시도
 
 `dispatched` 상태가 계속된다고 워커가 실제 동작 중인 것은 아니다. **`worker-list`의 `liveness: live`도 프로세스 생존만 의미한다** — OpenRouter 429로 화면에 에러만 뜬 채 멈춰도 `live`로 나온다(2026-09-28 실사고). 실제 정지 판정은 터미널 텍스트를 봐야 가능하다.
 
-그 텍스트 확인을 사람이나 Claude가 매번 하면 회당 수천 토큰이 드므로, **셸 watchdog에 맡긴다**:
+그 텍스트 확인을 사람이나 claude/codex가 매번 하면 회당 수천 토큰이 드므로, **셸 watchdog에 맡긴다**:
 
 ```bash
 # 별도 터미널에서 한 번 띄워두고 세션 내내 돌린다
@@ -307,25 +311,25 @@ scripts/orca-worker-watchdog.py --loop 120
 cat /tmp/orca-worker-status.txt
 ```
 
-watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error` 등), 무출력 정지(기본 8분), **OpenCode 권한 질문(`Permission required` + `Allow once`/`Allow always`/`Reject`)**을 감지해 한 줄씩 적고, 실제 사용 중인 모델명도 같이 적는다(지정 모델과 다른 모델로 자동 폴백되는 사례가 반복 관찰됐다). **감지만 하고 재배정은 하지 않는다** — 오진으로 작업 중인 워커를 죽이는 비용이 자동화 이득보다 크기 때문에, 재배정 여부는 코디네이터가 판단한다.
+watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error` 등), 무출력 정지(기본 8분), **OpenCode 권한 질문(`Permission required` + `Allow once`/`Allow always`/`Reject`)**을 감지해 한 줄씩 적고, 실제 사용 중인 모델명도 같이 적는다(지정 모델과 다른 모델로 자동 폴백되는 사례가 반복 관찰됐다). **감지만 하고 재배정은 하지 않는다.** 상태 파일은 요약 확인용이며 워커 누락·오탐이 가능하므로, watchdog의 `OK`나 Orca의 `liveness: live`만으로 정상 작업·정지·완료를 단정하지 않는다. 이상 상태는 필요한 해당 워커의 실제 터미널/작업 결과로만 확인한다.
 
 #### 코디네이터 알림(토큰 없이 대기)
 
-| 층 | 역할 |
-|----|------|
-| 1 | watchdog(저장소 파이썬 스크립트 — 워커 화면을 읽어 상태 파일 기록) |
-| 2 | Orca 메시지함(`orchestration check --peek` — 완료·질문) |
-| 3 | Claude Code 백그라운드 실행 알림(백그라운드 명령이 끝나면 코디네이터를 깨움) |
+| 층   | 역할                                                |
+| --- | ------------------------------------------------- |
+| 1   | watchdog(저장소 파이썬 스크립트 — 워커 화면을 읽어 상태 파일 기록)       |
+| 2   | Orca 메시지함(`orchestration check --peek` — 완료·질문)   |
+| 3   | claude/codex 백그라운드 실행 알림(백그라운드 명령이 끝나면 코디네이터를 깨움) |
 
-알림 스크립트(`scripts/orca-coord-watch.sh`) 자체는 이 셋을 묶는 셸 루프이며 Claude Code·Orca의 내장 기능이 아니다.
+알림 스크립트(`scripts/orca-coord-watch.sh`) 자체는 이 셋을 묶는 셸 루프이며 claude/codex 의 내장 기능이 아니다.
 
 왜: `check --wait`만 기다리면 무료 모델이 429로 재시도만 반복할 때 아무 메시지도 오지 않아 놓친다(2026-10-14 실사고: Laguna가 rate-limited로 10분 정지, 코디네이터가 못 알아챔). 또 짧은 주기로 코디네이터가 직접 상태를 읽으면 회당 토큰이 든다 — 셸 루프는 알림 전까지 토큰 0.
 
 규칙: 워커를 배정하면 알림 스크립트를 백그라운드로 켠다. 알림 1건을 처리한 뒤 **같은 턴에서 반드시 다시 켠다**(한 번 알리고 끝나는 구조라 안 켜면 감시가 멈춘다 — 2026-10-14 실사고). 처리한 메시지는 SEEN에 남으므로 다시 깨지 않는다.
 
-실행 예: `scripts/orca-worker-watchdog.py --loop 120`(별도 Orca 터미널, 옵션 없으면 현재 repo의 모든 worktree 점검) + `scripts/orca-coord-watch.sh <run_id>`(코디네이터의 백그라운드 명령).
+실행 예: `scripts/orca-worker-watchdog.py --loop 120`(별도 Orca terminal, 옵션 없으면 현재 repo의 모든 worktree 점검) + `scripts/orca-coord-watch.sh <run_id>`(완료·질문 메시지 존재를 알려주는 보조 백그라운드 명령). `orca-coord-watch.sh`는 `--peek`만 하므로 ACK하지 않고, 그 알림 뒤 coordinator handle을 명시한 `check`로 메시지 전체를 처리한다. watchdog은 정지·오류 감지기이며 완료 메시지를 전달하지 않는다. 두 요약 상태만으로 작업 완료 여부를 단정하지 않는다.
 
-유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다.
+유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다. 워커별 점검은 상태 요약이나 메시지에 이상 징후가 있거나, 완료 여부를 판정할 때만 수행한다.
 
 ```bash
 orca terminal read --terminal <worker-핸들> --limit 50 --json
@@ -338,7 +342,7 @@ orca diagnostics memory --json
 
 watchdog의 감지 규칙은 실제로 놓친 사고에서 늘려 간다. 2026-09-30에는 ① 504 `Timeout Occurred`·`server_error` 문구가 ERROR 목록에 없었고, ② 스피너 재그리기로 `lastOutputAt`이 계속 갱신돼 무출력 정지에 도달하지 못했다. 그래서 ERROR 패턴에 504 계열을 추가하고, 하단 상태줄의 `esc interrupt` 문구가 stall 기준 시간 이상 보이지 않으면 STALL로 판정한다. 새 사고가 나면 그 문구를 selftest와 함께 추가한다.
 
-멈춘 워커 복구 절차(재배정은 여전히 코디네이터가 판단한다): `worker-abandon --dispatch <id>` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 모델로 `terminal create` → 화면의 `Build · <모델명>` 줄이 지정한 모델인지 확인 → `worker-start --retry-of <이전 dispatch>` → spec 끝에 재개 문구(`docs/worker-spec-template.md`)를 덧붙인다.
+워커가 live로 관측되거나 단지 파일 변경이 없다는 이유만으로 중단·abandon·재시도하지 않는다. `exited` 등 프로세스 종료의 명확한 증거나 최종 worker turn의 완료 미보고를 확인한 뒤 복구한다. 복구 전 `git status --short`로 부분 작업을 확인하고 삭제하지 않는다. 이후 `worker-abandon`/`worker-stop`을 근거에 맞게 선택하고, 다른 무료 모델을 한 요청씩 시험한 다음 새 터미널의 Build 줄을 검증하고 `worker-start --retry-of <이전 dispatch>`로 재개한다. 재개 spec에는 작업공간·부분 작업·재개 지시를 덧붙인다. 종료 증거가 없으면 재시도하지 말고 관측을 계속하거나 사용자에게 상태를 보고한다.
 
 오류·무응답이 보이면 먼저 파일 변경과 마지막 트랜스크립트를 확인한다. 컨텍스트 초과가 명확할 때만 `/compact` 후 같은 태스크를 재주입한다. 같은 범위에서 세 번 이상 재개 실패하면 더 작은 SF로 분해하거나 `BLOCKED`로 전환한다. 이미 생성된 파일은 원인 확인 전 삭제하지 않는다.
 
@@ -364,6 +368,7 @@ orca orchestration gate-resolve --id <gate_id> --resolution "<선택>" --json
 기본값은 무료 모델과 읽기 전용 도구다. OpenRouter 무료 모델은 반드시 OpenCode 경로로만 실행한다. 정확한 모델 ID, 가용성, 역할별 기본 배정은 프로젝트 안내서에 기록한다.
 
 - 모델은 실행 직전에 현재 무료 여부와 도구 호출 가능 여부를 확인한다.
+- OpenCode는 작업을 배정하기 전에 후보 모델을 실제 터미널에서 선택하고 Build 줄로 검증한다. 실행 중 모델 변경은 UI에서 수행하고, 변경 직후 Build 줄과 watchdog 모델명을 확인한다. 동시에 살아 있는 워커 두 개에 같은 모델을 배정하지 않는다.
 - 일일 무료 한도·일시 장애·역할 부적합을 구분한다. 단순 429/5xx와 영구 비호환을 같은 실패로 기록하지 않는다.
 - 모델을 바꾸면 이전 모델, 새 모델, 사유, 영향 작업을 work-log에 남긴다.
 - **OpenRouter 일일 한도 소진**(`Rate limit exceeded: free-models-per-day-high-balance`)은 시간이 지나도 풀리지 않으므로 재시도하지 않고 OpenCode Zen 무료 모델(`opencode models`의 `opencode/*-free` 등)로 전환한다. 전환 전에 후보마다 한 요청(`opencode run --model <id> "OK만 답해"`)으로 실제 작동을 확인한다 — Zen 모델도 `Endpoint is unavailable`로 죽어 있을 수 있다.
@@ -502,7 +507,7 @@ BLOCKED 보고에는 원인, 시도한 작업, 실패 명령·오류, 영향 범
 - 제품명·도메인·작업 계획서 경로·현재 roadmap 상태
 - 실제 저장소·작업공간 경로, 브랜치명, Issue 라벨·병합 예외
 - 언어·프레임워크·패키지 매니저·정확한 테스트/빌드 명령
-- Claude Code, OpenRouter, OpenCode의 모델 ID·게이트웨이·무료 할당량·관찰 기록
+- claude/codex, OpenRouter, OpenCode의 모델 ID·게이트웨이·무료 할당량·관찰 기록
 - 이 프로젝트에서 검증한 오류 회피법, 알림·사용자 가이드 운영
 
 공통 규칙을 바꿀 때는 이 문서를 먼저, 프로젝트 고유 사실을 바꿀 때는 프로젝트 안내서를 먼저 갱신한다.

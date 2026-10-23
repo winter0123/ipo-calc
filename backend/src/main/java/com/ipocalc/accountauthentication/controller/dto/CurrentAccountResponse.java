@@ -6,6 +6,8 @@ package com.ipocalc.accountauthentication.controller.dto;
  * @param accountId 계정 ID
  * @param email 이메일
  * @param name 이름
+ * @param nickname 닉네임
  * @param role 역할(USER, ADMIN)
  */
-public record CurrentAccountResponse(Long accountId, String email, String name, String role) {}
+public record CurrentAccountResponse(
+    Long accountId, String email, String name, String nickname, String role) {}

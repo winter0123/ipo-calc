@@ -11,6 +11,7 @@ import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoDetailRepository;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
@@ -52,6 +53,8 @@ class IpoControllerTest {
 
   @Autowired private AccountRepository accountRepository;
 
+  @Autowired private InvestorRepository investorRepository;
+
   @Autowired private IpoRepository ipoRepository;
 
   @Autowired private IpoDetailRepository ipoDetailRepository;
@@ -78,6 +81,7 @@ class IpoControllerTest {
     ipoRepository.deleteAll();
     Account account = accountRepository.findByEmail(testEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }
@@ -913,6 +917,7 @@ class IpoControllerTest {
     // 정리
     Account account = accountRepository.findByEmail(userEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }
@@ -951,6 +956,7 @@ class IpoControllerTest {
     // 정리
     Account account = accountRepository.findByEmail(userEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }
@@ -981,6 +987,7 @@ class IpoControllerTest {
     // 정리
     Account account = accountRepository.findByEmail(userEmail);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -42,6 +43,10 @@ public class Account {
   @Column(name = "name", length = 50)
   private String name;
 
+  /** 서비스에 표시할 닉네임. */
+  @Column(name = "nickname", nullable = false, length = 50)
+  private String nickname;
+
   /** 권한. USER(일반) / ADMIN(관리자: 가입 승인·공모주 등록). */
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
@@ -76,6 +81,15 @@ public class Account {
 
   public void setEmail(String email) {
     this.email = email != null ? email.toLowerCase() : null;
+  }
+
+  /** 테스트·내부 생성 경로의 이전 계정 생성 방식도 필수 닉네임 제약을 만족하게 한다. */
+  @PrePersist
+  void ensureNickname() {
+    if (nickname == null || nickname.isBlank()) {
+      String fallback = name != null && !name.isBlank() ? name.trim() : email;
+      nickname = fallback.substring(0, Math.min(fallback.length(), 50));
+    }
   }
 
   /** 로그인 실패 횟수를 1 증가시킨다. */

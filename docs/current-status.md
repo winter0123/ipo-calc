@@ -2,13 +2,24 @@
 
 > 마지막 갱신: 2026-10-23. 제품 도메인 세부 스냅샷과 과거 세션 기록은 아래 날짜가 붙은 절을 참고한다.
 
+## 최신 작업 (2026-10-23): 공지사항 Epic 22 기능 구현
+
+- 사용자 지시에 따라 OpenCode/Orca 워커를 만들지 않고 Master가 직접 공지사항과 계정 닉네임을 구현했다.
+- 백엔드에 공지사항·계정별 숨김 테이블(V33/V34), 별도 Announcement 도메인, 관리자 CRUD와 로그인 사용자 목록·상세·팝업·숨김 API를 추가했다. 목록은 페이지네이션과 관리자 상태 필터를 제공한다. 노출 기간은 서울 날짜 기준 시작일·종료일을 포함하고, 팝업은 계정 ID별 영구 숨김을 제외해 시작일·ID 순으로 반환한다.
+- UI에 관리자 공지 관리, 사용자 공지 목록·상세, 관리자 메뉴, 대시보드 순차 팝업을 추가했다. 일반 닫기는 현재 방문 상태로만 유지하고, 다시 보지 않기는 서버에 계정별로 저장한다. 공지 본문은 HTML로 실행하지 않고 텍스트로 표시한다.
+- 가입은 이름과 닉네임을 별도로 받는다. 닉네임을 계정 및 본인 투자자의 표시 이름으로 저장하고, 관리자 계정 목록에는 닉네임을 표시한다. 마이페이지에는 닉네임과 이름을 각각 보여준다. 기존 계정에는 이름 또는 이메일을 기반으로 닉네임을 채우는 V35를 추가했다.
+- 검증: UI 테스트 709건·lint·typecheck·format:check·build PASS. Backend 전체 테스트 1,099건 PASS (`DB_NAME=ipo_slot_4 DB_PASSWORD=ipo_local_password ./gradlew test --no-daemon --rerun`), checkstyleMain/checkstyleTest와 Java 컴파일 PASS. 새 본인 투자자 레코드를 테스트 종료 시 함께 정리하고 nickname을 요구하는 테스트 SQL을 보완했다. Backend `build -x test`는 저장소 전반의 기존 Spotless 위반 75개 파일로 FAIL. 이번 변경 파일은 Spotless 출력에 포함되지 않았다.
+- Backend 테스트 teardown에서 자동 생성된 본인 투자자도 정리하고 테스트용 SQL에 닉네임을 추가했다. 전체 1,099개 테스트와 checkstyleMain/checkstyleTest가 PASS다.
+- 사용자 수정 AGENTS.md·CLAUDE.md를 포함해 로컬 main에 커밋·fast-forward 병합했다. 이용가이드 등 나머지 기존 미커밋 변경은 보존했다.
+
 ## 최신 작업 (2026-10-23): 공지사항 Epic 22 Phase 0
 
-- Orca Run `run_4a4899ea960d`에서 완료된 문서 정합성 Task들을 확인했다. `task_0096c19b199b` / Dispatch `ctx_c3cab92c8770` 성공 결과 중 breakdown-research, breakdown, work-log 세 파일을 기존 `planning-notices` 작업공간에 반영했고 임시 `planning-notices-docs-2` 작업공간은 제거했다.
-- 과거 완료 Task `task_4562f4996788`은 E22를 추가했다고 보고했으나 결과가 현재 파일과 달랐다. 후속 Task `task_c1048ddc09d8`은 worker_done 누락을 복구해 완료 처리했다. roadmap diff는 최소 범위와 형식 검토가 필요해 수정 후 재검증 중이다.
-- GT-01 기간 경계, GT-02 다시 보지 않기 저장 범위, GT-04 복수 공지 우선순위, GT-07 관리자 경로를 정하는 Decision Gate `gate_f4842c84e7b3`는 pending이다. 해당 사용자 결정과 Phase 0 Master 승인이 있기 전에는 결정 의존 구현을 시작하지 않는다.
-- watchdog은 초기 점검에서 활성 워커를 놓쳤고 이후 `OK`를 표시했다. Orca `worker-show`는 Dispatch `ctx_332943e2f2d0`을 `live`로, task result는 worker_done 수신 뒤 `completed`로 확인했다.
-- 검증 현황: 통합된 세 문서 byte 비교 및 공백 검사 PASS; roadmap의 targeted `git diff --cached --check` PASS. 불필요한 roadmap 변경 제거 후 diff 검토를 마칠 예정이다.
+- 공지사항 요구사항과 Phase 0 문서(research/spec/architecture/breakdown-research/breakdown/work-log), Epic 22 roadmap 행을 정리해 로컬 main에 병합했다. Orca Run은 `run_4a4899ea960d`, merge commit은 `0caef71`이다.
+- 사용자 확정사항: IPO와 독립, KST 게시 시작·종료일 양쪽 포함, 로그인 후 대시보드 첫 방문 팝업, 일반 닫기는 이번 방문에만 적용, 다시 보지 않기는 계정 ID 기준 서버 저장, 활성 공지는 모두 순차 노출, 관리자만 CRUD, 클릭 시 상세 페이지 이동.
+- Master가 worker_done 결과를 직접 검토했다. 7개 Phase 0 문서/roadmap과 최종 보완 4개 문서의 `git diff --check`는 PASS. 잔여 모순을 정정한 뒤에만 병합했다.
+- 구현은 아직 시작하지 않았다. 현재 범위는 Phase 0 정리 완료 및 구현 SF 배정 대기이며, 다음 단계는 breakdown의 8개 SF를 Orca DAG로 등록하고 독립 작업을 병렬 배정하는 것이다.
+- 완료된 frontend 조사, watchdog 수정, backend 조사 worktree는 제거했다. planning worktree와 완료 터미널도 병합 후 제거했으며 watchdog은 단일 프로세스로 계속 감시 중이다.
+- 문서 작업이므로 테스트·lint·build는 NOT_RUN. 사용자 변경사항이 있는 다른 파일은 그대로 보존했다.
 
 ## 최신 변경 (2026-10-22): 공모주 일정 관리
 

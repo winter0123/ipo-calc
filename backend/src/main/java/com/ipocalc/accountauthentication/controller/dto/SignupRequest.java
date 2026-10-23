@@ -29,7 +29,10 @@ public class SignupRequest {
   @Size(max = 50, message = "이름은 최대 50자까지 가능합니다")
   private String name;
 
-  /** 본인 투자자 표시 이름. 비우면 name을 쓰고, 가입과 함께 투자자로 만든다. */
+  @Size(max = 50, message = "닉네임은 최대 50자까지 가능합니다")
+  private String nickname;
+
+  /** 이전 클라이언트 호환용 필드. 본인 투자자 표시 이름에는 nickname을 사용한다. */
   @Size(max = 50, message = "표시 이름은 최대 50자까지 가능합니다")
   private String displayName;
 

@@ -73,6 +73,7 @@ describe('IpoCalendarPage', () => {
           accountId: 1,
           email: 'admin@example.com',
           name: '관리자',
+          nickname: '관리자',
           role: 'ADMIN',
         })
       }

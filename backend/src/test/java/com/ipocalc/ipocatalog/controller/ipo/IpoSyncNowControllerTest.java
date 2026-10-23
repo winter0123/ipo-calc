@@ -8,6 +8,7 @@ import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.exception.OpenDartKeyMissingException;
 import com.ipocalc.ipocatalog.service.ipo.sync.IpoManualSyncResult;
@@ -41,6 +42,8 @@ class IpoSyncNowControllerTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+
+  @Autowired private InvestorRepository investorRepository;
   @MockitoBean private IpoManualSyncService manualSyncService;
 
   private String email;
@@ -58,7 +61,11 @@ class IpoSyncNowControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(
                 objectMapper.writeValueAsString(
-                    Map.of("email", email, "password", password, "name", "테스터"))));
+                    Map.of(
+                        "email", email,
+                        "password", password,
+                        "name", "테스터",
+                        "nickname", "테스터닉"))));
     loginBody = body;
   }
 
@@ -68,6 +75,7 @@ class IpoSyncNowControllerTest {
   void tearDown() {
     Account account = accountRepository.findByEmail(email);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

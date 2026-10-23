@@ -94,7 +94,8 @@ class CurrentAccountTest {
             user.getResponse().getContentAsString(StandardCharsets.UTF_8),
             new tools.jackson.core.type.TypeReference<Map<String, Object>>() {});
     assertThat(userBody.get("role")).isEqualTo("USER");
-    assertThat(userBody).containsOnlyKeys("accountId", "email", "name", "role");
+    assertThat(userBody).containsOnlyKeys("accountId", "email", "name", "nickname", "role");
+    assertThat(userBody.get("nickname")).isEqualTo("나");
     String adminJson = admin.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(objectMapper.readValue(adminJson, Map.class).get("role")).isEqualTo("ADMIN");
   }

@@ -42,7 +42,7 @@ function setup(
       ? investors
       : String(p).startsWith('/securities-accounts')
         ? accounts
-        : { accountId: 1, email: 'a@b.com', name: '나', role: 'USER' },
+        : { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
   )
   render(
     <QueryClientProvider

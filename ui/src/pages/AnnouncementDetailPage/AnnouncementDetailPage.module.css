@@ -1,0 +1,23 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.page > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--link);
+}
+.page h1 {
+  margin-top: 20px;
+}
+.period {
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+.content {
+  margin-top: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}

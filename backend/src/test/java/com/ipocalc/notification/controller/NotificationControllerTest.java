@@ -75,6 +75,7 @@ class NotificationControllerTest {
       Long id = accountRepository.findByEmail(email).getId();
       jdbc.update("DELETE FROM notification_preferences WHERE account_id = ?", id);
       jdbc.update("DELETE FROM push_subscriptions WHERE account_id = ?", id);
+      jdbc.update("DELETE FROM investors WHERE account_id = ?", id);
       jdbc.update("DELETE FROM accounts WHERE id = ?", id);
     }
   }

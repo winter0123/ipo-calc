@@ -119,6 +119,7 @@ class ApiCredentialControllerTest {
       securitiesAccountRepository.deleteAll(accounts);
     }
     investorRepository.deleteAll(investors);
+    investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
     accountRepository.delete(account);
   }
 

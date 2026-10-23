@@ -51,7 +51,11 @@ class SessionCookieTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(
                 objectMapper.writeValueAsString(
-                    Map.of("email", EMAIL, "password", PASSWORD, "name", "쿠키테스터"))));
+                    Map.of(
+                        "email", EMAIL,
+                        "password", PASSWORD,
+                        "name", "쿠키테스터",
+                        "nickname", "쿠키닉"))));
 
     MockHttpServletResponse response =
         mockMvc
@@ -83,7 +87,11 @@ class SessionCookieTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(
                         objectMapper.writeValueAsString(
-                            Map.of("email", EMAIL, "password", PASSWORD, "name", "쿠키테스터"))))
+                            Map.of(
+                                "email", EMAIL,
+                                "password", PASSWORD,
+                                "name", "쿠키테스터",
+                                "nickname", "쿠키닉"))))
             .andReturn()
             .getResponse();
 

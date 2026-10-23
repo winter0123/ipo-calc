@@ -18,6 +18,7 @@ import { DashboardCardGroup } from '@/widgets/DashboardCardGroup/index.ts'
 import styles from './DashboardPage.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import { formatWon } from '@/shared/lib/format.ts'
+import { AnnouncementPopup } from '@/features/announcements/index.ts'
 
 const EMPTY_SUMMARY = {
   totalInvestmentAmount: 0,
@@ -203,25 +204,28 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>대시보드</h1>
-      <DashboardHome />
-      <DashboardTabs currentTab={currentTab} onTabChange={handleTabChange} />
-      <div className={styles.resultsArea}>
-        {hasPeriodSelector && (
-          <PeriodSelector
-            key={periodSelectorKey}
-            unit={currentTab}
-            initialYear={selectedYear}
-            initialMonth={currentTab === 'month' ? selectedMonth : undefined}
-            onSearch={handlePeriodChange}
-          />
-        )}
-        {renderContent()}
-        <nav className={styles.navLink}>
-          <Link to="/investments">투자 내역 화면으로 이동</Link>
-        </nav>
+    <>
+      <AnnouncementPopup />
+      <div className={styles.container}>
+        <h1 className={styles.title}>대시보드</h1>
+        <DashboardHome />
+        <DashboardTabs currentTab={currentTab} onTabChange={handleTabChange} />
+        <div className={styles.resultsArea}>
+          {hasPeriodSelector && (
+            <PeriodSelector
+              key={periodSelectorKey}
+              unit={currentTab}
+              initialYear={selectedYear}
+              initialMonth={currentTab === 'month' ? selectedMonth : undefined}
+              onSearch={handlePeriodChange}
+            />
+          )}
+          {renderContent()}
+          <nav className={styles.navLink}>
+            <Link to="/investments">투자 내역 화면으로 이동</Link>
+          </nav>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

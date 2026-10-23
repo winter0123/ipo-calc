@@ -94,6 +94,7 @@ class InvestorControllerTest {
               .filter(i -> acctId.equals(i.getAccountId()))
               .collect(Collectors.toList());
       investorRepository.deleteAll(investors);
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

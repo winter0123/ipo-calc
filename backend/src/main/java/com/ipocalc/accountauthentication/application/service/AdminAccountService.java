@@ -105,6 +105,7 @@ public class AdminAccountService {
         account.getId(),
         account.getEmail(),
         account.getName(),
+        account.getNickname(),
         account.getRole().name(),
         account.isApproved(),
         account.getCreatedAt(),

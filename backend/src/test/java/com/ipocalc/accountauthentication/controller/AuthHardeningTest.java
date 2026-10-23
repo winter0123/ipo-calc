@@ -307,7 +307,11 @@ class AuthHardeningTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        Map.of("email", email, "password", PASSWORD, "name", "가입"))),
+                        Map.of(
+                            "email", email,
+                            "password", PASSWORD,
+                            "name", "가입",
+                            "nickname", "가입닉"))),
             before);
 
     assertThat(after).isNotEqualTo(before.getId());

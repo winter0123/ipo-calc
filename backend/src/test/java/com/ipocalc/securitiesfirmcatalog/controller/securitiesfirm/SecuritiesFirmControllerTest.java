@@ -11,6 +11,7 @@ import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
@@ -67,6 +68,8 @@ class SecuritiesFirmControllerTest {
 
   @Autowired private AccountRepository accountRepository;
 
+  @Autowired private InvestorRepository investorRepository;
+
   @Autowired private SecuritiesFirmRepository securitiesFirmRepository;
 
   private String testEmail;
@@ -105,6 +108,7 @@ class SecuritiesFirmControllerTest {
   private void cleanupAccount(String email) {
     Account account = accountRepository.findByEmail(email);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

@@ -235,7 +235,7 @@ describe('IpoDetailPage', () => {
   })
 
   it('로그인한 경우 돌아가기 링크는 /ipo-calendar로, 청약 등록 링크는 /subscriptions/register로 간다', async () => {
-    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' })
+    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' })
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
@@ -251,7 +251,10 @@ describe('IpoDetailPage', () => {
   })
 
   it('청약 기간이 끝났으면 청약 등록 링크가 보이지 않는다', async () => {
-    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }, {})
+    stubIpoAndAccount(
+      { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
+      {},
+    )
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 

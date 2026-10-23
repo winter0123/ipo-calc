@@ -51,6 +51,8 @@ public final class AuthTestSupport {
                             email,
                             "password",
                             password,
+                            "nickname",
+                            name,
                             "name",
                             name,
                             "displayName",

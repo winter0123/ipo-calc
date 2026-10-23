@@ -1,8 +1,9 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Waves, X, LogOut } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
+import { resetAnnouncementVisit } from '@/features/announcements/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
 import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/subscriptions', label: '청약' },
   { to: '/investments', label: '투자 내역' },
   { to: '/profits/view', label: '수익 확인' },
+  { to: '/announcements', label: '공지사항' },
   { to: '/about', label: '서비스 소개' },
 ]
 
@@ -34,6 +36,7 @@ const SETTINGS_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/accounts', label: '가입 승인' },
   { to: '/admin/ipos', label: '공모주 등록' },
+  { to: '/admin/announcements', label: '공지사항 관리' },
 ]
 
 const GUEST_ITEMS = [
@@ -46,6 +49,15 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function MainLayout() {
   const { data: currentAccount, isPending } = useCurrentAccount()
+  const previousAccountId = useRef<number | null | undefined>(undefined)
+  useEffect(() => {
+    if (isPending) return
+    const accountId = currentAccount?.accountId ?? null
+    if (previousAccountId.current !== undefined && previousAccountId.current !== accountId) {
+      resetAnnouncementVisit()
+    }
+    previousAccountId.current = accountId
+  }, [currentAccount?.accountId, isPending])
   const isGuest = !isPending && !currentAccount
   const { pathname } = useLocation()
   const navigate = useNavigate()

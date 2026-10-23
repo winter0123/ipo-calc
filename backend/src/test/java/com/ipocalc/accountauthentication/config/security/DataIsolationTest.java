@@ -107,7 +107,8 @@ class DataIsolationTest {
         Map.of(
             "email", testEmail,
             "password", testPassword,
-            "name", testName);
+            "name", testName,
+            "nickname", testName);
     MvcResult signupResult =
         mockMvc
             .perform(
@@ -145,7 +146,8 @@ class DataIsolationTest {
         Map.of(
             "email", testEmail,
             "password", testPassword,
-            "name", testName);
+            "name", testName,
+            "nickname", testName);
     MvcResult signupResult =
         mockMvc
             .perform(

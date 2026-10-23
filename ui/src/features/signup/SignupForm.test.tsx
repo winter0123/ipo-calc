@@ -34,12 +34,7 @@ function renderSignupForm() {
   )
 }
 
-async function fillAndSubmit(
-  email: string,
-  password: string,
-  name: string,
-  displayName = name || '표시이름',
-) {
+async function fillAndSubmit(email: string, password: string, name: string, nickname = '닉네임') {
   if (email !== undefined) {
     await fill(screen.getByLabelText('이메일'), email)
   }
@@ -49,8 +44,8 @@ async function fillAndSubmit(
   if (name !== undefined) {
     await fill(screen.getByLabelText('이름'), name)
   }
-  if (displayName) {
-    await fill(screen.getByLabelText('표시 이름'), displayName)
+  if (nickname) {
+    await fill(screen.getByLabelText('닉네임'), nickname)
   }
   await userEvent.click(screen.getByRole('button', { name: /가입/i }))
 }
@@ -60,11 +55,14 @@ describe('SignupForm', () => {
     vi.clearAllMocks()
   })
 
-  it('가입자의 관계는 본인으로 고정한다', () => {
+  it('이름과 닉네임을 각각 받고 투자자 관계는 본인으로 고정한다', () => {
     renderSignupForm()
 
     expect(screen.getByRole('option', { name: '본인' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: '배우자' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('이름')).toBeInTheDocument()
+    expect(screen.getByLabelText('닉네임')).toBeInTheDocument()
+    expect(screen.queryByLabelText('표시 이름')).not.toBeInTheDocument()
   })
 
   it('비공개 운영에서 승인 대기 응답이면 이동하지 않고 안내를 보여준다', async () => {
@@ -106,7 +104,7 @@ describe('SignupForm', () => {
       email: 'test@example.com',
       password: 'passw0rd!',
       name: '홍길동',
-      displayName: '길동',
+      nickname: '길동',
     })
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/dashboard')

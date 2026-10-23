@@ -10,6 +10,7 @@ import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
@@ -41,6 +42,8 @@ class CatalogAdminAccessTest {
 
   @Autowired private AccountRepository accountRepository;
 
+  @Autowired private InvestorRepository investorRepository;
+
   private String email;
   private final String password = "securePass123!";
   private MockHttpSession session;
@@ -55,6 +58,7 @@ class CatalogAdminAccessTest {
   void tearDown() {
     Account account = accountRepository.findByEmail(email);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }
@@ -89,7 +93,12 @@ class CatalogAdminAccessTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(
                 objectMapper.writeValueAsString(
-                    Map.of("email", email, "password", password, "name", "테스터", "role", "ADMIN"))));
+                    Map.of(
+                        "email", email,
+                        "password", password,
+                        "name", "테스터",
+                        "nickname", "테스터닉",
+                        "role", "ADMIN"))));
 
     assertThat(accountRepository.findByEmail(email).getRole()).isEqualTo(AccountRole.USER);
   }
@@ -148,7 +157,11 @@ class CatalogAdminAccessTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     objectMapper.writeValueAsString(
-                        Map.of("email", email, "password", password, "name", "테스터"))))
+                        Map.of(
+                            "email", email,
+                            "password", password,
+                            "name", "테스터",
+                            "nickname", "테스터닉"))))
         .andReturn();
   }
 

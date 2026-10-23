@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
+import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.allocationmanagement.repository.allocation.AllocationRepository;
@@ -130,8 +131,12 @@ class OwnershipIsolationTest {
     allocationRepository.delete(allocation);
     subscriptionRepository.delete(subscription);
     investorRepository.delete(investor);
-    accountRepository.delete(accountRepository.findByEmail(ownerEmail));
-    accountRepository.delete(accountRepository.findByEmail(intruderEmail));
+    Account owner = accountRepository.findByEmail(ownerEmail);
+    Account intruder = accountRepository.findByEmail(intruderEmail);
+    investorRepository.deleteAll(investorRepository.findByAccountId(owner.getId()));
+    investorRepository.deleteAll(investorRepository.findByAccountId(intruder.getId()));
+    accountRepository.delete(owner);
+    accountRepository.delete(intruder);
   }
 
   @Test
@@ -223,7 +228,11 @@ class OwnershipIsolationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(
                 objectMapper.writeValueAsString(
-                    Map.of("email", email, "password", PASSWORD, "name", "격리테스터")))
+                    Map.of(
+                        "email", email,
+                        "password", PASSWORD,
+                        "name", "격리테스터",
+                        "nickname", "격리닉")))
             .session(session));
     mockMvc.perform(
         post("/auth/login")

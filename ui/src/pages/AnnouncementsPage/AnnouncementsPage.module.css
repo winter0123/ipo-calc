@@ -1,0 +1,40 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+.list a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.list a:hover {
+  border-color: var(--link);
+}
+.list span {
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+.paging {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.paging button {
+  min-height: 44px;
+  padding: 8px 14px;
+  font: inherit;
+}

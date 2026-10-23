@@ -15,6 +15,7 @@ import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncRangeRequest;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
@@ -56,6 +57,8 @@ class IpoSyncRangeControllerTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
+
+  @Autowired private InvestorRepository investorRepository;
   @MockitoBean private IpoManualSyncService manualSyncService;
   @MockitoBean private IpoSyncStateManager syncStateManager;
   private String email;
@@ -69,7 +72,11 @@ class IpoSyncRangeControllerTest {
     session = new MockHttpSession();
     loginBody =
         objectMapper.writeValueAsString(
-            Map.of("email", email, "password", password, "name", "테스터"));
+            Map.of(
+                "email", email,
+                "password", password,
+                "name", "테스터",
+                "nickname", "테스터닉"));
     mockMvc.perform(
         post("/accounts")
             .session(session)
@@ -81,6 +88,7 @@ class IpoSyncRangeControllerTest {
   void tearDown() {
     Account account = accountRepository.findByEmail(email);
     if (account != null) {
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

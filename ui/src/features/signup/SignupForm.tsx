@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
-import {
-  isValidEmail,
-  isMinLength,
-  isValidDisplayName,
-  passwordProblem,
-} from '@/shared/lib/validators.ts'
+import { isValidEmail, isMinLength, passwordProblem } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
 import styles from './SignupForm.module.css'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -129,20 +124,22 @@ export default function SignupForm() {
         </div>
 
         <div className={styles.field}>
-          <label htmlFor="displayName">표시 이름</label>
+          <label htmlFor="nickname">닉네임</label>
           <input
-            id="displayName"
+            id="nickname"
             type="text"
-            aria-invalid={!!errors.displayName}
-            aria-describedby={errors.displayName ? 'displayName-error' : undefined}
-            {...register('displayName', {
-              required: '표시 이름은 필수입니다.',
-              validate: (v) => isValidDisplayName(v) || '표시 이름은 50자 이하여야 합니다.',
+            aria-invalid={!!errors.nickname}
+            aria-describedby={errors.nickname ? 'nickname-error' : undefined}
+            {...register('nickname', {
+              required: '닉네임은 필수 입력 항목입니다.',
+              validate: (v) =>
+                (v.trim().length > 0 && v.length <= 50) ||
+                '닉네임은 1자 이상 50자 이하여야 합니다.',
             })}
           />
-          {errors.displayName && (
-            <span id="displayName-error" className={styles.error} aria-live="polite">
-              {String(errors.displayName.message)}
+          {errors.nickname && (
+            <span id="nickname-error" className={styles.error} aria-live="polite">
+              {String(errors.nickname.message)}
             </span>
           )}
         </div>

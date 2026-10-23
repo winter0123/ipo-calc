@@ -49,6 +49,10 @@ export default function MyPage() {
           <dd>{accountQuery.data.email}</dd>
         </div>
         <div>
+          <dt>닉네임</dt>
+          <dd>{accountQuery.data.nickname}</dd>
+        </div>
+        <div>
           <dt>이름</dt>
           <dd>{accountQuery.data.name || '등록된 이름이 없습니다.'}</dd>
         </div>

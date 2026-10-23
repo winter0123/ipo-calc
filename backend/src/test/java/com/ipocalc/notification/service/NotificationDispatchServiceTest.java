@@ -162,9 +162,11 @@ class NotificationDispatchServiceTest {
   private long account(String label) {
     Long id =
         jdbc.queryForObject(
-            "INSERT INTO accounts (email, password_hash, name) VALUES (?, 'x', ?) RETURNING id",
+            "INSERT INTO accounts (email, password_hash, name, nickname) "
+                + "VALUES (?, 'x', ?, ?) RETURNING id",
             Long.class,
             "push-" + label + "-" + nonce + "@example.com",
+            label,
             label);
     accounts.add(id);
     jdbc.update(

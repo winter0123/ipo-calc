@@ -95,7 +95,11 @@ class QueryCountTest {
     MockHttpSession session = new MockHttpSession();
     AuthTestSupport.signupAndLogin(mockMvc, objectMapper, session, email, "securePass123!", "측정");
     Account account = accountRepository.findByEmail(email);
-    cleanups.add(() -> accountRepository.delete(account));
+    cleanups.add(
+        () -> {
+          investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
+          accountRepository.delete(account);
+        });
 
     LocalDateTime now = LocalDateTime.now();
     Investor investor =

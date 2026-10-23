@@ -123,6 +123,7 @@ class SecuritiesAccountControllerTest {
         createdAccounts.removeAll(accounts);
       }
       investorRepository.deleteAll(investors);
+      investorRepository.deleteAll(investorRepository.findByAccountId(account.getId()));
       accountRepository.delete(account);
     }
   }

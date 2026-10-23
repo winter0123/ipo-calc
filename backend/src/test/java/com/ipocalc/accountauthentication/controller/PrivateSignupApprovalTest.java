@@ -82,6 +82,8 @@ class PrivateSignupApprovalTest {
                                 PASSWORD,
                                 "name",
                                 "대기자",
+                                "nickname",
+                                "대기자닉",
                                 "displayName",
                                 "대기자"))))
             .andReturn();

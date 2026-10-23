@@ -107,7 +107,8 @@ describe('App 랜드마크', () => {
 describe('App 접근 가드', () => {
   function renderAs(role: 'USER' | 'ADMIN', path: string) {
     vi.mocked(apiFetch).mockImplementation(async (url: unknown) => {
-      if (url === '/auth/me') return { accountId: 1, email: 'a@b.c', name: null, role }
+      if (url === '/auth/me')
+        return { accountId: 1, email: 'a@b.c', name: null, nickname: 'test', role }
       return []
     })
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })

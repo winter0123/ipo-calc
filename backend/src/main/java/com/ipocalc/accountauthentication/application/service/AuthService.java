@@ -45,8 +45,8 @@ public class AuthService {
       new HttpSessionSecurityContextRepository();
 
   /**
-   * 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다. 외부 트랜잭션을 두지 않는다: 각 DB 작업이 짧은 자체 트랜잭션이라 요청이
-   * 커넥션을 한 번에 하나만 쓰고, bcrypt 검증 동안은 커넥션을 쥐지 않는다(동시 오답 요청으로 풀이 마르지 않는다).
+   * 이메일·비밀번호를 검증하고 인증 세션을 생성해 로그인 처리한다. 외부 트랜잭션을 두지 않는다: 각 DB 작업이 짧은 자체 트랜잭션이라 요청이 커넥션을 한 번에 하나만
+   * 쓰고, bcrypt 검증 동안은 커넥션을 쥐지 않는다(동시 오답 요청으로 풀이 마르지 않는다).
    */
   public void login(
       LoginRequest request,
@@ -63,8 +63,7 @@ public class AuthService {
     }
 
     // 계정이 존재하지 않거나 비밀번호가 틀린 경우 동일한 에러 메시지 반환 (계정 존재 여부 노출 방지)
-    if (account == null
-        || !passwordMatches(request.getPassword(), account.getPasswordHash())) {
+    if (account == null || !passwordMatches(request.getPassword(), account.getPasswordHash())) {
       if (account != null) {
         accountRepository.recordFailedLogin(
             account.getId(), now, MAX_FAILED_ATTEMPTS, now.plusMinutes(LOCK_DURATION_MINUTES));
@@ -96,7 +95,11 @@ public class AuthService {
       throw new AccountNotFoundException("계정을 찾을 수 없습니다");
     }
     return new CurrentAccountResponse(
-        account.getId(), account.getEmail(), account.getName(), account.getRole().name());
+        account.getId(),
+        account.getEmail(),
+        account.getName(),
+        account.getNickname(),
+        account.getRole().name());
   }
 
   /** 현재 세션을 무효화하고 인증 정보를 비운다. */

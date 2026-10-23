@@ -17,6 +17,7 @@ public class SignupResponse {
   private Long accountId;
   private String email;
   private String name;
+  private String nickname;
 
   /** 관리자 승인이 끝나 바로 로그인할 수 있으면 true, 승인 대기면 false. */
   private boolean approved;

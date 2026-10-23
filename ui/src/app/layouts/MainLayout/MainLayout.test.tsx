@@ -16,7 +16,7 @@ const loggedInAs = (role: 'USER' | 'ADMIN', investors: object[] = []) =>
     .mockImplementation(async (path: unknown) =>
       String(path).startsWith('/investors')
         ? investors
-        : { accountId: 1, email: 'a@b.com', name: '나', role },
+        : { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role },
     )
 
 function TestChild() {
@@ -154,7 +154,7 @@ describe('MainLayout', () => {
   })
 
   describe('드롭다운 메뉴', () => {
-    it('주요 메뉴는 5개, 그룹은 새로 기록·설정이며 관리자 그룹은 일반 계정에 없음', async () => {
+    it('주요 메뉴에는 공지사항이 있고 관리자 그룹은 일반 계정에 없음', async () => {
       loggedInAs('USER')
       renderLayout()
 
@@ -169,6 +169,7 @@ describe('MainLayout', () => {
         '청약',
         '투자 내역',
         '수익 확인',
+        '공지사항',
         '서비스 소개',
       ])
       expect(within(nav).getByRole('button', { name: '새로 기록' })).toHaveAttribute(
@@ -289,7 +290,13 @@ describe('MainLayout', () => {
     it('로그아웃 버튼을 클릭하면 /auth/logout을 호출하고 /login으로 이동함', async () => {
       const { apiFetch } = await import('@/shared/api/client.ts')
       vi.mocked(apiFetch)
-        .mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }) // /auth/me
+        .mockResolvedValueOnce({
+          accountId: 1,
+          email: 'a@b.com',
+          name: '나',
+          nickname: '나',
+          role: 'USER',
+        }) // /auth/me
         .mockResolvedValueOnce(undefined) // /auth/logout
       const { unmount } = renderLayout()
 
@@ -304,7 +311,13 @@ describe('MainLayout', () => {
     it('로그아웃 실패해도 /login으로 이동함', async () => {
       const { apiFetch } = await import('@/shared/api/client.ts')
       vi.mocked(apiFetch)
-        .mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', name: '나', role: 'USER' }) // /auth/me
+        .mockResolvedValueOnce({
+          accountId: 1,
+          email: 'a@b.com',
+          name: '나',
+          nickname: '나',
+          role: 'USER',
+        }) // /auth/me
         .mockRejectedValueOnce(new Error('Network error')) // /auth/logout
       const { unmount } = renderLayout()
 
