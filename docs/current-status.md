@@ -1,6 +1,14 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
-> 마지막 갱신: 2026-10-22. 제품 도메인 세부 스냅샷과 과거 세션 기록은 아래 날짜가 붙은 절을 참고한다.
+> 마지막 갱신: 2026-10-23. 제품 도메인 세부 스냅샷과 과거 세션 기록은 아래 날짜가 붙은 절을 참고한다.
+
+## 최신 작업 (2026-10-23): 공지사항 Epic 22 Phase 0
+
+- Orca Run `run_4a4899ea960d`에서 완료된 문서 정합성 Task들을 확인했다. `task_0096c19b199b` / Dispatch `ctx_c3cab92c8770` 성공 결과 중 breakdown-research, breakdown, work-log 세 파일을 기존 `planning-notices` 작업공간에 반영했고 임시 `planning-notices-docs-2` 작업공간은 제거했다.
+- 과거 완료 Task `task_4562f4996788`은 E22를 추가했다고 보고했으나 결과가 현재 파일과 달랐다. 후속 Task `task_c1048ddc09d8`은 worker_done 누락을 복구해 완료 처리했다. roadmap diff는 최소 범위와 형식 검토가 필요해 수정 후 재검증 중이다.
+- GT-01 기간 경계, GT-02 다시 보지 않기 저장 범위, GT-04 복수 공지 우선순위, GT-07 관리자 경로를 정하는 Decision Gate `gate_f4842c84e7b3`는 pending이다. 해당 사용자 결정과 Phase 0 Master 승인이 있기 전에는 결정 의존 구현을 시작하지 않는다.
+- watchdog은 초기 점검에서 활성 워커를 놓쳤고 이후 `OK`를 표시했다. Orca `worker-show`는 Dispatch `ctx_332943e2f2d0`을 `live`로, task result는 worker_done 수신 뒤 `completed`로 확인했다.
+- 검증 현황: 통합된 세 문서 byte 비교 및 공백 검사 PASS; roadmap의 targeted `git diff --cached --check` PASS. 불필요한 roadmap 변경 제거 후 diff 검토를 마칠 예정이다.
 
 ## 최신 변경 (2026-10-22): 공모주 일정 관리
 
