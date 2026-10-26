@@ -106,7 +106,7 @@ describe('SubscriptionListPage', () => {
     mockApi([HISTORY])
     renderPage('/subscriptions?from=2026-10-01&to=2026-10-31')
     expect(await screen.findByText(/한국투자증권 · 주력 계좌/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '이 청약 배정 입력' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '배정 등록' })).toHaveAttribute(
       'href',
       '/allocations/register?subscriptionId=7',
     )

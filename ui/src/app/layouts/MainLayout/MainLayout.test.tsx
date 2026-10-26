@@ -178,7 +178,7 @@ describe('MainLayout', () => {
       expect(within(nav).queryByRole('button', { name: '관리자' })).not.toBeInTheDocument()
     })
 
-    it('공모주 일정은 앞에 단독으로 두고 청약 그룹에는 청약·배정·매도를 표시함', async () => {
+    it('공모주 청약 그룹은 청약 목록만 접고 펼쳐 표시함', async () => {
       loggedInAs('USER')
       renderLayout()
 
@@ -187,19 +187,18 @@ describe('MainLayout', () => {
       expect(nav.firstElementChild).toBe(calendarLink)
       expect(calendarLink.closest('[role="group"]')).toBeNull()
 
-      await userEvent.click(await screen.findByRole('button', { name: '공모주 청약' }))
-      expect(screen.getByRole('link', { name: '공모주 청약' })).toHaveAttribute(
+      const groupButton = await screen.findByRole('button', { name: '공모주 청약' })
+      expect(groupButton).toHaveAttribute('aria-expanded', 'false')
+      await userEvent.click(groupButton)
+      expect(groupButton).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('link', { name: '청약 목록' })).toHaveAttribute(
         'href',
-        '/subscriptions/register',
+        '/subscriptions',
       )
-      expect(screen.getByRole('link', { name: '공모주 배정' })).toHaveAttribute(
-        'href',
-        '/allocations/register',
-      )
-      expect(screen.getByRole('link', { name: '공모주 매도' })).toHaveAttribute(
-        'href',
-        '/sales/register',
-      )
+      expect(screen.queryByRole('link', { name: '공모주 배정' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: '공모주 매도' })).not.toBeInTheDocument()
+      await userEvent.click(groupButton)
+      expect(groupButton).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('매매기록 그룹은 청약내역과 실현손익으로 표시함', async () => {

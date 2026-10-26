@@ -23,6 +23,7 @@ export const StyleScope = styled.div`
     row-gap: 0;
     column-gap: var(--space-6);
     width: 100%;
+    min-width: 0;
   }
 
   .s-e1b278a-header {
@@ -204,6 +205,7 @@ export const StyleScope = styled.div`
     grid-area: weekdays;
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
+    min-width: 0;
     border: 1px solid var(--border);
     border-bottom: none;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
@@ -230,6 +232,8 @@ export const StyleScope = styled.div`
     grid-area: grid;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
     border-top: 1px solid var(--border);
     border-left: 1px solid var(--border);
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -240,6 +244,7 @@ export const StyleScope = styled.div`
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: 38px repeat(var(--lanes, 0), 24px) minmax(8px, 1fr);
     min-height: 96px;
+    min-width: 0;
     position: relative;
   }
 
@@ -324,6 +329,10 @@ export const StyleScope = styled.div`
   /* 공휴일인 날짜의 숫자 색상을 danger로 변경 */
   .s-e1b278a-dateCell.s-e1b278a-hasHoliday .s-e1b278a-dateNumber {
     color: var(--danger);
+  }
+
+  .s-e1b278a-mobileEventCount {
+    display: none;
   }
 
   .s-e1b278a-dateCell.s-e1b278a-today.s-e1b278a-hasHoliday .s-e1b278a-dateNumber {
@@ -524,7 +533,14 @@ export const StyleScope = styled.div`
 
   @media (max-width: 640px) {
     .s-e1b278a-header {
+      flex-wrap: wrap;
       gap: var(--space-1);
+    }
+
+    .s-e1b278a-dateSelectors {
+      flex: 1;
+      justify-content: center;
+      margin: 0;
     }
 
     .s-e1b278a-dateSelect {
@@ -543,16 +559,46 @@ export const StyleScope = styled.div`
       display: none;
     }
 
+    .s-e1b278a-week {
+      min-height: 72px;
+      grid-template-rows: minmax(72px, auto);
+    }
+
     .s-e1b278a-emptyCell,
     .s-e1b278a-dateCell {
       min-height: 72px;
     }
 
-    .s-e1b278a-week {
-      min-height: 72px;
+    .s-e1b278a-dateCell {
+      align-items: center;
+      padding: var(--space-1) 2px;
+    }
+
+    .s-e1b278a-dateHead {
+      align-items: center;
+    }
+
+    .s-e1b278a-dateNumber {
+      margin-left: 0;
+    }
+
+    .s-e1b278a-mobileEventCount {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      min-height: 20px;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: var(--surface-sea);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
     .s-e1b278a-bar {
+      display: none;
       font-size: 11px;
       height: 18px;
       padding: 0 4px;

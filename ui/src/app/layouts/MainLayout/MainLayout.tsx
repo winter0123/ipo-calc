@@ -9,12 +9,7 @@ import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
 import styles, { StyleScope } from './MainLayout.styles.ts'
 
-const IPO_ITEMS = [
-  { to: '/subscriptions/register', label: '공모주 청약' },
-  { to: '/subscriptions', label: '청약 목록' },
-  { to: '/allocations/register', label: '공모주 배정' },
-  { to: '/sales/register', label: '공모주 매도' },
-]
+const IPO_ITEMS = [{ to: '/subscriptions', label: '청약 목록' }]
 
 const TRADE_ITEMS = [
   { to: '/dashboard', label: '대시보드' },

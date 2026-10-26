@@ -302,6 +302,11 @@ export default function IpoCalendar({
                           {holidayName && <span className={styles.holidayName}>{holidayName}</span>}
                           <span className={styles.dateNumber}>{day}</span>
                         </span>
+                        {dayEvents.length > 0 && (
+                          <span className={styles.mobileEventCount} aria-hidden="true">
+                            {dayEvents.length}건
+                          </span>
+                        )}
                       </DateCell>
                     )
                   })}

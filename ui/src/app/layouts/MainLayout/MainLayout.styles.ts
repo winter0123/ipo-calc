@@ -146,10 +146,6 @@ export const StyleScope = styled.div`
     display: flex;
   }
 
-  .s-91ad696-groupTitle {
-    display: none;
-  }
-
   .s-91ad696-morePanel {
     position: absolute;
     top: calc(100% + var(--space-1));
@@ -165,7 +161,7 @@ export const StyleScope = styled.div`
     box-shadow: var(--shadow-pop);
   }
 
-  /* display: flex가 hidden 속성을 덮어쓰지 않게 한다(모바일은 아래 미디어 쿼리에서 다시 펼친다) */
+  /* display: flex가 hidden 속성을 덮어쓰지 않게 한다 */
   .s-91ad696-morePanel[hidden] {
     display: none;
   }
@@ -317,18 +313,16 @@ export const StyleScope = styled.div`
       display: none;
     }
 
-    /* 모바일: 그룹 버튼 대신 소제목, 목록은 항상 펼침 */
+    /* 모바일 그룹은 disclosure 버튼으로 접고 펼친다. */
     .s-91ad696-group {
       flex-direction: column;
     }
 
     .s-91ad696-group > button {
-      display: none;
-    }
-
-    .s-91ad696-groupTitle {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      width: 100%;
       min-height: 48px;
       margin-top: var(--space-2);
       padding: 0 var(--space-3);
@@ -339,14 +333,21 @@ export const StyleScope = styled.div`
       border-radius: var(--radius-sm);
     }
 
+    .s-91ad696-group > button svg {
+      transition: transform 0.15s ease;
+    }
+
+    .s-91ad696-group > button[aria-expanded='true'] svg {
+      transform: rotate(180deg);
+    }
+
     .s-91ad696-nav > .s-91ad696-link {
       color: var(--ink);
       font-weight: 800;
       background: var(--surface-soft);
     }
 
-    .s-91ad696-morePanel,
-    .s-91ad696-morePanel[hidden] {
+    .s-91ad696-morePanel:not([hidden]) {
       display: flex;
       position: static;
       min-width: 0;
@@ -355,6 +356,10 @@ export const StyleScope = styled.div`
       border: 0;
       border-left: 2px solid var(--border);
       box-shadow: none;
+    }
+
+    .s-91ad696-morePanel[hidden] {
+      display: none;
     }
 
     .s-91ad696-moreLink {
