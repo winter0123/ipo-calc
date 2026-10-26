@@ -31,6 +31,13 @@
   color: var(--ink-muted);
 }
 
+.investorActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .addInvestorButton {
   display: inline-flex;
   align-items: center;
@@ -45,29 +52,87 @@
   white-space: nowrap;
 }
 
+.securitiesAccountButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.securitiesAccountButton:hover {
+  background: var(--surface-sea);
+}
+
 .addInvestorButton:hover {
   background: var(--primary-hover);
 }
 
 .investorList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--border);
   list-style: none;
 }
 
 .investorRow {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-2);
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 80px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
-.investorRow span:last-child {
+.investorAvatar {
+  display: inline-flex;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface-sea);
+  color: var(--primary);
+}
+
+.investorAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.investorInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.investorName {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.investorRelationship {
   color: var(--ink-muted);
+  font-size: 14px;
 }
 
 .profile {
@@ -104,12 +169,16 @@
     gap: var(--space-1);
   }
 
-  .investorsHeader,
-  .investorRow {
+  .investorsHeader {
     align-items: flex-start;
   }
 
   .investorsHeader {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .investorActions > a {
+    flex: 1;
   }
 }

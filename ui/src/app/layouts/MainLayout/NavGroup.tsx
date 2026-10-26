@@ -92,7 +92,13 @@ export default function NavGroup({ label, items }: { label: string; items: NavGr
               {item.label}
             </button>
           ) : item.to && item.static ? (
-            <a key={item.to} href={item.to} className={styles.moreLink}>
+            <a
+              key={item.to}
+              href={item.to}
+              className={styles.moreLink}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {item.label}
             </a>
           ) : item.to ? (

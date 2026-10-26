@@ -10,7 +10,6 @@ import InvestorSwitcher from './InvestorSwitcher.tsx'
 import styles from './MainLayout.module.css'
 
 const IPO_ITEMS = [
-  { to: '/ipo-calendar', label: '공모주 일정' },
   { to: '/subscriptions/register', label: '공모주 청약' },
   { to: '/subscriptions', label: '청약 목록' },
   { to: '/allocations/register', label: '공모주 배정' },
@@ -25,7 +24,6 @@ const TRADE_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { to: '/my-page', label: '마이페이지' },
-  { to: '/securities', label: '증권사 계좌 등록' },
   { to: '/notifications', label: '알림 설정' },
   { to: '/announcements', label: '공지사항' },
   { to: '/user-guides/manual/index.html', label: '이용가이드', static: true },
@@ -35,11 +33,6 @@ const ADMIN_ITEMS = [
   { to: '/admin/accounts', label: '가입 승인' },
   { to: '/admin/ipos', label: '공모주 등록' },
   { to: '/admin/announcements', label: '공지사항 관리' },
-]
-
-const GUEST_ITEMS = [
-  { to: '/user-guides/manual/index.html', label: '이용가이드', static: true },
-  { to: '/ipo-calendar', label: '공모주 일정' },
 ]
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -72,10 +65,16 @@ export default function MainLayout() {
       <header className={styles.header}>
         <div className={styles.brand}>
           {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
-          <span className={styles.logo} aria-hidden="true">
-            <Waves size={20} />
-          </span>
-          {(currentAccount || isGuest) && (
+          {isGuest ? (
+            <Link to="/" className={`${styles.logo} ${styles.guestLogo}`} aria-label="홈으로">
+              <Waves aria-hidden="true" size={20} />
+            </Link>
+          ) : (
+            <span className={styles.logo} aria-hidden="true">
+              <Waves size={20} />
+            </span>
+          )}
+          {currentAccount && (
             <button
               type="button"
               className={styles.menuButton}
@@ -99,18 +98,16 @@ export default function MainLayout() {
             aria-label="주요 메뉴"
             className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
           >
-            {!currentAccount &&
-              GUEST_ITEMS.map((item) =>
-                'static' in item ? (
-                  <a key={item.to} href={item.to} className={styles.link}>
-                    {item.label}
-                  </a>
-                ) : (
-                  <NavLink key={item.to} to={item.to} className={linkClass}>
-                    {item.label}
-                  </NavLink>
-                ),
-              )}
+            {isGuest && (
+              <NavLink to="/" className={linkClass}>
+                홈
+              </NavLink>
+            )}
+            {currentAccount && (
+              <NavLink to="/ipo-calendar" className={linkClass}>
+                공모주 일정
+              </NavLink>
+            )}
             {currentAccount && <NavGroup label="공모주 청약" items={IPO_ITEMS} />}
             {currentAccount && <NavGroup label="매매기록" items={TRADE_ITEMS} />}
             {currentAccount && (
@@ -136,6 +133,9 @@ export default function MainLayout() {
         {currentAccount && <InvestorSwitcher />}
         {isGuest && (
           <div className={styles.authActions}>
+            <Link to="/ipo-calendar" className={styles.calendarButton}>
+              공모주 일정
+            </Link>
             <Link to="/login" className={styles.loginButton}>
               로그인
             </Link>
