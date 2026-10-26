@@ -8,5 +8,6 @@ export {
   currentMonthRange,
   filterIposBySubscriptionStart,
   parseDateRange,
+  updateDateRangeParams,
 } from './subscriptionSchedule.ts'
 export type { DateRange, SubscriptionScheduleItem } from './subscriptionSchedule.ts'

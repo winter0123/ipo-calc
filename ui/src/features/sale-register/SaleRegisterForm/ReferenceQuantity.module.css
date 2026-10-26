@@ -1,9 +1,0 @@
-.container {
-  margin: 0;
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.container span {
-  color: var(--ink-muted);
-}

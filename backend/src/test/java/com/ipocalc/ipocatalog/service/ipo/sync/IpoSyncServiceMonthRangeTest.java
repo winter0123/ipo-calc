@@ -67,8 +67,8 @@ class IpoSyncServiceMonthRangeTest {
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
-            ipoRepository,
-            new BusinessDayCalculator(marketHolidayRepository),
+            new IpoSyncPersistence(
+                ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock),
             transactionTemplate,
             scheduleMergeService,
             fixedClock);

@@ -8,7 +8,7 @@ import { useRecordMutation } from './useRecordMutation.ts'
 import { AllocationEditDialog } from './AllocationEditDialog.tsx'
 import { SaleEditDialog } from './SaleEditDialog.tsx'
 import { SubscriptionEditDialog } from './SubscriptionEditDialog.tsx'
-import styles from './RecordActions.module.css'
+import styles, { StyleScope } from './RecordActions.styles.ts'
 
 export type RecordKind = 'subscription' | 'allocation' | 'sale'
 
@@ -42,64 +42,70 @@ export default function RecordActions({ kind, id, label, onDeleted }: RecordActi
   const close = () => setMode(null)
 
   return (
-    <>
-      <span className={styles.actions}>
-        <button
-          type="button"
-          className={styles.smallButton}
-          onClick={() => setMode('edit')}
-          aria-label={`${name} 수정`}
-        >
-          수정
-        </button>
-        <button
-          type="button"
-          className={`${styles.smallButton} ${styles.danger}`}
-          onClick={() => {
-            remove.reset()
-            setMode('delete')
-          }}
-          aria-label={`${name} 삭제`}
-        >
-          삭제
-        </button>
-      </span>
+    <StyleScope>
+      {
+        <>
+          <span className={styles.actions}>
+            <button
+              type="button"
+              className={styles.smallButton}
+              onClick={() => setMode('edit')}
+              aria-label={`${name} 수정`}
+            >
+              수정
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallButton} ${styles.danger}`}
+              onClick={() => {
+                remove.reset()
+                setMode('delete')
+              }}
+              aria-label={`${name} 삭제`}
+            >
+              삭제
+            </button>
+          </span>
 
-      {remove.isError && mode === null && (
-        <p role="alert" className={styles.error}>
-          {toErrorMessage(remove.error)}
-        </p>
-      )}
+          {remove.isError && mode === null && (
+            <p role="alert" className={styles.error}>
+              {toErrorMessage(remove.error)}
+            </p>
+          )}
 
-      {mode === 'edit' && kind === 'subscription' && (
-        <SubscriptionEditDialog id={id} onClose={close} />
-      )}
-      {mode === 'edit' && kind === 'allocation' && <AllocationEditDialog id={id} onClose={close} />}
-      {mode === 'edit' && kind === 'sale' && <SaleEditDialog id={id} onClose={close} />}
+          {mode === 'edit' && kind === 'subscription' && (
+            <SubscriptionEditDialog id={id} onClose={close} />
+          )}
+          {mode === 'edit' && kind === 'allocation' && (
+            <AllocationEditDialog id={id} onClose={close} />
+          )}
+          {mode === 'edit' && kind === 'sale' && <SaleEditDialog id={id} onClose={close} />}
 
-      <ConfirmDialog
-        isOpen={mode === 'delete'}
-        title={`${name} 삭제`}
-        message={`${label ?? name}을(를) 삭제할까요?`}
-        confirmLabel="삭제"
-        onCancel={close}
-        pending={remove.isPending}
-        onConfirm={() => {
-          // 같은 틱의 연속 클릭은 isPending이 아직 false라 ref로 막는다.
-          if (deleting.current) return
-          deleting.current = true
-          remove.mutate(id, {
-            onSuccess: () => {
-              close()
-              onDeleted?.()
-            },
-            onError: close,
-            onSettled: () => {
-              deleting.current = false
-            },
-          })
-        }}
-      />
-    </>
+          <ConfirmDialog
+            isOpen={mode === 'delete'}
+            title={`${name} 삭제`}
+            message={`${label ?? name}을(를) 삭제할까요?`}
+            confirmLabel="삭제"
+            onCancel={close}
+            pending={remove.isPending}
+            onConfirm={() => {
+              // 같은 틱의 연속 클릭은 isPending이 아직 false라 ref로 막는다.
+              if (deleting.current) return
+              deleting.current = true
+              remove.mutate(id, {
+                onSuccess: () => {
+                  close()
+                  onDeleted?.()
+                },
+                onError: close,
+                onSettled: () => {
+                  deleting.current = false
+                },
+              })
+            }}
+          />
+        </>
+      }
+    </StyleScope>
   )
 }

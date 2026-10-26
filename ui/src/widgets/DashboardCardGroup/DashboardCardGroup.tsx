@@ -1,4 +1,4 @@
-import styles from './DashboardCardGroup.module.css'
+import styles, { StyleScope } from './DashboardCardGroup.styles.ts'
 import DashboardCard from './DashboardCard.tsx'
 import type { DashboardSummary } from '@/features/dashboard/index.ts'
 
@@ -20,16 +20,20 @@ const CARD_CONFIG: Array<{
 
 export default function DashboardCardGroup({ summary }: DashboardCardGroupProps) {
   return (
-    <div className={styles.grid}>
-      {CARD_CONFIG.map(({ label, format, key, signed }) => (
-        <DashboardCard
-          key={label}
-          label={label}
-          value={summary[key]}
-          format={format}
-          signed={signed}
-        />
-      ))}
-    </div>
+    <StyleScope>
+      {
+        <div className={styles.grid}>
+          {CARD_CONFIG.map(({ label, format, key, signed }) => (
+            <DashboardCard
+              key={label}
+              label={label}
+              value={summary[key]}
+              format={format}
+              signed={signed}
+            />
+          ))}
+        </div>
+      }
+    </StyleScope>
   )
 }

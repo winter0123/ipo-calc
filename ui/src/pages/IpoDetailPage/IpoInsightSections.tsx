@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
+import styled from 'styled-components'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
 import type { IpoInsight } from '@/entities/ipo/index.ts'
 import { expectedUnlockDate } from './lockUpDate.ts'
-import styles from './IpoDetailPage.module.css'
+import styles, { StyleScope } from './IpoDetailPage.styles.ts'
 
 const num = (v: number) => v.toLocaleString('ko-KR', { maximumFractionDigits: 2 })
 const ratio = (v: number | null) => (v === null ? null : `${num(v)}:1`)
@@ -17,24 +18,31 @@ const wideLabels = new Set(['주소', '최대주주'])
 
 type Row = [label: string, value: ReactNode]
 
+const LockupFill = styled.span<{ $width: number }>`
+  display: block;
+  width: ${({ $width }) => $width}%;
+`
+
 function Section({ title, rows }: { title: string; rows: Row[] }) {
   const shown = rows.filter(([, value]) => value !== null && value !== undefined && value !== '')
   if (shown.length === 0) return null
   return (
-    <section className={styles.insightSection} aria-label={title}>
-      <h2 className={styles.insightTitle}>{title}</h2>
-      <dl className={styles.detailGrid}>
-        {shown.map(([label, value]) => (
-          <div
-            key={label}
-            className={`${styles.detailItem} ${wideLabels.has(label) ? styles.wide : ''}`}
-          >
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <StyleScope>
+      <section className={styles.insightSection} aria-label={title}>
+        <h2 className={styles.insightTitle}>{title}</h2>
+        <dl className={styles.detailGrid}>
+          {shown.map(([label, value]) => (
+            <div
+              key={label}
+              className={`${styles.detailItem} ${wideLabels.has(label) ? styles.wide : ''}`}
+            >
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    </StyleScope>
   )
 }
 
@@ -53,29 +61,31 @@ function Table({
   cards?: ReactNode
 }) {
   return (
-    <section className={styles.insightSection} aria-label={title}>
-      <h2 className={styles.insightTitle}>{title}</h2>
-      {cards}
-      <div
-        className={`${styles.tableWrap} ${cards ? styles.desktopOnly : ''}`}
-        role="region"
-        aria-label={label}
-        tabIndex={0}
-      >
-        <table className={styles.insightTable}>
-          <thead>
-            <tr>
-              {head.map((h, i) => (
-                <th key={`${h}-${i}`} scope="col">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>{children}</tbody>
-        </table>
-      </div>
-    </section>
+    <StyleScope>
+      <section className={styles.insightSection} aria-label={title}>
+        <h2 className={styles.insightTitle}>{title}</h2>
+        {cards}
+        <div
+          className={`${styles.tableWrap} ${cards ? styles.desktopOnly : ''}`}
+          role="region"
+          aria-label={label}
+          tabIndex={0}
+        >
+          <table className={styles.insightTable}>
+            <thead>
+              <tr>
+                {head.map((h, i) => (
+                  <th key={`${h}-${i}`} scope="col">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{children}</tbody>
+          </table>
+        </div>
+      </section>
+    </StyleScope>
   )
 }
 
@@ -112,7 +122,7 @@ function FloatSchedule({
               </dl>
               {r.ratio !== null && (
                 <div className={styles.lockupBar} aria-hidden="true">
-                  <span style={{ width: `${Math.min(100, Math.max(0, r.ratio))}%` }} />
+                  <LockupFill $width={Math.min(100, Math.max(0, r.ratio))} />
                 </div>
               )}
             </li>
@@ -208,47 +218,63 @@ export default function IpoInsightSections({
   listingDate?: string | null
 }) {
   const { data, isLoading, isError } = useIpoInsight(ipoId)
-  if (isLoading) return <p className={styles.insightNote}>공시 정보를 불러오는 중...</p>
+  if (isLoading)
+    return (
+      <StyleScope>
+        <p className={styles.insightNote}>공시 정보를 불러오는 중...</p>
+      </StyleScope>
+    )
   if (isError || !data) {
-    return <p className={styles.insightNote}>공시 정보를 지금 불러올 수 없습니다.</p>
+    return (
+      <StyleScope>
+        <p className={styles.insightNote}>공시 정보를 지금 불러올 수 없습니다.</p>
+      </StyleScope>
+    )
   }
   if (data.syncedAt === null) {
-    return <p className={styles.insightNote}>아직 공시 정보를 가져오지 않았습니다.</p>
+    return (
+      <StyleScope>
+        <p className={styles.insightNote}>아직 공시 정보를 가져오지 않았습니다.</p>
+      </StyleScope>
+    )
   }
   const shareholder = data.largestShareholderName
     ? `${data.largestShareholderName}${data.largestShareholderRatio === null ? '' : ` (${percent(data.largestShareholderRatio)})`}`
     : null
   return (
-    <>
-      <Section
-        title="수요예측"
-        rows={[
-          ['기관 경쟁률', ratio(data.institutionalCompetitionRate)],
-          ['의무보유확약 비율', percent(data.lockUpCommitmentRatio)],
-        ]}
-      />
-      <FloatSchedule rows={data.floatSchedule} listingDate={listingDate} />
-      <Section
-        title="기업정보"
-        rows={[
-          ['대표이사', data.ceoName],
-          ['설립일', data.establishedOn],
-          ['주소', data.address],
-          ['최대주주', shareholder],
-          ['자본금', capital(data.capitalStock)],
-          ['액면가', data.parValue === null ? null : `${num(data.parValue)}원`],
-        ]}
-      />
-      <Financials rows={data.financials} />
-      <Underwriters rows={data.underwriters} />
-      <p className={styles.insightNote}>
-        출처: 금융감독원 DART {data.sourceReportName ?? '공시'} · {data.syncedAt.slice(0, 10)} 기준{' '}
-        {data.sourceUrl && (
-          <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer">
-            공시 원문 보기
-          </a>
-        )}
-      </p>
-    </>
+    <StyleScope>
+      <>
+        <Section
+          title="수요예측"
+          rows={[
+            ['기관 경쟁률', ratio(data.institutionalCompetitionRate)],
+            ['의무보유확약 비율', percent(data.lockUpCommitmentRatio)],
+          ]}
+        />
+        <FloatSchedule rows={data.floatSchedule} listingDate={listingDate} />
+        <Section
+          title="기업정보"
+          rows={[
+            ['대표이사', data.ceoName],
+            ['설립일', data.establishedOn],
+            ['주소', data.address],
+            ['최대주주', shareholder],
+            ['자본금', capital(data.capitalStock)],
+            ['액면가', data.parValue === null ? null : `${num(data.parValue)}원`],
+          ]}
+        />
+        <Financials rows={data.financials} />
+        <Underwriters rows={data.underwriters} />
+        <p className={styles.insightNote}>
+          출처: 금융감독원 DART {data.sourceReportName ?? '공시'} · {data.syncedAt.slice(0, 10)}{' '}
+          기준{' '}
+          {data.sourceUrl && (
+            <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer">
+              공시 원문 보기
+            </a>
+          )}
+        </p>
+      </>
+    </StyleScope>
   )
 }

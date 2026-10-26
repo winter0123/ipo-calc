@@ -13,6 +13,7 @@ export const preferencesSchema = z.object({
 export type NotificationPreferences = z.infer<typeof preferencesSchema>
 
 export const testResultSchema = z.object({ sent: z.number() })
+export const successResponseSchema = z.object({ message: z.string() })
 
 /** 브라우저 PushSubscription.toJSON() 중 서버가 받는 부분 */
 export interface PushSubscriptionPayload {

@@ -78,7 +78,7 @@ function SubscriptionForm({ record, onClose }: { record: Subscription; onClose: 
 export function SubscriptionEditDialog({ id, onClose }: { id: number; onClose: () => void }) {
   const query = useQuery({
     queryKey: investmentHistoryKeys.source('subscription', id),
-    queryFn: () => getSubscription(id),
+    queryFn: ({ signal }) => getSubscription(id, signal),
   })
   return (
     <Shell title="청약 수정" query={query} onClose={onClose}>

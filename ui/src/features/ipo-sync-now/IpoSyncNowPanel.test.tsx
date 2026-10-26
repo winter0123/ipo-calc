@@ -10,7 +10,7 @@ import IpoSyncNowPanel from './IpoSyncNowPanel.tsx'
 vi.mock('@/entities/ipo/index.ts', () => ({
   syncIposNow: vi.fn(),
   getIpoSyncStatus: vi.fn(),
-  ipoKeys: { all: ['ipos'] },
+  ipoKeys: { all: ['ipos'], syncStatus: () => ['ipoSyncStatus'] },
 }))
 
 const RESULT = {

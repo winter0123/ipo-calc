@@ -122,6 +122,7 @@ describe('AllocationRegisterForm', () => {
           allocationPrice: 39000,
           note: '테스트 배정',
           status: 'CONFIRMED',
+          deletedAt: null,
           createdAt: '2026-09-21T00:00:00Z',
           updatedAt: '2026-09-21T00:00:00Z',
         }

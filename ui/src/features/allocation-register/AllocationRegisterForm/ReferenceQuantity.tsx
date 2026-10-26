@@ -1,4 +1,4 @@
-import styles from './ReferenceQuantity.module.css'
+import styles, { StyleScope } from './ReferenceQuantity-allocation-register.styles.ts'
 import { formatShares } from '@/shared/lib/format.ts'
 
 interface ReferenceQuantityProps {
@@ -15,12 +15,16 @@ export default function ReferenceQuantity({
 }: ReferenceQuantityProps) {
   const [y, m, d] = subscribedAt.slice(0, 10).split('-').map(Number)
   return (
-    <p className={styles.container}>
-      <strong>{ipoName ?? '공모주'}</strong>
-      <span>
-        청약일 {new Date(y, m - 1, d).toLocaleDateString('ko-KR')} · 청약수량{' '}
-        {formatShares(quantity)}
-      </span>
-    </p>
+    <StyleScope>
+      {
+        <p className={styles.container}>
+          <strong>{ipoName ?? '공모주'}</strong>
+          <span>
+            청약일 {new Date(y, m - 1, d).toLocaleDateString('ko-KR')} · 청약수량{' '}
+            {formatShares(quantity)}
+          </span>
+        </p>
+      }
+    </StyleScope>
   )
 }

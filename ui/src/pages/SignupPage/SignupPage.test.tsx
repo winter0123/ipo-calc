@@ -55,7 +55,13 @@ describe('SignupPage', () => {
   })
 
   it('승인 대기 안내 상태에서는 "이미 계정이 있으신가요?" 문구가 없음', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', approved: false })
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      accountId: 1,
+      email: 'a@b.com',
+      name: '가입자',
+      nickname: '가입닉네임',
+      approved: false,
+    })
     renderSignupPage()
 
     await fillAndSubmit()

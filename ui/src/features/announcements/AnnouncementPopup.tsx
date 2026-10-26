@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { dismissAnnouncement, fetchPopupAnnouncements } from '@/entities/announcement/index.ts'
+import {
+  announcementKeys,
+  dismissAnnouncement,
+  fetchPopupAnnouncements,
+} from '@/entities/announcement/index.ts'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import {
   closeAnnouncementForVisit,
@@ -9,13 +13,13 @@ import {
   isAnnouncementClosedForVisit,
   subscribeToAnnouncementVisit,
 } from './visitState.ts'
-import styles from './AnnouncementPopup.module.css'
+import styles, { StyleScope } from './AnnouncementPopup.styles.ts'
 
 export default function AnnouncementPopup() {
   const navigate = useNavigate()
   const { data: account } = useCurrentAccount()
   const query = useQuery({
-    queryKey: ['announcement-popup', account?.accountId],
+    queryKey: announcementKeys.popup(account?.accountId),
     queryFn: ({ signal }) => fetchPopupAnnouncements(signal),
     enabled: Boolean(account),
   })
@@ -90,42 +94,51 @@ export default function AnnouncementPopup() {
 
   if (!current) return null
   return (
-    <div className={styles.overlay}>
-      <section
-        className={styles.dialog}
-        data-announcement-dialog
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="announcement-title"
-        aria-describedby="announcement-content"
-      >
-        <p className={styles.kicker}>공지사항</p>
-        <button ref={closeRef} className={styles.titleButton} type="button" onClick={openDetail}>
-          <span id="announcement-title">{current.title}</span>
-        </button>
-        <p id="announcement-content" className={styles.content}>
-          {current.content.slice(0, 200)}
-          {current.content.length > 200 ? '…' : ''}
-        </p>
-        <button type="button" className={styles.detail} onClick={openDetail}>
-          자세히 보기
-        </button>
-        {dismissError ? (
-          <p role="alert">다시 보지 않기 설정에 실패했습니다. 다시 시도해 주세요.</p>
-        ) : null}
-        <div className={styles.actions}>
-          <button type="button" onClick={closeCurrent}>
-            닫기
-          </button>
-          <button
-            type="button"
-            disabled={dismiss.isPending}
-            onClick={() => dismiss.mutate(current.id)}
+    <StyleScope>
+      {
+        <div className={styles.overlay}>
+          <section
+            className={styles.dialog}
+            data-announcement-dialog
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="announcement-title"
+            aria-describedby="announcement-content"
           >
-            {dismiss.isPending ? '저장 중...' : '다시 보지 않기'}
-          </button>
+            <p className={styles.kicker}>공지사항</p>
+            <button
+              ref={closeRef}
+              className={styles.titleButton}
+              type="button"
+              onClick={openDetail}
+            >
+              <span id="announcement-title">{current.title}</span>
+            </button>
+            <p id="announcement-content" className={styles.content}>
+              {current.content.slice(0, 200)}
+              {current.content.length > 200 ? '…' : ''}
+            </p>
+            <button type="button" className={styles.detail} onClick={openDetail}>
+              자세히 보기
+            </button>
+            {dismissError ? (
+              <p role="alert">다시 보지 않기 설정에 실패했습니다. 다시 시도해 주세요.</p>
+            ) : null}
+            <div className={styles.actions}>
+              <button type="button" onClick={closeCurrent}>
+                닫기
+              </button>
+              <button
+                type="button"
+                disabled={dismiss.isPending}
+                onClick={() => dismiss.mutate(current.id)}
+              >
+                {dismiss.isPending ? '저장 중...' : '다시 보지 않기'}
+              </button>
+            </div>
+          </section>
         </div>
-      </section>
-    </div>
+      }
+    </StyleScope>
   )
 }

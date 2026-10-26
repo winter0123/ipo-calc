@@ -1,16 +1,12 @@
 package com.ipocalc.securitiesaccountmanagement.service.securitiesaccount;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
-import com.ipocalc.investormanagement.domain.model.investor.Investor;
-import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
-import com.ipocalc.investormanagement.service.ownership.OwnershipGuard;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountConflictException;
-import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountForbiddenException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountNotFoundException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountValidationException;
 import com.ipocalc.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
@@ -40,11 +36,11 @@ public class SecuritiesAccountService {
   private static final Set<String> SUPPORTED_STATUS =
       Set.of(RecordStatus.ACTIVE.name(), RecordStatus.INACTIVE.name(), "BOTH");
 
-  private final InvestorRepository investorRepository;
   private final SecuritiesFirmRepository securitiesFirmRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
+  private final AccountCredentialDeletion accountCredentialDeletion;
   private final AccountNumberEncryptor accountNumberEncryptor;
-  private final OwnershipGuard ownershipGuard;
+  private final SecuritiesAccountOwnershipVerifier ownershipVerifier;
   private final Clock clock;
 
   private static final int ACCOUNT_NUMBER_MAX_LENGTH = 50;
@@ -79,7 +75,7 @@ public class SecuritiesAccountService {
           "accountNumber는 " + ACCOUNT_NUMBER_MAX_LENGTH + "자 이하여야 합니다.");
     }
 
-    requireOwnedInvestor(investorId);
+    ownershipVerifier.requireOwnedInvestor(investorId);
 
     securitiesFirmRepository
         .findByIdAndDeletedAtIsNull(securitiesFirmId)
@@ -129,7 +125,7 @@ public class SecuritiesAccountService {
     }
     String normalized = normalizeStatus(status);
 
-    requireOwnedInvestor(investorId);
+    ownershipVerifier.requireOwnedInvestor(investorId);
 
     List<SecuritiesAccount> accounts =
         "BOTH".equals(normalized)
@@ -153,7 +149,7 @@ public class SecuritiesAccountService {
   @Transactional(readOnly = true)
   public SecuritiesAccountResponse getById(Long id) {
     SecuritiesAccount account = findActive(id);
-    requireOwner(account);
+    ownershipVerifier.requireOwner(account);
 
     return toMaskedResponse(account);
   }
@@ -162,7 +158,7 @@ public class SecuritiesAccountService {
   @Transactional(readOnly = true)
   public SecuritiesAccountAccountNumberResponse getAccountNumber(Long id) {
     SecuritiesAccount account = findActive(id);
-    Long currentAccountId = requireOwner(account);
+    Long currentAccountId = ownershipVerifier.requireOwner(account);
 
     String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
     Instant exposedAt = Instant.now(clock);
@@ -181,7 +177,7 @@ public class SecuritiesAccountService {
   @Transactional
   public SecuritiesAccountResponse update(Long id, SecuritiesAccountUpdateRequest request) {
     SecuritiesAccount account = findActive(id);
-    requireOwner(account);
+    ownershipVerifier.requireOwner(account);
 
     if (request.getSecuritiesFirmId() != null) {
       SecuritiesFirm firm =
@@ -205,7 +201,7 @@ public class SecuritiesAccountService {
   @Transactional
   public void deactivate(Long id) {
     SecuritiesAccount account = findActive(id);
-    requireOwner(account);
+    ownershipVerifier.requireOwner(account);
 
     LocalDateTime now = LocalDateTime.now(clock);
     // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
@@ -213,7 +209,7 @@ public class SecuritiesAccountService {
     account.deactivate(now);
     securitiesAccountRepository.saveAndFlush(account);
     // 비밀키 암호문을 남기지 않도록 API 인증정보는 물리 삭제한다.
-    securitiesAccountRepository.deleteApiCredentials(id);
+    accountCredentialDeletion.deleteBySecuritiesAccountId(id);
     // 남은 활성 계좌 중 가장 오래된 것을 기본으로 승격한다.
     if (wasDefault) {
       securitiesAccountRepository
@@ -239,7 +235,7 @@ public class SecuritiesAccountService {
             .findById(id)
             .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
 
-    requireOwner(account);
+    ownershipVerifier.requireOwner(account);
 
     if (account.getStatus() != RecordStatus.ACTIVE) {
       throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
@@ -279,22 +275,6 @@ public class SecuritiesAccountService {
         .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
   }
 
-  private Long requireOwner(SecuritiesAccount account) {
-    Investor investor =
-        investorRepository
-            .findById(account.getInvestorId())
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-    return ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
-  }
-
-  private void requireOwnedInvestor(Long investorId) {
-    Investor investor =
-        investorRepository
-            .findById(investorId)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 투자자입니다"));
-    ownershipGuard.requireOwner(investor, SecuritiesAccountService::forbidden);
-  }
-
   private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {
     // 표시용 조회이므로 findById(deletedAt 필터 없음)를 쓴다 - 증권사가 비활성화돼도
     // 기존에 연결된 계좌는 그대로 유지되므로(architecture.md), 이름도 계속 보여야 한다.
@@ -322,9 +302,5 @@ public class SecuritiesAccountService {
       throw new SecuritiesAccountValidationException("status는 ACTIVE, INACTIVE, BOTH 중 하나여야 합니다.");
     }
     return upper;
-  }
-
-  private static SecuritiesAccountForbiddenException forbidden() {
-    return new SecuritiesAccountForbiddenException("계정 소유권이 없습니다.");
   }
 }

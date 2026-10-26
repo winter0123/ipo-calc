@@ -769,6 +769,31 @@ class SubscriptionControllerTest {
   }
 
   @Test
+  void updateSubscriptionToAnotherOwnedAccountReturns200() throws Exception {
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long originalAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long targetAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+
+    MvcResult registerResult =
+        registerSubscription(validRequest(investorId, originalAccountId, ipoId));
+    Long subscriptionId = ((Number) readBody(registerResult).get("id")).longValue();
+
+    Map<String, Object> updateRequest = new LinkedHashMap<>();
+    updateRequest.put("securitiesAccountId", targetAccountId);
+    MvcResult result = updateSubscription(subscriptionId, updateRequest);
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    assertThat(((Number) readBody(result).get("securitiesAccountId")).longValue())
+        .isEqualTo(targetAccountId);
+    Subscription updated = subscriptionRepository.findById(subscriptionId).orElseThrow();
+    assertThat(updated.getInvestorId()).isEqualTo(investorId);
+    assertThat(updated.getSecuritiesAccountId()).isEqualTo(targetAccountId);
+  }
+
+  @Test
   void updateSubscriptionWithInvalidQuantityOrDepositReturns400() throws Exception {
     // Given: 등록된 ACTIVE 청약 기록이 존재함 (AC-013)
     signupAndLogin();

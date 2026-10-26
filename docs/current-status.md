@@ -1,5 +1,95 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## UI 스타일 시스템 전환 완료 (2026-10-26)
+
+- 사용자 요청으로 프론트엔드 스타일을 CSS Modules에서 styled-components로 전환하고, 공통 UI 프리미티브와 시각 디자인 개선을 추가했다.
+- `styled-components` 의존성을 추가했다. 앱 토큰/reset은 `ui/src/app/styles/GlobalStyles.ts`, 공통 프리미티브는 `ui/src/shared/components/Primitives.tsx`, 공통 버튼은 styled button으로 구성했다.
+- 제품 코드의 66개 CSS Module 파일과 전역 CSS 엔트리를 제거했다. 옮긴 62개 `*.styles.ts`는 전부 실제 소유 컴포넌트에서 참조되고, 미사용 스타일 파일·빈 디렉터리·app registry·`shared/styles`는 남기지 않았다. 각 화면/page/widget/feature의 스타일은 소유 slice 안 `*.styles.ts`에 co-locate하고 해당 컴포넌트의 `StyleScope`로 격리한다. app에서 다른 slice 스타일을 모아 등록하는 registry는 두지 않는다.
+- MainLayout, dashboard metric cards, landing hero의 색·여백·표면·그림자 계층을 다듬었다. 동적 inline style 5곳은 typed transient styled props로 바꿨다. `shared`에는 실제 재사용 UI만 두며, 빈 화면/오류/로딩/button/상태 pill은 공통 styled component를 사용한다. EmptyState, ErrorMessage, Spinner, Button은 실제 styled component로 공통 구현했고 `StatusPill` 등 프리미티브를 추가했다.
+- 최종 UI 검증: 테스트 99개 파일/745개 통과, lint·typecheck·format:check·build 통과. 백엔드 테스트 1,101개 통과, Checkstyle·Spotless·build 통과. `git diff --check` 통과.
+- 브라우저 수동 viewport 확인과 hosted workflow/E2E는 실행하지 않았다: `NOT_RUN`. 스타일 전환 세부 사항과 재개 정보는 [리팩토링 handoff](work-plan/application-refactoring-handoff-2026-10.md)에 기록했다.
+
+## 이번 작업 최종 상태 (2026-10-26)
+
+- FSD 정리: 스타일 registry와 `shared/styles/legacy` 없음. 62개 `*.styles.ts`는 모두 실제 import 참조가 있고, 빈 디렉터리 및 앱 소유 CSS/SCSS 파일이 없다. 외부 Pretendard stylesheet만 유지한다.
+- UI: 99 test files / 745 tests, lint, typecheck, format:check, build 모두 `PASS`.
+- Backend: 1,101 tests, checkstyleMain/checkstyleTest, spotlessCheck, build 모두 `PASS`.
+- `git diff --check`: `PASS`. 브라우저 수동 viewport 확인과 hosted workflow/E2E: `NOT_RUN`.
+
+
+## 최신 리팩토링 (2026-10-26): 대시보드 결과 조합 분리
+
+### 검증 이후 추가 변경 (2026-10-26)
+
+- 이전 누적 검증 PASS 이후 브로커 자격 증명 POST/PUT와 관리자 공지 POST/PATCH 응답도 기존 Zod schema로 검증하도록 확장했다. backend 응답 DTO와 schema를 대조했고 정상/불완전 응답 및 요청 method/body 회귀 테스트를 추가했다.
+- 추가 변경을 포함한 현재 작업 트리는 아직 검증하지 않았다: `NOT_RUN`. 사용자 지시에 따라 다음 종합 검증에서 한 번에 실행한다.
+- `SubscriptionService.update`에서 새 계좌 ID를 받을 때 중복되던 계좌 조회와 소유권 검증을 한 번으로 줄였다. 이미 검증한 계좌를 최종 투자자-계좌 관계 확인에 재사용하며, investorId만 바뀌는 경로의 기존 계좌 검증은 보존했다. 같은 투자자 계좌로 변경하는 회귀 테스트를 추가했고 전체 검증은 계속 `NOT_RUN`이다.
+- 남은 UI 경계 점검에서 응답 본문 mutation은 기존 Zod schema를 모두 사용하고, 나머지는 `void`/204 경로임을 확인했다. `MainLayout`은 `NavGroup`·`InvestorSwitcher`로 이미 분리돼 추가 추출 실익이 낮다. AnnouncementService 오류 예외 통합은 응답 JSON 변경 가능성이 있어 API 계약 보존을 위해 현재 범위에서 보류했다.
+- query key 검색에서 `useIpo(undefined)`만 inline invalid-detail key를 사용하던 것을 확인해 `ipoKeys.invalidDetail()` factory로 옮겼다. 기존 배열 값은 유지하고 key test를 추가했다. UI 종합 검증은 `NOT_RUN`이다.
+- 응답 boundary 후속 감사에서 계좌/투자자 등록, 계좌 수정·기본 지정, 평문 계좌번호 공개, 회원가입 mutation 응답도 실제 DTO schema로 검증하도록 연결했다. 평문 계좌번호는 mutation cache `gcTime: 0` 보호를 유지하고 entity hook으로는 번호 문자열만 반환한다. API 및 UI fixture 테스트를 추가했으며 검증은 `NOT_RUN`이다.
+- 추가 transport 대조에서 알림 구독/해제의 `SuccessResponse`와 브로커 동기화 확정의 `SaleResponse[]`를 검증하도록 보완했다. broker confirm API는 sale schema 의존성을 유지하기 위해 broker entity에서 `broker-sync` feature로 이동했고 기존 void 반환을 유지한다. 검증은 `NOT_RUN`이다.
+- 공지 `ResponseStatusException`의 API 응답 변형 위험 때문에 구현 변경은 보류하고 실제 400/404 status와 빈 body를 controller 테스트에 고정했다. error JSON 통일은 별도 API 계약 변경 범위가 필요하다.
+- `IpoSyncService`의 최근일·월 범위 처리에서 반복되던 빈 결과 DTO 초기화를 `emptyResult()`로 통합했다. 기존 기본값과 매 호출별 독립 failure list를 보존했으며 backend 전체 검증은 종합 실행 전까지 `NOT_RUN`이다.
+- mutation 캐시 무효화 감사를 진행해 투자 기록 수정/삭제와 브로커 동기화 확정의 정확한 prefix를 고정하는 테스트를 추가했다. 남은 직접 `apiFetch`는 204/본문 없는 응답이며 변경하지 않았다. UI 종합 검증은 `NOT_RUN`이다.
+- IPO sync 저장소 조회·신규 생성·자동 갱신을 `IpoSyncPersistence`로 분리했다. DART fetch 및 회사별 오류 정책, 건별 transaction은 기존 coordinator 소유로 유지한다. 결과 카운터는 persistence outcome으로 갱신하며 backend 전체 검증은 `NOT_RUN`이다.
+- API/UI query key·GET/body 응답 parse·무효화·secret cache와 backend 조회/동기화/소유권 경계를 정적 대조한 계약 matrix를 `docs/work-log/application-refactoring-contract-matrix-2026-10-26.md`에 기록했다. 구현 트리 전체 회귀 검증은 계속 `NOT_RUN`이다.
+
+### 누적 리팩토링 검증 결과 (2026-10-26)
+
+- UI: 96 test files / 730 tests, lint, typecheck, format:check, production build 모두 `PASS`.
+- Backend: 124 test suites / 1,099 tests, Checkstyle main/test, Spotless, build 모두 `PASS`. `.envrc` 개발 환경에서 격리 슬롯 4 사용.
+- `git diff --check`: `PASS`.
+- 첫 검증에서 드러난 UI mock/fixture 누락과 Sale/Announcement 포맷 문제를 보완한 뒤 전체 검증을 완료했다.
+- hosted GitHub workflow, 브라우저 수동/E2E, 투자내역 성능 기준 측정은 `NOT_RUN`.
+- 세부 증적: `docs/work-log/application-refactoring-verification-2026-10-26.md` 및 `docs/work-plan/application-refactoring-handoff-2026-10.md`.
+
+- 이전 후속 리팩토링 묶음(투자내역 로더, IPO 동기화, 소유권 검증, 상세 GET 경계, 청약 URL 상태)은 backend 전체 테스트·Checkstyle·Spotless·build, UI 709개 테스트·lint·typecheck·format·build 및 `git diff --check`가 PASS했다. 상세 근거는 `docs/work-plan/application-refactoring-handoff-2026-10.md`에 있다.
+- `DashboardPage`에서 탭별 집계 결과 변환·렌더링을 page slice sibling `DashboardTabContent`로 분리했다. 조회 훅·탭 상태·기간·reset/invalidation은 페이지에 남겼다.
+- 투자자별 0 요약, 투자자 수에 따른 접힘, 빈 상태 reset 전달 단위 테스트를 추가했다.
+- UI 91 test files / 712 tests, lint, typecheck, format:check, build 및 `git diff --check` PASS.
+- 매도 등록·수정 검증에 중복된 금액 하한 규칙을 `validateNonNegativeAmounts`로 통합했다. 등록/수정의 필수 필드와 수량 검증, 상한 및 오류 문구는 유지했다.
+- 배정 수정의 음수 수량 선행 검사는 후속 `validateQuantity`와 중복이라 제거했다. 기존 API 테스트는 음수 PATCH를 400으로 고정한다.
+- 공지 팝업 GET도 `apiGetParsed`를 사용하도록 맞췄다. 기존 204 응답은 선택적 배열 스키마를 통해 계속 빈 목록이 되고, schema 오류와 AbortSignal 전달 테스트를 추가했다.
+- 공지사항 목록·상세·팝업·관리자 화면과 IPO sync 상태 query의 inline key를 기존 key 배열을 보존한 entity factory로 옮겼다. 전체 투자내역 key suffix도 factory에 포함했고 key namespace/prefix 테스트를 추가했다.
+- 청약 일정 URL 날짜 검증이 형식만 확인하던 부분을 보완해 존재하지 않는 날짜를 거부하고, 윤년 날짜는 허용한다.
+- IPO별 청약 내역 집계에서 항목마다 배열을 재복사하던 그룹핑을 단일 순회 append로 바꿨다. 복수 계좌 기록 순서·건수 보존 테스트를 추가했다.
+- `useSaleForm`의 캡처 대기·적용·표시 상태와 effect를 `useCaptureFill`로 분리했다. `SaleForm` 반환 구조는 유지하고 캡처 값/손익 역산/안내 회귀 테스트를 추가했다.
+- 기존 CI workflow가 없어 main push/PR에서 UI 품질 명령과 PostgreSQL 17 기반 backend 검증을 수행하는 GitHub Actions workflow를 추가했다. hosted runner 실행은 아직 확인하지 않았다(NOT_RUN).
+- 매도 서비스 단계 검증은 사용자 지시에 따라 아직 실행하지 않았다(NOT_RUN). 누적 작업 묶음 완료 후 backend 전체 검증을 한 차례 수행한다.
+- 공지 GET 경계 테스트와 UI 전체 검증도 아직 실행하지 않았다(NOT_RUN). 누적 프론트 리팩토링 묶음 종료 시 한 차례 실행한다.
+- query key factory 변경도 UI 전체 검증 대기 중이다(NOT_RUN).
+- URL 날짜 실재성 회귀 테스트도 UI 전체 검증 대기 중이다(NOT_RUN).
+- 캡처 hook 분리 및 전체 폼 통합 테스트도 아직 실행하지 않았다(NOT_RUN).
+- 이 단계에서 추가한 UI 파일은 Prettier로 정리했으나 quality suite는 아직 실행하지 않았다(NOT_RUN).
+- 새 CI workflow YAML은 hosted runner에서 실행하지 않았다(NOT_RUN). branch protection 설정은 이 변경 범위에 포함하지 않았다.
+- 다음 후보는 Subscription/Allocation 서비스와 MainLayout이다. 현재 코드에서 명확한 책임 중복이 확인될 때만 이어서 정리한다.
+- 작은 반복 정리로 공지 서비스의 관리자 상세·수정·삭제 조회를 `findExistingAnnouncement`으로 통합했다. 404 계약은 유지했으며 검증은 누적 묶음 종료 시 진행한다: `NOT_RUN`.
+- API client의 GET·본문 응답 Zod 검증이 같은 fetch+parse 흐름을 공유하도록 `apiFetchParsed`를 추가했다. IPO 동기화와 알림 mutation 응답에 적용했고 helper 회귀 테스트를 추가했다. UI 검증은 누적 묶음 종료 때 실행한다: `NOT_RUN`.
+- 증권사 계좌 등록 feature에 entity와 동일한 `useSecuritiesFirms` wrapper가 중복돼 있어 제거하고 entity 공개 hook을 직접 연결했다. 기능과 캐시 동작은 유지하며 UI 검증은 누적 작업 종료 시 진행한다: `NOT_RUN`.
+- `POST /ipos` 응답도 backend `IpoResponse` 계약에 맞춰 기존 `ipoSchema`로 검증하게 했다. 불완전 응답 회귀 테스트를 추가했고 UI 검증은 누적 묶음 종료 시 진행한다: `NOT_RUN`.
+- 청약·배정·매도 등록/수정 응답도 각 entity schema로 검증하도록 바꾸고 정상·불량 응답 API client 테스트를 추가했다. 요청 payload와 endpoint는 유지했으며 UI 검증은 누적 묶음 종료 시 실행한다: `NOT_RUN`.
+
+## 최신 작업 (2026-10-26): 리팩토링 1단계 — 투자내역 조회 로더 분리
+
+- 기준 `main` 커밋 `5855945a`에서 투자내역 페이지/상세 조회의 Allocation·Sale·IPO·Investor·계좌·증권사 참조 데이터 수집을 `InvestmentHistoryReadModelLoader`로 이동했다.
+- Query service는 현재 계정 및 필터 소유권 검증, Subscription 페이지/상세 로드, 로더·assembler 조율과 page 반환을 맡는다. 미사용 `EntityManager` 주입을 제거했다.
+- 페이지 조회는 기존 계정 범위·페이지 순서·배치 호출·DTO 조립을 유지한다. 빈 결과에서는 참조 데이터 조회를 생략하는 테스트를 추가했다. API/DTO, DB 스키마, repository query는 바꾸지 않았다.
+- 설계 문서: `docs/research/investment-history-read-model-refactor.md`, `docs/spec/investment-history-read-model-refactor.md`, `docs/architecture/investment-history-read-model-refactor.md`, `docs/breakdown/investment-history-read-model-refactor.md`.
+- 전체 backend 테스트 1,099건, `checkstyleMain`, `checkstyleTest`, `spotlessCheck`, `build`, `git diff --check`가 최종 변경 기준 PASS다. 포맷 수정은 범위가 넓어지는 `spotlessApply` 대신 새 파일을 수동 수정했다.
+- 다음 단계: 리팩토링 handoff의 후보를 다시 점검해 다음 SF를 Phase 0 절차로 준비한다. UI 경계 감사, IPO sync 분리 등 후속 후보는 아직 시작하지 않았다.
+
+## 추가 진행 (2026-10-26): IPO 동기화·계좌 소유권 경계
+
+- IPO `sync(daysBack)`와 `syncByMonthRange(...)`의 중복 회사 처리 검증·upsert 흐름을 하나의 `processCompany`로 합쳤다. 각 호출 방식의 DS006 fetch 인자, 인증/020 중단 및 그 외 회사별 실패 의미는 유지한다.
+- `SecuritiesAccountService`의 투자자 lookup + `OwnershipGuard` 호출을 `SecuritiesAccountOwnershipVerifier`로 옮겼다. CRUD/default/계좌번호 암호화·마스킹은 변경하지 않았다.
+- 두 트랙 모두 research/spec/architecture/breakdown을 추가했다. 현재 이 두 변경 뒤에는 검증을 실행하지 않았으며 사용자 지시에 따라 구현 묶음이 끝난 뒤 한 차례 실행한다.
+- 다음 단계: API/화면 계약을 다시 살펴 필요성이 입증된 리팩토링만 더하고, 마지막에 backend 전체 테스트·정적 검사·build를 한 번에 실행한다.
+
+## 추가 진행 (2026-10-26): 투자 기록 GET 경계
+
+- Allocation/Sale/Subscription 상세 GET에 Zod schema와 AbortSignal 전달을 적용하고 편집 dialog queryFn에서 signal을 넘기도록 했다. DTO nullable 값은 기존 응답 계약에 맞춰 schema로 표현했다.
+- 응답 불일치 및 signal 전달 테스트를 추가했으나 실행은 아직 하지 않았다. backend IPO/계좌 변경과 함께 마지막 한 번의 검증 묶음에서 UI·backend 전체 검사를 수행한다.
+
 ## 최신 작업 (2026-10-26): 공모주 청약 일정과 상태 표시
 
 - `/subscriptions`에서 청약 시작일이 선택 기간 안에 있는 공모주 전체를 표시하고, 기간은 URL 쿼리에 보존한다. 기본 기간은 한국 로컬 기준 이번 달이다.

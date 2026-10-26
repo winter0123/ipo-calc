@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { DASHBOARD_TABS, type DashboardTab } from '../tabs.ts'
-import styles from './DashboardTabs.module.css'
+import styles, { StyleScope } from './DashboardTabs.styles.ts'
 
 interface DashboardTabsProps {
   currentTab: DashboardTab
@@ -49,22 +49,26 @@ export default function DashboardTabs({ currentTab, onTabChange }: DashboardTabs
   }
 
   return (
-    <div className={styles.tabList} role="tablist" aria-label="대시보드 탭" ref={tabRef}>
-      {DASHBOARD_TABS.map(({ key: tab, label }) => (
-        <button
-          key={tab}
-          type="button"
-          role="tab"
-          aria-selected={currentTab === tab}
-          id={`tab-${tab}`}
-          tabIndex={currentTab === tab ? 0 : -1}
-          className={`${styles.tab} ${currentTab === tab ? styles.activeTab : ''}`}
-          onClick={() => onTabChange(tab)}
-          onKeyDown={(e) => handleKeyDown(e, tab)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+    <StyleScope>
+      {
+        <div className={styles.tabList} role="tablist" aria-label="대시보드 탭" ref={tabRef}>
+          {DASHBOARD_TABS.map(({ key: tab, label }) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={currentTab === tab}
+              id={`tab-${tab}`}
+              tabIndex={currentTab === tab ? 0 : -1}
+              className={`${styles.tab} ${currentTab === tab ? styles.activeTab : ''}`}
+              onClick={() => onTabChange(tab)}
+              onKeyDown={(e) => handleKeyDown(e, tab)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      }
+    </StyleScope>
   )
 }

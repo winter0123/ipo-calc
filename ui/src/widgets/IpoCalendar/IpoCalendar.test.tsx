@@ -8,7 +8,7 @@ import IpoCalendar from './IpoCalendar.tsx'
 import type { Ipo } from '@/entities/ipo/index.ts'
 import type { CalendarEventType } from '@/features/ipo-calendar/index.ts'
 import { apiFetch } from '@/shared/api/client.ts'
-import styles from './IpoCalendar.module.css'
+import styles from './IpoCalendar.styles.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),

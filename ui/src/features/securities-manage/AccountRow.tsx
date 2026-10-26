@@ -4,7 +4,7 @@ import type { SecuritiesAccount } from '@/entities/securities-account/index.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import { useRevealAccountNumber } from './api.ts'
-import styles from './SecuritiesManage.module.css'
+import styles, { StyleScope } from './SecuritiesManage.styles.ts'
 
 interface Props {
   account: SecuritiesAccount
@@ -22,54 +22,68 @@ export default function AccountRow({ account, busy, onEdit, onDelete, onSetDefau
   const revealError = toErrorMessage(reveal.error)
 
   return (
-    <li className={styles.account}>
-      <div className={styles.accountMain}>
-        <span className={styles.number}>{reveal.data ?? account.accountNumber}</span>
-        {account.accountName && <span className={styles.alias}>{account.accountName}</span>}
-        {account.isDefault && <span className={styles.badge}>기본 계좌</span>}
-        {credential?.supportedProvider && (
-          <Link to="/broker-sync" className={styles.badgeLink}>
-            자동 가져오기
-          </Link>
-        )}
-      </div>
-      <div className={styles.accountActions}>
-        {reveal.data ? (
-          <Button variant="secondary" onClick={() => reveal.reset()}>
-            숨기기
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            onClick={() => reveal.mutate(account.id)}
-            disabled={reveal.isPending}
-            aria-label={`${label} 계좌번호 보기`}
-          >
-            보기
-          </Button>
-        )}
-        <Button variant="secondary" onClick={onEdit} disabled={busy} aria-label={`${label} 수정`}>
-          수정
-        </Button>
-        {!account.isDefault && (
-          <Button
-            variant="secondary"
-            onClick={onSetDefault}
-            disabled={busy}
-            aria-label={`${label} 기본으로 지정`}
-          >
-            기본으로
-          </Button>
-        )}
-        <Button variant="secondary" onClick={onDelete} disabled={busy} aria-label={`${label} 삭제`}>
-          삭제
-        </Button>
-      </div>
-      {revealError && (
-        <div className={styles.formError} role="alert">
-          {revealError}
-        </div>
-      )}
-    </li>
+    <StyleScope>
+      {
+        <li className={styles.account}>
+          <div className={styles.accountMain}>
+            <span className={styles.number}>{reveal.data ?? account.accountNumber}</span>
+            {account.accountName && <span className={styles.alias}>{account.accountName}</span>}
+            {account.isDefault && <span className={styles.badge}>기본 계좌</span>}
+            {credential?.supportedProvider && (
+              <Link to="/broker-sync" className={styles.badgeLink}>
+                자동 가져오기
+              </Link>
+            )}
+          </div>
+          <div className={styles.accountActions}>
+            {reveal.data ? (
+              <Button variant="secondary" onClick={() => reveal.reset()}>
+                숨기기
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => reveal.mutate(account.id)}
+                disabled={reveal.isPending}
+                aria-label={`${label} 계좌번호 보기`}
+              >
+                보기
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              onClick={onEdit}
+              disabled={busy}
+              aria-label={`${label} 수정`}
+            >
+              수정
+            </Button>
+            {!account.isDefault && (
+              <Button
+                variant="secondary"
+                onClick={onSetDefault}
+                disabled={busy}
+                aria-label={`${label} 기본으로 지정`}
+              >
+                기본으로
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              onClick={onDelete}
+              disabled={busy}
+              aria-label={`${label} 삭제`}
+            >
+              삭제
+            </Button>
+          </div>
+          {revealError && (
+            <div className={styles.formError} role="alert">
+              {revealError}
+            </div>
+          )}
+        </li>
+      }
+    </StyleScope>
   )
 }

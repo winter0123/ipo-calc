@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import styles from './ConfirmDialog.module.css'
+import styles, { StyleScope } from './ConfirmDialog.styles.ts'
 
 export interface ConfirmDialogProps {
   isOpen: boolean
@@ -64,37 +64,41 @@ export default function ConfirmDialog({
   if (!isOpen) return null
 
   return (
-    <div className={styles.overlay}>
-      <div
-        ref={dialogRef}
-        className={styles.dialog}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-message"
-      >
-        <h2 id="confirm-dialog-title" className={styles.title}>
-          {title}
-        </h2>
-        <p id="confirm-dialog-message" className={styles.message}>
-          {message}
-        </p>
-        <div className={styles.actions}>
-          <button type="button" className={styles.cancelButton} onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmButtonRef}
-            type="button"
-            className={styles.confirmButton}
-            onClick={pending ? undefined : onConfirm}
-            disabled={pending}
-            aria-busy={pending}
+    <StyleScope>
+      {
+        <div className={styles.overlay}>
+          <div
+            ref={dialogRef}
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            aria-describedby="confirm-dialog-message"
           >
-            {confirmLabel}
-          </button>
+            <h2 id="confirm-dialog-title" className={styles.title}>
+              {title}
+            </h2>
+            <p id="confirm-dialog-message" className={styles.message}>
+              {message}
+            </p>
+            <div className={styles.actions}>
+              <button type="button" className={styles.cancelButton} onClick={onCancel}>
+                {cancelLabel}
+              </button>
+              <button
+                ref={confirmButtonRef}
+                type="button"
+                className={styles.confirmButton}
+                onClick={pending ? undefined : onConfirm}
+                disabled={pending}
+                aria-busy={pending}
+              >
+                {confirmLabel}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      }
+    </StyleScope>
   )
 }

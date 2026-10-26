@@ -1,4 +1,5 @@
 export { createSale, deleteSale, getSale, updateSale } from './api-client.ts'
+export { saleSchema } from './types.ts'
 export type { Sale, SaleRegisterRequest, SaleUpdateRequest } from './types.ts'
 export {
   DEFAULT_IPO_FEE,

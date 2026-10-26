@@ -12,7 +12,7 @@ import {
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { EmptyState } from '@/widgets/EmptyState/index.ts'
 import { InvestmentHistoryTable } from '@/widgets/InvestmentHistoryTable/index.ts'
-import styles from './InvestmentHistoryPage.module.css'
+import styles, { StyleScope } from './InvestmentHistoryPage.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 function filtersToApiParams(filters: FilterInvestmentHistoryFilters): InvestmentHistoryFilters {
@@ -81,55 +81,69 @@ export default function InvestmentHistoryPage() {
 
   if (investorsLoading) {
     return (
-      <div className={styles.container}>
-        <h1 className={styles.title}>투자 내역</h1>
-        <p className={styles.loading}>투자자 목록을 불러오는 중...</p>
-      </div>
+      <StyleScope>
+        {
+          <div className={styles.container}>
+            <h1 className={styles.title}>투자 내역</h1>
+            <p className={styles.loading}>투자자 목록을 불러오는 중...</p>
+          </div>
+        }
+      </StyleScope>
     )
   }
 
   if (!hasInvestors) {
     return (
-      <div className={styles.container}>
-        <h1 className={styles.title}>투자 내역</h1>
-        <div className={styles.emptyInvestors} role="status" aria-live="polite">
-          <p className={styles.emptyMessage}>
-            등록된 투자자가 없습니다. 투자자를 먼저 등록해 주세요.
-          </p>
-          <Link to="/investors/register" className={styles.registerLink}>
-            투자자 등록하기
-          </Link>
-        </div>
-      </div>
+      <StyleScope>
+        {
+          <div className={styles.container}>
+            <h1 className={styles.title}>투자 내역</h1>
+            <div className={styles.emptyInvestors} role="status" aria-live="polite">
+              <p className={styles.emptyMessage}>
+                등록된 투자자가 없습니다. 투자자를 먼저 등록해 주세요.
+              </p>
+              <Link to="/investors/register" className={styles.registerLink}>
+                투자자 등록하기
+              </Link>
+            </div>
+          </div>
+        }
+      </StyleScope>
     )
   }
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>투자 내역</h1>
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <h1 className={styles.title}>투자 내역</h1>
 
-      <FilterBar filters={filters} onFiltersChange={handleChange} onReset={handleReset} />
+          <FilterBar filters={filters} onFiltersChange={handleChange} onReset={handleReset} />
 
-      <div className={styles.resultsArea}>
-        {isLoading && <p className={styles.loading}>투자 내역을 불러오는 중...</p>}
+          <div className={styles.resultsArea}>
+            {isLoading && <p className={styles.loading}>투자 내역을 불러오는 중...</p>}
 
-        {error && (
-          <p className={styles.error} role="alert">
-            {getErrorMessage()}
-          </p>
-        )}
+            {error && (
+              <p className={styles.error} role="alert">
+                {getErrorMessage()}
+              </p>
+            )}
 
-        {!isLoading && !error && items.length === 0 && <EmptyState onResetFilters={handleReset} />}
+            {!isLoading && !error && items.length === 0 && (
+              <EmptyState onResetFilters={handleReset} />
+            )}
 
-        {!isLoading && !error && items.length > 0 && (
-          <>
-            <p className={styles.rowHint}>
-              행을 누르면 청약·배정·매도 상세와 수정·삭제가 열립니다.
-            </p>
-            <InvestmentHistoryTable items={items} />
-          </>
-        )}
-      </div>
-    </div>
+            {!isLoading && !error && items.length > 0 && (
+              <>
+                <p className={styles.rowHint}>
+                  행을 누르면 청약·배정·매도 상세와 수정·삭제가 열립니다.
+                </p>
+                <InvestmentHistoryTable items={items} />
+              </>
+            )}
+          </div>
+        </div>
+      }
+    </StyleScope>
   )
 }

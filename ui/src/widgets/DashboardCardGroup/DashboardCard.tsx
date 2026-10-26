@@ -1,4 +1,4 @@
-import styles from './DashboardCard.module.css'
+import styles, { StyleScope } from './DashboardCard.styles.ts'
 import { formatWon } from '@/shared/lib/format.ts'
 import { profitToneClass } from '@/shared/lib/profitTone.ts'
 
@@ -25,14 +25,18 @@ function formatValue(value: number, format: string): string {
 
 export default function DashboardCard({ label, value, format, signed }: DashboardCardProps) {
   return (
-    <div className={styles.card}>
-      <span className={styles.label}>{label}</span>
-      <span
-        className={`${styles.value} ${signed ? profitToneClass(value) : ''}`}
-        aria-label={`${label}: ${formatValue(value, format)}`}
-      >
-        {formatValue(value, format)}
-      </span>
-    </div>
+    <StyleScope>
+      {
+        <div className={styles.card}>
+          <span className={styles.label}>{label}</span>
+          <span
+            className={`${styles.value} ${signed ? profitToneClass(value) : ''}`}
+            aria-label={`${label}: ${formatValue(value, format)}`}
+          >
+            {formatValue(value, format)}
+          </span>
+        </div>
+      }
+    </StyleScope>
   )
 }

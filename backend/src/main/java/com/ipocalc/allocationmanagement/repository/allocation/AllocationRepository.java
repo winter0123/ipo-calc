@@ -2,31 +2,15 @@ package com.ipocalc.allocationmanagement.repository.allocation;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
-import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /** 배정 JPA 저장소. */
 @Repository
-public interface AllocationRepository extends JpaRepository<Allocation, Long> {
-
-  /** 배정에 연결된 ACTIVE 매도 수량 합계(없으면 0). salemanagement가 이 패키지에 의존하므로 순환을 피하려고 엔티티 이름으로만 조회한다. */
-  @Query(
-      "SELECT COALESCE(SUM(s.quantity), 0) FROM Sale s WHERE s.allocationId = :allocationId "
-          + "AND s.deletedAt IS NULL AND s.status = "
-          + RecordStatus.ACTIVE_HQL)
-  long sumActiveSaleQuantity(@Param("allocationId") Long allocationId);
-
-  /** 수량 한도 검증을 직렬화하려고 배정 행을 비관적 쓰기 잠금(SELECT ... FOR UPDATE)으로 읽는다. 호출 트랜잭션이 끝날 때까지 유지된다. */
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT a FROM Allocation a WHERE a.id = :id")
-  Optional<Allocation> findByIdForUpdate(@Param("id") Long id);
-
+public interface AllocationRepository
+    extends JpaRepository<Allocation, Long>, AllocationQueryRepository {
   /** ID 조건(삭제되지 않은 건만)으로 배정을 단건 조회한다. */
   Optional<Allocation> findByIdAndDeletedAtIsNull(Long id);
 
@@ -37,27 +21,19 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
   Optional<Allocation> findBySubscriptionIdAndStatusAndDeletedAtIsNull(
       Long subscriptionId, RecordStatus status);
 
-  /** 현재 계정 소유 투자자의 배정만 목록 조회한다(생성일 내림차순). subscriptionId/investorId는 null이면 무시한다. */
-  @Query(
-      "SELECT a FROM Allocation a "
-          + "JOIN Subscription s ON a.subscriptionId = s.id "
-          + "JOIN Investor i ON s.investorId = i.id "
-          + "WHERE a.deletedAt IS NULL AND i.accountId = :accountId "
-          + "AND (:subscriptionId IS NULL OR a.subscriptionId = :subscriptionId) "
-          + "AND (:investorId IS NULL OR i.id = :investorId) "
-          + "ORDER BY a.createdAt DESC")
-  List<Allocation> findAllByAccountWithFilters(
-      @Param("accountId") Long accountId,
-      @Param("subscriptionId") Long subscriptionId,
-      @Param("investorId") Long investorId);
+  /** 배치 조회: 청약 ID 목록에 연결된 삭제되지 않은 배정을 조회한다. */
+  List<Allocation> findBySubscriptionIdInAndDeletedAtIsNull(List<Long> subscriptionIds);
 
-  /** 배치 조회: subscriptionId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함. */
-  @Query(
-      "SELECT a FROM Allocation a WHERE a.subscriptionId IN :subscriptionIds "
-          + "AND a.deletedAt IS NULL")
-  List<Allocation> findBySubscriptionIdIn(@Param("subscriptionIds") List<Long> subscriptionIds);
+  /** 배치 조회: ID 목록에 포함된 삭제되지 않은 배정을 조회한다. */
+  List<Allocation> findByIdInAndDeletedAtIsNull(List<Long> allocationIds);
 
-  /** 배치 조회: allocationId 목록으로 Allocation 일괄 조회 (N+1 방지용) deletedAt IS NULL 조건 포함. */
-  @Query("SELECT a FROM Allocation a WHERE a.id IN :allocationIds AND a.deletedAt IS NULL")
-  List<Allocation> findByIdIn(@Param("allocationIds") List<Long> allocationIds);
+  /** 배치 조회 메서드의 기존 이름을 유지한다. */
+  default List<Allocation> findBySubscriptionIdIn(List<Long> subscriptionIds) {
+    return findBySubscriptionIdInAndDeletedAtIsNull(subscriptionIds);
+  }
+
+  /** 배치 조회 메서드의 기존 이름을 유지한다. */
+  default List<Allocation> findByIdIn(List<Long> allocationIds) {
+    return findByIdInAndDeletedAtIsNull(allocationIds);
+  }
 }

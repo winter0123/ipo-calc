@@ -1,5 +1,5 @@
 import { profitToneClass } from '@/shared/lib/profitTone.ts'
-import styles from './ProfitSummaryRow.module.css'
+import styles, { StyleScope } from './ProfitSummaryRow.styles.ts'
 
 export interface ProfitTotals {
   saleAmount: number
@@ -17,16 +17,20 @@ export default function ProfitSummaryRow({ totals }: { totals: ProfitTotals }) {
     </td>
   )
   return (
-    <tr className={styles.summaryRow}>
-      <td colSpan={3} className={styles.label}>
-        합계
-      </td>
-      {cell('매도금액', totals.saleAmount)}
-      {cell('취득금액', totals.acquisitionAmount)}
-      {cell('공모주수수료', totals.fee)}
-      {cell('세금 및 기타', totals.tax)}
-      {cell('실현손익', totals.realizedProfit, true)}
-      {cell('최종수익금', totals.finalProfit, true)}
-    </tr>
+    <StyleScope>
+      {
+        <tr className={styles.summaryRow}>
+          <td colSpan={3} className={styles.label}>
+            합계
+          </td>
+          {cell('매도금액', totals.saleAmount)}
+          {cell('취득금액', totals.acquisitionAmount)}
+          {cell('공모주수수료', totals.fee)}
+          {cell('세금 및 기타', totals.tax)}
+          {cell('실현손익', totals.realizedProfit, true)}
+          {cell('최종수익금', totals.finalProfit, true)}
+        </tr>
+      }
+    </StyleScope>
   )
 }

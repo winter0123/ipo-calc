@@ -188,22 +188,12 @@ public class SaleService {
     if (request.getQuantity() != null && request.getQuantity() <= 0) {
       throw new SaleValidationException("quantity는 0 초과여야 합니다.");
     }
-    // price, amount, fee, tax, otherCost가 제공된 경우 0 이상 검증
-    if (request.getPrice() != null && request.getPrice() < 0) {
-      throw new SaleValidationException("price는 0 이상이어야 합니다.");
-    }
-    if (request.getAmount() != null && request.getAmount() < 0) {
-      throw new SaleValidationException("amount는 0 이상이어야 합니다.");
-    }
-    if (request.getFee() != null && request.getFee() < 0) {
-      throw new SaleValidationException("fee는 0 이상이어야 합니다.");
-    }
-    if (request.getTax() != null && request.getTax() < 0) {
-      throw new SaleValidationException("tax는 0 이상이어야 합니다.");
-    }
-    if (request.getOtherCost() != null && request.getOtherCost() < 0) {
-      throw new SaleValidationException("otherCost는 0 이상이어야 합니다.");
-    }
+    validateNonNegativeAmounts(
+        request.getPrice(),
+        request.getAmount(),
+        request.getFee(),
+        request.getTax(),
+        request.getOtherCost());
   }
 
   private void validateRequest(SaleRegisterRequest request) {
@@ -230,21 +220,22 @@ public class SaleService {
     if (request.getQuantity() <= 0) {
       throw new SaleValidationException("quantity는 0 초과여야 합니다.");
     }
-    // price, amount, fee, tax, otherCost가 제공된 경우 0 이상 검증
-    if (request.getPrice() != null && request.getPrice() < 0) {
-      throw new SaleValidationException("price는 0 이상이어야 합니다.");
-    }
-    if (request.getAmount() != null && request.getAmount() < 0) {
-      throw new SaleValidationException("amount는 0 이상이어야 합니다.");
-    }
-    if (request.getFee() != null && request.getFee() < 0) {
-      throw new SaleValidationException("fee는 0 이상이어야 합니다.");
-    }
-    if (request.getTax() != null && request.getTax() < 0) {
-      throw new SaleValidationException("tax는 0 이상이어야 합니다.");
-    }
-    if (request.getOtherCost() != null && request.getOtherCost() < 0) {
-      throw new SaleValidationException("otherCost는 0 이상이어야 합니다.");
+    validateNonNegativeAmounts(
+        request.getPrice(),
+        request.getAmount(),
+        request.getFee(),
+        request.getTax(),
+        request.getOtherCost());
+  }
+
+  private void validateNonNegativeAmounts(
+      Long price, Long amount, Long fee, Long tax, Long otherCost) {
+    String[] names = {"price", "amount", "fee", "tax", "otherCost"};
+    Long[] values = {price, amount, fee, tax, otherCost};
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] != null && values[i] < 0) {
+        throw new SaleValidationException(names[i] + "는 0 이상이어야 합니다.");
+      }
     }
   }
 

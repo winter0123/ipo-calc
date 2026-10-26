@@ -23,6 +23,8 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    // JPA 파생 메서드로 표현하기 어려운 조인·집계 조건은 QueryDSL로 구성한다.
+    implementation("io.github.openfeign.querydsl:querydsl-jpa:6.10.1")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
@@ -43,6 +45,8 @@ dependencies {
     // Lombok for reducing boilerplate (optional but recommended)
     implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("io.github.openfeign.querydsl:querydsl-apt:6.10.1:jpa")
+    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")

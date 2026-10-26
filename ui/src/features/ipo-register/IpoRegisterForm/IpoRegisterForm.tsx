@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { useIpoRegister } from '../useIpoRegister.ts'
 import { type IpoRegisterRequest } from '@/entities/ipo/index.ts'
-import styles from './IpoRegisterForm.module.css'
+import styles, { StyleScope } from './IpoRegisterForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 export default function IpoRegisterForm() {
@@ -89,233 +89,239 @@ export default function IpoRegisterForm() {
   }
 
   return (
-    <form
-      className={styles.form}
-      onSubmit={handleSubmit(onSubmit)}
-      aria-label="공모주 등록 폼"
-      noValidate
-    >
-      <div className={styles.field}>
-        <label htmlFor="ipoName">
-          공모주명 <span className={styles.required}>(필수)</span>
-        </label>
-        <input
-          id="ipoName"
-          type="text"
-          aria-invalid={!!errors.ipoName}
-          aria-describedby={errors.ipoName ? 'ipoName-error' : undefined}
-          {...register('ipoName', {
-            required: '공모주명을 입력해 주세요.',
-            validate: validateRequiredTrim('공모주명을 입력해 주세요.'),
-            maxLength: { value: 255, message: '공모주명은 255자 이하로 입력해 주세요.' },
-          })}
-          disabled={isPending}
-        />
-        {errors.ipoName && (
-          <span id="ipoName-error" className={styles.error} aria-live="polite">
-            {String(errors.ipoName.message)}
-          </span>
-        )}
-      </div>
+    <StyleScope>
+      {
+        <form
+          className={styles.form}
+          onSubmit={handleSubmit(onSubmit)}
+          aria-label="공모주 등록 폼"
+          noValidate
+        >
+          <div className={styles.field}>
+            <label htmlFor="ipoName">
+              공모주명 <span className={styles.required}>(필수)</span>
+            </label>
+            <input
+              id="ipoName"
+              type="text"
+              aria-invalid={!!errors.ipoName}
+              aria-describedby={errors.ipoName ? 'ipoName-error' : undefined}
+              {...register('ipoName', {
+                required: '공모주명을 입력해 주세요.',
+                validate: validateRequiredTrim('공모주명을 입력해 주세요.'),
+                maxLength: { value: 255, message: '공모주명은 255자 이하로 입력해 주세요.' },
+              })}
+              disabled={isPending}
+            />
+            {errors.ipoName && (
+              <span id="ipoName-error" className={styles.error} aria-live="polite">
+                {String(errors.ipoName.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="stockCode">종목코드</label>
-        <input
-          id="stockCode"
-          type="text"
-          aria-invalid={!!errors.stockCode}
-          aria-describedby={errors.stockCode ? 'stockCode-error' : undefined}
-          {...register('stockCode', {
-            validate: validateStockCode,
-            maxLength: { value: 255, message: '종목코드는 255자 이하로 입력해 주세요.' },
-          })}
-          disabled={isPending}
-        />
-        {errors.stockCode && (
-          <span id="stockCode-error" className={styles.error} aria-live="polite">
-            {String(errors.stockCode.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="stockCode">종목코드</label>
+            <input
+              id="stockCode"
+              type="text"
+              aria-invalid={!!errors.stockCode}
+              aria-describedby={errors.stockCode ? 'stockCode-error' : undefined}
+              {...register('stockCode', {
+                validate: validateStockCode,
+                maxLength: { value: 255, message: '종목코드는 255자 이하로 입력해 주세요.' },
+              })}
+              disabled={isPending}
+            />
+            {errors.stockCode && (
+              <span id="stockCode-error" className={styles.error} aria-live="polite">
+                {String(errors.stockCode.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="roundLabel">회차</label>
-        <input
-          id="roundLabel"
-          type="text"
-          aria-invalid={!!errors.roundLabel}
-          aria-describedby={errors.roundLabel ? 'roundLabel-error' : undefined}
-          {...register('roundLabel', {
-            maxLength: { value: 255, message: '회차는 255자 이하로 입력해 주세요.' },
-          })}
-          disabled={isPending}
-        />
-        {errors.roundLabel && (
-          <span id="roundLabel-error" className={styles.error} aria-live="polite">
-            {String(errors.roundLabel.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="roundLabel">회차</label>
+            <input
+              id="roundLabel"
+              type="text"
+              aria-invalid={!!errors.roundLabel}
+              aria-describedby={errors.roundLabel ? 'roundLabel-error' : undefined}
+              {...register('roundLabel', {
+                maxLength: { value: 255, message: '회차는 255자 이하로 입력해 주세요.' },
+              })}
+              disabled={isPending}
+            />
+            {errors.roundLabel && (
+              <span id="roundLabel-error" className={styles.error} aria-live="polite">
+                {String(errors.roundLabel.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="lowerBandPrice">희망 공모가 하단</label>
-        <input
-          id="lowerBandPrice"
-          type="number"
-          min="1"
-          step="1"
-          aria-invalid={!!errors.lowerBandPrice}
-          aria-describedby={errors.lowerBandPrice ? 'lowerBandPrice-error' : undefined}
-          {...register('lowerBandPrice', {
-            valueAsNumber: true,
-            validate: validatePositiveInt,
-          })}
-          disabled={isPending}
-        />
-        {errors.lowerBandPrice && (
-          <span id="lowerBandPrice-error" className={styles.error} aria-live="polite">
-            {String(errors.lowerBandPrice.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="lowerBandPrice">희망 공모가 하단</label>
+            <input
+              id="lowerBandPrice"
+              type="number"
+              min="1"
+              step="1"
+              aria-invalid={!!errors.lowerBandPrice}
+              aria-describedby={errors.lowerBandPrice ? 'lowerBandPrice-error' : undefined}
+              {...register('lowerBandPrice', {
+                valueAsNumber: true,
+                validate: validatePositiveInt,
+              })}
+              disabled={isPending}
+            />
+            {errors.lowerBandPrice && (
+              <span id="lowerBandPrice-error" className={styles.error} aria-live="polite">
+                {String(errors.lowerBandPrice.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="upperBandPrice">희망 공모가 상단</label>
-        <input
-          id="upperBandPrice"
-          type="number"
-          min="1"
-          step="1"
-          aria-invalid={!!errors.upperBandPrice}
-          aria-describedby={errors.upperBandPrice ? 'upperBandPrice-error' : undefined}
-          {...register('upperBandPrice', {
-            valueAsNumber: true,
-            validate: (v) => validatePositiveInt(v) ?? validateLowerBandNotGreater(v),
-          })}
-          disabled={isPending}
-        />
-        {errors.upperBandPrice && (
-          <span id="upperBandPrice-error" className={styles.error} aria-live="polite">
-            {String(errors.upperBandPrice.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="upperBandPrice">희망 공모가 상단</label>
+            <input
+              id="upperBandPrice"
+              type="number"
+              min="1"
+              step="1"
+              aria-invalid={!!errors.upperBandPrice}
+              aria-describedby={errors.upperBandPrice ? 'upperBandPrice-error' : undefined}
+              {...register('upperBandPrice', {
+                valueAsNumber: true,
+                validate: (v) => validatePositiveInt(v) ?? validateLowerBandNotGreater(v),
+              })}
+              disabled={isPending}
+            />
+            {errors.upperBandPrice && (
+              <span id="upperBandPrice-error" className={styles.error} aria-live="polite">
+                {String(errors.upperBandPrice.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="fixedPrice">확정 공모가</label>
-        <input
-          id="fixedPrice"
-          type="number"
-          min="1"
-          step="1"
-          aria-invalid={!!errors.fixedPrice}
-          aria-describedby={errors.fixedPrice ? 'fixedPrice-error' : undefined}
-          {...register('fixedPrice', {
-            valueAsNumber: true,
-            validate: validatePositiveInt,
-          })}
-          disabled={isPending}
-        />
-        {errors.fixedPrice && (
-          <span id="fixedPrice-error" className={styles.error} aria-live="polite">
-            {String(errors.fixedPrice.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="fixedPrice">확정 공모가</label>
+            <input
+              id="fixedPrice"
+              type="number"
+              min="1"
+              step="1"
+              aria-invalid={!!errors.fixedPrice}
+              aria-describedby={errors.fixedPrice ? 'fixedPrice-error' : undefined}
+              {...register('fixedPrice', {
+                valueAsNumber: true,
+                validate: validatePositiveInt,
+              })}
+              disabled={isPending}
+            />
+            {errors.fixedPrice && (
+              <span id="fixedPrice-error" className={styles.error} aria-live="polite">
+                {String(errors.fixedPrice.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="subscriptionStartDate">
-          청약 시작일 <span className={styles.required}>(필수)</span>
-        </label>
-        <input
-          id="subscriptionStartDate"
-          type="date"
-          aria-invalid={!!errors.subscriptionStartDate}
-          aria-describedby={
-            errors.subscriptionStartDate ? 'subscriptionStartDate-error' : undefined
-          }
-          {...register('subscriptionStartDate', {
-            required: '청약 시작일을 선택해 주세요.',
-          })}
-          disabled={isPending}
-        />
-        {errors.subscriptionStartDate && (
-          <span id="subscriptionStartDate-error" className={styles.error} aria-live="polite">
-            {String(errors.subscriptionStartDate.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="subscriptionStartDate">
+              청약 시작일 <span className={styles.required}>(필수)</span>
+            </label>
+            <input
+              id="subscriptionStartDate"
+              type="date"
+              aria-invalid={!!errors.subscriptionStartDate}
+              aria-describedby={
+                errors.subscriptionStartDate ? 'subscriptionStartDate-error' : undefined
+              }
+              {...register('subscriptionStartDate', {
+                required: '청약 시작일을 선택해 주세요.',
+              })}
+              disabled={isPending}
+            />
+            {errors.subscriptionStartDate && (
+              <span id="subscriptionStartDate-error" className={styles.error} aria-live="polite">
+                {String(errors.subscriptionStartDate.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="subscriptionEndDate">
-          청약 종료일 <span className={styles.required}>(필수)</span>
-        </label>
-        <input
-          id="subscriptionEndDate"
-          type="date"
-          aria-invalid={!!errors.subscriptionEndDate}
-          aria-describedby={errors.subscriptionEndDate ? 'subscriptionEndDate-error' : undefined}
-          {...register('subscriptionEndDate', {
-            required: '청약 종료일을 선택해 주세요.',
-            validate: validateEndDateAfterStart,
-          })}
-          disabled={isPending}
-        />
-        {errors.subscriptionEndDate && (
-          <span id="subscriptionEndDate-error" className={styles.error} aria-live="polite">
-            {String(errors.subscriptionEndDate.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="subscriptionEndDate">
+              청약 종료일 <span className={styles.required}>(필수)</span>
+            </label>
+            <input
+              id="subscriptionEndDate"
+              type="date"
+              aria-invalid={!!errors.subscriptionEndDate}
+              aria-describedby={
+                errors.subscriptionEndDate ? 'subscriptionEndDate-error' : undefined
+              }
+              {...register('subscriptionEndDate', {
+                required: '청약 종료일을 선택해 주세요.',
+                validate: validateEndDateAfterStart,
+              })}
+              disabled={isPending}
+            />
+            {errors.subscriptionEndDate && (
+              <span id="subscriptionEndDate-error" className={styles.error} aria-live="polite">
+                {String(errors.subscriptionEndDate.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="listingDate">상장일</label>
-        <input
-          id="listingDate"
-          type="date"
-          aria-invalid={!!errors.listingDate}
-          aria-describedby={errors.listingDate ? 'listingDate-error' : undefined}
-          {...register('listingDate', { validate: validateListingAfterEnd })}
-          disabled={isPending}
-        />
-        {errors.listingDate && (
-          <span id="listingDate-error" className={styles.error} aria-live="polite">
-            {String(errors.listingDate.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="listingDate">상장일</label>
+            <input
+              id="listingDate"
+              type="date"
+              aria-invalid={!!errors.listingDate}
+              aria-describedby={errors.listingDate ? 'listingDate-error' : undefined}
+              {...register('listingDate', { validate: validateListingAfterEnd })}
+              disabled={isPending}
+            />
+            {errors.listingDate && (
+              <span id="listingDate-error" className={styles.error} aria-live="polite">
+                {String(errors.listingDate.message)}
+              </span>
+            )}
+          </div>
 
-      <div className={styles.field}>
-        <label htmlFor="offeringShareCount">공모 주식 수</label>
-        <input
-          id="offeringShareCount"
-          type="number"
-          min="1"
-          step="1"
-          aria-invalid={!!errors.offeringShareCount}
-          aria-describedby={errors.offeringShareCount ? 'offeringShareCount-error' : undefined}
-          {...register('offeringShareCount', {
-            valueAsNumber: true,
-            validate: validatePositiveInt,
-          })}
-          disabled={isPending}
-        />
-        {errors.offeringShareCount && (
-          <span id="offeringShareCount-error" className={styles.error} aria-live="polite">
-            {String(errors.offeringShareCount.message)}
-          </span>
-        )}
-      </div>
+          <div className={styles.field}>
+            <label htmlFor="offeringShareCount">공모 주식 수</label>
+            <input
+              id="offeringShareCount"
+              type="number"
+              min="1"
+              step="1"
+              aria-invalid={!!errors.offeringShareCount}
+              aria-describedby={errors.offeringShareCount ? 'offeringShareCount-error' : undefined}
+              {...register('offeringShareCount', {
+                valueAsNumber: true,
+                validate: validatePositiveInt,
+              })}
+              disabled={isPending}
+            />
+            {errors.offeringShareCount && (
+              <span id="offeringShareCount-error" className={styles.error} aria-live="polite">
+                {String(errors.offeringShareCount.message)}
+              </span>
+            )}
+          </div>
 
-      {formErrorMessage && (
-        <div className={styles.formError} role="alert">
-          {formErrorMessage}
-        </div>
-      )}
+          {formErrorMessage && (
+            <div className={styles.formError} role="alert">
+              {formErrorMessage}
+            </div>
+          )}
 
-      <button type="submit" disabled={isPending} className={styles.submitButton}>
-        {isPending ? '등록 중...' : '공모주 등록'}
-      </button>
-    </form>
+          <button type="submit" disabled={isPending} className={styles.submitButton}>
+            {isPending ? '등록 중...' : '공모주 등록'}
+          </button>
+        </form>
+      }
+    </StyleScope>
   )
 }

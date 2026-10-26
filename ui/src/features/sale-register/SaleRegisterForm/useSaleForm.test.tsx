@@ -59,4 +59,38 @@ describe('useSaleForm 상호 계산', () => {
     expect(result.current.getValues('otherFees')).toBe(1000)
     expect(result.current.lastEdited).toBe('profit')
   })
+
+  it('캡처 값을 적용하고 손익 기준 수수료를 계산하며 차이를 안내한다', () => {
+    const result = setup()
+    act(() => {
+      result.current.applyCapture({
+        subscriptionId: 1,
+        fill: {
+          quantity: 5,
+          price: 12000,
+          saleDate: '2026-10-23',
+          realizedProfit: 9000,
+          fees: 500,
+        },
+        notes: ['캡처 확인 안내'],
+      })
+    })
+
+    expect(result.current.getValues('quantity')).toBe(5)
+    expect(result.current.getValues('price')).toBe(12000)
+    expect(result.current.getValues('saleDate')).toBe('2026-10-23')
+    expect(result.current.getValues('realizedProfit')).toBe(9000)
+    expect(result.current.getValues('otherFees')).toBe(1000)
+    expect(result.current.captured).toMatchObject({
+      quantity: 5,
+      price: 12000,
+      saleDate: '2026-10-23',
+      realizedProfit: 9000,
+      otherFees: 1000,
+    })
+    expect(result.current.captureNotes).toEqual([
+      '캡처 확인 안내',
+      expect.stringContaining('실현손익을 우선해 1,000원으로 채웠습니다.'),
+    ])
+  })
 })

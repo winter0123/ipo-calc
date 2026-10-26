@@ -9,7 +9,7 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import MatchedTable from './MatchedTable.tsx'
 import { useConfirmSync } from './useConfirmSync.ts'
-import styles from './BrokerSyncPanel.module.css'
+import styles, { StyleScope } from './BrokerSyncPanel.styles.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
 
 const REASON_TEXT: Record<UnmatchedReason, string> = {
@@ -86,98 +86,102 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
   const data = preview.data
 
   return (
-    <section className={styles.panel} aria-labelledby="broker-sync-title">
-      <h2 id="broker-sync-title" className={styles.title}>
-        매도 내역 동기화
-      </h2>
-      <p className={styles.notice}>
-        선택한 기간({rule.label})의 증권사 매도 내역을 조회해 채워 줍니다. 확정하기 전에는 아무것도
-        저장되지 않습니다.
-      </p>
-      <div className={styles.range}>
-        <div className={styles.rangeField}>
-          <label htmlFor="broker-sync-from">조회 시작일</label>
-          <input
-            id="broker-sync-from"
-            type="date"
-            max={today}
-            value={draft.from}
-            onChange={(e) => setDraft({ ...draft, from: e.target.value })}
-          />
-        </div>
-        <div className={styles.rangeField}>
-          <label htmlFor="broker-sync-to">조회 종료일</label>
-          <input
-            id="broker-sync-to"
-            type="date"
-            max={today}
-            value={draft.to}
-            onChange={(e) => setDraft({ ...draft, to: e.target.value })}
-          />
-        </div>
-      </div>
-      {draftError && (
-        <p role="alert" className={styles.error}>
-          {draftError}
-        </p>
-      )}
-      <Button onClick={handleQuery} disabled={preview.isFetching || draftError !== null}>
-        {preview.isFetching ? '조회 중...' : '증권사에서 매도 내역 조회'}
-      </Button>
-
-      {queryError && (
-        <p role="alert" className={styles.error}>
-          {queryError}
-        </p>
-      )}
-      {savedCount !== null && <p role="status">{savedCount}건을 매도로 등록했습니다.</p>}
-
-      {data && submitted && !preview.isFetching && (
-        <>
-          <p>
-            조회 기간: {submitted.from} ~ {submitted.to}
+    <StyleScope>
+      {
+        <section className={styles.panel} aria-labelledby="broker-sync-title">
+          <h2 id="broker-sync-title" className={styles.title}>
+            매도 내역 동기화
+          </h2>
+          <p className={styles.notice}>
+            선택한 기간({rule.label})의 증권사 매도 내역을 조회해 채워 줍니다. 확정하기 전에는
+            아무것도 저장되지 않습니다.
           </p>
-          {data.matched.length === 0 && data.unmatched.length === 0 && (
-            <p>조회된 매도 내역이 없습니다.</p>
-          )}
-          {data.matched.length > 0 && (
-            <MatchedTable
-              key={preview.dataUpdatedAt}
-              items={data.matched}
-              pending={confirm.isPending}
-              onConfirm={(sales) =>
-                confirm.mutate(sales, { onSuccess: () => setSavedCount(sales.length) })
-              }
-            />
-          )}
-          {confirmError && (
-            <p role="alert" className={styles.error}>
-              {confirmError}
-            </p>
-          )}
-          {data.unmatched.length > 0 && (
-            <div>
-              <h3 className={styles.subtitle}>
-                자동으로 채우지 못한 내역 ({data.unmatched.length}건)
-              </h3>
-              <ul className={styles.list}>
-                {data.unmatched.map((item) => (
-                  <li key={`${item.tradeDate}|${item.stockCode}`}>
-                    {item.tradeDate} {item.stockCode} · 수량 {item.quantity} —{' '}
-                    {item.reason ? REASON_TEXT[item.reason] : ''}
-                  </li>
-                ))}
-              </ul>
+          <div className={styles.range}>
+            <div className={styles.rangeField}>
+              <label htmlFor="broker-sync-from">조회 시작일</label>
+              <input
+                id="broker-sync-from"
+                type="date"
+                max={today}
+                value={draft.from}
+                onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+              />
             </div>
-          )}
-          {data.allocationsWithoutStockCode.length > 0 && (
-            <p>
-              종목코드가 없는 IPO의 배정 {data.allocationsWithoutStockCode.length}건은 자동으로 맞출
-              수 없으니 수동으로 등록해 주세요.
+            <div className={styles.rangeField}>
+              <label htmlFor="broker-sync-to">조회 종료일</label>
+              <input
+                id="broker-sync-to"
+                type="date"
+                max={today}
+                value={draft.to}
+                onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+              />
+            </div>
+          </div>
+          {draftError && (
+            <p role="alert" className={styles.error}>
+              {draftError}
             </p>
           )}
-        </>
-      )}
-    </section>
+          <Button onClick={handleQuery} disabled={preview.isFetching || draftError !== null}>
+            {preview.isFetching ? '조회 중...' : '증권사에서 매도 내역 조회'}
+          </Button>
+
+          {queryError && (
+            <p role="alert" className={styles.error}>
+              {queryError}
+            </p>
+          )}
+          {savedCount !== null && <p role="status">{savedCount}건을 매도로 등록했습니다.</p>}
+
+          {data && submitted && !preview.isFetching && (
+            <>
+              <p>
+                조회 기간: {submitted.from} ~ {submitted.to}
+              </p>
+              {data.matched.length === 0 && data.unmatched.length === 0 && (
+                <p>조회된 매도 내역이 없습니다.</p>
+              )}
+              {data.matched.length > 0 && (
+                <MatchedTable
+                  key={preview.dataUpdatedAt}
+                  items={data.matched}
+                  pending={confirm.isPending}
+                  onConfirm={(sales) =>
+                    confirm.mutate(sales, { onSuccess: () => setSavedCount(sales.length) })
+                  }
+                />
+              )}
+              {confirmError && (
+                <p role="alert" className={styles.error}>
+                  {confirmError}
+                </p>
+              )}
+              {data.unmatched.length > 0 && (
+                <div>
+                  <h3 className={styles.subtitle}>
+                    자동으로 채우지 못한 내역 ({data.unmatched.length}건)
+                  </h3>
+                  <ul className={styles.list}>
+                    {data.unmatched.map((item) => (
+                      <li key={`${item.tradeDate}|${item.stockCode}`}>
+                        {item.tradeDate} {item.stockCode} · 수량 {item.quantity} —{' '}
+                        {item.reason ? REASON_TEXT[item.reason] : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {data.allocationsWithoutStockCode.length > 0 && (
+                <p>
+                  종목코드가 없는 IPO의 배정 {data.allocationsWithoutStockCode.length}건은 자동으로
+                  맞출 수 없으니 수동으로 등록해 주세요.
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      }
+    </StyleScope>
   )
 }

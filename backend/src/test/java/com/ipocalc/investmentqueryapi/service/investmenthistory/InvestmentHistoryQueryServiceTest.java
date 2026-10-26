@@ -382,6 +382,12 @@ class InvestmentHistoryQueryServiceTest {
     // Then: 페이지네이션 객체 반환
     assertThat(result).isNotNull();
     assertThat(result.getTotalElements()).isZero();
+    verify(allocationRepository, never()).findBySubscriptionIdIn(anyList());
+    verify(saleRepository, never()).findByAllocationIdInAndStatus(anyList(), any());
+    verify(ipoRepository, never()).findAllById(anyList());
+    verify(investorRepository, never()).findAllById(anySet());
+    verify(securitiesAccountRepository, never()).findAllById(anySet());
+    verify(securitiesFirmRepository, never()).findAllById(anySet());
   }
 
   // ===========================================

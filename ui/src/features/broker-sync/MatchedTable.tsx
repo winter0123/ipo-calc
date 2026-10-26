@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { SyncConfirmSale, SyncPreviewItem } from '@/entities/broker/index.ts'
 import Button from '@/shared/components/Button/Button.tsx'
-import styles from './BrokerSyncPanel.module.css'
+import styles, { StyleScope } from './BrokerSyncPanel.styles.ts'
 
 type EditField = 'price' | 'amount' | 'otherFees' | 'ipoFee'
 
@@ -83,71 +83,75 @@ export default function MatchedTable({ items, pending, onConfirm }: Props) {
     )
 
   return (
-    <div>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <caption>
-            매칭된 매도 ({items.length}건) — 값을 고친 뒤 확정할 수 있습니다. 세금 및 기타는
-            증권사의 수수료와 세금의 합계이고, 공모주수수료는 기본 2,000원(같은 배정의 둘째 매도부터
-            0원)입니다.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">선택</th>
-              <th scope="col">일자</th>
-              <th scope="col">종목코드</th>
-              <th scope="col">수량</th>
-              {(Object.keys(FIELD_LABEL) as EditField[]).map((f) => (
-                <th key={f} scope="col">
-                  {FIELD_LABEL[f]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const key = rowKey(item)
-              const row = rows[key]
-              const name = `${item.tradeDate} ${item.stockCode}`
-              return (
-                <tr key={key}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`${name} 선택`}
-                      checked={row.checked}
-                      onChange={(e) => update(key, { checked: e.target.checked })}
-                    />
-                  </td>
-                  <td>{item.tradeDate}</td>
-                  <td>{item.stockCode}</td>
-                  <td>{item.quantity}</td>
+    <StyleScope>
+      {
+        <div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <caption>
+                매칭된 매도 ({items.length}건) — 값을 고친 뒤 확정할 수 있습니다. 세금 및 기타는
+                증권사의 수수료와 세금의 합계이고, 공모주수수료는 기본 2,000원(같은 배정의 둘째
+                매도부터 0원)입니다.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">선택</th>
+                  <th scope="col">일자</th>
+                  <th scope="col">종목코드</th>
+                  <th scope="col">수량</th>
                   {(Object.keys(FIELD_LABEL) as EditField[]).map((f) => (
-                    <td key={f}>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        aria-label={`${name} ${FIELD_LABEL[f]}`}
-                        aria-invalid={isWholeNumber(row[f]) ? undefined : 'true'}
-                        value={row[f]}
-                        onChange={(e) => update(key, { [f]: e.target.value })}
-                      />
-                    </td>
+                    <th key={f} scope="col">
+                      {FIELD_LABEL[f]}
+                    </th>
                   ))}
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      {!allValid && (
-        <p role="alert" className={styles.error}>
-          단가·금액·세금 및 기타·공모주수수료는 0 이상의 정수로 입력해 주세요.
-        </p>
-      )}
-      <Button onClick={handleConfirm} disabled={pending || selected.length === 0 || !allValid}>
-        {pending ? '저장 중...' : `선택한 ${selected.length}건 매도로 등록`}
-      </Button>
-    </div>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const key = rowKey(item)
+                  const row = rows[key]
+                  const name = `${item.tradeDate} ${item.stockCode}`
+                  return (
+                    <tr key={key}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`${name} 선택`}
+                          checked={row.checked}
+                          onChange={(e) => update(key, { checked: e.target.checked })}
+                        />
+                      </td>
+                      <td>{item.tradeDate}</td>
+                      <td>{item.stockCode}</td>
+                      <td>{item.quantity}</td>
+                      {(Object.keys(FIELD_LABEL) as EditField[]).map((f) => (
+                        <td key={f}>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            aria-label={`${name} ${FIELD_LABEL[f]}`}
+                            aria-invalid={isWholeNumber(row[f]) ? undefined : 'true'}
+                            value={row[f]}
+                            onChange={(e) => update(key, { [f]: e.target.value })}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {!allValid && (
+            <p role="alert" className={styles.error}>
+              단가·금액·세금 및 기타·공모주수수료는 0 이상의 정수로 입력해 주세요.
+            </p>
+          )}
+          <Button onClick={handleConfirm} disabled={pending || selected.length === 0 || !allValid}>
+            {pending ? '저장 중...' : `선택한 ${selected.length}건 매도로 등록`}
+          </Button>
+        </div>
+      }
+    </StyleScope>
   )
 }

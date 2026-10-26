@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
-import styles from './MainLayout.module.css'
+import styles, { StyleScope } from './MainLayout.styles.ts'
 
 export interface NavGroupItem {
   to?: string
@@ -55,65 +55,69 @@ export default function NavGroup({ label, items }: { label: string; items: NavGr
   }
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- 키 입력은 자식 버튼·링크에서 올라온 것만 처리
-    <div
-      ref={rootRef}
-      className={styles.group}
-      onKeyDown={onKeyDown}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpenedAt(null)
-      }}
-    >
-      <button
-        ref={buttonRef}
-        type="button"
-        className={active ? `${styles.link} ${styles.active}` : styles.link}
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpenedAt(open ? null : pathname)}
-      >
-        {label}
-        <ChevronDown aria-hidden="true" size={14} />
-      </button>
-      <span className={styles.groupTitle} aria-hidden="true">
-        {label}
-      </span>
-      <div className={styles.morePanel} hidden={!open} role="group" aria-label={label}>
-        {items.map((item) =>
-          item.onClick ? (
-            <button
-              key={item.label}
-              type="button"
-              data-menu-item
-              className={styles.moreLink}
-              onClick={item.onClick}
-              disabled={item.disabled}
-            >
-              {item.label}
-            </button>
-          ) : item.to && item.static ? (
-            <a
-              key={item.to}
-              href={item.to}
-              className={styles.moreLink}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {item.label}
-            </a>
-          ) : item.to ? (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                isActive ? `${styles.moreLink} ${styles.moreLinkActive}` : styles.moreLink
-              }
-            >
-              {item.label}
-            </NavLink>
-          ) : null,
-        )}
-      </div>
-    </div>
+    <StyleScope>
+      {
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- 키 입력은 자식 버튼·링크에서 올라온 것만 처리
+        <div
+          ref={rootRef}
+          className={styles.group}
+          onKeyDown={onKeyDown}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpenedAt(null)
+          }}
+        >
+          <button
+            ref={buttonRef}
+            type="button"
+            className={active ? `${styles.link} ${styles.active}` : styles.link}
+            aria-expanded={open}
+            aria-haspopup="true"
+            onClick={() => setOpenedAt(open ? null : pathname)}
+          >
+            {label}
+            <ChevronDown aria-hidden="true" size={14} />
+          </button>
+          <span className={styles.groupTitle} aria-hidden="true">
+            {label}
+          </span>
+          <div className={styles.morePanel} hidden={!open} role="group" aria-label={label}>
+            {items.map((item) =>
+              item.onClick ? (
+                <button
+                  key={item.label}
+                  type="button"
+                  data-menu-item
+                  className={styles.moreLink}
+                  onClick={item.onClick}
+                  disabled={item.disabled}
+                >
+                  {item.label}
+                </button>
+              ) : item.to && item.static ? (
+                <a
+                  key={item.to}
+                  href={item.to}
+                  className={styles.moreLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {item.label}
+                </a>
+              ) : item.to ? (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    isActive ? `${styles.moreLink} ${styles.moreLinkActive}` : styles.moreLink
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ) : null,
+            )}
+          </div>
+        </div>
+      }
+    </StyleScope>
   )
 }

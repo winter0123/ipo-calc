@@ -8,7 +8,7 @@ export function useAllInvestmentHistory(
   { enabled }: { enabled?: boolean } = {},
 ) {
   return useQuery<InvestmentHistoryItem[]>({
-    queryKey: [...investmentHistoryKeys.list(filters), 'all'],
+    queryKey: investmentHistoryKeys.allPages(filters),
     queryFn: ({ signal }) => getAllInvestmentHistory(filters, signal),
     enabled,
   })

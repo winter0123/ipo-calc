@@ -54,6 +54,15 @@ beforeEach(() => {
     if (key === 'GET /securities-firms') return FIRMS
     const list = /^GET \/securities-accounts\?investorId=(\d+)$/.exec(key)
     if (list) return accounts[Number(list[1])] ?? []
+    if (key === 'POST /securities-accounts') {
+      return account(30, 7, 2, { accountNumber: '1234-****-3456' })
+    }
+    if (key === 'PATCH /securities-accounts/10') {
+      return account(10, 7, 3, { accountName: '월급 계좌', isDefault: true })
+    }
+    if (key === 'PATCH /securities-accounts/11/set-default') {
+      return account(11, 7, 3, { accountName: null, isDefault: true })
+    }
     if (key.endsWith('/api-credential')) {
       return {
         id: null,
@@ -68,7 +77,11 @@ beforeEach(() => {
       }
     }
     if (key === 'GET /securities-accounts/10/account-number')
-      return { accountNumber: '1234-5678-90' }
+      return {
+        id: 10,
+        accountNumber: '1234-5678-90',
+        exposedAt: '2026-10-26T00:00:00Z',
+      }
     return undefined
   })
 })

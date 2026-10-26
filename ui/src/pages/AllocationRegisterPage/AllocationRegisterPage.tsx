@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { AllocationRegisterForm } from '@/features/allocation-register/index.ts'
-import styles from './AllocationRegisterPage.module.css'
+import styles, { StyleScope } from './AllocationRegisterPage.styles.ts'
 
 export default function AllocationRegisterPage() {
   const [searchParams] = useSearchParams()
@@ -19,9 +19,13 @@ export default function AllocationRegisterPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>배정 등록</h1>
-      <AllocationRegisterForm />
-    </div>
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <h1 className={styles.title}>배정 등록</h1>
+          <AllocationRegisterForm />
+        </div>
+      }
+    </StyleScope>
   )
 }

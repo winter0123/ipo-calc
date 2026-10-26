@@ -15,3 +15,8 @@ export const investorResponseSchema = z.object({
 })
 
 export type InvestorResponse = z.infer<typeof investorResponseSchema>
+
+export interface InvestorRegisterRequest {
+  displayName: string
+  relationship?: string
+}
