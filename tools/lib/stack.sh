@@ -4,6 +4,29 @@
 # 이 도구들(e2e·접근성 스캔·가이드 캡처)은 같은 슬롯 4를 쓰므로 동시에 돌리지 않는다.
 ROOT=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
 UI_DIR="${UI_DIR:-$ROOT/ui}"
+if [ -f "$ROOT/.env-local" ]; then
+  load_dev_env() {
+    local line key index
+    local -a existing_names=() existing_values=()
+    while IFS= read -r line || [ -n "$line" ]; do
+      [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] || continue
+      key=${BASH_REMATCH[1]}
+      if declare -p "$key" >/dev/null 2>&1; then
+        existing_names+=("$key")
+        existing_values+=("${!key}")
+      fi
+    done < "$ROOT/.env-local"
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT/.env-local"
+    set +a
+    for index in "${!existing_names[@]}"; do
+      printf -v "${existing_names[index]}" '%s' "${existing_values[index]}"
+      export "${existing_names[index]}"
+    done
+  }
+  load_dev_env
+fi
 : "${DB_PASSWORD:=ipo_local_password}"
 
 stack_down() {

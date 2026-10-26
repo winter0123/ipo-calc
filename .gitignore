@@ -1,8 +1,9 @@
 # Environment / secrets
 .env
 .env.*
+.env-local
+.envrc
 !.env.example
-!ui/.env.production
 
 # macOS
 .DS_Store
@@ -45,7 +46,6 @@ docker-compose.override.yml
 
 # Test / coverage
 coverage/
-.envrc
 
 # Terraform (state에 비밀번호 포함)
 .terraform/

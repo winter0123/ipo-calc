@@ -30,7 +30,7 @@ EOF
 
 require_container() {
   if ! docker ps --format '{{.Names}}' | grep -qx "$CONTAINER"; then
-    echo "컨테이너 '$CONTAINER' 가 떠 있지 않습니다. 먼저 'docker compose up -d' 를 실행하세요." >&2
+    echo "컨테이너 '$CONTAINER' 가 떠 있지 않습니다. 먼저 'docker compose --env-file .env-local up -d postgres' 를 실행하세요." >&2
     exit 1
   fi
 }

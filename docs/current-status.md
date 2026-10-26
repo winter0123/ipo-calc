@@ -1,5 +1,12 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 개발·운영 환경 설정 정리 (2026-10-26)
+
+- 개발 환경 파일을 루트 `.envrc`에서 `.env-local`로 옮겼다. 값은 Compose dotenv와 shell source에서 함께 쓸 수 있도록 `KEY=value` 형식이며 파일 권한은 `0600`이다. 개인 시크릿 값은 문서에 기록하지 않는다.
+- Docker Compose 개발 PostgreSQL과 E2E·접근성 실행 도구가 `.env-local`의 `DB_PASSWORD`를 사용한다. 운영 백엔드는 Ansible Vault에서 `/etc/ipo-calc/backend.env`를 생성하므로 암호화된 운영 시크릿 원본은 기존 Vault에 둔다.
+- 사용하지 않는 `deploy/.env`와 `ui/.env.production`을 제거했다. UI 운영 빌드의 API 기본 경로 `/api`는 production 코드 기본값으로 옮겼다.
+- README·환경 복구 안내·개인 운영 배포 가이드를 새 경로에 맞췄다. UI 테스트 99개 파일/745건, lint, typecheck, format:check, production build, Compose 설정 해석, Ansible UI playbook syntax-check, `git diff --check`는 모두 `PASS`다. 운영 배포는 main 반영 뒤 진행한다.
+
 ## UI 스타일 시스템 전환 완료 (2026-10-26)
 
 - 사용자 요청으로 프론트엔드 스타일을 CSS Modules에서 styled-components로 전환하고, 공통 UI 프리미티브와 시각 디자인 개선을 추가했다.
