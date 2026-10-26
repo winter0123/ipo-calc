@@ -45,20 +45,25 @@ All screenshots live in [`docs/user-guides/manual/screenshots/`](docs/user-guide
 git clone https://github.com/winter0123/ipo-calc.git
 cd ipo-calc
 
-# Create a .env file in the repository root (next to docker-compose.yml) with both keys:
-cat > .env << 'EOF'
+# Create the ignored .env-local file in the repository root and add the values below.
+# Add DB_PASSWORD too; use KEY=value lines without the `export` prefix.
+cat > .env-local << 'EOF'
+DB_PASSWORD=your_local_database_password
 OPENDART_API_KEY=your_opendart_key
 DATA_GO_KR_SERVICE_KEY=your_data_go_kr_key
 EOF
+chmod 600 .env-local
 ```
 
-> Never commit `.env`. It contains secrets (make sure it is listed in `.gitignore`).
+> Never commit `.env-local`; it contains secrets and is ignored by Git.
 
 **3. Run**
 
 ```bash
-docker compose up -d
+docker compose --env-file .env-local up -d postgres
 ```
+
+To run the backend locally, load the same file first with `set -a; source .env-local; set +a`, then run `cd backend && ./gradlew bootRun`.
 
 **4. Open the app**
 
@@ -182,19 +187,21 @@ Issues and pull requests are welcome. Please open an issue first for larger chan
 git clone https://github.com/winter0123/ipo-calc.git
 cd ipo-calc
 
-# 레포 루트(docker-compose.yml과 같은 위치)에 .env 파일을 만들고 두 키를 넣습니다:
-cat > .env << 'EOF'
+# 레포 루트에 .env-local 파일을 만들고 필요한 값을 넣습니다:
+cat > .env-local << 'EOF'
+DB_PASSWORD=로컬_데이터베이스_비밀번호
 OPENDART_API_KEY=발급받은_opendart_키
 DATA_GO_KR_SERVICE_KEY=발급받은_공공데이터포털_키
 EOF
+chmod 600 .env-local
 ```
 
-> `.env`는 절대 커밋하지 마세요. 비밀 키가 들어 있습니다 (`.gitignore`에 포함되어 있는지 확인하세요).
+> `.env-local`은 절대 커밋하지 마세요. 시크릿 파일이며 `.gitignore` 대상입니다.
 
 **3. 실행하기**
 
 ```bash
-docker compose up -d
+docker compose --env-file .env-local up -d postgres
 ```
 
 **4. 접속하기**

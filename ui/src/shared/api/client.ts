@@ -7,9 +7,7 @@
 import { ApiError } from './apiError.ts'
 
 const DEFAULT_BASE_URL =
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL
-    : 'http://localhost:8080'
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8080')
 
 export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const url = path.startsWith('http') ? path : `${DEFAULT_BASE_URL}${path}`

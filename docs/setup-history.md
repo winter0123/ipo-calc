@@ -19,7 +19,7 @@
 
 ### 사전 준비
 1. 저장소 클론: `git clone https://github.com/winter0123/ipo-calc.git`
-2. 로컬 개발용 `.envrc`에 `JAVA_HOME`, `DB_PASSWORD`를 설정한다. 실제 값은 저장소에 기록하지 않는다.
+2. 로컬 개발용 `.env-local`에 `JAVA_HOME`, `DB_PASSWORD`, 필요한 API 키를 설정한다. 파일은 저장소에 커밋하지 않는다.
 3. 프런트엔드 도구는 `ui/package.json`의 package manager 기준으로 설치한다.
 
 ### 로컬 개발 데이터베이스
@@ -27,7 +27,7 @@
 루트 Compose는 개발용 PostgreSQL만 실행한다. 운영 앱이나 운영 DB를 Compose로 기동하지 않는다.
 
 ```bash
-docker compose up -d postgres
+docker compose --env-file .env-local up -d postgres
 ```
 
 - 컨테이너: `ipo-calc-postgres-dev`
@@ -37,7 +37,7 @@ docker compose up -d postgres
 
 ### 백엔드와 프런트엔드
 
-- 백엔드 빌드·개발 실행: `cd backend && ./gradlew build` 또는 `./gradlew bootRun`
+- 백엔드 빌드·개발 실행: 저장소 루트에서 `set -a; source .env-local; set +a` 한 뒤 `cd backend && ./gradlew build` 또는 `./gradlew bootRun`
 - 프런트엔드: `cd ui && pnpm install && pnpm dev`
 - 백엔드 테스트 슬롯 DB는 아래 테스트용 슬롯 DB 절차를 사용한다.
 
