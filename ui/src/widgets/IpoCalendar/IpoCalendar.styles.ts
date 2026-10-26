@@ -242,7 +242,7 @@ export const StyleScope = styled.div`
   .s-e1b278a-week {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-template-rows: 38px repeat(var(--lanes, 0), 24px) minmax(8px, 1fr);
+    grid-template-rows: 38px repeat(var(--calendar-lanes, 0), 24px) minmax(8px, 1fr);
     min-height: 96px;
     min-width: 0;
     position: relative;
@@ -250,7 +250,7 @@ export const StyleScope = styled.div`
 
   .s-e1b278a-emptyCell,
   .s-e1b278a-dateCell {
-    grid-column: span 1;
+    grid-column: var(--calendar-column);
     grid-row: 1 / -1;
     border: 0;
     border-right: 1px solid var(--border);
@@ -338,13 +338,20 @@ export const StyleScope = styled.div`
 
   /* 막대 */
   .s-e1b278a-bar {
+    grid-column: var(--calendar-bar-column);
+    grid-row: var(--calendar-bar-row);
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     height: 20px;
     padding: 0 6px;
-    border-radius: 6px;
+    border-top-left-radius: var(--calendar-bar-radius-left);
+    border-bottom-left-radius: var(--calendar-bar-radius-left);
+    border-top-right-radius: var(--calendar-bar-radius-right);
+    border-bottom-right-radius: var(--calendar-bar-radius-right);
+    margin-left: var(--calendar-bar-margin-left);
+    margin-right: var(--calendar-bar-margin-right);
     font-size: 12px;
     font-weight: 650;
     line-height: 1.4;

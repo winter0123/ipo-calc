@@ -1,6 +1,5 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import styled from 'styled-components'
 import {
   buildCalendarEvents,
   buildWeekSegments,
@@ -21,30 +20,10 @@ import { SelectedDayDetail } from './IpoCalendarParts.tsx'
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
-const WeekRow = styled.div<{ $lanes: number }>`
-  --lanes: ${({ $lanes }) => $lanes};
-`
-const GridCell = styled.div<{ $column: number }>`
-  grid-column: ${({ $column }) => $column};
-`
-const DateCell = styled.button<{ $column: number }>`
-  grid-column: ${({ $column }) => $column};
-`
-const EventBar = styled(Link)<{
-  $gridColumn: string
-  $gridRow: number
-  $continuesBefore: boolean
-  $continuesAfter: boolean
-}>`
-  grid-column: ${({ $gridColumn }) => $gridColumn};
-  grid-row: ${({ $gridRow }) => $gridRow};
-  border-top-left-radius: ${({ $continuesBefore }) => ($continuesBefore ? 0 : 6)}px;
-  border-bottom-left-radius: ${({ $continuesBefore }) => ($continuesBefore ? 0 : 6)}px;
-  border-top-right-radius: ${({ $continuesAfter }) => ($continuesAfter ? 0 : 6)}px;
-  border-bottom-right-radius: ${({ $continuesAfter }) => ($continuesAfter ? 0 : 6)}px;
-  margin-left: ${({ $continuesBefore }) => ($continuesBefore ? 0 : 2)}px;
-  margin-right: ${({ $continuesAfter }) => ($continuesAfter ? 0 : 2)}px;
-`
+type CalendarGridStyle = CSSProperties & Record<`--calendar-${string}`, string>
+
+const gridStyle = (properties: Record<`--calendar-${string}`, string>): CalendarGridStyle =>
+  properties
 
 const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
   'SUBSCRIPTION',
@@ -258,14 +237,18 @@ export default function IpoCalendar({
                 laneCount: 0,
               }
               return (
-                <WeekRow key={weekIndex} className={styles.week} $lanes={laneCount}>
+                <div
+                  key={weekIndex}
+                  className={styles.week}
+                  style={gridStyle({ '--calendar-lanes': String(laneCount) })}
+                >
                   {week.map((day, dayIndex) => {
                     if (day === null) {
                       return (
-                        <GridCell
+                        <div
                           key={dayIndex}
                           className={styles.emptyCell}
-                          $column={dayIndex + 1}
+                          style={gridStyle({ '--calendar-column': String(dayIndex + 1) })}
                         />
                       )
                     }
@@ -288,11 +271,11 @@ export default function IpoCalendar({
                     }
 
                     return (
-                      <DateCell
+                      <button
                         key={dayIndex}
                         type="button"
                         className={`${styles.dateCell} ${isSelected ? styles.selected : ''} ${isToday ? styles.today : ''} ${dayEvents.length > 0 ? styles.hasEvents : ''} ${holidayName ? styles.hasHoliday : ''}`}
-                        $column={dayIndex + 1}
+                        style={gridStyle({ '--calendar-column': String(dayIndex + 1) })}
                         onClick={() => handleDateClick(dateKey)}
                         aria-pressed={isSelected}
                         aria-current={isToday ? 'date' : undefined}
@@ -302,24 +285,28 @@ export default function IpoCalendar({
                           {holidayName && <span className={styles.holidayName}>{holidayName}</span>}
                           <span className={styles.dateNumber}>{day}</span>
                         </span>
-                      </DateCell>
+                      </button>
                     )
                   })}
                   {segments.map((segment) => (
-                    <EventBar
+                    <Link
                       key={`${segment.event.ipoId}-${segment.startCol}-${segment.endCol}`}
                       to={`/ipos/${segment.event.ipoId}`}
                       className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]} ${segment.event.estimated ? styles.barEstimated : ''}`}
-                      $gridColumn={`${segment.startCol + 1} / ${segment.endCol + 2}`}
-                      $gridRow={segment.lane + 2}
-                      $continuesBefore={segment.continuesBefore}
-                      $continuesAfter={segment.continuesAfter}
+                      style={gridStyle({
+                        '--calendar-bar-column': `${segment.startCol + 1} / ${segment.endCol + 2}`,
+                        '--calendar-bar-row': String(segment.lane + 2),
+                        '--calendar-bar-radius-left': segment.continuesBefore ? '0px' : '6px',
+                        '--calendar-bar-radius-right': segment.continuesAfter ? '0px' : '6px',
+                        '--calendar-bar-margin-left': segment.continuesBefore ? '0px' : '2px',
+                        '--calendar-bar-margin-right': segment.continuesAfter ? '0px' : '2px',
+                      })}
                       aria-label={barLabel(segment.event)}
                     >
                       {segment.event.companyName}
-                    </EventBar>
+                    </Link>
                   ))}
-                </WeekRow>
+                </div>
               )
             })}
           </div>

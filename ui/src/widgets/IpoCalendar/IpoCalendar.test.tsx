@@ -126,6 +126,24 @@ describe('IpoCalendar', () => {
     expect(bar).toHaveAttribute('href', '/ipos/1')
   })
 
+  it('날짜 셀과 일정 막대가 같은 요일 열 좌표를 사용한다', () => {
+    const ipos = [
+      makeIpo({
+        subscriptionStartDate: '2026-10-01T09:00:00Z',
+        subscriptionEndDate: '2026-10-03T17:00:00Z',
+      }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    // 2026년 10월 1일은 목요일이다. 날짜 칸과 청약 바가 동일한 5~7열에 있어야 한다.
+    expect(screen.getByRole('button', { name: /10월 1일/ })).toHaveStyle('--calendar-column: 5')
+    expect(screen.getByRole('button', { name: /10월 3일/ })).toHaveStyle('--calendar-column: 7')
+
+    const bar = screen.getByRole('link', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
+    expect(bar).toHaveStyle('--calendar-bar-column: 5 / 8')
+    expect(bar).toHaveStyle('--calendar-bar-row: 2')
+  })
+
   it('상장 막대는 하루만 표시된다', async () => {
     const ipos = [makeIpo({ listingDate: '2026-10-15T09:00:00Z' })]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
