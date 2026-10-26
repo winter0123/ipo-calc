@@ -77,9 +77,6 @@ export default function NavGroup({ label, items }: { label: string; items: NavGr
             {label}
             <ChevronDown aria-hidden="true" size={14} />
           </button>
-          <span className={styles.groupTitle} aria-hidden="true">
-            {label}
-          </span>
           <div className={styles.morePanel} hidden={!open} role="group" aria-label={label}>
             {items.map((item) =>
               item.onClick ? (

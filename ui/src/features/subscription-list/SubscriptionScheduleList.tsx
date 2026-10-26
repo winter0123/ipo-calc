@@ -122,9 +122,18 @@ export default function SubscriptionScheduleList({
                         className={styles.action}
                         to={`/allocations/register?subscriptionId=${subscription.id}`}
                       >
-                        이 청약 배정 입력
+                        배정 등록
                       </Link>
                     )}
+                    {subscription.allocation !== null &&
+                      (subscription.remainingQuantity ?? 0) > 0 && (
+                        <Link
+                          className={styles.action}
+                          to={`/sales/register?subscriptionId=${subscription.id}`}
+                        >
+                          매도 등록
+                        </Link>
+                      )}
                   </section>
                 ))}
             </li>
