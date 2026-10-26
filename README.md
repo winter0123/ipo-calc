@@ -18,6 +18,10 @@ IPO Calc is an open-source web app for people who subscribe to IPOs (공모주) 
 - **Profit calculation**: calculated profits at a glance, per user, per account, and overall.
 - **Works solo too**: no family setup required; a single user is fully supported.
 
+## Live site
+
+[https://ipocalc.duckdns.org](https://ipocalc.duckdns.org)
+
 ## Screenshots
 
 All screenshots live in [`docs/user-guides/manual/screenshots/`](docs/user-guides/manual/screenshots/). The full walkthrough with annotated screens is in the user guide ([PC](docs/user-guides/manual/pc.html) / [Mobile](docs/user-guides/manual/mobile.html)).
@@ -58,15 +62,13 @@ docker compose up -d
 
 **4. Open the app**
 
-Open `http://localhost` in your browser (add the port if your `docker-compose.yml` maps one, e.g. `http://localhost:8080`). For sign-up and first login, see the [user guide](docs/user-guides/manual/pc.html).
-
-> The project is not deployed publicly yet, so running it locally is currently the only way to try it. There is no live demo; the user guide and screenshots show every screen.
+For sign-up and first login, see the [user guide](docs/user-guides/manual/pc.html).
 
 ## Tech stack
 
 - Backend: [fill in: language / framework / database]
 - Frontend: [fill in]
-- Deployment: Docker Compose (`docker-compose.yml`), CI pipeline (`Jenkinsfile`), infrastructure configs (`infra/oracle`)
+- Deployment: Private Ubuntu home server; server-specific configuration is kept outside Git.
 
 ## Repository layout
 
@@ -75,7 +77,6 @@ Open `http://localhost` in your browser (add the port if your `docker-compose.ym
 | `backend/` | Server application |
 | `ui/` | Web front end |
 | `docs/` | Specs, architecture notes, user guides, agent prompt guides, work logs |
-| `deploy/`, `infra/oracle/` | Deployment and infrastructure configuration |
 | `scripts/`, `tools/` | Helper scripts and tooling (including agent watchdog scripts) |
 | `AGENTS.md` | Rulebook for building software with multiple AI agents |
 
@@ -154,6 +155,10 @@ Issues and pull requests are welcome. Please open an issue first for larger chan
 - **수익금 계산**: 사용자별, 계좌별, 전체 수익금을 한눈에 확인합니다.
 - **혼자 사용도 가능**: 가족 구성 없이 한 명만 써도 됩니다.
 
+## 사이트 접속
+
+[https://ipocalc.duckdns.org](https://ipocalc.duckdns.org)
+
 ## 스크린샷
 
 모든 스크린샷은 [`docs/user-guides/manual/screenshots/`](docs/user-guides/manual/screenshots/)에 있습니다. 화면별 설명이 있는 전체 안내는 사용 가이드([PC](docs/user-guides/manual/pc.html) / [모바일](docs/user-guides/manual/mobile.html))에서 볼 수 있습니다.
@@ -194,15 +199,13 @@ docker compose up -d
 
 **4. 접속하기**
 
-브라우저에서 `http://localhost`로 접속하세요. (`docker-compose.yml`에 포트가 지정되어 있다면 `http://localhost:8080`처럼 포트를 붙입니다.) 회원가입과 첫 로그인 방법은 [사용 가이드](docs/user-guides/manual/pc.html)를 참고하세요.
-
-> 아직 외부에 배포하기 전이라 현재는 로컬에서 실행해 보는 방법만 제공합니다. 라이브 데모는 없고, 사용 가이드와 스크린샷에서 모든 화면을 볼 수 있습니다.
+회원가입과 첫 로그인 방법은 [사용 가이드](docs/user-guides/manual/pc.html)를 참고하세요.
 
 ## 기술 스택
 
 - 백엔드: [작성: 언어 / 프레임워크 / DB]
 - 프론트엔드: [작성]
-- 배포: Docker Compose (`docker-compose.yml`), CI 파이프라인 (`Jenkinsfile`), 인프라 설정 (`infra/oracle`)
+- 배포: Ubuntu 홈 서버 비공개 운영 (서버별 설정은 Git 외부에서 관리)
 
 ## 폴더 구조
 
@@ -211,7 +214,6 @@ docker compose up -d
 | `backend/` | 서버 애플리케이션 |
 | `ui/` | 웹 프론트엔드 |
 | `docs/` | 기획서, 설계 문서, 사용 가이드, 에이전트 프롬프트 가이드, 작업 로그 |
-| `deploy/`, `infra/oracle/` | 배포 및 인프라 설정 |
 | `scripts/`, `tools/` | 보조 스크립트와 도구 (에이전트 감시 스크립트 포함) |
 | `AGENTS.md` | 여러 AI 에이전트로 소프트웨어를 개발하는 규칙서 |
 

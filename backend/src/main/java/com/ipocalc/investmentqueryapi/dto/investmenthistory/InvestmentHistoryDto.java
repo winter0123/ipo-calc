@@ -27,4 +27,6 @@ public class InvestmentHistoryDto {
   private Long remainingQuantity;
   private String investorName;
   private String securitiesFirmName;
+  private Long securitiesAccountId;
+  private String securitiesAccountName;
 }

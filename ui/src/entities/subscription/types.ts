@@ -59,6 +59,8 @@ export const investmentHistoryItemSchema = z.object({
   remainingQuantity: z.number().nullable(),
   investorName: z.string().nullable(),
   securitiesFirmName: z.string().nullable(),
+  securitiesAccountId: z.number().nullish(),
+  securitiesAccountName: z.string().nullish(),
 })
 
 export const investmentHistoryResponseSchema = z.object({

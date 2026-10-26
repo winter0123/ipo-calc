@@ -173,22 +173,47 @@ describe('AllocationRegisterForm', () => {
     )
   })
 
-  it('배정수량이 0 이하이면 에러 메시지 표시', async () => {
+  it('배정수량이 음수이면 에러 메시지 표시', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
 
     await fillValidForm()
-    await fill(screen.getByLabelText('배정수량'), '0')
+    await fill(screen.getByLabelText('배정수량'), '-1')
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('0 초과 정수를 입력해 주세요.')).toBeInTheDocument()
+      expect(screen.getByText('0 이상 정수를 입력해 주세요.')).toBeInTheDocument()
     })
     expect(apiFetch).not.toHaveBeenCalledWith(
       '/allocations',
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('배정 결과가 0주인 입력을 허용해 서버에 전송한다', async () => {
+    mockSubscriptionDetailFetch()
+    renderForm()
+    await waitForDetailLoaded()
+    vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
+      if (path === '/investment-history/1' && (!options || options.method === 'GET'))
+        return SUBSCRIPTION_DETAIL
+      if (path === '/allocations' && options?.method === 'POST') return { id: 4 }
+      throw new Error(`unexpected path: ${String(path)}`)
+    })
+    await fillValidForm()
+    await fill(screen.getByLabelText('배정수량'), '0')
+    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        '/allocations',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+    const call = vi
+      .mocked(apiFetch)
+      .mock.calls.find(([path, opts]) => path === '/allocations' && opts?.method === 'POST')!
+    expect(JSON.parse((call[1] as RequestInit).body as string).allocatedQuantity).toBe(0)
   })
 
   it('배정단가가 음수이면 에러 메시지 표시', async () => {

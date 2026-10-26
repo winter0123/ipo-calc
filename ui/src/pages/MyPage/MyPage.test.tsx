@@ -68,6 +68,10 @@ describe('MyPage', () => {
       'href',
       '/investors/register',
     )
+    expect(screen.getByRole('link', { name: '증권사 계좌 등록' })).toHaveAttribute(
+      'href',
+      '/securities',
+    )
     expect(screen.queryByText(/비밀번호/)).toHaveTextContent(
       '비밀번호는 보안을 위해 표시하지 않습니다.',
     )

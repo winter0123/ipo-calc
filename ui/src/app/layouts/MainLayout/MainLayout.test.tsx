@@ -76,7 +76,7 @@ describe('MainLayout', () => {
     expect(main).toContainElement(screen.getByTestId('child-content'))
   })
 
-  it('설정에는 마이페이지·로그아웃·계좌·알림이 있고 증권사 연동은 없다', async () => {
+  it('설정에는 마이페이지·로그아웃·알림이 있고 계좌등록·증권사 연동은 없다', async () => {
     loggedInAs('USER')
     renderLayout()
 
@@ -87,15 +87,12 @@ describe('MainLayout', () => {
       '/my-page',
     )
     expect(within(nav).getByRole('button', { name: '로그아웃' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: '증권사 계좌 등록' })).toHaveAttribute(
-      'href',
-      '/securities',
-    )
     expect(within(nav).getByRole('link', { name: '알림 설정' })).toHaveAttribute(
       'href',
       '/notifications',
     )
     expect(within(nav).queryByRole('link', { name: '투자자 추가' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: '증권사 계좌 등록' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: '증권사 연동' })).not.toBeInTheDocument()
     expect(screen.getByRole('banner')).toContainElement(nav)
   })
@@ -107,7 +104,7 @@ describe('MainLayout', () => {
     expect(screen.queryByRole('navigation', { name: '주요 메뉴' })).not.toBeInTheDocument()
   })
 
-  it('로그인 전 메뉴에는 이용가이드·공모주 일정만 있고 로그인·가입하기는 헤더 우측 버튼임', async () => {
+  it('로그인 전 메뉴에는 홈·공모주 일정만 있고 로그인·가입하기는 헤더 우측 버튼임', async () => {
     renderLayout()
 
     const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
@@ -115,15 +112,14 @@ describe('MainLayout', () => {
       within(nav)
         .getAllByRole('link')
         .map((l) => l.textContent),
-    ).toEqual(['이용가이드', '공모주 일정'])
-    expect(within(nav).getByRole('link', { name: '이용가이드' })).toHaveAttribute(
-      'href',
-      '/user-guides/manual/index.html',
-    )
-    expect(within(nav).getByRole('link', { name: '공모주 일정' })).toHaveAttribute(
-      'href',
-      '/ipo-calendar',
-    )
+    ).toEqual(['홈'])
+    expect(within(nav).getByRole('link', { name: '홈' })).toHaveAttribute('href', '/')
+    expect(within(nav).queryByRole('link', { name: '공모주 일정' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('banner')).getByRole('link', { name: '공모주 일정' }),
+    ).toHaveAttribute('href', '/ipo-calendar')
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
+    expect(screen.queryByRole('button', { name: '메뉴' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: '대시보드' })).not.toBeInTheDocument()
 
@@ -182,15 +178,16 @@ describe('MainLayout', () => {
       expect(within(nav).queryByRole('button', { name: '관리자' })).not.toBeInTheDocument()
     })
 
-    it('공모주 청약 그룹에 일정·청약·배정·매도 화면이 요청한 이름으로 보임', async () => {
+    it('공모주 일정은 앞에 단독으로 두고 청약 그룹에는 청약·배정·매도를 표시함', async () => {
       loggedInAs('USER')
       renderLayout()
 
+      const nav = await screen.findByRole('navigation', { name: '주요 메뉴' })
+      const calendarLink = within(nav).getByRole('link', { name: '공모주 일정' })
+      expect(nav.firstElementChild).toBe(calendarLink)
+      expect(calendarLink.closest('[role="group"]')).toBeNull()
+
       await userEvent.click(await screen.findByRole('button', { name: '공모주 청약' }))
-      expect(screen.getByRole('link', { name: '공모주 일정' })).toHaveAttribute(
-        'href',
-        '/ipo-calendar',
-      )
       expect(screen.getByRole('link', { name: '공모주 청약' })).toHaveAttribute(
         'href',
         '/subscriptions/register',
@@ -250,8 +247,6 @@ describe('MainLayout', () => {
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => expect(screen.getByRole('button', { name: '로그아웃' })).toHaveFocus())
       await userEvent.keyboard('{ArrowDown}')
-      expect(screen.getByRole('link', { name: '증권사 계좌 등록' })).toHaveFocus()
-      await userEvent.keyboard('{ArrowDown}')
       expect(screen.getByRole('link', { name: '알림 설정' })).toHaveFocus()
     })
 
@@ -260,10 +255,10 @@ describe('MainLayout', () => {
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       render(
         <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/securities']}>
+          <MemoryRouter initialEntries={['/notifications']}>
             <Routes>
               <Route element={<MainLayout />}>
-                <Route path="securities" element={<TestChild />} />
+                <Route path="notifications" element={<TestChild />} />
               </Route>
             </Routes>
           </MemoryRouter>

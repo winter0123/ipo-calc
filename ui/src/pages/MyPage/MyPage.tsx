@@ -1,3 +1,4 @@
+import { UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useInvestors } from '@/entities/investor/index.ts'
@@ -77,19 +78,29 @@ export default function MyPage() {
             <h2 id="investor-status-title">사용자 현황</h2>
             <p>현재 등록된 투자자 {investors.length}명</p>
           </div>
-          <Link to="/investors/register" className={styles.addInvestorButton}>
-            투자자 추가
-          </Link>
+          <div className={styles.investorActions}>
+            <Link to="/investors/register" className={styles.addInvestorButton}>
+              투자자 추가
+            </Link>
+            <Link to="/securities" className={styles.securitiesAccountButton}>
+              증권사 계좌 등록
+            </Link>
+          </div>
         </div>
         {investors.length > 0 ? (
           <ul className={styles.investorList} aria-label="현재 등록된 투자자">
             {investors.map((investor) => (
               <li key={investor.id} className={styles.investorRow}>
-                <span>{investor.displayName}</span>
-                <span>
-                  {investor.relationship
-                    ? (RELATIONSHIP_LABELS[investor.relationship] ?? investor.relationship)
-                    : '관계 미입력'}
+                <span className={styles.investorAvatar} aria-hidden="true">
+                  <UserRound size={24} strokeWidth={1.8} />
+                </span>
+                <span className={styles.investorInfo}>
+                  <span className={styles.investorName}>{investor.displayName}</span>
+                  <span className={styles.investorRelationship}>
+                    {investor.relationship
+                      ? (RELATIONSHIP_LABELS[investor.relationship] ?? investor.relationship)
+                      : '관계 미입력'}
+                  </span>
                 </span>
               </li>
             ))}
