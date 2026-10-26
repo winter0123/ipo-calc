@@ -93,10 +93,13 @@ export default function AllocationRegisterForm() {
           {...register('allocatedQuantity', {
             required: '배정수량을 입력해 주세요.',
             valueAsNumber: true,
-            validate: (v) => (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.',
+            validate: (v) => (Number.isInteger(v) && v >= 0) || '0 이상 정수를 입력해 주세요.',
           })}
           disabled={isPending}
         />
+        <span className={styles.hint}>
+          배정 결과를 확인했지만 배정받지 못한 경우 0주를 입력하세요.
+        </span>
         {errors.allocatedQuantity && (
           <span id="allocatedQuantity-error" className={styles.error} aria-live="polite">
             {String(errors.allocatedQuantity.message)}

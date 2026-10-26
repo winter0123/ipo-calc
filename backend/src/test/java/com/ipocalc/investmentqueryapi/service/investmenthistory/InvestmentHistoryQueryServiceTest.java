@@ -527,6 +527,8 @@ class InvestmentHistoryQueryServiceTest {
     InvestmentHistoryDto dto = result.getContent().get(0);
     assertThat(dto.getInvestorName()).isEqualTo("테스트 투자자");
     assertThat(dto.getSecuritiesFirmName()).isEqualTo("테스트 증권사");
+    assertThat(dto.getSecuritiesAccountId()).isEqualTo(SECURITIES_ACCOUNT_ID);
+    assertThat(dto.getSecuritiesAccountName()).isEqualTo("테스트 계좌");
   }
 
   @Test

@@ -23,7 +23,9 @@ public class InvestmentHistoryAssembler {
       List<Sale> activeSales,
       Map<Long, Ipo> ipoMap,
       String investorName,
-      String securitiesFirmName) {
+      String securitiesFirmName,
+      Long securitiesAccountId,
+      String securitiesAccountName) {
     InvestmentHistoryDto dto = new InvestmentHistoryDto();
 
     dto.setId(subscription.getId());
@@ -41,6 +43,8 @@ public class InvestmentHistoryAssembler {
     dto.setSubscriptionStatus(subscription.getStatus().name());
     dto.setInvestorName(investorName);
     dto.setSecuritiesFirmName(securitiesFirmName);
+    dto.setSecuritiesAccountId(securitiesAccountId);
+    dto.setSecuritiesAccountName(securitiesAccountName);
 
     if (allocation != null) {
       AllocationSummaryDto allocationDto = new AllocationSummaryDto();
@@ -92,7 +96,8 @@ public class InvestmentHistoryAssembler {
       Map<Long, List<Sale>> saleMap,
       Map<Long, Ipo> ipoMap,
       Map<Long, String> investorNameMap,
-      Map<Long, String> securitiesFirmNameMap) {
+      Map<Long, String> securitiesFirmNameMap,
+      Map<Long, String> securitiesAccountNameMap) {
     return subscriptions.stream()
         .map(
             subscription -> {
@@ -109,8 +114,19 @@ public class InvestmentHistoryAssembler {
                   securitiesFirmNameMap != null
                       ? securitiesFirmNameMap.get(subscription.getSecuritiesAccountId())
                       : null;
+              String securitiesAccountName =
+                  securitiesAccountNameMap != null
+                      ? securitiesAccountNameMap.get(subscription.getSecuritiesAccountId())
+                      : null;
               return toDto(
-                  subscription, allocation, sales, ipoMap, investorName, securitiesFirmName);
+                  subscription,
+                  allocation,
+                  sales,
+                  ipoMap,
+                  investorName,
+                  securitiesFirmName,
+                  subscription.getSecuritiesAccountId(),
+                  securitiesAccountName);
             })
         .collect(Collectors.toList());
   }

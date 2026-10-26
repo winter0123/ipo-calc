@@ -1,41 +1,59 @@
+import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import {
-  SubscriptionFilter,
-  SubscriptionList,
-  parseSubscriptionFilter,
-  type SubscriptionFilterValue,
-} from '@/features/subscription-list/index.ts'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { useInvestmentHistory } from '@/entities/subscription/index.ts'
-import styles from './SubscriptionListPage.module.css'
+import { useIpos } from '@/entities/ipo/index.ts'
+import { useAllInvestmentHistory } from '@/entities/subscription/index.ts'
+import {
+  SubscriptionScheduleList,
+  aggregateSubscriptionSchedule,
+  currentMonthRange,
+  filterIposBySubscriptionStart,
+  parseDateRange,
+} from '@/features/subscription-list/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
+import styles from './SubscriptionListPage.module.css'
 
 export default function SubscriptionListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const filter = parseSubscriptionFilter(searchParams.get('status'))
-  const setFilter = (value: SubscriptionFilterValue) => {
+  const fallback = currentMonthRange()
+  const range = parseDateRange(searchParams.get('from'), searchParams.get('to'))
+  useEffect(() => {
+    if (searchParams.has('from') && searchParams.has('to')) return
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
-        if (value === 'all') next.delete('status')
-        else next.set('status', value)
+        if (!next.has('from')) next.set('from', fallback.from)
+        if (!next.has('to')) next.set('to', fallback.to)
+        return next
+      },
+      { replace: true },
+    )
+  }, [fallback.from, fallback.to, searchParams, setSearchParams])
+  const { current, isLoading: investorLoading, needsSelection } = useCurrentInvestor()
+  const iposQuery = useIpos()
+  const historyQuery = useAllInvestmentHistory(current ? { investorId: current.id } : {}, {
+    enabled: !!current,
+  })
+  const updateRange = (key: 'from' | 'to', value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set(key, value)
+        const otherKey = key === 'from' ? 'to' : 'from'
+        if (!next.has(otherKey)) next.set(otherKey, fallback[otherKey])
+        const otherValue = next.get(otherKey) ?? fallback[otherKey]
+        if ((key === 'from' && value > otherValue) || (key === 'to' && value < otherValue)) {
+          next.set(otherKey, value)
+        }
         return next
       },
       { replace: true },
     )
   }
-  // 현재 투자자(상단 전환기)의 청약만 보여 준다.
-  const { current, isLoading: investorLoading } = useCurrentInvestor()
-  const { data, isLoading, error } = useInvestmentHistory(
-    current ? { investorId: current.id } : {},
-    { enabled: !!current },
+  const schedule = aggregateSubscriptionSchedule(
+    filterIposBySubscriptionStart(iposQuery.data ?? [], range),
+    historyQuery.data ?? [],
   )
-
-  const getErrorMessage = () =>
-    toErrorMessage(error, {
-      byStatus: { 404: '투자자 정보를 찾을 수 없습니다.' },
-      fallback: '청약 목록을 불러오는 데 실패했습니다.',
-    })
 
   return (
     <div className={styles.container}>
@@ -45,18 +63,56 @@ export default function SubscriptionListPage() {
           새 청약 등록
         </Link>
       </div>
+      <div className={styles.dateRange}>
+        <label>
+          시작일
+          <input
+            type="date"
+            value={range.from}
+            onChange={(event) => updateRange('from', event.target.value)}
+          />
+        </label>
+        <label>
+          종료일
+          <input
+            type="date"
+            value={range.to}
+            onChange={(event) => updateRange('to', event.target.value)}
+          />
+        </label>
+      </div>
 
-      <SubscriptionFilter value={filter} onChange={setFilter} />
-
-      {(isLoading || investorLoading) && <p className={styles.status}>목록을 불러오는 중...</p>}
-
-      {error && (
-        <p className={styles.error} role="alert">
-          {getErrorMessage()}
+      {investorLoading && <p className={styles.status}>투자자 정보를 불러오는 중...</p>}
+      {needsSelection && (
+        <p className={styles.status} role="status">
+          상단에서 투자자를 선택해 청약 상태를 확인해 주세요.
         </p>
       )}
-
-      {data && <SubscriptionList items={data.content} filter={filter} />}
+      {!investorLoading && !current && !needsSelection && (
+        <p className={styles.status} role="status">
+          선택할 투자자가 없습니다.
+        </p>
+      )}
+      {iposQuery.isLoading && <p className={styles.status}>공모주 일정을 불러오는 중...</p>}
+      {current && historyQuery.isLoading && (
+        <p className={styles.status}>투자내역을 불러오는 중...</p>
+      )}
+      {iposQuery.error && (
+        <p className={styles.error} role="alert">
+          {toErrorMessage(iposQuery.error, { fallback: '공모주 일정을 불러오는 데 실패했습니다.' })}
+        </p>
+      )}
+      {current && historyQuery.error && (
+        <p className={styles.error} role="alert">
+          {toErrorMessage(historyQuery.error, { fallback: '투자내역을 불러오는 데 실패했습니다.' })}
+        </p>
+      )}
+      {!iposQuery.isLoading &&
+        !iposQuery.error &&
+        !(current && historyQuery.isLoading) &&
+        !(current && historyQuery.error) && (
+          <SubscriptionScheduleList items={schedule} investorSelected={!!current} />
+        )}
     </div>
   )
 }

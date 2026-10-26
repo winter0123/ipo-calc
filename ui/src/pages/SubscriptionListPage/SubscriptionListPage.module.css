@@ -38,3 +38,22 @@
 .registerButton:hover {
   background-color: var(--primary-hover);
 }
+
+.dateRange {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.dateRange label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--ink-muted);
+}
+.dateRange input {
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+}

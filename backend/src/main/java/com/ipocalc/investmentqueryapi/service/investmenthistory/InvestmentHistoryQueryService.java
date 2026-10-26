@@ -98,11 +98,13 @@ public class InvestmentHistoryQueryService {
 
     // g. SecuritiesAccount 조회 (증권사명용)
     String securitiesFirmName = null;
+    String securitiesAccountName = null;
     SecuritiesAccount securitiesAccount =
         securitiesAccountRepository
             .findByIdAndDeletedAtIsNull(subscription.getSecuritiesAccountId())
             .orElse(null);
     if (securitiesAccount != null) {
+      securitiesAccountName = securitiesAccount.getAccountName();
       SecuritiesFirm securitiesFirm =
           securitiesFirmRepository
               .findByIdAndDeletedAtIsNull(securitiesAccount.getSecuritiesFirmId())
@@ -114,7 +116,14 @@ public class InvestmentHistoryQueryService {
 
     // h. Assembler로 DTO 조합
     return assembler.toDto(
-        subscription, allocation, activeSales, ipoMap, investorName, securitiesFirmName);
+        subscription,
+        allocation,
+        activeSales,
+        ipoMap,
+        investorName,
+        securitiesFirmName,
+        subscription.getSecuritiesAccountId(),
+        securitiesAccountName);
   }
 
   /** 투자자·증권계좌·공모주 조건으로 투자 이력을 페이지 조회한다. */
@@ -210,6 +219,7 @@ public class InvestmentHistoryQueryService {
 
     // Step 3c: SecuritiesAccount 배치 조회 -> SecuritiesFirm 배치 조회 (securitiesFirmName용)
     Map<Long, String> securitiesFirmNameMap = Map.of();
+    Map<Long, String> securitiesAccountNameMap = Map.of();
     if (!subscriptionIds.isEmpty()) {
       Set<Long> securitiesAccountIds =
           subscriptionList.stream()
@@ -231,9 +241,11 @@ public class InvestmentHistoryQueryService {
                   Collectors.toMap(SecuritiesFirm::getId, java.util.function.Function.identity()));
 
       securitiesFirmNameMap = new LinkedHashMap<>();
+      securitiesAccountNameMap = new LinkedHashMap<>();
       for (Map.Entry<Long, SecuritiesAccount> entry : securitiesAccountMap.entrySet()) {
         SecuritiesFirm sf = securitiesFirmMap.get(entry.getValue().getSecuritiesFirmId());
         securitiesFirmNameMap.put(entry.getKey(), sf != null ? sf.getName() : null);
+        securitiesAccountNameMap.put(entry.getKey(), entry.getValue().getAccountName());
       }
     }
 
@@ -245,7 +257,8 @@ public class InvestmentHistoryQueryService {
             saleMap,
             ipoMap,
             investorNameMap,
-            securitiesFirmNameMap);
+            securitiesFirmNameMap,
+            securitiesAccountNameMap);
 
     // Step 5: 페이지 메타데이터 및 반환
     return new PageImpl<>(

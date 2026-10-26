@@ -47,6 +47,11 @@
   font-size: 13px;
 }
 
+.hint {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
 .formError {
   padding: var(--space-3) var(--space-4);
   background: var(--danger-bg);
