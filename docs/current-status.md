@@ -8,7 +8,7 @@
 - 로그인 전에는 브랜드 아이콘이 홈으로 이동하고 메뉴를 열지 않는다. 공모주 일정은 메뉴에서 바로 갈 수 있도록 노출하며, 마이페이지의 투자자·계좌 등록 동선도 정리했다.
 - README에 운영 도메인을 표시하고 현재 운영 방식과 다른 클라우드 배포 문서를 제거했다.
 - 검증: UI 테스트 702건·lint·typecheck·format:check·build PASS. Backend 테스트 1,099건·Checkstyle·`build` PASS. DB 자격증명은 로컬 `.envrc` 값을 프로세스 환경변수로 사용했으며 문서·로그에 값을 기록하지 않았다.
-- GitHub 이슈 [#486](https://github.com/winter0123/ipo-calc/issues/486)에서 추적한다. 브라우저 실동작 확인은 NOT_RUN이며, PR 생성 전이다.
+- GitHub 이슈 [#486](https://github.com/winter0123/ipo-calc/issues/486), PR [#487](https://github.com/winter0123/ipo-calc/pull/487)에서 추적한다. 로컬 자동 검증 PASS, 브라우저 실동작 확인은 NOT_RUN이며, CI 확인 후 병합한다.
 
 ## 최신 작업 (2026-10-26): 오래된 클라우드 배포 문서 제거
 
