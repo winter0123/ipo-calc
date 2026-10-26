@@ -331,10 +331,6 @@ export const StyleScope = styled.div`
     color: var(--danger);
   }
 
-  .s-e1b278a-mobileEventCount {
-    display: none;
-  }
-
   .s-e1b278a-dateCell.s-e1b278a-today.s-e1b278a-hasHoliday .s-e1b278a-dateNumber {
     background: var(--primary);
     color: var(--white);
@@ -559,46 +555,12 @@ export const StyleScope = styled.div`
       display: none;
     }
 
-    .s-e1b278a-week {
-      min-height: 72px;
-      grid-template-rows: minmax(72px, auto);
-    }
-
     .s-e1b278a-emptyCell,
     .s-e1b278a-dateCell {
       min-height: 72px;
     }
 
-    .s-e1b278a-dateCell {
-      align-items: center;
-      padding: var(--space-1) 2px;
-    }
-
-    .s-e1b278a-dateHead {
-      align-items: center;
-    }
-
-    .s-e1b278a-dateNumber {
-      margin-left: 0;
-    }
-
-    .s-e1b278a-mobileEventCount {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 30px;
-      min-height: 20px;
-      padding: 0 3px;
-      border-radius: 999px;
-      background: var(--surface-sea);
-      color: var(--primary);
-      font-size: 10px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
     .s-e1b278a-bar {
-      display: none;
       font-size: 11px;
       height: 18px;
       padding: 0 4px;
