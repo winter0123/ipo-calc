@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import type { IpoSyncStatus } from '@/entities/ipo/index.ts'
 import { useIpoSyncNow } from './useIpoSyncNow.ts'
-import styles from './IpoSyncNowPanel.module.css'
+import styles, { StyleScope } from './IpoSyncNowPanel.styles.ts'
 
 const ERROR_FALLBACK = '가져오기에 실패했습니다. 잠시 후 다시 시도해 주세요.'
 const MIN_MONTH = '2015-01'
@@ -48,57 +48,61 @@ export default function IpoSyncNowPanel() {
   const text = statusText(status)
 
   return (
-    <section className={styles.panel} aria-label="DART 공모주 가져오기">
-      <div className={styles.range}>
-        <label className={styles.field}>
-          시작 월
-          <input
-            type="month"
-            value={fromMonth}
-            min={MIN_MONTH}
-            max={thisMonth}
-            disabled={isRunning}
-            onChange={(e) => setFromMonth(e.target.value)}
-          />
-        </label>
-        <label className={styles.field}>
-          끝 월
-          <input
-            type="month"
-            value={toMonth}
-            min={MIN_MONTH}
-            max={thisMonth}
-            disabled={isRunning}
-            onChange={(e) => setToMonth(e.target.value)}
-          />
-        </label>
-      </div>
-      <p className={styles.description}>
-        고른 기간의 공모주와 상세 정보를 DART에서 가져옵니다. 1년이면 몇 분 걸릴 수 있습니다. 매일
-        새벽에는 최근 공모주를 자동으로 가져옵니다.
-      </p>
-      <button
-        type="button"
-        className={styles.button}
-        disabled={isRunning || rangeError !== null}
-        aria-describedby={rangeError ? 'sync-range-error' : undefined}
-        onClick={() => start.mutate({ fromMonth, toMonth })}
-      >
-        {isRunning ? '가져오는 중…' : 'DART에서 가져오기'}
-      </button>
-      {rangeError && (
-        <p id="sync-range-error" className={styles.error}>
-          {rangeError}
-        </p>
-      )}
-      <div role="status" aria-live="polite" className={styles.status}>
-        {text}
-      </div>
-      {errorMessage && (
-        <div role="alert" className={styles.error}>
-          {errorMessage}
-        </div>
-      )}
-    </section>
+    <StyleScope>
+      {
+        <section className={styles.panel} aria-label="DART 공모주 가져오기">
+          <div className={styles.range}>
+            <label className={styles.field}>
+              시작 월
+              <input
+                type="month"
+                value={fromMonth}
+                min={MIN_MONTH}
+                max={thisMonth}
+                disabled={isRunning}
+                onChange={(e) => setFromMonth(e.target.value)}
+              />
+            </label>
+            <label className={styles.field}>
+              끝 월
+              <input
+                type="month"
+                value={toMonth}
+                min={MIN_MONTH}
+                max={thisMonth}
+                disabled={isRunning}
+                onChange={(e) => setToMonth(e.target.value)}
+              />
+            </label>
+          </div>
+          <p className={styles.description}>
+            고른 기간의 공모주와 상세 정보를 DART에서 가져옵니다. 1년이면 몇 분 걸릴 수 있습니다.
+            매일 새벽에는 최근 공모주를 자동으로 가져옵니다.
+          </p>
+          <button
+            type="button"
+            className={styles.button}
+            disabled={isRunning || rangeError !== null}
+            aria-describedby={rangeError ? 'sync-range-error' : undefined}
+            onClick={() => start.mutate({ fromMonth, toMonth })}
+          >
+            {isRunning ? '가져오는 중…' : 'DART에서 가져오기'}
+          </button>
+          {rangeError && (
+            <p id="sync-range-error" className={styles.error}>
+              {rangeError}
+            </p>
+          )}
+          <div role="status" aria-live="polite" className={styles.status}>
+            {text}
+          </div>
+          {errorMessage && (
+            <div role="alert" className={styles.error}>
+              {errorMessage}
+            </div>
+          )}
+        </section>
+      }
+    </StyleScope>
   )
 }

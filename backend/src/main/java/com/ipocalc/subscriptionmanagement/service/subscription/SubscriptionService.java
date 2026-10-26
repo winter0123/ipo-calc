@@ -145,8 +145,9 @@ public class SubscriptionService {
     if (updatedInvestorId != null) {
       validateInvestorOwnership(updatedInvestorId);
     }
+    SecuritiesAccount selectedAccount = null;
     if (updatedSecuritiesAccountId != null) {
-      validateSecuritiesAccountOwnership(updatedSecuritiesAccountId);
+      selectedAccount = validateSecuritiesAccountOwnership(updatedSecuritiesAccountId);
     }
     if (updatedIpoId != null) {
       validateIpoExists(updatedIpoId);
@@ -161,8 +162,11 @@ public class SubscriptionService {
     Long finalIpoId = updatedIpoId != null ? updatedIpoId : subscription.getIpoId();
 
     if (updatedInvestorId != null || updatedSecuritiesAccountId != null) {
-      requireAccountOfInvestor(
-          validateSecuritiesAccountOwnership(finalSecuritiesAccountId), finalInvestorId);
+      SecuritiesAccount account =
+          selectedAccount != null
+              ? selectedAccount
+              : validateSecuritiesAccountOwnership(finalSecuritiesAccountId);
+      requireAccountOfInvestor(account, finalInvestorId);
     }
     checkDuplicate(finalInvestorId, finalSecuritiesAccountId, finalIpoId, id);
 

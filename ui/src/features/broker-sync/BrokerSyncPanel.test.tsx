@@ -32,6 +32,22 @@ const PREVIEW = {
   allocationsWithoutStockCode: [77],
 }
 
+const CONFIRMED_SALE = {
+  id: 1,
+  allocationId: 30,
+  quantity: 10,
+  price: 10000,
+  amount: 100000,
+  saleDate: '2026-09-30T00:00:00',
+  fee: 2000,
+  tax: 400,
+  otherCost: 0,
+  status: 'ACTIVE',
+  deletedAt: null,
+  createdAt: '2026-09-30T00:00:00',
+  updatedAt: '2026-09-30T00:00:00',
+}
+
 const isPreview = (path: unknown) => String(path).includes('/broker-sync/preview')
 const previewCalls = () =>
   vi
@@ -65,6 +81,7 @@ function setup(preview: unknown = PREVIEW, provider = 'KIS') {
       if (preview instanceof Error) throw preview
       return preview
     }
+    if (String(path).endsWith('/broker-sync/confirm')) return [CONFIRMED_SALE]
     return undefined
   })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })

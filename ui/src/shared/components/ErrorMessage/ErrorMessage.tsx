@@ -1,4 +1,15 @@
-import styles from './ErrorMessage.module.css'
+import styled from 'styled-components'
+
+const Message = styled.p`
+  margin: 0;
+  padding: 12px 16px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+`
 
 export interface ErrorMessageProps {
   message?: string | null
@@ -8,12 +19,9 @@ export interface ErrorMessageProps {
 
 export default function ErrorMessage({ message, id, className }: ErrorMessageProps) {
   if (!message) return null
-
-  const classNames = [styles.error, className].filter(Boolean).join(' ')
-
   return (
-    <p id={id} role="alert" className={classNames}>
+    <Message id={id} role="alert" className={className}>
       {message}
-    </p>
+    </Message>
   )
 }

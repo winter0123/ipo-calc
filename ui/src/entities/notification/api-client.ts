@@ -1,7 +1,7 @@
-import { apiFetch } from '@/shared/api/client.ts'
-import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
 import {
   preferencesSchema,
+  successResponseSchema,
   testResultSchema,
   vapidKeySchema,
   type NotificationPreferences,
@@ -20,28 +20,27 @@ export function fetchPreferences(signal?: AbortSignal): Promise<NotificationPref
 export async function savePreferences(
   data: NotificationPreferences,
 ): Promise<NotificationPreferences> {
-  const body = await apiFetch<unknown>('/notifications/preferences', {
+  return apiFetchParsed('/notifications/preferences', preferencesSchema, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
-  return preferencesSchema.parse(body)
 }
 
 export function registerPushSubscription(data: PushSubscriptionPayload): Promise<void> {
-  return apiFetch<void>('/notifications/subscriptions', {
+  return apiFetchParsed('/notifications/subscriptions', successResponseSchema, {
     method: 'POST',
     body: JSON.stringify(data),
-  })
+  }).then(() => undefined)
 }
 
 export function removePushSubscription(endpoint: string): Promise<void> {
-  return apiFetch<void>('/notifications/subscriptions', {
+  return apiFetchParsed('/notifications/subscriptions', successResponseSchema, {
     method: 'DELETE',
     body: JSON.stringify({ endpoint }),
-  })
+  }).then(() => undefined)
 }
 
 export async function sendTestNotification(): Promise<number> {
-  const body = await apiFetch<unknown>('/notifications/test', { method: 'POST' })
-  return testResultSchema.parse(body).sent
+  const result = await apiFetchParsed('/notifications/test', testResultSchema, { method: 'POST' })
+  return result.sent
 }

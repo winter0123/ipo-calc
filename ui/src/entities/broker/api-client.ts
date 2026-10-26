@@ -1,12 +1,11 @@
 import { apiFetch } from '@/shared/api/client.ts'
-import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
 import {
   brokerCredentialSchema,
   syncPreviewSchema,
   type BrokerCredential,
   type BrokerCredentialRegisterRequest,
   type BrokerCredentialReplaceRequest,
-  type SyncConfirmSale,
   type SyncPreview,
   type SyncRange,
 } from './types.ts'
@@ -24,7 +23,7 @@ export function registerBrokerCredential(
   securitiesAccountId: number,
   data: BrokerCredentialRegisterRequest,
 ): Promise<BrokerCredential> {
-  return apiFetch<BrokerCredential>(`${base(securitiesAccountId)}/api-credential`, {
+  return apiFetchParsed(`${base(securitiesAccountId)}/api-credential`, brokerCredentialSchema, {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -34,7 +33,7 @@ export function replaceBrokerCredential(
   securitiesAccountId: number,
   data: BrokerCredentialReplaceRequest,
 ): Promise<BrokerCredential> {
-  return apiFetch<BrokerCredential>(`${base(securitiesAccountId)}/api-credential`, {
+  return apiFetchParsed(`${base(securitiesAccountId)}/api-credential`, brokerCredentialSchema, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
@@ -55,11 +54,4 @@ export function fetchSyncPreview(
     syncPreviewSchema,
     signal,
   )
-}
-
-export function confirmSync(securitiesAccountId: number, sales: SyncConfirmSale[]): Promise<void> {
-  return apiFetch<void>(`${base(securitiesAccountId)}/broker-sync/confirm`, {
-    method: 'POST',
-    body: JSON.stringify({ sales }),
-  })
 }

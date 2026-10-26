@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useInvestors } from '@/entities/investor/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
-import styles from './MyPage.module.css'
+import styles, { StyleScope } from './MyPage.styles.ts'
 
 const RELATIONSHIP_LABELS: Record<string, string> = {
   SELF: '본인',
@@ -25,14 +25,18 @@ export default function MyPage() {
 
   if (accountQuery.error || investorsQuery.error || !accountQuery.data) {
     return (
-      <div className={styles.container}>
-        <h1>마이페이지</h1>
-        <p role="alert">
-          {toErrorMessage(accountQuery.error ?? investorsQuery.error, {
-            fallback: '회원 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
-          })}
-        </p>
-      </div>
+      <StyleScope>
+        {
+          <div className={styles.container}>
+            <h1>마이페이지</h1>
+            <p role="alert">
+              {toErrorMessage(accountQuery.error ?? investorsQuery.error, {
+                fallback: '회원 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
+              })}
+            </p>
+          </div>
+        }
+      </StyleScope>
     )
   }
 
@@ -43,73 +47,77 @@ export default function MyPage() {
   const investors = investorsQuery.data ?? []
 
   return (
-    <div className={styles.container}>
-      <h1>마이페이지</h1>
-      <p className={styles.description}>회원가입 때 입력한 정보를 확인할 수 있습니다.</p>
-      <dl className={styles.profile}>
-        <div>
-          <dt>이메일</dt>
-          <dd>{accountQuery.data.email}</dd>
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <h1>마이페이지</h1>
+          <p className={styles.description}>회원가입 때 입력한 정보를 확인할 수 있습니다.</p>
+          <dl className={styles.profile}>
+            <div>
+              <dt>이메일</dt>
+              <dd>{accountQuery.data.email}</dd>
+            </div>
+            <div>
+              <dt>닉네임</dt>
+              <dd>{accountQuery.data.nickname}</dd>
+            </div>
+            <div>
+              <dt>이름</dt>
+              <dd>{accountQuery.data.name || '등록된 이름이 없습니다.'}</dd>
+            </div>
+            <div>
+              <dt>투자자 표시 이름</dt>
+              <dd>{selfInvestor?.displayName ?? '가입 당시 본인 투자자 정보가 없습니다.'}</dd>
+            </div>
+            <div>
+              <dt>관계</dt>
+              <dd>
+                {selfInvestor?.relationship
+                  ? (RELATIONSHIP_LABELS[selfInvestor.relationship] ?? selfInvestor.relationship)
+                  : '가입 당시 본인 투자자 정보가 없습니다.'}
+              </dd>
+            </div>
+          </dl>
+          <section className={styles.investors} aria-labelledby="investor-status-title">
+            <div className={styles.investorsHeader}>
+              <div>
+                <h2 id="investor-status-title">사용자 현황</h2>
+                <p>현재 등록된 투자자 {investors.length}명</p>
+              </div>
+              <div className={styles.investorActions}>
+                <Link to="/investors/register" className={styles.addInvestorButton}>
+                  투자자 추가
+                </Link>
+                <Link to="/securities" className={styles.securitiesAccountButton}>
+                  증권사 계좌 등록
+                </Link>
+              </div>
+            </div>
+            {investors.length > 0 ? (
+              <ul className={styles.investorList} aria-label="현재 등록된 투자자">
+                {investors.map((investor) => (
+                  <li key={investor.id} className={styles.investorRow}>
+                    <span className={styles.investorAvatar} aria-hidden="true">
+                      <UserRound size={24} strokeWidth={1.8} />
+                    </span>
+                    <span className={styles.investorInfo}>
+                      <span className={styles.investorName}>{investor.displayName}</span>
+                      <span className={styles.investorRelationship}>
+                        {investor.relationship
+                          ? (RELATIONSHIP_LABELS[investor.relationship] ?? investor.relationship)
+                          : '관계 미입력'}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>등록된 투자자가 없습니다.</p>
+            )}
+          </section>
+          <p className={styles.note}>비밀번호는 보안을 위해 표시하지 않습니다.</p>
         </div>
-        <div>
-          <dt>닉네임</dt>
-          <dd>{accountQuery.data.nickname}</dd>
-        </div>
-        <div>
-          <dt>이름</dt>
-          <dd>{accountQuery.data.name || '등록된 이름이 없습니다.'}</dd>
-        </div>
-        <div>
-          <dt>투자자 표시 이름</dt>
-          <dd>{selfInvestor?.displayName ?? '가입 당시 본인 투자자 정보가 없습니다.'}</dd>
-        </div>
-        <div>
-          <dt>관계</dt>
-          <dd>
-            {selfInvestor?.relationship
-              ? (RELATIONSHIP_LABELS[selfInvestor.relationship] ?? selfInvestor.relationship)
-              : '가입 당시 본인 투자자 정보가 없습니다.'}
-          </dd>
-        </div>
-      </dl>
-      <section className={styles.investors} aria-labelledby="investor-status-title">
-        <div className={styles.investorsHeader}>
-          <div>
-            <h2 id="investor-status-title">사용자 현황</h2>
-            <p>현재 등록된 투자자 {investors.length}명</p>
-          </div>
-          <div className={styles.investorActions}>
-            <Link to="/investors/register" className={styles.addInvestorButton}>
-              투자자 추가
-            </Link>
-            <Link to="/securities" className={styles.securitiesAccountButton}>
-              증권사 계좌 등록
-            </Link>
-          </div>
-        </div>
-        {investors.length > 0 ? (
-          <ul className={styles.investorList} aria-label="현재 등록된 투자자">
-            {investors.map((investor) => (
-              <li key={investor.id} className={styles.investorRow}>
-                <span className={styles.investorAvatar} aria-hidden="true">
-                  <UserRound size={24} strokeWidth={1.8} />
-                </span>
-                <span className={styles.investorInfo}>
-                  <span className={styles.investorName}>{investor.displayName}</span>
-                  <span className={styles.investorRelationship}>
-                    {investor.relationship
-                      ? (RELATIONSHIP_LABELS[investor.relationship] ?? investor.relationship)
-                      : '관계 미입력'}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>등록된 투자자가 없습니다.</p>
-        )}
-      </section>
-      <p className={styles.note}>비밀번호는 보안을 위해 표시하지 않습니다.</p>
-    </div>
+      }
+    </StyleScope>
   )
 }

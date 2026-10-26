@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import styles from './PeriodSelector.module.css'
+import styles, { StyleScope } from './PeriodSelector.styles.ts'
 
 interface PeriodSelectorProps {
   unit: 'month' | 'year'
@@ -139,95 +139,106 @@ export default function PeriodSelector({
   }
 
   return (
-    <div className={styles.container}>
-      <div id="period-announcer" className={styles.announcer} aria-live="polite" aria-atomic="true">
-        {announcement}
-      </div>
-
-      <h2 id="period-heading" className={styles.heading}>
-        {unit === 'month' ? `${year}년 ${month}월` : `${year}년`}
-      </h2>
-      <p className={styles.hint}>
-        공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
-      </p>
-
-      <div className={styles.controls}>
-        <button
-          type="button"
-          className={styles.navButton}
-          onClick={handlePrevPeriod}
-          aria-label={unit === 'month' ? '이전 달로 이동' : '이전 연도로 이동'}
-          disabled={year <= MIN_YEAR && (unit !== 'month' || month <= 1)}
-        >
-          {unit === 'month' ? '◀ 이전 달' : '◀ 이전 연도'}
-        </button>
-
-        <div className={styles.inputGroup}>
-          <label htmlFor="period-year" className={styles.label}>
-            연도
-          </label>
-          <input
-            id="period-year"
-            type="number"
-            className={`${styles.input} ${error ? styles.inputError : ''}`}
-            value={year}
-            onChange={(e) => handleYearChange(e.target.value ? Number(e.target.value) : undefined)}
-            onKeyDown={handleKeyDown}
-            aria-label="연도 입력"
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'period-year-error' : undefined}
-            min={MIN_YEAR}
-            max={currentYear + 1}
-          />
-          {error && (
-            <span id="period-year-error" className={styles.error} role="alert">
-              {error}
-            </span>
-          )}
-        </div>
-
-        {unit === 'month' && (
-          <div className={styles.inputGroup}>
-            <label htmlFor="period-month" className={styles.label}>
-              월
-            </label>
-            <select
-              id="period-month"
-              className={`${styles.select} ${error ? styles.inputError : ''}`}
-              value={month}
-              onChange={(e) => handleMonthChange(Number(e.target.value))}
-              aria-label="월 선택"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? 'period-month-error' : undefined}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {m}월
-                </option>
-              ))}
-            </select>
-            {error && (
-              <span id="period-month-error" className={styles.error} role="alert">
-                {error}
-              </span>
-            )}
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <div
+            id="period-announcer"
+            className={styles.announcer}
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {announcement}
           </div>
-        )}
 
-        <button
-          type="button"
-          className={styles.navButton}
-          onClick={handleNextPeriod}
-          aria-label={unit === 'month' ? '다음 달로 이동' : '다음 연도로 이동'}
-          disabled={isFutureOrCurrentPeriod}
-        >
-          {unit === 'month' ? '다음 달 ▶' : '다음 연도 ▶'}
-        </button>
+          <h2 id="period-heading" className={styles.heading}>
+            {unit === 'month' ? `${year}년 ${month}월` : `${year}년`}
+          </h2>
+          <p className={styles.hint}>
+            공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
+          </p>
 
-        <button type="button" className={styles.button} onClick={handleSearch}>
-          조회
-        </button>
-      </div>
-    </div>
+          <div className={styles.controls}>
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={handlePrevPeriod}
+              aria-label={unit === 'month' ? '이전 달로 이동' : '이전 연도로 이동'}
+              disabled={year <= MIN_YEAR && (unit !== 'month' || month <= 1)}
+            >
+              {unit === 'month' ? '◀ 이전 달' : '◀ 이전 연도'}
+            </button>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="period-year" className={styles.label}>
+                연도
+              </label>
+              <input
+                id="period-year"
+                type="number"
+                className={`${styles.input} ${error ? styles.inputError : ''}`}
+                value={year}
+                onChange={(e) =>
+                  handleYearChange(e.target.value ? Number(e.target.value) : undefined)
+                }
+                onKeyDown={handleKeyDown}
+                aria-label="연도 입력"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'period-year-error' : undefined}
+                min={MIN_YEAR}
+                max={currentYear + 1}
+              />
+              {error && (
+                <span id="period-year-error" className={styles.error} role="alert">
+                  {error}
+                </span>
+              )}
+            </div>
+
+            {unit === 'month' && (
+              <div className={styles.inputGroup}>
+                <label htmlFor="period-month" className={styles.label}>
+                  월
+                </label>
+                <select
+                  id="period-month"
+                  className={`${styles.select} ${error ? styles.inputError : ''}`}
+                  value={month}
+                  onChange={(e) => handleMonthChange(Number(e.target.value))}
+                  aria-label="월 선택"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'period-month-error' : undefined}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {m}월
+                    </option>
+                  ))}
+                </select>
+                {error && (
+                  <span id="period-month-error" className={styles.error} role="alert">
+                    {error}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={handleNextPeriod}
+              aria-label={unit === 'month' ? '다음 달로 이동' : '다음 연도로 이동'}
+              disabled={isFutureOrCurrentPeriod}
+            >
+              {unit === 'month' ? '다음 달 ▶' : '다음 연도 ▶'}
+            </button>
+
+            <button type="button" className={styles.button} onClick={handleSearch}>
+              조회
+            </button>
+          </div>
+        </div>
+      }
+    </StyleScope>
   )
 }

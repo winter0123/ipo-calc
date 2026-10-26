@@ -59,18 +59,17 @@ public class AnnouncementService {
   /** 관리자가 ID로 공지사항을 조회한다. */
   @Transactional(readOnly = true)
   public AnnouncementResponse getAdmin(Long id) {
-    return repository
-        .findByIdAndDeletedAtIsNull(id)
-        .map(AnnouncementResponse::from)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
+    return AnnouncementResponse.from(findExistingAnnouncement(id));
   }
 
   /** 활성 기간 내 공지를 조회한다. */
   @Transactional(readOnly = true)
+  @SuppressWarnings("checkstyle:LineLength")
   public Page<AnnouncementResponse> listActive(Pageable pageable) {
     LocalDate today = LocalDate.now(clock);
     return repository
-        .findActive(RecordStatus.ACTIVE, today, pageable)
+        .findAllByStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqualOrderByStartAtAscIdAsc(
+            RecordStatus.ACTIVE, today, today, pageable)
         .map(AnnouncementResponse::from);
   }
 
@@ -94,7 +93,8 @@ public class AnnouncementService {
   public AnnouncementResponse getActive(Long id) {
     LocalDate today = LocalDate.now(clock);
     return repository
-        .findActiveById(id, RecordStatus.ACTIVE, today)
+        .findByIdAndStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqual(
+            id, RecordStatus.ACTIVE, today, today)
         .map(AnnouncementResponse::from)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
   }
@@ -119,11 +119,7 @@ public class AnnouncementService {
   @Transactional
   public AnnouncementResponse update(Long id, AnnouncementRequest request) {
     validate(request);
-    Announcement item =
-        repository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
+    Announcement item = findExistingAnnouncement(id);
     item.edit(
         request.title().trim(),
         request.content(),
@@ -137,11 +133,7 @@ public class AnnouncementService {
   /** 공지사항을 논리 삭제한다. */
   @Transactional
   public void delete(Long id) {
-    Announcement item =
-        repository
-            .findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
+    Announcement item = findExistingAnnouncement(id);
     LocalDateTime now = LocalDateTime.now(clock);
     item.cancel(now);
     repository.save(item);
@@ -155,8 +147,17 @@ public class AnnouncementService {
     dismissalRepository.insertIfAbsent(accountId, id, LocalDateTime.now(clock));
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   private List<Announcement> active(LocalDate today) {
-    return repository.findActive(RecordStatus.ACTIVE, today);
+    return repository
+        .findAllByStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqualOrderByStartAtAscIdAsc(
+            RecordStatus.ACTIVE, today, today);
+  }
+
+  private Announcement findExistingAnnouncement(Long id) {
+    return repository
+        .findByIdAndDeletedAtIsNull(id)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
   }
 
   private void validate(AnnouncementRequest request) {

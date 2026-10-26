@@ -15,3 +15,19 @@ export const securitiesAccountSchema = z.object({
 })
 
 export type SecuritiesAccount = z.infer<typeof securitiesAccountSchema>
+
+export const revealedSecuritiesAccountNumberSchema = z.object({
+  id: z.number(),
+  accountNumber: z.string(),
+  exposedAt: z.string(),
+})
+
+export type RevealedSecuritiesAccountNumber = z.infer<typeof revealedSecuritiesAccountNumberSchema>
+
+export interface SecuritiesAccountRegisterRequest {
+  investorId: number
+  securitiesFirmId: number
+  accountNumber: string
+  accountName?: string
+  isDefault?: boolean
+}

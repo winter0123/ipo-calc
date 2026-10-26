@@ -1,7 +1,7 @@
 import { type InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import type { SubscriptionFilterValue } from '../filterValue.ts'
 import SubscriptionCard from './SubscriptionCard.tsx'
-import styles from './SubscriptionList.module.css'
+import styles, { StyleScope } from './SubscriptionList.styles.ts'
 
 interface SubscriptionListProps {
   items: InvestmentHistoryItem[]
@@ -18,14 +18,18 @@ export default function SubscriptionList({ items, filter }: SubscriptionListProp
   const filtered = applyFilter(items, filter)
 
   if (filtered.length === 0) {
-    return <p className={styles.empty}>표시할 청약이 없습니다.</p>
+    return <StyleScope>{<p className={styles.empty}>표시할 청약이 없습니다.</p>}</StyleScope>
   }
 
   return (
-    <ul className={styles.list}>
-      {filtered.map((item) => (
-        <SubscriptionCard key={item.id} item={item} />
-      ))}
-    </ul>
+    <StyleScope>
+      {
+        <ul className={styles.list}>
+          {filtered.map((item) => (
+            <SubscriptionCard key={item.id} item={item} />
+          ))}
+        </ul>
+      }
+    </StyleScope>
   )
 }

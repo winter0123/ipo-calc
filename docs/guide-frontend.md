@@ -79,23 +79,14 @@ pnpm run build
 - 페이지는 `app/App.tsx`에서 `React.lazy`로 불러오고, `Suspense`는 `MainLayout`의 `<Outlet />` 주변에 둔다(페이지 전환 중에도 레이아웃 유지). 새 페이지도 같은 방식으로 추가하고, 라우트 테스트는 `findBy*`로 기다린다.
 - 폼 오류 영역은 `role="alert"`로 표시한다. E2E·접근성 스캔 선택자(`tools/e2e/e2e.mjs`의 `errorTexts`)도 이에 맞춰져 있으므로 마크업을 바꾸면 `pnpm run e2e`를 함께 돌린다.
 
-## 8. 디자인 토큰·바다 테마 (2026-10-01, v3 색감 개선)
+## 8. 스타일링·디자인 시스템 (styled-components)
 
-사용자가 정한 브랜드 4색을 전체 UI에 적용했다. 토큰은 `ui/src/app/styles/index.css`에만 있고, **CSS 모듈에는 색 hex를 직접 쓰지 않는다**(`var(--...)`만 쓴다).
-
-| 토큰 | 값 | 쓰임 |
-|---|---|---|
-| `--sea` | `#439BF5` | 헤더 그라디언트 시작, 탭 선택선, 오늘 표시, 스피너, 핵심 지표 카드 |
-| `--aqua` | `#ABF7EE` | 헤더 그라디언트 끝, 정보 상자 테두리, 수익률 카드 면, 표 행 호버(`--surface-aqua`) |
-| `--white` / `--surface` | `#FFFFFF` | 카드·입력창 면 |
-| `--lime` | `#B9E68B` | 세후 수익 카드 면, 성공 상태(`--success-*`) |
-
-- **브랜드색만으로는 글자 대비가 모자란다.** 흰 글자는 `#439BF5` 위에서 2.90:1(AA 4.5:1 미달)이라, **브랜드 파랑 위의 글자는 `--ink`(#0B2A4A, 5.0:1)**를 쓴다. 글자·링크는 `--ink`(14.5:1)·`--ink-muted`(#3E5A75, 7.2:1)·`--link`(#1F6BC0, 5.4:1)·`--link-hover`(#185AA3, 6.9:1)로 쓰고, 입력창 테두리는 `--border-strong`(#5F8DB8, 3.5:1)이다. 새 색 조합을 만들면 접근성 스캔(`tools/accessibility-scan`)으로 대비를 확인한다.
-- 오류(`--danger` #B3261E)·경고(`--warning-*`)는 팔레트와 별개의 의미색이다.
-- **다크 모드는 지원하지 않는다**(`color-scheme: light`). 이전 구현은 루트 글자색만 어두워지고 카드 면은 흰색이라 깨졌다.
-- **색 사용 원칙(v3)**: 브랜드 4색은 "면"에, 글자·버튼은 파생색에 쓴다. 바탕은 연한 아쿠아(`--page-bg` #EFF9FD), 그 위에 흰 카드(`--shadow-card`: 1px 선 + 바다색이 도는 부드러운 그림자)를 올린다. 헤더는 `--header-bg`(바다 파랑→아쿠아 그라디언트)이고 글자는 모두 `--ink`(그라디언트 전 구간 5:1 이상), 활성 메뉴는 흰 알약. **기본 버튼은 `--primary`(#1E6FCB, "깊은 바다")에 흰 글자(5.0:1)**이며 hover는 더 진하게(`--primary-hover`). 밝은 `--sea` 면 위에는 흰 글자를 쓰지 않는다.
-- **레이아웃(v3)**: 흰 카드가 화면 루트다. `MainLayout`의 `.main > *`가 모든 화면 루트에 같은 카드(패딩 32px, 모서리 16px, 가운데 정렬)를 입히고, 화면은 `--page-max`로 폭만 정한다(좁은 폼은 가운데 카드, 달력·표는 1200px). 화면 루트에 자체 패딩·`max-width`·`margin: auto`·배경·그림자를 넣지 않는다. 대시보드 핵심 지표만 색 면(총 투자금=바다 그라디언트, 세후 수익=라임, 수익률=아쿠아)으로 강조하고 나머지는 흰 카드로 쉬게 한다.
-- **간격·모서리 토큰**: 여백은 `--space-1..8`(4/8/12/16/24/32/48/64px)만, 모서리는 `--radius-sm 8px`·`--radius 12px`·`--radius-lg 16px`만 쓴다. 폼은 라벨을 입력창 위에 두고 필드 간격 24px, 제출 버튼은 왼쪽 정렬이다. 표는 숫자 열을 오른쪽 정렬(`.numeric`)한다.
-- **내비게이션**: 데스크톱은 밑줄 활성 표시 탭, 900px 이하는 메뉴 버튼(`aria-expanded`). 메뉴는 `useLocation` 경로와 비교해 페이지가 바뀌면 닫힌다(클릭 핸들러 불필요).
-- **글꼴·아이콘**: Pretendard Variable(`pretendard` 패키지, 동적 서브셋, 외부 CDN 없음)과 `lucide-react`(사용하는 아이콘만 import, 장식용은 `aria-hidden`).
-- **내비게이션**은 로그인한 계정에만 보인다(`/auth/me`).
+- 제품 UI의 스타일은 `styled-components`로 작성한다. 앱 소유 CSS/SCSS 파일과 CSS Modules를 만들지 않는다. Pretendard 패키지에서 제공하는 글꼴 CSS는 외부 패키지 자산이므로 예외다.
+- 디자인 토큰과 reset은 `ui/src/app/styles/GlobalStyles.ts`의 `createGlobalStyle` 한 곳에서 관리한다. 색상·간격·모서리·레이아웃 값은 이 토큰을 사용하고 화면별 임의 hex를 추가하지 않는다.
+- 재사용할 프리미티브는 `ui/src/shared/components/Primitives.tsx`에 둔다. 현재 공통 요소는 `SurfaceCard`, `SectionHeading`, `Eyebrow`, `StatusPill`이고 기본 액션 버튼은 `shared/components/Button`이다.
+- 각 page/widget/feature 스타일은 소유 slice 안의 `*.styles.ts`에 두고 해당 컴포넌트에서 `StyleScope`를 렌더한다. 하위·상위 slice의 스타일을 app registry에서 한꺼번에 import하지 않는다. `StyleScope`는 스타일을 slice 범위로 격리한다. 공통 표현만 `shared/components`의 재사용 styled component로 승격한다.
+- transient prop은 `$tone`, `$width`처럼 `$` 접두사를 붙여 DOM으로 전달하지 않는다. 동적 상태·값은 인라인 `style` 대신 typed styled component prop으로 표현한다.
+- 컴포넌트 스타일은 반응형 모바일 우선으로 작성한다. 터치 대상 최소 44×44px, 좁은 화면의 가로 스크롤 방지, `prefers-reduced-motion`, `:focus-visible`을 유지한다.
+- 브랜드는 깊은 바다색과 옅은 아쿠아 면을 중심으로 하고, 강한 색 면은 핵심 지표처럼 시선 우선순위가 있는 정보에만 쓴다. 상태 색은 `--success-*`, `--warning-*`, `--danger-*`를 사용한다.
+- 다크 모드는 지원하지 않는다. Pretendard Variable과 `lucide-react` 아이콘을 사용하며 장식용 아이콘은 `aria-hidden="true"` 처리한다.
+- styled-components 화면 검증은 기존 검증 묶음(`pnpm run test`, `lint`, `typecheck`, `format:check`, `build`)에서 한다. 시각 변경은 브라우저의 640px/768px/1024px 뷰포트와 키보드 이동도 확인한다.

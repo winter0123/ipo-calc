@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { apiGetParsed } from '@/shared/api/parsed.ts'
-import { apiFetch } from '@/shared/api/client.ts'
+import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
 import { ipoInsightSchema, ipoSchema, ipoSyncStatusSchema } from './types.ts'
 import type { Ipo, IpoInsight, IpoRegisterRequest, IpoSyncStatus } from './types.ts'
 
@@ -17,7 +16,7 @@ export async function fetchIpoInsight(id: number, signal?: AbortSignal): Promise
 }
 
 export async function registerIpo(data: IpoRegisterRequest): Promise<Ipo> {
-  return apiFetch<Ipo>('/ipos', {
+  return apiFetchParsed('/ipos', ipoSchema, {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -28,11 +27,10 @@ export async function syncIposNow(range?: {
   fromMonth: string
   toMonth: string
 }): Promise<IpoSyncStatus> {
-  const raw = await apiFetch<unknown>('/ipos/sync', {
+  return apiFetchParsed('/ipos/sync', ipoSyncStatusSchema, {
     method: 'POST',
     body: range ? JSON.stringify(range) : undefined,
   })
-  return ipoSyncStatusSchema.parse(raw)
 }
 
 // 동기화 상태를 조회한다(관리자).

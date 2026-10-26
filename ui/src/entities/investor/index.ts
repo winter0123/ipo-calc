@@ -1,4 +1,6 @@
-export type { InvestorResponse } from './types.ts'
+export type { InvestorRegisterRequest, InvestorResponse } from './types.ts'
+export { investorResponseSchema } from './types.ts'
 export { useInvestors } from './useInvestors.ts'
 export { investorKeys } from './queryKeys.ts'
 export { useCurrentInvestor, type CurrentInvestor } from './useCurrentInvestor.ts'
+export { registerInvestor } from './api-client.ts'

@@ -8,8 +8,6 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 /** 공지사항 데이터 저장소. */
 public interface AnnouncementRepository extends JpaRepository<Announcement, Long> {
@@ -24,23 +22,19 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
   Optional<Announcement> findByIdAndDeletedAtIsNull(Long id);
 
   /** 지정 기간에 게시 중인 상태별 공지 페이지를 조회한다. */
-  @Query(
-      "SELECT a FROM Announcement a WHERE a.status = :status AND a.deletedAt IS NULL "
-          + "AND a.startAt <= :today AND a.endAt >= :today ORDER BY a.startAt ASC, a.id ASC")
-  Page<Announcement> findActive(
-      @Param("status") RecordStatus status, @Param("today") LocalDate today, Pageable pageable);
+  @SuppressWarnings("checkstyle:LineLength")
+  Page<Announcement>
+      findAllByStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqualOrderByStartAtAscIdAsc(
+          RecordStatus status, LocalDate startAt, LocalDate endAt, Pageable pageable);
 
   /** 지정 기간에 게시 중인 상태별 공지 목록을 조회한다. */
-  @Query(
-      "SELECT a FROM Announcement a WHERE a.status = :status AND a.deletedAt IS NULL "
-          + "AND a.startAt <= :today AND a.endAt >= :today ORDER BY a.startAt ASC, a.id ASC")
-  List<Announcement> findActive(
-      @Param("status") RecordStatus status, @Param("today") LocalDate today);
+  @SuppressWarnings("checkstyle:LineLength")
+  List<Announcement>
+      findAllByStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqualOrderByStartAtAscIdAsc(
+          RecordStatus status, LocalDate startAt, LocalDate endAt);
 
   /** 지정 기간에 게시 중인 공지 하나를 조회한다. */
-  @Query(
-      "SELECT a FROM Announcement a WHERE a.id = :id AND a.status = :status "
-          + "AND a.deletedAt IS NULL AND a.startAt <= :today AND a.endAt >= :today")
-  Optional<Announcement> findActiveById(
-      @Param("id") Long id, @Param("status") RecordStatus status, @Param("today") LocalDate today);
+  Optional<Announcement>
+      findByIdAndStatusAndDeletedAtIsNullAndStartAtLessThanEqualAndEndAtGreaterThanEqual(
+          Long id, RecordStatus status, LocalDate startAt, LocalDate endAt);
 }

@@ -108,7 +108,7 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
 export function AllocationEditDialog({ id, onClose }: { id: number; onClose: () => void }) {
   const query = useQuery({
     queryKey: investmentHistoryKeys.source('allocation', id),
-    queryFn: () => getAllocation(id),
+    queryFn: ({ signal }) => getAllocation(id, signal),
   })
   return (
     <Shell title="배정 수정" query={query} onClose={onClose}>

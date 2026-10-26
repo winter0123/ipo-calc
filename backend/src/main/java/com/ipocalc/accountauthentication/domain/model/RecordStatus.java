@@ -4,9 +4,5 @@ package com.ipocalc.accountauthentication.domain.model;
 public enum RecordStatus {
   ACTIVE,
   INACTIVE,
-  CANCELLED;
-
-  /** {@code @Query} 문자열에 이어 붙이는 ACTIVE 완전 수식 enum 리터럴(HQL). */
-  public static final String ACTIVE_HQL =
-      "com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE";
+  CANCELLED
 }

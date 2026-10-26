@@ -1,16 +1,16 @@
 import { z } from 'zod'
 import { apiFetch } from '@/shared/api/client.ts'
-import { apiGetParsed } from '@/shared/api/parsed.ts'
+import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
 import { announcementPageSchema, announcementSchema, type AnnouncementInput } from './types.ts'
 
 const listSchema = z.array(announcementSchema)
+const popupListSchema = listSchema.optional().transform((announcements) => announcements ?? [])
 
 export const fetchAnnouncements = (page: number, signal?: AbortSignal) =>
   apiGetParsed(`/announcements?page=${page}&size=20`, announcementPageSchema, signal)
 
 export async function fetchPopupAnnouncements(signal?: AbortSignal) {
-  const result = await apiFetch<unknown>('/announcements/popup', { method: 'GET', signal })
-  return result === undefined ? [] : listSchema.parse(result)
+  return apiGetParsed('/announcements/popup', popupListSchema, signal)
 }
 
 export const fetchAnnouncement = (id: number, signal?: AbortSignal) =>
@@ -27,10 +27,16 @@ export const fetchAdminAnnouncements = (
 }
 
 export const createAnnouncement = (input: AnnouncementInput) =>
-  apiFetch('/admin/announcements', { method: 'POST', body: JSON.stringify(input) })
+  apiFetchParsed('/admin/announcements', announcementSchema, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
 
 export const updateAnnouncement = (id: number, input: AnnouncementInput) =>
-  apiFetch(`/admin/announcements/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+  apiFetchParsed(`/admin/announcements/${id}`, announcementSchema, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 
 export const deleteAnnouncement = (id: number) =>
   apiFetch<void>(`/admin/announcements/${id}`, { method: 'DELETE' })

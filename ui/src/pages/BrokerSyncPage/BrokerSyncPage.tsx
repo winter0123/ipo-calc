@@ -5,7 +5,7 @@ import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 import { AccountSelector } from '@/features/investment-history/index.ts'
 import { BrokerConnectPanel } from '@/features/broker-connect/index.ts'
 import { BrokerSyncPanel } from '@/features/broker-sync/index.ts'
-import styles from './BrokerSyncPage.module.css'
+import styles, { StyleScope } from './BrokerSyncPage.styles.ts'
 
 export default function BrokerSyncPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -28,30 +28,34 @@ export default function BrokerSyncPage() {
     setSearchParams(value ? { securitiesAccountId: value } : {}, { replace: true })
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>증권사 연동</h1>
-      <AccountSelector
-        investorId={investorId}
-        securitiesAccountId={securitiesAccountId}
-        onSecuritiesAccountChange={handleAccountChange}
-      />
-      {Number.isInteger(selectedAccountId) && selectedAccountId > 0 ? (
-        <>
-          <BrokerConnectPanel
-            key={`connect-${selectedAccountId}`}
-            securitiesAccountId={selectedAccountId}
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <h1 className={styles.title}>증권사 연동</h1>
+          <AccountSelector
+            investorId={investorId}
+            securitiesAccountId={securitiesAccountId}
+            onSecuritiesAccountChange={handleAccountChange}
           />
-          <BrokerSyncPanel
-            key={`sync-${selectedAccountId}`}
-            securitiesAccountId={selectedAccountId}
-          />
-        </>
-      ) : (
-        <p>
-          증권계좌를 선택해 주세요. 계좌가 없다면 <Link to="/securities">증권사 관리</Link>에서 먼저
-          등록하세요.
-        </p>
-      )}
-    </div>
+          {Number.isInteger(selectedAccountId) && selectedAccountId > 0 ? (
+            <>
+              <BrokerConnectPanel
+                key={`connect-${selectedAccountId}`}
+                securitiesAccountId={selectedAccountId}
+              />
+              <BrokerSyncPanel
+                key={`sync-${selectedAccountId}`}
+                securitiesAccountId={selectedAccountId}
+              />
+            </>
+          ) : (
+            <p>
+              증권계좌를 선택해 주세요. 계좌가 없다면 <Link to="/securities">증권사 관리</Link>에서
+              먼저 등록하세요.
+            </p>
+          )}
+        </div>
+      }
+    </StyleScope>
   )
 }

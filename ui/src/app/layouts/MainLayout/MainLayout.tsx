@@ -7,7 +7,7 @@ import { resetAnnouncementVisit } from '@/features/announcements/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
 import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
-import styles from './MainLayout.module.css'
+import styles, { StyleScope } from './MainLayout.styles.ts'
 
 const IPO_ITEMS = [
   { to: '/subscriptions/register', label: '공모주 청약' },
@@ -58,101 +58,107 @@ export default function MainLayout() {
   const [openedAt, setOpenedAt] = useState<string | null>(null)
   const menuOpen = openedAt === pathname
   return (
-    <div className={styles.layout}>
-      <a href="#main-content" className={styles.skipLink}>
-        본문으로 건너뛰기
-      </a>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
-          {isGuest ? (
-            <Link to="/" className={`${styles.logo} ${styles.guestLogo}`} aria-label="홈으로">
-              <Waves aria-hidden="true" size={20} />
-            </Link>
-          ) : (
-            <span className={styles.logo} aria-hidden="true">
-              <Waves size={20} />
-            </span>
-          )}
-          {currentAccount && (
-            <button
-              type="button"
-              className={styles.menuButton}
-              aria-expanded={menuOpen}
-              aria-controls="primary-nav"
-              onClick={() => setOpenedAt(menuOpen ? null : pathname)}
-            >
-              {menuOpen ? (
-                <X aria-hidden="true" size={22} />
+    <StyleScope>
+      {
+        <div className={styles.layout}>
+          <a href="#main-content" className={styles.skipLink}>
+            본문으로 건너뛰기
+          </a>
+          <header className={styles.header}>
+            <div className={styles.brand}>
+              {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
+              {isGuest ? (
+                <Link to="/" className={`${styles.logo} ${styles.guestLogo}`} aria-label="홈으로">
+                  <Waves aria-hidden="true" size={20} />
+                </Link>
               ) : (
-                <Waves aria-hidden="true" size={22} />
+                <span className={styles.logo} aria-hidden="true">
+                  <Waves size={20} />
+                </span>
               )}
-              <span className={styles.menuLabel}>메뉴</span>
-            </button>
-          )}
-          <span className={styles.siteName}>공모주계산기</span>
-        </div>
-        {(currentAccount || isGuest) && (
-          <nav
-            id="primary-nav"
-            aria-label="주요 메뉴"
-            className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
-          >
+              {currentAccount && (
+                <button
+                  type="button"
+                  className={styles.menuButton}
+                  aria-expanded={menuOpen}
+                  aria-controls="primary-nav"
+                  onClick={() => setOpenedAt(menuOpen ? null : pathname)}
+                >
+                  {menuOpen ? (
+                    <X aria-hidden="true" size={22} />
+                  ) : (
+                    <Waves aria-hidden="true" size={22} />
+                  )}
+                  <span className={styles.menuLabel}>메뉴</span>
+                </button>
+              )}
+              <span className={styles.siteName}>공모주계산기</span>
+            </div>
+            {(currentAccount || isGuest) && (
+              <nav
+                id="primary-nav"
+                aria-label="주요 메뉴"
+                className={menuOpen ? `${styles.nav} ${styles.navOpen}` : styles.nav}
+              >
+                {isGuest && (
+                  <NavLink to="/" className={linkClass}>
+                    홈
+                  </NavLink>
+                )}
+                {currentAccount && (
+                  <NavLink to="/ipo-calendar" className={linkClass}>
+                    공모주 일정
+                  </NavLink>
+                )}
+                {currentAccount && <NavGroup label="공모주 청약" items={IPO_ITEMS} />}
+                {currentAccount && <NavGroup label="매매기록" items={TRADE_ITEMS} />}
+                {currentAccount && (
+                  <NavGroup
+                    label="설정"
+                    items={[
+                      SETTINGS_ITEMS[0],
+                      {
+                        label: logoutMutation.isPending ? '로그아웃 중...' : '로그아웃',
+                        onClick: () =>
+                          logoutMutation.mutate(undefined, {
+                            onSettled: () => navigate('/login', { replace: true }),
+                          }),
+                        disabled: logoutMutation.isPending,
+                      },
+                      ...SETTINGS_ITEMS.slice(1),
+                    ]}
+                  />
+                )}
+                {currentAccount?.role === 'ADMIN' && (
+                  <NavGroup label="관리자" items={ADMIN_ITEMS} />
+                )}
+              </nav>
+            )}
+            {currentAccount && <InvestorSwitcher />}
             {isGuest && (
-              <NavLink to="/" className={linkClass}>
-                홈
-              </NavLink>
+              <div className={styles.authActions}>
+                <Link to="/ipo-calendar" className={styles.calendarButton}>
+                  공모주 일정
+                </Link>
+                <Link to="/login" className={styles.loginButton}>
+                  로그인
+                </Link>
+                <Link to="/signup" className={styles.signupButton}>
+                  가입하기
+                </Link>
+              </div>
             )}
-            {currentAccount && (
-              <NavLink to="/ipo-calendar" className={linkClass}>
-                공모주 일정
-              </NavLink>
-            )}
-            {currentAccount && <NavGroup label="공모주 청약" items={IPO_ITEMS} />}
-            {currentAccount && <NavGroup label="매매기록" items={TRADE_ITEMS} />}
-            {currentAccount && (
-              <NavGroup
-                label="설정"
-                items={[
-                  SETTINGS_ITEMS[0],
-                  {
-                    label: logoutMutation.isPending ? '로그아웃 중...' : '로그아웃',
-                    onClick: () =>
-                      logoutMutation.mutate(undefined, {
-                        onSettled: () => navigate('/login', { replace: true }),
-                      }),
-                    disabled: logoutMutation.isPending,
-                  },
-                  ...SETTINGS_ITEMS.slice(1),
-                ]}
-              />
-            )}
-            {currentAccount?.role === 'ADMIN' && <NavGroup label="관리자" items={ADMIN_ITEMS} />}
-          </nav>
-        )}
-        {currentAccount && <InvestorSwitcher />}
-        {isGuest && (
-          <div className={styles.authActions}>
-            <Link to="/ipo-calendar" className={styles.calendarButton}>
-              공모주 일정
-            </Link>
-            <Link to="/login" className={styles.loginButton}>
-              로그인
-            </Link>
-            <Link to="/signup" className={styles.signupButton}>
-              가입하기
-            </Link>
-          </div>
-        )}
-      </header>
-      <main
-        id="main-content"
-        className={isWide ? `${styles.main} ${styles.mainWide}` : styles.main}
-      >
-        <Suspense fallback={<p role="status">불러오는 중...</p>}>
-          {currentAccount ? <GatedOutlet /> : <Outlet />}
-        </Suspense>
-      </main>
-    </div>
+          </header>
+          <main
+            id="main-content"
+            className={isWide ? `${styles.main} ${styles.mainWide}` : styles.main}
+          >
+            <Suspense fallback={<p role="status">불러오는 중...</p>}>
+              {currentAccount ? <GatedOutlet /> : <Outlet />}
+            </Suspense>
+          </main>
+        </div>
+      }
+    </StyleScope>
   )
 }

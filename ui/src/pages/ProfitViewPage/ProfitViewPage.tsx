@@ -8,7 +8,7 @@ import {
   ProfitTable,
   useAllInvestorProfits,
 } from '@/features/profit-view/index.ts'
-import styles from './ProfitViewPage.module.css'
+import styles, { StyleScope } from './ProfitViewPage.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
 
@@ -52,93 +52,97 @@ export default function ProfitViewPage() {
   const { rows: sales, isLoading, error } = useAllInvestorProfits(current ? [current] : [], period)
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>수익 확인</h1>
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <h1 className={styles.title}>수익 확인</h1>
 
-      <div className={styles.querySection}>
-        <div className={styles.inputGroup}>
-          <div>
-            <label htmlFor="periodFrom" className={styles.label}>
-              시작일
-            </label>
-            <input
-              id="periodFrom"
-              type="date"
-              className={styles.input}
-              value={period.from}
-              max={period.to || undefined}
-              onChange={(e) => setPeriod((p) => ({ ...p, from: e.target.value }))}
-            />
+          <div className={styles.querySection}>
+            <div className={styles.inputGroup}>
+              <div>
+                <label htmlFor="periodFrom" className={styles.label}>
+                  시작일
+                </label>
+                <input
+                  id="periodFrom"
+                  type="date"
+                  className={styles.input}
+                  value={period.from}
+                  max={period.to || undefined}
+                  onChange={(e) => setPeriod((p) => ({ ...p, from: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label htmlFor="periodTo" className={styles.label}>
+                  종료일
+                </label>
+                <input
+                  id="periodTo"
+                  type="date"
+                  className={styles.input}
+                  value={period.to}
+                  min={period.from || undefined}
+                  onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
+                />
+              </div>
+              {PRESETS.map((preset) => {
+                const target = preset.period()
+                const selected = target.from === period.from && target.to === period.to
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className={selected ? styles.searchButton : styles.presetButton}
+                    aria-pressed={selected}
+                    onClick={() => setPeriod(target)}
+                  >
+                    {preset.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className={styles.hint}>
+              기간은 공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
+            </p>
+
+            {periodInvalid && (
+              <div className={styles.error} role="alert">
+                시작일이 종료일보다 늦습니다.
+              </div>
+            )}
+            {error && (
+              <div className={styles.error} role="alert">
+                {toErrorMessage(error, { fallback: '수익 조회에 실패했습니다.' })}
+              </div>
+            )}
           </div>
-          <div>
-            <label htmlFor="periodTo" className={styles.label}>
-              종료일
-            </label>
-            <input
-              id="periodTo"
-              type="date"
-              className={styles.input}
-              value={period.to}
-              min={period.from || undefined}
-              onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
-            />
-          </div>
-          {PRESETS.map((preset) => {
-            const target = preset.period()
-            const selected = target.from === period.from && target.to === period.to
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                className={selected ? styles.searchButton : styles.presetButton}
-                aria-pressed={selected}
-                onClick={() => setPeriod(target)}
-              >
-                {preset.label}
-              </button>
+
+          {investorsLoading || isLoading ? (
+            <div className={styles.loading}>수익 정보를 불러오는 중...</div>
+          ) : (
+            !error && (
+              <>
+                {sales.length > 0 && (
+                  <ProfitPeriodSection sales={sales} from={period.from} to={period.to} />
+                )}
+                <h2>매도 내역</h2>
+                {sales.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.presetButton}
+                    onClick={() =>
+                      downloadCsv(toProfitCsv(sales), profitCsvFileName(period.from, period.to))
+                    }
+                  >
+                    CSV로 내보내기
+                  </button>
+                )}
+                <ProfitTable sales={sales} />
+              </>
             )
-          })}
+          )}
         </div>
-        <p className={styles.hint}>
-          기간은 공모주 상장일 기준입니다. 10월에 상장한 공모주는 11월에 팔아도 10월에 잡힙니다.
-        </p>
-
-        {periodInvalid && (
-          <div className={styles.error} role="alert">
-            시작일이 종료일보다 늦습니다.
-          </div>
-        )}
-        {error && (
-          <div className={styles.error} role="alert">
-            {toErrorMessage(error, { fallback: '수익 조회에 실패했습니다.' })}
-          </div>
-        )}
-      </div>
-
-      {investorsLoading || isLoading ? (
-        <div className={styles.loading}>수익 정보를 불러오는 중...</div>
-      ) : (
-        !error && (
-          <>
-            {sales.length > 0 && (
-              <ProfitPeriodSection sales={sales} from={period.from} to={period.to} />
-            )}
-            <h2>매도 내역</h2>
-            {sales.length > 0 && (
-              <button
-                type="button"
-                className={styles.presetButton}
-                onClick={() =>
-                  downloadCsv(toProfitCsv(sales), profitCsvFileName(period.from, period.to))
-                }
-              >
-                CSV로 내보내기
-              </button>
-            )}
-            <ProfitTable sales={sales} />
-          </>
-        )
-      )}
-    </div>
+      }
+    </StyleScope>
   )
 }

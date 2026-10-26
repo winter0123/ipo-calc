@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /** 공모주 JPA 저장소. */
@@ -62,12 +61,15 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
    * @param today 오늘 날짜(Asia/Seoul, 주입된 Clock 기준)
    * @return 시초가 수집 대상 공모주 목록
    */
-  @Query(
-      "SELECT i FROM Ipo i WHERE i.status = "
-          + "com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE"
-          + " AND i.stockCode IS NOT NULL"
-          + " AND i.listingDate < :today"
-          + " AND i.listingOpenPrice IS NULL"
-          + " AND i.deletedAt IS NULL")
-  List<Ipo> findOpenPriceSyncTargets(LocalDate today);
+  @SuppressWarnings("checkstyle:LineLength")
+  List<Ipo>
+      findByStatusAndStockCodeIsNotNullAndListingDateBeforeAndListingOpenPriceIsNullAndDeletedAtIsNull(
+          RecordStatus status, LocalDate today);
+
+  /** 상장일 시초가 수집 대상 공모주를 조회한다. */
+  @SuppressWarnings("checkstyle:LineLength")
+  default List<Ipo> findOpenPriceSyncTargets(LocalDate today) {
+    return findByStatusAndStockCodeIsNotNullAndListingDateBeforeAndListingOpenPriceIsNullAndDeletedAtIsNull(
+        RecordStatus.ACTIVE, today);
+  }
 }

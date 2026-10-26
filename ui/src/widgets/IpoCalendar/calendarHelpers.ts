@@ -1,5 +1,5 @@
 import type { CalendarEvent, CalendarEventType } from '@/features/ipo-calendar/index.ts'
-import styles from './IpoCalendar.module.css'
+import styles from './IpoCalendar.styles.ts'
 
 export const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
   SUBSCRIPTION: '청약',

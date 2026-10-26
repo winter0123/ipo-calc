@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useSignup } from './useSignup.ts'
 import { isValidEmail, isMinLength, passwordProblem } from '@/shared/lib/validators.ts'
 import type { SignupRequest } from './useSignup.ts'
-import styles from './SignupForm.module.css'
+import styles, { StyleScope } from './SignupForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 
 const RELATIONSHIP_OPTIONS = [{ value: 'SELF', label: '본인' }] as const
@@ -50,136 +50,145 @@ export default function SignupForm() {
 
   if (pendingApproval) {
     return (
-      <div role="status" className={styles.form}>
-        <p>가입 신청이 접수되었습니다. 관리자가 승인하면 로그인할 수 있습니다.</p>
-        <Link to="/login">로그인 화면으로</Link>
-      </div>
+      <StyleScope>
+        {
+          <div role="status" className={styles.form}>
+            <p>가입 신청이 접수되었습니다. 관리자가 승인하면 로그인할 수 있습니다.</p>
+            <Link to="/login">로그인 화면으로</Link>
+          </div>
+        }
+      </StyleScope>
     )
   }
 
   return (
-    <>
-      <form
-        className={styles.form}
-        onSubmit={handleSubmit(onSubmit)}
-        aria-label="회원가입 폼"
-        noValidate
-      >
-        <div className={styles.field}>
-          <label htmlFor="email">이메일</label>
-          <input
-            id="email"
-            type="email"
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? 'email-error' : undefined}
-            {...register('email', {
-              required: '필수 입력 항목입니다.',
-              validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
-            })}
-          />
-          {errors.email && (
-            <span id="email-error" className={styles.error} aria-live="polite">
-              {String(errors.email.message)}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="password">비밀번호</label>
-          <input
-            id="password"
-            type="password"
-            aria-invalid={!!errors.password}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-            {...register('password', {
-              required: '필수 입력 항목입니다.',
-              validate: (v) => passwordProblem(v) ?? true,
-            })}
-          />
-          {errors.password && (
-            <span id="password-error" className={styles.error} aria-live="polite">
-              {String(errors.password.message)}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="name">이름</label>
-          <input
-            id="name"
-            type="text"
-            aria-invalid={!!errors.name}
-            aria-describedby={errors.name ? 'name-error' : undefined}
-            {...register('name', {
-              required: '필수 입력 항목입니다.',
-              validate: (v) =>
-                (isMinLength(v, 2) && v.length <= 50) || '이름은 2자 이상 50자 이하여야 합니다.',
-            })}
-          />
-          {errors.name && (
-            <span id="name-error" className={styles.error} aria-live="polite">
-              {String(errors.name.message)}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="nickname">닉네임</label>
-          <input
-            id="nickname"
-            type="text"
-            aria-invalid={!!errors.nickname}
-            aria-describedby={errors.nickname ? 'nickname-error' : undefined}
-            {...register('nickname', {
-              required: '닉네임은 필수 입력 항목입니다.',
-              validate: (v) =>
-                (v.trim().length > 0 && v.length <= 50) ||
-                '닉네임은 1자 이상 50자 이하여야 합니다.',
-            })}
-          />
-          {errors.nickname && (
-            <span id="nickname-error" className={styles.error} aria-live="polite">
-              {String(errors.nickname.message)}
-            </span>
-          )}
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="relationship">관계</label>
-          <select
-            id="relationship"
-            aria-invalid={!!errors.relationship}
-            aria-describedby={errors.relationship ? 'relationship-error' : undefined}
-            {...register('relationship', {
-              validate: (v) => v === 'SELF' || '가입 계정의 관계는 본인으로 등록해야 합니다.',
-            })}
+    <StyleScope>
+      {
+        <>
+          <form
+            className={styles.form}
+            onSubmit={handleSubmit(onSubmit)}
+            aria-label="회원가입 폼"
+            noValidate
           >
-            {RELATIONSHIP_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {errors.relationship && (
-            <span id="relationship-error" className={styles.error} aria-live="polite">
-              {String(errors.relationship.message)}
-            </span>
-          )}
-        </div>
+            <div className={styles.field}>
+              <label htmlFor="email">이메일</label>
+              <input
+                id="email"
+                type="email"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                {...register('email', {
+                  required: '필수 입력 항목입니다.',
+                  validate: (v) => isValidEmail(v) || '올바른 이메일 형식을 입력해 주세요.',
+                })}
+              />
+              {errors.email && (
+                <span id="email-error" className={styles.error} aria-live="polite">
+                  {String(errors.email.message)}
+                </span>
+              )}
+            </div>
 
-        {formErrorMessage && (
-          <div className={styles.formError} role="alert">
-            {formErrorMessage}
-          </div>
-        )}
+            <div className={styles.field}>
+              <label htmlFor="password">비밀번호</label>
+              <input
+                id="password"
+                type="password"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                {...register('password', {
+                  required: '필수 입력 항목입니다.',
+                  validate: (v) => passwordProblem(v) ?? true,
+                })}
+              />
+              {errors.password && (
+                <span id="password-error" className={styles.error} aria-live="polite">
+                  {String(errors.password.message)}
+                </span>
+              )}
+            </div>
 
-        <button type="submit" disabled={isPending} className={styles.submitButton}>
-          {isPending ? '가입 중...' : '가입하기'}
-        </button>
-      </form>
-      <p className={styles.switch}>
-        이미 계정이 있으신가요? <Link to="/login">로그인</Link>
-      </p>
-    </>
+            <div className={styles.field}>
+              <label htmlFor="name">이름</label>
+              <input
+                id="name"
+                type="text"
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? 'name-error' : undefined}
+                {...register('name', {
+                  required: '필수 입력 항목입니다.',
+                  validate: (v) =>
+                    (isMinLength(v, 2) && v.length <= 50) ||
+                    '이름은 2자 이상 50자 이하여야 합니다.',
+                })}
+              />
+              {errors.name && (
+                <span id="name-error" className={styles.error} aria-live="polite">
+                  {String(errors.name.message)}
+                </span>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="nickname">닉네임</label>
+              <input
+                id="nickname"
+                type="text"
+                aria-invalid={!!errors.nickname}
+                aria-describedby={errors.nickname ? 'nickname-error' : undefined}
+                {...register('nickname', {
+                  required: '닉네임은 필수 입력 항목입니다.',
+                  validate: (v) =>
+                    (v.trim().length > 0 && v.length <= 50) ||
+                    '닉네임은 1자 이상 50자 이하여야 합니다.',
+                })}
+              />
+              {errors.nickname && (
+                <span id="nickname-error" className={styles.error} aria-live="polite">
+                  {String(errors.nickname.message)}
+                </span>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="relationship">관계</label>
+              <select
+                id="relationship"
+                aria-invalid={!!errors.relationship}
+                aria-describedby={errors.relationship ? 'relationship-error' : undefined}
+                {...register('relationship', {
+                  validate: (v) => v === 'SELF' || '가입 계정의 관계는 본인으로 등록해야 합니다.',
+                })}
+              >
+                {RELATIONSHIP_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {errors.relationship && (
+                <span id="relationship-error" className={styles.error} aria-live="polite">
+                  {String(errors.relationship.message)}
+                </span>
+              )}
+            </div>
+
+            {formErrorMessage && (
+              <div className={styles.formError} role="alert">
+                {formErrorMessage}
+              </div>
+            )}
+
+            <button type="submit" disabled={isPending} className={styles.submitButton}>
+              {isPending ? '가입 중...' : '가입하기'}
+            </button>
+          </form>
+          <p className={styles.switch}>
+            이미 계정이 있으신가요? <Link to="/login">로그인</Link>
+          </p>
+        </>
+      }
+    </StyleScope>
   )
 }

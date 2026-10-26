@@ -16,31 +16,12 @@ import {
   acquisitionUnitPrice,
   resolveIpoPrice,
   toSalePayload,
-  type CaptureFill,
 } from '@/entities/sale/index.ts'
-
-/** 캡처로 채울 내용. subscriptionId가 없으면 사용자가 청약을 고르는 즉시 채운다. */
-export interface CaptureApply {
-  subscriptionId?: number
-  fill: CaptureFill
-  notes: string[]
-}
-export type CapturedField = 'quantity' | 'price' | 'saleDate' | 'otherFees' | 'realizedProfit'
-
-/** 폼 입력값. 숫자 칸은 비어 있으면 NaN이다(valueAsNumber). */
-export interface SaleFormValues {
-  allocationId: number
-  quantity: number
-  price: number
-  saleDate: string
-  ipoFee: number
-  otherFees: number
-  realizedProfit: number
-}
-
-export const won = (value: number) => `${value.toLocaleString('ko-KR')}원`
-export const isNum = (value: unknown): value is number =>
-  typeof value === 'number' && !Number.isNaN(value)
+import { useCaptureFill } from './useCaptureFill.ts'
+import type { SaleFormValues } from './saleFormTypes.ts'
+import { isNum } from './saleFormUtils.ts'
+export { isNum, won } from './saleFormUtils.ts'
+export type { CaptureApply, CapturedField, SaleFormValues } from './saleFormTypes.ts'
 
 /** 매도 등록 폼의 상태: 청약 선택, 자동 채움, 세금↔실현손익 상호 계산, 제출. */
 export function useSaleForm() {
@@ -52,10 +33,6 @@ export function useSaleForm() {
   const [lastEdited, setLastEdited] = useState<'fees' | 'profit'>('fees')
   // 기본값을 이미 넣은 청약(같은 청약에서 사용자의 입력을 덮어쓰지 않는다)
   const prefilledFor = useRef<number | undefined>(undefined)
-  // 캡처로 채우기: 청약·공모주 정보가 도착한 뒤 적용하려고 잠시 들고 있는다.
-  const [pendingCapture, setPendingCapture] = useState<CaptureApply | null>(null)
-  const [captured, setCaptured] = useState<Partial<Record<CapturedField, number | string>>>({})
-  const [captureNotes, setCaptureNotes] = useState<string[]>([])
 
   // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
   const { current, isLoading: investorsLoading } = useCurrentInvestor()
@@ -163,64 +140,6 @@ export function useSaleForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 청약·공모주 정보가 도착했을 때만 실행한다
   }, [allocationData, ipo, ipoPending, selectedSubscriptionId])
 
-  // 기본값 채우기 다음에 실행돼야 캡처 값이 기본값에 덮이지 않는다(선언 순서가 곧 실행 순서).
-  /* eslint-disable react-hooks/set-state-in-effect -- 청약 정보가 도착한 시점에 한 번만 적용한다 */
-  useEffect(() => {
-    if (!pendingCapture || !selectedSubscriptionId || !allocationData?.allocation || ipoPending)
-      return
-    if (prefilledFor.current !== selectedSubscriptionId) return
-    if (pendingCapture.subscriptionId && pendingCapture.subscriptionId !== selectedSubscriptionId)
-      return
-    const { fill } = pendingCapture
-    const notes = [...pendingCapture.notes]
-    const mark: Partial<Record<CapturedField, number | string>> = {}
-    const opt = { shouldDirty: true }
-    if (fill.quantity !== undefined) setValue('quantity', (mark.quantity = fill.quantity), opt)
-    if (fill.price !== undefined) setValue('price', (mark.price = fill.price), opt)
-    if (fill.saleDate) setValue('saleDate', (mark.saleDate = fill.saleDate), opt)
-    if (fill.realizedProfit !== undefined) {
-      // 증권사 앱의 실현손익을 기준으로 삼고 세금 및 기타를 거꾸로 계산한다(저장되는 실현손익이 앱과 같아진다).
-      setValue('realizedProfit', (mark.realizedProfit = fill.realizedProfit), opt)
-      setLastEdited('profit')
-      if (fill.quantity === undefined || fill.price === undefined || ipoPrice == null) {
-        // 계산 재료가 모자란다: 캡처의 합계만 넣고(없으면 비움), 수량·단가가 정해지면 폼이 실현손익 기준으로 다시 계산한다.
-        setValue('otherFees', fill.fees ?? Number.NaN, opt)
-        if (fill.fees !== undefined) mark.otherFees = fill.fees
-      } else {
-        syncLinked({ source: 'profit' })
-        const derived = getValues('otherFees')
-        if (fill.fees !== undefined) {
-          if (derived !== fill.fees) {
-            notes.push(
-              `캡처의 수수료·제세금은 합계 ${won(fill.fees)}이지만, 실현손익과 취득 단가(${won(ipoPrice)}) 기준으로 계산한 세금 및 기타는 ${won(derived)}입니다. 실현손익을 우선해 ${won(derived)}으로 채웠습니다.`,
-            )
-          }
-          mark.otherFees = derived
-        }
-      }
-    } else if (fill.fees !== undefined) {
-      setValue('otherFees', (mark.otherFees = fill.fees), opt)
-      setLastEdited('fees')
-      syncLinked({ source: 'fees' })
-    }
-    setCaptured(mark)
-    setCaptureNotes(notes)
-    setPendingCapture(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 대기 중인 캡처와 청약 정보가 바뀔 때만 실행한다
-  }, [pendingCapture, allocationData, ipoPending, selectedSubscriptionId])
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  /** 캡처로 채우기: 다른 청약이면 선택을 바꾸고(입력값 초기화), 정보가 도착하면 effect가 값을 넣는다. */
-  const applyCapture = (apply: CaptureApply) => {
-    if (apply.subscriptionId && apply.subscriptionId !== selectedSubscriptionId) {
-      setPickedSubscriptionId(apply.subscriptionId)
-      clearSaleFields()
-    }
-    setCaptured({})
-    setCaptureNotes([])
-    setPendingCapture(apply)
-  }
-
   const clearSaleFields = () => {
     resetField('allocationId')
     resetField('quantity')
@@ -233,13 +152,34 @@ export function useSaleForm() {
     prefilledFor.current = undefined
   }
 
+  const selectSubscription = (id: number) => {
+    setPickedSubscriptionId(id)
+    clearSaleFields()
+  }
+
+  const captureFill = useCaptureFill({
+    selectedSubscriptionId,
+    allocationData,
+    ipoPending,
+    ipoPrice,
+    prefilledFor,
+    setValue,
+    getValues,
+    setLastEdited,
+    syncLinked,
+    selectSubscription,
+  })
+
   const onSubmit = (data: SaleFormValues) => {
     mutate({ allocationId: data.allocationId, ...toSalePayload(data) })
   }
 
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPickedSubscriptionId(e.target.value ? Number(e.target.value) : undefined)
-    clearSaleFields()
+    const id = e.target.value ? Number(e.target.value) : undefined
+    if (id === undefined) {
+      setPickedSubscriptionId(undefined)
+      clearSaleFields()
+    } else selectSubscription(id)
   }
 
   const [realizedProfit, ipoFee, quantityValue, priceValue] = useWatch({
@@ -267,10 +207,7 @@ export function useSaleForm() {
     allocationData,
     allocationLoading,
     handleSubscriptionChange,
-    applyCapture,
-    captured,
-    captureNotes,
-    capturePending: pendingCapture !== null && !selectedSubscriptionId,
+    ...captureFill,
     openPrice:
       typeof ipo?.listingOpenPrice === 'number' && ipo.listingOpenPrice > 0
         ? ipo.listingOpenPrice

@@ -112,6 +112,38 @@ class AnnouncementControllerTest {
     assertThat(forbidden.getResponse().getStatus()).isEqualTo(403);
   }
 
+  @Test
+  void announcementValidationAndNotFoundKeepCurrentHttpErrorContract() throws Exception {
+    MockHttpSession adminSession = loginAs(AccountRole.ADMIN);
+    String invalidRequest =
+        objectMapper.writeValueAsString(
+            Map.of(
+                "title",
+                " ",
+                "content",
+                "공지 본문",
+                "startAt",
+                LocalDate.now().toString(),
+                "endAt",
+                LocalDate.now().plusDays(1).toString()));
+
+    var invalid =
+        mockMvc
+            .perform(
+                post("/admin/announcements")
+                    .session(adminSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(invalidRequest))
+            .andReturn();
+    assertThat(invalid.getResponse().getStatus()).isEqualTo(400);
+    assertThat(invalid.getResponse().getContentAsString()).isEmpty();
+
+    var missing =
+        mockMvc.perform(get("/admin/announcements/99999999").session(adminSession)).andReturn();
+    assertThat(missing.getResponse().getStatus()).isEqualTo(404);
+    assertThat(missing.getResponse().getContentAsString()).isEmpty();
+  }
+
   private MockHttpSession loginAs(AccountRole role) throws Exception {
     String email = "announcement-" + UUID.randomUUID() + "@example.com";
     createdEmails.add(email);

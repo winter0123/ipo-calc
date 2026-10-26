@@ -66,7 +66,13 @@ describe('SignupForm', () => {
   })
 
   it('비공개 운영에서 승인 대기 응답이면 이동하지 않고 안내를 보여준다', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'a@b.com', approved: false })
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      accountId: 1,
+      email: 'a@b.com',
+      name: '홍길동',
+      nickname: '길동',
+      approved: false,
+    })
     renderSignupForm()
 
     await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동')
@@ -90,7 +96,13 @@ describe('SignupForm', () => {
   })
 
   it('정상 제출 시 201 응답 후 /dashboard로 이동', async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ accountId: 1, email: 'test@example.com' })
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      accountId: 1,
+      email: 'test@example.com',
+      name: '홍길동',
+      nickname: '길동',
+      approved: true,
+    })
     renderSignupForm()
 
     await fillAndSubmit('test@example.com', 'passw0rd!', '홍길동', '길동')

@@ -5,7 +5,7 @@ import {
 } from '@/entities/subscription/index.ts'
 import InvestmentHistoryDetail from './InvestmentHistoryDetail.tsx'
 import InvestmentHistoryRow from './InvestmentHistoryRow.tsx'
-import styles from './InvestmentHistoryTable.module.css'
+import styles, { StyleScope } from './InvestmentHistoryTable.styles.ts'
 
 interface InvestmentHistoryTableProps {
   items: InvestmentHistoryItem[]
@@ -36,45 +36,49 @@ export default function InvestmentHistoryTable({
   }
 
   return (
-    <div className={styles.tableContainer}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">청약일</th>
-            <th scope="col">공모주명</th>
-            <th scope="col">투자자</th>
-            <th scope="col" className={styles.numeric}>
-              청약수량
-            </th>
-            <th scope="col">상태</th>
-            <th scope="col" className={styles.numeric}>
-              잔여수량
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <InvestmentHistoryRow
-              key={item.id}
-              item={item}
-              isSelected={selectedSubscriptionId === item.id}
-              onSelect={handleSelect}
-            />
-          ))}
-        </tbody>
-      </table>
+    <StyleScope>
+      {
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th scope="col">청약일</th>
+                <th scope="col">공모주명</th>
+                <th scope="col">투자자</th>
+                <th scope="col" className={styles.numeric}>
+                  청약수량
+                </th>
+                <th scope="col">상태</th>
+                <th scope="col" className={styles.numeric}>
+                  잔여수량
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <InvestmentHistoryRow
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedSubscriptionId === item.id}
+                  onSelect={handleSelect}
+                />
+              ))}
+            </tbody>
+          </table>
 
-      {selectedSubscriptionId !== null && (
-        <div className={styles.detailWrapper}>
-          {isDetailLoading && <p>상세 정보를 불러오는 중...</p>}
-          {detailError && (
-            <p className={styles.error} role="alert" aria-live="polite">
-              해당 청약을 찾을 수 없습니다.
-            </p>
+          {selectedSubscriptionId !== null && (
+            <div className={styles.detailWrapper}>
+              {isDetailLoading && <p>상세 정보를 불러오는 중...</p>}
+              {detailError && (
+                <p className={styles.error} role="alert" aria-live="polite">
+                  해당 청약을 찾을 수 없습니다.
+                </p>
+              )}
+              {detail && <InvestmentHistoryDetail detail={detail} onClose={handleCloseDetail} />}
+            </div>
           )}
-          {detail && <InvestmentHistoryDetail detail={detail} onClose={handleCloseDetail} />}
         </div>
-      )}
-    </div>
+      }
+    </StyleScope>
   )
 }

@@ -79,7 +79,7 @@ function SaleForm({ record, onClose }: { record: Sale; onClose: () => void }) {
 export function SaleEditDialog({ id, onClose }: { id: number; onClose: () => void }) {
   const query = useQuery({
     queryKey: investmentHistoryKeys.source('sale', id),
-    queryFn: () => getSale(id),
+    queryFn: ({ signal }) => getSale(id, signal),
   })
   return (
     <Shell title="매도 수정" query={query} onClose={onClose}>

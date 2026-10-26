@@ -1,6 +1,10 @@
 import { apiFetch } from '@/shared/api/client.ts'
-import { apiGetParsed } from '@/shared/api/parsed.ts'
-import { investmentHistoryItemSchema, investmentHistoryResponseSchema } from './types.ts'
+import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
+import {
+  investmentHistoryItemSchema,
+  investmentHistoryResponseSchema,
+  subscriptionSchema,
+} from './types.ts'
 import type {
   InvestmentHistoryFilters,
   InvestmentHistoryResponse,
@@ -11,7 +15,7 @@ import type {
 } from './types.ts'
 
 export async function createSubscription(data: SubscriptionRegisterRequest): Promise<Subscription> {
-  return apiFetch<Subscription>('/subscriptions', {
+  return apiFetchParsed('/subscriptions', subscriptionSchema, {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -67,15 +71,15 @@ export async function getSubscriptionDetail(
   return apiGetParsed(`/investment-history/${subscriptionId}`, investmentHistoryItemSchema, signal)
 }
 
-export async function getSubscription(id: number): Promise<Subscription> {
-  return apiFetch<Subscription>(`/subscriptions/${id}`)
+export async function getSubscription(id: number, signal?: AbortSignal): Promise<Subscription> {
+  return apiGetParsed(`/subscriptions/${id}`, subscriptionSchema, signal)
 }
 
 export async function updateSubscription(
   id: number,
   data: SubscriptionUpdateRequest,
 ): Promise<Subscription> {
-  return apiFetch<Subscription>(`/subscriptions/${id}`, {
+  return apiFetchParsed(`/subscriptions/${id}`, subscriptionSchema, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })

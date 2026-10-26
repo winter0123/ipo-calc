@@ -9,7 +9,7 @@ import {
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import { usePushDevice } from './usePushDevice.ts'
-import styles from './NotificationSettings.module.css'
+import styles, { StyleScope } from './NotificationSettings.styles.ts'
 
 const KINDS: { key: keyof NotificationPreferences; label: string; help: string }[] = [
   {
@@ -69,85 +69,89 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className={styles.panel}>
-      <section aria-labelledby="device-title" className={styles.card}>
-        <h2 id="device-title" className={styles.heading}>
-          이 기기에서 알림 받기
-        </h2>
-        <DeviceNotice
-          enabled={enabled}
-          support={device.support}
-          permission={device.permission}
-          subscribed={device.subscribed}
-        />
-        <div className={styles.actions}>
-          {device.subscribed ? (
-            <Button
-              variant="secondary"
-              onClick={() => void device.disable()}
-              disabled={device.busy}
-            >
-              이 기기 알림 끄기
-            </Button>
-          ) : (
-            <Button
-              onClick={() => void device.enable()}
-              disabled={
-                device.busy ||
-                !enabled ||
-                device.support !== 'supported' ||
-                device.permission === 'denied'
-              }
-            >
+    <StyleScope>
+      {
+        <div className={styles.panel}>
+          <section aria-labelledby="device-title" className={styles.card}>
+            <h2 id="device-title" className={styles.heading}>
               이 기기에서 알림 받기
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            onClick={() => void runTest()}
-            disabled={testing || !enabled || !device.subscribed}
-          >
-            테스트 알림 보내기
-          </Button>
-        </div>
-        {device.error && (
-          <p role="alert" className={styles.error}>
-            {device.error}
-          </p>
-        )}
-        {testMessage && <p role="status">{testMessage}</p>}
-      </section>
+            </h2>
+            <DeviceNotice
+              enabled={enabled}
+              support={device.support}
+              permission={device.permission}
+              subscribed={device.subscribed}
+            />
+            <div className={styles.actions}>
+              {device.subscribed ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void device.disable()}
+                  disabled={device.busy}
+                >
+                  이 기기 알림 끄기
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => void device.enable()}
+                  disabled={
+                    device.busy ||
+                    !enabled ||
+                    device.support !== 'supported' ||
+                    device.permission === 'denied'
+                  }
+                >
+                  이 기기에서 알림 받기
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => void runTest()}
+                disabled={testing || !enabled || !device.subscribed}
+              >
+                테스트 알림 보내기
+              </Button>
+            </div>
+            {device.error && (
+              <p role="alert" className={styles.error}>
+                {device.error}
+              </p>
+            )}
+            {testMessage && <p role="status">{testMessage}</p>}
+          </section>
 
-      <section aria-labelledby="kinds-title" className={styles.card}>
-        <h2 id="kinds-title" className={styles.heading}>
-          받을 알림 종류
-        </h2>
-        <p className={styles.hint}>켜고 끄면 바로 저장됩니다. 내 모든 기기에 적용됩니다.</p>
-        <ul className={styles.kinds}>
-          {KINDS.map((kind) => (
-            <li key={kind.key}>
-              <label className={styles.kind}>
-                <input
-                  type="checkbox"
-                  checked={current[kind.key]}
-                  onChange={(e) => toggle(kind.key, e.target.checked)}
-                />
-                <span>
-                  <strong>{kind.label}</strong>
-                  <span className={styles.help}>{kind.help}</span>
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
-        {save.isError && (
-          <p role="alert" className={styles.error}>
-            {toErrorMessage(save.error)}
-          </p>
-        )}
-        {save.isSuccess && <p role="status">저장했습니다.</p>}
-      </section>
-    </div>
+          <section aria-labelledby="kinds-title" className={styles.card}>
+            <h2 id="kinds-title" className={styles.heading}>
+              받을 알림 종류
+            </h2>
+            <p className={styles.hint}>켜고 끄면 바로 저장됩니다. 내 모든 기기에 적용됩니다.</p>
+            <ul className={styles.kinds}>
+              {KINDS.map((kind) => (
+                <li key={kind.key}>
+                  <label className={styles.kind}>
+                    <input
+                      type="checkbox"
+                      checked={current[kind.key]}
+                      onChange={(e) => toggle(kind.key, e.target.checked)}
+                    />
+                    <span>
+                      <strong>{kind.label}</strong>
+                      <span className={styles.help}>{kind.help}</span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            {save.isError && (
+              <p role="alert" className={styles.error}>
+                {toErrorMessage(save.error)}
+              </p>
+            )}
+            {save.isSuccess && <p role="status">저장했습니다.</p>}
+          </section>
+        </div>
+      }
+    </StyleScope>
   )
 }
 
@@ -164,40 +168,61 @@ function DeviceNotice({
 }) {
   if (!enabled) {
     return (
-      <p className={styles.notice}>
-        이 서버에는 푸시 알림이 설정되어 있지 않아 지금은 쓸 수 없습니다. 관리자에게 문의해 주세요.
-      </p>
+      <StyleScope>
+        {
+          <p className={styles.notice}>
+            이 서버에는 푸시 알림이 설정되어 있지 않아 지금은 쓸 수 없습니다. 관리자에게 문의해
+            주세요.
+          </p>
+        }
+      </StyleScope>
     )
   }
   if (support === 'ios-needs-install') {
     return (
-      <p className={styles.warning}>
-        아이폰·아이패드에서는 사파리 하단의 공유 버튼에서 &quot;홈 화면에 추가&quot;를 한 뒤, 홈
-        화면의 아이콘으로 열어야 알림을 받을 수 있습니다(iOS 16.4 이상).
-      </p>
+      <StyleScope>
+        {
+          <p className={styles.warning}>
+            아이폰·아이패드에서는 사파리 하단의 공유 버튼에서 &quot;홈 화면에 추가&quot;를 한 뒤, 홈
+            화면의 아이콘으로 열어야 알림을 받을 수 있습니다(iOS 16.4 이상).
+          </p>
+        }
+      </StyleScope>
     )
   }
   if (support === 'unsupported') {
     return (
-      <p className={styles.warning}>
-        이 브라우저는 푸시 알림을 지원하지 않습니다. 크롬·엣지·파이어폭스·사파리 최신 버전을 이용해
-        주세요.
-      </p>
+      <StyleScope>
+        {
+          <p className={styles.warning}>
+            이 브라우저는 푸시 알림을 지원하지 않습니다. 크롬·엣지·파이어폭스·사파리 최신 버전을
+            이용해 주세요.
+          </p>
+        }
+      </StyleScope>
     )
   }
   if (permission === 'denied') {
     return (
-      <p className={styles.warning}>
-        브라우저에서 이 사이트의 알림이 차단되어 있습니다. 주소창 왼쪽 자물쇠(또는 사이트 설정)에서
-        알림을 &quot;허용&quot;으로 바꾼 뒤 이 페이지를 새로 고쳐 주세요.
-      </p>
+      <StyleScope>
+        {
+          <p className={styles.warning}>
+            브라우저에서 이 사이트의 알림이 차단되어 있습니다. 주소창 왼쪽 자물쇠(또는 사이트
+            설정)에서 알림을 &quot;허용&quot;으로 바꾼 뒤 이 페이지를 새로 고쳐 주세요.
+          </p>
+        }
+      </StyleScope>
     )
   }
   return (
-    <p className={styles.notice}>
-      {subscribed
-        ? '이 기기에서 알림을 받고 있습니다.'
-        : '버튼을 누르면 브라우저가 알림 허용을 물어봅니다. 허용해 주세요.'}
-    </p>
+    <StyleScope>
+      {
+        <p className={styles.notice}>
+          {subscribed
+            ? '이 기기에서 알림을 받고 있습니다.'
+            : '버튼을 누르면 브라우저가 알림 허용을 물어봅니다. 허용해 주세요.'}
+        </p>
+      }
+    </StyleScope>
   )
 }

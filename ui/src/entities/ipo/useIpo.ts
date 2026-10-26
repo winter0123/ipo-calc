@@ -5,7 +5,7 @@ import type { Ipo } from './types.ts'
 
 export function useIpo(id: number | undefined) {
   return useQuery<Ipo>({
-    queryKey: id !== undefined ? ipoKeys.detail(id) : ['ipos', 'detail', 'invalid'],
+    queryKey: id !== undefined ? ipoKeys.detail(id) : ipoKeys.invalidDetail(),
     queryFn: ({ signal }) => fetchIpo(id!, signal),
     enabled: id !== undefined && !Number.isNaN(id),
   })

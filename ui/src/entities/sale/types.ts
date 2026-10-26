@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export interface SaleRegisterRequest {
   allocationId: number
   quantity: number
@@ -9,19 +11,22 @@ export interface SaleRegisterRequest {
   otherCost?: number
 }
 
-export interface Sale {
-  id: number
-  allocationId: number
-  quantity: number
-  price?: number
-  amount?: number
-  saleDate: string
-  fee?: number
-  tax?: number
-  otherCost?: number
-  status: string
-  createdAt: string
-  updatedAt: string
-}
+export const saleSchema = z.object({
+  id: z.number(),
+  allocationId: z.number(),
+  quantity: z.number(),
+  price: z.number().nullable(),
+  amount: z.number().nullable(),
+  saleDate: z.string(),
+  fee: z.number().nullable(),
+  tax: z.number().nullable(),
+  otherCost: z.number().nullable(),
+  status: z.string(),
+  deletedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export type Sale = z.infer<typeof saleSchema>
 
 export type SaleUpdateRequest = Partial<Omit<SaleRegisterRequest, 'allocationId'>>

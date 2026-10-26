@@ -72,8 +72,7 @@ class IpoSyncServiceTest {
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
-            ipoRepository,
-            businessDayCalculator,
+            new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK),
             transactionTemplate,
             ipoScheduleMergeService,
             FIXED_CLOCK);

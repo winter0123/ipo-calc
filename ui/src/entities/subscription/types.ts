@@ -10,19 +10,21 @@ export interface SubscriptionRegisterRequest {
   memo?: string
 }
 
-export interface Subscription {
-  id: number
-  investorId: number
-  securitiesAccountId: number
-  ipoId: number
-  quantity: number
-  depositAmount: number
-  subscribedAt: string
-  memo?: string
-  status: string
-  createdAt: string
-  updatedAt: string
-}
+export const subscriptionSchema = z.object({
+  id: z.number(),
+  investorId: z.number(),
+  securitiesAccountId: z.number(),
+  ipoId: z.number(),
+  quantity: z.number(),
+  depositAmount: z.number(),
+  subscribedAt: z.string(),
+  memo: z.string().nullable(),
+  status: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export type Subscription = z.infer<typeof subscriptionSchema>
 
 /**
  * GET /investment-history 응답 DTO — 백엔드 InvestmentHistoryDto 기준.

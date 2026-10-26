@@ -6,6 +6,7 @@ import {
   currentMonthRange,
   filterIposBySubscriptionStart,
   parseDateRange,
+  updateDateRangeParams,
 } from './subscriptionSchedule.ts'
 
 const ipo = (id: number, start: string): Ipo => ({
@@ -54,6 +55,23 @@ describe('subscription schedule helpers', () => {
       to: '2026-02-28',
     })
     expect(parseDateRange('2026-11-01', '2026-10-01')).toEqual(currentMonthRange())
+    expect(parseDateRange('2026-02-30', '2026-03-01')).toEqual(currentMonthRange())
+    expect(parseDateRange('2024-02-29', '2024-03-01')).toEqual({
+      from: '2024-02-29',
+      to: '2024-03-01',
+    })
+    expect(parseDateRange('2025-02-29', '2025-03-01')).toEqual(currentMonthRange())
+  })
+
+  it('updates one URL boundary, preserves other query values and keeps the range ordered', () => {
+    const params = new URLSearchParams('from=2026-10-01&tab=upcoming')
+    expect(
+      updateDateRangeParams(params, 'to', '2026-09-20', {
+        from: '2026-10-01',
+        to: '2026-10-31',
+      }).toString(),
+    ).toBe('from=2026-09-20&tab=upcoming&to=2026-09-20')
+    expect(params.toString()).toBe('from=2026-10-01&tab=upcoming')
   })
 
   it('filters by subscription start date and sorts ascending', () => {
@@ -129,5 +147,15 @@ describe('subscription schedule helpers', () => {
     ])
     expect(partial.status).toBe('partial')
     expect(result[0].subscriptionQuantity).toBe(100)
+  })
+
+  it('한 공모주의 여러 계좌 청약 기록을 입력 순서대로 모두 유지한다', () => {
+    const result = aggregateSubscriptionSchedule(
+      [ipo(1, '2026-10-01')],
+      [item(21, null), item(22, null)].map((record) => ({ ...record, ipoId: 1 })),
+    )
+
+    expect(result[0].subscriptions.map(({ id }) => id)).toEqual([21, 22])
+    expect(result[0].subscriptionCount).toBe(2)
   })
 })

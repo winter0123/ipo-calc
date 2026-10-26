@@ -1,4 +1,30 @@
-import styles from './Spinner.module.css'
+import styled, { keyframes } from 'styled-components'
+
+const rotate = keyframes`
+  to { transform: rotate(360deg); }
+`
+
+const Status = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+`
+
+const Indicator = styled.span`
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid var(--info-border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: ${rotate} 700ms linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1800ms;
+  }
+`
 
 export interface SpinnerProps {
   label?: string
@@ -6,12 +32,10 @@ export interface SpinnerProps {
 }
 
 export default function Spinner({ label = '로딩 중...', className }: SpinnerProps) {
-  const classNames = [styles.spinner, className].filter(Boolean).join(' ')
-
   return (
-    <div className={classNames} role="status" aria-live="polite">
-      <span className={styles.indicator} aria-hidden="true" />
-      <span className={styles.label}>{label}</span>
-    </div>
+    <Status className={className} role="status" aria-live="polite">
+      <Indicator aria-hidden="true" />
+      <span>{label}</span>
+    </Status>
   )
 }

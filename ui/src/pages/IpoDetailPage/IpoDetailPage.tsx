@@ -4,7 +4,7 @@ import { useIpo } from '@/entities/ipo/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
-import styles from './IpoDetailPage.module.css'
+import styles, { StyleScope } from './IpoDetailPage.styles.ts'
 import IpoInsightSections from './IpoInsightSections.tsx'
 import { dateOnly, toLocalYmd } from '@/shared/lib/date.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
@@ -77,100 +77,112 @@ export default function IpoDetailPage() {
 
   if (isLoading) {
     return (
-      <div className={styles.container}>
-        <h1>공모주 상세</h1>
-        <Spinner label="공모주 정보를 불러오는 중..." />
-      </div>
+      <StyleScope>
+        {
+          <div className={styles.container}>
+            <h1>공모주 상세</h1>
+            <Spinner label="공모주 정보를 불러오는 중..." />
+          </div>
+        }
+      </StyleScope>
     )
   }
 
   if (!isValidId || error) {
     return (
-      <div className={styles.container}>
-        <h1>공모주 상세</h1>
-        <ErrorMessage message={!isValidId ? '공모주를 찾을 수 없습니다.' : getErrorMessage()} />
-        <Link to="/ipo-calendar" className={styles.backLink}>
-          공모주 일정으로 돌아가기
-        </Link>
-      </div>
+      <StyleScope>
+        {
+          <div className={styles.container}>
+            <h1>공모주 상세</h1>
+            <ErrorMessage message={!isValidId ? '공모주를 찾을 수 없습니다.' : getErrorMessage()} />
+            <Link to="/ipo-calendar" className={styles.backLink}>
+              공모주 일정으로 돌아가기
+            </Link>
+          </div>
+        }
+      </StyleScope>
     )
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1>{ipo!.ipoName}</h1>
-        <div className={styles.meta}>
-          <span className={styles.company}>{ipo!.companyName}</span>
-          <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
-        </div>
-      </header>
+    <StyleScope>
+      {
+        <div className={styles.container}>
+          <header className={styles.header}>
+            <h1>{ipo!.ipoName}</h1>
+            <div className={styles.meta}>
+              <span className={styles.company}>{ipo!.companyName}</span>
+              <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
+            </div>
+          </header>
 
-      <dl className={styles.detailGrid}>
-        <div className={styles.detailItem}>
-          <dt>종목코드</dt>
-          <dd>{ipo!.stockCode ?? '-'}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>회차</dt>
-          <dd>{ipo!.roundLabel ?? '-'}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>청약 시작일</dt>
-          <dd>{formatDate(ipo!.subscriptionStartDate)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>청약 종료일</dt>
-          <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>환불일</dt>
-          <dd>
-            {ipo!.refundDate ? (
-              <>
-                {formatDate(ipo!.refundDate)}
-                {ipo!.refundDateEstimated && ' (예상)'}
-              </>
-            ) : (
-              '-'
-            )}
-          </dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>상장일</dt>
-          <dd>{formatDate(ipo!.listingDate)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>확정 공모가</dt>
-          <dd>{formatPrice(ipo!.fixedPrice)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>희망 공모가</dt>
-          <dd>{formatBandPrice(ipo!.lowerBandPrice, ipo!.upperBandPrice)}</dd>
-        </div>
-        <div className={styles.detailItem}>
-          <dt>공모 주식 수</dt>
-          <dd>{formatShareCount(ipo!.offeringShareCount)}</dd>
-        </div>
-      </dl>
+          <dl className={styles.detailGrid}>
+            <div className={styles.detailItem}>
+              <dt>종목코드</dt>
+              <dd>{ipo!.stockCode ?? '-'}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>회차</dt>
+              <dd>{ipo!.roundLabel ?? '-'}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>청약 시작일</dt>
+              <dd>{formatDate(ipo!.subscriptionStartDate)}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>청약 종료일</dt>
+              <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>환불일</dt>
+              <dd>
+                {ipo!.refundDate ? (
+                  <>
+                    {formatDate(ipo!.refundDate)}
+                    {ipo!.refundDateEstimated && ' (예상)'}
+                  </>
+                ) : (
+                  '-'
+                )}
+              </dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>상장일</dt>
+              <dd>{formatDate(ipo!.listingDate)}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>확정 공모가</dt>
+              <dd>{formatPrice(ipo!.fixedPrice)}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>희망 공모가</dt>
+              <dd>{formatBandPrice(ipo!.lowerBandPrice, ipo!.upperBandPrice)}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt>공모 주식 수</dt>
+              <dd>{formatShareCount(ipo!.offeringShareCount)}</dd>
+            </div>
+          </dl>
 
-      <IpoInsightSections ipoId={id} listingDate={dateOnly(ipo!.listingDate)} />
+          <IpoInsightSections ipoId={id} listingDate={dateOnly(ipo!.listingDate)} />
 
-      <nav className={styles.actions} aria-label="공모주 상세 액션">
-        <Link to="/ipo-calendar" className={styles.secondaryLink}>
-          공모주 일정으로 돌아가기
-        </Link>
-        {canRegister &&
-          (isGuest ? (
-            <Link to="/login" state={{ from: registerPath }} className={styles.primaryLink}>
-              로그인하고 청약 등록하기
+          <nav className={styles.actions} aria-label="공모주 상세 액션">
+            <Link to="/ipo-calendar" className={styles.secondaryLink}>
+              공모주 일정으로 돌아가기
             </Link>
-          ) : (
-            <Link to={registerPath} className={styles.primaryLink}>
-              청약 등록하기
-            </Link>
-          ))}
-      </nav>
-    </div>
+            {canRegister &&
+              (isGuest ? (
+                <Link to="/login" state={{ from: registerPath }} className={styles.primaryLink}>
+                  로그인하고 청약 등록하기
+                </Link>
+              ) : (
+                <Link to={registerPath} className={styles.primaryLink}>
+                  청약 등록하기
+                </Link>
+              ))}
+          </nav>
+        </div>
+      }
+    </StyleScope>
   )
 }

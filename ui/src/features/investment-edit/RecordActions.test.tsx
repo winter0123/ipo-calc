@@ -13,27 +13,44 @@ const mockFetch = vi.mocked(apiFetch)
 const RECORDS: Record<RecordKind, object> = {
   subscription: {
     id: 1,
+    investorId: 1,
+    securitiesAccountId: 1,
+    ipoId: 1,
     quantity: 10,
     depositAmount: 200000,
     subscribedAt: '2026-09-01T09:00:00',
     memo: '메모',
+    status: 'ACTIVE',
+    createdAt: '2026-09-01T09:00:00',
+    updatedAt: '2026-09-01T09:00:00',
   },
   allocation: {
     id: 2,
+    subscriptionId: 1,
     allocatedQuantity: 5,
     allocatedAt: '2026-09-05T09:00:00',
     allocationPrice: 10000,
     allocationMethod: 'LOTTERY',
     note: '',
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-09-05T09:00:00',
+    updatedAt: '2026-09-05T09:00:00',
   },
   sale: {
     id: 3,
+    allocationId: 2,
     quantity: 4,
     price: 15000,
     amount: 60000,
     saleDate: '2026-09-10T09:00:00',
     fee: 2000,
     tax: 300,
+    otherCost: null,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-09-10T09:00:00',
+    updatedAt: '2026-09-10T09:00:00',
   },
 }
 const ID = { subscription: 1, allocation: 2, sale: 3 }
@@ -41,7 +58,7 @@ const PATH = { subscription: '/subscriptions/1', allocation: '/allocations/2', s
 
 function setup(kind: RecordKind) {
   mockFetch.mockImplementation((_path, options) =>
-    Promise.resolve(options?.method ? undefined : RECORDS[kind]),
+    Promise.resolve(options?.method && options.method !== 'GET' ? undefined : RECORDS[kind]),
   )
   render(
     <QueryClientProvider

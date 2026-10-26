@@ -37,6 +37,7 @@ public class AllocationService {
       new OwnershipErrors(AllocationNotFoundException::new, AllocationForbiddenException::new);
 
   private final AllocationRepository allocationRepository;
+  private final ActiveSaleQuantityReader activeSaleQuantityReader;
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionOwnership subscriptionOwnership;
   private final AllocationOwnership allocationOwnership;
@@ -168,16 +169,13 @@ public class AllocationService {
     final Long updatedAllocationPrice = request.getAllocationPrice();
     final String updatedNote = request.getNote();
 
-    if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < 0) {
-      throw new AllocationValidationException("allocatedQuantity는 0 이상이어야 합니다.");
-    }
     validateAmountAndText(updatedAllocationPrice, updatedAllocationMethod, updatedNote);
 
     // 같은 청약을 다시 지정하면 이동이 아니다
     boolean moving =
         updatedSubscriptionId != null
             && !updatedSubscriptionId.equals(allocation.getSubscriptionId());
-    long soldQuantity = allocationRepository.sumActiveSaleQuantity(allocation.getId());
+    long soldQuantity = activeSaleQuantityReader.sumActiveSaleQuantity(allocation.getId());
 
     if (moving) {
       subscriptionRepository.findByIdForUpdate(updatedSubscriptionId);
@@ -234,7 +232,7 @@ public class AllocationService {
   @Transactional
   public void cancel(Long id) {
     Allocation allocation = findOwnedAllocation(id);
-    if (allocationRepository.sumActiveSaleQuantity(id) > 0) {
+    if (activeSaleQuantityReader.sumActiveSaleQuantity(id) > 0) {
       throw new HasChildRecordsException("매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.");
     }
     LocalDateTime now = LocalDateTime.now(clock);

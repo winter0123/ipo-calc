@@ -67,6 +67,17 @@ describe('registerIpo', () => {
     }
     await expect(registerIpo(req)).resolves.toEqual(createdIpo)
   })
+
+  it('등록 응답이 IPO schema와 다르면 ZodError로 거부한다', async () => {
+    stub({ id: 2, ipoName: '테스트 IPO' })
+    await expect(
+      registerIpo({
+        ipoName: '테스트 IPO',
+        subscriptionStartDate: '2026-02-01',
+        subscriptionEndDate: '2026-02-02',
+      }),
+    ).rejects.toBeInstanceOf(ZodError)
+  })
 })
 
 describe('syncIposNow', () => {

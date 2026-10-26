@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
 import {
   getAllInvestmentHistory,
+  createSubscription,
   getInvestmentHistory,
   getSubscriptionDetail,
+  getSubscription,
+  updateSubscription,
 } from './api-client.ts'
 
 const stub = (body: unknown) =>
@@ -34,6 +37,20 @@ const ITEM = {
   remainingQuantity: null,
   investorName: null,
   securitiesFirmName: null,
+}
+
+const SUBSCRIPTION = {
+  id: 3,
+  investorId: 4,
+  securitiesAccountId: 5,
+  ipoId: 6,
+  quantity: 100,
+  depositAmount: 1_000_000,
+  subscribedAt: TS,
+  memo: null,
+  status: 'ACTIVE',
+  createdAt: TS,
+  updatedAt: TS,
 }
 
 describe('subscription api-client 응답 검증', () => {
@@ -77,5 +94,70 @@ describe('getAllInvestmentHistory', () => {
     expect(items.map((i) => i.id)).toEqual([1, 2])
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(String(fetchMock.mock.calls[1][0])).toContain('page=1&size=100')
+  })
+})
+
+describe('getSubscription', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('단건 청약을 검증하고 AbortSignal을 전달한다', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(SUBSCRIPTION)))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+
+    await expect(getSubscription(3, controller.signal)).resolves.toEqual(SUBSCRIPTION)
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/subscriptions\/3$/),
+      expect.objectContaining({ method: 'GET', signal: controller.signal }),
+    )
+  })
+
+  it('필수 필드가 빠진 응답은 ZodError로 거부한다', async () => {
+    stub({ id: 3 })
+    await expect(getSubscription(3)).rejects.toBeInstanceOf(ZodError)
+  })
+})
+
+describe('subscription mutations', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('POST/PATCH 응답을 subscription schema로 검증한다', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(SUBSCRIPTION))))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      createSubscription({
+        investorId: 4,
+        securitiesAccountId: 5,
+        ipoId: 6,
+        quantity: 100,
+        depositAmount: 1_000_000,
+        subscribedAt: TS,
+      }),
+    ).resolves.toEqual(SUBSCRIPTION)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/subscriptions$/),
+      expect.objectContaining({ method: 'POST' }),
+    )
+
+    await expect(updateSubscription(3, { quantity: 100 })).resolves.toEqual(SUBSCRIPTION)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/subscriptions\/3$/),
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+  })
+
+  it('잘못된 mutation 응답은 ZodError로 거부한다', async () => {
+    stub({ id: 3 })
+    await expect(
+      createSubscription({
+        investorId: 4,
+        securitiesAccountId: 5,
+        ipoId: 6,
+        quantity: 100,
+        depositAmount: 1_000_000,
+        subscribedAt: TS,
+      }),
+    ).rejects.toBeInstanceOf(ZodError)
   })
 })
