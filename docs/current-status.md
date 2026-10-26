@@ -1,13 +1,33 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 최신 작업 (2026-10-26): 공모주 청약 일정과 상태 표시
+
+- `/subscriptions`에서 청약 시작일이 선택 기간 안에 있는 공모주 전체를 표시하고, 기간은 URL 쿼리에 보존한다. 기본 기간은 한국 로컬 기준 이번 달이다.
+- 현재 투자자의 전체 투자내역을 IPO별로 합산해 청약 전·배정 결과 대기·일부 입력·배정·0주 미배정 상태를 구분한다. 계좌 ID·이름을 투자내역 API DTO에 추가해 여러 계좌의 청약을 개별 식별한다.
+- 각 청약 기록에 청약일·증권사·수량과 배정 입력 이동을 표시하고, 배정 수량 0 입력을 허용한다.
+- 로그인 전에는 브랜드 아이콘이 홈으로 이동하고 메뉴를 열지 않는다. 공모주 일정은 메뉴에서 바로 갈 수 있도록 노출하며, 마이페이지의 투자자·계좌 등록 동선도 정리했다.
+- README에 운영 도메인을 표시하고 현재 운영 방식과 다른 클라우드 배포 문서를 제거했다.
+- 검증: UI 테스트 702건·lint·typecheck·format:check·build PASS. Backend 테스트 1,099건·Checkstyle·`build` PASS. DB 자격증명은 로컬 `.envrc` 값을 프로세스 환경변수로 사용했으며 문서·로그에 값을 기록하지 않았다.
+- GitHub 이슈 [#486](https://github.com/winter0123/ipo-calc/issues/486)에서 추적한다. 브라우저 실동작 확인은 NOT_RUN이며, PR 생성 전이다.
+
+## 최신 작업 (2026-10-26): 오래된 클라우드 배포 문서 제거
+
+- 현재 운영 방식과 다른 구형 클라우드 VM 설계·인수인계·작업 로그와 관련 안내를 삭제했다.
+- 실제 운영 방식은 집 Ubuntu 서버의 JAR + systemd, 호스트 PostgreSQL, 정적 파일 + Caddy이며 개인 배포 절차는 Git에서 제외된 `docs/deployment/ubuntu-home-server.md`에 있다.
+- 문서 변경만 수행했다. `git diff --check` PASS, 테스트는 NOT_RUN.
+
 ## 최신 작업 (2026-10-26): 메뉴 구조 및 사용자 현황
 
 - 로그인 메뉴를 공모주 청약·매매기록·설정·관리자 네 그룹으로 재구성했다. 공모주 일정·공모주 청약·배정·매도, 청약내역·실현손익을 요청한 이름으로 표시하고 관리자 화면은 관리자 그룹에 유지했다.
 - 투자자 추가 메뉴 링크를 제거하고 마이페이지 사용자 현황에 등록된 투자자 목록과 투자자 추가 버튼을 배치했다.
 - 증권사 연동을 메뉴에서 제거하고 증권사 계좌 관리 화면 하단에 연동 화면 이동 버튼을 추가했다.
-- UI 전체 테스트 711건·lint·typecheck·format:check·build가 `PASS`다. Backend 전체 테스트 1,099건·Checkstyle·`build`도 `PASS`다.
+- 후속 조정으로 `공모주 일정`을 메뉴 첫 번째 단독 링크로 옮기고 `공모주 청약` 그룹에서 분리했다.
+- 모바일 메뉴에서 1단 항목은 배경·굵기·간격으로 강조하고, 2단 링크는 들여쓰기와 세로 구분선으로 구분했다.
+- `증권사 계좌 등록`을 설정 메뉴에서 제거하고 마이페이지 사용자 현황에 버튼으로 배치했다.
+- 사용자 현황을 반응형 프로필 카드로 바꾸고 헤더 메뉴의 이용가이드는 새 탭에서 열도록 했다.
+- UI 전체 테스트 702건·lint·typecheck·format:check·build가 `PASS`다. Backend 전체 테스트 1,099건·Checkstyle·`build`도 `PASS`다.
 - 검증 중 드러난 배정 이동/수량, 청약 수정 소유권·중복, 빈 관계 삭제 회귀를 복구했다.
-- 커밋 `ffb3629`와 검증 기록 `1cf4675`를 `main`에 반영해 원격 `origin/main`까지 푸시했다. 로컬·원격 HEAD는 `1cf4675`로 일치한다.
+- 커밋 `ffb3629`와 검증·배포 기록을 `main`에 반영해 원격 `origin/main`까지 푸시했다. 작업 전 로컬·원격 기준 커밋은 `b4dcc33`이었다.
 - 기존 작업공간의 다른 수정 파일은 보존했다.
 
 ## 최신 작업 (2026-10-23): JPA 도메인 컬럼 설명
@@ -87,7 +107,7 @@
 
 **운영 전 사용자 몫**
 - `deploy/.env`에 `OPENDART_API_KEY`·`DATA_GO_KR_SERVICE_KEY`·`APP_ENCRYPTION_BROKER_KEY` 채우기(`deploy/.env.example`). `APP_REMEMBER_ME_KEY`는 더 이상 불필요.
-- 집 PC 배포(`docs/home-server.md`: Docker 설치·터널·백업 cron 등록), 배포 직후 관리자로 `POST /api/ipos/insight/sync` 1회.
+- 집 Ubuntu 서버 배포는 로컬 전용 `docs/deployment/ubuntu-home-server.md`의 Ansible 절차를 따른다. 배포 직후 관리자로 `POST /api/ipos/insight/sync`를 1회 실행한다.
 - 증권사(KIS·키움·LS) 실제 키로 1회 조회 확인(키움은 서버 IP 등록). 실호출로 확인 못 한 필드는 `docs/guide-backend.md` 6.1.
 - (10-13 세션에서 OpenDART·공공데이터 키 값이 세션 출력에 노출됨 — 재발급 권장)
 
@@ -107,10 +127,9 @@
 - **수익 확인**: 기타비용 열 제거, 요약 카드, 프리셋(이번 달/지난 달/올해/전체 — 전체는 from/to 없이 조회).
 - **워커 방식 변경**: 이번에는 OpenCode 무료 모델 대신 사용자 지시로 `orca orchestration worker-start --agent claude --model claude-sonnet-5-5 --worktree new-top-level --name <이름> --base-branch origin/main`으로 5명을 병렬로 썼다. 정지 없이 모두 완료했고, 실제 결함 2건(드롭다운 항상 펼침, 숫자 정렬)은 jsdom이 못 잡아 Master 캡처에서 잡았다.
 - **휴대폰(≤640px) 후속(#346·#347)**: 투자 내역 행을 라벨 있는 카드로, 대시보드 요약 카드 2×2, 수익 확인 날짜 나란히·기간 버튼 한 줄·요약 카드 한 줄, 달력 칸 안 공휴일 이름 숨김. 데스크톱 불변.
-- **배포 코드(#339)**: `infra/oracle/` Terraform(Oracle Cloud VM)과 `docs/handoff-free-deployment.md` 병합. 실제 VM 생성·운영 환경 변수·키 백업은 사용자 몫.
 - **할 일 전체 조회(#349)**: 대시보드 할 일이 청약 100건 상한 없이 마지막 페이지까지 이어 읽는다(`getAllInvestmentHistory`).
-- **배포 파이프라인 실동작 확인**: 로컬 Jenkins(`deploy/jenkins`, :18081) `ipo-calc-deploy` 빌드 #4가 `main`(`94264f4`)으로 백엔드 테스트·UI 테스트·운영 compose 배포·스모크까지 SUCCESS, 로컬 운영 스택(:18080) 웹 200·`/api/auth/me` 401·`/api/ipos` 200. 실제 Oracle VM 배포는 아직 안 함.
-- **남은 것(사용자 몫)**: 운영 VM에 백업 cron 등록(`scripts/backup-db.sh`),  KIS·키움·LS 실제 키로 1회 조회 확인(키움은 서버 IP 등록), 실제 Oracle VM 배포, 상장일 공식 출처 없음(ustockplus 유지), 배포 후 관리자가 `POST /ipos/insight/sync` 1회 실행.
+- **운영 배포**: 집 Ubuntu 홈 서버에 systemd 백엔드·호스트 PostgreSQL·Caddy 정적 프런트엔드로 배포한다. 실제 재배포 절차와 상태는 로컬 전용 `docs/deployment/ubuntu-home-server.md`에 기록한다.
+- **남은 것(사용자 몫)**: KIS·키움·LS 실제 키로 1회 조회 확인(키움은 서버 IP 등록), 상장일 공식 출처 없음(ustockplus 유지), 배포 후 관리자가 `POST /ipos/insight/sync` 1회 실행.
 - **기간 기준 = 공모주 상장일(#351, 사용자 결정)**: 대시보드 월별·연도별과 수익 확인 기간 필터는 매도일이 아니라 공모주 상장일로 판단한다(10월 상장을 11월에 팔아도 10월). 상장일이 없는 공모주만 매도일로 대체. 이로써 "한 배정이 여러 기간에 걸치는" 미결 문제도 사라졌다.
 - **증권사 관리 화면(#353)**: `/securities`(설정 → 증권사 관리, 현재 투자자 기준). 등록한 증권사(계좌 이름·가려진 번호, `번호 보기`는 그때만 서버 조회, 이름 수정·기본 지정·삭제=소프트 삭제)와 나머지 증권사 그리드(신규 등록). 증권사 목록에 15곳 추가(V22, 총 30곳). 계좌번호 자체는 수정 불가(서버 PATCH가 이름만 받음) → 바꾸려면 삭제 후 재등록.
 - **테스트 기동 동기화 끔(#354)**: `tasks.test`에 `app.holiday-sync.enabled=false`·`app.ipo-sync.enabled=false`. 테스트 순서에 따라 실제 KASI 동기화가 돌아 휴장일 테스트가 깨지던 문제의 원인 수정.
@@ -205,7 +224,7 @@
 - **발견한 결함**: 증권계좌 등록 화면이 계좌번호를 **16자리로 강제**해 한국투자증권 10자리(8+2) 계좌를 화면으로 등록할 수 없었다(증권사 조회는 10자리만 받는다). #297로 수정. 로그인·가입 화면에 서로 가는 링크가 없던 것(#294)도 이번에 발견했고, 링크가 색으로만 구분돼 axe `link-in-text-block` 위반이 났다(밑줄로 수정).
 - **워커 운영 기록**: 프런트 구현 5건은 워커가 만들고 Master가 재검증해 병합했다. 반려 사례는 공모주 등록 폼(빈 숫자칸이 NaN으로 전송, 교차 검증 누락, 테스트 5건 실패를 "환경 이슈"로 보고). 사용자 가이드 초안은 소스와 다른 내용(카드·필터·메뉴 이름)이 많아 Master가 소스 기준으로 5~8장을 다시 썼다. 백엔드 리팩토링 3단계는 워커가 테스트의 `import`를 지우고 조립기를 mock으로 바꿔 동작 검증을 약화시켜 폐기하고 Master가 같은 설계로 직접 구현했다. 두 워커 모두 `worker_done` 호출을 잘못 시도한 적이 있다(보고에 "bash 도구로 preamble의 명령 실행"을 명시하면 해결). 상세는 `docs/work-log/backend-refactoring.md`.
 - **검증**: 백엔드 test 766건·checkstyle 0건(슬롯 DB), UI 411건·lint·typecheck·format:check·build PASS, E2E 13/13, axe 19개 화면·상태 0건(공모주 등록 화면 추가).
-- **후속(같은 날 밤)**: 사용자의 별도 세션 배포 작업(#302: Terraform·Jenkins 설계 문서, Dockerfile 3개, 운영 compose, 로컬 Jenkins와 `Jenkinsfile`)을 병합했다(앱 코드 변경 없음, 파이프라인 실동작은 2026-10-13 빌드 #4로 확인). 리팩토링 4단계는 긴 메서드 둘만 분리했고(#303, 워커 구현·Master 검증) 6단계(설정 일원화)는 이득이 없어 하지 않기로 했다(`docs/work-log/backend-refactoring.md`). **백엔드 리팩토링은 여기서 종료.**
+- **후속(같은 날 밤)**: 리팩토링 4단계는 긴 메서드 둘만 분리했고(#303, 워커 구현·Master 검증) 6단계(설정 일원화)는 이득이 없어 하지 않기로 했다(`docs/work-log/backend-refactoring.md`). **백엔드 리팩토링은 여기서 종료.**
 - **남은 일**: 증권사 연동의 실계좌 다중 페이지 연속조회는 여전히 미검증. 운영 배포 시 환경변수(`SESSION_COOKIE_SECURE=true`, `APP_REMEMBER_ME_KEY`, `APP_ENCRYPTION_KEY`, `APP_ENCRYPTION_BROKER_KEY`)와 키 별도 백업은 사용자 몫. 일반 배포는 KIS 약관 원문·법률 검토 전까지 보류.
 
 ## Epic 18 마무리 (2026-10-01)
