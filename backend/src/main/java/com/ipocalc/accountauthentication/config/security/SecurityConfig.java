@@ -44,20 +44,15 @@ public class SecurityConfig {
     }
     http.authorizeHttpRequests(
             auth ->
-            auth.requestMatchers(
-                    "/accounts",
-                    "/auth/login",
-                    "/auth/logout",
-                    "/css/**",
-                    "/js/**",
-                    "/error")
-                .permitAll()
-                // 동기화 상태 조회는 ADMIN만 (GET /ipos/sync/**)
-                .requestMatchers(HttpMethod.GET, "/ipos/sync/**")
-                .hasRole("ADMIN")
-                // 공개 조회 허용 (공모주 달력·휴장일: 로그인 불필요)
-                .requestMatchers(HttpMethod.GET, "/ipos", "/ipos/**", "/market-holidays")
-                .permitAll()
+                auth.requestMatchers(
+                        "/accounts", "/auth/login", "/auth/logout", "/css/**", "/js/**", "/error")
+                    .permitAll()
+                    // 동기화 상태 조회는 ADMIN만 (GET /ipos/sync/**)
+                    .requestMatchers(HttpMethod.GET, "/ipos/sync/**")
+                    .hasRole("ADMIN")
+                    // 공개 조회 허용 (공모주 달력·휴장일: 로그인 불필요)
+                    .requestMatchers(HttpMethod.GET, "/ipos", "/ipos/**", "/market-holidays")
+                    .permitAll()
                     // 가입 승인 관리는 ADMIN만.
                     .requestMatchers("/admin/**")
                     .hasRole("ADMIN")
@@ -109,8 +104,8 @@ public class SecurityConfig {
   }
 
   /**
-   * 동시 세션 관리를 위한 세션 레지스트리 빈. 세션이 DB(Spring Session JDBC)에 있으므로 레지스트리도 DB 기준이어야 재시작 뒤에도
-   * 비밀번호 변경·승인 취소 때 다른 세션을 끊을 수 있다.
+   * 동시 세션 관리를 위한 세션 레지스트리 빈. 세션이 DB(Spring Session JDBC)에 있으므로 레지스트리도 DB 기준이어야 재시작 뒤에도 비밀번호 변경·승인
+   * 취소 때 다른 세션을 끊을 수 있다.
    */
   @Bean
   public SessionRegistry sessionRegistry(

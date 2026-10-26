@@ -47,7 +47,8 @@ class OpenDartCorpDisclosureClientTest {
             .requestFactory(restTemplate.getRequestFactory())
             .build();
     properties = new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr");
-    client = new OpenDartCorpDisclosureClient(
+    client =
+        new OpenDartCorpDisclosureClient(
             restClient, properties, Clock.systemDefaultZone(), new RequestThrottle(0));
     objectMapper = new ObjectMapper();
   }
@@ -384,7 +385,8 @@ class OpenDartCorpDisclosureClientTest {
     List<OpenDartDisclosureItem> result =
         client.searchByDateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10));
 
-    assertThat(result).extracting(OpenDartDisclosureItem::getRceptNo)
+    assertThat(result)
+        .extracting(OpenDartDisclosureItem::getRceptNo)
         .containsExactly("B-dated", "A-dated");
   }
 

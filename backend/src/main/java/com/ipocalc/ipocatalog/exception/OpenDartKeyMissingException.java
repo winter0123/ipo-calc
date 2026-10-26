@@ -8,9 +8,6 @@ public class OpenDartKeyMissingException extends ApiException {
 
   /** 기본 메시지로 예외를 생성한다. */
   public OpenDartKeyMissingException() {
-    super(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        "OPENDART_KEY_MISSING",
-        "OpenDART 키가 설정되지 않았습니다.");
+    super(HttpStatus.SERVICE_UNAVAILABLE, "OPENDART_KEY_MISSING", "OpenDART 키가 설정되지 않았습니다.");
   }
 }

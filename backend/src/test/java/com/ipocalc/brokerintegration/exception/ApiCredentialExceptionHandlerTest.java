@@ -17,8 +17,7 @@ class ApiCredentialExceptionHandlerTest {
   @Test
   void validationExceptionMapsTo400ValidationError() {
     ResponseEntity<ErrorResponse> response =
-        global.handleApiException(
-            new ApiCredentialValidationException("apiProvider는 필수 입력값입니다."));
+        global.handleApiException(new ApiCredentialValidationException("apiProvider는 필수 입력값입니다."));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getError()).isEqualTo("VALIDATION_ERROR");
@@ -73,8 +72,7 @@ class ApiCredentialExceptionHandlerTest {
   @Test
   void conflictExceptionMapsTo409() {
     ResponseEntity<ErrorResponse> response =
-        global.handleApiException(
-            new ApiCredentialConflictException("이미 등록된 브로커 API 인증정보가 있습니다."));
+        global.handleApiException(new ApiCredentialConflictException("이미 등록된 브로커 API 인증정보가 있습니다."));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getError()).isEqualTo("CONFLICT");

@@ -73,8 +73,7 @@ class IpoDetailSyncServiceTest {
         .thenReturn(Optional.of(new FilingRef(RCEPT, "[기재정정]투자설명서", TODAY)));
     when(filingClient.downloadDocument(RCEPT)).thenReturn(Optional.of(fixture()));
     when(disclosureClient.getCompanyOverview("01749559"))
-        .thenReturn(
-            Optional.of(new OpenDartCompanyOverview("000", "김성포", "20151027", "경기도 성남시")));
+        .thenReturn(Optional.of(new OpenDartCompanyOverview("000", "김성포", "20151027", "경기도 성남시")));
     when(filingClient.fetchEquityOffering("01749559", TODAY))
         .thenReturn(
             Optional.of(
@@ -89,7 +88,8 @@ class IpoDetailSyncServiceTest {
     assertThat(s.ceoName()).isEqualTo("김성포");
     assertThat(s.establishedOn()).isEqualTo(LocalDate.of(2015, 10, 27));
     assertThat(s.parValue()).isEqualTo(100L);
-    assertThat(s.underwriters()).extracting(IpoDetailSnapshot.Underwriter::shares)
+    assertThat(s.underwriters())
+        .extracting(IpoDetailSnapshot.Underwriter::shares)
         .containsExactly(4_000_000L);
     assertThat(s.financials()).hasSize(4);
     assertThat(s.floatSchedule()).hasSize(5);
@@ -104,8 +104,13 @@ class IpoDetailSyncServiceTest {
     when(filingClient.findLatestOfferingDocument("01749559", TODAY))
         .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
     when(detailRepository.findById(1L))
-        .thenReturn(Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo(RCEPT)
-            .parserVersion(DartFilingParser.VERSION).build()));
+        .thenReturn(
+            Optional.of(
+                IpoDetail.builder()
+                    .ipoId(1L)
+                    .sourceRceptNo(RCEPT)
+                    .parserVersion(DartFilingParser.VERSION)
+                    .build()));
 
     assertThat(service.syncRecent()).isZero();
 
@@ -120,8 +125,13 @@ class IpoDetailSyncServiceTest {
     when(filingClient.findLatestOfferingDocument("01749559", TODAY))
         .thenReturn(Optional.of(new FilingRef(RCEPT, "투자설명서", TODAY)));
     when(detailRepository.findById(1L))
-        .thenReturn(Optional.of(IpoDetail.builder().ipoId(1L).sourceRceptNo(RCEPT)
-            .parserVersion(DartFilingParser.VERSION - 1).build()));
+        .thenReturn(
+            Optional.of(
+                IpoDetail.builder()
+                    .ipoId(1L)
+                    .sourceRceptNo(RCEPT)
+                    .parserVersion(DartFilingParser.VERSION - 1)
+                    .build()));
 
     service.syncRecent();
 

@@ -107,7 +107,7 @@ class CatalogAdminAccessTest {
   void adminCanWriteCatalog() throws Exception {
     signup();
     Account account = accountRepository.findByEmail(email);
-    account.setRole(AccountRole.ADMIN);
+    account.changeRole(AccountRole.ADMIN);
     accountRepository.save(account);
     login();
 
@@ -158,10 +158,14 @@ class CatalogAdminAccessTest {
                 .content(
                     objectMapper.writeValueAsString(
                         Map.of(
-                            "email", email,
-                            "password", password,
-                            "name", "테스터",
-                            "nickname", "테스터닉"))))
+                            "email",
+                            email,
+                            "password",
+                            password,
+                            "name",
+                            "테스터",
+                            "nickname",
+                            "테스터닉"))))
         .andReturn();
   }
 

@@ -25,9 +25,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * OpenDART 공모 공시 조회 클라이언트.
  *
- * <p>공시 목록(list.json)에서 최신 투자설명서·증권신고서를 찾고, 원문(document.xml)과 증권신고서 주요정보(estkRs.json)를
- * 가져온다. 키 없음·형식 오류·HTTP 오류·status≠000은 모두 {@link Optional#empty()}이며, 로그·예외에 crtfc_key가 든 URL을
- * 남기지 않는다.
+ * <p>공시 목록(list.json)에서 최신 투자설명서·증권신고서를 찾고, 원문(document.xml)과 증권신고서 주요정보(estkRs.json)를 가져온다. 키
+ * 없음·형식 오류·HTTP 오류·status≠000은 모두 {@link Optional#empty()}이며, 로그·예외에 crtfc_key가 든 URL을 남기지 않는다.
  */
 public class DartIpoFilingClient {
 
@@ -161,7 +160,10 @@ public class DartIpoFilingClient {
       return Optional.empty(); // 메시지에 crtfc_key가 든 URL이 있어 남기지 않는다
     }
     // ZIP 시그니처("PK")가 아니면 JSON 오류 응답이다
-    if (body == null || body.length > MAX_RESPONSE_BYTES || body.length < 2 || body[0] != 'P'
+    if (body == null
+        || body.length > MAX_RESPONSE_BYTES
+        || body.length < 2
+        || body[0] != 'P'
         || body[1] != 'K') {
       return Optional.empty();
     }

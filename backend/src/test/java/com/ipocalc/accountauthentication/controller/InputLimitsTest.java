@@ -96,10 +96,14 @@ class InputLimitsTest {
             postStatus(
                 "/securities-accounts",
                 map(
-                    "investorId", 1,
-                    "securitiesFirmId", 1,
-                    "accountNumber", "123",
-                    "accountName", "n".repeat(256))))
+                    "investorId",
+                    1,
+                    "securitiesFirmId",
+                    1,
+                    "accountNumber",
+                    "123",
+                    "accountName",
+                    "n".repeat(256))))
         .isEqualTo(400);
   }
 
@@ -107,8 +111,7 @@ class InputLimitsTest {
   void hugeQuantityAndAmountsAreRejected() throws Exception {
     assertThat(
             postStatus(
-                "/sales",
-                map("allocationId", 1, "quantity", Long.MAX_VALUE, "saleDate", DATE)))
+                "/sales", map("allocationId", 1, "quantity", Long.MAX_VALUE, "saleDate", DATE)))
         .isEqualTo(400);
     assertThat(
             postStatus(
@@ -135,10 +138,14 @@ class InputLimitsTest {
             postStatus(
                 "/allocations",
                 map(
-                    "subscriptionId", 1,
-                    "allocatedQuantity", 1,
-                    "allocatedAt", DATE,
-                    "note", "n".repeat(256))))
+                    "subscriptionId",
+                    1,
+                    "allocatedQuantity",
+                    1,
+                    "allocatedAt",
+                    DATE,
+                    "note",
+                    "n".repeat(256))))
         .isEqualTo(400);
   }
 

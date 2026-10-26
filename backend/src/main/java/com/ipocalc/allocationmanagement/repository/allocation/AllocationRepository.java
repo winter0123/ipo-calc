@@ -15,10 +15,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
-  /**
-   * 배정에 연결된 ACTIVE 매도 수량 합계(없으면 0). salemanagement가 이 패키지에 의존하므로 순환을 피하려고 엔티티 이름으로만
-   * 조회한다.
-   */
+  /** 배정에 연결된 ACTIVE 매도 수량 합계(없으면 0). salemanagement가 이 패키지에 의존하므로 순환을 피하려고 엔티티 이름으로만 조회한다. */
   @Query(
       "SELECT COALESCE(SUM(s.quantity), 0) FROM Sale s WHERE s.allocationId = :allocationId "
           + "AND s.deletedAt IS NULL AND s.status = "

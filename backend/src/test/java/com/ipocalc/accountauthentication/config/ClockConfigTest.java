@@ -25,13 +25,13 @@ class ClockConfigTest {
     LocalDateTime now = LocalDateTime.now(clock);
     Account account = Account.builder().email("a@example.com").build();
 
-    account.setLockedUntil(now.plusSeconds(1));
+    account.updateLock(now.plusSeconds(1));
     assertThat(account.isAccountLocked(now)).isTrue();
 
-    account.setLockedUntil(now);
+    account.updateLock(now);
     assertThat(account.isAccountLocked(now)).isFalse();
 
-    account.setLockedUntil(null);
+    account.updateLock(null);
     assertThat(account.isAccountLocked(now)).isFalse();
   }
 }

@@ -152,8 +152,8 @@ public class AllocationService {
 
   /**
    * SF-4: 배정 기록의 일부 필드만 부분 수정한다(SubscriptionService.update / IpoService.update와 동일한 패턴). 제공된 필드만
-   * 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다. 시점 제약은 없음(D-A-007). 배정수량은 이미 매도한
-   * 수량보다 작게 바꿀 수 없다.
+   * 갱신하고, subscriptionId가 새로 제공된 경우에만 존재 여부를 재검증한다. 시점 제약은 없음(D-A-007). 배정수량은 이미 매도한 수량보다 작게 바꿀 수
+   * 없다.
    */
   @Transactional
   public AllocationResponse update(Long id, AllocationUpdateRequest request) {
@@ -196,19 +196,13 @@ public class AllocationService {
           updatedAllocatedQuantity != null
               ? updatedAllocatedQuantity
               : allocation.getAllocatedQuantity();
-      if (finalQuantity > targetSubscription.getQuantity()) {
-        throw new AllocationValidationException("allocatedQuantity는 청약수량을 초과할 수 없습니다.");
-      }
+      validateQuantity(finalQuantity, targetSubscription.getQuantity());
     } else if (updatedAllocatedQuantity != null) {
-      // 청약 변경 없이 allocatedQuantity만 변경된 경우 기존 subscription 기준으로 검증
       subscriptionRepository.findByIdForUpdate(allocation.getSubscriptionId());
       Subscription subscription =
-          subscriptionRepository
-              .findByIdAndDeletedAtIsNull(allocation.getSubscriptionId())
-              .orElseThrow(() -> new AllocationNotFoundException("청약 기록을 찾을 수 없습니다."));
-      if (updatedAllocatedQuantity > subscription.getQuantity()) {
-        throw new AllocationValidationException("allocatedQuantity는 청약수량을 초과할 수 없습니다.");
-      }
+          subscriptionOwnership.requireOwnedActive(
+              allocation.getSubscriptionId(), OWNERSHIP_ERRORS);
+      validateQuantity(updatedAllocatedQuantity, subscription.getQuantity());
     }
 
     if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < soldQuantity) {
@@ -216,26 +210,14 @@ public class AllocationService {
           "배정수량은 이미 매도한 수량(" + soldQuantity + "주)보다 작을 수 없습니다.");
     }
 
-    if (moving) {
-      allocation.setSubscriptionId(updatedSubscriptionId);
-    }
-    if (updatedAllocatedQuantity != null) {
-      allocation.setAllocatedQuantity(updatedAllocatedQuantity);
-    }
-    if (updatedAllocatedAt != null) {
-      allocation.setAllocatedAt(updatedAllocatedAt);
-    }
-    if (updatedAllocationMethod != null) {
-      allocation.setAllocationMethod(updatedAllocationMethod);
-    }
-    if (updatedAllocationPrice != null) {
-      allocation.setAllocationPrice(updatedAllocationPrice);
-    }
-    if (updatedNote != null) {
-      allocation.setNote(updatedNote);
-    }
-
-    allocation.setUpdatedAt(LocalDateTime.now(clock));
+    allocation.updateDetails(
+        updatedSubscriptionId,
+        updatedAllocatedQuantity,
+        updatedAllocatedAt,
+        updatedAllocationMethod,
+        updatedAllocationPrice,
+        updatedNote,
+        LocalDateTime.now(clock));
     try {
       Allocation saved = allocationRepository.saveAndFlush(allocation);
       return AllocationResponse.from(saved);
@@ -256,9 +238,7 @@ public class AllocationService {
       throw new HasChildRecordsException("매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.");
     }
     LocalDateTime now = LocalDateTime.now(clock);
-    allocation.setStatus(RecordStatus.CANCELLED);
-    allocation.setDeletedAt(now);
-    allocation.setUpdatedAt(now);
+    allocation.cancel(now);
     allocationRepository.save(allocation);
   }
 

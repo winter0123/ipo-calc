@@ -3,7 +3,6 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
-import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -13,8 +13,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * DART document.xml 원문에서 공모주 상세 정보를 뽑는 파서. 정규식만 써서 XML 외부 엔티티를 해석하지
- * 않는다(XXE 없음). 형식이 이상해도 예외를 던지지 않고 못 찾은 항목은 null/빈 리스트로 둔다.
+ * DART document.xml 원문에서 공모주 상세 정보를 뽑는 파서. 정규식만 써서 XML 외부 엔티티를 해석하지 않는다(XXE 없음). 형식이 이상해도 예외를 던지지
+ * 않고 못 찾은 항목은 null/빈 리스트로 둔다.
  */
 public class DartFilingParser {
 
@@ -144,8 +144,8 @@ public class DartFilingParser {
     if (!NUM.matcher(c).matches()) {
       return null;
     }
-    boolean negative = c.startsWith("(") || c.startsWith("-") || c.startsWith("△")
-        || c.startsWith("▲");
+    boolean negative =
+        c.startsWith("(") || c.startsWith("-") || c.startsWith("△") || c.startsWith("▲");
     BigDecimal v = new BigDecimal(c.replaceAll("[()\\-,△▲]", ""));
     return negative ? v.negate() : v;
   }
@@ -190,18 +190,24 @@ public class DartFilingParser {
       if (capital[0] == null) {
         capital[0] = capital(t.rows(), header, unit);
       }
-      List<String> rev = row(t.rows(), n -> n.startsWith("매출액") || n.startsWith("영업수익")
-          || n.startsWith("수익(매출액)"));
-      List<String> op = row(t.rows(), n -> n.startsWith("영업이익") || n.startsWith("영업손익")
-          || n.startsWith("영업손실"));
+      List<String> rev =
+          row(
+              t.rows(),
+              n -> n.startsWith("매출액") || n.startsWith("영업수익") || n.startsWith("수익(매출액)"));
+      List<String> op =
+          row(t.rows(), n -> n.startsWith("영업이익") || n.startsWith("영업손익") || n.startsWith("영업손실"));
       if (rev == null || op == null || header == null) {
         continue;
       }
       List<String> ni = row(t.rows(), DartFilingParser::isNetIncome);
       for (int c = 0; c < header.size(); c++) {
         if (PERIOD.matcher(header.get(c)).find()) {
-          out.add(new Financial(header.get(c), cellWon(rev, c, unit), cellWon(op, c, unit),
-              cellWon(ni, c, unit)));
+          out.add(
+              new Financial(
+                  header.get(c),
+                  cellWon(rev, c, unit),
+                  cellWon(op, c, unit),
+                  cellWon(ni, c, unit)));
         }
       }
       return;
@@ -275,11 +281,13 @@ public class DartFilingParser {
     for (Table t : tables) {
       List<FloatStep> steps = new ArrayList<>();
       for (List<String> r : t.rows()) {
-        if (r.size() >= 2 && r.get(0).replace(" ", "").contains("유통가능")
+        if (r.size() >= 2
+            && r.get(0).replace(" ", "").contains("유통가능")
             && r.get(0).contains("상장")
             && number(r.get(1)) != null) {
-          steps.add(new FloatStep(r.get(0), number(r.get(1)).longValue(),
-              r.size() > 2 ? number(r.get(2)) : null));
+          steps.add(
+              new FloatStep(
+                  r.get(0), number(r.get(1)).longValue(), r.size() > 2 ? number(r.get(2)) : null));
         }
       }
       if (steps.size() >= 2) {
@@ -353,29 +361,53 @@ public class DartFilingParser {
       if (unc == null) {
         unc = BigDecimal.ZERO;
       }
-      return BigDecimal.ONE.subtract(unc.divide(tot, 10, RoundingMode.HALF_UP))
-          .multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP);
+      return BigDecimal.ONE
+          .subtract(unc.divide(tot, 10, RoundingMode.HALF_UP))
+          .multiply(BigDecimal.valueOf(100))
+          .setScale(2, RoundingMode.HALF_UP);
     }
     return null;
   }
 
   private static String[] largest(List<Table> tables) {
     for (Table t : tables) {
-      boolean sale = t.rows().stream().limit(3).flatMap(List::stream).map(c -> c.replace(" ", ""))
-          .anyMatch(c -> c.contains("매각") || c.contains("의무보유") || c.contains("유통")
-              || c.contains("공모전") || c.contains("공모후"));
+      boolean sale =
+          t.rows().stream()
+              .limit(3)
+              .flatMap(List::stream)
+              .map(c -> c.replace(" ", ""))
+              .anyMatch(
+                  c ->
+                      c.contains("매각")
+                          || c.contains("의무보유")
+                          || c.contains("유통")
+                          || c.contains("공모전")
+                          || c.contains("공모후"));
       if (!sale) {
         continue;
       }
       for (List<String> r : t.rows()) {
         if (r.stream().anyMatch(c -> LARGEST.contains(c.replace(" ", "")))) {
-          String name = r.stream()
-              .filter(c -> !c.isEmpty() && !NOT_NAMES.contains(c.replace(" ", ""))
-                  && !NUM_SHARES.matcher(c).matches() && !c.endsWith("%"))
-              .findFirst().orElse(null);
-          String pct = r.stream().filter(c -> c.endsWith("%")).findFirst()
-              .orElseGet(() -> r.stream().filter(c -> DECIMAL.matcher(c).matches()).findFirst()
-                  .orElse(null));
+          String name =
+              r.stream()
+                  .filter(
+                      c ->
+                          !c.isEmpty()
+                              && !NOT_NAMES.contains(c.replace(" ", ""))
+                              && !NUM_SHARES.matcher(c).matches()
+                              && !c.endsWith("%"))
+                  .findFirst()
+                  .orElse(null);
+          String pct =
+              r.stream()
+                  .filter(c -> c.endsWith("%"))
+                  .findFirst()
+                  .orElseGet(
+                      () ->
+                          r.stream()
+                              .filter(c -> DECIMAL.matcher(c).matches())
+                              .findFirst()
+                              .orElse(null));
           return new String[] {name, pct};
         }
       }

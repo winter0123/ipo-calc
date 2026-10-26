@@ -138,7 +138,6 @@ public class IpoScheduleMergeService {
         ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
             s.stockCode(), RecordStatus.ACTIVE);
     Ipo target = null;
-    boolean stockCodeFilled = false;
 
     if (byStockCode.isPresent()) {
       Ipo found = byStockCode.get();
@@ -174,22 +173,20 @@ public class IpoScheduleMergeService {
         return false;
       }
       target = matches.get(0);
-      // stockCode 채우기 (이름 매칭으로 새로 채워지면 날짜가 그대로여도 저장 대상)
-      target.setStockCode(s.stockCode());
-      stockCodeFilled = true;
     }
 
-    // 채우기 및 변경 여부 확인
-    boolean changed = applyScheduleDates(target, s) || stockCodeFilled;
+    LocalDateTime now = LocalDateTime.now(clock);
+    boolean changed =
+        target.mergeSupplementalSchedule(
+            s.stockCode(),
+            s.allotmentDate(),
+            s.refundDate(),
+            s.listingDate(),
+            SYNC_SOURCE_MERGED,
+            now);
     if (!changed) {
       return false;
     }
-
-    // 메타데이터 갱신
-    target.setSyncSource(SYNC_SOURCE_MERGED);
-    LocalDateTime now = LocalDateTime.now(clock);
-    target.setLastSyncedAt(now);
-    target.setUpdatedAt(now);
 
     try {
       ipoRepository.saveAndFlush(target);
@@ -200,31 +197,6 @@ public class IpoScheduleMergeService {
       log.warn("일정 병합 저장 실패 (중복 키 등): stockCode={}, error={}", s.stockCode(), e.getMessage());
       return false;
     }
-  }
-
-  /** ustockplus 일정 값으로 대상 IPO 필드 채우기. 하나라도 변경되면 true 반환. */
-  private boolean applyScheduleDates(Ipo target, UstockPlusScheduleDates s) {
-    boolean changed = false;
-
-    // allotmentDate: DART 값이 우선이므로 비어 있을 때만 ustockplus 값으로 보충
-    if (s.allotmentDate() != null && target.getAllotmentDate() == null) {
-      target.setAllotmentDate(s.allotmentDate());
-      changed = true;
-    }
-
-    // refundDate: 위와 동일
-    if (s.refundDate() != null && target.getRefundDate() == null) {
-      target.setRefundDate(s.refundDate());
-      changed = true;
-    }
-
-    // listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움
-    if (s.listingDate() != null && target.getListingDate() == null) {
-      target.setListingDate(s.listingDate());
-      changed = true;
-    }
-
-    return changed;
   }
 
   /**

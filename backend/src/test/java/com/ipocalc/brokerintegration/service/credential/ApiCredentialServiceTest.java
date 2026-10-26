@@ -155,7 +155,7 @@ class ApiCredentialServiceTest {
             invocation -> {
               SecuritiesAccountApiCredential credential =
                   invocation.getArgument(0, SecuritiesAccountApiCredential.class);
-              credential.setId(77L);
+              credential = credential.toBuilder().id(77L).build();
               return credential;
             });
   }
@@ -340,7 +340,7 @@ class ApiCredentialServiceTest {
     LocalDateTime updatedAt = LocalDateTime.now().minusDays(2);
     SecuritiesAccountApiCredential credential =
         activeCredential(updatedAt, "encrypted-token", LocalDateTime.now().minusHours(1));
-    credential.setKeyIssuedOn(LocalDate.now().minusYears(1).minusDays(1));
+    credential.rotateKeyIssuedOn(LocalDate.now().minusYears(1).minusDays(1));
     when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
             ACCOUNT_ID))
         .thenReturn(List.of(credential));
@@ -411,7 +411,7 @@ class ApiCredentialServiceTest {
     stubOwnedSecuritiesAccount();
     SecuritiesAccountApiCredential credential =
         activeCredential(LocalDateTime.now(), "encrypted-token", LocalDateTime.now().plusDays(1));
-    credential.setKeyIssuedOn(LocalDate.now().minusYears(2));
+    credential.rotateKeyIssuedOn(LocalDate.now().minusYears(2));
     when(credentialRepository.findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(
             ACCOUNT_ID))
         .thenReturn(List.of(credential));

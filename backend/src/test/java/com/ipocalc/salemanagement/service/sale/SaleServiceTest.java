@@ -54,7 +54,6 @@ class SaleServiceTest {
 
   private Sale existingSale() {
     Sale s = Sale.builder().id(1L).allocationId(5L).quantity(4L).amount(100L).fee(7L).build();
-    s.setStatus(RecordStatus.ACTIVE);
     when(sales.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(s));
     when(allocs.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(alloc(10)));
     when(sales.save(any(Sale.class))).thenAnswer(i -> i.getArgument(0));
@@ -65,15 +64,15 @@ class SaleServiceTest {
   void 등록_필수값과_음수는_검증_예외() {
     java.util.List<Consumer<SaleRegisterRequest>> bad =
         java.util.List.of(
-          r -> r.setAllocationId(null),
-          r -> r.setQuantity(null),
-          r -> r.setSaleDate(null),
-          r -> r.setQuantity(0L),
-          r -> r.setPrice(-1L),
-          r -> r.setAmount(-1L),
-          r -> r.setFee(-1L),
-          r -> r.setTax(-1L),
-          r -> r.setOtherCost(-1L));
+            r -> r.setAllocationId(null),
+            r -> r.setQuantity(null),
+            r -> r.setSaleDate(null),
+            r -> r.setQuantity(0L),
+            r -> r.setPrice(-1L),
+            r -> r.setAmount(-1L),
+            r -> r.setFee(-1L),
+            r -> r.setTax(-1L),
+            r -> r.setOtherCost(-1L));
     for (Consumer<SaleRegisterRequest> c : bad) {
       assertThatThrownBy(() -> service.register(reg(c)))
           .isInstanceOf(SaleValidationException.class);
@@ -100,19 +99,18 @@ class SaleServiceTest {
   void 수정_값_검증과_null_요청() {
     java.util.List<Consumer<SaleUpdateRequest>> bad =
         java.util.List.of(
-          r -> r.setQuantity(0L),
-          r -> r.setPrice(-1L),
-          r -> r.setAmount(-1L),
-          r -> r.setFee(-1L),
-          r -> r.setTax(-1L),
-          r -> r.setOtherCost(-1L));
+            r -> r.setQuantity(0L),
+            r -> r.setPrice(-1L),
+            r -> r.setAmount(-1L),
+            r -> r.setFee(-1L),
+            r -> r.setTax(-1L),
+            r -> r.setOtherCost(-1L));
     for (Consumer<SaleUpdateRequest> c : bad) {
       SaleUpdateRequest r = new SaleUpdateRequest();
       c.accept(r);
       assertThatThrownBy(() -> service.update(1L, r)).isInstanceOf(SaleValidationException.class);
     }
-    assertThatThrownBy(() -> service.update(1L, null))
-        .isInstanceOf(SaleValidationException.class);
+    assertThatThrownBy(() -> service.update(1L, null)).isInstanceOf(SaleValidationException.class);
   }
 
   @Test
@@ -143,8 +141,13 @@ class SaleServiceTest {
     service.update(1L, all);
     assertThat(s)
         .extracting(
-            Sale::getQuantity, Sale::getPrice, Sale::getAmount, Sale::getSaleDate, Sale::getFee,
-            Sale::getTax, Sale::getOtherCost)
+            Sale::getQuantity,
+            Sale::getPrice,
+            Sale::getAmount,
+            Sale::getSaleDate,
+            Sale::getFee,
+            Sale::getTax,
+            Sale::getOtherCost)
         .containsExactly(4L, 1L, 2L, AT, 3L, 4L, 5L);
   }
 

@@ -12,12 +12,13 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.Comment;
 
 /**
  * 증권계좌 API 인증정보 JPA 엔티티.
@@ -28,62 +29,114 @@ import lombok.ToString;
 @Entity
 @Table(name = "securities_account_api_credentials")
 @Getter
-@Setter
-@Builder
-@NoArgsConstructor
+@Builder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @ToString(exclude = {"appKeyEncrypted", "appSecretEncrypted", "accessTokenEncrypted"})
 public class SecuritiesAccountApiCredential {
+  /** Deactivates the credential. */
+  public void deactivate(LocalDateTime now) {
+    this.status = RecordStatus.INACTIVE;
+    this.deletedAt = now;
+    this.updatedAt = now;
+  }
+
+  /** Caches a broker access token with its expiration time. */
+  public void cacheAccessToken(String encryptedToken, LocalDateTime expiresAt) {
+    this.accessTokenEncrypted = encryptedToken;
+    this.tokenExpiresAt = expiresAt;
+  }
+
+  /** Changes the broker key issue date. */
+  public void rotateKeyIssuedOn(LocalDate issuedOn) {
+    this.keyIssuedOn = issuedOn;
+  }
+
+  /** Replaces encrypted broker credentials and clears cached tokens. */
+  public void replaceCredentials(
+      String appKey, String appSecret, LocalDate issuedOn, LocalDateTime now) {
+    this.appKeyEncrypted = appKey;
+    this.appSecretEncrypted = appSecret;
+    this.accessTokenEncrypted = null;
+    this.tokenExpiresAt = null;
+    this.keyIssuedOn = issuedOn;
+    this.updatedAt = now;
+  }
+
+  /** Applies re-encrypted broker credentials. */
+  public void rotateSecrets(String appKey, String appSecret, String token) {
+    if (appKey != null) {
+      this.appKeyEncrypted = appKey;
+    }
+    if (appSecret != null) {
+      this.appSecretEncrypted = appSecret;
+    }
+    if (token != null) {
+      this.accessTokenEncrypted = token;
+    }
+  }
 
   /** PK. DB가 자동으로 매기는 번호. */
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Comment("API 인증정보 고유 식별자")
   private Long id;
 
   /** 연동한 증권계좌 ID(securities_accounts.id). 계좌당 하나. */
   @Column(name = "securities_account_id", nullable = false)
+  @Comment("증권계좌 ID")
   private Long securitiesAccountId;
 
   /** 증권사 구분값. KIS / KIWOOM / LS. */
   @Column(name = "api_provider", nullable = false, length = 50)
+  @Comment("증권사 API 제공자 구분(KIS/KIWOOM/LS)")
   private String apiProvider;
 
   /** 앱키(암호화 저장). 화면에 다시 보여 주지 않는다. */
   @Column(name = "app_key_encrypted", nullable = false)
+  @Comment("앱키(암호화)")
   private String appKeyEncrypted;
 
   /** 앱시크릿(암호화 저장). 화면에 다시 보여 주지 않는다. */
   @Column(name = "app_secret_encrypted", nullable = false)
+  @Comment("앱시크릿(암호화)")
   private String appSecretEncrypted;
 
   /** 증권사 접근토큰 캐시(암호화 저장). 만료되면 서버가 다시 발급. */
   @Column(name = "access_token_encrypted")
+  @Comment("접근토큰 캐시(암호화)")
   private String accessTokenEncrypted;
 
   /** 접근토큰 만료 시각. */
   @Column(name = "token_expires_at")
+  @Comment("접근토큰 만료 시각")
   private LocalDateTime tokenExpiresAt;
 
   /** 키 발급일(증권사 서비스 신청일). 한국투자증권 사용기간 1년 만료 안내 계산에 쓴다. */
   @Column(name = "key_issued_on", nullable = false)
   @Builder.Default
+  @Comment("키 발급일(증권사 서비스 신청일)")
   private LocalDate keyIssuedOn = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
   /** 레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다. */
   @Column(name = "status", nullable = false, length = 10)
   @Builder.Default
   @Enumerated(EnumType.STRING)
+  @Comment("레코드 상태(ACTIVE/INACTIVE/CANCELLED)")
   private RecordStatus status = RecordStatus.ACTIVE;
 
   /** 소프트 삭제 시각. null이면 살아 있는 레코드. */
   @Column(name = "deleted_at")
+  @Comment("소프트 삭제 시각")
   private LocalDateTime deletedAt;
 
   /** 생성 시각. */
   @Column(name = "created_at", nullable = false, updatable = false)
+  @Comment("생성 시각")
   private LocalDateTime createdAt;
 
   /** 마지막 수정 시각. */
   @Column(name = "updated_at", nullable = false)
+  @Comment("마지막 수정 시각")
   private LocalDateTime updatedAt;
 }

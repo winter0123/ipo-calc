@@ -45,8 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * getSummary/getByInvestor/getBySecuritiesFirm/getByPeriod가 스텁으로 동작하는지 (SF-1 범위) 3. getSummary가 실제
  * 집계 로직을 올바르게 수행하는지 (SF-2 범위)
  */
-@SpringBootTest(
-    classes = com.ipocalc.accountauthentication.AccountAuthenticationApplication.class)
+@SpringBootTest(classes = com.ipocalc.accountauthentication.AccountAuthenticationApplication.class)
 @ActiveProfiles("test")
 class DashboardAggregationServiceTest {
 

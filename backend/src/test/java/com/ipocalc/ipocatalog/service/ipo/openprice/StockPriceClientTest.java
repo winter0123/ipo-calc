@@ -40,8 +40,9 @@ class StockPriceClientTest {
             .baseUrl("https://apis.data.go.kr")
             .requestFactory(restTemplate.getRequestFactory())
             .build();
-    var properties = new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
-        "test-service-key", "https://apis.data.go.kr");
+    var properties =
+        new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
+            "test-service-key", "https://apis.data.go.kr");
     client = new StockPriceClient(restClient, properties);
     objectMapper = new ObjectMapper();
   }
@@ -136,9 +137,7 @@ class StockPriceClientTest {
     // given - mkp가 빈 문자열
     expectStockPriceRequest(
         itemsJson(
-            "{\"item\":["
-                + "{\"basDt\":\"20261015\",\"srtnCd\":\"123450\",\"mkp\":\"\"}"
-                + "] }"));
+            "{\"item\":[" + "{\"basDt\":\"20261015\",\"srtnCd\":\"123450\",\"mkp\":\"\"}" + "] }"));
 
     // when
     Optional<Long> result = client.fetchOpenPrice(STOCK_CODE, LISTING_DATE);
@@ -166,8 +165,9 @@ class StockPriceClientTest {
   @Test
   void fetchOpenPrice_missingServiceKey_throwsIllegalStateException() {
     // given
-    var emptyProps = new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
-        "", "https://apis.data.go.kr");
+    var emptyProps =
+        new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
+            "", "https://apis.data.go.kr");
     StockPriceClient clientWithEmptyKey = new StockPriceClient(RestClient.builder(), emptyProps);
 
     // when & then
@@ -213,8 +213,9 @@ class StockPriceClientTest {
 
   @Test
   void productionConstructor_buildsClientAndExposesProperties() {
-    var properties = new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
-        "test-key", "https://apis.data.go.kr");
+    var properties =
+        new com.ipocalc.ipocatalog.service.holiday.DataGoKrApiProperties(
+            "test-key", "https://apis.data.go.kr");
     StockPriceClient prod = new StockPriceClient(RestClient.builder(), properties);
 
     assertThat(prod.getProperties()).isSameAs(properties);

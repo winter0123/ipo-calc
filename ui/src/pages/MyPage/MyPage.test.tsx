@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import MyPage from './MyPage.tsx'
 import { apiFetch } from '@/shared/api/client.ts'
@@ -49,15 +50,24 @@ describe('MyPage', () => {
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
-        <MyPage />
+        <MemoryRouter>
+          <MyPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     )
 
     expect(await screen.findByText('joy@example.com')).toBeInTheDocument()
     expect(screen.getByText('조이')).toBeInTheDocument()
     expect(screen.getByText('조이닉')).toBeInTheDocument()
-    expect(screen.getByText('기쁨투자자')).toBeInTheDocument()
-    expect(screen.getByText('본인')).toBeInTheDocument()
+    expect(screen.getAllByText('기쁨투자자')).toHaveLength(2)
+    expect(screen.getAllByText('본인')).toHaveLength(2)
+    expect(screen.getByText('가족')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '사용자 현황' })).toBeInTheDocument()
+    expect(screen.getByText('현재 등록된 투자자 2명')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '투자자 추가' })).toHaveAttribute(
+      'href',
+      '/investors/register',
+    )
     expect(screen.queryByText(/비밀번호/)).toHaveTextContent(
       '비밀번호는 보안을 위해 표시하지 않습니다.',
     )

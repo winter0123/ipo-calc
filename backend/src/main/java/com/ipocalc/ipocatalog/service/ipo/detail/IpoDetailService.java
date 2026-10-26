@@ -43,23 +43,24 @@ public class IpoDetailService {
         detailRepository
             .findById(ipoId)
             .orElseGet(() -> IpoDetail.builder().ipoId(ipoId).createdAt(now).build());
-    detail.setSourceRceptNo(snapshot.sourceRceptNo());
-    detail.setSourceReportName(snapshot.sourceReportName());
-    detail.setParserVersion(DartFilingParser.VERSION);
-    detail.setSyncedAt(now);
-    detail.setCeoName(snapshot.ceoName());
-    detail.setEstablishedOn(snapshot.establishedOn());
-    detail.setAddress(snapshot.address());
-    detail.setParValue(snapshot.parValue());
-    detail.setCapitalStock(snapshot.capitalStock());
-    detail.setLargestShareholderName(snapshot.largestShareholderName());
-    detail.setLargestShareholderRatio(snapshot.largestShareholderRatio());
-    detail.setInstitutionalCompetitionRate(snapshot.institutionalCompetitionRate());
-    detail.setLockUpCommitmentRatio(snapshot.lockUpCommitmentRatio());
-    detail.setFinancials(orEmpty(snapshot.financials()));
-    detail.setFloatSchedule(orEmpty(snapshot.floatSchedule()));
-    detail.setUnderwriters(orEmpty(snapshot.underwriters()));
-    detail.setUpdatedAt(now);
+    detail.replaceSnapshot(
+        snapshot.sourceRceptNo(),
+        snapshot.sourceReportName(),
+        DartFilingParser.VERSION,
+        now,
+        now,
+        snapshot.ceoName(),
+        snapshot.establishedOn(),
+        snapshot.address(),
+        snapshot.parValue(),
+        snapshot.capitalStock(),
+        snapshot.largestShareholderName(),
+        snapshot.largestShareholderRatio(),
+        snapshot.institutionalCompetitionRate(),
+        snapshot.lockUpCommitmentRatio(),
+        orEmpty(snapshot.financials()),
+        orEmpty(snapshot.floatSchedule()),
+        orEmpty(snapshot.underwriters()));
     detailRepository.save(detail);
   }
 

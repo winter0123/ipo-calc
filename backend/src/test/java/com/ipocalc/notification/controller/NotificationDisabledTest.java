@@ -25,8 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * VAPID 키가 없는 서버: 구독·테스트는 503, 공개키 조회는 enabled=false, 해제·설정은 동작한다.
- * 실행 환경(예: Jenkins 컨테이너)에 APP_WEBPUSH_* 가 있어도 키 없음 상태를 고정한다.
+ * VAPID 키가 없는 서버: 구독·테스트는 503, 공개키 조회는 enabled=false, 해제·설정은 동작한다. 실행 환경(예: Jenkins 컨테이너)에
+ * APP_WEBPUSH_* 가 있어도 키 없음 상태를 고정한다.
  */
 @SpringBootTest(properties = {"app.webpush.public-key=", "app.webpush.private-key="})
 @AutoConfigureMockMvc
@@ -55,22 +55,30 @@ class NotificationDisabledTest {
     MockHttpSession session = new MockHttpSession();
     AuthTestSupport.signupAndLogin(mockMvc, objectMapper, session, email, "securePass123!", "C");
 
-    mockMvc.perform(get("/notifications/vapid-public-key").session(session))
+    mockMvc
+        .perform(get("/notifications/vapid-public-key").session(session))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.enabled").value(false))
         .andExpect(jsonPath("$.publicKey").isEmpty());
     mockMvc
-        .perform(post("/notifications/subscriptions").session(session)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"endpoint\":\"https://fcm.googleapis.com/x\","
-                + "\"keys\":{\"p256dh\":\"a\",\"auth\":\"b\"}}"))
+        .perform(
+            post("/notifications/subscriptions")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"endpoint\":\"https://fcm.googleapis.com/x\","
+                        + "\"keys\":{\"p256dh\":\"a\",\"auth\":\"b\"}}"))
         .andExpect(status().isServiceUnavailable())
         .andExpect(jsonPath("$.error").value("PUSH_DISABLED"));
-    mockMvc.perform(post("/notifications/test").session(session))
+    mockMvc
+        .perform(post("/notifications/test").session(session))
         .andExpect(status().isServiceUnavailable());
     mockMvc
-        .perform(delete("/notifications/subscriptions").session(session)
-            .contentType(MediaType.APPLICATION_JSON).content("{\"endpoint\":\"https://x\"}"))
+        .perform(
+            delete("/notifications/subscriptions")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"endpoint\":\"https://x\"}"))
         .andExpect(status().isNotFound());
   }
 }

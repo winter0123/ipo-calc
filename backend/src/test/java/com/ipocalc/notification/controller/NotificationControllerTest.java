@@ -110,8 +110,10 @@ class NotificationControllerTest {
     mockMvc.perform(get("/notifications/vapid-public-key")).andExpect(status().isUnauthorized());
     mockMvc.perform(get("/notifications/preferences")).andExpect(status().isUnauthorized());
     mockMvc
-        .perform(post("/notifications/subscriptions").contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
+        .perform(
+            post("/notifications/subscriptions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
         .andExpect(status().isUnauthorized());
   }
 
@@ -129,12 +131,16 @@ class NotificationControllerTest {
     String ep = endpoint("-up");
     subscribe(sessionA, ep, 200);
     subscribe(sessionA, ep, 200);
-    assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = ?",
-        Integer.class, ep)).isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = ?", Integer.class, ep))
+        .isEqualTo(1);
 
     subscribe(sessionB, ep, 200);
-    assertThat(jdbc.queryForObject("SELECT account_id FROM push_subscriptions WHERE endpoint = ?",
-        Long.class, ep)).isEqualTo(accountRepository.findByEmail(emailB).getId());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT account_id FROM push_subscriptions WHERE endpoint = ?", Long.class, ep))
+        .isEqualTo(accountRepository.findByEmail(emailB).getId());
   }
 
   @Test
@@ -152,44 +158,57 @@ class NotificationControllerTest {
     subscribe(sessionA, ep, 200);
 
     mockMvc
-        .perform(delete("/notifications/subscriptions").session(sessionB)
-            .contentType(MediaType.APPLICATION_JSON).content("{\"endpoint\":\"" + ep + "\"}"))
+        .perform(
+            delete("/notifications/subscriptions")
+                .session(sessionB)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"endpoint\":\"" + ep + "\"}"))
         .andExpect(status().isNotFound());
     assertThat(statusOf(ep)).isEqualTo("ACTIVE");
 
     mockMvc
-        .perform(delete("/notifications/subscriptions").session(sessionA)
-            .contentType(MediaType.APPLICATION_JSON).content("{\"endpoint\":\"" + ep + "\"}"))
+        .perform(
+            delete("/notifications/subscriptions")
+                .session(sessionA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"endpoint\":\"" + ep + "\"}"))
         .andExpect(status().isOk());
     assertThat(statusOf(ep)).isEqualTo("CANCELLED");
   }
 
   @Test
   void preferencesDefaultToOnAndPersist() throws Exception {
-    mockMvc.perform(get("/notifications/preferences").session(sessionA))
+    mockMvc
+        .perform(get("/notifications/preferences").session(sessionA))
         .andExpect(jsonPath("$.subscriptionDeadline").value(true))
         .andExpect(jsonPath("$.listingDay").value(true));
     mockMvc
-        .perform(put("/notifications/preferences").session(sessionA)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"subscriptionDeadline\":false,\"listingDay\":true}"))
+        .perform(
+            put("/notifications/preferences")
+                .session(sessionA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"subscriptionDeadline\":false,\"listingDay\":true}"))
         .andExpect(status().isOk());
-    mockMvc.perform(get("/notifications/preferences").session(sessionA))
+    mockMvc
+        .perform(get("/notifications/preferences").session(sessionA))
         .andExpect(jsonPath("$.subscriptionDeadline").value(false))
         .andExpect(jsonPath("$.listingDay").value(true));
-    mockMvc.perform(get("/notifications/preferences").session(sessionB))
+    mockMvc
+        .perform(get("/notifications/preferences").session(sessionB))
         .andExpect(jsonPath("$.subscriptionDeadline").value(true));
   }
 
   @Test
   void testNotificationNeedsDeviceAndReportsSentCount() throws Exception {
-    mockMvc.perform(post("/notifications/test").session(sessionA))
+    mockMvc
+        .perform(post("/notifications/test").session(sessionA))
         .andExpect(status().isBadRequest());
 
     when(sender.send(any(), any())).thenReturn(PushSender.Result.OK);
     subscribe(sessionA, endpoint("-t1"), 200);
     subscribe(sessionA, endpoint("-t2"), 200);
-    mockMvc.perform(post("/notifications/test").session(sessionA))
+    mockMvc
+        .perform(post("/notifications/test").session(sessionA))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sent").value(2));
   }

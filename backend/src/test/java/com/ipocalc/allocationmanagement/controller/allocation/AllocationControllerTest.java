@@ -414,9 +414,7 @@ class AllocationControllerTest {
             .findById(((Number) readBody(first).get("id")).longValue())
             .orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    existing.setStatus(RecordStatus.CANCELLED);
-    existing.setDeletedAt(now);
-    existing.setUpdatedAt(now);
+    existing.cancel(now);
     allocationRepository.saveAndFlush(existing);
 
     // When: 동일 subscriptionId로 새 배정을 등록함
@@ -446,8 +444,7 @@ class AllocationControllerTest {
     MvcResult third = registerAllocation(validRequest(subId3));
     Long cancelledId = ((Number) readBody(third).get("id")).longValue();
     Allocation cancelled = allocationRepository.findById(cancelledId).orElseThrow();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(LocalDateTime.now());
+    cancelled.cancel(LocalDateTime.now());
     allocationRepository.saveAndFlush(cancelled);
 
     // When: GET /allocations 요청 (필터 없음)
@@ -885,9 +882,7 @@ class AllocationControllerTest {
 
     // When: DELETE /subscriptions/{id}
     MvcResult result =
-        mockMvc
-            .perform(delete("/subscriptions/{id}", subscriptionId).session(session))
-            .andReturn();
+        mockMvc.perform(delete("/subscriptions/{id}", subscriptionId).session(session)).andReturn();
 
     // Then: 409 HAS_CHILD_RECORDS, 청약은 그대로 ACTIVE
     assertThat(result.getResponse().getStatus()).isEqualTo(409);
@@ -1008,9 +1003,7 @@ class AllocationControllerTest {
     Long allocationId = ((Number) readBody(created).get("id")).longValue();
     Allocation cancelled = allocationRepository.findById(allocationId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     allocationRepository.saveAndFlush(cancelled);
 
     // When: PATCH /allocations/{id} 요청
@@ -1086,8 +1079,7 @@ class AllocationControllerTest {
 
     Long cancelledId = ((Number) readBody(a3).get("id")).longValue();
     Allocation cancelled = allocationRepository.findById(cancelledId).orElseThrow();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(LocalDateTime.now());
+    cancelled.cancel(LocalDateTime.now());
     allocationRepository.saveAndFlush(cancelled);
 
     // When: GET /allocations 요청
@@ -1113,9 +1105,7 @@ class AllocationControllerTest {
     Long allocationId = ((Number) readBody(created).get("id")).longValue();
     Allocation cancelled = allocationRepository.findById(allocationId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     allocationRepository.saveAndFlush(cancelled);
 
     // When: DELETE /allocations/{id} 재요청

@@ -18,10 +18,8 @@ import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.detail.dart.DartFilingParser;
 import com.ipocalc.ipocatalog.service.ipo.detail.dart.ParsedFiling;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.EquityOffering;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient.FilingRef;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartCompanyOverview;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -55,12 +53,15 @@ class IpoDetailSyncServiceSyncForIposTest {
 
   @BeforeEach
   void setUp() {
-    fixedClock = Clock.fixed(
-        LocalDateTime.of(2026, 10, 14, 12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant(),
-        java.time.ZoneId.systemDefault());
+    fixedClock =
+        Clock.fixed(
+            LocalDateTime.of(2026, 10, 14, 12, 0)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant(),
+            java.time.ZoneId.systemDefault());
     parser = new DartFilingParser();
     mockParser = mock(DartFilingParser.class);
-    
+
     service =
         new IpoDetailSyncService(
             ipoRepository,
@@ -77,10 +78,9 @@ class IpoDetailSyncServiceSyncForIposTest {
   void syncForIpos_filtersByTargetCriteria() {
     // given
     Ipo targetIpo = createIpo(1L, "corp1", "Target IPO", null); // 미상장
-    Ipo listedRecentIpo = createIpo(
-        2L, "corp2", "Listed Recent", LocalDate.of(2026, 10, 1)); // 상장 30일 이내
-    Ipo listedOldIpo = createIpo(
-        3L, "corp3", "Listed Old", LocalDate.of(2026, 9, 1)); // 상장 30일 초과
+    Ipo listedRecentIpo =
+        createIpo(2L, "corp2", "Listed Recent", LocalDate.of(2026, 10, 1)); // 상장 30일 이내
+    Ipo listedOldIpo = createIpo(3L, "corp3", "Listed Old", LocalDate.of(2026, 9, 1)); // 상장 30일 초과
     Ipo noCorpCodeIpo = createIpo(4L, null, "No CorpCode", null); // corpCode 없음
 
     List<Ipo> ipos = List.of(targetIpo, listedRecentIpo, listedOldIpo, noCorpCodeIpo);
@@ -88,18 +88,18 @@ class IpoDetailSyncServiceSyncForIposTest {
     // targetIpo와 listedRecentIpo만 대상
     FilingRef filingRef1 = new FilingRef("20260115001", "투자설명서", LocalDate.of(2026, 1, 15));
     FilingRef filingRef2 = new FilingRef("20260116001", "투자설명서", LocalDate.of(2026, 1, 16));
-    
+
     when(filingClient.findLatestOfferingDocument(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.of(filingRef1));
     when(filingClient.findLatestOfferingDocument(eq("corp2"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.of(filingRef2));
-    
+
     when(filingClient.downloadDocument("20260115001")).thenReturn(Optional.of("document1"));
     when(filingClient.downloadDocument("20260116001")).thenReturn(Optional.of("document2"));
-    
+
     when(detailRepository.findById(1L)).thenReturn(Optional.empty());
     when(detailRepository.findById(2L)).thenReturn(Optional.empty());
-    
+
     ParsedFiling parsed = mock(ParsedFiling.class);
     when(parsed.financials()).thenReturn(Collections.emptyList());
     when(parsed.floatSchedule()).thenReturn(Collections.emptyList());
@@ -109,14 +109,12 @@ class IpoDetailSyncServiceSyncForIposTest {
     when(parsed.competitionRate()).thenReturn(BigDecimal.valueOf(100.0));
     when(parsed.lockUpCommitmentRatio()).thenReturn(BigDecimal.valueOf(50.0));
     when(mockParser.parse(anyString())).thenReturn(parsed);
-    
+
     when(disclosureClient.getCompanyOverview("corp1")).thenReturn(Optional.empty());
     when(disclosureClient.getCompanyOverview("corp2")).thenReturn(Optional.empty());
-    when(filingClient.fetchEquityOffering(
-        eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
+    when(filingClient.fetchEquityOffering(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.empty());
-    when(filingClient.fetchEquityOffering(
-        eq("corp2"), eq(LocalDate.of(2026, 10, 14))))
+    when(filingClient.fetchEquityOffering(eq("corp2"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.empty());
 
     // when
@@ -152,7 +150,7 @@ class IpoDetailSyncServiceSyncForIposTest {
     // given
     Ipo ipo = createIpo(1L, "corp1", "Test IPO", null);
     FilingRef filingRef = new FilingRef("20260115001", "투자설명서", LocalDate.of(2026, 1, 15));
-    
+
     when(filingClient.findLatestOfferingDocument(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.of(filingRef));
     when(filingClient.downloadDocument("20260115001")).thenReturn(Optional.empty());
@@ -170,10 +168,10 @@ class IpoDetailSyncServiceSyncForIposTest {
     // given
     Ipo ipo = createIpo(1L, "corp1", "Test IPO", null);
     FilingRef filingRef = new FilingRef("20260115001", "투자설명서", LocalDate.of(2026, 1, 15));
-    
+
     when(filingClient.findLatestOfferingDocument(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.of(filingRef));
-    
+
     IpoDetail existing = mock(IpoDetail.class);
     when(existing.getSourceRceptNo()).thenReturn("20260115001");
     when(existing.getParserVersion()).thenReturn(DartFilingParser.VERSION);
@@ -192,18 +190,18 @@ class IpoDetailSyncServiceSyncForIposTest {
     // given
     Ipo ipo1 = createIpo(1L, "corp1", "Test IPO 1", null);
     Ipo ipo2 = createIpo(2L, "corp2", "Test IPO 2", null);
-    
+
     FilingRef filingRef1 = new FilingRef("20260115001", "투자설명서", LocalDate.of(2026, 1, 15));
     FilingRef filingRef2 = new FilingRef("20260116001", "투자설명서", LocalDate.of(2026, 1, 16));
-    
+
     when(filingClient.findLatestOfferingDocument(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.of(filingRef1));
     when(filingClient.findLatestOfferingDocument(eq("corp2"), eq(LocalDate.of(2026, 10, 14))))
         .thenThrow(new RuntimeException("Network error"));
-    
+
     when(filingClient.downloadDocument("20260115001")).thenReturn(Optional.of("document1"));
     when(detailRepository.findById(1L)).thenReturn(Optional.empty());
-    
+
     ParsedFiling parsed = mock(ParsedFiling.class);
     when(parsed.financials()).thenReturn(Collections.emptyList());
     when(parsed.floatSchedule()).thenReturn(Collections.emptyList());
@@ -213,10 +211,9 @@ class IpoDetailSyncServiceSyncForIposTest {
     when(parsed.competitionRate()).thenReturn(BigDecimal.valueOf(100.0));
     when(parsed.lockUpCommitmentRatio()).thenReturn(BigDecimal.valueOf(50.0));
     when(mockParser.parse(anyString())).thenReturn(parsed);
-    
+
     when(disclosureClient.getCompanyOverview("corp1")).thenReturn(Optional.empty());
-    when(filingClient.fetchEquityOffering(
-        eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
+    when(filingClient.fetchEquityOffering(eq("corp1"), eq(LocalDate.of(2026, 10, 14))))
         .thenReturn(Optional.empty());
 
     // when

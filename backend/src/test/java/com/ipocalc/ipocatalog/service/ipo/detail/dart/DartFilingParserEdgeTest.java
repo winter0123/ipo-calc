@@ -40,16 +40,17 @@ class DartFilingParserEdgeTest {
   @Test
   void 천원_단위_원_단위_단위없음을_배수로_환산한다() {
     String hdr = "구분|제2기(2025년)|제1기(2024년)";
-    assertThat(
-            parser.parse(summary("(단위 : 천원)", hdr, "매출액|5|6", "영업이익|1|2")).financials().get(0))
+    assertThat(parser.parse(summary("(단위 : 천원)", hdr, "매출액|5|6", "영업이익|1|2")).financials().get(0))
         .extracting("revenue", "operatingProfit")
         .containsExactly(5_000L, 1_000L);
     assertThat(
-            parser.parse(summary("(단위 : 원)", hdr, "매출액|5|6", "영업이익|1|2")).financials().get(0)
+            parser
+                .parse(summary("(단위 : 원)", hdr, "매출액|5|6", "영업이익|1|2"))
+                .financials()
+                .get(0)
                 .revenue())
         .isEqualTo(5L);
-    assertThat(
-            parser.parse(summary("", hdr, "매출액|5|6", "영업이익|1|2")).financials().get(0).revenue())
+    assertThat(parser.parse(summary("", hdr, "매출액|5|6", "영업이익|1|2")).financials().get(0).revenue())
         .isEqualTo(5L);
     assertThat(
             parser
@@ -85,8 +86,7 @@ class DartFilingParserEdgeTest {
 
   @Test
   void 순이익_행이_없으면_null이고_헤더보다_짧은_행은_null() {
-    String xml =
-        summary("", "구분|2025년|2024년|2023년", "매출액|1|2", "영업이익|3|4|5");
+    String xml = summary("", "구분|2025년|2024년|2023년", "매출액|1|2", "영업이익|3|4|5");
 
     ParsedFiling f = parser.parse(xml);
 
@@ -99,22 +99,14 @@ class DartFilingParserEdgeTest {
   @Test
   void 기간_헤더나_영업이익_행이_없는_표는_재무로_보지_않는다() {
     assertThat(parser.parse(summary("", "구분|값", "매출액|1", "영업이익|2")).financials()).isEmpty();
-    assertThat(
-            parser
-                .parse(summary("", "구분|2025년|2024년", "매출액|1|2"))
-                .financials())
-        .isEmpty();
+    assertThat(parser.parse(summary("", "구분|2025년|2024년", "매출액|1|2")).financials()).isEmpty();
   }
 
   @Test
   void 자본금은_헤더의_첫_기간_열에서_읽고_대괄호는_무시한다() {
     String xml =
         summary(
-            "(단위 : 천원)",
-            "구분|제2기(2025년)|제1기(2024년)",
-            "[자본금]|2,000|1,000",
-            "매출액|1|2",
-            "영업이익|3|4");
+            "(단위 : 천원)", "구분|제2기(2025년)|제1기(2024년)", "[자본금]|2,000|1,000", "매출액|1|2", "영업이익|3|4");
 
     assertThat(parser.parse(xml).capitalStock()).isEqualTo(2_000_000L);
   }
@@ -129,11 +121,7 @@ class DartFilingParserEdgeTest {
     String one = table("상장일 유통가능|100|10%");
     assertThat(parser.parse(one).floatSchedule()).isEmpty();
 
-    String two =
-        table(
-            "상장일 유통가능|100",
-            "상장후 1개월 유통가능|abc",
-            "상장후 3개월 유통가능|300|30");
+    String two = table("상장일 유통가능|100", "상장후 1개월 유통가능|abc", "상장후 3개월 유통가능|300|30");
     ParsedFiling f = parser.parse(two);
     assertThat(f.floatSchedule()).hasSize(2);
     assertThat(f.floatSchedule().get(0).ratio()).isNull();
@@ -142,8 +130,7 @@ class DartFilingParserEdgeTest {
 
   @Test
   void 경쟁률은_행의_마지막_숫자_셀이고_숫자가_없으면_다음_표를_본다() {
-    String xml =
-        table("경쟁률|-|해당없음") + table("경 쟁 률|1,234.50|x|2,000.5:1|3,000");
+    String xml = table("경쟁률|-|해당없음") + table("경 쟁 률|1,234.50|x|2,000.5:1|3,000");
 
     assertThat(parser.parse(xml).competitionRate()).isEqualByComparingTo("3000");
     assertThat(parser.parse(table("경쟁률|-")).competitionRate()).isNull();
@@ -222,8 +209,7 @@ class DartFilingParserEdgeTest {
     assertThat(f.financials().get(1).netIncome()).isEqualTo(-1_519_567_901L);
     assertThat(f.capitalStock()).isEqualTo(5_201_152_500L);
 
-    String bullet =
-        summary("", "사업연도|2025연도|2024연도", "·자본금|22,029|22,029", "매출액|1|2", "영업이익|3|4");
+    String bullet = summary("", "사업연도|2025연도|2024연도", "·자본금|22,029|22,029", "매출액|1|2", "영업이익|3|4");
     assertThat(parser.parse(bullet).capitalStock()).isEqualTo(22_029L);
   }
 
@@ -247,8 +233,7 @@ class DartFilingParserEdgeTest {
 
   @Test
   void 각주가_붙은_경쟁률_라벨도_읽는다_덕양에너젠() {
-    String xml =
-        table("구분|국내|합계", "경쟁률주2)|31.32|650.14") + table("경쟁률 (주2)|1.5|2.5");
+    String xml = table("구분|국내|합계", "경쟁률주2)|31.32|650.14") + table("경쟁률 (주2)|1.5|2.5");
 
     assertThat(parser.parse(xml).competitionRate()).isEqualByComparingTo("650.14");
     assertThat(parser.parse(table("경쟁률(주2)|42.19|1,486.66")).competitionRate())
@@ -267,7 +252,9 @@ class DartFilingParserEdgeTest {
     assertThat(parser.parse(noTa).lockUpCommitmentRatio()).isEqualByComparingTo("59.75");
 
     String spaced =
-        table("구 분|외국 기관투자자|합 계", "미확약|63|29,957,300|38,048|1,443|642,809,100|38,077",
+        table(
+            "구 분|외국 기관투자자|합 계",
+            "미확약|63|29,957,300|38,048|1,443|642,809,100|38,077",
             "합 계|86|45,144,300|38,032|2,300|923,829,000|38,070");
     assertThat(parser.parse(spaced).lockUpCommitmentRatio()).isEqualByComparingTo("30.42");
   }
@@ -329,9 +316,7 @@ class DartFilingParserEdgeTest {
     // "최대주주 등" 구분 + 공모전/공모후 지분율 머리글(매각 단어 없음)
     ParsedFiling c =
         parser.parse(
-            table(
-                "구 분|성 명|주식종류|소유주식수|공모전 지분율|공모후 지분율",
-                "최대주주 등|하경식|보통주|2,400,000|18.84%|16.23%"));
+            table("구 분|성 명|주식종류|소유주식수|공모전 지분율|공모후 지분율", "최대주주 등|하경식|보통주|2,400,000|18.84%|16.23%"));
     assertThat(c.largestShareholderName()).isEqualTo("하경식");
     assertThat(c.largestShareholderRatio()).isEqualByComparingTo("18.84");
   }

@@ -4,8 +4,11 @@ import { ChevronDown } from 'lucide-react'
 import styles from './MainLayout.module.css'
 
 export interface NavGroupItem {
-  to: string
+  to?: string
   label: string
+  onClick?: () => void
+  disabled?: boolean
+  static?: boolean
 }
 
 // 데스크톱: 버튼을 누르면 펼쳐지는 메뉴. 모바일: CSS가 소제목 + 항상 펼친 목록으로 바꾼다.
@@ -27,7 +30,8 @@ export default function NavGroup({ label, items }: { label: string; items: NavGr
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  const links = () => Array.from(rootRef.current?.querySelectorAll<HTMLElement>('a') ?? [])
+  const links = () =>
+    Array.from(rootRef.current?.querySelectorAll<HTMLElement>('a, button[data-menu-item]') ?? [])
   const focusAt = (i: number) => {
     const list = links()
     list[(i + list.length) % list.length]?.focus()
@@ -75,17 +79,34 @@ export default function NavGroup({ label, items }: { label: string; items: NavGr
         {label}
       </span>
       <div className={styles.morePanel} hidden={!open} role="group" aria-label={label}>
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              isActive ? `${styles.moreLink} ${styles.moreLinkActive}` : styles.moreLink
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
+        {items.map((item) =>
+          item.onClick ? (
+            <button
+              key={item.label}
+              type="button"
+              data-menu-item
+              className={styles.moreLink}
+              onClick={item.onClick}
+              disabled={item.disabled}
+            >
+              {item.label}
+            </button>
+          ) : item.to && item.static ? (
+            <a key={item.to} href={item.to} className={styles.moreLink}>
+              {item.label}
+            </a>
+          ) : item.to ? (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                isActive ? `${styles.moreLink} ${styles.moreLinkActive}` : styles.moreLink
+              }
+            >
+              {item.label}
+            </NavLink>
+          ) : null,
+        )}
       </div>
     </div>
   )

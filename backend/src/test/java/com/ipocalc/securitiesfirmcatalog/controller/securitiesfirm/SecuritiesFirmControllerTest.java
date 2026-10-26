@@ -124,7 +124,7 @@ class SecuritiesFirmControllerTest {
   private void signupAndLogin() throws Exception {
     AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
     Account admin = accountRepository.findByEmail(testEmail);
-    admin.setRole(AccountRole.ADMIN);
+    admin.changeRole(AccountRole.ADMIN);
     accountRepository.save(admin);
     AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }
@@ -467,7 +467,7 @@ class SecuritiesFirmControllerTest {
     SecuritiesFirm saved = securitiesFirmRepository.findById(firmId).orElseThrow();
     registeredFirms.add(saved);
     LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
-    saved.setUpdatedAt(oldUpdatedAt);
+    saved.updateDetails(null, null, null, oldUpdatedAt);
     securitiesFirmRepository.save(saved);
 
     // When: PATCH /securities-firms/{id} 요청이 유효한 수정 데이터와 함께 전송됨
@@ -703,7 +703,7 @@ class SecuritiesFirmControllerTest {
     assertThat(saved.getStatus()).as("삭제 전 status는 ACTIVE여야 합니다").isEqualTo(STATUS_ACTIVE);
     assertThat(saved.getDeletedAt()).as("삭제 전 deletedAt은 null이어야 합니다").isNull();
     LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
-    saved.setUpdatedAt(oldUpdatedAt);
+    saved.updateDetails(null, null, null, oldUpdatedAt);
     securitiesFirmRepository.save(saved);
 
     // When: DELETE /securities-firms/{id} 요청이 전송됨

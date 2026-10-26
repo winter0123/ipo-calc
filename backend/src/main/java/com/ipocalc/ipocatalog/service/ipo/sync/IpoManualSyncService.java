@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +19,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * 관리자 "지금 가져오기". 새벽 스케줄러(04:30 목록·일정, 05:00 상세)와 같은 서비스를 같은 순서로 부른다.
- * 기간은 스케줄러와 같은 {@code app.ipo-sync.days-back}(기본 90일)이라 빈 DB도 한 번에 채운다.
- * 범위 지정 시(YYYY-MM) 한 달씩 순차 처리하며 백그라운드에서 실행된다.
+ * 관리자 "지금 가져오기". 새벽 스케줄러(04:30 목록·일정, 05:00 상세)와 같은 서비스를 같은 순서로 부른다. 기간은 스케줄러와 같은 {@code
+ * app.ipo-sync.days-back}(기본 90일)이라 빈 DB도 한 번에 채운다. 범위 지정 시(YYYY-MM) 한 달씩 순차 처리하며 백그라운드에서 실행된다.
  */
 @Service
 @RequiredArgsConstructor
@@ -98,9 +96,7 @@ public class IpoManualSyncService {
     if (fromMonth != null && toMonth != null) {
       int monthsTotal = calculateMonthsTotal(fromMonth, toMonth);
       syncStateManager.startRangeSync(
-          fromMonth.format(MONTH_FORMATTER),
-          toMonth.format(MONTH_FORMATTER),
-          monthsTotal);
+          fromMonth.format(MONTH_FORMATTER), toMonth.format(MONTH_FORMATTER), monthsTotal);
     } else {
       syncStateManager.startDefaultSync();
     }
@@ -128,8 +124,10 @@ public class IpoManualSyncService {
     }
     if (toMonth != null && toMonth.isAfter(nowMonth)) {
       throw new IpoSyncRangeValidationException(
-          "toMonth는 이번 달(" + nowMonth.format(MONTH_FORMATTER)
-              + ") 이후일 수 없습니다. 입력값: " + toMonth.format(MONTH_FORMATTER));
+          "toMonth는 이번 달("
+              + nowMonth.format(MONTH_FORMATTER)
+              + ") 이후일 수 없습니다. 입력값: "
+              + toMonth.format(MONTH_FORMATTER));
     }
     if (fromMonth != null && toMonth != null) {
       long monthsBetween = java.time.temporal.ChronoUnit.MONTHS.between(fromMonth, toMonth) + 1;

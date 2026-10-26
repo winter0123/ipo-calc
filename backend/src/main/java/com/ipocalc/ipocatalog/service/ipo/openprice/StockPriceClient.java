@@ -19,17 +19,17 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * 공공데이터포털 주식시세 정보 API 클라이언트.
  *
- * <p>금융위원회 주식시세 정보 서비스({@code GetStockSecuritiesInfoService_V2})의
- * {@code getStockPriceInfo_V2} 엔드포인트를 호출해 특정 종목의 상장일 시초가(mkp)를 조회한다.
+ * <p>금융위원회 주식시세 정보 서비스({@code GetStockSecuritiesInfoService_V2})의 {@code getStockPriceInfo_V2}
+ * 엔드포인트를 호출해 특정 종목의 상장일 시초가(mkp)를 조회한다.
  *
  * <ul>
  *   <li>엔드포인트: {@code GET /1160100/GetStockSecuritiesInfoService_V2/getStockPriceInfo_V2}
  *   <li>파라미터: {@code serviceKey}, {@code resultType=json}, {@code numOfRows=10}, {@code pageNo=1},
  *       {@code basDt=YYYYMMDD}(조회일), {@code likeSrtnCd=종목코드}
-  *   <li>응답: {@code response.header.resultCode}가 {@code "00"}이면 정상.
-  *       {@code response.body.items.item}은 1건이면 객체, 여러 건이면 배열, 0건이면 빈 문자열({@code ""})일 수 있음
-  *   <li>item 필드: {@code basDt}, {@code srtnCd}, {@code itmsNm}, {@code clpr}, {@code mkp},
-  *       {@code hipr}, {@code lopr} 등. 값은 모두 JSON 문자열
+ *   <li>응답: {@code response.header.resultCode}가 {@code "00"}이면 정상. {@code
+ *       response.body.items.item}은 1건이면 객체, 여러 건이면 배열, 0건이면 빈 문자열({@code ""})일 수 있음
+ *   <li>item 필드: {@code basDt}, {@code srtnCd}, {@code itmsNm}, {@code clpr}, {@code mkp}, {@code
+ *       hipr}, {@code lopr} 등. 값은 모두 JSON 문자열
  *   <li>시초가 = {@code mkp} (시가)
  * </ul>
  *
@@ -80,8 +80,8 @@ public class StockPriceClient {
   /**
    * 특정 종목의 상장일 시초가를 조회한다.
    *
-   * <p>{@code likeSrtnCd}는 부분 일치 검색이므로, 응답 item 중 {@code srtnCd}가 요청 종목코드와 정확히 같은 행만 사용한다.
-   * {@code mkp}를 Long으로 파싱해 0보다 크면 반환하고, 0·빈 값·파싱 실패·행 없음이면 {@link Optional#empty()}를 반환한다.
+   * <p>{@code likeSrtnCd}는 부분 일치 검색이므로, 응답 item 중 {@code srtnCd}가 요청 종목코드와 정확히 같은 행만 사용한다. {@code
+   * mkp}를 Long으로 파싱해 0보다 크면 반환하고, 0·빈 값·파싱 실패·행 없음이면 {@link Optional#empty()}를 반환한다.
    *
    * @param stockCode 종목코드 (6자리)
    * @param listingDate 상장일
@@ -107,8 +107,7 @@ public class StockPriceClient {
                           .queryParam("resultType", "json")
                           .queryParam("numOfRows", 10)
                           .queryParam("pageNo", 1)
-                          .queryParam(
-                              "basDt", listingDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+                          .queryParam("basDt", listingDate.format(DateTimeFormatter.BASIC_ISO_DATE))
                           .queryParam("likeSrtnCd", stockCode)
                           .build())
               .retrieve()

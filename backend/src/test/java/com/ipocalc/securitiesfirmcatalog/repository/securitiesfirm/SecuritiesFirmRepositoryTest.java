@@ -271,8 +271,7 @@ class SecuritiesFirmRepositoryTest {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus(RecordStatus.INACTIVE);
-    existing.setDeletedAt(now);
+    existing.deactivate(now);
     securitiesFirmRepository.saveAndFlush(existing);
 
     // When: 동일 이름으로 새 ACTIVE 증권사 저장

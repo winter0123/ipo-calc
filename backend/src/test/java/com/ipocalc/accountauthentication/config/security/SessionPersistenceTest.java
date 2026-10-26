@@ -28,8 +28,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 로그인 유지: 세션이 DB(spring_session)에 있고 쿠키만으로 다시 인증되며, 쿠키·세션 만료가 30일로 슬라이딩하고, 로그아웃하면 행이 지워진다. 서버
- * 재시작은 메모리 상태 없이 쿠키 값만으로 인증되는지로 갈음한다(실제 재기동은 별도로 확인).
+ * 로그인 유지: 세션이 DB(spring_session)에 있고 쿠키만으로 다시 인증되며, 쿠키·세션 만료가 30일로 슬라이딩하고, 로그아웃하면 행이 지워진다. 서버 재시작은
+ * 메모리 상태 없이 쿠키 값만으로 인증되는지로 갈음한다(실제 재기동은 별도로 확인).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -104,8 +104,11 @@ class SessionPersistenceTest {
     String header = setCookie(login());
 
     assertThat(header).contains("Max-Age=2592000").contains("HttpOnly").contains("SameSite=Lax");
-    assertThat(jdbc.queryForObject(
-            "SELECT count(*) FROM spring_session WHERE principal_name = ?", Integer.class, EMAIL))
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM spring_session WHERE principal_name = ?",
+                Integer.class,
+                EMAIL))
         .isEqualTo(1);
     Long first = expiry();
     assertThat(first - System.currentTimeMillis())
@@ -128,8 +131,11 @@ class SessionPersistenceTest {
         mockMvc.perform(post("/auth/logout").cookie(cookie)).andReturn().getResponse();
 
     assertThat(out.getHeaders("Set-Cookie")).allMatch(h -> h.contains("Max-Age=0"));
-    assertThat(jdbc.queryForObject(
-            "SELECT count(*) FROM spring_session WHERE principal_name = ?", Integer.class, EMAIL))
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM spring_session WHERE principal_name = ?",
+                Integer.class,
+                EMAIL))
         .isZero();
     MockHttpServletResponse after =
         mockMvc.perform(get("/auth/me").cookie(cookie)).andReturn().getResponse();
@@ -140,8 +146,7 @@ class SessionPersistenceTest {
   void anonymousRequestsDoNotCreateSessionRows() throws Exception {
     int before = jdbc.queryForObject("SELECT count(*) FROM spring_session", Integer.class);
 
-    MockHttpServletResponse response =
-        mockMvc.perform(get("/auth/me")).andReturn().getResponse();
+    MockHttpServletResponse response = mockMvc.perform(get("/auth/me")).andReturn().getResponse();
 
     assertThat(response.getStatus()).isEqualTo(401);
     assertThat(response.getHeaders("Set-Cookie")).isEmpty();

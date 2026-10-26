@@ -108,8 +108,8 @@ public class OpenDartEquitySecurityDetail {
 
   /**
    * 청약기일(sbd) 종료일. 끝일의 연·월이 생략되면("10월 13일", "13일") 시작일 기준으로 보완한다(끝 월이 시작 월보다 작으면 다음 해). 단일 날짜는
-   * {@code null}(다음 영업일 보완은 Service), 구분자 뒤를 못 읽으면 {@code null}이면서
-   * {@link #subscriptionEndUnreadable}이 true.
+   * {@code null}(다음 영업일 보완은 Service), 구분자 뒤를 못 읽으면 {@code null}이면서 {@link
+   * #subscriptionEndUnreadable}이 true.
    */
   private static LocalDate parseSbdEndDate(String sbd) {
     String[] parts = splitSbd(sbd);
@@ -155,8 +155,7 @@ public class OpenDartEquitySecurityDetail {
   }
 
   /**
-   * 숫자 3개(연·월·일)로 날짜를 만든다. "2026.10.12", "2026-10-12", "2026년 10월 12일 (월)" 등.
-   * 월만 있으면 {@code null}.
+   * 숫자 3개(연·월·일)로 날짜를 만든다. "2026.10.12", "2026-10-12", "2026년 10월 12일 (월)" 등. 월만 있으면 {@code null}.
    */
   private static LocalDate parseYmd(String raw) {
     if (raw == null) {

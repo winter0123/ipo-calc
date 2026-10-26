@@ -306,8 +306,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 null));
 
     // 소프트 삭제
-    first.setStatus(RecordStatus.INACTIVE);
-    first.setDeletedAt(LocalDateTime.now());
+    first.deactivate(LocalDateTime.now());
     credentialRepository.saveAndFlush(first);
 
     // When: 같은 계좌·같은 provider로 새로운 ACTIVE 인증정보 저장
@@ -427,7 +426,7 @@ class SecuritiesAccountApiCredentialRepositoryTest {
     LocalDateTime exp = LocalDateTime.now().plusDays(1);
 
     // When: 키 교체 후, 옛 키 기준으로 토큰 갱신 시도 / 같은 키로 토큰 갱신 시도
-    saved.setAppKeyEncrypted("new-key");
+    saved.rotateSecrets("new-key", null, null);
     credentialRepository.saveAndFlush(saved);
     int stale =
         credentialRepository.updateTokenIfKeyUnchanged(

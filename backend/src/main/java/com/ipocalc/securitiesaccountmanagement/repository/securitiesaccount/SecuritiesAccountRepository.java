@@ -37,8 +37,7 @@ public interface SecuritiesAccountRepository extends JpaRepository<SecuritiesAcc
    */
   @Modifying
   @Query(
-      value =
-          "DELETE FROM securities_account_api_credentials WHERE securities_account_id = :id",
+      value = "DELETE FROM securities_account_api_credentials WHERE securities_account_id = :id",
       nativeQuery = true)
   void deleteApiCredentials(@Param("id") Long securitiesAccountId);
 }

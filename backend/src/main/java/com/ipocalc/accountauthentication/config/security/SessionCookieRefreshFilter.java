@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * 세션 쿠키 슬라이딩. Spring Session은 세션 ID가 바뀔 때만 쿠키를 다시 쓰므로, 그냥 두면 쿠키 Max-Age(30일)는 로그인 시점부터만 세어져 계속
- * 쓰는 사용자도 30일 뒤 쿠키가 사라진다. 요청의 세션이 유효하고 ID가 그대로면 응답이 확정되기 직전에 쿠키를 다시 써서 만료를 뒤로 민다. ID가 바뀐
- * 경우(로그인)는 Spring Session이 쓰고, 세션이 없어진 경우(로그아웃)는 쓰지 않는다.
+ * 세션 쿠키 슬라이딩. Spring Session은 세션 ID가 바뀔 때만 쿠키를 다시 쓰므로, 그냥 두면 쿠키 Max-Age(30일)는 로그인 시점부터만 세어져 계속 쓰는
+ * 사용자도 30일 뒤 쿠키가 사라진다. 요청의 세션이 유효하고 ID가 그대로면 응답이 확정되기 직전에 쿠키를 다시 써서 만료를 뒤로 민다. ID가 바뀐 경우(로그인)는
+ * Spring Session이 쓰고, 세션이 없어진 경우(로그아웃)는 쓰지 않는다.
  */
 @Component
 @Order(SessionRepositoryFilter.DEFAULT_ORDER + 1)

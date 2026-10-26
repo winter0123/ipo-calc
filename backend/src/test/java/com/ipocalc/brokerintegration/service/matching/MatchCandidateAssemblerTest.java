@@ -106,10 +106,13 @@ class MatchCandidateAssemblerTest {
 
     List<MatchCandidate> out = assembler.candidates(7L);
 
-    assertThat(out).singleElement().satisfies(c -> {
-      assertThat(c.stockCode()).isNull();
-      assertThat(c.existingSales()).isEmpty();
-    });
+    assertThat(out)
+        .singleElement()
+        .satisfies(
+            c -> {
+              assertThat(c.stockCode()).isNull();
+              assertThat(c.existingSales()).isEmpty();
+            });
 
     when(allocs.findBySubscriptionIdIn(anyList())).thenReturn(List.of());
     assertThat(assembler.candidates(7L)).isEmpty();

@@ -53,8 +53,7 @@ class KisTradeProfitMapperEdgeTest {
             () -> KisTradeProfitMapper.toSaleSummaries(of(d(null, "005930", "1", "1", "0", "0"))))
         .isInstanceOf(BrokerApiException.class);
     assertThatThrownBy(
-            () ->
-                KisTradeProfitMapper.toSaleSummaries(of(d("20261001", null, "1", "1", "0", "0"))))
+            () -> KisTradeProfitMapper.toSaleSummaries(of(d("20261001", null, "1", "1", "0", "0"))))
         .isInstanceOf(BrokerApiException.class);
   }
 

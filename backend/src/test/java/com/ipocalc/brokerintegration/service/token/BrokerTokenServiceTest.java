@@ -90,8 +90,7 @@ class BrokerTokenServiceTest {
               if (!credential.getAppKeyEncrypted().equals(invocation.getArgument(1))) {
                 return 0;
               }
-              credential.setAccessTokenEncrypted(invocation.getArgument(2));
-              credential.setTokenExpiresAt(invocation.getArgument(3));
+              credential.cacheAccessToken(invocation.getArgument(2), invocation.getArgument(3));
               return 1;
             });
 
@@ -153,8 +152,7 @@ class BrokerTokenServiceTest {
     // Then: 1회 발급하고 만료 시각과 암호문을 저장한다.
     assertThat(token.token()).isEqualTo(ISSUED_TOKEN);
     verify(authClient).issueToken(DUMMY_APP_KEY, DUMMY_APP_SECRET);
-    verify(credentialRepository)
-        .updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
+    verify(credentialRepository).updateTokenIfKeyUnchanged(any(), any(), any(), any(), any());
     assertThat(credential.getTokenExpiresAt()).isEqualTo(token.expiresAt());
   }
 
@@ -164,7 +162,7 @@ class BrokerTokenServiceTest {
     SecuritiesAccountApiCredential stale = buildCredential(null, null);
     credential = buildCredential(null, null);
     String newKeyCipher = secretEncryptor.encrypt("dummy-new-app-key");
-    credential.setAppKeyEncrypted(newKeyCipher);
+    credential.rotateSecrets(newKeyCipher, null, null);
     stubSuccessfulIssuance();
 
     // When: 낡은 엔티티로 토큰 발급 경로 실행

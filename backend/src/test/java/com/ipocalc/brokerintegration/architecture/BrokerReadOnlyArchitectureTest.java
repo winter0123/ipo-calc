@@ -184,8 +184,7 @@ class BrokerReadOnlyArchitectureTest {
             MAIN_CLASSES.contain(
                 "com.ipocalc.brokerintegration.adapter.kiwoom.KiwoomTradeProfitClient"))
         .isTrue();
-    assertThat(
-            MAIN_CLASSES.contain("com.ipocalc.brokerintegration.adapter.ls.LsDailyTradeClient"))
+    assertThat(MAIN_CLASSES.contain("com.ipocalc.brokerintegration.adapter.ls.LsDailyTradeClient"))
         .isTrue();
   }
 

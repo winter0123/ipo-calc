@@ -53,8 +53,7 @@ public class AdminAccountService {
   @Transactional
   public void approve(Long accountId) {
     Account account = find(accountId);
-    account.setApproved(true);
-    account.setUpdatedAt(LocalDateTime.now(clock));
+    account.approve(LocalDateTime.now(clock));
     accountRepository.save(account);
     log.info("계정 승인: accountId={}", accountId);
   }
@@ -70,8 +69,7 @@ public class AdminAccountService {
       throw new ValidationFailedException("accountId", "본인 계정의 승인은 취소할 수 없습니다");
     }
     Account account = find(accountId);
-    account.setApproved(false);
-    account.setUpdatedAt(LocalDateTime.now(clock));
+    account.revokeApproval(LocalDateTime.now(clock));
     accountRepository.save(account);
     // 세션 레지스트리의 주체는 이메일이 같으면 같은 사용자로 취급된다(User.equals).
     User principal = new User(account.getEmail(), account.getPasswordHash(), List.of());
@@ -88,8 +86,7 @@ public class AdminAccountService {
   public void unlock(Long accountId) {
     Account account = find(accountId);
     account.resetFailedLoginAttempts();
-    account.setLockedUntil(null);
-    account.setUpdatedAt(LocalDateTime.now(clock));
+    account.unlock(LocalDateTime.now(clock));
     accountRepository.save(account);
     log.info("계정 잠금 해제: accountId={}", accountId);
   }

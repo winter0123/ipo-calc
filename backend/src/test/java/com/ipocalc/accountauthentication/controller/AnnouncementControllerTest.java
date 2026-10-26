@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.domain.model.account.AccountRole;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
-import com.ipocalc.announcements.domain.Announcement;
 import com.ipocalc.announcements.repository.AnnouncementDismissalRepository;
 import com.ipocalc.announcements.repository.AnnouncementRepository;
 import java.time.LocalDate;
@@ -52,9 +51,10 @@ class AnnouncementControllerTest {
   void tearDown() {
     createdAnnouncementIds.forEach(
         id -> {
-          dismissalRepository.deleteAll(dismissalRepository.findAll().stream()
-              .filter(dismissal -> dismissal.getAnnouncementId().equals(id))
-              .toList());
+          dismissalRepository.deleteAll(
+              dismissalRepository.findAll().stream()
+                  .filter(dismissal -> dismissal.getAnnouncementId().equals(id))
+                  .toList());
           announcementRepository.deleteById(id);
         });
     createdEmails.forEach(email -> accountRepository.delete(accountRepository.findByEmail(email)));
@@ -98,8 +98,7 @@ class AnnouncementControllerTest {
             .andReturn();
     assertThat(dismissed.getResponse().getStatus()).isEqualTo(200);
 
-    var hiddenPopup =
-        mockMvc.perform(get("/announcements/popup").session(userSession)).andReturn();
+    var hiddenPopup = mockMvc.perform(get("/announcements/popup").session(userSession)).andReturn();
     assertThat(hiddenPopup.getResponse().getStatus()).isEqualTo(204);
 
     var forbidden =
@@ -134,8 +133,7 @@ class AnnouncementControllerTest {
             post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    objectMapper.writeValueAsString(
-                        Map.of("email", email, "password", PASSWORD)))
+                    objectMapper.writeValueAsString(Map.of("email", email, "password", PASSWORD)))
                 .session(session))
         .andReturn();
     return session;

@@ -219,10 +219,11 @@ class InvestorControllerTest {
 
     assertThat(investorsOfAccount())
         .singleElement()
-        .satisfies(investor -> {
-          assertThat(investor.getDisplayName()).isEqualTo("친구투자자");
-          assertThat(investor.getRelationship()).isEqualTo("FRIEND");
-        });
+        .satisfies(
+            investor -> {
+              assertThat(investor.getDisplayName()).isEqualTo("친구투자자");
+              assertThat(investor.getRelationship()).isEqualTo("FRIEND");
+            });
   }
 
   @Test

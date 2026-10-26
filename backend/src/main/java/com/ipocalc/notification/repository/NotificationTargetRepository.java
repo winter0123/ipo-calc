@@ -8,9 +8,8 @@ import org.springframework.stereotype.Repository;
 /**
  * 오늘 알림을 받을 (계정, 공모주) 조합을 고르고 발송 기록(notification_logs)을 다룬다.
  *
- * <p>다른 Epic 테이블(ipos·subscriptions·allocations·sales·investors)을 읽기만 하는 질의라
- * 엔티티 대신 SQL로 쓴다. 이렇게 하면 패키지
- * 사이 의존이 생기지 않는다.
+ * <p>다른 Epic 테이블(ipos·subscriptions·allocations·sales·investors)을 읽기만 하는 질의라 엔티티 대신 SQL로 쓴다. 이렇게 하면
+ * 패키지 사이 의존이 생기지 않는다.
  */
 @Repository
 public class NotificationTargetRepository {

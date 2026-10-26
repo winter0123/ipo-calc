@@ -10,78 +10,119 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.hibernate.annotations.Comment;
 
 /** 계정 JPA 엔티티. */
 @Entity
 @Table(name = "accounts")
 @Getter
-@Setter
 @Builder(toBuilder = true)
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Account {
+  /** Changes the account role. */
+  public void changeRole(AccountRole role) {
+    this.role = role;
+  }
+
+  /** Updates the account lock expiration. */
+  public void updateLock(LocalDateTime lockedUntil) {
+    this.lockedUntil = lockedUntil;
+  }
+
+  /** Changes the encoded password and modification time. */
+  public void changePassword(String encodedPassword, LocalDateTime now) {
+    this.passwordHash = encodedPassword;
+    this.updatedAt = now;
+  }
+
+  /** Approves the account. */
+  public void approve(LocalDateTime now) {
+    this.approved = true;
+    this.updatedAt = now;
+  }
+
+  /** Revokes account approval. */
+  public void revokeApproval(LocalDateTime now) {
+    this.approved = false;
+    this.updatedAt = now;
+  }
+
+  /** Clears the account lock state. */
+  public void unlock(LocalDateTime now) {
+    this.lockedUntil = null;
+    this.updatedAt = now;
+  }
 
   /** PK. DB가 자동으로 매기는 번호. */
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Comment("계정 고유 식별자")
   private Long id;
 
   /** 로그인 이메일. 소문자로 저장, 중복 불가. */
   @Column(name = "email", nullable = false, unique = true, length = 254)
+  @Comment("로그인 이메일")
   private String email;
 
   /** 비밀번호 해시(BCrypt). 원문 비밀번호는 저장하지 않는다. */
   @Column(name = "password_hash", nullable = false, length = 255)
+  @Comment("비밀번호 해시(BCrypt)")
   private String passwordHash;
 
   /** 사용자 이름(가입 시 입력). */
   @Column(name = "name", length = 50)
+  @Comment("사용자 실명")
   private String name;
 
   /** 서비스에 표시할 닉네임. */
   @Column(name = "nickname", nullable = false, length = 50)
+  @Comment("서비스 표시용 닉네임")
   private String nickname;
 
   /** 권한. USER(일반) / ADMIN(관리자: 가입 승인·공모주 등록). */
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
   @Builder.Default
+  @Comment("계정 권한(USER/ADMIN)")
   private AccountRole role = AccountRole.USER;
 
   /** 관리자 가입 승인 여부. false면 로그인 불가. */
   @Column(name = "approved", nullable = false)
   @Builder.Default
+  @Comment("관리자 가입 승인 여부")
   private boolean approved = true;
 
   /** 연속 로그인 실패 횟수. 성공하면 0으로 초기화. */
   @Column(name = "failed_login_attempts", nullable = false)
   @Builder.Default
+  @Comment("연속 로그인 실패 횟수")
   private Integer failedLoginAttempts = 0;
 
   /** 로그인 잠금 해제 시각. 이 시각 전까지 로그인 불가, null이면 잠금 없음. */
   @Column(name = "locked_until")
+  @Comment("로그인 잠금 해제 시각")
   private LocalDateTime lockedUntil;
 
   /** 생성 시각. */
   @Column(name = "created_at", nullable = false, updatable = false)
+  @Comment("계정 생성 시각")
   private LocalDateTime createdAt;
 
   /** 마지막 수정 시각. */
   @Column(name = "updated_at", nullable = false)
+  @Comment("계정 정보 마지막 수정 시각")
   private LocalDateTime updatedAt;
 
   /** 마지막 로그인 성공 시각. */
   @Column(name = "last_login_at")
+  @Comment("마지막 로그인 성공 시각")
   private LocalDateTime lastLoginAt;
-
-  public void setEmail(String email) {
-    this.email = email != null ? email.toLowerCase() : null;
-  }
 
   /** 테스트·내부 생성 경로의 이전 계정 생성 방식도 필수 닉네임 제약을 만족하게 한다. */
   @PrePersist

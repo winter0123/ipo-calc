@@ -589,8 +589,7 @@ class SaleControllerTest {
         .findById(thirdId)
         .ifPresent(
             sale -> {
-              sale.setStatus(RecordStatus.CANCELLED);
-              sale.setDeletedAt(LocalDateTime.now());
+              sale.cancel(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
 
@@ -978,8 +977,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus(RecordStatus.CANCELLED);
-              sale.setDeletedAt(LocalDateTime.now());
+              sale.cancel(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
 
@@ -1300,8 +1298,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus(RecordStatus.CANCELLED);
-              sale.setDeletedAt(LocalDateTime.now());
+              sale.cancel(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
 
@@ -1386,8 +1383,7 @@ class SaleControllerTest {
         .findById(saleId)
         .ifPresent(
             sale -> {
-              sale.setStatus(RecordStatus.CANCELLED);
-              sale.setDeletedAt(LocalDateTime.now());
+              sale.cancel(LocalDateTime.now());
               saleRepository.saveAndFlush(sale);
             });
 

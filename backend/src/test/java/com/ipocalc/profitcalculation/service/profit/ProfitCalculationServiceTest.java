@@ -97,7 +97,7 @@ class ProfitCalculationServiceTest {
         .isInstanceOf(ProfitNotFoundException.class);
 
     Sale cancelled = sale(1, 5, LocalDateTime.now(), 1L);
-    cancelled.setStatus(RecordStatus.CANCELLED);
+    cancelled.cancel(LocalDateTime.now());
     when(sales.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(cancelled));
     assertThatThrownBy(() -> service.calculateForSale(1L))
         .isInstanceOf(ProfitNotFoundException.class);
@@ -188,8 +188,7 @@ class ProfitCalculationServiceTest {
     when(subs.findAllById(any()))
         .thenReturn(
             List.of(
-                subscription(),
-                Subscription.builder().id(8L).investorId(1L).ipoId(4L).build()));
+                subscription(), Subscription.builder().id(8L).investorId(1L).ipoId(4L).build()));
     when(ipos.findAllById(any()))
         .thenReturn(
             List.of(
@@ -204,8 +203,7 @@ class ProfitCalculationServiceTest {
         service.calculateForInvestor(1L, LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 5));
     assertThat(nov.getSales()).extracting(ProfitDto::getSaleId).containsExactly(12L);
 
-    InvestorProfitDto none =
-        service.calculateForInvestor(1L, LocalDate.of(2027, 1, 1), null);
+    InvestorProfitDto none = service.calculateForInvestor(1L, LocalDate.of(2027, 1, 1), null);
     assertThat(none.getSales()).isEmpty();
     assertThat(none.getTotalPreTaxProfit()).isZero();
 
@@ -213,8 +211,7 @@ class ProfitCalculationServiceTest {
     assertThat(all.getSales()).hasSize(2);
     assertThat(all.getTotalSaleAmount()).isEqualTo(5_000L);
     assertThat(all.getTotalPreTaxProfit())
-        .isEqualTo(
-            all.getSales().stream().mapToLong(ProfitDto::getPreTaxProfit).sum());
+        .isEqualTo(all.getSales().stream().mapToLong(ProfitDto::getPreTaxProfit).sum());
   }
 
   @Test

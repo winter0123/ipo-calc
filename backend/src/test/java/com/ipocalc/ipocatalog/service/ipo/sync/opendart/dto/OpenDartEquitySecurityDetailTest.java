@@ -134,10 +134,7 @@ class OpenDartEquitySecurityDetailTest {
   @Test
   void parseDerivedFields_asandAndPymd_mapToAllotmentAndRefundDate() {
     OpenDartEquitySecurityDetail detail =
-        OpenDartEquitySecurityDetail.builder()
-            .asand("2026년 10월 15일")
-            .pymd("2026년 10월 15일")
-            .build();
+        OpenDartEquitySecurityDetail.builder().asand("2026년 10월 15일").pymd("2026년 10월 15일").build();
 
     detail.parseDerivedFields();
 

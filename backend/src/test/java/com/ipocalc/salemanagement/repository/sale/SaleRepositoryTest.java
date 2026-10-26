@@ -234,8 +234,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 40L, now.plusDays(1), now.plusDays(1)));
 
     Sale cancelled = buildSale(allocationId, 20L, now.minusDays(1), now.minusDays(1));
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     saleRepository.saveAndFlush(cancelled);
 
     // When: findAllByDeletedAtIsNullOrderBySaleDateDescCreatedAtDesc 호출
@@ -259,8 +258,7 @@ class SaleRepositoryTest {
     Sale active = saleRepository.save(buildSale(allocationId, 30L, now, now));
 
     Sale cancelled = buildSale(allocationId, 20L, now, now);
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     Sale savedCancelled = saleRepository.saveAndFlush(cancelled);
 
     // When: 각각 findByIdAndDeletedAtIsNull 호출
@@ -317,8 +315,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 40L, now.plusHours(1), now.plusHours(1)));
 
     Sale cancelled = buildSale(allocationId, 20L, now.minusHours(1), now.minusHours(1));
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     saleRepository.saveAndFlush(cancelled);
 
     // When: findByAllocationIdAndDeletedAtIsNullAndStatus로 ACTIVE만 조회
@@ -345,8 +342,7 @@ class SaleRepositoryTest {
     saleRepository.save(buildSale(allocationId, 20L, now.plusHours(2), now.plusHours(2)));
 
     Sale cancelled = buildSale(allocationId, 50L, now.minusHours(1), now.minusHours(1));
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     saleRepository.saveAndFlush(cancelled);
 
     // When: sumActiveQuantityByAllocationId 호출

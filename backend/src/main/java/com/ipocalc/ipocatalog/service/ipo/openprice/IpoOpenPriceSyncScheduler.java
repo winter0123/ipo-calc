@@ -16,7 +16,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 @ConditionalOnProperty(
-    name = "app.open-price-sync.enabled", havingValue = "true", matchIfMissing = true)
+    name = "app.open-price-sync.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class IpoOpenPriceSyncScheduler {
 
   private final IpoOpenPriceSyncService ipoOpenPriceSyncService;

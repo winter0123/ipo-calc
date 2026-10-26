@@ -145,30 +145,15 @@ public class SaleService {
               + allocation.getAllocatedQuantity());
     }
 
-    // 필드 업데이트 (제공된 필드만)
-    if (request.getQuantity() != null) {
-      sale.setQuantity(request.getQuantity());
-    }
-    if (request.getPrice() != null) {
-      sale.setPrice(request.getPrice());
-    }
-    if (request.getAmount() != null) {
-      sale.setAmount(request.getAmount());
-    }
-    if (request.getSaleDate() != null) {
-      sale.setSaleDate(request.getSaleDate());
-    }
-    if (request.getFee() != null) {
-      sale.setFee(request.getFee());
-    }
-    if (request.getTax() != null) {
-      sale.setTax(request.getTax());
-    }
-    if (request.getOtherCost() != null) {
-      sale.setOtherCost(request.getOtherCost());
-    }
-
-    sale.setUpdatedAt(LocalDateTime.now(clock));
+    sale.updateDetails(
+        request.getQuantity(),
+        request.getPrice(),
+        request.getAmount(),
+        request.getSaleDate(),
+        request.getFee(),
+        request.getTax(),
+        request.getOtherCost(),
+        LocalDateTime.now(clock));
     Sale saved = saleRepository.save(sale);
     return SaleResponse.from(saved);
   }
@@ -272,9 +257,7 @@ public class SaleService {
   public void cancel(Long id) {
     Sale sale = findOwnedSale(id);
     LocalDateTime now = LocalDateTime.now(clock);
-    sale.setStatus(RecordStatus.CANCELLED);
-    sale.setDeletedAt(now);
-    sale.setUpdatedAt(now);
+    sale.cancel(now);
     saleRepository.save(sale);
   }
 

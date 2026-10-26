@@ -109,8 +109,7 @@ class AllocationRepositoryTest {
     allocationRepository.save(buildAllocation(subscriptionB, "배정B", now.plusDays(1)));
 
     Allocation cancelled = buildAllocation(subscriptionC, "취소된 배정", now.minusDays(1));
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     allocationRepository.saveAndFlush(cancelled);
 
     // When: findAllByDeletedAtIsNullOrderByCreatedAtDesc 호출
@@ -134,8 +133,7 @@ class AllocationRepositoryTest {
     Allocation active = allocationRepository.save(buildAllocation(subscriptionA, null, now));
 
     Allocation cancelled = buildAllocation(subscriptionB, null, now);
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     Allocation savedCancelled = allocationRepository.saveAndFlush(cancelled);
 
     // When: 각각 findByIdAndDeletedAtIsNull 호출
@@ -195,8 +193,7 @@ class AllocationRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     Long subscriptionId = createSubscription(1L, now);
     Allocation existing = allocationRepository.save(buildAllocation(subscriptionId, "기존 배정", now));
-    existing.setStatus(RecordStatus.CANCELLED);
-    existing.setDeletedAt(now);
+    existing.cancel(now);
     allocationRepository.saveAndFlush(existing);
 
     // When: 동일 subscriptionId로 새 ACTIVE 배정 저장

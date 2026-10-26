@@ -47,8 +47,7 @@ public class PasswordChangeService {
     validateConfirmPassword(request.getNewPassword(), request.getConfirmPassword());
 
     String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
-    account.setPasswordHash(newPasswordHash);
-    account.setUpdatedAt(LocalDateTime.now(clock));
+    account.changePassword(newPasswordHash, LocalDateTime.now(clock));
     accountRepository.saveAndFlush(account);
 
     invalidateOtherSessions(httpServletRequest);

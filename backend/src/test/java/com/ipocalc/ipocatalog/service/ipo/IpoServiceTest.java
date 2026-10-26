@@ -111,8 +111,7 @@ class IpoServiceTest {
     existing(START, END);
 
     assertInvalid(
-        IpoUpdateRequest.builder().subscriptionEndDate(START.minusDays(1)).build(),
-        "빠를 수 없습니다");
+        IpoUpdateRequest.builder().subscriptionEndDate(START.minusDays(1)).build(), "빠를 수 없습니다");
   }
 
   @Test
@@ -282,16 +281,20 @@ class IpoServiceTest {
   @Test
   void getById_estimatesRefundDateOnlyWhenNotStoredAndEndDateKnown() {
     Ipo withRefund = existing(START, END);
-    withRefund.setRefundDate(LocalDate.of(2026, 10, 23));
+    withRefund.correctSchedule(
+        withRefund.getListingDate(),
+        LocalDate.of(2026, 10, 23),
+        withRefund.getSubscriptionEndDate());
     IpoResponse stored = service.getById(1L);
     assertThat(stored.getRefundDate()).isEqualTo(LocalDate.of(2026, 10, 23));
     assertThat(stored.isRefundDateEstimated()).isFalse();
 
-    withRefund.setRefundDate(null);
+    withRefund.correctSchedule(
+        withRefund.getListingDate(), null, withRefund.getSubscriptionEndDate());
     when(calculator.plusBusinessDaysOrNull(END, 2)).thenReturn(LocalDate.of(2026, 10, 23));
     assertThat(service.getById(1L).isRefundDateEstimated()).isTrue();
 
-    withRefund.setSubscriptionEndDate(null);
+    withRefund.correctSchedule(withRefund.getListingDate(), withRefund.getRefundDate(), null);
     IpoResponse none = service.getById(1L);
     assertThat(none.getRefundDate()).isNull();
     assertThat(none.isRefundDateEstimated()).isFalse();

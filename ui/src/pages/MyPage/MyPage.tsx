@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useInvestors } from '@/entities/investor/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -38,6 +39,7 @@ export default function MyPage() {
     (investor) =>
       investor.accountId === accountQuery.data.accountId && investor.relationship === 'SELF',
   )
+  const investors = investorsQuery.data ?? []
 
   return (
     <div className={styles.container}>
@@ -69,6 +71,33 @@ export default function MyPage() {
           </dd>
         </div>
       </dl>
+      <section className={styles.investors} aria-labelledby="investor-status-title">
+        <div className={styles.investorsHeader}>
+          <div>
+            <h2 id="investor-status-title">사용자 현황</h2>
+            <p>현재 등록된 투자자 {investors.length}명</p>
+          </div>
+          <Link to="/investors/register" className={styles.addInvestorButton}>
+            투자자 추가
+          </Link>
+        </div>
+        {investors.length > 0 ? (
+          <ul className={styles.investorList} aria-label="현재 등록된 투자자">
+            {investors.map((investor) => (
+              <li key={investor.id} className={styles.investorRow}>
+                <span>{investor.displayName}</span>
+                <span>
+                  {investor.relationship
+                    ? (RELATIONSHIP_LABELS[investor.relationship] ?? investor.relationship)
+                    : '관계 미입력'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>등록된 투자자가 없습니다.</p>
+        )}
+      </section>
       <p className={styles.note}>비밀번호는 보안을 위해 표시하지 않습니다.</p>
     </div>
   )

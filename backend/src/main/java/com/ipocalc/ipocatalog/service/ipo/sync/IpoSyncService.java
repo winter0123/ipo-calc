@@ -51,8 +51,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *             offeringShareCount}, 시작/종료일, {@code syncSource="OPENDART"}, {@code lastSyncedAt=now},
  *             {@code status="ACTIVE"}, created++
  *       </ol>
- *   <li>{@code allotmentDate}는 DART 배정공고일(asand), {@code refundDate}는 납입기일(pymd)로 채운다 (못 읽으면 기존
- *       값 유지)
+ *   <li>{@code allotmentDate}는 DART 배정공고일(asand), {@code refundDate}는 납입기일(pymd)로 채운다 (못 읽으면 기존 값
+ *       유지)
  *   <li>{@code fixedPrice}, {@code listingDate}는 동기화가 절대 덮어쓰지 않음 (수동 입력 보호; 갱신 시 null로 지우지도 않음)
  *   <li>IPO 1건 처리 실패({@code DataIntegrityViolationException} 등)는 그 건만 failures에 기록하고 다음 건으로 계속 (건별
  *       독립 트랜잭션)
@@ -117,8 +117,8 @@ public class IpoSyncService {
   /**
    * 지정된 월 범위(YYYY-MM)에 대해 한 달씩 IPO 정보를 동기화한다(동시 실행 시 {@link IpoSyncBusyException}).
    *
-   * <p>각 월에 대해 1일~말일로 DS001 검색하고, DS006 조회 시 해당 월 1일~오늘(또는 말일)로 기간을 제한한다.
-   * 기존 {@link #sync(int)}와 동일한 upsert 규칙(수동 등록 보호, 유상증자 건너뜀 등)을 적용한다.
+   * <p>각 월에 대해 1일~말일로 DS001 검색하고, DS006 조회 시 해당 월 1일~오늘(또는 말일)로 기간을 제한한다. 기존 {@link #sync(int)}와
+   * 동일한 upsert 규칙(수동 등록 보호, 유상증자 건너뜀 등)을 적용한다.
    *
    * @param fromMonth 시작 월 (YYYY-MM, 포함)
    * @param toMonth 종료 월 (YYYY-MM, 포함)
@@ -213,9 +213,7 @@ public class IpoSyncService {
     return result;
   }
 
-  /**
-   * 지정된 월의 DS001 공시검색을 수행한다.
-   */
+  /** 지정된 월의 DS001 공시검색을 수행한다. */
   private List<OpenDartDisclosureItem> fetchCompaniesForMonthOrAbort(
       LocalDate monthStart, LocalDate monthEnd, IpoSyncResult result) {
     try {
@@ -236,9 +234,7 @@ public class IpoSyncService {
     }
   }
 
-  /**
-   * 한 회사 처리 (DS006 조회 기간을 rangeStart~rangeEnd로 지정).
-   */
+  /** 한 회사 처리 (DS006 조회 기간을 rangeStart~rangeEnd로 지정). */
   private boolean processCompanyWithRange(
       IpoSyncResult result,
       OpenDartDisclosureItem company,
@@ -308,8 +304,7 @@ public class IpoSyncService {
     }
     if (detail.getSubscriptionEndDate() != null
         && detail.getSubscriptionEndDate().isBefore(detail.getSubscriptionStartDate())) {
-      recordFailure(
-          result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
+      recordFailure(result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일이 시작일보다 앞섬: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
@@ -483,8 +478,7 @@ public class IpoSyncService {
     }
     if (detail.getSubscriptionEndDate() != null
         && detail.getSubscriptionEndDate().isBefore(detail.getSubscriptionStartDate())) {
-      recordFailure(
-          result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
+      recordFailure(result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일이 시작일보다 앞섬: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
@@ -636,29 +630,17 @@ public class IpoSyncService {
       LocalDate startDate,
       LocalDate endDate) {
 
-    existing.setCompanyName(corpName);
-    existing.setIpoName(corpName);
-    if (detail.getOfferPrice() != null) {
-      existing.setLowerBandPrice(detail.getOfferPrice());
-      existing.setUpperBandPrice(detail.getOfferPrice());
-    }
-    if (detail.getOfferingShareCount() != null) {
-      existing.setOfferingShareCount(detail.getOfferingShareCount());
-    }
-    existing.setSubscriptionStartDate(startDate);
-    existing.setSubscriptionEndDate(endDate);
-    // DART가 값을 주면 공식 값으로 덮어쓰고, 못 읽으면 기존 값(ustockplus 보충분)을 지우지 않음
-    if (detail.getAllotmentDate() != null) {
-      existing.setAllotmentDate(detail.getAllotmentDate());
-    }
-    if (detail.getRefundDate() != null) {
-      existing.setRefundDate(detail.getRefundDate());
-    }
-    // fixedPrice, listingDate는 절대 수정하지 않음 (수동 입력 보호)
-    existing.setSyncSource(SYNC_SOURCE_OPENDART);
     LocalDateTime now = LocalDateTime.now(clock);
-    existing.setLastSyncedAt(now);
-    existing.setUpdatedAt(now);
+    existing.syncFromOpenDart(
+        corpName,
+        detail.getOfferPrice(),
+        detail.getOfferingShareCount(),
+        startDate,
+        endDate,
+        detail.getAllotmentDate(),
+        detail.getRefundDate(),
+        SYNC_SOURCE_OPENDART,
+        now);
 
     ipoRepository.saveAndFlush(existing);
   }

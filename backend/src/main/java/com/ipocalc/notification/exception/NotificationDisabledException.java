@@ -11,8 +11,6 @@ public class NotificationDisabledException extends ApiException {
   /** 안내 문구와 함께 생성한다. */
   public NotificationDisabledException() {
     super(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        "PUSH_DISABLED",
-        "이 서버는 푸시 알림이 설정되지 않았습니다. 관리자에게 문의해 주세요");
+        HttpStatus.SERVICE_UNAVAILABLE, "PUSH_DISABLED", "이 서버는 푸시 알림이 설정되지 않았습니다. 관리자에게 문의해 주세요");
   }
 }

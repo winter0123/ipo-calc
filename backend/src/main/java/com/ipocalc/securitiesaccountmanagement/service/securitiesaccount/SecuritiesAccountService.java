@@ -112,8 +112,7 @@ public class SecuritiesAccountService {
           .findByInvestorIdAndIsDefaultTrue(investorId)
           .ifPresent(
               previous -> {
-                previous.setIsDefault(false);
-                previous.setUpdatedAt(now);
+                previous.clearDefault(now);
                 securitiesAccountRepository.saveAndFlush(previous);
               });
     }
@@ -192,15 +191,11 @@ public class SecuritiesAccountService {
       if (firm.getStatus() != RecordStatus.ACTIVE) {
         throw new SecuritiesAccountValidationException("비활성화된 증권사로는 변경할 수 없습니다.");
       }
-      account.setSecuritiesFirmId(request.getSecuritiesFirmId());
     }
 
     validateAccountName(request.getAccountName());
-    if (request.getAccountName() != null) {
-      account.setAccountName(request.getAccountName());
-    }
-
-    account.setUpdatedAt(LocalDateTime.now(clock));
+    account.changeDetails(
+        request.getSecuritiesFirmId(), request.getAccountName(), LocalDateTime.now(clock));
     SecuritiesAccount saved = securitiesAccountRepository.save(account);
 
     return toMaskedResponse(saved);
@@ -213,14 +208,9 @@ public class SecuritiesAccountService {
     requireOwner(account);
 
     LocalDateTime now = LocalDateTime.now(clock);
-    account.setStatus(RecordStatus.INACTIVE);
-    account.setDeletedAt(now);
     // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
-    boolean wasDefault = Boolean.TRUE.equals(account.getIsDefault());
-    if (wasDefault) {
-      account.setIsDefault(false);
-    }
-    account.setUpdatedAt(now);
+    final boolean wasDefault = Boolean.TRUE.equals(account.getIsDefault());
+    account.deactivate(now);
     securitiesAccountRepository.saveAndFlush(account);
     // 비밀키 암호문을 남기지 않도록 API 인증정보는 물리 삭제한다.
     securitiesAccountRepository.deleteApiCredentials(id);
@@ -233,8 +223,7 @@ public class SecuritiesAccountService {
           .findFirst()
           .ifPresent(
               next -> {
-                next.setIsDefault(true);
-                next.setUpdatedAt(now);
+                next.makeDefault(now);
                 securitiesAccountRepository.save(next);
               });
     }
@@ -270,13 +259,11 @@ public class SecuritiesAccountService {
           .findByInvestorIdAndIsDefaultTrue(account.getInvestorId())
           .ifPresent(
               previousDefault -> {
-                previousDefault.setIsDefault(false);
-                previousDefault.setUpdatedAt(now);
+                previousDefault.clearDefault(now);
                 securitiesAccountRepository.saveAndFlush(previousDefault);
               });
 
-      account.setIsDefault(true);
-      account.setUpdatedAt(now);
+      account.makeDefault(now);
       SecuritiesAccount saved = securitiesAccountRepository.saveAndFlush(account);
       return toMaskedResponse(saved);
     } catch (DataIntegrityViolationException e) {

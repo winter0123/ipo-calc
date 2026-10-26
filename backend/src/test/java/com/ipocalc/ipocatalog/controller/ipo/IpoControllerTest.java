@@ -347,7 +347,7 @@ class IpoControllerTest {
     Long id = ((Number) readBody(registered).get("id")).longValue();
 
     Ipo existing = ipoRepository.findById(id).orElseThrow();
-    existing.setDeletedAt(LocalDateTime.now());
+    existing.deactivate(LocalDateTime.now());
     ipoRepository.save(existing);
 
     MvcResult listResult = mockMvc.perform(get("/ipos").session(session)).andReturn();
@@ -497,7 +497,7 @@ class IpoControllerTest {
     Long id = ((Number) readBody(registered).get("id")).longValue();
 
     Ipo existing = ipoRepository.findById(id).orElseThrow();
-    existing.setDeletedAt(LocalDateTime.now());
+    existing.deactivate(LocalDateTime.now());
     ipoRepository.save(existing);
 
     MvcResult result = mockMvc.perform(get("/ipos/{id}", id).session(session)).andReturn();
@@ -709,7 +709,7 @@ class IpoControllerTest {
     Long id = ((Number) readBody(registered).get("id")).longValue();
 
     Ipo existing = ipoRepository.findById(id).orElseThrow();
-    existing.setDeletedAt(LocalDateTime.now());
+    existing.deactivate(LocalDateTime.now());
     ipoRepository.save(existing);
 
     MvcResult result = mockMvc.perform(delete("/ipos/{id}", id).session(session)).andReturn();
@@ -752,7 +752,10 @@ class IpoControllerTest {
 
     // 엔티티에 직접 환불일 설정
     Ipo existing = ipoRepository.findById(id).orElseThrow();
-    existing.setRefundDate(java.time.LocalDate.of(2027, 1, 20));
+    existing.correctSchedule(
+        existing.getListingDate(),
+        java.time.LocalDate.of(2027, 1, 20),
+        existing.getSubscriptionEndDate());
     ipoRepository.save(existing);
 
     MvcResult result = mockMvc.perform(get("/ipos/{id}", id).session(session)).andReturn();
@@ -1025,7 +1028,7 @@ class IpoControllerTest {
   private void signupAndLogin() throws Exception {
     AuthTestSupport.signup(mockMvc, objectMapper, session, testEmail, testPassword, testName);
     Account admin = accountRepository.findByEmail(testEmail);
-    admin.setRole(AccountRole.ADMIN);
+    admin.changeRole(AccountRole.ADMIN);
     accountRepository.save(admin);
     AuthTestSupport.login(mockMvc, objectMapper, session, testEmail, testPassword);
   }

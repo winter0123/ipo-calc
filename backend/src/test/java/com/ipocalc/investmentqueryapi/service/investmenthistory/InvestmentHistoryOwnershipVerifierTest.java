@@ -33,8 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  *
  * <p>각 검증에 대해 성공/실패(403, 404) 케이스를 모두 테스트한다.
  */
-@SpringBootTest(
-    classes = com.ipocalc.accountauthentication.AccountAuthenticationApplication.class)
+@SpringBootTest(classes = com.ipocalc.accountauthentication.AccountAuthenticationApplication.class)
 @ActiveProfiles("test")
 class InvestmentHistoryOwnershipVerifierTest {
 

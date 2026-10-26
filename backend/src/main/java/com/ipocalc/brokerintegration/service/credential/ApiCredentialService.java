@@ -178,12 +178,11 @@ public class ApiCredentialService {
             .stream()
             .findFirst()
             .orElseThrow(() -> new ApiCredentialNotFoundException("연결된 브로커 API 인증정보가 없습니다."));
-    credential.setAppKeyEncrypted(brokerSecretEncryptor.encrypt(appKey.trim()));
-    credential.setAppSecretEncrypted(brokerSecretEncryptor.encrypt(appSecret.trim()));
-    credential.setAccessTokenEncrypted(null);
-    credential.setTokenExpiresAt(null);
-    credential.setKeyIssuedOn(resolveIssuedOn(keyIssuedOn));
-    credential.setUpdatedAt(LocalDateTime.now(clock));
+    credential.replaceCredentials(
+        brokerSecretEncryptor.encrypt(appKey.trim()),
+        brokerSecretEncryptor.encrypt(appSecret.trim()),
+        resolveIssuedOn(keyIssuedOn),
+        LocalDateTime.now(clock));
     SecuritiesAccountApiCredential saved = credentialRepository.save(credential);
     log.info("브로커 API 인증정보 교체: securitiesAccountId={}", securitiesAccountId);
     return assembler.toResponse(account, saved);

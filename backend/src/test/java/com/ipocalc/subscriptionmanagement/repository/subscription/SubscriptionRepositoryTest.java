@@ -86,8 +86,7 @@ class SubscriptionRepositoryTest {
     subscriptionRepository.save(buildSubscription(1L, 2L, 4L, "청약B", now.plusDays(1)));
 
     Subscription cancelled = buildSubscription(1L, 2L, 5L, "취소된 청약", now.minusDays(1));
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     subscriptionRepository.saveAndFlush(cancelled);
 
     // When: findAllByDeletedAtIsNullOrderByCreatedAtDesc 호출
@@ -109,8 +108,7 @@ class SubscriptionRepositoryTest {
     Subscription active = subscriptionRepository.save(buildSubscription(1L, 2L, 3L, null, now));
 
     Subscription cancelled = buildSubscription(1L, 2L, 4L, null, now);
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
+    cancelled.cancel(now);
     Subscription savedCancelled = subscriptionRepository.saveAndFlush(cancelled);
 
     // When: 각각 findByIdAndDeletedAtIsNull 호출
@@ -213,8 +211,7 @@ class SubscriptionRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     Subscription existing =
         subscriptionRepository.save(buildSubscription(1L, 2L, 3L, "기존 청약", now));
-    existing.setStatus(RecordStatus.CANCELLED);
-    existing.setDeletedAt(now);
+    existing.cancel(now);
     subscriptionRepository.saveAndFlush(existing);
 
     // When: 동일 조합으로 새 ACTIVE 청약 저장

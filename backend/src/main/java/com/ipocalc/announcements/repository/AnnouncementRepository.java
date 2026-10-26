@@ -27,28 +27,20 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
   @Query(
       "SELECT a FROM Announcement a WHERE a.status = :status AND a.deletedAt IS NULL "
           + "AND a.startAt <= :today AND a.endAt >= :today ORDER BY a.startAt ASC, a.id ASC")
-  Page<Announcement>
-      findActive(
-          @Param("status") RecordStatus status,
-          @Param("today") LocalDate today,
-          Pageable pageable);
+  Page<Announcement> findActive(
+      @Param("status") RecordStatus status, @Param("today") LocalDate today, Pageable pageable);
 
   /** 지정 기간에 게시 중인 상태별 공지 목록을 조회한다. */
   @Query(
       "SELECT a FROM Announcement a WHERE a.status = :status AND a.deletedAt IS NULL "
           + "AND a.startAt <= :today AND a.endAt >= :today ORDER BY a.startAt ASC, a.id ASC")
-  List<Announcement>
-      findActive(
-          @Param("status") RecordStatus status,
-          @Param("today") LocalDate today);
+  List<Announcement> findActive(
+      @Param("status") RecordStatus status, @Param("today") LocalDate today);
 
   /** 지정 기간에 게시 중인 공지 하나를 조회한다. */
   @Query(
       "SELECT a FROM Announcement a WHERE a.id = :id AND a.status = :status "
           + "AND a.deletedAt IS NULL AND a.startAt <= :today AND a.endAt >= :today")
-  Optional<Announcement>
-      findActiveById(
-          @Param("id") Long id,
-          @Param("status") RecordStatus status,
-          @Param("today") LocalDate today);
+  Optional<Announcement> findActiveById(
+      @Param("id") Long id, @Param("status") RecordStatus status, @Param("today") LocalDate today);
 }

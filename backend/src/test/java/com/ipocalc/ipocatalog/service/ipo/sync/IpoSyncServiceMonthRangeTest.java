@@ -3,21 +3,16 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
-import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
-import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.holiday.MarketHolidayRepository;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
-import com.ipocalc.ipocatalog.service.ipo.sync.IpoScheduleMergeService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
@@ -56,14 +51,18 @@ class IpoSyncServiceMonthRangeTest {
 
   @BeforeEach
   void setUp() {
-    fixedClock = Clock.fixed(
-        LocalDateTime.of(2026, 10, 14, 12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant(),
-        java.time.ZoneId.systemDefault());
-    TransactionTemplate transactionTemplate = new TransactionTemplate(
-        mock(org.springframework.transaction.PlatformTransactionManager.class));
+    fixedClock =
+        Clock.fixed(
+            LocalDateTime.of(2026, 10, 14, 12, 0)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant(),
+            java.time.ZoneId.systemDefault());
+    TransactionTemplate transactionTemplate =
+        new TransactionTemplate(
+            mock(org.springframework.transaction.PlatformTransactionManager.class));
 
     when(marketHolidayRepository.findByYear(anyInt())).thenReturn(Collections.emptyList());
-    
+
     service =
         new IpoSyncService(
             corpDisclosureClient,
@@ -83,17 +82,17 @@ class IpoSyncServiceMonthRangeTest {
     when(corpDisclosureClient.searchByDateRange(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(item));
 
-    OpenDartEquitySecurityDetail detail = createDetail(
-        "corp1", "Company 1", LocalDate.of(2026, 1, 15));
+    OpenDartEquitySecurityDetail detail =
+        createDetail("corp1", "Company 1", LocalDate.of(2026, 1, 15));
     when(equitySecuritiesClient.getEquitySecurityDetail(
-        anyString(), any(LocalDate.class), any(LocalDate.class)))
+            anyString(), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail));
 
     when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(
-        anyString(), eq(RecordStatus.ACTIVE)))
+            anyString(), eq(RecordStatus.ACTIVE)))
         .thenReturn(Optional.empty());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
-        any(LocalDate.class), eq(RecordStatus.ACTIVE)))
+            any(LocalDate.class), eq(RecordStatus.ACTIVE)))
         .thenReturn(Collections.emptyList());
     when(scheduleMergeService.merge(any(LocalDate.class))).thenReturn(0);
 
@@ -103,14 +102,13 @@ class IpoSyncServiceMonthRangeTest {
     // then
     assertThat(result.isAborted()).isFalse();
     assertThat(result.getCreated()).isEqualTo(1);
-    verify(corpDisclosureClient).searchByDateRange(
-        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+    verify(corpDisclosureClient)
+        .searchByDateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
     // rangeStart = fromMonth 1일(2026-01-01), rangeEnd = toMonth 말일(2026-01-31)
     // because it's before today
-    verify(equitySecuritiesClient).getEquitySecurityDetail(
-        eq("corp1"),
-        eq(LocalDate.of(2026, 1, 1)),
-        eq(LocalDate.of(2026, 1, 31)));
+    verify(equitySecuritiesClient)
+        .getEquitySecurityDetail(
+            eq("corp1"), eq(LocalDate.of(2026, 1, 1)), eq(LocalDate.of(2026, 1, 31)));
     verify(scheduleMergeService).merge(LocalDate.of(2026, 10, 14));
   }
 
@@ -128,39 +126,37 @@ class IpoSyncServiceMonthRangeTest {
     OpenDartDisclosureItem item3 = createDisclosureItem("corp3", "Company 3", null);
 
     when(corpDisclosureClient.searchByDateRange(
-        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+            LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
         .thenReturn(List.of(item1));
     when(corpDisclosureClient.searchByDateRange(
-        LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)))
+            LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)))
         .thenReturn(List.of(item2));
     when(corpDisclosureClient.searchByDateRange(
-        LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31)))
+            LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31)))
         .thenReturn(List.of(item3));
 
-    OpenDartEquitySecurityDetail detail1 = createDetail(
-        "corp1", "Company 1", LocalDate.of(2026, 1, 15));
-    OpenDartEquitySecurityDetail detail2 = createDetail(
-        "corp2", "Company 2", LocalDate.of(2026, 2, 15));
-    OpenDartEquitySecurityDetail detail3 = createDetail(
-        "corp3", "Company 3", LocalDate.of(2026, 3, 15));
+    OpenDartEquitySecurityDetail detail1 =
+        createDetail("corp1", "Company 1", LocalDate.of(2026, 1, 15));
+    OpenDartEquitySecurityDetail detail2 =
+        createDetail("corp2", "Company 2", LocalDate.of(2026, 2, 15));
+    OpenDartEquitySecurityDetail detail3 =
+        createDetail("corp3", "Company 3", LocalDate.of(2026, 3, 15));
 
     when(equitySecuritiesClient.getEquitySecurityDetail(
-        eq("corp1"), any(LocalDate.class), any(LocalDate.class)))
+            eq("corp1"), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail1));
     when(equitySecuritiesClient.getEquitySecurityDetail(
-        eq("corp2"),
-        any(LocalDate.class), any(LocalDate.class)))
+            eq("corp2"), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail2));
     when(equitySecuritiesClient.getEquitySecurityDetail(
-        eq("corp3"),
-        any(LocalDate.class), any(LocalDate.class)))
+            eq("corp3"), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail3));
 
     when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(
-        anyString(), eq(RecordStatus.ACTIVE)))
+            anyString(), eq(RecordStatus.ACTIVE)))
         .thenReturn(Optional.empty());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
-        any(LocalDate.class), eq(RecordStatus.ACTIVE)))
+            any(LocalDate.class), eq(RecordStatus.ACTIVE)))
         .thenReturn(Collections.emptyList());
     when(scheduleMergeService.merge(any(LocalDate.class))).thenReturn(0);
 
@@ -170,8 +166,8 @@ class IpoSyncServiceMonthRangeTest {
     // then
     assertThat(result.isAborted()).isFalse();
     assertThat(result.getCreated()).isEqualTo(1); // 마지막 달만 반환
-    verify(corpDisclosureClient, times(3)).searchByDateRange(
-        any(LocalDate.class), any(LocalDate.class));
+    verify(corpDisclosureClient, times(3))
+        .searchByDateRange(any(LocalDate.class), any(LocalDate.class));
     verify(scheduleMergeService).merge(LocalDate.of(2026, 10, 14));
   }
 
@@ -227,8 +223,7 @@ class IpoSyncServiceMonthRangeTest {
   void syncByMonthRange_emptyCompanies_returnsEmptyResult() {
     // given
     YearMonth month = YearMonth.of(2026, 1);
-    when(corpDisclosureClient.searchByDateRange(
-        any(LocalDate.class), any(LocalDate.class)))
+    when(corpDisclosureClient.searchByDateRange(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(Collections.emptyList());
 
     // when

@@ -685,8 +685,7 @@ class SecuritiesAccountControllerTest {
                 ((Number) objectMapper.readValue(utf8Body(inactive), Map.class).get("id"))
                     .longValue())
             .orElseThrow();
-    inactiveAccount.setStatus(RecordStatus.INACTIVE);
-    inactiveAccount.setUpdatedAt(LocalDateTime.now());
+    inactiveAccount.deactivate(LocalDateTime.now());
     securitiesAccountRepository.save(inactiveAccount);
     createdAccounts.add(inactiveAccount);
 
@@ -968,8 +967,7 @@ class SecuritiesAccountControllerTest {
             .longValue();
 
     SecuritiesFirm firm = securitiesFirmRepository.findById(securitiesFirmId).orElseThrow();
-    firm.setStatus(RecordStatus.INACTIVE);
-    firm.setDeletedAt(LocalDateTime.now());
+    firm.deactivate(LocalDateTime.now());
     securitiesFirmRepository.save(firm);
 
     // When: 상세 조회
@@ -1127,7 +1125,7 @@ class SecuritiesAccountControllerTest {
     Long originalFirmId = registerFirm();
     Long inactiveFirmId = registerFirm();
     SecuritiesFirm inactiveFirm = securitiesFirmRepository.findById(inactiveFirmId).orElseThrow();
-    inactiveFirm.setStatus(RecordStatus.INACTIVE);
+    inactiveFirm.deactivate(LocalDateTime.now());
     securitiesFirmRepository.save(inactiveFirm);
 
     MvcResult registerResult =
@@ -1246,7 +1244,7 @@ class SecuritiesAccountControllerTest {
     assertThat(before.getStatus()).as("비활성화 전 status는 ACTIVE여야 합니다").isEqualTo(RecordStatus.ACTIVE);
     assertThat(before.getDeletedAt()).as("비활성화 전 deletedAt은 null이어야 합니다").isNull();
     LocalDateTime oldUpdatedAt = LocalDateTime.now().minusDays(1);
-    before.setUpdatedAt(oldUpdatedAt);
+    before.changeDetails(null, null, oldUpdatedAt);
     securitiesAccountRepository.save(before);
     createdAccounts.add(before);
 

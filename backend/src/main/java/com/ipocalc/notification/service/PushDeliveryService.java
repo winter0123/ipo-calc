@@ -19,7 +19,6 @@ public class PushDeliveryService {
   // 슬라이스 테스트(@DataJpaTest)에도 빈이 없어도 뜨도록 주입받지 않고 직접 만든다
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
-
   /** 의존성을 주입받는다. */
   public PushDeliveryService(PushSubscriptionRepository subscriptions, PushSender sender) {
     this.subscriptions = subscriptions;
@@ -44,7 +43,7 @@ public class PushDeliveryService {
         subscriptions.findByAccountIdAndStatus(accountId, RecordStatus.ACTIVE)) {
       PushSender.Result result = sender.send(sub, payload);
       if (result == PushSender.Result.OK) {
-        sub.setLastSuccessAt(LocalDateTime.now());
+        sub.recordSuccess(LocalDateTime.now());
         subscriptions.save(sub);
         ok++;
       } else if (result == PushSender.Result.GONE) {

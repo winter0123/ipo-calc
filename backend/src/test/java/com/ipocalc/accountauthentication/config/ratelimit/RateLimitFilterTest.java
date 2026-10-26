@@ -194,14 +194,19 @@ class RateLimitFilterTest {
 
     // 잘못된 값들은 모두 remoteAddr로 세므로 첫 호출만 통과하고 이후는 막힌다.
     String[] malformed = {
-      "1.2.3", "1.2.3.4.5", "256.1.1.1", "1..3.4", "1234.1.1.1", "a.b.c.d", "gg::1",
-      "1.2.3.-4", "x".repeat(46)
+      "1.2.3",
+      "1.2.3.4.5",
+      "256.1.1.1",
+      "1..3.4",
+      "1234.1.1.1",
+      "a.b.c.d",
+      "gg::1",
+      "1.2.3.-4",
+      "x".repeat(46)
     };
     assertThat(call(filter, "GET", "/ipos", remote, malformed[0]).getStatus()).isEqualTo(200);
     for (String bad : malformed) {
-      assertThat(call(filter, "GET", "/ipos", remote, bad).getStatus())
-          .as(bad)
-          .isEqualTo(429);
+      assertThat(call(filter, "GET", "/ipos", remote, bad).getStatus()).as(bad).isEqualTo(429);
     }
   }
 

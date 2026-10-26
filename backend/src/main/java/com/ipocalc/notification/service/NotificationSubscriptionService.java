@@ -27,9 +27,8 @@ public class NotificationSubscriptionService {
   private static final Pattern BASE64URL = Pattern.compile("[A-Za-z0-9_\\-=+/]+");
 
   /**
-   * 서버가 이 주소로 POST하므로(SSRF 방지) 주요 브라우저의 푸시 서비스 도메인만 받는다.
-   * Chrome·Edge·Opera(FCM: fcm.googleapis.com 과 실측한 jmt17.google.com 같은 google.com 하위),
-   * Firefox(Mozilla), Safari(Apple), 구형 Edge(Windows).
+   * 서버가 이 주소로 POST하므로(SSRF 방지) 주요 브라우저의 푸시 서비스 도메인만 받는다. Chrome·Edge·Opera(FCM: fcm.googleapis.com
+   * 과 실측한 jmt17.google.com 같은 google.com 하위), Firefox(Mozilla), Safari(Apple), 구형 Edge(Windows).
    */
   private static final List<String> ALLOWED_HOST_SUFFIXES =
       List.of(
@@ -75,15 +74,14 @@ public class NotificationSubscriptionService {
     requireEnabled();
     validate(endpoint, p256dh, auth);
     Long accountId = securityUtils.getCurrentAccountId();
-    PushSubscription sub = subscriptions.findByEndpoint(endpoint).orElseGet(PushSubscription::new);
-    sub.setEndpoint(endpoint);
-    sub.setAccountId(accountId);
-    sub.setP256dh(p256dh);
-    sub.setAuth(auth);
-    sub.setUserAgent(
+    PushSubscription sub =
+        subscriptions.findByEndpoint(endpoint).orElseGet(PushSubscription::create);
+    sub.register(
+        accountId,
+        endpoint,
+        p256dh,
+        auth,
         userAgent == null ? null : userAgent.substring(0, Math.min(300, userAgent.length())));
-    sub.setStatus(RecordStatus.ACTIVE);
-    sub.setDeletedAt(null);
     subscriptions.save(sub);
   }
 
@@ -94,8 +92,7 @@ public class NotificationSubscriptionService {
     PushSubscription sub =
         subscriptions
             .findByEndpoint(endpoint == null ? "" : endpoint)
-            .filter(
-                s -> accountId.equals(s.getAccountId()) && s.getStatus() == RecordStatus.ACTIVE)
+            .filter(s -> accountId.equals(s.getAccountId()) && s.getStatus() == RecordStatus.ACTIVE)
             .orElseThrow(() -> new NotificationNotFoundException("해당 기기의 알림 구독을 찾을 수 없습니다"));
     sub.cancel();
     subscriptions.save(sub);
@@ -115,8 +112,7 @@ public class NotificationSubscriptionService {
     Long accountId = securityUtils.getCurrentAccountId();
     NotificationPreference pref =
         preferences.findById(accountId).orElseGet(() -> defaults(accountId));
-    pref.setSubscriptionDeadline(subscriptionDeadline);
-    pref.setListingDay(listingDay);
+    pref.updateSettings(subscriptionDeadline, listingDay);
     return preferences.save(pref);
   }
 
@@ -127,14 +123,11 @@ public class NotificationSubscriptionService {
     if (subscriptions.findByAccountIdAndStatus(accountId, RecordStatus.ACTIVE).isEmpty()) {
       throw new NotificationValidationException("알림을 받도록 등록된 기기가 없습니다");
     }
-    return delivery.deliver(
-        accountId, "테스트 알림", "알림이 정상적으로 도착했습니다", "/notifications", "test");
+    return delivery.deliver(accountId, "테스트 알림", "알림이 정상적으로 도착했습니다", "/notifications", "test");
   }
 
   private NotificationPreference defaults(Long accountId) {
-    NotificationPreference pref = new NotificationPreference();
-    pref.setAccountId(accountId);
-    return pref;
+    return NotificationPreference.defaultsFor(accountId);
   }
 
   private void requireEnabled() {

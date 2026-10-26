@@ -12,8 +12,8 @@ import org.springframework.core.io.ClassPathResource;
  * {@link DartFilingParser} 단위 테스트.
  *
  * <p>픽스처({@code src/test/resources/dart/*.xml})는 실제 DART document.xml에서 "요약재무정보" 절 전체와
- * 유통가능·경쟁률·확약·최대주주 표를 첫 번째 것만 잘라 {@code <TITLE>발췌</TITLE>} 뒤에 이어 붙인 것이다.
- * ms-terms-confirmed는 발행조건확정 문서에서 경쟁률·확약 표만 잘랐다.
+ * 유통가능·경쟁률·확약·최대주주 표를 첫 번째 것만 잘라 {@code <TITLE>발췌</TITLE>} 뒤에 이어 붙인 것이다. ms-terms-confirmed는 발행조건확정
+ * 문서에서 경쟁률·확약 표만 잘랐다.
  */
 class DartFilingParserTest {
 
@@ -34,8 +34,7 @@ class DartFilingParserTest {
     assertThat(f.financials()).hasSize(4);
     assertThat(f.financials().get(1))
         .isEqualTo(
-            new Financial(
-                "제11기(2025년12월말)", 23_786_846_687L, 8_557_587_279L, 7_287_887_715L));
+            new Financial("제11기(2025년12월말)", 23_786_846_687L, 8_557_587_279L, 7_287_887_715L));
     assertThat(f.capitalStock()).isEqualTo(2_308_265_000L);
     assertThat(f.floatSchedule()).hasSize(5);
     assertThat(f.floatSchedule().get(0).label()).isEqualTo("상장일 유통가능");
@@ -121,7 +120,8 @@ class DartFilingParserTest {
       assertThat(f.financials()).isEmpty();
       assertThat(f.competitionRate()).isNull();
     }
-    assertThat(parser.parse("<TABLE><TR><TD>경쟁률</TD><TD>1,0.5.</TD></TR></TABLE>")
-        .competitionRate()).isNull();
+    assertThat(
+            parser.parse("<TABLE><TR><TD>경쟁률</TD><TD>1,0.5.</TD></TR></TABLE>").competitionRate())
+        .isNull();
   }
 }

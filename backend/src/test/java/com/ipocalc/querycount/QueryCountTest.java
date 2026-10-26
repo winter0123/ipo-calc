@@ -226,11 +226,7 @@ class QueryCountTest {
       mockMvc.perform(get(e.getValue()).session(session));
       sessionFactory.getStatistics().clear();
       int status =
-          mockMvc
-              .perform(get(e.getValue()).session(session))
-              .andReturn()
-              .getResponse()
-              .getStatus();
+          mockMvc.perform(get(e.getValue()).session(session)).andReturn().getResponse().getStatus();
       assertThat(status).as(e.getKey()).isEqualTo(200);
       counts.put(e.getKey(), sessionFactory.getStatistics().getPrepareStatementCount());
     }

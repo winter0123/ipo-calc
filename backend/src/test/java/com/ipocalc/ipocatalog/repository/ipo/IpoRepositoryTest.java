@@ -279,8 +279,7 @@ class IpoRepositoryTest {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus(RecordStatus.INACTIVE);
-    existing.setDeletedAt(now);
+    existing.deactivate(now);
     ipoRepository.saveAndFlush(existing);
 
     // When: 동일 stock_code로 새 ACTIVE IPO 저장
@@ -424,8 +423,7 @@ class IpoRepositoryTest {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
-    existing.setStatus(RecordStatus.INACTIVE);
-    existing.setDeletedAt(now);
+    existing.deactivate(now);
     ipoRepository.saveAndFlush(existing);
 
     // When: 동일 corp_code로 새 ACTIVE IPO 저장

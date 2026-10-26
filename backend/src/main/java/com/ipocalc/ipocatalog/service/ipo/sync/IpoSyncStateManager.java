@@ -87,8 +87,11 @@ public class IpoSyncStateManager {
             .error(null)
             .build();
     currentStatus.set(running);
-    log.info("IPO 범위 동기화 시작: fromMonth={}, toMonth={}, "
-          + "monthsTotal={}", fromMonth, toMonth, monthsTotal);
+    log.info(
+        "IPO 범위 동기화 시작: fromMonth={}, toMonth={}, " + "monthsTotal={}",
+        fromMonth,
+        toMonth,
+        monthsTotal);
   }
 
   /** 기본 실행을 RUNNING으로 시작 (fromMonth/toMonth=null, monthsTotal=1). */
@@ -138,8 +141,10 @@ public class IpoSyncStateManager {
                   IpoSyncStatusResponse.SyncResult.builder()
                       .created(accum.getCreated() + monthResult.getCreated())
                       .updated(accum.getUpdated() + monthResult.getUpdated())
-                      .skipped(accum.getSkipped() + monthResult.getSkippedManual()
-                          + monthResult.getSkippedNonIpo())
+                      .skipped(
+                          accum.getSkipped()
+                              + monthResult.getSkippedManual()
+                              + monthResult.getSkippedNonIpo())
                       .failed(accum.getFailed() + monthResult.getFailureCount())
                       .scheduleMerged(accum.getScheduleMerged() + monthResult.getScheduleMerged())
                       .detailSaved(accum.getDetailSaved() + detailSaved)

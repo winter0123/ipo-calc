@@ -7,8 +7,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 /**
- * 세션 쿠키 삭제. 발급은 Spring Session이 한다(SessionCookieConfig). 속성은
- * {@code server.servlet.session.cookie.*}와 같은 값을 쓴다.
+ * 세션 쿠키 삭제. 발급은 Spring Session이 한다(SessionCookieConfig). 속성은 {@code
+ * server.servlet.session.cookie.*}와 같은 값을 쓴다.
  */
 @Component
 public class SessionCookieWriter {

@@ -229,10 +229,7 @@ class OwnershipIsolationTest {
             .content(
                 objectMapper.writeValueAsString(
                     Map.of(
-                        "email", email,
-                        "password", PASSWORD,
-                        "name", "격리테스터",
-                        "nickname", "격리닉")))
+                        "email", email, "password", PASSWORD, "name", "격리테스터", "nickname", "격리닉")))
             .session(session));
     mockMvc.perform(
         post("/auth/login")

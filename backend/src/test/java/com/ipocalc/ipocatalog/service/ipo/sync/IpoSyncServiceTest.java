@@ -729,8 +729,7 @@ class IpoSyncServiceTest {
   void sync_endBeforeStart_recordsFailure() {
     IpoSyncResult result =
         syncOne(
-            createDetail(
-                "01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 04일", "1,000", "10,000"));
+            createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 04일", "1,000", "10,000"));
 
     assertThat(result.getFailureCount()).isEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());
@@ -761,8 +760,7 @@ class IpoSyncServiceTest {
 
     IpoSyncResult result =
         syncOne(
-            createDetail(
-                "01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "1,000", "10,000"));
+            createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "1,000", "10,000"));
 
     assertThat(result.getSkippedManual()).isEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());

@@ -528,9 +528,7 @@ class SubscriptionControllerTest {
             .findById(((Number) readBody(first).get("id")).longValue())
             .orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    existing.setStatus(RecordStatus.CANCELLED);
-    existing.setDeletedAt(now);
-    existing.setUpdatedAt(now);
+    existing.cancel(now);
     subscriptionRepository.saveAndFlush(existing);
 
     // When: 동일 조합으로 새 청약을 등록함
@@ -566,9 +564,7 @@ class SubscriptionControllerTest {
 
     Subscription cancelled = subscriptionRepository.findById(cancelledId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     subscriptionRepository.saveAndFlush(cancelled);
 
     MvcResult reregister =
@@ -838,9 +834,7 @@ class SubscriptionControllerTest {
 
     Subscription cancelled = subscriptionRepository.findById(subscriptionId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     subscriptionRepository.saveAndFlush(cancelled);
 
     // When: 취소된 기록에 PATCH 수정 요청을 보냄

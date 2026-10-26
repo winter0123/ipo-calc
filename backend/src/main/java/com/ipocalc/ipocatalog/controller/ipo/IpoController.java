@@ -9,7 +9,6 @@ import com.ipocalc.ipocatalog.controller.ipo.dto.IpoUpdateRequest;
 import com.ipocalc.ipocatalog.service.ipo.IpoService;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailService;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSyncService;
-import com.ipocalc.ipocatalog.service.ipo.sync.IpoManualSyncResult;
 import com.ipocalc.ipocatalog.service.ipo.sync.IpoManualSyncService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -63,13 +62,11 @@ public class IpoController {
   }
 
   /**
-   * 공모주 목록(DART·일정 병합)과 상세 정보를 지금 바로 가져온다.
-   * 관리자 전용(POST /ipos/**). 수십 초~수 분 걸린다.
+   * 공모주 목록(DART·일정 병합)과 상세 정보를 지금 바로 가져온다. 관리자 전용(POST /ipos/**). 수십 초~수 분 걸린다.
    *
-   * @param request 범위 지정 요청 (fromMonth, toMonth: YYYY-MM).
-   *     비어 있으면 기본 동작(최근 N일 + 상세 동기화).
-   * @return 범위 지정 시 202 + 상태 객체(state=RUNNING),
-   *     기본 동작 시 200 + 결과. 이미 실행 중이면 409, 키 없으면 503, 범위 오류면 400.
+   * @param request 범위 지정 요청 (fromMonth, toMonth: YYYY-MM). 비어 있으면 기본 동작(최근 N일 + 상세 동기화).
+   * @return 범위 지정 시 202 + 상태 객체(state=RUNNING), 기본 동작 시 200 + 결과. 이미 실행 중이면 409, 키 없으면 503, 범위 오류면
+   *     400.
    */
   @PostMapping("/sync")
   public ResponseEntity<?> syncNow(

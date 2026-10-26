@@ -7,9 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 
 /**
- * Spring Session(JDBC)이 내려주는 세션 쿠키 설정. Boot의 {@code server.servlet.session.cookie.*} 자동 매핑은
- * 내장 서버가 있을 때만
- * 적용돼 MockMvc 테스트와 달라지므로, 같은 프로퍼티를 읽어 직접 만든다. 이름은 기존 JSESSIONID를 유지한다.
+ * Spring Session(JDBC)이 내려주는 세션 쿠키 설정. Boot의 {@code server.servlet.session.cookie.*} 자동 매핑은 내장 서버가
+ * 있을 때만 적용돼 MockMvc 테스트와 달라지므로, 같은 프로퍼티를 읽어 직접 만든다. 이름은 기존 JSESSIONID를 유지한다.
  */
 @Configuration
 public class SessionCookieConfig {

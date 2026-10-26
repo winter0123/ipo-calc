@@ -30,8 +30,7 @@ public class AnnouncementController {
   /** 게시 중인 공지 목록을 반환한다. */
   @GetMapping("/announcements")
   public Page<AnnouncementResponse> list(
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "20") int size) {
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
     return service.listActive(pageable(page, size));
   }
 
@@ -101,8 +100,7 @@ public class AnnouncementController {
 
   private Pageable pageable(int page, int size) {
     if (page < 0 || page > MAX_PAGE || size < 1 || size > MAX_SIZE) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "page는 0 이상, size는 1~100이어야 합니다.");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page는 0 이상, size는 1~100이어야 합니다.");
     }
     return Pageable.ofSize(size).withPage(page);
   }

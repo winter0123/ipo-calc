@@ -205,7 +205,8 @@ class LsClientsTest {
         client(d -> false).fetchSales(ctx(), LocalDate.of(2026, 10, 7), LocalDate.of(2026, 10, 8));
 
     server.verify();
-    assertThat(result).extracting(BrokerSaleSummary::tradeDate)
+    assertThat(result)
+        .extracting(BrokerSaleSummary::tradeDate)
         .containsExactlyInAnyOrder(LocalDate.of(2026, 10, 7), LocalDate.of(2026, 10, 8));
   }
 
@@ -245,9 +246,7 @@ class LsClientsTest {
 
   @Test
   void fetchSales_emptyBody_failsAsNullResponse() {
-    server
-        .expect(requestTo(ACCNO_URL))
-        .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+    server.expect(requestTo(ACCNO_URL)).andRespond(withSuccess("", MediaType.APPLICATION_JSON));
 
     assertCode(() -> fetchDay(2), "null_response");
   }

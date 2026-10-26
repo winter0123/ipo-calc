@@ -43,8 +43,8 @@ public final class ProfitCalculator {
   }
 
   /**
-   * 실현손익을 계산한다. saleAmount − acquisitionAmount − tax − otherCost 공모주수수료(fee)는 차감하지 않으며,
-   * null 파라미터는 0으로 간주 (null-safe).
+   * 실현손익을 계산한다. saleAmount − acquisitionAmount − tax − otherCost 공모주수수료(fee)는 차감하지 않으며, null 파라미터는
+   * 0으로 간주 (null-safe).
    */
   public static Long calculateRealizedProfit(
       Long saleAmount, Long acquisitionAmount, Long tax, Long otherCost) {

@@ -34,8 +34,7 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
       LocalDate subscriptionStartDate, RecordStatus status);
 
   /**
-   * 청약 시작일 범위 · 법인코드 존재 · 상태 조건(삭제되지 않은 건만)으로 공모주 목록을 조회한다.
-   * 범위 동기화 후 상세 동기화 대상 선정에 사용한다.
+   * 청약 시작일 범위 · 법인코드 존재 · 상태 조건(삭제되지 않은 건만)으로 공모주 목록을 조회한다. 범위 동기화 후 상세 동기화 대상 선정에 사용한다.
    *
    * @param startDate 청약 시작일 시작 (포함)
    * @param endDate 청약 시작일 종료 (포함)
@@ -57,8 +56,8 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
   /**
    * 상장일 시초가 수집 대상 공모주 목록을 조회한다.
    *
-   * <p>조건: status ACTIVE, stock_code NOT NULL, listing_date &lt; 오늘(Asia/Seoul),
-   * listing_open_price IS NULL, 삭제되지 않은 건.
+   * <p>조건: status ACTIVE, stock_code NOT NULL, listing_date &lt; 오늘(Asia/Seoul), listing_open_price
+   * IS NULL, 삭제되지 않은 건.
    *
    * @param today 오늘 날짜(Asia/Seoul, 주입된 Clock 기준)
    * @return 시초가 수집 대상 공모주 목록

@@ -164,32 +164,17 @@ public class SubscriptionService {
       requireAccountOfInvestor(
           validateSecuritiesAccountOwnership(finalSecuritiesAccountId), finalInvestorId);
     }
-
     checkDuplicate(finalInvestorId, finalSecuritiesAccountId, finalIpoId, id);
 
-    if (updatedInvestorId != null) {
-      subscription.setInvestorId(updatedInvestorId);
-    }
-    if (updatedSecuritiesAccountId != null) {
-      subscription.setSecuritiesAccountId(updatedSecuritiesAccountId);
-    }
-    if (updatedIpoId != null) {
-      subscription.setIpoId(updatedIpoId);
-    }
-    if (updatedQuantity != null) {
-      subscription.setQuantity(updatedQuantity);
-    }
-    if (updatedDepositAmount != null) {
-      subscription.setDepositAmount(updatedDepositAmount);
-    }
-    if (request.getSubscribedAt() != null) {
-      subscription.setSubscribedAt(request.getSubscribedAt());
-    }
-    if (request.getMemo() != null) {
-      subscription.setMemo(request.getMemo());
-    }
-
-    subscription.setUpdatedAt(LocalDateTime.now(clock));
+    subscription.updateDetails(
+        updatedInvestorId,
+        updatedSecuritiesAccountId,
+        updatedIpoId,
+        updatedQuantity,
+        updatedDepositAmount,
+        request.getSubscribedAt(),
+        request.getMemo(),
+        LocalDateTime.now(clock));
     try {
       Subscription saved = subscriptionRepository.save(subscription);
       return SubscriptionResponse.from(saved);
@@ -210,9 +195,7 @@ public class SubscriptionService {
       throw new HasChildRecordsException("배정 기록이 있는 청약은 취소할 수 없습니다. 배정을 먼저 취소해 주세요.");
     }
     LocalDateTime now = LocalDateTime.now(clock);
-    subscription.setStatus(RecordStatus.CANCELLED);
-    subscription.setDeletedAt(now);
-    subscription.setUpdatedAt(now);
+    subscription.cancel(now);
     subscriptionRepository.save(subscription);
   }
 

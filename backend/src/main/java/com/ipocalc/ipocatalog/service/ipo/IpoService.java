@@ -50,9 +50,7 @@ public class IpoService {
   @Transactional
   public void deactivate(Long id) {
     Ipo ipo = findActive(id);
-    ipo.setStatus(RecordStatus.INACTIVE);
-    ipo.setDeletedAt(LocalDateTime.now(clock));
-    ipo.setUpdatedAt(LocalDateTime.now(clock));
+    ipo.deactivate(LocalDateTime.now(clock));
     ipoRepository.save(ipo);
   }
 
@@ -93,20 +91,19 @@ public class IpoService {
 
     checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
 
-    // 미입력 필드는 현재 값을 그대로 다시 설정하므로 변경이 없다
-    ipo.setCompanyName(computedCompanyName);
-    ipo.setIpoName(computedIpoName);
-    ipo.setStockCode(computedStockCode);
-    ipo.setRoundLabel(computedRoundLabel);
-    ipo.setSubscriptionStartDate(computedSubscriptionStartDate);
-    ipo.setSubscriptionEndDate(computedSubscriptionEndDate);
-    ipo.setLowerBandPrice(computedLowerBandPrice);
-    ipo.setUpperBandPrice(computedUpperBandPrice);
-    ipo.setFixedPrice(pick(updatedFixedPrice, ipo.getFixedPrice()));
-    ipo.setListingDate(pick(request.getListingDate(), ipo.getListingDate()));
-    ipo.setOfferingShareCount(pick(updatedOfferingShareCount, ipo.getOfferingShareCount()));
-
-    ipo.setUpdatedAt(LocalDateTime.now(clock));
+    ipo.updateDetails(
+        computedCompanyName,
+        computedIpoName,
+        computedStockCode,
+        computedRoundLabel,
+        computedSubscriptionStartDate,
+        computedSubscriptionEndDate,
+        computedLowerBandPrice,
+        computedUpperBandPrice,
+        pick(updatedFixedPrice, ipo.getFixedPrice()),
+        pick(request.getListingDate(), ipo.getListingDate()),
+        pick(updatedOfferingShareCount, ipo.getOfferingShareCount()),
+        LocalDateTime.now(clock));
     try {
       Ipo saved = ipoRepository.save(ipo);
       return toResponse(saved);

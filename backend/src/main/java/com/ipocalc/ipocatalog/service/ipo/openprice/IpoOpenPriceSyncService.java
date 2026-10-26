@@ -13,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 상장일 시초가 동기화 서비스.
  *
- * <p>상장일이 지난 공모주 중 아직 시초가가 없는 종목을 대상으로 공공데이터포털 주식시세 API에서 시초가를 조회해
- * {@code ipos.listing_open_price}에 저장한다.
+ * <p>상장일이 지난 공모주 중 아직 시초가가 없는 종목을 대상으로 공공데이터포털 주식시세 API에서 시초가를 조회해 {@code ipos.listing_open_price}에
+ * 저장한다.
  *
  * <ul>
  *   <li>대상: status ACTIVE, stock_code NOT NULL, listing_date &lt; 오늘(Asia/Seoul),

@@ -3,37 +3,20 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncRangeRequest;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
-import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.exception.IpoSyncRangeValidationException;
 import com.ipocalc.ipocatalog.exception.OpenDartKeyMissingException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSyncService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
-import java.time.Clock;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,11 +43,15 @@ class IpoManualSyncServiceRangeTest {
   void setUp() {
     lenient().when(openDartProperties.isApiKeyMissing()).thenReturn(false);
     lenient().when(ipoSyncService.getIpoRepository()).thenReturn(ipoRepository);
-    lenient().doAnswer(invocation -> {
-      Runnable r = invocation.getArgument(0);
-      r.run();
-      return null;
-    }).when(syncExecutor).execute(any(Runnable.class));
+    lenient()
+        .doAnswer(
+            invocation -> {
+              Runnable r = invocation.getArgument(0);
+              r.run();
+              return null;
+            })
+        .when(syncExecutor)
+        .execute(any(Runnable.class));
 
     service =
         new IpoManualSyncService(

@@ -21,6 +21,11 @@ export default function SecuritiesPage() {
           먼저 <Link to="/investors/register">투자자를 추가</Link>해 주세요.
         </p>
       )}
+      <div className={styles.brokerSyncAction}>
+        <Link to="/broker-sync" className={styles.brokerSyncButton}>
+          증권사 연동
+        </Link>
+      </div>
     </div>
   )
 }

@@ -73,8 +73,9 @@ public class SecuritiesFirmService {
             .findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
 
+    String newName = null;
     if (request.getName() != null) {
-      String newName = validateName(request.getName());
+      newName = validateName(request.getName());
       if (!newName.equals(firm.getName())) {
         securitiesFirmRepository
             .findByNameAndStatus(newName, RecordStatus.ACTIVE)
@@ -83,18 +84,13 @@ public class SecuritiesFirmService {
                   throw new SecuritiesFirmDuplicateException("이미 등록된 증권사명입니다.");
                 });
       }
-      firm.setName(newName);
     }
 
-    if (request.getExternalCode() != null) {
-      firm.setExternalCode(request.getExternalCode());
-    }
-
-    if (request.getBusinessRegistrationNumber() != null) {
-      firm.setBusinessRegistrationNumber(request.getBusinessRegistrationNumber());
-    }
-
-    firm.setUpdatedAt(LocalDateTime.now(clock));
+    firm.updateDetails(
+        newName,
+        request.getExternalCode(),
+        request.getBusinessRegistrationNumber(),
+        LocalDateTime.now(clock));
     SecuritiesFirm saved = securitiesFirmRepository.save(firm);
     return SecuritiesFirmResponse.from(saved);
   }
@@ -107,9 +103,7 @@ public class SecuritiesFirmService {
             .orElseThrow(() -> new SecuritiesFirmNotFoundException("증권사를 찾을 수 없습니다."));
 
     LocalDateTime now = LocalDateTime.now(clock);
-    firm.setStatus(RecordStatus.INACTIVE);
-    firm.setDeletedAt(now);
-    firm.setUpdatedAt(now);
+    firm.deactivate(now);
     securitiesFirmRepository.save(firm);
   }
 

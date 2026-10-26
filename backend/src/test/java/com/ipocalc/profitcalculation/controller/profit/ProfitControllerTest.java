@@ -241,13 +241,14 @@ class ProfitControllerTest {
   // 배정의 청약이 가리키는 공모주를 주어진 상장일(null이면 상장일 없음 → 매도일로 기간 판단)의 새 공모주로 바꾼다.
   private void useIpoListedOn(Long allocationId, java.time.LocalDate listingDate) {
     Ipo ipo = ipoRepository.findById(createIpoWithFixedPrice(12000L)).orElseThrow();
-    ipo.setListingDate(listingDate);
+    ipo.correctSchedule(listingDate, ipo.getRefundDate(), ipo.getSubscriptionEndDate());
     ipoRepository.save(ipo);
     Subscription subscription =
         subscriptionRepository
             .findById(allocationRepository.findById(allocationId).orElseThrow().getSubscriptionId())
             .orElseThrow();
-    subscription.setIpoId(ipo.getId());
+    subscription.updateDetails(
+        null, null, ipo.getId(), null, null, null, null, java.time.LocalDateTime.now());
     subscriptionRepository.save(subscription);
   }
 
@@ -550,9 +551,7 @@ class ProfitControllerTest {
     // Sale을 CANCELLED 상태로 변경
     Sale cancelled = saleRepository.findById(saleId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     saleRepository.saveAndFlush(cancelled);
 
     // When: GET /sales/{saleId}/profit 요청이 전송됨
@@ -800,9 +799,7 @@ class ProfitControllerTest {
     // CANCELLED 상태로 변경
     Sale cancelled = saleRepository.findById(cancelledSaleId).orElseThrow();
     LocalDateTime now = LocalDateTime.now();
-    cancelled.setStatus(RecordStatus.CANCELLED);
-    cancelled.setDeletedAt(now);
-    cancelled.setUpdatedAt(now);
+    cancelled.cancel(now);
     saleRepository.saveAndFlush(cancelled);
 
     // When: GET /investors/{investorId}/profits

@@ -159,8 +159,11 @@ class AuthHardeningTest {
   void failureCountRestartsFromZeroAfterTheLockExpires() throws Exception {
     String email = createAccount("expired", AccountRole.USER);
     Account account = accountRepository.findByEmail(email);
-    account.setFailedLoginAttempts(5);
-    account.setLockedUntil(LocalDateTime.now().minusMinutes(1));
+    account =
+        account.toBuilder()
+            .failedLoginAttempts(5)
+            .lockedUntil(LocalDateTime.now().minusMinutes(1))
+            .build();
     accountRepository.save(account);
 
     assertThat(login(email, "wrongPass123!", null).getResponse().getStatus()).isEqualTo(401);
@@ -210,8 +213,11 @@ class AuthHardeningTest {
     MockHttpSession user = loginSession(createAccount("plain", AccountRole.USER));
 
     int asUser =
-        mockMvc.perform(post("/admin/accounts/1/unlock").session(user)).andReturn()
-            .getResponse().getStatus();
+        mockMvc
+            .perform(post("/admin/accounts/1/unlock").session(user))
+            .andReturn()
+            .getResponse()
+            .getStatus();
     int anonymous =
         mockMvc.perform(post("/admin/accounts/1/unlock")).andReturn().getResponse().getStatus();
     assertThat(asUser).isEqualTo(403);
@@ -308,10 +314,14 @@ class AuthHardeningTest {
                 .content(
                     objectMapper.writeValueAsString(
                         Map.of(
-                            "email", email,
-                            "password", PASSWORD,
-                            "name", "가입",
-                            "nickname", "가입닉"))),
+                            "email",
+                            email,
+                            "password",
+                            PASSWORD,
+                            "name",
+                            "가입",
+                            "nickname",
+                            "가입닉"))),
             before);
 
     assertThat(after).isNotEqualTo(before.getId());
@@ -343,9 +353,12 @@ class AuthHardeningTest {
                     .content(
                         objectMapper.writeValueAsString(
                             Map.of(
-                                "email", "long-" + nonce + "@example.com",
-                                "password", tooLong,
-                                "name", "x"))))
+                                "email",
+                                "long-" + nonce + "@example.com",
+                                "password",
+                                tooLong,
+                                "name",
+                                "x"))))
             .andReturn();
     assertThat(signup.getResponse().getStatus()).isEqualTo(400);
 

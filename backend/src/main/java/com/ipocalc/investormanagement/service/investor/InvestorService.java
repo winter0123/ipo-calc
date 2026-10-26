@@ -78,13 +78,12 @@ public class InvestorService {
   public InvestorResponse update(Long id, InvestorUpdateRequest request) {
     Investor investor = findOwnedInvestor(id);
 
-    if (request.getDisplayName() != null) {
-      investor.setDisplayName(validateDisplayName(request.getDisplayName()));
-    }
-    if (request.getRelationship() != null) {
-      investor.setRelationship(normalizeRelationship(request.getRelationship()));
-    }
-    investor.setUpdatedAt(LocalDateTime.now(clock));
+    boolean updateRelationship = request.getRelationship() != null;
+    investor.updateProfile(
+        request.getDisplayName() == null ? null : validateDisplayName(request.getDisplayName()),
+        updateRelationship ? normalizeRelationship(request.getRelationship()) : null,
+        updateRelationship,
+        LocalDateTime.now(clock));
 
     Investor saved = investorRepository.save(investor);
     return InvestorResponse.from(saved);
@@ -95,9 +94,7 @@ public class InvestorService {
     Investor investor = findOwnedInvestor(id);
     if (investor.getStatus() != RecordStatus.INACTIVE) {
       LocalDateTime now = LocalDateTime.now(clock);
-      investor.setStatus(RecordStatus.INACTIVE);
-      investor.setDeletedAt(now);
-      investor.setUpdatedAt(now);
+      investor.deactivate(now);
       investorRepository.save(investor);
     }
     return SuccessResponse.of("투자자가 비활성화되었습니다.");

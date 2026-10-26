@@ -89,8 +89,10 @@ class NotificationDispatchServiceTest {
   void deadlineGoesToAccountsWithPreferenceOnAndIsNotRepeated() {
     long on = account("on");
     long off = account("off");
-    jdbc.update("INSERT INTO notification_preferences (account_id, subscription_deadline,"
-        + " listing_day) VALUES (?, FALSE, TRUE)", off);
+    jdbc.update(
+        "INSERT INTO notification_preferences (account_id, subscription_deadline,"
+            + " listing_day) VALUES (?, FALSE, TRUE)",
+        off);
     long ipo = ipo(day.minusDays(10), day, day.plusDays(7));
 
     assertThat(service.dispatch(day)).isEqualTo(1);

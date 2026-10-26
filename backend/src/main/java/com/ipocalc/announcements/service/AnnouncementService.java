@@ -43,21 +43,24 @@ public class AnnouncementService {
   /** 관리자 목록을 조회한다. */
   @Transactional(readOnly = true)
   public Page<AnnouncementResponse> adminList(Pageable pageable) {
-    return repository.findAllByDeletedAtIsNullOrderByStartAtAscIdAsc(pageable)
+    return repository
+        .findAllByDeletedAtIsNullOrderByStartAtAscIdAsc(pageable)
         .map(AnnouncementResponse::from);
   }
 
   /** 상태 조건으로 관리자 공지사항 목록을 조회한다. */
   @Transactional(readOnly = true)
   public Page<AnnouncementResponse> adminList(RecordStatus status, Pageable pageable) {
-    return repository.findAllByStatusAndDeletedAtIsNullOrderByStartAtAscIdAsc(status, pageable)
+    return repository
+        .findAllByStatusAndDeletedAtIsNullOrderByStartAtAscIdAsc(status, pageable)
         .map(AnnouncementResponse::from);
   }
 
   /** 관리자가 ID로 공지사항을 조회한다. */
   @Transactional(readOnly = true)
   public AnnouncementResponse getAdmin(Long id) {
-    return repository.findByIdAndDeletedAtIsNull(id)
+    return repository
+        .findByIdAndDeletedAtIsNull(id)
         .map(AnnouncementResponse::from)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
   }
@@ -101,11 +104,14 @@ public class AnnouncementService {
   public AnnouncementResponse create(AnnouncementRequest request) {
     validate(request);
     LocalDateTime now = LocalDateTime.now(clock);
-    Announcement item = new Announcement();
-    apply(item, request);
-    item.setStatus(request.status() == null ? RecordStatus.ACTIVE : request.status());
-    item.setCreatedAt(now);
-    item.setUpdatedAt(now);
+    Announcement item =
+        Announcement.create(
+            request.title().trim(),
+            request.content(),
+            request.startAt(),
+            request.endAt(),
+            request.status() == null ? RecordStatus.ACTIVE : request.status(),
+            now);
     return AnnouncementResponse.from(repository.save(item));
   }
 
@@ -113,23 +119,31 @@ public class AnnouncementService {
   @Transactional
   public AnnouncementResponse update(Long id, AnnouncementRequest request) {
     validate(request);
-    Announcement item = repository.findByIdAndDeletedAtIsNull(id)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
-    apply(item, request);
-    item.setStatus(request.status() == null ? item.getStatus() : request.status());
-    item.setUpdatedAt(LocalDateTime.now(clock));
+    Announcement item =
+        repository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
+    item.edit(
+        request.title().trim(),
+        request.content(),
+        request.startAt(),
+        request.endAt(),
+        request.status(),
+        LocalDateTime.now(clock));
     return AnnouncementResponse.from(repository.save(item));
   }
 
   /** 공지사항을 논리 삭제한다. */
   @Transactional
   public void delete(Long id) {
-    Announcement item = repository.findByIdAndDeletedAtIsNull(id)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
+    Announcement item =
+        repository
+            .findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
     LocalDateTime now = LocalDateTime.now(clock);
-    item.setStatus(RecordStatus.CANCELLED);
-    item.setDeletedAt(now);
-    item.setUpdatedAt(now);
+    item.cancel(now);
     repository.save(item);
   }
 
@@ -167,12 +181,5 @@ public class AnnouncementService {
         && request.status() != RecordStatus.CANCELLED) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "상태는 ACTIVE 또는 CANCELLED여야 합니다.");
     }
-  }
-
-  private void apply(Announcement item, AnnouncementRequest request) {
-    item.setTitle(request.title().trim());
-    item.setContent(request.content());
-    item.setStartAt(request.startAt());
-    item.setEndAt(request.endAt());
   }
 }

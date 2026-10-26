@@ -61,16 +61,8 @@ public class EncryptionRotationService {
         String appKey = rotate(credential.getAppKeyEncrypted(), brokerSecretEncryptor);
         String appSecret = rotate(credential.getAppSecretEncrypted(), brokerSecretEncryptor);
         String token = rotate(credential.getAccessTokenEncrypted(), brokerSecretEncryptor);
-        if (appKey != null) {
-          credential.setAppKeyEncrypted(appKey);
-          changed = true;
-        }
-        if (appSecret != null) {
-          credential.setAppSecretEncrypted(appSecret);
-          changed = true;
-        }
-        if (token != null) {
-          credential.setAccessTokenEncrypted(token);
+        if (appKey != null || appSecret != null || token != null) {
+          credential.rotateSecrets(appKey, appSecret, token);
           changed = true;
         }
       } catch (RuntimeException e) {
@@ -89,7 +81,7 @@ public class EncryptionRotationService {
       try {
         String rotated = rotate(account.getAccountNumber(), accountNumberEncryptor);
         if (rotated != null) {
-          account.setAccountNumber(rotated);
+          account.rotateAccountNumber(rotated);
           changedAccounts.add(account);
         }
       } catch (RuntimeException e) {

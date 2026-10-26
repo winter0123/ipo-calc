@@ -140,7 +140,7 @@ public class MarketHolidaySyncService {
             existing -> {
               // 이미 존재: name만 갱신, source 유지
               if (!existing.getName().equals(name)) {
-                existing.setName(name);
+                existing.rename(name);
                 marketHolidayRepository.save(existing);
                 yearResult.incrementUpdated();
                 log.debug(
