@@ -12,7 +12,6 @@ const GATED_PREFIXES = [
   '/sales',
   '/profits',
   '/broker-sync',
-  '/securities-accounts',
   '/securities',
 ]
 
@@ -79,7 +78,6 @@ export function GatedOutlet() {
   if (!isLoading && investors.length === 0 && !selfGuided) return <NoInvestorGate />
   const needsSecuritiesAccount =
     pathname !== '/securities' &&
-    !pathname.startsWith('/securities-accounts/register/') &&
     current !== null &&
     !accountsQuery.isLoading &&
     !accountsQuery.isError &&
@@ -89,10 +87,15 @@ export function GatedOutlet() {
       <ConfirmDialog
         isOpen
         title="증권계좌를 먼저 등록해 주세요"
-        message="청약·배정·매도 등의 기록을 시작하려면 현재 투자자의 증권계좌가 필요합니다. 증권계좌 등록 화면으로 이동할까요?"
-        confirmLabel="증권계좌 등록"
+        message={
+          <>
+            &apos;공모주 청약&apos;을 위해{' '}
+            <b>마이페이지</b> → <b>증권사 계좌 등록</b>을 먼저 진행 해주세요.
+          </>
+        }
+        confirmLabel="마이페이지"
         cancelLabel="나중에"
-        onConfirm={() => navigate(`/securities-accounts/register/${current.id}`)}
+        onConfirm={() => navigate(`/my-page`)}
         onCancel={() => navigate('/dashboard', { replace: true })}
       />
     )

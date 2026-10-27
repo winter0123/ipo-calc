@@ -5,6 +5,7 @@ import { useSecuritiesFirms } from '@/entities/securities-firm/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
+import SecuritiesLogo from '@/shared/components/SecuritiesLogo/SecuritiesLogo.tsx'
 import { useDeleteAccount, useSetDefaultAccount } from './api.ts'
 import AccountForm from './AccountForm.tsx'
 import AccountRow from './AccountRow.tsx'
@@ -61,61 +62,60 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
       (panel?.kind === 'create' && panel.firmId === firm.id) ||
       (panel?.kind === 'edit' && mine.some((a) => a.id === panel.accountId))
     return (
-      <StyleScope>
-        {
-          <li key={firm.id} className={formOpen ? `${styles.firm} ${styles.wide}` : styles.firm}>
-            <div className={styles.firmHead}>
-              <h3 className={styles.firmName}>{firm.name}</h3>
-              {mine.length > 0 && <span className={styles.badge}>등록됨</span>}
-              {!formOpen && (
-                <Button
-                  variant="secondary"
-                  onClick={() => setPanel({ kind: 'create', firmId: firm.id })}
-                  aria-label={`${firm.name} ${mine.length > 0 ? '계좌 추가' : '계좌 등록'}`}
-                >
-                  {mine.length > 0 ? '계좌 추가' : '계좌 등록'}
-                </Button>
-              )}
-            </div>
-            {mine.length > 0 && (
-              <ul className={styles.accounts}>
-                {mine.map((a) => (
-                  <AccountRow
-                    key={a.id}
-                    account={a}
-                    busy={busy}
-                    onEdit={() => setPanel({ kind: 'edit', accountId: a.id })}
-                    onDelete={() => setDeleting(a)}
-                    onSetDefault={() => run(setDefault, a.id)}
-                  />
-                ))}
-              </ul>
+      <StyleScope key={firm.id}>
+        <li className={formOpen ? `${styles.firm} ${styles.wide}` : styles.firm}>
+          <div className={styles.firmHead}>
+            <SecuritiesLogo firmName={firm.name} size={20} className={styles.firmLogo} />
+            <h3 className={styles.firmName}>{firm.name}</h3>
+            {mine.length > 0 && <span className={styles.badge}>등록됨</span>}
+            {!formOpen && (
+              <Button
+                variant="secondary"
+                onClick={() => setPanel({ kind: 'create', firmId: firm.id })}
+                aria-label={`${firm.name} ${mine.length > 0 ? '계좌 추가' : '계좌 등록'}`}
+              >
+                {mine.length > 0 ? '계좌 추가' : '계좌 등록'}
+              </Button>
             )}
-            {panel?.kind === 'create' && panel.firmId === firm.id && (
-              <AccountForm
-                target={{ kind: 'create', investorId, firmId: firm.id, firmName: firm.name }}
-                onDone={() => setPanel(null)}
-                onCancel={() => setPanel(null)}
-              />
-            )}
-            {panel?.kind === 'edit' &&
-              mine
-                .filter((a) => a.id === panel.accountId)
-                .map((a) => (
-                  <AccountForm
-                    key={a.id}
-                    target={{
-                      kind: 'edit',
-                      accountId: a.id,
-                      firmName: firm.name,
-                      accountName: a.accountName ?? '',
-                    }}
-                    onDone={() => setPanel(null)}
-                    onCancel={() => setPanel(null)}
-                  />
-                ))}
-          </li>
-        }
+          </div>
+          {mine.length > 0 && (
+            <ul className={styles.accounts}>
+              {mine.map((a) => (
+                <AccountRow
+                  key={a.id}
+                  account={a}
+                  busy={busy}
+                  onEdit={() => setPanel({ kind: 'edit', accountId: a.id })}
+                  onDelete={() => setDeleting(a)}
+                  onSetDefault={() => run(setDefault, a.id)}
+                />
+              ))}
+            </ul>
+          )}
+          {panel?.kind === 'create' && panel.firmId === firm.id && (
+            <AccountForm
+              target={{ kind: 'create', investorId, firmId: firm.id, firmName: firm.name }}
+              onDone={() => setPanel(null)}
+              onCancel={() => setPanel(null)}
+            />
+          )}
+          {panel?.kind === 'edit' &&
+            mine
+              .filter((a) => a.id === panel.accountId)
+              .map((a) => (
+                <AccountForm
+                  key={a.id}
+                  target={{
+                    kind: 'edit',
+                    accountId: a.id,
+                    firmName: firm.name,
+                    accountName: a.accountName ?? '',
+                  }}
+                  onDone={() => setPanel(null)}
+                  onCancel={() => setPanel(null)}
+                />
+              ))}
+        </li>
       </StyleScope>
     )
   }

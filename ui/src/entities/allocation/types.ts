@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 export interface AllocationRegisterRequest {
-  subscriptionId: number
+  subscriptionId?: number
+  ipoId?: number
+  investorId?: number
+  securitiesAccountId?: number
   allocatedQuantity: number
   allocatedAt: string
   allocationMethod?: string

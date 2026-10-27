@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.controller.dto.ErrorResponse;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,7 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class RateLimitIntegrationTest {
 
   private static final String LIMIT_MESSAGE = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";

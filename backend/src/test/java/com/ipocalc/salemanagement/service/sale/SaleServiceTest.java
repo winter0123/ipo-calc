@@ -10,8 +10,10 @@ import static org.mockito.Mockito.when;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.util.security.SecurityUtils;
+import com.ipocalc.allocationmanagement.controller.allocation.dto.AllocationResponse;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.allocationmanagement.repository.allocation.AllocationRepository;
+import com.ipocalc.allocationmanagement.service.allocation.AllocationService;
 import com.ipocalc.allocationmanagement.service.ownership.AllocationOwnership;
 import com.ipocalc.salemanagement.controller.sale.dto.SaleRegisterRequest;
 import com.ipocalc.salemanagement.controller.sale.dto.SaleResponse;
@@ -21,6 +23,7 @@ import com.ipocalc.salemanagement.controller.sale.exception.SaleNotFoundExceptio
 import com.ipocalc.salemanagement.controller.sale.exception.SaleValidationException;
 import com.ipocalc.salemanagement.domain.model.sale.Sale;
 import com.ipocalc.salemanagement.repository.sale.SaleRepository;
+import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -34,10 +37,19 @@ class SaleServiceTest {
 
   private final SaleRepository sales = mock(SaleRepository.class);
   private final AllocationRepository allocs = mock(AllocationRepository.class);
+  private final AllocationService allocations = mock(AllocationService.class);
+  private final SubscriptionRepository subscriptions = mock(SubscriptionRepository.class);
   private final AllocationOwnership ownership = mock(AllocationOwnership.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-10-13T00:00:00Z"), ZoneOffset.UTC);
   private final SaleService service =
-      new SaleService(sales, allocs, ownership, mock(SecurityUtils.class), clock);
+      new SaleService(
+          sales,
+          allocs,
+          allocations,
+          subscriptions,
+          ownership,
+          mock(SecurityUtils.class),
+          clock);
 
   private static final LocalDateTime AT = LocalDateTime.of(2026, 10, 1, 9, 0);
 
@@ -93,6 +105,41 @@ class SaleServiceTest {
     when(sales.sumActiveQuantityByAllocationId(5L)).thenReturn(1L);
     assertThatThrownBy(() -> service.register(reg(r -> {})))
         .isInstanceOf(SaleAllocationExceededException.class);
+  }
+
+  @Test
+  void 배정_ID_없이_매도하면_자동_배정을_생성해_연결한다() {
+    SaleRegisterRequest request =
+        SaleRegisterRequest.builder()
+            .ipoId(11L)
+            .investorId(12L)
+            .securitiesAccountId(13L)
+            .allocatedQuantity(3L)
+            .quantity(3L)
+            .price(1000L)
+            .saleDate(AT)
+            .build();
+    when(subscriptions.findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
+            12L, 13L, 11L, RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+    when(allocations.register(any()))
+        .thenReturn(AllocationResponse.builder().id(8L).build());
+    when(ownership.requireOwnedActive(any(), any())).thenReturn(alloc(3));
+    when(sales.sumActiveQuantityByAllocationId(5L)).thenReturn(0L);
+    when(sales.save(any(Sale.class))).thenAnswer(i -> i.getArgument(0));
+
+    SaleResponse result = service.register(request);
+
+    assertThat(result.getAllocationId()).isEqualTo(8L);
+    verify(allocations)
+        .register(
+            org.mockito.ArgumentMatchers.argThat(
+                requestForAllocation ->
+                    requestForAllocation.getIpoId().equals(11L)
+                        && requestForAllocation.getInvestorId().equals(12L)
+                        && requestForAllocation.getSecuritiesAccountId().equals(13L)
+                        && requestForAllocation.getAllocatedQuantity().equals(3L)
+                        && requestForAllocation.getAllocatedAt().equals(AT)));
   }
 
   @Test

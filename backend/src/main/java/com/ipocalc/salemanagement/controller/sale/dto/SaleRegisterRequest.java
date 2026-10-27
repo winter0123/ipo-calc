@@ -17,6 +17,17 @@ public class SaleRegisterRequest {
 
   private Long allocationId;
 
+  /** allocationId 없이 새 연결을 만들 때 필요한 정보. */
+  private Long subscriptionId;
+
+  private Long ipoId;
+
+  private Long investorId;
+
+  private Long securitiesAccountId;
+
+  private Long allocatedQuantity;
+
   private Long quantity;
 
   private Long price;

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.ipocatalog.domain.model.holiday.MarketHoliday;
 import com.ipocalc.ipocatalog.repository.holiday.MarketHolidayRepository;
 import java.time.LocalDate;
@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 /** {@link BusinessDayCalculator} 테스트 (Mock Repository 사용). */
 @SpringBootTest
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class BusinessDayCalculatorTest {
 
   @MockitoBean private MarketHolidayRepository marketHolidayRepository;

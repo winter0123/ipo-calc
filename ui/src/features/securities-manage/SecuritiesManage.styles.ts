@@ -44,6 +44,11 @@ export const StyleScope = styled.div`
     margin-right: auto;
   }
 
+  .s-ed0b413-firmLogo {
+    flex-shrink: 0;
+    margin-right: var(--space-2);
+  }
+
   .s-ed0b413-account {
     display: flex;
     flex-direction: column;

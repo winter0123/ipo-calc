@@ -102,6 +102,33 @@ export const StyleScope = styled.div`
     background-color: var(--primary-hover);
   }
 
+  .s-63ae5ae-buttonGroup {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .s-63ae5ae-actionButton {
+    flex: 1;
+    min-width: 80px;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--primary);
+    color: var(--on-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .s-63ae5ae-actionButton:hover {
+    background-color: var(--primary-hover);
+  }
+
   .s-63ae5ae-empty {
     padding: var(--space-5);
     text-align: center;

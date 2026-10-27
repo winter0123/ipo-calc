@@ -78,8 +78,6 @@ export default function IpoCalendar({
     setSelectedDate(null)
   }
 
-  const prevMonth = () => (month === 1 ? moveTo(year - 1, 12) : moveTo(year, month - 1))
-  const nextMonth = () => (month === 12 ? moveTo(year + 1, 1) : moveTo(year, month + 1))
   const goToday = () => moveTo(today.getFullYear(), today.getMonth() + 1)
 
   const handleDateClick = (date: string) => {
@@ -136,14 +134,6 @@ export default function IpoCalendar({
       {
         <div className={styles.calendar}>
           <div className={styles.header}>
-            <button
-              type="button"
-              className={styles.navButton}
-              onClick={prevMonth}
-              aria-label="이전 달"
-            >
-              ‹
-            </button>
             <div className={styles.dateSelectors} aria-label="달력 날짜 선택">
               <label className={styles.srOnly} htmlFor="calendar-year">
                 연도
@@ -181,14 +171,6 @@ export default function IpoCalendar({
                 {year}년 {month}월
               </span>
             </div>
-            <button
-              type="button"
-              className={styles.navButton}
-              onClick={nextMonth}
-              aria-label="다음 달"
-            >
-              ›
-            </button>
             <button type="button" className={styles.todayButton} onClick={goToday}>
               오늘
             </button>

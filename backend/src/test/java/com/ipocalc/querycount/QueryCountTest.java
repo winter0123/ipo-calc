@@ -3,7 +3,7 @@ package com.ipocalc.querycount;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
@@ -53,7 +53,7 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class QueryCountTest {
 
   @Autowired private MockMvc mockMvc;

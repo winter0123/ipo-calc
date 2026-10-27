@@ -41,7 +41,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @ContextConfiguration(
-    classes = {com.ipocalc.accountauthentication.AccountAuthenticationApplication.class})
+    classes = {com.ipocalc.IpoCalcApplication.class})
 class InvestmentHistoryControllerTest {
 
   @Autowired private MockMvc mockMvc;

@@ -9,6 +9,18 @@ vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
 
+vi.mock('@/entities/investor/index.ts', () => ({
+  useCurrentInvestor: () => ({ current: { id: 1 }, isLoading: false }),
+}))
+
+vi.mock('@/entities/ipo/index.ts', () => ({
+  useIpo: () => ({ data: undefined, isLoading: false }),
+}))
+
+vi.mock('@/entities/securities-account/index.ts', () => ({
+  useSecuritiesAccounts: () => ({ data: [], isLoading: false }),
+}))
+
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')

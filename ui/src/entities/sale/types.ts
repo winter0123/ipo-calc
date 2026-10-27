@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export interface SaleRegisterRequest {
-  allocationId: number
+  allocationId?: number
   quantity: number
   price?: number
   amount?: number
@@ -9,6 +9,11 @@ export interface SaleRegisterRequest {
   fee?: number
   tax?: number
   otherCost?: number
+  /** 직접 매도 등록 시 필요한 필드 */
+  allocatedQuantity?: number
+  securitiesAccountId?: number
+  ipoId?: number
+  investorId?: number
 }
 
 export const saleSchema = z.object({

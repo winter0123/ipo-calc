@@ -54,10 +54,8 @@ function setup(
             <Route path="investments" element={<div>투자 내역 화면</div>} />
             <Route path="subscriptions" element={<div>청약 화면</div>} />
             <Route path="dashboard" element={<div>대시보드 화면</div>} />
-            <Route
-              path="securities-accounts/register/:investorId"
-              element={<div>증권계좌 등록 화면</div>}
-            />
+            <Route path="securities" element={<div>증권사 관리 화면</div>} />
+            <Route path="my-page" element={<div>마이페이지 화면</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -86,8 +84,8 @@ describe('현재 투자자 선택', () => {
     ).toBeVisible()
     expect(screen.queryByText('청약 화면')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '증권계좌 등록' }))
-    expect(await screen.findByText('증권계좌 등록 화면')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '마이페이지' }))
+    expect(await screen.findByText('마이페이지 화면')).toBeInTheDocument()
   })
 
   it('투자자가 0명이면 작업 화면 대신 투자자 등록 안내가 나온다', async () => {

@@ -30,12 +30,12 @@ export const StyleScope = styled.div`
     grid-area: header;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
   }
 
   .s-e1b278a-dateSelectors {
-    margin: 0 auto 0 0;
     display: flex;
     align-items: center;
     gap: var(--space-1);
@@ -43,14 +43,18 @@ export const StyleScope = styled.div`
 
   .s-e1b278a-dateSelect {
     min-height: 40px;
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-3);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--ink);
     font: inherit;
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 650;
+  }
+
+  #calendar-year.s-e1b278a-dateSelect {
+    min-width: 100px;
   }
 
   .s-e1b278a-dateSelect:focus-visible {
@@ -70,7 +74,6 @@ export const StyleScope = styled.div`
     border: 0;
   }
 
-  .s-e1b278a-navButton,
   .s-e1b278a-todayButton {
     display: inline-flex;
     align-items: center;
@@ -88,12 +91,10 @@ export const StyleScope = styled.div`
     cursor: pointer;
   }
 
-  .s-e1b278a-navButton:hover,
   .s-e1b278a-todayButton:hover {
     background: var(--surface-soft);
   }
 
-  .s-e1b278a-navButton:focus-visible,
   .s-e1b278a-todayButton:focus-visible,
   .s-e1b278a-dateCell:focus-visible {
     outline: 2px solid var(--link);
@@ -548,10 +549,9 @@ export const StyleScope = styled.div`
 
     .s-e1b278a-dateSelect {
       padding: 0 var(--space-1);
-      font-size: 16px;
+      font-size: 14px;
     }
 
-    .s-e1b278a-navButton,
     .s-e1b278a-todayButton {
       min-width: 36px;
       padding: 0 var(--space-2);

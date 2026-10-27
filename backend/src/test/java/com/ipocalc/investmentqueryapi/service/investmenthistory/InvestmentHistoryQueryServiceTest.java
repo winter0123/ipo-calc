@@ -60,7 +60,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @SpringBootTest
 @ActiveProfiles("test")
 @ContextConfiguration(
-    classes = {com.ipocalc.accountauthentication.AccountAuthenticationApplication.class})
+    classes = {com.ipocalc.IpoCalcApplication.class})
 class InvestmentHistoryQueryServiceTest {
 
   @Autowired private InvestmentHistoryQueryService queryService;

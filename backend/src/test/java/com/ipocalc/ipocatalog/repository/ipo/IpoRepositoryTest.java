@@ -3,7 +3,7 @@ package com.ipocalc.ipocatalog.repository.ipo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ import org.springframework.test.context.ContextConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class IpoRepositoryTest {
 
   @Autowired private IpoRepository ipoRepository;

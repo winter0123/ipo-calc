@@ -11,7 +11,17 @@ const formatDate = (value: string) => {
 /** 청약 선택, 남은 수량 참고, 배정 없음·미선택 안내. */
 export default function SubscriptionPicker({ f }: { f: SaleForm }) {
   'use no memo'
-  const { selectedSubscriptionId: subId, allocationData, errors } = f
+  const {
+    selectedSubscriptionId: subId,
+    allocationData,
+    errors,
+    selectedInvestorId,
+    securitiesAccounts,
+    accountsLoading,
+    isPending,
+  } = f
+  const hasNoSubscription = !subId && selectedInvestorId
+
   return (
     <StyleScope>
       {
@@ -22,9 +32,9 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
               id="subscriptionId"
               value={subId ?? ''}
               onChange={f.handleSubscriptionChange}
-              disabled={f.isPending || !f.selectedInvestorId || f.subscriptionsLoading}
+              disabled={isPending || !selectedInvestorId || f.subscriptionsLoading}
             >
-              <option value="">청약 선택</option>
+              <option value="">청약 선택 (직접 등록 시 비워두기)</option>
               {f.subscriptions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.ipoName ?? '이름 없는 공모주'} · {formatDate(item.subscribedAt)}
@@ -42,20 +52,82 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
             </div>
           )}
 
-          {/* 청약당 배정은 하나뿐이라 고르게 하지 않고 자동으로 연결한다. */}
-          <input
-            type="hidden"
-            {...f.register('allocationId', { required: true, valueAsNumber: true })}
-          />
+          {/* 청약 선택 시: 배정 ID 자동 연결 */}
+          {subId && (
+            <input
+              type="hidden"
+              {...f.register('allocationId', { required: true, valueAsNumber: true })}
+            />
+          )}
+
+          {/* 청약이 있고 배정이 없는 경우: 배정 등록 안내 */}
           {subId && allocationData && !allocationData.allocation && (
             <p className={styles.error} role="alert">
               이 청약은 아직 배정 입력 전입니다. 배정을 먼저 등록해 주세요.{' '}
               <Link to={`/allocations/register?subscriptionId=${subId}`}>배정 등록하기</Link>
             </p>
           )}
-          {errors.allocationId && !(subId && allocationData?.allocation) && (
+
+          {/* 청약을 선택하지 않고 직접 등록하는 경우: 필수 필드 표시 */}
+          {hasNoSubscription && (
+            <>
+              <div className={styles.field}>
+                <label htmlFor="allocatedQuantity">배정수량 *</label>
+                <input
+                  id="allocatedQuantity"
+                  type="number"
+                  inputMode="numeric"
+                  aria-invalid={!!errors.allocatedQuantity}
+                  aria-describedby={
+                    errors.allocatedQuantity ? 'allocatedQuantity-error' : undefined
+                  }
+                  {...f.register('allocatedQuantity', {
+                    required: '배정수량을 입력해 주세요.',
+                    valueAsNumber: true,
+                    validate: (v: number | undefined) =>
+                      v != null && Number.isInteger(v) && v > 0
+                        ? true
+                        : '0 초과 정수를 입력해 주세요.',
+                  })}
+                  disabled={isPending}
+                />
+                {errors.allocatedQuantity && (
+                  <span id="allocatedQuantity-error" className={styles.error} aria-live="polite">
+                    {String(errors.allocatedQuantity.message)}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="securitiesAccountId">증권계좌 *</label>
+                <select
+                  id="securitiesAccountId"
+                  {...f.register('securitiesAccountId', {
+                    required: '증권계좌를 선택해 주세요.',
+                    valueAsNumber: true,
+                  })}
+                  disabled={isPending || accountsLoading}
+                >
+                  <option value="">계좌 선택</option>
+                  {(securitiesAccounts ?? []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
+                    </option>
+                  ))}
+                </select>
+                {errors.securitiesAccountId && (
+                  <span className={styles.error} aria-live="polite">
+                    {String(errors.securitiesAccountId.message)}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+
+          {errors.allocationId && !(subId && allocationData?.allocation) && !hasNoSubscription && (
             <p className={styles.error} role="alert">
-              매도할 청약을 선택해 주세요.
+              매도할 청약을 선택하거나, 청약 없이 직접 등록하려면 배정수량과 증권계좌를 입력해
+              주세요.
             </p>
           )}
         </>

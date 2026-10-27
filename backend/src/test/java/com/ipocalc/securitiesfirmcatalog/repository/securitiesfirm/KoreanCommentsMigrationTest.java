@@ -2,7 +2,7 @@ package com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import org.springframework.test.context.ContextConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class KoreanCommentsMigrationTest {
 
   @PersistenceContext private EntityManager entityManager;

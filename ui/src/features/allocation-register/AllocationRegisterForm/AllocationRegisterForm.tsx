@@ -8,18 +8,30 @@ import styles, { StyleScope } from './AllocationRegisterForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import { toLocalYmd } from '@/shared/lib/date.ts'
+import { useCurrentInvestor } from '@/entities/investor/index.ts'
+import { useIpo } from '@/entities/ipo/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 
 export default function AllocationRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const [searchParams] = useSearchParams()
-  const subscriptionId = Number(searchParams.get('subscriptionId'))
+  const parsedSubscriptionId = Number(searchParams.get('subscriptionId'))
+  const subscriptionId =
+    Number.isSafeInteger(parsedSubscriptionId) && parsedSubscriptionId > 0
+      ? parsedSubscriptionId
+      : undefined
+  const ipoId = Number(searchParams.get('ipoId')) || undefined
+  const { current } = useCurrentInvestor()
+  const investorId = Number(searchParams.get('investorId')) || current?.id
+  const ipoQuery = useIpo(ipoId)
+  const accountsQuery = useSecuritiesAccounts(investorId)
   const navigate = useNavigate()
 
   const {
     data: subscriptionDetail,
     isLoading: detailLoading,
     error: detailError,
-  } = useInvestmentHistoryDetail(subscriptionId || null)
+  } = useInvestmentHistoryDetail(subscriptionId ?? null)
 
   const { mutate, isPending, error } = useAllocationRegister()
 
@@ -36,10 +48,16 @@ export default function AllocationRegisterForm() {
     },
   })
 
-  const onSubmit = (data: Omit<AllocationRegisterRequest, 'subscriptionId'>) => {
+  const onSubmit = (data: AllocationRegisterRequest) => {
     mutate(
       // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
-      { ...data, subscriptionId, allocatedAt: `${data.allocatedAt}T09:00` },
+      {
+        ...data,
+        subscriptionId,
+        ipoId,
+        investorId,
+        allocatedAt: `${data.allocatedAt}T09:00`,
+      },
       {
         onSuccess: () => {
           navigate('/subscriptions')
@@ -55,13 +73,13 @@ export default function AllocationRegisterForm() {
     },
   })
 
-  if (detailLoading) {
+  if (subscriptionId && detailLoading) {
     return (
       <StyleScope>{<div className={styles.loading}>청약 정보를 불러오는 중...</div>}</StyleScope>
     )
   }
 
-  if (detailError || !subscriptionDetail) {
+  if (subscriptionId && (detailError || !subscriptionDetail)) {
     return (
       <StyleScope>
         {
@@ -82,13 +100,40 @@ export default function AllocationRegisterForm() {
           aria-label="배정 등록 폼"
           noValidate
         >
-          <div className={styles.referenceSection}>
-            <ReferenceQuantity
-              ipoName={subscriptionDetail.ipoName}
-              subscribedAt={subscriptionDetail.subscribedAt}
-              quantity={subscriptionDetail.subscriptionQuantity}
-            />
-          </div>
+          {subscriptionDetail ? (
+            <div className={styles.referenceSection}>
+              <ReferenceQuantity
+                ipoName={subscriptionDetail.ipoName}
+                subscribedAt={subscriptionDetail.subscribedAt}
+                quantity={subscriptionDetail.subscriptionQuantity}
+              />
+            </div>
+          ) : (
+            <>
+              <div className={styles.referenceSection}>
+                {ipoQuery.data?.ipoName ?? '공모주'} · {ipoQuery.data?.companyName ?? ''}
+                <p className={styles.hint}>배정 입력 시 청약 연결 기록도 함께 생성됩니다.</p>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="securitiesAccountId">증권계좌</label>
+                <select
+                  id="securitiesAccountId"
+                  {...register('securitiesAccountId', {
+                    required: true,
+                    valueAsNumber: true,
+                  })}
+                  disabled={isPending || accountsQuery.isLoading}
+                >
+                  <option value="">계좌 선택</option>
+                  {(accountsQuery.data ?? []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div className={styles.field}>
             <label htmlFor="allocatedQuantity">배정수량</label>

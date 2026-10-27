@@ -67,6 +67,27 @@ export const StyleScope = styled.div`
     font-size: 14px;
   }
 
+  .s-bb6837d-modeBadge {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .s-bb6837d-modeIcon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .s-bb6837d-modeDesc {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+
   .s-bb6837d-submitButton {
     align-self: flex-start;
     min-height: 44px;

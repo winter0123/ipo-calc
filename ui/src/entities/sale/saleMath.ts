@@ -1,3 +1,5 @@
+import type { SaleRegisterRequest } from './types.ts'
+
 /** 공모주수수료 기본값(원). 사용자가 고칠 수 있다. */
 export const DEFAULT_IPO_FEE = 2000
 
@@ -69,13 +71,18 @@ export interface SaleFormInput {
   saleDate: string
   ipoFee: number
   otherFees: number
+  /** 직접 매도 등록 시 필요한 필드 */
+  allocatedQuantity?: number
+  securitiesAccountId?: number
+  ipoId?: number
+  investorId?: number
 }
 
 const isNum = (value: unknown): value is number => typeof value === 'number' && !Number.isNaN(value)
 
 /** 폼 입력을 저장 요청으로: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타, 날짜에 T09:00. */
-export function toSalePayload(data: SaleFormInput) {
-  return {
+export function toSalePayload(data: SaleFormInput): Omit<SaleRegisterRequest, 'allocationId'> {
+  const payload: Omit<SaleRegisterRequest, 'allocationId'> = {
     quantity: data.quantity,
     price: data.price,
     amount: data.price * data.quantity,
@@ -83,4 +90,20 @@ export function toSalePayload(data: SaleFormInput) {
     fee: isNum(data.ipoFee) ? data.ipoFee : 0,
     tax: isNum(data.otherFees) ? data.otherFees : 0,
   }
+
+  // 직접 매도 등록 시 추가 필드
+  if (data.allocatedQuantity != null) {
+    payload.allocatedQuantity = data.allocatedQuantity
+  }
+  if (data.securitiesAccountId != null) {
+    payload.securitiesAccountId = data.securitiesAccountId
+  }
+  if (data.ipoId != null) {
+    payload.ipoId = data.ipoId
+  }
+  if (data.investorId != null) {
+    payload.investorId = data.investorId
+  }
+
+  return payload
 }

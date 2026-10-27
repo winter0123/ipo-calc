@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.util.concurrent.ThreadLocalRandom;
@@ -32,7 +32,7 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class NotificationDisabledTest {
 
   @Autowired private MockMvc mockMvc;

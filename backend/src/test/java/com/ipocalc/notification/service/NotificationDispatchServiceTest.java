@@ -9,7 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.notification.domain.model.PushSubscription;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,7 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 @TestPropertySource(
     properties = {
       "app.webpush.public-key=pub",

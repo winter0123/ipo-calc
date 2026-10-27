@@ -2,7 +2,7 @@ package com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import jakarta.persistence.EntityManager;
@@ -29,7 +29,7 @@ import org.springframework.util.StreamUtils;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class SecuritiesFirmApiColumnsMigrationTest {
 
   @Autowired private SecuritiesFirmRepository securitiesFirmRepository;

@@ -93,6 +93,7 @@ describe('SubscriptionListPage', () => {
   it('청약 기록이 없어도 기간에 시작하는 IPO를 보이고 등록 링크를 제공한다', async () => {
     mockApi([])
     renderPage('/subscriptions?from=2026-10-01&to=2026-10-31')
+    expect(await screen.findByRole('heading', { name: '공모주 청약' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: IPO.ipoName })).toBeInTheDocument()
     expect(screen.getByText('청약 전')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '청약 등록' })).toHaveAttribute(

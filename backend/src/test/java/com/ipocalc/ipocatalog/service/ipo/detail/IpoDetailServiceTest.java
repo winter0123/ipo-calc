@@ -3,7 +3,7 @@ package com.ipocalc.ipocatalog.service.ipo.detail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoInsightResponse;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.exception.IpoNotFoundException;
@@ -26,7 +26,7 @@ import org.springframework.test.context.ContextConfiguration;
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class IpoDetailServiceTest {
 
   @Autowired private IpoDetailService service;

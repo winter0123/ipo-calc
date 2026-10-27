@@ -15,9 +15,11 @@ import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.allocationmanagement.repository.allocation.AllocationRepository;
 import com.ipocalc.allocationmanagement.service.ownership.AllocationOwnership;
 import com.ipocalc.investormanagement.service.ownership.OwnershipErrors;
+import com.ipocalc.subscriptionmanagement.controller.subscription.dto.SubscriptionRegisterRequest;
 import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import com.ipocalc.subscriptionmanagement.service.ownership.SubscriptionOwnership;
+import com.ipocalc.subscriptionmanagement.service.subscription.SubscriptionService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +41,7 @@ public class AllocationService {
   private final AllocationRepository allocationRepository;
   private final ActiveSaleQuantityReader activeSaleQuantityReader;
   private final SubscriptionRepository subscriptionRepository;
+  private final SubscriptionService subscriptionService;
   private final SubscriptionOwnership subscriptionOwnership;
   private final AllocationOwnership allocationOwnership;
   private final SecurityUtils securityUtils;
@@ -49,20 +52,52 @@ public class AllocationService {
   public AllocationResponse register(AllocationRegisterRequest request) {
     validateRequest(request);
 
+    Long subscriptionId = request.getSubscriptionId();
+    if (subscriptionId == null) {
+      if (request.getIpoId() == null
+          || request.getInvestorId() == null
+          || request.getSecuritiesAccountId() == null) {
+        throw new AllocationValidationException(
+            "청약 없이 배정을 등록하려면 ipoId, investorId, securitiesAccountId가 필요합니다.");
+      }
+      subscriptionId =
+          subscriptionRepository
+              .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
+                  request.getInvestorId(),
+                  request.getSecuritiesAccountId(),
+                  request.getIpoId(),
+                  RecordStatus.ACTIVE)
+              .map(Subscription::getId)
+              .orElseGet(
+                  () ->
+                      subscriptionService
+                          .register(
+                              SubscriptionRegisterRequest.builder()
+                                  .investorId(request.getInvestorId())
+                                  .securitiesAccountId(request.getSecuritiesAccountId())
+                                  .ipoId(request.getIpoId())
+                                  .quantity(request.getAllocatedQuantity())
+                                  .depositAmount(0L)
+                                  .subscribedAt(request.getAllocatedAt())
+                                  .memo("매도/배정 등록에서 자동 생성된 청약 연결 기록")
+                                  .build())
+                          .getId());
+    }
+
     // 청약수량 대비 검증을 직렬화하려고 청약 행을 먼저 잠근다
-    subscriptionRepository.findByIdForUpdate(request.getSubscriptionId());
+    subscriptionRepository.findByIdForUpdate(subscriptionId);
 
     // Subscription 존재(404) + 소유권(403) 검증
-    Subscription subscription = findOwnedSubscription(request.getSubscriptionId());
+    Subscription subscription = findOwnedSubscription(subscriptionId);
 
     validateQuantity(request.getAllocatedQuantity(), subscription.getQuantity());
 
-    checkDuplicate(request.getSubscriptionId());
+    checkDuplicate(subscriptionId);
 
     LocalDateTime now = LocalDateTime.now(clock);
     Allocation allocation =
         Allocation.builder()
-            .subscriptionId(request.getSubscriptionId())
+            .subscriptionId(subscriptionId)
             .allocatedQuantity(request.getAllocatedQuantity())
             .allocatedAt(request.getAllocatedAt())
             .allocationMethod(request.getAllocationMethod())
@@ -88,11 +123,10 @@ public class AllocationService {
     if (request == null) {
       throw new AllocationValidationException("배정 등록 정보는 필수입니다.");
     }
-    if (request.getSubscriptionId() == null
-        || request.getAllocatedQuantity() == null
+    if (request.getAllocatedQuantity() == null
         || request.getAllocatedAt() == null) {
       throw new AllocationValidationException(
-          "subscriptionId, allocatedQuantity, allocatedAt는 필수입니다.");
+          "allocatedQuantity, allocatedAt는 필수입니다.");
     }
     validateAmountAndText(
         request.getAllocationPrice(), request.getAllocationMethod(), request.getNote());

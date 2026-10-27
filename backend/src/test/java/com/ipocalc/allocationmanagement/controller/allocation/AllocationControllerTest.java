@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.domain.model.account.Account;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
@@ -60,7 +60,7 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class AllocationControllerTest {
 
   private static final String ACCOUNT_NUMBER = "123-456-789012";

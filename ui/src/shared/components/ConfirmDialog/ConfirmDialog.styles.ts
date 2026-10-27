@@ -42,6 +42,11 @@ export const StyleScope = styled.div`
     color: var(--ink-muted);
     margin: 0 0 var(--space-5);
     white-space: pre-wrap;
+    line-height: 1.5;
+  }
+  .s-97aa055-message b {
+    font-weight: 650;
+    color: var(--ink);
   }
 
   .s-97aa055-actions {

@@ -47,25 +47,23 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
               </>
             )}
           </dl>
-          {isAllocated && remaining > 0 && (
+          <div className={styles.buttonGroup}>
             <Link
-              to={`/sales/register?subscriptionId=${item.id}`}
-              className={styles.allocateButton}
+              to={`/subscriptions/register?ipoId=${item.ipoId}`}
+              className={styles.actionButton}
             >
-              매도 등록
+              청약등록
             </Link>
-          )}
-          {isAllocated && remaining <= 0 && (
-            <span className={styles.badgeAllocated}>모두 매도</span>
-          )}
-          {!isAllocated && (
             <Link
               to={`/allocations/register?subscriptionId=${item.id}`}
-              className={styles.allocateButton}
+              className={styles.actionButton}
             >
-              배정 입력
+              배정등록
             </Link>
-          )}
+            <Link to={`/sales/register?subscriptionId=${item.id}`} className={styles.actionButton}>
+              매도등록
+            </Link>
+          </div>
         </li>
       }
     </StyleScope>

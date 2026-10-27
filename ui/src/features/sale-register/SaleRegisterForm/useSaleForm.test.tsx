@@ -4,6 +4,8 @@ import { MemoryRouter } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useSaleForm } from './useSaleForm.ts'
 
+const mocks = vi.hoisted(() => ({ mutate: vi.fn() }))
+
 vi.mock('@/entities/investor/index.ts', () => ({
   useCurrentInvestor: () => ({ current: { id: 1, displayName: '홍길동' }, isLoading: false }),
 }))
@@ -23,12 +25,22 @@ vi.mock('@/entities/subscription/index.ts', () => ({
     },
   }),
 }))
+vi.mock('@/entities/securities-account/index.ts', () => ({
+  useSecuritiesAccounts: () => ({
+    data: [{ id: 1, securitiesFirmName: '테스트증권', accountName: '테스트계좌' }],
+    isLoading: false,
+  }),
+}))
 vi.mock('../useSaleRegister.ts', () => ({
-  useSaleRegister: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useSaleRegister: () => ({ mutate: mocks.mutate, isPending: false, error: null }),
 }))
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter initialEntries={['/sales/register?subscriptionId=1']}>{children}</MemoryRouter>
+)
+
+const directWrapper = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter initialEntries={['/sales/register?ipoId=10']}>{children}</MemoryRouter>
 )
 
 function setup() {
@@ -41,6 +53,34 @@ function setup() {
 }
 
 describe('useSaleForm 상호 계산', () => {
+  it('청약 없이 매도하면 현재 투자자와 URL의 공모주 ID를 함께 전송한다', async () => {
+    mocks.mutate.mockClear()
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    act(() => {
+      result.current.setValue('allocatedQuantity', 10)
+      result.current.setValue('securitiesAccountId', 1)
+      result.current.setValue('quantity', 10)
+      result.current.setValue('price', 12000)
+      result.current.setValue('saleDate', '2026-10-23')
+      result.current.setValue('ipoFee', 2000)
+      result.current.setValue('otherFees', 500)
+    })
+
+    await act(async () => {
+      await result.current.submit()
+    })
+
+    expect(mocks.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allocationId: undefined,
+        allocatedQuantity: 10,
+        securitiesAccountId: 1,
+        ipoId: 10,
+        investorId: 1,
+      }),
+    )
+  })
+
   it('세금 및 기타 수수료를 고치면 실현손익이 (단가 − 공모가) × 수량 − 수수료로 계산된다', () => {
     const result = setup()
     act(() => {

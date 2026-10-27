@@ -4,7 +4,7 @@ import styles, { StyleScope } from './ConfirmDialog.styles.ts'
 export interface ConfirmDialogProps {
   isOpen: boolean
   title: string
-  message: string
+  message: string | React.ReactNode
   onConfirm: () => void
   onCancel: () => void
   confirmLabel?: string

@@ -3,7 +3,7 @@ package com.ipocalc.ipocatalog.controller.holiday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class MarketHolidayControllerTest {
 
   @Autowired private MockMvc mockMvc;

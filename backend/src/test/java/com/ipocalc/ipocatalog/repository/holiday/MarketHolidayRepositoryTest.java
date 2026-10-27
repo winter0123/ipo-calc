@@ -2,7 +2,7 @@ package com.ipocalc.ipocatalog.repository.holiday;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.ipocatalog.domain.model.holiday.MarketHoliday;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,7 +18,7 @@ import org.springframework.test.context.ContextConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class MarketHolidayRepositoryTest {
 
   @Autowired private MarketHolidayRepository marketHolidayRepository;

@@ -2,7 +2,7 @@ package com.ipocalc.securitiesaccountmanagement.infrastructure.encryption;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,7 +15,7 @@ import org.springframework.test.context.ContextConfiguration;
  * 같은 평문도 서로 다른 암호문이 나온다.
  */
 @SpringBootTest
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 @ActiveProfiles("test")
 class AccountNumberEncryptorTest {
 

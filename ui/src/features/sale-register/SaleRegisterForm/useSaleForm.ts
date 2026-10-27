@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import {
@@ -29,6 +30,7 @@ export function useSaleForm() {
   // 사용자가 청약을 직접 고르기 전(null)에는 ?subscriptionId=<id>로 들어온 청약을 쓴다.
   const [pickedSubscriptionId, setPickedSubscriptionId] = useState<number | undefined | null>(null)
   const presetSubscriptionId = Number(useSearchParams()[0].get('subscriptionId')) || undefined
+  const presetIpoId = Number(useSearchParams()[0].get('ipoId')) || undefined
   // 세금 및 기타 수수료와 실현손익 중 사용자가 마지막으로 고친 쪽(다른 쪽은 공식으로 계산한다)
   const [lastEdited, setLastEdited] = useState<'fees' | 'profit'>('fees')
   // 기본값을 이미 넣은 청약(같은 청약에서 사용자의 입력을 덮어쓰지 않는다)
@@ -54,7 +56,13 @@ export function useSaleForm() {
   const { data: allocationData, isLoading: allocationLoading } = useInvestmentHistoryDetail(
     selectedSubscriptionId ?? null,
   )
-  const { data: ipo, isPending: ipoPending } = useIpo(allocationData?.ipoId)
+  const ipoIdFromSubscription = allocationData?.ipoId
+  const effectiveIpoId = presetIpoId ?? ipoIdFromSubscription
+  const { data: ipo, isPending: ipoPending } = useIpo(effectiveIpoId)
+
+  // 증권계좌 목록 (직접 매도 등록 시 필요)
+  const { data: securitiesAccounts, isLoading: accountsLoading } =
+    useSecuritiesAccounts(selectedInvestorId)
 
   const { mutate, isPending, error } = useSaleRegister()
 
@@ -148,6 +156,10 @@ export function useSaleForm() {
     resetField('otherFees')
     resetField('realizedProfit')
     resetField('ipoFee')
+    resetField('allocatedQuantity')
+    resetField('securitiesAccountId')
+    resetField('ipoId')
+    resetField('investorId')
     setLastEdited('fees')
     prefilledFor.current = undefined
   }
@@ -171,7 +183,15 @@ export function useSaleForm() {
   })
 
   const onSubmit = (data: SaleFormValues) => {
-    mutate({ allocationId: data.allocationId, ...toSalePayload(data) })
+    const directRegistration = data.allocationId == null
+    mutate({
+      allocationId: data.allocationId,
+      ...toSalePayload({
+        ...data,
+        ipoId: directRegistration ? effectiveIpoId : undefined,
+        investorId: directRegistration ? selectedInvestorId : undefined,
+      }),
+    })
   }
 
   const handleSubscriptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -225,6 +245,9 @@ export function useSaleForm() {
       ipoPrice != null && isNum(priceValue) && isNum(quantityValue)
         ? grossGain(priceValue, quantityValue, ipoPrice)
         : undefined,
+    securitiesAccounts: securitiesAccounts ?? [],
+    accountsLoading,
+    effectiveIpoId,
   }
 }
 

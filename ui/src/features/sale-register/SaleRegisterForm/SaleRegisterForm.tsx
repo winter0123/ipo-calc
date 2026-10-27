@@ -13,6 +13,8 @@ export default function SaleRegisterForm() {
     return <StyleScope>{<div className={styles.loading}>목록을 불러오는 중...</div>}</StyleScope>
   }
 
+  const isDirectMode = !f.selectedSubscriptionId && f.selectedInvestorId
+
   return (
     <StyleScope>
       {
@@ -20,6 +22,17 @@ export default function SaleRegisterForm() {
           <p className={styles.hint}>
             투자자: <strong>{f.current?.displayName ?? '선택 안 됨'}</strong>
           </p>
+
+          {isDirectMode && (
+            <div className={styles.modeBadge}>
+              <span className={styles.modeIcon}>⚡</span>
+              <span>직접 매도 등록 모드</span>
+              <span className={styles.modeDesc}>
+                청약·배정 없이 바로 매도 기록을 남깁니다. 배정수량과 증권계좌는 필수입니다.
+              </span>
+            </div>
+          )}
+
           <CaptureImport f={f} />
           <SubscriptionPicker f={f} />
           <SaleBasicFields f={f} />

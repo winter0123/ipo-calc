@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
@@ -34,7 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** {@link IpoScheduleMergeService} 단위 테스트. */
 @SpringBootTest
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class IpoScheduleMergeServiceTest {
 
   @MockitoBean private UstockPlusCalendarClient ustockPlusCalendarClient;

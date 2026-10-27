@@ -12,9 +12,6 @@ const InvestorRegisterPage = lazy(
   () => import('../pages/InvestorRegisterPage/InvestorRegisterPage.tsx'),
 )
 const DashboardPage = lazy(() => import('../pages/DashboardPage/DashboardPage.tsx'))
-const SecuritiesAccountRegisterPage = lazy(
-  () => import('../pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx'),
-)
 const SubscriptionRegisterPage = lazy(
   () => import('../pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'),
 )
@@ -76,10 +73,6 @@ function App() {
         <Route path="/investors/register" element={<InvestorRegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/my-page" element={<MyPage />} />
-        <Route
-          path="/securities-accounts/register/:investorId"
-          element={<SecuritiesAccountRegisterPage />}
-        />
         <Route path="/securities" element={<SecuritiesPage />} />
         <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
         <Route path="/subscriptions" element={<SubscriptionListPage />} />

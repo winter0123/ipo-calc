@@ -56,7 +56,6 @@ const ROUTES: Array<[string, string]> = [
   ['/investors/register', 'InvestorRegisterPage'],
   ['/dashboard', 'DashboardPage'],
   ['/my-page', 'MyPage'],
-  ['/securities-accounts/register/1', 'SecuritiesAccountRegisterPage'],
   ['/subscriptions/register', 'SubscriptionRegisterPage'],
   ['/subscriptions', 'SubscriptionListPage'],
   ['/allocations/register', 'AllocationRegisterPage'],

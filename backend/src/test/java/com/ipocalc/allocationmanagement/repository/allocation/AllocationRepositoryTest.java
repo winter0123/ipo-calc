@@ -3,7 +3,7 @@ package com.ipocalc.allocationmanagement.repository.allocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
@@ -31,7 +31,7 @@ import org.springframework.test.context.ContextConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 class AllocationRepositoryTest {
 
   @Autowired private AllocationRepository allocationRepository;

@@ -3,7 +3,7 @@ package com.ipocalc.brokerintegration.infrastructure.encryption;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import org.springframework.test.context.ContextConfiguration;
  * 키(app.encryption.broker-key / APP_ENCRYPTION_BROKER_KEY)를 주입받아 키 분리로 단일 키 유출 시 피해 범위를 제한한다.
  */
 @SpringBootTest
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 @ActiveProfiles("test")
 class BrokerSecretEncryptorTest {
 

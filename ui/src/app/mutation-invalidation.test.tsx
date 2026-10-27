@@ -9,9 +9,7 @@ import { useSaleRegister } from '../features/sale-register/index.ts'
 import { useConfirmSync } from '../features/broker-sync/index.ts'
 import { useRecordMutation } from '../features/investment-edit/index.ts'
 import { useRegisterInvestor } from '../features/investor-register/index.ts'
-import { useRegisterSecuritiesAccount } from '../features/securities-account-register/index.ts'
 import { investorKeys } from '../entities/investor/index.ts'
-import { securitiesAccountKeys } from '../entities/securities-account/index.ts'
 import { apiFetch } from '../shared/api/client.ts'
 import { investmentHistoryKeys } from '../entities/subscription/index.ts'
 import { profitKeys } from '../entities/profit/index.ts'
@@ -57,7 +55,6 @@ describe.each([
 
 describe.each([
   ['투자자 등록', useRegisterInvestor, investorKeys.all],
-  ['증권계좌 등록', useRegisterSecuritiesAccount, securitiesAccountKeys.all],
 ])('%s 성공 시 invalidation', (_name, useHook, key) => {
   it('관련 목록 쿼리를 무효화한다', async () => {
     vi.mocked(apiFetch).mockResolvedValue(

@@ -3,8 +3,10 @@ package com.ipocalc.salemanagement.service.sale;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.util.security.SecurityUtils;
 import com.ipocalc.accountauthentication.util.validation.InputLimits;
+import com.ipocalc.allocationmanagement.controller.allocation.dto.AllocationRegisterRequest;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.allocationmanagement.repository.allocation.AllocationRepository;
+import com.ipocalc.allocationmanagement.service.allocation.AllocationService;
 import com.ipocalc.allocationmanagement.service.ownership.AllocationOwnership;
 import com.ipocalc.investormanagement.service.ownership.OwnershipErrors;
 import com.ipocalc.salemanagement.controller.sale.dto.SaleRegisterRequest;
@@ -16,6 +18,8 @@ import com.ipocalc.salemanagement.controller.sale.exception.SaleNotFoundExceptio
 import com.ipocalc.salemanagement.controller.sale.exception.SaleValidationException;
 import com.ipocalc.salemanagement.domain.model.sale.Sale;
 import com.ipocalc.salemanagement.repository.sale.SaleRepository;
+import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
+import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +37,8 @@ public class SaleService {
 
   private final SaleRepository saleRepository;
   private final AllocationRepository allocationRepository;
+  private final AllocationService allocationService;
+  private final SubscriptionRepository subscriptionRepository;
   private final AllocationOwnership allocationOwnership;
   private final SecurityUtils securityUtils;
   private final Clock clock;
@@ -42,12 +48,51 @@ public class SaleService {
   public SaleResponse register(SaleRegisterRequest request) {
     validateRequest(request);
 
+    Long allocationId = request.getAllocationId();
+    if (allocationId == null) {
+      Long subscriptionId = request.getSubscriptionId();
+      if (subscriptionId == null) {
+        subscriptionId =
+            subscriptionRepository
+                .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
+                    request.getInvestorId(),
+                    request.getSecuritiesAccountId(),
+                    request.getIpoId(),
+                    RecordStatus.ACTIVE)
+                .map(Subscription::getId)
+                .orElse(null);
+      }
+      Allocation existingAllocation =
+          subscriptionId == null
+              ? null
+              : allocationRepository
+                  .findBySubscriptionIdAndStatusAndDeletedAtIsNull(
+                      subscriptionId, RecordStatus.ACTIVE)
+                  .orElse(null);
+      if (existingAllocation != null) {
+        allocationId = existingAllocation.getId();
+      } else {
+        AllocationRegisterRequest allocationRequest =
+            AllocationRegisterRequest.builder()
+                .subscriptionId(subscriptionId)
+                .ipoId(request.getIpoId())
+                .investorId(request.getInvestorId())
+                .securitiesAccountId(request.getSecuritiesAccountId())
+                .allocatedQuantity(request.getAllocatedQuantity())
+                .allocatedAt(request.getSaleDate())
+                .allocationPrice(request.getPrice())
+                .note("매도 등록에서 자동 생성된 배정 연결 기록")
+                .build();
+        allocationId = allocationService.register(allocationRequest).getId();
+      }
+    }
+
     // 동시 매도가 한도를 넘지 않도록 배정 행을 먼저 잠근다(이후 조회는 잠금 뒤의 최신 값)
-    allocationRepository.findByIdForUpdate(request.getAllocationId());
+    allocationRepository.findByIdForUpdate(allocationId);
 
     // (1) Allocation 조회 — 존재하지 않으면 404, 타 계정 소유면 403
     Allocation allocation =
-        allocationOwnership.requireOwnedActive(request.getAllocationId(), OWNERSHIP_ERRORS);
+        allocationOwnership.requireOwnedActive(allocationId, OWNERSHIP_ERRORS);
 
     // (2) 기존 ACTIVE Sale들의 quantity 합계 조회
     Long existingQuantitySum = saleRepository.sumActiveQuantityByAllocationId(allocation.getId());
@@ -70,7 +115,7 @@ public class SaleService {
     LocalDateTime now = LocalDateTime.now(clock);
     Sale sale =
         Sale.builder()
-            .allocationId(allocation.getId())
+            .allocationId(allocationId)
             .quantity(newQuantity)
             .price(request.getPrice())
             .amount(request.getAmount())
@@ -200,8 +245,24 @@ public class SaleService {
     if (request == null) {
       throw new SaleValidationException("매도 등록 정보는 필수입니다.");
     }
-    if (request.getAllocationId() == null) {
-      throw new SaleValidationException("allocationId는 필수입니다.");
+    // allocationId가 있으면 그대로 진행
+    // allocationId가 없고 subscriptionId가 있으면 기존 로직대로 진행
+    // 둘 다 없으면 ipoId, investorId, securitiesAccountId, allocatedQuantity가 필요
+    if (request.getAllocationId() == null && request.getSubscriptionId() == null) {
+      if (request.getIpoId() == null
+          || request.getInvestorId() == null
+          || request.getSecuritiesAccountId() == null
+          || request.getAllocatedQuantity() == null) {
+        throw new SaleValidationException(
+            "allocationId 또는 subscriptionId가 없을 때 "
+                + "ipoId, investorId, securitiesAccountId, allocatedQuantity가 필요합니다.");
+      }
+    } else if (request.getAllocationId() == null
+        && (request.getIpoId() == null
+            || request.getInvestorId() == null
+            || request.getSecuritiesAccountId() == null)) {
+      throw new SaleValidationException(
+          "allocationId가 없을 때 ipoId, investorId, securitiesAccountId가 필요합니다.");
     }
     if (request.getQuantity() == null) {
       throw new SaleValidationException("quantity는 필수입니다.");

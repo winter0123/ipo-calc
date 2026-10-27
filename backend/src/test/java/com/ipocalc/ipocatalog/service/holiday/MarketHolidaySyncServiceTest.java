@@ -3,7 +3,7 @@ package com.ipocalc.ipocatalog.service.holiday;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.accountauthentication.AccountAuthenticationApplication;
+import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.ipocatalog.domain.model.holiday.MarketHoliday;
 import com.ipocalc.ipocatalog.repository.holiday.MarketHolidayRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** {@link MarketHolidaySyncService} 테스트 (실제 Repository 사용). */
 @SpringBootTest
 @ActiveProfiles("test")
-@ContextConfiguration(classes = AccountAuthenticationApplication.class)
+@ContextConfiguration(classes = IpoCalcApplication.class)
 @Transactional
 class MarketHolidaySyncServiceTest {
 

@@ -164,7 +164,7 @@ describe('MainLayout', () => {
   })
 
   describe('드롭다운 메뉴', () => {
-    it('로그인 메뉴의 대분류는 공모주 청약·매매기록·설정이며 관리자는 일반 계정에 없음', async () => {
+    it('로그인 메뉴에는 공모주 청약 링크와 매매기록·설정 대분류가 있으며 관리자는 일반 계정에 없음', async () => {
       loggedInAs('USER')
       renderLayout()
 
@@ -174,11 +174,15 @@ describe('MainLayout', () => {
         within(nav)
           .getAllByRole('button')
           .map((button) => button.textContent?.trim()),
-      ).toEqual(['공모주 청약', '매매기록', '설정'])
+      ).toEqual(['매매기록', '설정'])
+      expect(within(nav).getByRole('link', { name: '공모주 청약' })).toHaveAttribute(
+        'href',
+        '/subscriptions',
+      )
       expect(within(nav).queryByRole('button', { name: '관리자' })).not.toBeInTheDocument()
     })
 
-    it('공모주 청약 그룹은 청약 목록만 접고 펼쳐 표시함', async () => {
+    it('공모주 청약을 누르면 청약 목록으로 바로 이동한다', async () => {
       loggedInAs('USER')
       renderLayout()
 
@@ -187,18 +191,13 @@ describe('MainLayout', () => {
       expect(nav.firstElementChild).toBe(calendarLink)
       expect(calendarLink.closest('[role="group"]')).toBeNull()
 
-      const groupButton = await screen.findByRole('button', { name: '공모주 청약' })
-      expect(groupButton).toHaveAttribute('aria-expanded', 'false')
-      await userEvent.click(groupButton)
-      expect(groupButton).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('link', { name: '청약 목록' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '공모주 청약' })).toHaveAttribute(
         'href',
         '/subscriptions',
       )
+      expect(screen.queryByRole('link', { name: '청약 목록' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: '공모주 배정' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: '공모주 매도' })).not.toBeInTheDocument()
-      await userEvent.click(groupButton)
-      expect(groupButton).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('매매기록 그룹은 청약내역과 실현손익으로 표시함', async () => {

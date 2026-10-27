@@ -11,11 +11,16 @@ export type CapturedField = 'quantity' | 'price' | 'saleDate' | 'otherFees' | 'r
 
 /** 폼 입력값. 숫자 칸은 비어 있으면 NaN이다(valueAsNumber). */
 export interface SaleFormValues {
-  allocationId: number
+  allocationId?: number
   quantity: number
   price: number
   saleDate: string
   ipoFee: number
   otherFees: number
   realizedProfit: number
+  /** 직접 매도 등록 시 필요한 필드 */
+  allocatedQuantity?: number
+  securitiesAccountId?: number
+  ipoId?: number
+  investorId?: number
 }

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Waves, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useLogout } from '@/features/login/index.ts'
@@ -8,8 +8,6 @@ import { GatedOutlet } from './InvestorGate.tsx'
 import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
 import styles, { StyleScope } from './MainLayout.styles.ts'
-
-const IPO_ITEMS = [{ to: '/subscriptions', label: '청약 목록' }]
 
 const TRADE_ITEMS = [
   { to: '/dashboard', label: '대시보드' },
@@ -64,11 +62,11 @@ export default function MainLayout() {
               {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
               {isGuest ? (
                 <Link to="/" className={`${styles.logo} ${styles.guestLogo}`} aria-label="홈으로">
-                  <Waves aria-hidden="true" size={20} />
+                  <img src="/images/icon/icon.png" alt="" aria-hidden="true" />
                 </Link>
               ) : (
                 <span className={styles.logo} aria-hidden="true">
-                  <Waves size={20} />
+                  <img src="/images/icon/icon.png" alt="" />
                 </span>
               )}
               {currentAccount && (
@@ -82,7 +80,7 @@ export default function MainLayout() {
                   {menuOpen ? (
                     <X aria-hidden="true" size={22} />
                   ) : (
-                    <Waves aria-hidden="true" size={22} />
+                    <img src="/images/icon/icon.png" alt="" aria-hidden="true" />
                   )}
                   <span className={styles.menuLabel}>메뉴</span>
                 </button>
@@ -105,7 +103,11 @@ export default function MainLayout() {
                     공모주 일정
                   </NavLink>
                 )}
-                {currentAccount && <NavGroup label="공모주 청약" items={IPO_ITEMS} />}
+                {currentAccount && (
+                  <NavLink to="/subscriptions" className={linkClass}>
+                    공모주 청약
+                  </NavLink>
+                )}
                 {currentAccount && <NavGroup label="매매기록" items={TRADE_ITEMS} />}
                 {currentAccount && (
                   <NavGroup

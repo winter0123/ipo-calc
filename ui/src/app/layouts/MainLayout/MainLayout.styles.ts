@@ -64,9 +64,15 @@ export const StyleScope = styled.div`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     color: var(--primary);
+  }
+
+  .s-91ad696-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .s-91ad696-guestLogo {
@@ -197,8 +203,8 @@ export const StyleScope = styled.div`
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -206,6 +212,12 @@ export const StyleScope = styled.div`
     color: var(--primary);
     font: inherit;
     cursor: pointer;
+  }
+
+  .s-91ad696-menuButton img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
   }
 
   .s-91ad696-menuButton:focus-visible {

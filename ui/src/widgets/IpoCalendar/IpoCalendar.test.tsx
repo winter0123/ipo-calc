@@ -171,7 +171,8 @@ describe('IpoCalendar', () => {
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
+    // 월 셀렉트박스로 다음 달(11월) 선택
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '11')
 
     expect(screen.getByText('2026년 11월')).toBeInTheDocument()
     const novBars = screen.getAllByRole('link', { name: /11월/ })
@@ -194,7 +195,8 @@ describe('IpoCalendar', () => {
 
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '이전 달' }))
+    // 월 셀렉트박스로 이전 달(9월) 선택
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '9')
 
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /청약/ }).length).toBeGreaterThan(0)
@@ -312,7 +314,8 @@ describe('IpoCalendar', () => {
     await userEvent.click(screen.getByRole('button', { name: /^10월 1일/ }))
     expect(screen.getByRole('heading', { name: '2026-10-01 일정' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
+    // 월 셀렉트박스로 다음 달(11월) 선택
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '11')
 
     expect(
       screen.getByText('날짜를 누르면 그날의 청약·환불·상장 일정이 여기에 나옵니다'),
@@ -323,10 +326,14 @@ describe('IpoCalendar', () => {
   it('12월에서 다음 달은 다음 해 1월, 1월에서 이전 달은 전년 12월이다', async () => {
     renderWithRouter(<IpoCalendar ipos={[]} initialYear={2026} initialMonth={12} />)
 
-    await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
+    // 연도/월 셀렉트박스로 2027년 1월 선택
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '연도' }), '2027')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '1')
     expect(screen.getByText('2027년 1월')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '이전 달' }))
+    // 다시 2026년 12월로
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '연도' }), '2026')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '12')
     expect(screen.getByText('2026년 12월')).toBeInTheDocument()
   })
 
@@ -618,8 +625,9 @@ describe('IpoCalendar', () => {
       // 2027년 1월 휴장일로 변경
       setHolidays([{ date: '2027-01-01', name: '신정' }])
 
-      // 다음 달(2027년 1월)로 이동
-      await userEvent.click(screen.getByRole('button', { name: '다음 달' }))
+      // 연도/월 셀렉트박스로 다음 달(2027년 1월)로 이동
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: '연도' }), '2027')
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '1')
 
       await waitFor(() => {
         expect(screen.getByText('2027년 1월')).toBeInTheDocument()

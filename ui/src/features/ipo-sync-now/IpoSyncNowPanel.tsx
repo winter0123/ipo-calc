@@ -51,6 +51,10 @@ export default function IpoSyncNowPanel() {
     <StyleScope>
       {
         <section className={styles.panel} aria-label="DART 공모주 가져오기">
+          <header className={styles.panelHeader}>
+            <span className={styles.panelLabel}>관리자 전용</span>
+            <h3 className={styles.panelTitle}>DART 공모주 가져오기</h3>
+          </header>
           <div className={styles.range}>
             <label className={styles.field}>
               시작 월
