@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
 import {
   buildCalendarEvents,
   buildWeekSegments,
@@ -271,9 +270,9 @@ export default function IpoCalendar({
                     )
                   })}
                   {segments.map((segment) => (
-                    <Link
+                    <button
                       key={`${segment.event.ipoId}-${segment.startCol}-${segment.endCol}`}
-                      to={`/ipos/${segment.event.ipoId}`}
+                      type="button"
                       className={`${styles.bar} ${EVENT_TYPE_CLASSES[segment.event.type]} ${segment.event.estimated ? styles.barEstimated : ''}`}
                       style={gridStyle({
                         '--calendar-bar-column': `${segment.startCol + 1} / ${segment.endCol + 2}`,
@@ -283,10 +282,11 @@ export default function IpoCalendar({
                         '--calendar-bar-margin-left': segment.continuesBefore ? '0px' : '2px',
                         '--calendar-bar-margin-right': segment.continuesAfter ? '0px' : '2px',
                       })}
+                      onClick={() => handleDateClick(segment.event.startDate)}
                       aria-label={barLabel(segment.event)}
                     >
                       {segment.event.companyName}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               )
