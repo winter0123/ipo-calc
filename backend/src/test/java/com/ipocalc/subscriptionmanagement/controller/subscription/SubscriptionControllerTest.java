@@ -206,7 +206,7 @@ class SubscriptionControllerTest {
   }
 
   private Long createIpo() {
-    return createIpo("기업A", "공모주A", "123456");
+    return createIpo("기업A", "공모주A", "123456" + ThreadLocalRandom.current().nextLong(100000, 999999));
   }
 
   private Long createIpo(String companyName, String ipoName, String stockCode) {

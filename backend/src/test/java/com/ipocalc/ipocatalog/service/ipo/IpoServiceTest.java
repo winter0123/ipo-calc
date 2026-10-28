@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -38,13 +39,18 @@ class IpoServiceTest {
       Clock.fixed(Instant.parse("2026-10-13T01:00:00Z"), ZoneId.of("Asia/Seoul"));
   private final IpoService service = new IpoService(repository, clock, calculator);
 
+  private String uniqueStockCode() {
+    return "123456" + ThreadLocalRandom.current().nextLong(100000, 999999);
+  }
+
   private Ipo existing(LocalDate start, LocalDate end) {
+    String stockCode = uniqueStockCode();
     Ipo ipo =
         Ipo.builder()
             .id(1L)
             .companyName("기존회사")
             .ipoName("기존공모")
-            .stockCode("123456")
+            .stockCode(stockCode)
             .roundLabel("1차")
             .lowerBandPrice(1_000L)
             .upperBandPrice(2_000L)
@@ -69,11 +75,12 @@ class IpoServiceTest {
   @Test
   void update_emptyRequest_keepsEveryField() {
     Ipo ipo = existing(START, END);
+    String stockCode = ipo.getStockCode();
 
     IpoResponse response = service.update(1L, new IpoUpdateRequest());
 
     assertThat(response.getCompanyName()).isEqualTo("기존회사");
-    assertThat(ipo.getStockCode()).isEqualTo("123456");
+    assertThat(ipo.getStockCode()).isEqualTo(stockCode);
     assertThat(ipo.getRoundLabel()).isEqualTo("1차");
     assertThat(ipo.getSubscriptionStartDate()).isEqualTo(START);
     assertThat(ipo.getUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 10, 13, 10, 0));
@@ -155,17 +162,18 @@ class IpoServiceTest {
   @Test
   void update_sameStockCodeOnOtherIpo_isConflict_butSelfIsNot() {
     Ipo ipo = existing(START, END);
+    String stockCode = ipo.getStockCode();
     Ipo other = Ipo.builder().id(2L).stockCode("999999").build();
     when(repository.findByStockCodeAndStatusAndDeletedAtIsNull("999999", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(other));
-    when(repository.findByStockCodeAndStatusAndDeletedAtIsNull("123456", RecordStatus.ACTIVE))
+    when(repository.findByStockCodeAndStatusAndDeletedAtIsNull(stockCode, RecordStatus.ACTIVE))
         .thenReturn(Optional.of(ipo));
 
     assertThatThrownBy(
             () -> service.update(1L, IpoUpdateRequest.builder().stockCode("999999").build()))
         .isInstanceOf(IpoConflictException.class);
     // 자기 자신과의 중복은 충돌이 아니다
-    assertThat(service.update(1L, IpoUpdateRequest.builder().stockCode("123456").build()))
+    assertThat(service.update(1L, IpoUpdateRequest.builder().stockCode(stockCode).build()))
         .isNotNull();
   }
 

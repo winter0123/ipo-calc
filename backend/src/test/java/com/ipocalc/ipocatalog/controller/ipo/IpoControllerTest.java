@@ -65,6 +65,7 @@ class IpoControllerTest {
   private String testPassword;
   private String testName;
   private MockHttpSession session;
+  private String stockCodeSuffix;
 
   @BeforeEach
   void setUp() {
@@ -73,6 +74,7 @@ class IpoControllerTest {
     testPassword = "securePass123!";
     testName = "IPO테스터";
     session = new MockHttpSession();
+    stockCodeSuffix = Long.toUnsignedString(nonce, 16);
   }
 
   @AfterEach
@@ -99,7 +101,7 @@ class IpoControllerTest {
     // companyName 미제공 시 ipoName으로 자동 저장
     assertThat(response.get("companyName")).isEqualTo("공모주A");
     assertThat(response.get("ipoName")).isEqualTo("공모주A");
-    assertThat(response.get("stockCode")).isEqualTo("123456");
+    assertThat(response.get("stockCode")).isEqualTo("123456" + stockCodeSuffix);
     assertThat(response.get("roundLabel")).isEqualTo("1차");
     assertThat(response.get("lowerBandPrice")).isEqualTo(10000);
     assertThat(response.get("upperBandPrice")).isEqualTo(12000);
@@ -285,7 +287,7 @@ class IpoControllerTest {
     signupAndLogin();
     Map<String, Object> firstRequest = validRequest();
     firstRequest.put("ipoName", "공모주공통");
-    firstRequest.put("stockCode", "123456");
+    firstRequest.put("stockCode", "123456" + stockCodeSuffix);
     firstRequest.put("roundLabel", "1차");
     assertThat(registerIpo(firstRequest).getResponse().getStatus()).isEqualTo(201);
 
@@ -634,7 +636,7 @@ class IpoControllerTest {
     Long secondId = ((Number) readBody(secondReg).get("id")).longValue();
 
     Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
-    updateRequest.put("stockCode", "123456");
+    updateRequest.put("stockCode", "123456" + stockCodeSuffix);
 
     MvcResult result =
         mockMvc
@@ -660,7 +662,7 @@ class IpoControllerTest {
     // 등록 시 companyName 미제공으로 ipoName과 같아짐
     updateRequest.put("companyName", "공모주A");
     updateRequest.put("ipoName", "공모주A");
-    updateRequest.put("stockCode", "123456");
+    updateRequest.put("stockCode", "123456" + stockCodeSuffix);
     updateRequest.put("subscriptionStartDate", "2026-10-01");
 
     MvcResult result =
@@ -998,7 +1000,7 @@ class IpoControllerTest {
   private Map<String, Object> validRequest() {
     Map<String, Object> request = new java.util.LinkedHashMap<>();
     request.put("ipoName", "공모주A");
-    request.put("stockCode", "123456");
+    request.put("stockCode", "123456" + stockCodeSuffix);
     request.put("roundLabel", "1차");
     request.put("lowerBandPrice", 10000);
     request.put("upperBandPrice", 12000);

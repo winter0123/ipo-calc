@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,8 @@ class AccountControllerTest {
 
   @BeforeEach
   void setUp() {
-    testEmail = "testuser@example.com";
+    long nonce = ThreadLocalRandom.current().nextLong();
+    testEmail = "testuser-" + nonce + "@example.com";
     testPassword = "securePass123!";
     testName = "테스트유저";
     testDisplayName = "테스트본인";

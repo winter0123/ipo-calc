@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -30,6 +31,14 @@ import org.springframework.test.context.ContextConfiguration;
 class IpoRepositoryTest {
 
   @Autowired private IpoRepository ipoRepository;
+
+  private String uniqueStockCode() {
+    return "123456" + ThreadLocalRandom.current().nextLong(100000, 999999);
+  }
+
+  private String uniqueCorpCode() {
+    return "12345678" + ThreadLocalRandom.current().nextLong(100000, 999999);
+  }
 
   @Test
   void saveIpoFindByIdReturnsIpoWithActiveStatus() {
@@ -159,11 +168,12 @@ class IpoRepositoryTest {
     // - spec AC-005: 중복 stock_code 등록은 409 Conflict (DB 제약상 DataIntegrityViolation 반환)
 
     LocalDateTime now = LocalDateTime.now();
+    String stockCode = uniqueStockCode();
     ipoRepository.save(
         Ipo.builder()
             .companyName("기업A")
             .ipoName("공모주A")
-            .stockCode("123456")
+            .stockCode(stockCode)
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
             .status(RecordStatus.ACTIVE)
@@ -175,7 +185,7 @@ class IpoRepositoryTest {
         Ipo.builder()
             .companyName("기업B")
             .ipoName("공모주B")
-            .stockCode("123456") // 동일 stock_code
+            .stockCode(stockCode) // 동일 stock_code
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
             .status(RecordStatus.ACTIVE)
@@ -262,17 +272,18 @@ class IpoRepositoryTest {
 
   @Test
   void saveSameStockCodeAfterSoftDeleteAllowed() {
-    // Given: "123456" stock_code를 가진 ACTIVE IPO가 저장 후 논리 삭제(status=INACTIVE, deletedAt)됨
+    // Given: stock_code를 가진 ACTIVE IPO가 저장 후 논리 삭제(status=INACTIVE, deletedAt)됨
     // - spec: 삭제된 IPO(deletedAt 설정)는 조회 제외, 동일 stock_code 재등록 허용
     // - D-IPO-001: INACTIVE 레코드는 부분 유니크 제약에 영향받지 않음 (재등록 가능)
 
     LocalDateTime now = LocalDateTime.now();
+    String stockCode = uniqueStockCode();
     Ipo existing =
         ipoRepository.save(
             Ipo.builder()
                 .companyName("기존기업")
                 .ipoName("기존공모주")
-                .stockCode("123456")
+                .stockCode(stockCode)
                 .subscriptionStartDate(LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 10, 2))
                 .status(RecordStatus.ACTIVE)
@@ -288,7 +299,7 @@ class IpoRepositoryTest {
             Ipo.builder()
                 .companyName("신규기업")
                 .ipoName("신규공모주")
-                .stockCode("123456")
+                .stockCode(stockCode)
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
                 .status(RecordStatus.ACTIVE)
@@ -305,11 +316,12 @@ class IpoRepositoryTest {
   void saveAndFindByCorpCodeReturnsIpo() {
     // Given: corp_code가 있는 ACTIVE IPO 저장
     LocalDateTime now = LocalDateTime.now();
+    String corpCode = uniqueCorpCode();
     Ipo ipo =
         Ipo.builder()
             .companyName("테스트기업")
             .ipoName("테스트공모주")
-            .corpCode("12345678")
+            .corpCode(corpCode)
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
             .status(RecordStatus.ACTIVE)
@@ -320,12 +332,12 @@ class IpoRepositoryTest {
     // When: 저장 후 findByCorpCodeAndStatusAndDeletedAtIsNull로 조회
     Ipo saved = ipoRepository.saveAndFlush(ipo);
     Optional<Ipo> found =
-        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("12345678", RecordStatus.ACTIVE);
+        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
 
     // Then: 저장된 IPO가 corp_code, companyName, ipoName으로 정상 조회된다
     assertThat(found).isPresent();
     assertThat(found.get().getId()).isEqualTo(saved.getId());
-    assertThat(found.get().getCorpCode()).isEqualTo("12345678");
+    assertThat(found.get().getCorpCode()).isEqualTo(corpCode);
     assertThat(found.get().getCompanyName()).isEqualTo("테스트기업");
     assertThat(found.get().getIpoName()).isEqualTo("테스트공모주");
     assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
@@ -338,11 +350,12 @@ class IpoRepositoryTest {
     // - uk_ipo_corp_code_active 부분 유니크 인덱스로 활성 IPO 간 corp_code 중복 방지
 
     LocalDateTime now = LocalDateTime.now();
+    String corpCode = uniqueCorpCode();
     ipoRepository.save(
         Ipo.builder()
             .companyName("기업A")
             .ipoName("공모주A")
-            .corpCode("12345678")
+            .corpCode(corpCode)
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
             .status(RecordStatus.ACTIVE)
@@ -354,7 +367,7 @@ class IpoRepositoryTest {
         Ipo.builder()
             .companyName("기업B")
             .ipoName("공모주B")
-            .corpCode("12345678") // 동일 corp_code
+            .corpCode(corpCode) // 동일 corp_code
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
             .status(RecordStatus.ACTIVE)
@@ -406,17 +419,18 @@ class IpoRepositoryTest {
 
   @Test
   void saveSameCorpCodeAfterSoftDeleteAllowed() {
-    // Given: "12345678" corp_code를 가진 ACTIVE IPO가 저장 후 논리 삭제(status=INACTIVE, deletedAt)됨
+    // Given: corp_code를 가진 ACTIVE IPO가 저장 후 논리 삭제(status=INACTIVE, deletedAt)됨
     // - 삭제된 IPO(deletedAt 설정)는 조회 제외, 동일 corp_code 재등록 허용
     // - INACTIVE 레코드는 부분 유니크 제약에 영향받지 않음 (재등록 가능)
 
     LocalDateTime now = LocalDateTime.now();
+    String corpCode = uniqueCorpCode();
     Ipo existing =
         ipoRepository.save(
             Ipo.builder()
                 .companyName("기존기업")
                 .ipoName("기존공모주")
-                .corpCode("12345678")
+                .corpCode(corpCode)
                 .subscriptionStartDate(LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 10, 2))
                 .status(RecordStatus.ACTIVE)
@@ -432,7 +446,7 @@ class IpoRepositoryTest {
             Ipo.builder()
                 .companyName("신규기업")
                 .ipoName("신규공모주")
-                .corpCode("12345678")
+                .corpCode(corpCode)
                 .subscriptionStartDate(LocalDate.of(2026, 11, 1))
                 .subscriptionEndDate(LocalDate.of(2026, 11, 2))
                 .status(RecordStatus.ACTIVE)
