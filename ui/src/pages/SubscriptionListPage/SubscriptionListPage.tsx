@@ -49,9 +49,14 @@ export default function SubscriptionListPage() {
         <div className={styles.container}>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>공모주 청약</h1>
-            <Link to="/subscriptions/register" className={styles.registerButton}>
-              새 청약 등록
-            </Link>
+            <div className={styles.buttonGroup}>
+              <Link to="/sales/register" className={styles.sellButton}>
+                매도 등록
+              </Link>
+              <Link to="/subscriptions/register" className={styles.registerButton}>
+                새 청약 등록
+              </Link>
+            </div>
           </div>
           <div className={styles.dateRange}>
             <label>

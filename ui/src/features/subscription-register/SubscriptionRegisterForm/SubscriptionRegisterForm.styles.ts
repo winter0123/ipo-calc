@@ -93,6 +93,41 @@ export const StyleScope = styled.div`
     font-size: 13px;
     color: var(--ink-muted);
   }
+
+  /* 섹션 스타일 */
+  .s-aeddfbc-section {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .s-aeddfbc-sectionTitle {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .s-aeddfbc-allocationToggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .s-aeddfbc-allocationToggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+  }
+
+  .s-aeddfbc-sectionCollapsed {
+    opacity: 0.7;
+  }
 `
 
 export default styles

@@ -35,6 +35,28 @@ export const StyleScope = styled.div`
     gap: var(--space-3);
   }
 
+  .s-d6e906b-buttonGroup {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .s-d6e906b-sellButton {
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .s-d6e906b-sellButton:hover {
+    background-color: var(--surface-soft);
+    border-color: var(--ink-muted);
+  }
+
   .s-d6e906b-registerButton {
     padding: var(--space-2) var(--space-4);
     background-color: var(--primary);
