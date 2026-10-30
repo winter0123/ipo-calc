@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
+import { useImpersonation } from '@/entities/impersonation/index.ts'
 import { useLogout } from '@/features/login/index.ts'
 import { resetAnnouncementVisit } from '@/features/announcements/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
@@ -42,6 +43,8 @@ export default function MainLayout() {
   const navigate = useNavigate()
   const isWide = pathname === '/' || pathname === '/about'
   const logoutMutation = useLogout()
+  const isAdmin = currentAccount?.role === 'ADMIN'
+  const { isImpersonating } = useImpersonation({ isAdmin: Boolean(isAdmin) })
   // 메뉴를 연 경로를 기억해 두면 페이지가 바뀔 때 자동으로 닫힌다
   const [openedAt, setOpenedAt] = useState<string | null>(null)
   const menuOpen = openedAt === pathname
@@ -121,7 +124,7 @@ export default function MainLayout() {
                     ]}
                   />
                 )}
-                {currentAccount?.role === 'ADMIN' && (
+                {currentAccount?.role === 'ADMIN' && !isImpersonating && (
                   <NavLink
                     to="/admin"
                     className={({ isActive }) =>

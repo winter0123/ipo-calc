@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
+import { useImpersonation } from '@/entities/impersonation/index.ts'
+import { Navigate } from 'react-router-dom'
 import { useLogout } from '@/features/login/index.ts'
 import { ImpersonationBanner } from '@/widgets/banner/index.ts'
 import NotFoundPage from '@/pages/NotFoundPage/NotFoundPage.tsx'
@@ -16,10 +18,12 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const logoutMutation = useLogout()
   const isAdmin = account?.role === 'ADMIN'
+  const { isImpersonating } = useImpersonation({ isAdmin })
 
   // 일반 사용자가 /admin 경로로 직접 접속하면 NotFound를 보여 준다.
   if (isPending) return <p role="status">불러오는 중...</p>
   if (!isAdmin) return <NotFoundPage />
+  if (isImpersonating) return <Navigate to="/dashboard" replace />
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? `${styles.link} ${styles.active}` : styles.link
@@ -45,18 +49,20 @@ export default function AdminLayout() {
           </nav>
           <div className={styles.actions}>
             <ImpersonationBanner />
-            <button
-              type="button"
-              className={styles.logoutButton}
-              disabled={logoutMutation.isPending}
-              onClick={() =>
-                logoutMutation.mutate(undefined, {
-                  onSettled: () => navigate('/login', { replace: true }),
-                })
-              }
-            >
-              {logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}
-            </button>
+            {!isImpersonating && (
+              <button
+                type="button"
+                className={styles.logoutButton}
+                disabled={logoutMutation.isPending}
+                onClick={() =>
+                  logoutMutation.mutate(undefined, {
+                    onSettled: () => navigate('/login', { replace: true }),
+                  })
+                }
+              >
+                {logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}
+              </button>
+            )}
           </div>
         </header>
         <main className={styles.main}>
