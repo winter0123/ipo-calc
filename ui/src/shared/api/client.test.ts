@@ -69,6 +69,7 @@ describe('apiFetch', () => {
   })
 
   it('절대 URL은 그대로 쓰고, 쿠키를 포함하며 헤더를 병합한다', async () => {
+    document.cookie = 'XSRF-TOKEN=existing-token; Path=/'
     stub('{}')
     await apiFetch('https://other.test/y', { method: 'POST', headers: { 'X-A': '1' } })
     const [url, init] = vi.mocked(fetch).mock.calls[0]
@@ -76,7 +77,7 @@ describe('apiFetch', () => {
     expect(init).toMatchObject({
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-A': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-A': '1', 'X-XSRF-TOKEN': 'existing-token' },
     })
   })
 
@@ -89,5 +90,59 @@ describe('apiFetch', () => {
   it('네트워크 실패(fetch reject)는 그대로 전파된다', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     await expect(apiFetch('/x')).rejects.toBeInstanceOf(TypeError)
+  })
+})
+
+describe('apiFetch CSRF', () => {
+  const setToken = (token: string) => {
+    document.cookie = `XSRF-TOKEN=${token}; Path=/`
+  }
+  const clearToken = () => {
+    document.cookie = 'XSRF-TOKEN=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  }
+
+  afterEach(() => {
+    clearToken()
+    vi.unstubAllGlobals()
+  })
+
+  it('안전하지 않은 요청에 쿠키 토큰을 X-XSRF-TOKEN 헤더로 보낸다', async () => {
+    setToken('abc123')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })))
+    await apiFetch('/x', { method: 'POST', headers: { 'X-A': '1' } })
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit
+    expect(init).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-A': '1', 'X-XSRF-TOKEN': 'abc123' },
+    })
+  })
+
+  it('안전하지 않은 요청에 토큰이 없으면 /auth/csrf 부트스트랩을 먼저 호출한 뒤 전송한다', async () => {
+    clearToken()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })))
+    await apiFetch('/x', { method: 'POST', headers: { 'X-A': '1' } })
+    const calls = vi.mocked(fetch).mock.calls
+    expect(calls.some((call) => String(call[0]).includes('/auth/csrf'))).toBe(true)
+    const postCall = calls.find((call) => String(call[0]).endsWith('/x'))
+    expect(postCall).toBeDefined()
+    expect(postCall?.[1]?.headers).not.toHaveProperty('X-XSRF-TOKEN')
+  })
+
+  it('읽기 전용 요청에는 X-XSRF-TOKEN 헤더를 붙이지 않는다', async () => {
+    setToken('abc123')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })))
+    await apiFetch('/x')
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit
+    expect(init.headers).not.toHaveProperty('X-XSRF-TOKEN')
+  })
+
+  it('csrfBootstrap은 /auth/csrf를 credentials include로 호출한다', async () => {
+    const { csrfBootstrap } = await import('./client.ts')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
+    await csrfBootstrap()
+    const [url, init] = vi.mocked(fetch).mock.calls[0] ?? []
+    expect(String(url)).toContain('/auth/csrf')
+    expect(init).toMatchObject({ method: 'GET', credentials: 'include' })
   })
 })

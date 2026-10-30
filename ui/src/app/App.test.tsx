@@ -120,9 +120,11 @@ describe('App 접근 가드', () => {
     )
   }
 
-  it('일반 사용자가 /admin/*에 가면 권한 없음 안내를 본다', async () => {
+  it('일반 사용자가 /admin/*에 가면 NotFound 화면을 본다', async () => {
     renderAs('USER', '/admin/accounts')
-    expect(await screen.findByText('관리자만 볼 수 있는 화면입니다.')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: '페이지를 찾을 수 없습니다' }),
+    ).toBeInTheDocument()
   })
 
   it('로그인한 사용자가 /login에 가면 대시보드로 간다', async () => {

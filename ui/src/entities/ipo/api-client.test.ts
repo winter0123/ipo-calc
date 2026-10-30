@@ -104,6 +104,7 @@ describe('syncIposNow', () => {
   }
 
   it('POST /ipos/sync를 호출하고 결과를 반환한다', async () => {
+    document.cookie = 'XSRF-TOKEN=test-token; Path=/'
     stub(STATUS)
     await expect(syncIposNow()).resolves.toEqual(STATUS)
     const [url, init] = vi.mocked(fetch).mock.calls[0]
@@ -112,6 +113,7 @@ describe('syncIposNow', () => {
   })
 
   it('범위를 지정하여 POST /ipos/sync를 호출한다', async () => {
+    document.cookie = 'XSRF-TOKEN=test-token; Path=/'
     stub(STATUS)
     await expect(syncIposNow({ fromMonth: '2025-01', toMonth: '2026-12' })).resolves.toEqual(STATUS)
     const [url, init] = vi.mocked(fetch).mock.calls[0]
@@ -121,6 +123,7 @@ describe('syncIposNow', () => {
   })
 
   it('본문이 없으면 기존 동작(최근 days-back)과 동일하게 동작한다', async () => {
+    document.cookie = 'XSRF-TOKEN=test-token; Path=/'
     stub(STATUS)
     await expect(syncIposNow(undefined)).resolves.toEqual(STATUS)
     const [url, init] = vi.mocked(fetch).mock.calls[0]

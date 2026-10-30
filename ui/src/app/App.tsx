@@ -1,7 +1,8 @@
 import { lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout/MainLayout.tsx'
-import { AdminOnly, GuestOnly } from './layouts/MainLayout/RouteGuards.tsx'
+import AdminLayout from './layouts/AdminLayout/AdminLayout.tsx'
+import { GuestOnly } from './layouts/MainLayout/RouteGuards.tsx'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import RootRedirect from './layouts/MainLayout/RootRedirect.tsx'
 
@@ -42,6 +43,10 @@ const AnnouncementsPage = lazy(() => import('../pages/AnnouncementsPage/Announce
 const AnnouncementDetailPage = lazy(
   () => import('../pages/AnnouncementDetailPage/AnnouncementDetailPage.tsx'),
 )
+const AdminUsersPage = lazy(() => import('../pages/AdminUsersPage/AdminUsersPage.tsx'))
+const AdminUserDetailPage = lazy(
+  () => import('../pages/AdminUserDetailPage/AdminUserDetailPage.tsx'),
+)
 
 function AboutRoute() {
   const { data: currentAccount } = useCurrentAccount()
@@ -51,6 +56,15 @@ function AboutRoute() {
 function App() {
   return (
     <Routes>
+      <Route path="admin" element={<AdminLayout />}>
+        <Route index element={<AdminUsersPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="users/:accountId" element={<AdminUserDetailPage />} />
+        <Route path="accounts" element={<AdminAccountsPage />} />
+        <Route path="announcements" element={<AdminAnnouncementsPage />} />
+        <Route path="ipos" element={<IpoRegisterPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
       <Route element={<MainLayout />}>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/about" element={<AboutRoute />} />
@@ -86,30 +100,6 @@ function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/announcements/:announcementId" element={<AnnouncementDetailPage />} />
-        <Route
-          path="/admin/accounts"
-          element={
-            <AdminOnly>
-              <AdminAccountsPage />
-            </AdminOnly>
-          }
-        />
-        <Route
-          path="/admin/ipos"
-          element={
-            <AdminOnly>
-              <IpoRegisterPage />
-            </AdminOnly>
-          }
-        />
-        <Route
-          path="/admin/announcements"
-          element={
-            <AdminOnly>
-              <AdminAnnouncementsPage />
-            </AdminOnly>
-          }
-        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

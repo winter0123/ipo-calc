@@ -132,35 +132,24 @@ describe('MainLayout', () => {
     expect(nav).not.toContainElement(signup)
   })
 
-  it('관리자에게만 가입 승인 링크가 보임', async () => {
+  it('관리자에게만 관리센터 링크가 보임', async () => {
     loggedInAs('ADMIN')
     renderLayout()
 
-    await userEvent.click(await screen.findByRole('button', { name: '관리자' }))
-    expect(await screen.findByRole('link', { name: '가입 승인' })).toHaveAttribute(
-      'href',
-      '/admin/accounts',
-    )
-    expect(await screen.findByRole('link', { name: '공모주 등록' })).toHaveAttribute(
-      'href',
-      '/admin/ipos',
-    )
+    expect(await screen.findByRole('link', { name: '관리센터' })).toHaveAttribute('href', '/admin')
   })
 
-  it('일반 계정과 로그인 전에는 가입 승인 링크가 없음', async () => {
+  it('일반 계정과 로그인 전에는 관리센터 링크가 없음', async () => {
     loggedInAs('USER')
     const { unmount } = renderLayout()
-    await screen.findByRole('button', { name: '설정' })
     await vi.waitFor(() => expect(apiFetch).toHaveBeenCalled())
-    expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '관리센터' })).not.toBeInTheDocument()
     unmount()
 
     anonymous()
     renderLayout()
     await vi.waitFor(() => expect(vi.mocked(apiFetch).mock.calls.length).toBeGreaterThanOrEqual(2))
-    expect(screen.queryByRole('link', { name: '가입 승인' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '공모주 등록' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '관리센터' })).not.toBeInTheDocument()
   })
 
   describe('드롭다운 메뉴', () => {

@@ -7,6 +7,7 @@ import { resetAnnouncementVisit } from '@/features/announcements/index.ts'
 import { GatedOutlet } from './InvestorGate.tsx'
 import NavGroup from './NavGroup.tsx'
 import InvestorSwitcher from './InvestorSwitcher.tsx'
+import { ImpersonationBanner } from '@/widgets/banner/index.ts'
 import styles, { StyleScope } from './MainLayout.styles.ts'
 
 const TRADE_ITEMS = [
@@ -20,12 +21,6 @@ const SETTINGS_ITEMS = [
   { to: '/notifications', label: '알림 설정' },
   { to: '/announcements', label: '공지사항' },
   { to: '/user-guides/manual/index.html', label: '이용가이드', static: true },
-]
-
-const ADMIN_ITEMS = [
-  { to: '/admin/accounts', label: '가입 승인' },
-  { to: '/admin/ipos', label: '공모주 등록' },
-  { to: '/admin/announcements', label: '공지사항 관리' },
 ]
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -127,11 +122,19 @@ export default function MainLayout() {
                   />
                 )}
                 {currentAccount?.role === 'ADMIN' && (
-                  <NavGroup label="관리자" items={ADMIN_ITEMS} />
+                  <NavLink
+                    to="/admin"
+                    className={({ isActive }) =>
+                      isActive ? `${styles.link} ${styles.active}` : styles.link
+                    }
+                  >
+                    관리센터
+                  </NavLink>
                 )}
               </nav>
             )}
             {currentAccount && <InvestorSwitcher />}
+            <ImpersonationBanner />
             {isGuest && (
               <div className={styles.authActions}>
                 <Link to="/ipo-calendar" className={styles.calendarButton}>
