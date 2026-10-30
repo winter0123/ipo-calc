@@ -158,3 +158,36 @@ PR별 실제 사용 기록 표는 다음과 같다.
 - 재작업이 있었더라도 요구사항·테스트·문서 중 무엇이 문제였는지 분리한다. 모델 문제가 아닌 지시 불명확·기존 코드 버그·인프라 장애를 모델 등급에 반영하지 않는다.
 - 무료 한도, API 장애, 업스트림 타임아웃은 모델 품질 판정과 별도로 기록한다.
 - 모델 카탈로그·가격·도구 호출 지원은 실행 시점에 다시 확인한다. 이 문서의 목록은 현재 결정을 돕는 기록이지 영구적인 최신 목록이 아니다.
+
+## 8. 2026-10-30 무료 모델 관찰 기록 (임시)
+
+### 2026-10-30 OpenRouter 단답 probe (시간 순, 직접 실측만 기록)
+
+모든 후보는 무료 비용 표기(`:free`) 그대로 확인했으며, 실제 응답은 단답(pass) 수준만 확인했다. **작업 적합성(코드 수정, 테스트 작성, 문서 편집의 품질)은 어떤 모델도 평가하지 않았으므로 `작업 적합성 평가 미실시`로 구분한다.** 초 단위 시간은 도구 실행에서 관찰한 대략값이며, 분 단위 추측은 넣지 않는다. 표본은 단답 probe라 역할 추천/품질 등급에 반영하지 않는다.
+
+| 순서 | 모델 ID (비용) | 관찰 결과 | Build 줄 모델명 | 응답 시간 | 코드 변경 여부 | 역할 적합성 | 비고 |
+|---|---|---|---|---|---|---|---|
+| 1 | `openrouter/recursive/flint-v1.0:free` | FAIL | — (Build 화면 미확인) | — | 없음 (0건) | 평가 미실시 | Orca worker launch error ‘no upstreams available’. worker task abandon. 파일 변경 0. |
+| 2 | `openrouter/cohere/north-mini-code:free` | PASS (단답) | `cohere/north-mini-code:free` | 약 5초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+| 3 | `openrouter/google/gemma-4-31b-it:free` | 미확정 (30초 내 본문 없음) | `google/gemma-4-31b-it:free` | 30초 안에 본문 없음 | 미평가 | 평가 미실시 | 정확 outcome 미확정. |
+| 4 | `openrouter/google/gemma-4-26b-a4b-it:free` | FAIL (무응답) | `google/gemma-4-26b-a4b-it:free` | 총 60초 미응답 뒤 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 5 | `openrouter/xingchen-agi/xing4.0-29b-a4b:free` | FAIL (무응답) | `xingchen-agi/xing4.0-29b-a4b:free` | 30초 미응답 뒤 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 6 | `openrouter/nvidia/nemotron-3.5-lightning:free` | PASS (단답) | `nvidia/nemotron-3.5-lightning:free` | 약 5.7초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+| 7 | `openrouter/liquid/lfm-2.5-2.6b:free` | PASS (단답) | `liquid/lfm-2.5-2.6b:free` | 약 4.2초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+
+OpenRouter `free-models-per-day-high-balance`는 계정 전체 일일 한도임이 worker escalation에서 확인됐으므로, 당일 OpenRouter 재배정을 중단하고 OpenCode Zen으로 전환했다.
+
+### 2026-10-30 OpenCode Zen 단답 probe (시간 순, 직접 실측만 기록)
+
+`opencode models`에서 이들 ID가 `opencode/` 무료 카탈로그에 나온 사실만 무료 표기로 적는다. 초 단위 시간은 도구 실행에서 관찰한 대략값이다.
+
+| 순서 | 모델 ID (비용) | 관찰 결과 | Build 줄 모델명 | 응답 시간 | 코드 변경 여부 | 역할 적합성 | 비고 |
+|---|---|---|---|---|---|---|---|
+| 1 | `opencode/nemotron-3.5-lightning-free` | PASS (단답) | `nemotron-3.5-lightning-free` | 약 5.4초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+| 2 | `opencode/beam-free` | PASS (단답) | `beam-free` | 약 5.1초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+| 3 | `opencode/flint-40b-free` | PASS (단답) | `flint-40b-free` | 약 7.7초 | 미평가 | 작업 적합성 평가 미실시 | 단답 probe만 수행. |
+| 4 | `opencode/mimo-v2.6-flash-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 5 | `opencode/glm-5.3-flash-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 6 | `opencode/deepseek-v4.1-flash-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 7 | `opencode/big-pickle` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 8 | `opencode/nemotron-3.5-super-vl-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
