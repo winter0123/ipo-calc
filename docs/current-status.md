@@ -1,5 +1,49 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## v7 변경 선별 검토 및 통합 (2026-10-30, 현재)
+
+- Run `run_d65f7f73ea85`, coordinator `term_5dd38159-a03f-454a-b7fb-6c7da47605a1`. 실제 고정 작업공간은 Orca `worktree list` 결과를 사용한다.
+- main 반영 완료: UI 기본 구현 `10fb6143`, OpenCode 무료 모델 실측 `8f985bd8`, 임퍼소네이션 중 관리자 경로 차단 `9b9abde5`, AdminLayout 회귀 테스트 `83ce5e07`, 다른 탭 캐시 동기화·테스트 `079d1ff5`.
+- UI Master 검증: typecheck PASS, lint PASS(4 warnings), 관련 Vitest PASS(21+3+6+4 tests), production build PASS. 전체 Vitest는 753개 중 22개 FAIL로 기준선에서도 같은 22개가 실패했으며 신규 실패는 확인되지 않았다.
+- 테스트 복구: backend 테스트 전체 검색에서 `@Disabled` 0건. 슬롯4 Master 전체 실행 `./gradlew test --rerun`: 1,102 tests, 20 failures, 0 skipped — FAIL. 활성화된 기존 테스트에서 순환 의존, IPO 기대값·데이터 격리, 후속 컨텍스트의 DB 연결/테이블 부재, 청약 잔여행 문제가 드러났다.
+- 백엔드 구현은 아직 main에 병합하지 않았다. backend-members `task_d7f5395d15e4` / dispatch `ctx_94a322ecafa5`에 최종 상태·정산을 요청했으나, 현재까지 worker_done이나 변경 diff가 없고 Orca liveness는 `unverifiable`(자원은 owned)이다. 이를 완료·실패·종료로 간주하지 않고 보존한다. 이어 모듈 순환 수정 `task_87c34cfaea75`, 복구 후 통합 테스트 격리 `task_1ce1ae9235fc`, 계정 격리 `task_252783ea059f`, 로컬 CSRF 설정 `task_d2a651380b69`가 남아 있다.
+- Allocation 전용 실패는 Master 재실행에서 재현되지 않아 `task_12ce5394471c`를 NOT_REPRODUCED/failed로 닫았다. 구조화 워커는 마지막 활동 후 25분 무응답으로 abandon했으나 Orca가 identity_unproven 자원을 retained 상태로 두어 backend-security 작업공간 재배정은 보류한다. 부분 변경은 보존했다.
+- 운영 Origin gate `gate_b376cafb023d`가 사용자 결정을 기다린다. `infra/ansible`·`infra/caddy` 수정, 운영 배포는 NOT_RUN.
+- 다음 순서: AdminUserService 결과 검토 → 모듈 cycle 해소 → 복구된 통합 테스트 재검증 → 전체 슬롯4 검증 → 대상별 effective-account 격리/CSRF 로컬 설정 → 운영 Origin gate 결정 후에만 인프라 범위 판단.
+
+## v7 수정 진행 (2026-10-30)
+
+- 사용자 수정 승인. Run `run_d65f7f73ea85`, coordinator `term_5dd38159-a03f-454a-b7fb-6c7da47605a1`.
+- planning: `/Users/joy/orca/workspaces/ipo-calc/planning`. Lightning 2회 및 Flint 완료물을 Master 의미검증 `FAIL` 반려. Flint dispatch release/터미널 종료/메시지 ACK 완료. 현재 OpenRouter `cohere/north-mini-code:free`, task `task_87a01de7d36b`, dispatch `ctx_b8585d345e35`가 허위 API·응답 AC·SF 분해 오류 한정 교정 중.
+- security: `/Users/joy/orca/workspaces/ipo-calc/backend-security`, OpenRouter Nemotron3 Ultra 무료, `ctx_8374bcdb7efc`, `task_cbc97e2c567f`, 슬롯1. Zen 무료 한도 이후 사용자가 모델 전환.
+- members: `/Users/joy/orca/workspaces/ipo-calc/backend-members`, OpenRouter Inkling 무료, `ctx_953710b9875a`, `task_e3ef79bce79b`, 슬롯2. Zen 한도 소진 dispatch 종료 후 부분 변경 보존하여 재배정.
+- frontend: `/Users/joy/orca/workspaces/ipo-calc/frontend`, OpenRouter `nvidia/nemotron-3.5-super-vl:free`, `ctx_59292c00b5c4`, `task_2f3328d5bd00`, terminal `term_cf855199-6422-4f97-b4f3-a15992fa96a7`. Zen MiMo 무료 한도 오류 확인 후 사용자 지시로 기존 터미널 종료, 부분 변경 보존, 명령어로 모델 지정하여 새 터미널 생성. 무료 가격0·tools 지원·단일 OK 응답·Build 모델 확인 후 retry-of 배정 완료.
+- 기존 main backend 미커밋 변경을 각 worktree로 그대로 복사해 보존. worker는 범위 밖 편집·커밋 금지. planning 승인 전 제품 편집 대기, 소스조사 병렬. 반려 이유와 정본 유지 지시를 Orca로 전파.
+- 사용자가 OpenRouter 키를 직접 연결한 뒤 현재 provider 정상. 초반 provider 미등록은 과거 시점 관찰. 신규 워커는 OpenRouter 무료 모델 ID를 `worker-start --agent opencode --model ...`로 명시해 실행하고 모델 선택 UI는 조작하지 않는다.
+- 작업 상태·의존성·완료 수집은 Orca Task/Dispatch/inbox로 관리. watchdog은 오류·정지 감지 보조에만 사용. 완료 수신 즉시 Master 검토·재작업 판단·lifecycle 정산한다.
+- 문서 diff check `PASS`, 의미검증 `FAIL`. 새 구현 통합 검증 `NOT_RUN`. Master 검증 슬롯4. 운영 배포 `NOT_RUN`.
+
+
+## v7 기존 구현 검토 (2026-10-30)
+
+- 범위: 기존 미커밋 관리자 회원 관리·임퍼소네이션 변경 읽기 전용 검토. 제품 코드 수정·배포 없음.
+- 실제 스택: Boot 4.1.1 / Security 7.1.1 / Spring Session JDBC.
+- 검증: 슬롯4 test PASS(1,096 중 skipped57, failures0), Checkstyle FAIL(main762/test9), Spotless FAIL(39파일), diff check PASS. CSRF 프로필 false이므로 신규 보안 기능 PASS 근거 아님.
+- 확인: 관리자 API 조회 차단 누락, 대시보드 actor/subject 혼용, 동시 시작 DB 유일성 부재, 영속 감사 호출 부재. 회원 통계0·투자내역 빈페이지 TODO, UI/CSRF 연동 없음. 종료 마커 제거 및 invalidateImpersonationMarker 미구현.
+- 운영 infra는 Caddy가 /api 접두사를 제거하므로 신규 /api/admin 매핑과 충돌. trusted Origin 설정 전달도 보완 필요. 운영 서버 접속·배포 NOT_RUN.
+- 기존 테스트6개 삭제 및57개 비활성화 확인. 복구 후 신규 보안/회귀 테스트 필요.
+- 무료 MiMo 워커 `ctx_075c93d2f633`의 worker_done 수집·근거 대조 완료. 완료 보고의 만료 마커 정리 주장은 활성 조회가 이미 만료 행을 제외한다는 점을 반영해 정정했다. release·터미널 종료·ACK 처리.
+- 다음 단계: 검토 보고 후 승인된 범위에 따라 Phase0/SF 계획을 워커로 정리하고 결함 수정.
+
+## Master 세션 준비 (2026-10-30)
+
+- Run: `run_d65f7f73ea85`, coordinator: `term_5dd38159-a03f-454a-b7fb-6c7da47605a1`.
+- 실제 Orca 작업공간은 메인 `/Users/joy/IdeaProjects/ipo-calc`만 존재하며 backend/frontend/planning 작업공간은 없다.
+- watchdog: `term_49f1a7a7-921e-48a7-a210-b2f86fd4e181`, 120초 주기. 새 Run 워커는 없다.
+- 관리자 회원 조회·임퍼소네이션·감사 로그 관련 기존 미커밋 변경을 확인하고 보존했다. 이번 세션 구현 범위는 아직 지정되지 않았다.
+- 필수 운영 문서 확인 PASS. 제품 검증 NOT_RUN. `docs/CODEX-NAVIGATION-GUIDE.md`와 `docs/handoff/`는 없다.
+- 다음 단계: 사용자 작업 범위 확정 후 관련 코드·테스트·설계를 추가 대조하고 SF DAG 및 무료 워커를 배정한다.
+
 ## 개발·운영 환경 설정 정리 (2026-10-26)
 
 - 개발 환경 파일을 루트 `.envrc`에서 `.env-local`로 옮겼다. 값은 Compose dotenv와 shell source에서 함께 쓸 수 있도록 `KEY=value` 형식이며 파일 권한은 `0600`이다. 개인 시크릿 값은 문서에 기록하지 않는다.
