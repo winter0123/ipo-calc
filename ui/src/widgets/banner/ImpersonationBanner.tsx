@@ -34,7 +34,6 @@ export default function ImpersonationBanner() {
   const handleEnd = useCallback(async () => {
     try {
       await end()
-      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_CHANGE_KEY }))
     } catch {
       // 종료 오류는 endError로 노출
     }

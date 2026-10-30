@@ -35,7 +35,7 @@ function setup(impersonating: boolean) {
       <ImpersonationBanner />
     </QueryClientProvider>,
   )
-  return { end }
+  return { end, queryClient }
 }
 
 describe('ImpersonationBanner', () => {
@@ -57,5 +57,27 @@ describe('ImpersonationBanner', () => {
   it('임퍼소네이션 중이 아니면 렌더링되지 않는다', () => {
     setup(false)
     expect(screen.queryByText('임퍼소네이션 중')).toBeNull()
+  })
+
+  it('storage 이벤트 key=impersonation-changed 시 캐시를 비우고 status query를 invalidate한다', () => {
+    const { queryClient } = setup(true)
+    const cancelSpy = vi.spyOn(queryClient, 'cancelQueries')
+    const clearSpy = vi.spyOn(queryClient, 'clear')
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'impersonation-changed' }))
+    expect(cancelSpy).toHaveBeenCalled()
+    expect(clearSpy).toHaveBeenCalled()
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['impersonation', 'status'] })
+  })
+
+  it('관련 없는 storage key 이벤트는 캐시를 비우지 않는다', () => {
+    const { queryClient } = setup(true)
+    const cancelSpy = vi.spyOn(queryClient, 'cancelQueries')
+    const clearSpy = vi.spyOn(queryClient, 'clear')
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'other-key' }))
+    expect(cancelSpy).not.toHaveBeenCalled()
+    expect(clearSpy).not.toHaveBeenCalled()
+    expect(invalidateSpy).not.toHaveBeenCalled()
   })
 })

@@ -3,6 +3,17 @@ import { endImpersonation, impersonationStatus, startImpersonation } from './api
 import { impersonationKeys } from './queryKeys.ts'
 import { csrfBootstrap } from '@/shared/api/client.ts'
 
+export const IMPERSONATION_CHANGED_KEY = 'impersonation-changed'
+
+export function broadcastImpersonationChange() {
+  try {
+    localStorage.setItem(IMPERSONATION_CHANGED_KEY, String(Date.now()))
+    localStorage.removeItem(IMPERSONATION_CHANGED_KEY)
+  } catch {
+    // 저장소 접근 불가 환경은 무시한다.
+  }
+}
+
 /**
  * 임퍼소네이션 상태와 시작/종료를 다루는 훅.
  * actor(로그인 관리자) 인증 정보와 subject(조회 대상 회원) 컨텍스트를 분리한다.
@@ -28,6 +39,7 @@ export function useImpersonation({ isAdmin }: { isAdmin: boolean }) {
       } catch {
         // 저장소 접근 불가 환경은 무시한다.
       }
+      broadcastImpersonationChange()
     },
   })
 
@@ -41,6 +53,7 @@ export function useImpersonation({ isAdmin }: { isAdmin: boolean }) {
       } catch {
         // 저장소 접근 불가 환경은 무시한다.
       }
+      broadcastImpersonationChange()
     },
   })
 
