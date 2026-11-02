@@ -1,5 +1,13 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 최신 상태: 홈 Linux 운영 서버 재배포 (2026-11-02)
+
+- 배포 커밋 `e39d024`를 집 Ubuntu 서버 `joyhp`에 반영했다. 백엔드는 `clean bootJar` PASS 후 Ansible 배포, systemd `active`; UI 정적 파일과 Caddy 설정도 배포했다.
+- 운영 환경파일에서 CSRF Origin 값이 없어 백엔드 배포 전 기존 파일을 백업하고 `APP_CSRF_TRUSTED_ORIGIN=https://ipocalc.duckdns.org` 한 항목만 추가했다. 나머지 비밀값은 수정하지 않았다. Orca gate `gate_b376cafb023d`는 HTTPS 도메인만 허용하는 결정으로 resolve했다.
+- `deploy-backend.yml`: PASS(8 tasks, failed 0). `deploy-ui.yml`: PASS(20 tasks, failed 0). Caddy 설정 validate/restart 및 backend reverse-proxy 확인 PASS.
+- 사후 smoke: Tailscale HTTP 웹 200, `/api/ipos` 37건, `/api/market-holidays` 24건. 공개 HTTPS 웹 200, `/api/ipos` 37건. CSRF bootstrap 200, `XSRF-TOKEN` cookie 발급, `X-XSRF-TOKEN` 헤더명 확인.
+- 소스 커밋은 원격 main에 배포 완료. 백업 복원, 모바일 데이터 등 외부망 검증은 이번 배포 범위에서 NOT_RUN.
+
 ## 최신 상태: OpenCode 하위 에이전트 watchdog 감시 보강 (2026-11-02)
 
 - 사용자 지시로 `scripts/orca-worker-watchdog.py`가 Orca 활성 Dispatch뿐 아니라 저장소 내 OpenCode 터미널, OpenCode DB `session.parent_id` 기반 하위 세션도 읽기 전용으로 검사하도록 보강했다.
