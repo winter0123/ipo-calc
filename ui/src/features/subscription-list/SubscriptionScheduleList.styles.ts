@@ -86,6 +86,23 @@ export const StyleScope = styled.div`
     text-align: center;
     color: var(--ink-muted);
   }
+  .s-ee1412e-underwriterChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: var(--space-2);
+  }
+  .s-ee1412e-underwriterChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-size: 12px;
+    white-space: nowrap;
+  }
   @media (max-width: 640px) {
     .s-ee1412e-header,
     .s-ee1412e-subscription {

@@ -8,34 +8,12 @@ import IpoCalendar from './IpoCalendar.tsx'
 import type { Ipo } from '@/entities/ipo/index.ts'
 import type { CalendarEventType } from '@/features/ipo-calendar/index.ts'
 import { apiFetch } from '@/shared/api/client.ts'
+import { makeIpo } from '@/test/ipoFixture.ts'
 import styles from './IpoCalendar.styles.ts'
 
 vi.mock('@/shared/api/client.ts', () => ({
   apiFetch: vi.fn(),
 }))
-
-function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
-  return {
-    id: 1,
-    companyName: '테스트기업',
-    ipoName: '테스트IPO',
-    stockCode: '123456',
-    roundLabel: '1',
-    lowerBandPrice: 10000,
-    upperBandPrice: 15000,
-    fixedPrice: 0,
-    subscriptionStartDate: '2026-10-01T09:00:00Z',
-    subscriptionEndDate: '2026-10-02T17:00:00Z',
-    listingDate: '2026-10-15T09:00:00Z',
-    refundDate: null,
-    refundDateEstimated: null,
-    offeringShareCount: 1000000,
-    status: 'ACTIVE',
-    createdAt: '2026-09-01T00:00:00Z',
-    updatedAt: '2026-09-01T00:00:00Z',
-    ...overrides,
-  }
-}
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -269,7 +247,60 @@ describe('IpoCalendar', () => {
     await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
 
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
-    await waitFor(() => expect(region).toHaveTextContent('주관사 미래에셋증권 · KB증권'))
+    await waitFor(() => {
+      expect(region).toHaveTextContent('미래에셋증권')
+      expect(region).toHaveTextContent('KB증권')
+    })
+    // '주관사' 접두어는 제거되어야 함
+    expect(region).not.toHaveTextContent('주관사')
+  })
+
+  it('환불 이벤트 상세에서 모든 주관사 칩이 표시되고 접두어 없음', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[
+          makeIpo({
+            subscriptionStartDate: '2026-10-05T09:00:00Z',
+            subscriptionEndDate: '2026-10-07T17:00:00Z',
+            refundDate: '2026-10-10T09:00:00Z',
+          }),
+        ]}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['REFUND'])}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /^10월 10일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => {
+      expect(region).toHaveTextContent('미래에셋증권')
+      expect(region).toHaveTextContent('KB증권')
+    })
+    expect(region).not.toHaveTextContent('주관사')
+  })
+
+  it('상장 이벤트 상세에서 모든 주관사 칩이 표시되고 접두어 없음', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[
+          makeIpo({
+            subscriptionStartDate: '2026-10-05T09:00:00Z',
+            subscriptionEndDate: '2026-10-07T17:00:00Z',
+            listingDate: '2026-10-20T09:00:00Z',
+          }),
+        ]}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['LISTING'])}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /^10월 20일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => {
+      expect(region).toHaveTextContent('미래에셋증권')
+      expect(region).toHaveTextContent('KB증권')
+    })
+    expect(region).not.toHaveTextContent('주관사')
   })
 
   it('청약 기간 전·중인 청약 일정에는 청약 등록 링크가 ipoId와 함께 보인다', async () => {
@@ -285,10 +316,8 @@ describe('IpoCalendar', () => {
     await userEvent.click(screen.getByRole('button', { name: /^10월 10일/ }))
 
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
-    expect(within(region).getByRole('link', { name: /청약 등록/ })).toHaveAttribute(
-      'href',
-      '/subscriptions/register?ipoId=5',
-    )
+    // 달력 상세에서는 청약 등록 링크 제거; /subscriptions 목록에서 유지
+    expect(within(region).queryByRole('link', { name: /청약 등록/ })).not.toBeInTheDocument()
   })
 
   it('청약 기간이 지난 일정에는 청약 등록 링크가 없다', async () => {

@@ -18,8 +18,6 @@ import {
 import { SelectedDayDetail } from './IpoCalendarParts.tsx'
 import { toLocalYmd } from '@/shared/lib/date.ts'
 
-
-
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
 type CalendarGridStyle = CSSProperties & Record<`--calendar-${string}`, string>
@@ -65,7 +63,10 @@ export default function IpoCalendar({
     return isTodayInMonth ? todayYmd : null
   })
   const { data: holidayData } = useMarketHolidays(year)
-  const holidayMap = useMemo(() => new Map(holidayData?.map((h) => [h.date, h.name]) ?? []), [holidayData])
+  const holidayMap = useMemo(
+    () => new Map(holidayData?.map((h) => [h.date, h.name]) ?? []),
+    [holidayData],
+  )
 
   const [isMobile, setIsMobile] = useState(false)
   const detailRef = useRef<HTMLElement>(null)
@@ -102,13 +103,16 @@ export default function IpoCalendar({
     // 모바일에서 날짜 클릭 시 상세 영역으로 스크롤
     if (isMobile && detailRef.current) {
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      detailRef.current.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' })
+      detailRef.current.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      })
     }
   }
 
   const weekRows = useMemo(
-    () => buildWeekRows(startingDayOfWeek, daysInMonth),
-    [startingDayOfWeek, daysInMonth],
+    () => buildWeekRows(startingDayOfWeek, daysInMonth, isMobile),
+    [startingDayOfWeek, daysInMonth, isMobile],
   )
 
   const formatDateKey = useCallback(

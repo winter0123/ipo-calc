@@ -142,7 +142,7 @@ export const StyleScope = styled.div`
     font-size: 13px;
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 640px) {
     .s-7a498b2-range {
       flex-direction: column;
     }
