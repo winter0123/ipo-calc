@@ -37,7 +37,8 @@ class IpoRepositoryTest {
   }
 
   private String uniqueCorpCode() {
-    return "12345678" + ThreadLocalRandom.current().nextLong(100000, 999999);
+    // corp_code는 varchar(8)이므로 8자 이내로 생성
+    return "C" + String.format("%07d", ThreadLocalRandom.current().nextLong(0, 9999999));
   }
 
   @Test

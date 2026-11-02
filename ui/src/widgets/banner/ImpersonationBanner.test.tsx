@@ -25,11 +25,11 @@ function setup(impersonating: boolean) {
     end,
     isPending: false,
     endError: null,
-  } as any)
+  } as unknown as ReturnType<typeof useImpersonation>)
   vi.mocked(useCurrentAccount).mockReturnValue({
     data: { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'ADMIN' },
     isPending: false,
-  } as any)
+  } as unknown as ReturnType<typeof useCurrentAccount>)
   render(
     <QueryClientProvider client={queryClient}>
       <ImpersonationBanner />

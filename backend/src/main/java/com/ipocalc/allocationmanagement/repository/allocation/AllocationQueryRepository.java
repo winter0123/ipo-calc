@@ -3,6 +3,8 @@ package com.ipocalc.allocationmanagement.repository.allocation;
 import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /** 배정 도메인의 조인·집계 QueryDSL 저장소. */
 public interface AllocationQueryRepository {
@@ -18,4 +20,8 @@ public interface AllocationQueryRepository {
   /** 계정과 선택 필터에 해당하는 배정 내역을 조회한다. */
   List<Allocation> findAllByAccountWithFilters(
       Long accountId, Long subscriptionId, Long investorId);
+
+  /** 계정과 선택 필터에 해당하는 배정 내역을 페이지로 조회한다. */
+  Page<Allocation> findPageByAccountWithFilters(
+      Long accountId, Long subscriptionId, Long investorId, Pageable pageable);
 }

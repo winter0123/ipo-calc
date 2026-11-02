@@ -102,7 +102,21 @@ class AuthControllerTest {
 
     assertThat(status).as("올바른 자격증명으로 로그인 시 200을 반환해야 합니다").isEqualTo(200);
     assertThat(setCookieHeader).as("로그인 성공 시 세션 쿠키(JSESSIONID)가 발급되어야 합니다").isNotNull();
-    assertThat(setCookieHeader).as("JSESSIONID 쿠키는 HttpOnly 속성을 가져야 합니다").contains("HttpOnly");
+    // Set-Cookie 헤더는 첫 번째 쿠키(XSRF-TOKEN)만 반환하므로, 쿠키 리스트에서 JSESSIONID를 찾아 HttpOnly 검증
+    var cookies = result.getResponse().getCookies();
+    var jsessionIdCookie =
+        java.util.Arrays.stream(cookies).filter(c -> "JSESSIONID".equals(c.getName())).findFirst();
+    assertThat(jsessionIdCookie).as("JSESSIONID 쿠키가 존재해야 합니다").isPresent();
+    assertThat(jsessionIdCookie.get().isHttpOnly())
+        .as("JSESSIONID 쿠키는 HttpOnly 속성을 가져야 합니다")
+        .isTrue();
+    // XSRF-TOKEN은 JS에서 읽을 수 있어야 하므로 HttpOnly=false가 정상
+    var xsrfTokenCookie =
+        java.util.Arrays.stream(cookies).filter(c -> "XSRF-TOKEN".equals(c.getName())).findFirst();
+    assertThat(xsrfTokenCookie).as("XSRF-TOKEN 쿠키가 존재해야 합니다").isPresent();
+    assertThat(xsrfTokenCookie.get().isHttpOnly())
+        .as("XSRF-TOKEN 쿠키는 HttpOnly=false여야 합니다(JS 접근용)")
+        .isFalse();
     // Note: 실제 구현에서는 리다이렉트(302)가 될 수 있지만, 명세에서는 200을 기대한다고 해석
     // AC-004에서는 대시보드로 리다이렉트한다고 되어있으므로 302일 수 있음
     // 하지만 테스트 요구사항에서는 200과 세션 쿠키 반환이라고 명시했으므로 200으로 맞춤

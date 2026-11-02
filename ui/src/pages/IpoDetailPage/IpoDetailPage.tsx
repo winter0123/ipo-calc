@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
-import { useIpo } from '@/entities/ipo/index.ts'
+import { useIpo, useIpoInsight } from '@/entities/ipo/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
@@ -15,6 +15,7 @@ export default function IpoDetailPage() {
   const isValidId = !Number.isNaN(id) && id > 0
 
   const { data: ipo, isLoading, error } = useIpo(isValidId ? id : undefined)
+  const { data: insight } = useIpoInsight(isValidId ? id : undefined)
   const { data: account, isPending: accountPending } = useCurrentAccount()
   const isGuest = !accountPending && !account
 
@@ -66,11 +67,15 @@ export default function IpoDetailPage() {
       return { label: '청약 진행 중', className: styles.statusInProgress }
     if (today > end && (!listing || today < listing))
       return { label: '청약 마감', className: styles.statusClosed }
-    if (listing && today >= listing) return { label: '상장 완료', className: styles.statusListed }
+    if (listing && today === listing) return { label: '상장일', className: styles.statusListed }
+    if (listing && today > listing) return { label: '상장 완료', className: styles.statusListed }
     return { label: '알 수 없음', className: styles.statusUnknown }
   }
 
   const status = getStatus(ipo)
+  const underwriterNames = [
+    ...new Set((insight?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+  ]
   // 청약 기간이 끝나기 전(예정·진행 중)에만 등록 버튼을 보인다.
   const canRegister = status.label === '청약 예정' || status.label === '청약 진행 중'
   const registerPath = `/subscriptions/register?ipoId=${id}`
@@ -113,6 +118,9 @@ export default function IpoDetailPage() {
             <div className={styles.meta}>
               <span className={styles.company}>{ipo!.companyName}</span>
               <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
+              {underwriterNames.length > 0 && (
+                <span className={styles.underwriters}>주관사 {underwriterNames.join(' · ')}</span>
+              )}
             </div>
           </header>
 

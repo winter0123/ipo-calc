@@ -123,10 +123,8 @@ public class AllocationService {
     if (request == null) {
       throw new AllocationValidationException("배정 등록 정보는 필수입니다.");
     }
-    if (request.getAllocatedQuantity() == null
-        || request.getAllocatedAt() == null) {
-      throw new AllocationValidationException(
-          "allocatedQuantity, allocatedAt는 필수입니다.");
+    if (request.getAllocatedQuantity() == null || request.getAllocatedAt() == null) {
+      throw new AllocationValidationException("allocatedQuantity, allocatedAt는 필수입니다.");
     }
     validateAmountAndText(
         request.getAllocationPrice(), request.getAllocationMethod(), request.getNote());

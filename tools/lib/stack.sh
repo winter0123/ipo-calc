@@ -49,16 +49,27 @@ stack_up() {
   fi
   echo "백엔드 포트 $API, 프론트 포트 $WEB"
   cat > "$UI_DIR/vite.scan.config.ts" <<CFG
-import { defineConfig, mergeConfig } from 'vite'
 import base from './vite.config.ts'
-export default mergeConfig(base, defineConfig({
-  server: { proxy: { '/api-proxy': { target: 'http://127.0.0.1:${API}', rewrite: (p) => p.replace(/^\/api-proxy/, '') } } },
-}))
+export default {
+  ...base,
+  server: {
+    ...base.server,
+    // Replace the broad /api proxy; otherwise it intercepts /api-proxy and sends
+    // the leftover -proxy path to the default localhost:8080 target.
+    proxy: {
+      '/api-proxy': {
+        target: 'http://127.0.0.1:${API}',
+        rewrite: (path) => path.replace(/^\/api-proxy/, ''),
+      },
+    },
+  },
+}
 CFG
   key=$(head -c 32 /dev/urandom | base64); bkey=$(head -c 32 /dev/urandom | base64)
   ([ -z "${E2E_JDBC_URL:-}" ] || export SPRING_DATASOURCE_URL="$E2E_JDBC_URL"; cd "$ROOT/backend" && DB_NAME="$DBN" DB_PASSWORD="$DB_PASSWORD" APP_ENCRYPTION_KEY="$key" APP_ENCRYPTION_BROKER_KEY="$bkey" \
     APP_IPO_SYNC_ENABLED=false APP_HOLIDAY_SYNC_ENABLED=false \
     APP_RATE_LIMIT_AUTH_PER_MINUTE=100000 APP_RATE_LIMIT_PUBLIC_READ_PER_MINUTE=100000 APP_SIGNUP_MODE="$mode" \
+    APP_CSRF_TRUSTED_ORIGIN="http://127.0.0.1:$WEB" \
     SERVER_PORT="$API" ./gradlew bootRun --args="--server.port=$API" >"$TMP/backend.log" 2>&1) &
   (cd "$UI_DIR" && VITE_API_BASE_URL=/api-proxy pnpm exec vite --config vite.scan.config.ts --host 127.0.0.1 --port "$WEB" --strictPort >"$TMP/vite.log" 2>&1) &
   for _ in $(seq 1 120); do

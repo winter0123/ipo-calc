@@ -11,6 +11,9 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 /** 매도 도메인의 조인·집계 QueryDSL 구현. */
@@ -99,5 +102,52 @@ public class SaleQueryRepositoryImpl implements SaleQueryRepository {
         .where(predicate)
         .orderBy(sale.saleDate.desc(), sale.createdAt.desc())
         .fetch();
+  }
+
+  @Override
+  public Page<Sale> findActivePageByFilters(
+      Long accountId, Long allocationId, Long investorId, String investorName, Pageable pageable) {
+    BooleanBuilder predicate =
+        new BooleanBuilder()
+            .and(sale.deletedAt.isNull())
+            .and(sale.status.eq(RecordStatus.ACTIVE))
+            .and(investor.accountId.eq(accountId));
+    if (allocationId != null) {
+      predicate.and(sale.allocationId.eq(allocationId));
+    }
+    if (investorId != null) {
+      predicate.and(investor.id.eq(investorId));
+    }
+    if (investorName != null) {
+      predicate.and(investor.displayName.eq(investorName));
+    }
+    Pageable effectivePageable = pageable == null ? Pageable.unpaged() : pageable;
+    List<Sale> content =
+        queryFactory
+            .selectFrom(sale)
+            .join(allocation)
+            .on(sale.allocationId.eq(allocation.id))
+            .join(subscription)
+            .on(allocation.subscriptionId.eq(subscription.id))
+            .join(investor)
+            .on(subscription.investorId.eq(investor.id))
+            .where(predicate)
+            .orderBy(sale.saleDate.desc(), sale.createdAt.desc())
+            .offset(effectivePageable.getOffset())
+            .limit(effectivePageable.getPageSize())
+            .fetch();
+    Long total =
+        queryFactory
+            .select(sale.count())
+            .from(sale)
+            .join(allocation)
+            .on(sale.allocationId.eq(allocation.id))
+            .join(subscription)
+            .on(allocation.subscriptionId.eq(subscription.id))
+            .join(investor)
+            .on(subscription.investorId.eq(investor.id))
+            .where(predicate)
+            .fetchOne();
+    return new PageImpl<>(content, effectivePageable, total == null ? 0L : total);
   }
 }

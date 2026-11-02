@@ -40,8 +40,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@ContextConfiguration(
-    classes = {com.ipocalc.IpoCalcApplication.class})
+@ContextConfiguration(classes = {com.ipocalc.IpoCalcApplication.class})
 class InvestmentHistoryControllerTest {
 
   @Autowired private MockMvc mockMvc;

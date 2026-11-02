@@ -19,7 +19,7 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 1. `orca worktree list --json`으로 실제 작업공간 경로를 확인한다(`docs/`에 적힌 경로를 믿지 않는다 — 접미사가 계속 바뀐다).
 2. `orca orchestration run-create`로 Run을 만든다. **세션이 중단됐다 재개되면 매번 `run-use --id <run_id>`로 다시 바인딩한다** — 프로세스 incarnation이 바뀌면 `consumer_fenced`로 조용히 끊긴다.
 3. **DAG를 한 번에 정의한다**: 이번 세션에 할 SF들을 `task-create`로 모두 만들고, 선행 관계는 `--deps '["<task_id>"]'`로 건다. 그러면 선행이 `completed`가 되는 순간 후속이 자동으로 `ready`가 된다.
-4. watchdog을 띄운다: `scripts/orca-worker-watchdog.py --loop 120`을 별도 터미널에서 실행.
+4. 통합 watchdog을 띄운다: `scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300`을 별도 터미널에서 한 번 실행한다. 120초마다 Dispatch·OpenCode 터미널·OpenCode 내부 하위 세션을 스캔하고, 300초마다 상태 요약/inbox 알림을 같은 프로세스에서 처리한다.
 
 ## 워커 운영
 
@@ -33,7 +33,7 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 
 ## 감시
 
-- 워커 터미널 원문을 주기적으로 읽지 않는다. `cat /tmp/orca-worker-status.txt`로 watchdog 요약만 본다.
+- 워커·OpenCode 하위 에이전트 터미널 원문을 주기적으로 읽지 않는다. `cat /tmp/orca-worker-status.txt`로 watchdog 요약만 본다.
 - 상태 파일에 `ERROR`/`STALL`이 찍힌 워커만 실제 터미널을 열어 확인한다.
 - 멈춘 워커 복구: `worker-abandon` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 무료 모델로 `terminal create` → `Build · <모델명>` 줄 확인 → `worker-start --retry-of <이전 dispatch>` → spec에 재개 문구 덧붙임.
 

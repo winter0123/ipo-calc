@@ -41,7 +41,7 @@ public class DashboardOwnershipVerifier {
 
   /** 현재 계정 소유의 ACTIVE Sale만 조회하도록 필터링 loadCalculatedSales()에서 호출하여 계정 스코프 강제. */
   public Long getCurrentAccountId() {
-    return securityUtils.getCurrentAccountId();
+    return securityUtils.getEffectiveAccountId();
   }
 
   private Long getInvestorIdFromSale(Sale sale) {

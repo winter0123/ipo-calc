@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, type CSSProperties } from 'react'
+import { useMemo, useState, useCallback, type CSSProperties, useEffect, useRef } from 'react'
 import {
   buildCalendarEvents,
   buildWeekSegments,
@@ -16,6 +16,9 @@ import {
   buildWeekRows,
 } from './calendarHelpers.ts'
 import { SelectedDayDetail } from './IpoCalendarParts.tsx'
+import { toLocalYmd } from '@/shared/lib/date.ts'
+
+
 
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -55,10 +58,25 @@ export default function IpoCalendar({
     year: initialYear ?? today.getFullYear(),
     month: initialMonth ?? today.getMonth() + 1,
   })
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => {
+    const todayYmd = toLocalYmd(today)
+    // 초기 진입 시 오늘 날짜 선택 (initialYear/month가 오늘과 같은 달일 때만)
+    const isTodayInMonth = year === today.getFullYear() && month === today.getMonth() + 1
+    return isTodayInMonth ? todayYmd : null
+  })
+  const { data: holidayData } = useMarketHolidays(year)
+  const holidayMap = useMemo(() => new Map(holidayData?.map((h) => [h.date, h.name]) ?? []), [holidayData])
 
-  const { data: holidays = [] } = useMarketHolidays(year)
-  const holidayMap = useMemo(() => new Map(holidays.map((h) => [h.date, h.name])), [holidays])
+  const [isMobile, setIsMobile] = useState(false)
+  const detailRef = useRef<HTMLElement>(null)
+
+  // 초기 width와 resize listener 동기화
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 640)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const allEvents = useMemo(() => buildCalendarEvents(ipos, year, month), [ipos, year, month])
 
@@ -81,6 +99,11 @@ export default function IpoCalendar({
 
   const handleDateClick = (date: string) => {
     setSelectedDate(date)
+    // 모바일에서 날짜 클릭 시 상세 영역으로 스크롤
+    if (isMobile && detailRef.current) {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      detailRef.current.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' })
+    }
   }
 
   const weekRows = useMemo(
@@ -99,11 +122,11 @@ export default function IpoCalendar({
       const weekDates: (string | null)[] = week.map((day) =>
         day === null ? null : formatDateKey(day),
       )
-      const { segments, laneCount } = buildWeekSegments(events, weekDates)
+      const { segments, laneCount } = buildWeekSegments(events, weekDates, isMobile)
       segmentsByWeek.set(weekIndex, { segments, laneCount })
     })
     return segmentsByWeek
-  }, [events, weekRows, formatDateKey])
+  }, [events, weekRows, formatDateKey, isMobile])
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return []
@@ -294,6 +317,7 @@ export default function IpoCalendar({
           </div>
 
           <SelectedDayDetail
+            ref={detailRef}
             selectedDate={selectedDate}
             holidayName={selectedDate ? holidayMap.get(selectedDate) : undefined}
             events={selectedDateEvents}

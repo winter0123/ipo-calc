@@ -11,6 +11,9 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 /** 배정 도메인의 조인·집계 QueryDSL 구현. */
@@ -82,5 +85,44 @@ public class AllocationQueryRepositoryImpl implements AllocationQueryRepository 
         .where(predicate)
         .orderBy(allocation.createdAt.desc())
         .fetch();
+  }
+
+  @Override
+  public Page<Allocation> findPageByAccountWithFilters(
+      Long accountId, Long subscriptionId, Long investorId, Pageable pageable) {
+    BooleanBuilder predicate =
+        new BooleanBuilder()
+            .and(allocation.deletedAt.isNull())
+            .and(investor.accountId.eq(accountId));
+    if (subscriptionId != null) {
+      predicate.and(allocation.subscriptionId.eq(subscriptionId));
+    }
+    if (investorId != null) {
+      predicate.and(investor.id.eq(investorId));
+    }
+    Pageable effectivePageable = pageable == null ? Pageable.unpaged() : pageable;
+    List<Allocation> content =
+        queryFactory
+            .selectFrom(allocation)
+            .join(subscription)
+            .on(allocation.subscriptionId.eq(subscription.id))
+            .join(investor)
+            .on(subscription.investorId.eq(investor.id))
+            .where(predicate)
+            .orderBy(allocation.createdAt.desc())
+            .offset(effectivePageable.getOffset())
+            .limit(effectivePageable.getPageSize())
+            .fetch();
+    Long total =
+        queryFactory
+            .select(allocation.count())
+            .from(allocation)
+            .join(subscription)
+            .on(allocation.subscriptionId.eq(subscription.id))
+            .join(investor)
+            .on(subscription.investorId.eq(investor.id))
+            .where(predicate)
+            .fetchOne();
+    return new PageImpl<>(content, effectivePageable, total == null ? 0L : total);
   }
 }

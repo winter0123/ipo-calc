@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { fill } from '@/test/fill'
@@ -47,9 +47,55 @@ const SECURITIES_ACCOUNTS = [
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
+  {
+    id: 2,
+    investorId: 1,
+    securitiesFirmId: 2,
+    securitiesFirmName: 'KB증권',
+    accountNumber: '****-****-****-1111',
+    accountName: '보조 계좌',
+    isDefault: false,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 3,
+    investorId: 1,
+    securitiesFirmId: 3,
+    securitiesFirmName: '하나은행',
+    accountNumber: '****-****-****-5555',
+    accountName: '은행 계좌',
+    isDefault: false,
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
 ]
 
 const IPOS = [
+  {
+    id: 1,
+    companyName: '테스트기업',
+    ipoName: '테스트기업 공모주',
+    stockCode: '123456',
+    roundLabel: '본청약',
+    lowerBandPrice: 10000,
+    upperBandPrice: 12000,
+    fixedPrice: 11000,
+    subscriptionStartDate: '2026-09-01',
+    subscriptionEndDate: '2026-09-02',
+    listingDate: '2026-09-15',
+    offeringShareCount: 1000000,
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+]
+
+const IPOS_WITH_UNDERWRITERS = [
   {
     id: 1,
     companyName: '테스트기업',
@@ -74,7 +120,45 @@ function mockDropdownFetches() {
     const pathStr = String(path)
     if (pathStr === '/investors') return INVESTORS
     if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-    if (pathStr === '/ipos') return IPOS
+    if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+    if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
+    throw new Error(`unexpected path: ${pathStr}`)
+  })
+}
+
+// GET /ipos/{id}/insight 응답. 주관사는 미래에셋증권·KB증권 둘 다다.
+const IPO_INSIGHT = {
+  syncedAt: '2026-01-01T00:00:00Z',
+  sourceReportName: null,
+  sourceUrl: null,
+  ceoName: null,
+  establishedOn: null,
+  address: null,
+  parValue: null,
+  capitalStock: null,
+  largestShareholderName: null,
+  largestShareholderRatio: null,
+  institutionalCompetitionRate: null,
+  lockUpCommitmentRatio: null,
+  financials: [],
+  floatSchedule: [
+    { label: '미래에셋증권', shares: 1000, ratio: 10 },
+    { label: 'KB증권', shares: 500, ratio: 5 },
+  ],
+  underwriters: [
+    { name: '미래에셋증권', role: '주관', shares: 1000 },
+    { name: 'KB증권', role: '공동주관', shares: 500 },
+  ],
+}
+
+// 계좌 목록만 바꿔 쓰는 드롭다운 목록 목 (주관사 인사이트는 IPO_INSIGHT 고정).
+function mockFetchesWithAccounts(accounts: typeof SECURITIES_ACCOUNTS) {
+  vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+    const pathStr = String(path)
+    if (pathStr === '/investors') return INVESTORS
+    if (pathStr === '/securities-accounts?investorId=1') return accounts
+    if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+    if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
     throw new Error(`unexpected path: ${pathStr}`)
   })
 }
@@ -294,7 +378,7 @@ describe('SubscriptionRegisterForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('이미 동일한 조건의 청약이 존재합니다.')).toBeInTheDocument()
+      expect(screen.getByText('이미 동일한 조건의 청약/배정이 존재합니다.')).toBeInTheDocument()
     })
     expect(mockNavigate).not.toHaveBeenCalled()
   })
@@ -373,6 +457,126 @@ describe('SubscriptionRegisterForm', () => {
       renderForm('/subscriptions/register?ipoId=999')
       await waitForDropdownsLoaded()
       expect(screen.getByLabelText('공모주')).toHaveValue('')
+    })
+  })
+
+  describe('주관사 기반 증권계좌 필터링', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      localStorage.setItem('currentInvestorId', '1')
+      vi.spyOn(window, 'alert').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('선택 IPO의 주관사 계좌만 표시하고 다른 증권사 계좌는 노출하지 않는다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      mockDropdownFetches()
+      renderForm('/subscriptions/register?ipoId=1')
+      await waitForDropdownsLoaded()
+
+      // 주관사 정보가 반영된 뒤에 검증한다 (로딩 중에는 기존 계좌 목록을 유지한다)
+      expect(await screen.findByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      })
+
+      // option label은 계좌의 securitiesFirmName이다
+      expect(screen.getByRole('option', { name: '미래에셋증권' })).toHaveValue('1')
+      expect(screen.getByRole('option', { name: 'KB증권' })).toHaveValue('2')
+      expect(screen.queryByRole('option', { name: '주력 계좌' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: '보조 계좌' })).not.toBeInTheDocument()
+      expect(alertSpy).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
+    it('일치하는 주관사 계좌가 없으면 안내 문구와 함께 /my-page로 이동한다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      // 계좌는 있지만 주관사와 매칭되지 않는 경우
+      mockFetchesWithAccounts([SECURITIES_ACCOUNTS[2]])
+
+      renderForm('/subscriptions/register?ipoId=1')
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          '미래에셋증권 · KB증권 주관사 증권계좌 등록이 필요합니다.',
+        )
+        expect(mockNavigate).toHaveBeenCalledWith('/my-page')
+      })
+      expect(alertSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('주관사 정보 로딩 중에는 알럿·이동이 없고, 로드 완료 후 1회만 처리한다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      let resolveInsight: (value: unknown) => void = () => {}
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return [SECURITIES_ACCOUNTS[2]]
+        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1/insight') {
+          return new Promise((resolve) => {
+            resolveInsight = resolve
+          })
+        }
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+
+      renderForm('/subscriptions/register?ipoId=1')
+      await waitForDropdownsLoaded()
+
+      // 로딩 중에는 알럿도 이동도 없다 (AC2)
+      expect(alertSpy).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
+
+      resolveInsight(IPO_INSIGHT)
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          '미래에셋증권 · KB증권 주관사 증권계좌 등록이 필요합니다.',
+        )
+        expect(mockNavigate).toHaveBeenCalledWith('/my-page')
+      })
+      expect(alertSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('일부 주관사 계좌만 있으면 해당 계좌를 표시하고 알럿·이동하지 않는다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      // 주관사 2곳 중 미래에셋증권 계좌만 등록된 경우
+      mockFetchesWithAccounts([SECURITIES_ACCOUNTS[0], SECURITIES_ACCOUNTS[2]])
+
+      renderForm('/subscriptions/register?ipoId=1')
+      await waitForDropdownsLoaded()
+
+      await waitFor(() => {
+        expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      })
+      expect(screen.getByRole('option', { name: '미래에셋증권' })).toHaveValue('1')
+      expect(screen.queryByRole('option', { name: 'KB증권' })).not.toBeInTheDocument()
+      expect(alertSpy).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
+    it('공모주를 고르기 전에는 전체 계좌를 보여 주고, 고른 뒤에는 주관사 계좌로 좁혀진다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      mockDropdownFetches()
+      renderForm()
+
+      await waitForDropdownsLoaded()
+      expect(await screen.findByRole('option', { name: '하나은행' })).toBeInTheDocument()
+      expect(alertSpy).not.toHaveBeenCalled()
+
+      await fill(screen.getByLabelText('공모주'), '1')
+
+      await waitFor(() => {
+        expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      })
+      expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'KB증권' })).toBeInTheDocument()
+      expect(alertSpy).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
     })
   })
 })

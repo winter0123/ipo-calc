@@ -141,6 +141,17 @@ export const StyleScope = styled.div`
     color: var(--danger);
     font-size: 13px;
   }
+
+  @media (max-width: 480px) {
+    .s-7a498b2-range {
+      flex-direction: column;
+    }
+
+    .s-7a498b2-field {
+      width: 100%;
+      min-width: 0;
+    }
+  }
 `
 
 export default styles

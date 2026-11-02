@@ -44,8 +44,38 @@ function createWrapper(initialEntries: string[] = ['/ipos/7']) {
   return Wrapper
 }
 
+const INSIGHT = {
+  syncedAt: null,
+  sourceReportName: null,
+  sourceUrl: null,
+  ceoName: null,
+  establishedOn: null,
+  address: null,
+  parValue: null,
+  capitalStock: null,
+  largestShareholderName: null,
+  largestShareholderRatio: null,
+  institutionalCompetitionRate: null,
+  lockUpCommitmentRatio: null,
+  financials: [],
+  floatSchedule: [],
+  underwriters: [
+    { name: '미래에셋증권', role: '주관', shares: 1000 },
+    { name: 'KB증권', role: '공동주관', shares: 500 },
+  ],
+}
+
 const stubFetch = (body: unknown, status = 200) =>
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string) =>
+      Promise.resolve(
+        new Response(JSON.stringify(String(input).endsWith('/insight') ? INSIGHT : body), {
+          status,
+        }),
+      ),
+    ),
+  )
 
 // /auth/me와 /ipos/7을 구분해 응답한다. account가 null이면 로그인 전(401)이다.
 const OPEN_PERIOD = {
@@ -136,14 +166,38 @@ describe('IpoDetailPage', () => {
 
     // 상장 완료: 상장일(2026-10-05) <= 오늘(2026-10-10)
     vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
-    stubFetch({
-      ...ipoBase,
-      subscriptionStartDate: '2026-09-20T09:00:00Z',
-      subscriptionEndDate: '2026-09-25T17:00:00Z',
-      listingDate: '2026-10-05T09:00:00Z',
-    })
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-05T09:00:00Z',
+      }),
+    )
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
     await vi.waitFor(() => expect(screen.getByText('상장 완료')).toBeInTheDocument())
+  })
+
+  it('상장 당일에는 상태를 상장일로 표시한다', async () => {
+    vi.setSystemTime(new Date('2026-10-05T12:00:00Z'))
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-05T09:00:00Z',
+      }),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => {
+      expect(screen.getByText('상장일', { selector: 'span' })).toBeInTheDocument()
+    })
+  })
+
+  it('상태 옆에 주관사 전체 이름을 표시한다', async () => {
+    stubFetch(makeIpo())
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    expect(await screen.findByText('주관사 미래에셋증권 · KB증권')).toBeInTheDocument()
   })
 
   it('null 필드는 "-"로 표시된다', async () => {

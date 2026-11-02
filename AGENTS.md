@@ -304,30 +304,26 @@ orca orchestration task-list --json
 
 ```bash
 # 별도 터미널에서 한 번 띄워두고 세션 내내 돌린다
-scripts/orca-worker-watchdog.py --loop 120
+scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle>
 # 옵션 없이 실행하면 현재 git 저장소(repo)의 모든 worktree를 점검한다
 # 수동 필터가 필요할 때만: scripts/orca-worker-watchdog.py --tree-filter "문자열" --loop 120
 # 코디네이터는 원문 대신 이 요약만 읽는다
 cat /tmp/orca-worker-status.txt
 ```
 
-watchdog은 활성 워커의 터미널을 훑어 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error` 등), 무출력 정지(기본 8분), **OpenCode 권한 질문(`Permission required` + `Allow once`/`Allow always`/`Reject`)**을 감지해 한 줄씩 적고, 실제 사용 중인 모델명도 같이 적는다(지정 모델과 다른 모델로 자동 폴백되는 사례가 반복 관찰됐다). **감지만 하고 재배정은 하지 않는다.** 상태 파일은 요약 확인용이며 워커 누락·오탐이 가능하므로, watchdog의 `OK`나 Orca의 `liveness: live`만으로 정상 작업·정지·완료를 단정하지 않는다. 이상 상태는 필요한 해당 워커의 실제 터미널/작업 결과로만 확인한다.
+watchdog은 활성 Dispatch 터미널과 저장소 worktree의 OpenCode 터미널을 훑고, OpenCode 로컬 DB의 `session.parent_id` 하위 세션도 읽기 전용으로 검사한다. 업스트림 에러, `OpenCode stopped while this response was in progress`, 권한 질문, 하위 세션의 무출력 정지를 감지하고 실제 사용 모델도 요약한다. **감지만 하고 재배정은 하지 않는다.** 상태 파일은 요약 확인용이며 워커 누락·오탐이 가능하므로, watchdog의 `OK`나 Orca의 `liveness: live`만으로 정상 작업·정지·완료를 단정하지 않는다. 이상 상태는 필요한 해당 워커/하위 세션의 실제 터미널과 결과로 확인한다.
 
-#### 코디네이터 알림(토큰 없이 대기)
+#### 통합 watchdog 알림
 
-| 층   | 역할                                                |
-| --- | ------------------------------------------------- |
-| 1   | watchdog(저장소 파이썬 스크립트 — 워커 화면을 읽어 상태 파일 기록)       |
-| 2   | Orca 메시지함(`orchestration check --peek` — 완료·질문)   |
-| 3   | claude/codex 백그라운드 실행 알림(백그라운드 명령이 끝나면 코디네이터를 깨움) |
+워커 터미널 감지와 저비용 알림은 단일 Python 프로세스가 수행한다. 워커를 배정한 뒤 아래 명령 하나만 별도 터미널에서 실행한다.
 
-알림 스크립트(`scripts/orca-coord-watch.sh`) 자체는 이 셋을 묶는 셸 루프이며 claude/codex 의 내장 기능이 아니다.
+```bash
+scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300
+```
 
-왜: `check --wait`만 기다리면 무료 모델이 429로 재시도만 반복할 때 아무 메시지도 오지 않아 놓친다(2026-10-14 실사고: Laguna가 rate-limited로 10분 정지, 코디네이터가 못 알아챔). 또 짧은 주기로 코디네이터가 직접 상태를 읽으면 회당 토큰이 든다 — 셸 루프는 알림 전까지 토큰 0.
+watchdog은 120초마다 저장소의 활성 Dispatch, OpenCode 터미널, OpenCode DB에 기록된 하위 세션을 검사해 오류·정지·권한 질문·모델 정보를 `/tmp/orca-worker-status.txt`에 기록한다. 완료된 Dispatch라도 live OpenCode 터미널이면 최근 1시간 출력의 오류를 검사한다. 300초마다 상태 파일의 마지막 5줄과 지정 Run의 Orca inbox를 확인해 새 ERROR/STALL/PERM/UNKNOWN 및 `worker_done`/`question`/`escalation`만 한 번 알린다. Inbox 확인은 `--peek` 방식이므로 메시지를 소비하거나 ACK하지 않는다. 반복 상태는 중복 알림하지 않고, 상태가 OK로 해소된 뒤 다시 발생하면 다시 알린다.
 
-규칙: 워커를 배정하면 알림 스크립트를 백그라운드로 켠다. 알림 1건을 처리한 뒤 **같은 턴에서 반드시 다시 켠다**(한 번 알리고 끝나는 구조라 안 켜면 감시가 멈춘다 — 2026-10-14 실사고). 처리한 메시지는 SEEN에 남으므로 다시 깨지 않는다.
-
-실행 예: `scripts/orca-worker-watchdog.py --loop 120`(별도 Orca terminal, 옵션 없으면 현재 repo의 모든 worktree 점검) + `scripts/orca-coord-watch.sh <run_id>`(완료·질문 메시지 존재를 알려주는 보조 백그라운드 명령). `orca-coord-watch.sh`는 `--peek`만 하므로 ACK하지 않고, 그 알림 뒤 coordinator handle을 명시한 `check`로 메시지 전체를 처리한다. watchdog은 정지·오류 감지기이며 완료 메시지를 전달하지 않는다. 두 요약 상태만으로 작업 완료 여부를 단정하지 않는다.
+macOS에서는 사용자 알림을 띄우며, 다른 환경에서는 stdout에 이벤트를 남긴다. 알림은 Codex 세션을 깨우지 않으므로 코디네이터는 긴 `check --wait`를 유지하고, 알림을 받으면 coordinator handle로 Orca 메시지를 확인·처리·ACK한다. watchdog은 감지와 알림만 하며 작업 완료를 판정하거나 워커를 중지·재배정하지 않는다. 상태 요약이나 Orca 상태만으로 완료·실패를 단정하지 않는다.
 
 유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다. 워커별 점검은 상태 요약이나 메시지에 이상 징후가 있거나, 완료 여부를 판정할 때만 수행한다.
 

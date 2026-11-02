@@ -146,7 +146,36 @@ class ApiCredentialServiceTest {
     when(investorRepository.findById(INVESTOR_ID))
         .thenReturn(
             Optional.of(Investor.builder().id(INVESTOR_ID).accountId(ownerAccountId).build()));
-    when(securityUtils.getCurrentAccountId()).thenReturn(OWNER_ACCOUNT_ID);
+    when(securityUtils.getEffectiveAccountId()).thenReturn(ownerAccountId);
+  }
+
+  private void stubOwnedSecuritiesAccountForOtherAccount() {
+    // Sets up securities account owned by a different account (forbidden scenario)
+    SecuritiesAccount account =
+        SecuritiesAccount.builder()
+            .id(ACCOUNT_ID)
+            .investorId(INVESTOR_ID)
+            .securitiesFirmId(FIRM_ID)
+            .accountNumber(accountNumberEncryptor.encrypt(PLAIN_ACCOUNT_NUMBER))
+            .accountName("개인 MTS 계좌")
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(ACCOUNT_ID))
+        .thenReturn(Optional.of(account));
+    lenient()
+        .when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(FIRM_ID))
+        .thenReturn(
+            Optional.of(
+                SecuritiesFirm.builder()
+                    .id(FIRM_ID)
+                    .apiSupported(true)
+                    .apiProvider("KIS")
+                    .build()));
+    // Investor belongs to account 200L
+    when(investorRepository.findById(INVESTOR_ID))
+        .thenReturn(Optional.of(Investor.builder().id(INVESTOR_ID).accountId(200L).build()));
+    // But effective account is OWNER_ACCOUNT_ID (100L) - different from investor's account
+    when(securityUtils.getEffectiveAccountId()).thenReturn(OWNER_ACCOUNT_ID);
   }
 
   private void stubSaveAndFlushAssignsId() {
@@ -251,7 +280,7 @@ class ApiCredentialServiceTest {
   @Test
   void registerForOtherAccountsSecuritiesAccountThrowsForbidden() {
     // Given: 인증된 계정 A와, 다른 계정 B가 소유한 증권계좌 (AC-1812)
-    stubOwnedSecuritiesAccount(200L);
+    stubOwnedSecuritiesAccountForOtherAccount();
 
     // When & Then: 소유권이 없으면 403 성격의 예외 발생 (AC-1812)
     ApiCredentialForbiddenException exception =
@@ -466,7 +495,7 @@ class ApiCredentialServiceTest {
 
   @Test
   void replaceForOtherAccountsSecuritiesAccountThrowsForbidden() {
-    stubOwnedSecuritiesAccount(200L);
+    stubOwnedSecuritiesAccountForOtherAccount();
 
     assertThrows(
         ApiCredentialForbiddenException.class,
@@ -518,7 +547,7 @@ class ApiCredentialServiceTest {
   @Test
   void disconnectForOtherAccountsSecuritiesAccountThrowsForbidden() {
     // Given: 다른 계정이 소유한 증권계좌 (AC-1812)
-    stubOwnedSecuritiesAccount(200L);
+    stubOwnedSecuritiesAccountForOtherAccount();
 
     // When & Then: 403 성격의 예외 발생 (AC-1812)
     assertThrows(ApiCredentialForbiddenException.class, () -> service.disconnect(ACCOUNT_ID));

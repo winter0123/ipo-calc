@@ -44,7 +44,7 @@ function setup(response: unknown | Error, path = '/admin/users/7') {
   vi.mocked(useCurrentAccount).mockReturnValue({
     data: { accountId: 1, email: 'admin@b.com', name: '관리자', nickname: '관리자', role: 'ADMIN' },
     isPending: false,
-  } as any)
+  } as unknown as ReturnType<typeof useCurrentAccount>)
   vi.mocked(apiFetch).mockImplementation(async (p: unknown) => {
     if (response instanceof Error) throw response
     if (String(p) === '/admin/users/7') return response

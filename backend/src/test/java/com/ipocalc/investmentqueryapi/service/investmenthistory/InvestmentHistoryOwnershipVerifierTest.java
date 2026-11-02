@@ -108,8 +108,10 @@ class InvestmentHistoryOwnershipVerifierTest {
             .updatedAt(LocalDateTime.now())
             .build();
 
-    // SecurityUtils.getCurrentAccountId()가 CURRENT_ACCOUNT_ID를 반환하도록 설정
-    when(securityUtils.getCurrentAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
+    // SecurityUtils.getEffectiveAccountId()가 CURRENT_ACCOUNT_ID를 반환하도록 설정 (임퍼소네이션 고려)
+    when(securityUtils.getEffectiveAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
+    // SecurityUtils.getEffectiveAccountId()도 동일한 값 반환 (verifyIpoIdOwnership에서 사용)
+    when(securityUtils.getEffectiveAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
   }
 
   @AfterEach

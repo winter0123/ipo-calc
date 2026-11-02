@@ -398,6 +398,82 @@ describe('buildWeekSegments', () => {
     expect(laneCount).toBe(0)
   })
 
+  it('모바일(isMobile=true)에서 주말 전용 세그먼트는 건너뛰고 평일만 유지한다', () => {
+    // 2026-10-10(토) ~ 2026-10-11(일): 주말 전용
+    const weekendOnly = [
+      {
+        ipoId: 1,
+        type: 'SUBSCRIPTION' as const,
+        companyName: '주말테스트',
+        ipoName: '주말테스트',
+        startDate: '2026-10-10',
+        endDate: '2026-10-11',
+      },
+    ]
+    const weekendWeek = [
+      '2026-10-04',
+      '2026-10-05',
+      '2026-10-06',
+      '2026-10-07',
+      '2026-10-08',
+      '2026-10-09',
+      '2026-10-10',
+    ]
+    const { segments, laneCount } = buildWeekSegments(weekendOnly, weekendWeek, true)
+    expect(segments).toHaveLength(0)
+    expect(laneCount).toBe(0)
+  })
+
+  it('평일+주말 세그먼트는 모바일에서 평일 구간만 잘라서 유지한다', () => {
+    // 2026-10-09(금) ~ 2026-10-12(월): 주말 포함
+    const mixedEvent = [
+      {
+        ipoId: 1,
+        type: 'SUBSCRIPTION' as const,
+        companyName: '혼합테스트',
+        ipoName: '혼합테스트',
+        startDate: '2026-10-09',
+        endDate: '2026-10-12',
+      },
+    ]
+    const mixedWeek = [
+      '2026-10-04',
+      '2026-10-05',
+      '2026-10-06',
+      '2026-10-07',
+      '2026-10-08',
+      '2026-10-09',
+      '2026-10-10',
+    ]
+    const { segments } = buildWeekSegments(mixedEvent, mixedWeek, true)
+    expect(segments).toHaveLength(1)
+    expect(segments[0].startCol).toBe(5) // 금(9일) col5 in Sun->Sat
+    expect(segments[0].endCol).toBe(5) // 평일만 유지, 토/일 제외
+    // desktop (isMobile=false)에서는 주 전체 col0..6 유지됨 — 별도 검증
+    const { segments: segDesktop } = buildWeekSegments(mixedEvent, mixedWeek, false)
+    expect(segDesktop[0].startCol).toBe(5)
+    expect(segDesktop[0].endCol).toBe(6) // Mon 12 is next week not included here; full range of covered dates in week
+  })
+
+  it('timezone-safe: YYYY-MM-DD 문자열로 평일/주말 파싱이 로컬/UTC 차이로 바뀌지 않는다', () => {
+    // 2026-10-04는 일요일이지만 문자열 파싱이 올바른 요일을 반환해야 함
+    const week = ['2026-10-04', '2026-10-05', '2026-10-06']
+    const event = [
+      {
+        ipoId: 1,
+        type: 'SUBSCRIPTION' as const,
+        companyName: '시간대테스트',
+        ipoName: '시간대테스트',
+        startDate: '2026-10-05',
+        endDate: '2026-10-05',
+      },
+    ]
+    const { segments } = buildWeekSegments(event, week, true)
+    // 10/05(월)은 평일이므로 세그먼트 유지
+    expect(segments.length).toBe(1)
+    expect(segments[0].startCol).toBe(1)
+  })
+
   it('청약과 상장이 같은 날 겹치면 청약이 먼저 배치된다(정렬)', () => {
     const events = [
       {

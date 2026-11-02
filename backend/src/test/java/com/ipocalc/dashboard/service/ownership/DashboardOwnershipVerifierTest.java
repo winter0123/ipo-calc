@@ -169,8 +169,8 @@ class DashboardOwnershipVerifierTest {
             .updatedAt(LocalDateTime.now())
             .build();
 
-    // SecurityUtils.getCurrentAccountId()가 CURRENT_ACCOUNT_ID를 반환하도록 설정
-    when(securityUtils.getCurrentAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
+    // SecurityUtils.getEffectiveAccountId()가 CURRENT_ACCOUNT_ID를 반환하도록 설정
+    when(securityUtils.getEffectiveAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
   }
 
   @AfterEach
@@ -281,7 +281,7 @@ class DashboardOwnershipVerifierTest {
   void getCurrentAccountIdReturnsSecurityUtilsValue() {
     // Given: SecurityUtils가 특정 계정 ID 반환하도록 설정
     Long expectedAccountId = 42L;
-    when(securityUtils.getCurrentAccountId()).thenReturn(expectedAccountId);
+    when(securityUtils.getEffectiveAccountId()).thenReturn(expectedAccountId);
 
     // When
     Long actualAccountId = ownershipVerifier.getCurrentAccountId();

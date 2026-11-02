@@ -29,7 +29,7 @@ class OwnershipGuardTest {
   @BeforeEach
   void setUp() {
     guard = new OwnershipGuard(securityUtils, investorRepository);
-    when(securityUtils.getCurrentAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
+    when(securityUtils.getEffectiveAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
   }
 
   private static Investor investorOf(Long accountId) {

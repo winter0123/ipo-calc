@@ -101,7 +101,7 @@ public class NotificationSubscriptionService {
   /** 알림 종류 설정을 조회한다(행이 없으면 모두 켜짐). */
   @Transactional(readOnly = true)
   public NotificationPreference preferences() {
-    Long accountId = securityUtils.getCurrentAccountId();
+    Long accountId = securityUtils.getEffectiveAccountId();
     return preferences.findById(accountId).orElseGet(() -> defaults(accountId));
   }
 

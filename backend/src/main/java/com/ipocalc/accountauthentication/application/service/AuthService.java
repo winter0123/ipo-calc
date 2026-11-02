@@ -9,6 +9,7 @@ import com.ipocalc.accountauthentication.exception.AccountNotFoundException;
 import com.ipocalc.accountauthentication.exception.AccountPendingApprovalException;
 import com.ipocalc.accountauthentication.exception.InvalidCredentialsException;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
+import com.ipocalc.accountauthentication.service.impersonation.ImpersonationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -25,6 +26,8 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +44,8 @@ public class AuthService {
   private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
   private final Clock clock;
   private final SessionCookieWriter sessionCookieWriter;
+  private final CsrfTokenRepository csrfTokenRepository;
+  private final ImpersonationService impersonationService;
   private final SecurityContextRepository securityContextRepository =
       new HttpSessionSecurityContextRepository();
 
@@ -79,6 +84,15 @@ public class AuthService {
     accountRepository.recordLoginSuccess(account.getId(), now);
 
     createSession(httpServletRequest, httpServletResponse, account);
+
+    // 로그인 후 CSRF 토큰 교체 (세션 고정 방지와 동일 원리)
+    rotateCsrfToken(httpServletRequest, httpServletResponse);
+
+    // 임퍼소네이션 마커 제거 (새 로그인 시 기존 임퍼소네이션 정리)
+    HttpSession session = httpServletRequest.getSession(false);
+    if (session != null) {
+      session.removeAttribute(ImpersonationService.SESSION_ATTRIBUTE);
+    }
   }
 
   /**
@@ -114,6 +128,9 @@ public class AuthService {
     SecurityContextHolder.clearContext();
 
     sessionCookieWriter.expire(httpServletResponse);
+
+    // CSRF 쿠키 만료
+    csrfTokenRepository.saveToken(null, httpServletRequest, httpServletResponse);
   }
 
   /** 72바이트를 넘는 입력은 bcrypt에 넘기지 않고 불일치로 본다(가입·변경에서 막으므로 맞을 수 없다). */
@@ -156,5 +173,11 @@ public class AuthService {
     }
 
     securityContextRepository.saveContext(context, httpServletRequest, httpServletResponse);
+  }
+
+  /** CSRF 토큰을 새로 발급해 쿠키에 저장한다. */
+  private void rotateCsrfToken(HttpServletRequest request, HttpServletResponse response) {
+    CsrfToken newToken = csrfTokenRepository.generateToken(request);
+    csrfTokenRepository.saveToken(newToken, request, response);
   }
 }

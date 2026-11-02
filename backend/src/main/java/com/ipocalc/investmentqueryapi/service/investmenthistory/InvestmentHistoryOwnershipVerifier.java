@@ -48,7 +48,7 @@ public class InvestmentHistoryOwnershipVerifier {
    * 해당 IPO 건이 하나라도 있는지" 확인, 없으면 403.
    */
   public void verifyIpoIdOwnership(Long ipoId) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
+    Long currentAccountId = securityUtils.getEffectiveAccountId();
     boolean exists =
         subscriptionRepository.existsByIpoIdAndInvestorAccountId(ipoId, currentAccountId);
     if (!exists) {

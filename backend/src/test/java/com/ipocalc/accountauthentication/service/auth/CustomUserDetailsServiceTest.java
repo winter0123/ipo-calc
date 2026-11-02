@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * - 인증/인가 비즈니스 로직 (로그인, 로그아웃 등) "4. 로그인/로그아웃 API" - Service에서 AccountRepository.findByEmail로 계정 조회
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class CustomUserDetailsServiceTest {
 
   @Autowired private CustomUserDetailsService customUserDetailsService;

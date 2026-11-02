@@ -91,8 +91,7 @@ public class SaleService {
     allocationRepository.findByIdForUpdate(allocationId);
 
     // (1) Allocation 조회 — 존재하지 않으면 404, 타 계정 소유면 403
-    Allocation allocation =
-        allocationOwnership.requireOwnedActive(allocationId, OWNERSHIP_ERRORS);
+    Allocation allocation = allocationOwnership.requireOwnedActive(allocationId, OWNERSHIP_ERRORS);
 
     // (2) 기존 ACTIVE Sale들의 quantity 합계 조회
     Long existingQuantitySum = saleRepository.sumActiveQuantityByAllocationId(allocation.getId());

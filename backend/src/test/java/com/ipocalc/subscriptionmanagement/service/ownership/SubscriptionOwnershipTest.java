@@ -33,7 +33,7 @@ class SubscriptionOwnershipTest {
     ownership =
         new SubscriptionOwnership(
             subscriptionRepository, new OwnershipGuard(securityUtils, investorRepository));
-    when(securityUtils.getCurrentAccountId()).thenReturn(ME);
+    when(securityUtils.getEffectiveAccountId()).thenReturn(ME);
   }
 
   private Subscription subscription(Long investorId) {

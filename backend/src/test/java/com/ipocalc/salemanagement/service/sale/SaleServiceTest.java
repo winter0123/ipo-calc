@@ -43,13 +43,7 @@ class SaleServiceTest {
   private final Clock clock = Clock.fixed(Instant.parse("2026-10-13T00:00:00Z"), ZoneOffset.UTC);
   private final SaleService service =
       new SaleService(
-          sales,
-          allocs,
-          allocations,
-          subscriptions,
-          ownership,
-          mock(SecurityUtils.class),
-          clock);
+          sales, allocs, allocations, subscriptions, ownership, mock(SecurityUtils.class), clock);
 
   private static final LocalDateTime AT = LocalDateTime.of(2026, 10, 1, 9, 0);
 
@@ -122,8 +116,7 @@ class SaleServiceTest {
     when(subscriptions.findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
             12L, 13L, 11L, RecordStatus.ACTIVE))
         .thenReturn(Optional.empty());
-    when(allocations.register(any()))
-        .thenReturn(AllocationResponse.builder().id(8L).build());
+    when(allocations.register(any())).thenReturn(AllocationResponse.builder().id(8L).build());
     when(ownership.requireOwnedActive(any(), any())).thenReturn(alloc(3));
     when(sales.sumActiveQuantityByAllocationId(5L)).thenReturn(0L);
     when(sales.save(any(Sale.class))).thenAnswer(i -> i.getArgument(0));

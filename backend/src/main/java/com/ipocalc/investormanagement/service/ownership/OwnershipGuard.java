@@ -18,10 +18,10 @@ public class OwnershipGuard {
   /**
    * 투자자가 현재 계정 소유가 아니면 forbidden이 만든 예외를 던진다.
    *
-   * @return 현재 로그인 계정 ID
+   * @return 현재 로그인 계정 ID (임퍼소네이션 중이면 대상 회원 ID)
    */
   public Long requireOwner(Investor investor, Supplier<? extends RuntimeException> forbidden) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
+    Long currentAccountId = securityUtils.getEffectiveAccountId();
     if (!currentAccountId.equals(investor.getAccountId())) {
       throw forbidden.get();
     }
@@ -47,7 +47,7 @@ public class OwnershipGuard {
       Long investorId,
       Supplier<? extends RuntimeException> notFound,
       Supplier<? extends RuntimeException> forbidden) {
-    Long currentAccountId = securityUtils.getCurrentAccountId();
+    Long currentAccountId = securityUtils.getEffectiveAccountId();
     Investor investor = investorRepository.findById(investorId).orElseThrow(notFound);
     if (!currentAccountId.equals(investor.getAccountId())) {
       throw forbidden.get();

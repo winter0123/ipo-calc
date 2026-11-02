@@ -39,6 +39,10 @@ spring:
       mode: never
 
 app:
+  csrf:
+    enabled: ${APP_CSRF_ENABLED:true}
+    # 운영은 Ansible에서 공개 HTTPS Origin을 명시한다. 기본값은 로컬 Vite 개발 서버다.
+    trusted-origin: ${APP_CSRF_TRUSTED_ORIGIN:http://localhost:5173}
   signup:
     # OPEN: 누구나 가입, APPROVAL: 관리자 승인 뒤 로그인(기본, 비공개 운영), CLOSED: 가입 중단
     mode: ${APP_SIGNUP_MODE:APPROVAL}

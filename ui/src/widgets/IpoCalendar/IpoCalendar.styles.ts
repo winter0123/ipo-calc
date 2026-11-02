@@ -473,6 +473,11 @@ export const StyleScope = styled.div`
     color: var(--ink-muted);
   }
 
+  .s-e1b278a-eventUnderwriters {
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+
   .s-e1b278a-eventPrice {
     font-size: 14px;
     color: var(--ink);
@@ -565,12 +570,6 @@ export const StyleScope = styled.div`
     .s-e1b278a-emptyCell,
     .s-e1b278a-dateCell {
       min-height: 72px;
-    }
-
-    .s-e1b278a-bar {
-      font-size: 11px;
-      height: 18px;
-      padding: 0 4px;
     }
 
     .s-e1b278a-filterButton {

@@ -3,6 +3,8 @@ package com.ipocalc.salemanagement.repository.sale;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.salemanagement.domain.model.sale.Sale;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /** 매도 도메인의 조인·집계 QueryDSL 저장소. */
 public interface SaleQueryRepository {
@@ -21,4 +23,8 @@ public interface SaleQueryRepository {
   /** 계정과 선택 필터에 해당하는 활성 매도 내역을 조회한다. */
   List<Sale> findActiveWithFilters(
       Long accountId, Long allocationId, Long investorId, String investorName);
+
+  /** 계정과 선택 필터에 해당하는 활성 매도 내역을 페이지로 조회한다. */
+  Page<Sale> findActivePageByFilters(
+      Long accountId, Long allocationId, Long investorId, String investorName, Pageable pageable);
 }

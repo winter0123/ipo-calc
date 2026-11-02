@@ -44,6 +44,11 @@ export const StyleScope = styled.div`
     line-height: 1.4;
   }
 
+  .s-66fd75d-underwriters {
+    color: var(--ink-muted);
+    font-size: 14px;
+  }
+
   .s-66fd75d-statusScheduled {
     background: var(--surface-sea);
     color: var(--ink);

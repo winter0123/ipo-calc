@@ -1,34 +1,47 @@
 import { Link } from 'react-router-dom'
+import { forwardRef } from 'react'
 import type { CalendarEvent } from '@/features/ipo-calendar/index.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
+import { useIpoInsight } from '@/entities/ipo/index.ts'
 import styles, { StyleScope } from './IpoCalendar.styles.ts'
 import { EVENT_TYPE_CLASSES, EVENT_TYPE_LABELS } from './calendarHelpers.ts'
 
+function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
+  const { data } = useIpoInsight(ipoId)
+  const names = [
+    ...new Set((data?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+  ]
+  if (names.length === 0) return null
+
+  return <span className={styles.eventUnderwriters}>주관사 {names.join(' · ')}</span>
+}
+
 /** 선택한 날짜의 일정 상세 구역. */
-export function SelectedDayDetail({
-  selectedDate,
-  holidayName,
-  events,
-  today,
-}: {
-  selectedDate: string | null
-  holidayName: string | undefined
-  events: CalendarEvent[]
-  today: Date
-}) {
+export const SelectedDayDetail = forwardRef<
+  HTMLElement,
+  {
+    selectedDate: string | null
+    holidayName: string | undefined
+    events: CalendarEvent[]
+    today: Date
+  }
+>(({ selectedDate, holidayName, events, today }, ref) => {
   return (
     <StyleScope>
       {
-        <section className={styles.detail} aria-label="선택한 날짜 일정 상세" aria-live="polite">
-          <h3 className={styles.detailTitle}>
-            {selectedDate
-              ? `${selectedDate} 일정`
-              : '날짜를 누르면 그날의 청약·환불·상장 일정이 여기에 나옵니다'}
-          </h3>
+        <section
+          ref={ref}
+          className={styles.detail}
+          aria-label="선택한 날짜 일정 상세"
+          aria-live="polite"
+        >
+          <h3 className={styles.detailTitle}>{selectedDate ? `${selectedDate} 일정` : ''}</h3>
           {selectedDate && holidayName && (
             <p className={styles.holidayNotice}>휴장일 · {holidayName}</p>
           )}
-          {selectedDate && events.length === 0 && <p className={styles.noEvents}>일정 없음</p>}
+          {selectedDate && events.length === 0 && (
+            <p className={styles.noEvents}>공모주 일정이 없습니다</p>
+          )}
           {selectedDate && events.length > 0 && (
             <ul className={styles.eventList}>
               {events.map((event, idx) => (
@@ -50,6 +63,9 @@ export function SelectedDayDetail({
                       <span className={styles.eventPeriod}>
                         {event.startDate} ~ {event.endDate}
                       </span>
+                    )}
+                    {event.type === 'SUBSCRIPTION' && (
+                      <SubscriptionUnderwriters ipoId={event.ipoId} />
                     )}
                     <>
                       {event.price && <span className={styles.eventPrice}>{event.price}</span>}
@@ -75,4 +91,6 @@ export function SelectedDayDetail({
       }
     </StyleScope>
   )
-}
+})
+
+SelectedDayDetail.displayName = 'SelectedDayDetail'

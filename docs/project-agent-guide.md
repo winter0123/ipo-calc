@@ -15,7 +15,7 @@
 | `docs/guide-frontend.md`       | 프론트엔드 기술스택·검증 명령·구현 규칙                                            | Master(워커 spec 작성 시), frontend 워커 |
 | `docs/guide-planning.md`       | 조사·기획·설계 규칙, 선행 큐 운영, 사용자 가이드 작성                                  | Master(워커 spec 작성 시), planning 워커 |
 | `docs/worker-spec-template.md` | 워커에게 주는 자기완결적 task spec 형식                                        | Master |
-| `scripts/orca-worker-watchdog.py` | 워커 정지·업스트림 에러·모델 폴백 감지(셸)                                      | 별도 터미널에서 상시 실행 |
+| `scripts/orca-worker-watchdog.py` | 워커 정지·업스트림 에러·모델 폴백 감지와 코디네이터 알림(단일 Python 프로세스) | Run마다 한 번 실행 |
 | `docs/work-plan.md`            | 제품 도메인, MVP 요구사항, 금융 규칙과 미결정 사항                                    | Master |
 | `docs/roadmap.md`              | 현재 구현 순서, Epic 의존성, SF 게이트, 실행 큐                                   | Master |
 | `docs/current-status.md`       | 세션 종료 시점의 실제 진행 상황과 다음 작업                                          | Master(작성·소유) |
@@ -123,8 +123,8 @@ orca terminal show --terminal <handle> --json
 | Claude 세션 수 | 1개(Master)만 상시 유지                                                                                                                          |
 | 워커          | worktree당 1개, OpenCode + OpenRouter 무료 모델, 동일 시간대 모델 중복 배정 금지                                                                              |
 | 일감 순서       | 세션 시작 때 `task-create --deps`로 DAG 정의 → `ready`가 되는 대로 pull                                                                                 |
-| 대기          | `check --wait --timeout-ms 3600000` 긴 blocking 하나로 대기. watchdog이 떠 있는 동안에는 짧은 타임아웃 재시도와 5분 주기 수동 터미널 점검을 하지 않는다 (watchdog이 없을 때만 6.1.1 적용) |
-| 정지 감지       | `scripts/orca-worker-watchdog.py --loop 120` (셸), Master는 상태 파일만 읽음                                                                        |
+| 대기          | `check --wait --timeout-ms 3600000` 긴 blocking 하나로 대기. 통합 watchdog이 5분마다 요약과 Orca inbox를 확인 |
+| 정지 감지       | `scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300`; 새 이벤트만 알림 |
 | 검증          | Master가 테스트·lint·build를 직접 실행, 워커의 산문 보고는 증거 아님                                                                                            |
 | 병합          | Master가 검증 후 병합, 이어서 task를 `completed`로 닫아 후속 의존성 해제                                                                                       |
 
@@ -255,16 +255,15 @@ Master 자신의 Claude Code 사용량 제한은 사람 또는 현재 CLI가 제
 
 `task-list` 상태 폴링만으로는 모델 오류로 멈춘 워커를 발견할 수 없다.
 
-**기본 방식 (2026-09-29 세션부터): 감시는 셸 watchdog이 하고, 코디네이터는 요약만 읽는다.**
+**기본 방식: 하나의 watchdog 프로세스가 감지와 저비용 알림을 담당하고, 상태와 완료의 기준은 Orca다.**
 
 ```bash
-scripts/orca-worker-watchdog.py --loop 120   # 별도 터미널에서 세션 내내 실행
-cat /tmp/orca-worker-status.txt              # 코디네이터는 이것만 본다
+scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300
 ```
 
-watchdog은 활성 워커 터미널을 훑어 ① 업스트림 에러 문구(`rate-limited`, `Upstream idle timeout`, `429`, `API Error`), ② 무출력 정지(기본 8분), ③ 실제 사용 중인 모델명(지정 모델과 다르게 폴백되는 사례가 반복 관찰됨)을 한 줄로 요약한다. `ERROR`/`STALL`이 찍힌 워커만 코디네이터가 실제 터미널을 열어 확인하고 재배정을 판단한다 — watchdog은 재배정하지 않는다(오진으로 작업 중인 워커를 죽이는 비용이 더 크다).
+watchdog은 활성 Dispatch 터미널뿐 아니라 저장소 worktree의 OpenCode 터미널과 OpenCode DB의 `session.parent_id` 하위 세션도 훑는다. ① 업스트림 오류 및 `OpenCode stopped while this response was in progress`, ② Dispatch 및 미완료 하위 세션의 무출력 정지(기본 8분), ③ 사용 중인 모델명을 요약한다. `ERROR`/`STALL`/`PERM`이 찍힌 대상만 코디네이터가 실제 터미널·세션 결과를 확인하고 재배정을 판단한다 — watchdog은 재배정하지 않는다.
 
-`--selftest`로 판정 로직만 빠르게 확인할 수 있고, 종료 코드는 문제가 있으면 1이다.
+`--selftest`로 워커·하위 세션 판정과 알림 중복 제거 로직을 확인할 수 있고, 종료 코드는 문제가 있으면 1이다. watchdog은 120초마다 워커·OpenCode 터미널·DB 하위 세션을 스캔하고 300초마다 상태 파일 마지막 5줄과 지정 Run의 Orca inbox를 `--peek`로 읽는다. 최근 1시간 내 출력이 있는 미배정 OpenCode 터미널과 하위 세션의 오류도 감지한다. 새 ERROR/STALL/PERM/UNKNOWN 및 worker_done/question/escalation만 macOS 알림으로 알리며 메시지를 소비하거나 ACK하지 않는다. 상태 알림은 OK로 해소된 뒤 재발하면 다시 알려준다. 알림 상태는 `/tmp/orca-worker-notify-<run_id>.json`에 저장한다.
 
 **참고 — `worker-list`만으로는 부족한 이유**: `orca orchestration worker-list --json`은 각 dispatch의 `workerState`/`dispatchStatus`/`projection.liveness`를 한 번에 보여주지만, `liveness: live`는 프로세스 생존만 뜻한다.
 
@@ -286,18 +285,13 @@ orca terminal list --worktree path:<작업공간-절대경로> --json   # 경로
 
 `orca orchestration check --wait`는 워커가 정상적으로 `worker_done`을 보낼 때만 알려준다. 무료 모델이 OpenRouter 업스트림에서 429(rate-limited)나 idle timeout으로 멈추면 터미널 프로세스 자체는 살아있어서 `worker-show`의 `projection.liveness.verdict`가 계속 `live`로 나오고, `check --wait`도 타임아웃(900초) 전까지는 아무 신호 없이 조용하다 — 즉 자동 알림 경로로는 이 상태를 절대 잡지 못한다.
 
-이 프로젝트는 별도 자동 폴링(Claude Code `/loop` 등)을 걸지 않기로 했다(2026-09-28 사용자 결정: 수동 확인 유지). 대신 **최소 5분 간격**으로 활성 dispatch 전체의 터미널을 `orca terminal read --terminal <handle> --limit 50 --json`으로 직접 훑어 화면 텍스트에 `rate-limited`, `Upstream idle timeout`, `Request rejected (429)` 같은 문구가 있는지 확인한다(2026-09-28 사용자 지시). 구체적으로:
-
-- 대기 중에도 5분을 넘기지 않는 주기로 활성 워커들의 터미널을 직접 읽는다(예: 짧은 `check --wait --timeout-ms`를 걸거나, 다른 작업을 하는 틈틈이 5분 경과 여부를 확인해 훑는다) — 900초 같은 긴 타임아웃 하나만 걸어두고 그 사이를 비워두지 않는다
-- `check --wait`가 (타임아웃이든 메시지 도착이든) 한 번 돌아올 때마다 — 그 김에 다른 활성 워커들도 같이 훑는다
-- 사용자가 상태를 묻거나 "멈춘 것 같다"고 알릴 때
-- 진행 상황을 보고하기 직전
+`orca-worker-watchdog.py` 하나가 120초마다 워커 터미널을 검사하고 300초마다 마지막 5줄과 Orca inbox를 확인한다. 새 사건에만 셸이 macOS 사용자 알림을 낸다. `--peek` 확인은 메시지를 소비하지 않으며 coordinator가 직접 ACK할 때까지 남겨둔다. 알림은 Codex 세션을 자동으로 깨우지 않으므로 긴 `check --wait`를 유지한다. 정상 상태에서는 코디네이터 토큰을 쓰지 않는다. 워커 원문은 알림이나 상태 요약에서 특정 오류를 확인해야 할 때만 bounded read로 연다.
 
 터미널 텍스트에서 업스트림 에러 문구가 확인되면(단순 heartbeat/thinking 반복이 아니라 실제 에러 메시지), `worker-abandon` → 해당 worktree `git status --short`로 부분 작업 확인(있으면 내용 검토 후 보존 또는 되돌리기) → `terminal close` → 다른 무료 모델로 `terminal create` → `terminal wait --for tui-idle` → `worker-start --retry-of <이전 dispatch>` 순서로 재배정한다. 같은 시간대에 서로 다른 모델 2개 이상이 연달아 즉시 실패하면 개별 모델 문제가 아니라 OpenRouter 계정 레벨 혼잡일 가능성을 의심한다.
 
-**토큰 소비 주의(2026-09-28 확인)**: `check --wait`의 `--timeout-ms`를 300000(5분)처럼 짧게 걸면, 타임아웃/재시도가 잦아져서 그때마다 짧게라도 reasoning 텍스트를 쓰고 재대기 명령을 다시 내리는 턴이 반복된다 — 이건 "대기"가 아니라 실질적으로 계속 토큰을 쓰는 것과 같다. 워커가 오래 걸리는 작업일수록 `--timeout-ms`를 900000(15분) 이상으로 걸어 재시도 빈도 자체를 줄인다. Master의 5분 감시 원칙(6.1.1절)은 "5분마다 반드시 새 프로세스를 깨워 확인"이 아니라 "5분을 넘기지 않는 주기로 한 번씩 훑는다"는 뜻이므로, 팀장이 자기 워커를 기다릴 땐 긴 타임아웃 하나로 기다리다가 그 안에서 도착하는 신호(worker_done 등)로 깨어나는 것이 정상이다.
+**토큰 소비 주의(2026-09-28 확인)**: `check --wait`의 `--timeout-ms`를 300000(5분)처럼 짧게 걸면, 타임아웃/재시도가 잦아져 reasoning 턴이 반복된다. 오래 걸리는 워커는 `--timeout-ms 3600000` 같은 긴 대기 하나를 사용하고, 기계적인 120초 스캔/300초 알림은 통합 watchdog에 맡긴다.
 
-**주의(2026-09-28 재발 확인)**: `terminal show`의 `lastOutputAt`이 "방금"으로 나온다고 곧바로 정상 판단하지 않는다 — 그 최근 출력 자체가 `[Poolside] ... temporarily rate-limited upstream` 같은 에러 메시지이고 그 이후로 멈춰있는 경우가 실제로 있었다(사용자가 직접 화면을 보고 지적함). `lastOutputAt`은 "터미널이 죽었는지" 판단하는 보조 지표일 뿐이며, 5분 점검마다 반드시 `terminal read`로 **최근 몇 줄의 실제 텍스트 내용**까지 읽어 에러 문구 유무를 확인한다. 또한 특정 OpenRouter 모델을 지정해도 OpenCode가 내부적으로 다른 모델(주로 Laguna S 2.1)로 자동 폴백하는 사례가 반복 관찰됐다 — 터미널 하단 상태줄의 실제 모델명(`Build · <모델명>`)을 지정한 모델과 대조해 확인한다.
+**주의(2026-09-28 재발 확인)**: `terminal show`의 `lastOutputAt`만으로 정상 판단하지 않는다. 최근 출력이 업스트림 오류일 수 있으므로 상태 파일의 ERROR/STALL/PERM/UNKNOWN을 우선 확인하고, 표시된 해당 워커만 bounded read로 확인한다. 실제 모델명은 worker-start 직후 watchdog 요약과 대조한다.
 
 ### 6.2 선택형 Hermes 알림
 

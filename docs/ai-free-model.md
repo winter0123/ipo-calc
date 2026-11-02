@@ -191,3 +191,5 @@ OpenRouter `free-models-per-day-high-balance`는 계정 전체 일일 한도임�
 | 6 | `opencode/deepseek-v4.1-flash-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
 | 7 | `opencode/big-pickle` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
 | 8 | `opencode/nemotron-3.5-super-vl-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
+| 9 | `opencode/beam-free` | PASS (단답 재확인) | `beam-free` | 약 6.2초 | probe 변경 없음 | 작업 적합성 평가 미실시 | 이후 AdminUserService 구현에 사용했으나 Master 테스트에서 fixture 1건 실패; 모델 품질 판정 보류. |
+| 10 | `opencode/flint-40b-free` | PASS (단답 재확인) | `flint-40b-free` | 약 8.1초 | probe 변경 없음 | 작업 적합성 평가 미실시 | AdminUserService 테스트 보정에 배정, 결과 대기 중. |

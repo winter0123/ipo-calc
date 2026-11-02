@@ -122,7 +122,7 @@ async function fillSignup(page, email, name = 'E2E User') {
   await page.fill('#email', email)
   await page.fill('#password', PASSWORD)
   await page.fill('#name', name)
-  await page.fill('#displayName', name)
+  await page.fill('#nickname', name)
 }
 
 async function submit(page) {
@@ -264,48 +264,22 @@ async function scenario1(browser) {
     shared.account = { email, password: PASSWORD }
     notes.push(`회원가입 201 → /dashboard, 본인 투자자 자동 생성 확인(investorId=${investorId})`)
 
-    await goto(page, `/securities-accounts/register/${investorId}`)
-    if (!(await waitForFirmsLoaded(page))) {
-      const texts = await errorTexts(page)
-      throw new Error(
-        `3단계 증권사 목록 로드 실패: 드롭다운 옵션 1개 이하(시드/인증 확인 필요) / 화면 텍스트=${texts.join(' | ') || '(없음)'}`,
-      )
+    // 계좌 등록은 전용 레거시 URL 대신 현재 제품 경로(/securities)에서 검증한다.
+    await goto(page, '/securities')
+    await page.getByRole('heading', { name: '증권사 관리' }).waitFor()
+    const registerButton = page.getByRole('button', { name: /계좌 등록/ }).first()
+    const firmName = (await registerButton.getAttribute('aria-label'))?.replace(/ 계좌 등록$/, '')
+    await registerButton.click()
+    const form = page.getByRole('form', { name: `${firmName} 계좌 등록` })
+    await form.getByLabel('계좌번호').fill(ACCOUNT_NUMBER)
+    await form.getByRole('button', { name: '등록', exact: true }).click()
+    const accountRow = page.getByRole('region', { name: '등록한 증권사' }).locator('li').filter({ hasText: firmName }).last()
+    await accountRow.waitFor()
+    const maskedNumber = await accountRow.innerText()
+    if (maskedNumber.includes(ACCOUNT_NUMBER) || !maskedNumber.includes(LAST4)) {
+      throw new Error(`계좌번호 마스킹 오류: ${maskedNumber}`)
     }
-    await page.selectOption('#securitiesFirmId', { index: 1 })
-    await page.fill('#accountNumber', ACCOUNT_NUMBER)
-
-    let dialogText = null
-    page.on('dialog', (dialog) => {
-      dialogText = dialog.message()
-      dialog.accept().catch(() => {})
-    })
-
-    await submit(page)
-    if (!(await waitFor(() => dialogText !== null, 15000))) {
-      const texts = await errorTexts(page)
-      throw new Error(
-        `3단계 증권계좌 등록 실패: 마스킹 안내 미발생 / URL=${page.url()} / 화면 에러=${texts.join(' | ') || '(없음)'}`,
-      )
-    }
-
-    const maskedOk =
-      dialogText.includes(LAST4) &&
-      dialogText.includes('*') &&
-      !dialogText.includes(ACCOUNT_NUMBER)
-    if (!maskedOk) {
-      throw new Error(
-        `마스킹 계좌번호 아님: 기대(spec)=뒷 4자리(${LAST4})만 노출된 마스킹 문자열 / 실제="${dialogText}"`,
-      )
-    }
-
-    if (!(await waitForUrl(page, '**/dashboard', 15000))) {
-      throw new Error(
-        `최종 확인 실패: 기대=/dashboard 이동 vs 실제 URL=${page.url()}`,
-      )
-    }
-
-    notes.push(`마스킹 계좌번호 표시="${dialogText}"`)
-    notes.push(`최종 URL=${pathname(page)}`)
+    notes.push(`현재 증권사 관리 화면에서 계좌 등록 및 마스킹 확인(${LAST4})`)
     return notes.join(' / ')
   } finally {
     await context.close()
@@ -427,46 +401,20 @@ async function scenario5(browser) {
 
 async function scenario6(browser) {
   const account = await ensureAccount(browser)
-  const { context, page } = await openContext(browser)
+  const context = await browser.newContext()
   try {
-    const notes = []
-    await authenticate(page, account, notes)
-
-    await goto(page, `/securities-accounts/register/${MISSING_INVESTOR_ID}`)
-    if (!(await waitForFirmsLoaded(page))) {
-      const texts = await errorTexts(page)
-      throw new Error(
-        `증권사 목록 로드 실패: 드롭다운 옵션 1개 이하 / 화면 텍스트=${texts.join(' | ') || '(없음)'}`,
-      )
+    await apiLogin(context, account.email)
+    const firms = await api(context, 'GET', '/securities-firms')
+    const response = await apiResponse(context, 'POST', '/securities-accounts', {
+      investorId: Number(MISSING_INVESTOR_ID),
+      securitiesFirmId: firms[0].id,
+      accountNumber: ACCOUNT_NUMBER,
+    })
+    const body = await response.text()
+    if (response.status() !== 404 || !body.includes('투자자')) {
+      throw new Error(`존재하지 않는 투자자 등록 거부 실패: 상태=${response.status()} 본문=${body}`)
     }
-    await page.selectOption('#securitiesFirmId', { index: 1 })
-    await page.fill('#accountNumber', ACCOUNT_NUMBER)
-
-    const responsePromise = page
-      .waitForResponse(
-        (res) =>
-          res.request().method() === 'POST' &&
-          new URL(res.url()).pathname.endsWith('/securities-accounts'),
-        { timeout: 15000 },
-      )
-      .catch(() => null)
-
-    await submit(page)
-
-    const expected = '투자자 정보를 찾을 수 없습니다.'
-    const shown = await waitFor(async () => hasText(await errorTexts(page), expected), 15000)
-    const texts = await errorTexts(page)
-    const response = await responsePromise
-
-    if (!shown) {
-      throw new Error(
-        `인라인 에러 미표시: 기대(spec)="${expected}" vs 실제 화면=${texts.join(' | ') || '(없음)'} / POST /securities-accounts 상태=${response ? response.status() : '응답 없음'} / URL=${page.url()}`,
-      )
-    }
-    return [
-      ...notes,
-      `인라인 에러="${texts.find((t) => t.includes('찾을 수'))}", POST 상태=${response ? response.status() : '응답 없음'}, URL=${pathname(page)}`,
-    ].join(' / ')
+    return `존재하지 않는 investorId 등록을 서버가 404로 거부: ${body}`
   } finally {
     await context.close()
   }
@@ -501,16 +449,29 @@ function localDate() {
 }
 
 async function api(context, method, path, data) {
-  const response = await context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, {
-    method,
-    data,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  const response = await apiResponse(context, method, path, data)
   const text = await response.text()
   if (!response.ok()) {
     throw new Error(`API ${method} ${path} 실패: 상태=${response.status()} 본문=${text}`)
   }
   return text ? JSON.parse(text) : null
+}
+
+async function apiResponse(context, method, path, data) {
+  const origin = new URL(BASE_URL).origin
+  const headers = { 'Content-Type': 'application/json' }
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const csrfResponse = await context.request.get(`${BASE_URL}${API_PREFIX}/auth/csrf`)
+    if (!csrfResponse.ok()) throw new Error(`CSRF 토큰 발급 실패: ${csrfResponse.status()}`)
+    const csrf = await csrfResponse.json()
+    headers.Origin = origin
+    headers[csrf.headerName] = csrf.token
+  }
+  return context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+    method,
+    data,
+    headers,
+  })
 }
 
 async function apiLogin(context, email) {
@@ -522,7 +483,7 @@ async function createAccount(context, email, name) {
     email,
     password: PASSWORD,
     name,
-    displayName: name,
+    nickname: name,
     relationship: 'SELF',
   })
 }
@@ -618,10 +579,10 @@ async function scenario7(browser) {
 
     await goto(page, '/subscriptions/register')
     const formShown = await waitFor(async () => {
-      if ((await page.locator('form[aria-label="청약 등록 폼"]').count()) > 0) return true
+      if ((await page.locator('form[aria-label="청약·배정 등록 폼"]').count()) > 0) return true
       return (await page.locator('body').innerText()).includes('목록을 불러올 수 없습니다')
     }, 30000)
-    if (!formShown || (await page.locator('form[aria-label="청약 등록 폼"]').count()) === 0) {
+    if (!formShown || (await page.locator('form[aria-label="청약·배정 등록 폼"]').count()) === 0) {
       const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ')
       throw new Error(
         `청약 등록 폼 미표시: 기대=투자자·증권계좌·공모주 드롭다운이 채워진 폼 vs 실제 화면="${body.slice(0, 120)}" / 실패한 API=${[...new Set(failedApis)].join(', ') || '(없음)'}`,
@@ -643,13 +604,14 @@ async function scenario7(browser) {
       )
     }
     trade.subscriptionId = body && typeof body.id === 'number' ? body.id : null
+    trade.subscribed = true
 
     const card = page.locator('li', { hasText: trade.ipoName })
     await card.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
     const cardText = (await card.count()) > 0 ? await card.first().innerText() : ''
-    if (!cardText.includes(`${TRADE.allocatedQuantity}주`) || !cardText.includes('미배정')) {
+    if (!cardText.includes(`${TRADE.allocatedQuantity}주`) || !cardText.includes('대기')) {
       throw new Error(
-        `목록 표시 불일치: 기대=${trade.ipoName}·${TRADE.allocatedQuantity}주·미배정 vs 실제 카드="${cardText.replace(/\s+/g, ' ') || '(카드 없음)'}"`,
+        `목록 표시 불일치: 기대=${trade.ipoName}·${TRADE.allocatedQuantity}주·대기 vs 실제 카드="${cardText.replace(/\s+/g, ' ') || '(카드 없음)'}"`,
       )
     }
     trade.subscribed = true
@@ -694,7 +656,7 @@ async function scenario8(browser) {
     await goto(page, '/subscriptions')
     const card = page.locator('li', { hasText: trade.ipoName }).first()
     await card.waitFor({ state: 'visible', timeout: 15000 })
-    await card.getByRole('link', { name: '배정 입력' }).click()
+    await card.getByRole('link', { name: '배정 등록' }).click()
     await page.waitForSelector('form[aria-label="배정 등록 폼"]')
 
     const responsePromise = page
@@ -719,10 +681,10 @@ async function scenario8(browser) {
     }
     const after = page.locator('li', { hasText: trade.ipoName }).first()
     await after.waitFor({ state: 'visible', timeout: 15000 })
-    const shown = await waitFor(async () => (await after.innerText()).includes('배정완료'), 10000)
+    const shown = await waitFor(async () => (await after.innerText()).includes('배정 받음'), 10000)
     const cardText = (await after.innerText()).replace(/\s+/g, ' ')
     if (!shown) {
-      throw new Error(`배정 표시 불일치: 기대=배정완료 배지 vs 실제 카드="${cardText}"`)
+      throw new Error(`배정 표시 불일치: 기대=배정 받음 배지 vs 실제 카드="${cardText}"`)
     }
     trade.allocated = true
     return [...preNotes, `POST /allocations 상태=${response ? response.status() : '응답 없음'}, 카드="${cardText}"`].join(' / ')
@@ -826,15 +788,21 @@ async function scenario10(browser) {
     }
 
     await goto(page, '/subscriptions')
-    await page.getByRole('heading', { name: '청약 목록' }).waitFor()
+    await page.getByRole('heading', { name: '공모주 청약' }).waitFor()
     const listed = await waitFor(async () => {
       const text = await page.locator('body').innerText()
       return text.includes('표시할 청약이 없습니다.') || text.includes(trade.ipoName)
     }, 15000)
-    const listText = await page.locator('body').innerText()
-    if (!listed || listText.includes(trade.ipoName)) {
+    const publicIpoCard = page.locator('li', { hasText: trade.ipoName }).first()
+    const cardText = (await publicIpoCard.count()) > 0 ? await publicIpoCard.innerText() : ''
+    if (
+      !listed ||
+      !cardText.includes('청약 전') ||
+      cardText.includes('청약 완료') ||
+      cardText.includes(`${TRADE.allocatedQuantity}주`)
+    ) {
       throw new Error(
-        `다른 계정 청약 목록에 타인 데이터 노출: 기대=표시할 청약이 없습니다. vs 실제="${listText.replace(/\s+/g, ' ').slice(0, 200)}"`,
+        `다른 계정 청약 상태 노출: 공개 종목은 청약 전/0주여야 함 vs 실제="${cardText.replace(/\s+/g, ' ').slice(0, 200) || '(종목 카드 없음)'}"`,
       )
     }
 
@@ -850,7 +818,7 @@ async function scenario10(browser) {
     } else {
       notes.push('subscriptionId 미확보로 직접 조회 확인 생략')
     }
-    return [...notes, '대시보드=빈 상태, 청약 목록=표시할 청약 없음'].join(' / ')
+    return [...notes, `대시보드=빈 상태, 공개 종목 카드="${cardText.replace(/\s+/g, ' ').slice(0, 120)}"`].join(' / ')
   } finally {
     await context.close()
   }
@@ -937,14 +905,8 @@ async function scenario12(browser) {
     if (!attempt.ok) throw new Error(`로그인 실패: 상태=${attempt.status}`)
     const notes = []
 
-    await page
-      .getByRole('navigation', { name: '주요 메뉴' })
-      .getByRole('button', { name: '설정' })
-      .click()
-    await page
-      .getByRole('navigation', { name: '주요 메뉴' })
-      .getByRole('link', { name: '증권사 연동' })
-      .click()
+    await goto(page, '/securities')
+    await page.getByRole('link', { name: '증권사 연동' }).click()
     await page.getByRole('heading', { name: '증권사 연동' }).waitFor()
     notes.push('헤더 링크로 진입')
 
@@ -998,10 +960,9 @@ async function scenario13(browser) {
   const memberLogin = async () => {
     const ctx = await browser.newContext()
     try {
-      const response = await ctx.request.fetch(`${BASE_URL}${API_PREFIX}/auth/login`, {
-        method: 'POST',
-        data: { email: memberEmail, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
+      const response = await apiResponse(ctx, 'POST', '/auth/login', {
+        email: memberEmail,
+        password: PASSWORD,
       })
       return { status: response.status(), body: await response.text() }
     } finally {
@@ -1018,14 +979,7 @@ async function scenario13(browser) {
     const attempt = await login(page, adminEmail, PASSWORD)
     if (!attempt.ok) throw new Error(`관리자 로그인 실패: 상태=${attempt.status}`)
     // 관리자에게만 헤더에 `가입 승인` 링크가 보인다.
-    await page
-      .getByRole('navigation', { name: '주요 메뉴' })
-      .getByRole('button', { name: '관리자' })
-      .click()
-    await page
-      .getByRole('navigation', { name: '주요 메뉴' })
-      .getByRole('link', { name: '가입 승인' })
-      .click()
+    await goto(page, '/admin/accounts')
     await page.getByRole('heading', { name: '가입 승인 관리' }).waitFor()
     await page.getByText(memberEmail, { exact: true }).waitFor()
     await page.getByRole('button', { name: `${memberEmail} 승인`, exact: true }).click()
@@ -1062,12 +1016,12 @@ async function scenario14(browser) {
     // 투자자가 2명이면 직접 고를 때까지 작업 화면 대신 선택 화면이 나온다.
     await goto(page, '/subscriptions')
     await page.getByRole('heading', { name: '어느 투자자로 작업할까요?' }).waitFor({ timeout: 15000 })
-    if ((await page.getByRole('heading', { name: '청약 목록' }).count()) > 0) {
+    if ((await page.getByRole('heading', { name: '공모주 청약' }).count()) > 0) {
       throw new Error('투자자를 고르기 전인데 청약 목록이 보임')
     }
 
     await page.getByRole('button', { name: 'E2E 을' }).click()
-    await page.getByRole('heading', { name: '청약 목록' }).waitFor({ timeout: 15000 })
+    await page.getByRole('heading', { name: '공모주 청약' }).waitFor({ timeout: 15000 })
     const switcher = page.getByLabel('현재 투자자')
     if ((await switcher.inputValue()) !== String(secondId)) {
       throw new Error(`전환기 값 불일치: 기대=${secondId} 실제=${await switcher.inputValue()}`)
@@ -1076,7 +1030,7 @@ async function scenario14(browser) {
     // 전환기로 바꾸면 값이 바뀌고, 새로고침해도 선택이 기억된다.
     await switcher.selectOption(String(firstId))
     await page.reload()
-    await page.getByRole('heading', { name: '청약 목록' }).waitFor({ timeout: 15000 })
+    await page.getByRole('heading', { name: '공모주 청약' }).waitFor({ timeout: 15000 })
     const after = await page.getByLabel('현재 투자자').inputValue()
     if (after !== String(firstId)) {
       throw new Error(`새로고침 뒤 선택이 유지되지 않음: 기대=${firstId} 실제=${after}`)
@@ -1344,7 +1298,22 @@ async function scenario18(browser) {
 }
 
 async function rawPost(context, path, options) {
-  const response = await context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, { method: 'POST', ...options })
+  let headers = options.headers ?? {}
+  if (options.data) {
+    const csrfResponse = await context.request.get(`${BASE_URL}${API_PREFIX}/auth/csrf`)
+    if (!csrfResponse.ok()) throw new Error(`CSRF 토큰 발급 실패: ${csrfResponse.status()}`)
+    const csrf = await csrfResponse.json()
+    headers = {
+      ...headers,
+      Origin: new URL(BASE_URL).origin,
+      [csrf.headerName]: csrf.token,
+    }
+  }
+  const response = await context.request.fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+    ...options,
+    method: 'POST',
+    headers,
+  })
   return { status: response.status(), body: await response.text() }
 }
 
@@ -1367,7 +1336,9 @@ async function scenario19(browser) {
     await goto(page, '/login')
     if (!(await waitForUrl(page, '**/dashboard'))) throw new Error(`로그인 상태에서 /login이 /dashboard로 가지 않음: ${page.url()}`)
     await goto(page, '/admin/accounts')
-    await expectText(page, '관리자만 볼 수 있는 화면입니다.', '일반 사용자 관리자 화면')
+    await expectText(page, '페이지를 찾을 수 없습니다', '일반 사용자 관리자 경로 은닉')
+    await goto(page, '/dashboard')
+    await page.getByRole('button', { name: '설정' }).click()
     await page.getByRole('button', { name: '로그아웃' }).click()
     if (!(await waitForUrl(page, '**/login'))) throw new Error(`로그아웃 뒤 /login 이동 실패: ${page.url()}`)
     await page.waitForSelector('form #email')
@@ -1421,7 +1392,7 @@ async function scenario20(browser) {
     await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).click()
     await admin.page.getByRole('button', { name: `${memberEmail} 잠금 해제`, exact: true }).waitFor({ state: 'detached' })
     // 지금 가져오기 버튼은 보이는지만 확인(실제 DART 호출이라 누르지 않는다)
-    await goto(admin.page, '/admin/ipos')
+    await goto(admin.page, '/ipo-calendar')
     await admin.page.getByRole('button', { name: 'DART에서 가져오기' }).waitFor()
   } finally {
     await admin.context.close()

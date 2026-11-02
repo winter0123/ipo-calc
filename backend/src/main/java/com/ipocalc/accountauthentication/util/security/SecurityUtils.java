@@ -30,4 +30,30 @@ public class SecurityUtils {
     }
     return account.getId();
   }
+
+  /** 임퍼소네이션 중이면 대상 회원 ID, 아니면 관리자 ID 반환. */
+  public Long getEffectiveAccountId() {
+    if (ImpersonationContextHolder.isImpersonating()) {
+      return ImpersonationContextHolder.getSubjectAccountId();
+    }
+    return getCurrentAccountId();
+  }
+
+  /** 임퍼소네이션 중이면 대상 회원 이메일, 아니면 관리자 이메일 반환. */
+  public String getEffectiveEmail() {
+    if (ImpersonationContextHolder.isImpersonating()) {
+      Long subjectId = ImpersonationContextHolder.getSubjectAccountId();
+      return accountRepository.findById(subjectId).map(Account::getEmail).orElse(null);
+    }
+    return getCurrentAccountEmail();
+  }
+
+  /** 현재 로그인한 계정의 이메일 반환. */
+  public String getCurrentAccountEmail() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null) {
+      return null;
+    }
+    return authentication.getName();
+  }
 }

@@ -64,11 +64,9 @@ function FilterTestWrapper({
   initialVisibleTypes?: ReadonlySet<CalendarEventType>
   onVisibleTypesChange?: (next: ReadonlySet<CalendarEventType>) => void
 }) {
-  console.log('FilterTestWrapper: initialVisibleTypes=', initialVisibleTypes)
   const [visibleTypes, setVisibleTypes] = useState<ReadonlySet<CalendarEventType>>(
     initialVisibleTypes ?? new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']),
   )
-  console.log('FilterTestWrapper: visibleTypes=', visibleTypes)
   return (
     <IpoCalendar
       ipos={ipos}
@@ -92,6 +90,28 @@ describe('IpoCalendar', () => {
       if (typeof url === 'string' && url.startsWith('/market-holidays')) {
         return Promise.resolve(holidayResponse)
       }
+      if (typeof url === 'string' && /\/ipos\/\d+\/insight$/.test(url)) {
+        return Promise.resolve({
+          syncedAt: '2026-10-01T00:00:00Z',
+          sourceReportName: null,
+          sourceUrl: null,
+          ceoName: null,
+          establishedOn: null,
+          address: null,
+          parValue: null,
+          capitalStock: null,
+          largestShareholderName: null,
+          largestShareholderRatio: null,
+          institutionalCompetitionRate: null,
+          lockUpCommitmentRatio: null,
+          financials: [],
+          floatSchedule: [],
+          underwriters: [
+            { name: '미래에셋증권', role: '주관', shares: 1000 },
+            { name: 'KB증권', role: '공동주관', shares: 500 },
+          ],
+        })
+      }
       return Promise.resolve([])
     })
   })
@@ -108,8 +128,8 @@ describe('IpoCalendar', () => {
     const ipos = [makeIpo()]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /청약/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /상장/ })).toBeInTheDocument()
   })
 
   it('청약 막대는 시작일~종료일을 가로지른다', async () => {
@@ -121,9 +141,9 @@ describe('IpoCalendar', () => {
     ]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const bar = screen.getByRole('link', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
+    const bar = screen.getByRole('button', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
     expect(bar).toBeInTheDocument()
-    expect(bar).toHaveAttribute('href', '/ipos/1')
+    // 버튼이라 href가 없음 - 클릭으로 날짜 선택 확인
   })
 
   it('날짜 셀과 일정 막대가 같은 요일 열 좌표를 사용한다', () => {
@@ -136,10 +156,11 @@ describe('IpoCalendar', () => {
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     // 2026년 10월 1일은 목요일이다. 날짜 칸과 청약 바가 동일한 5~7열에 있어야 한다.
-    expect(screen.getByRole('button', { name: /10월 1일/ })).toHaveStyle('--calendar-column: 5')
-    expect(screen.getByRole('button', { name: /10월 3일/ })).toHaveStyle('--calendar-column: 7')
+    // dateCell은 aria-label에 "일정"이 포함되지만, bar는 "청약" 등으로 시작하므로 구분 가능
+    expect(screen.getByRole('button', { name: /^10월 1일/ })).toHaveStyle('--calendar-column: 5')
+    expect(screen.getByRole('button', { name: /^10월 3일/ })).toHaveStyle('--calendar-column: 7')
 
-    const bar = screen.getByRole('link', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
+    const bar = screen.getByRole('button', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
     expect(bar).toHaveStyle('--calendar-bar-column: 5 / 8')
     expect(bar).toHaveStyle('--calendar-bar-row: 2')
   })
@@ -148,7 +169,7 @@ describe('IpoCalendar', () => {
     const ipos = [makeIpo({ listingDate: '2026-10-15T09:00:00Z' })]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const bar = screen.getByRole('link', { name: /테스트기업 상장 10월 15일/ })
+    const bar = screen.getByRole('button', { name: /테스트기업 상장 10월 15일/ })
     expect(bar).toBeInTheDocument()
   })
 
@@ -169,15 +190,15 @@ describe('IpoCalendar', () => {
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /청약/ })).toBeInTheDocument()
 
     // 월 셀렉트박스로 다음 달(11월) 선택
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '11')
 
     expect(screen.getByText('2026년 11월')).toBeInTheDocument()
-    const novBars = screen.getAllByRole('link', { name: /11월/ })
+    const novBars = screen.getAllByRole('button', { name: /11월/ })
     expect(novBars.length).toBeGreaterThan(0)
-    const octBars = screen.queryAllByRole('link', { name: /10월/ })
+    const octBars = screen.queryAllByRole('button', { name: /10월/ })
     expect(octBars.length).toBe(0)
   })
 
@@ -199,7 +220,7 @@ describe('IpoCalendar', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '9')
 
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /청약/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /청약/ }).length).toBeGreaterThan(0)
   })
 
   it('오늘 버튼을 누르면 현재 월로 이동한다', async () => {
@@ -228,12 +249,27 @@ describe('IpoCalendar', () => {
     ]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const dateButton = screen.getByRole('button', { name: /10월 5일/ })
+    const dateButton = screen.getByRole('button', { name: /^10월 5일/ })
     await userEvent.click(dateButton)
 
     const detailRegion = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     expect(detailRegion).toHaveTextContent('테스트기업')
     expect(detailRegion).toHaveTextContent('청약')
+  })
+
+  it('선택 날짜의 청약 상세에 모든 주관사 이름을 표시한다', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]}
+        initialYear={2026}
+        initialMonth={10}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => expect(region).toHaveTextContent('주관사 미래에셋증권 · KB증권'))
   })
 
   it('청약 기간 전·중인 청약 일정에는 청약 등록 링크가 ipoId와 함께 보인다', async () => {
@@ -246,7 +282,7 @@ describe('IpoCalendar', () => {
     ]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /10월 10일/ }))
+    await userEvent.click(screen.getByRole('button', { name: /^10월 10일/ }))
 
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     expect(within(region).getByRole('link', { name: /청약 등록/ })).toHaveAttribute(
@@ -264,27 +300,27 @@ describe('IpoCalendar', () => {
     ]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /10월 5일/ }))
+    await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
 
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     expect(within(region).queryByRole('link', { name: /청약 등록/ })).not.toBeInTheDocument()
   })
 
-  it('이벤트 없는 날 클릭 시 "일정 없음"이 표시된다', async () => {
+  it('이벤트 없는 날 클릭 시 "공모주 일정이 없습니다"가 표시된다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const dateButton = screen.getByRole('button', { name: /10월 10일/ })
+    const dateButton = screen.getByRole('button', { name: /^10월 10일/ })
     await userEvent.click(dateButton)
 
-    expect(screen.getByText('일정 없음')).toBeInTheDocument()
+    expect(screen.getByText('공모주 일정이 없습니다')).toBeInTheDocument()
   })
 
   it('선택된 날짜는 aria-pressed로 표시된다', async () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const dateButton = screen.getByRole('button', { name: /10월 5일/ })
+    const dateButton = screen.getByRole('button', { name: /^10월 5일/ })
     expect(dateButton).not.toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(dateButton)
@@ -296,7 +332,7 @@ describe('IpoCalendar', () => {
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-10T09:00:00Z' })]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const todayButton = screen.getByRole('button', { name: /10월 10일/ })
+    const todayButton = screen.getByRole('button', { name: /^10월 10일/ })
     expect(todayButton).toHaveAttribute('aria-current', 'date')
   })
 
@@ -317,10 +353,12 @@ describe('IpoCalendar', () => {
     // 월 셀렉트박스로 다음 달(11월) 선택
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '11')
 
-    expect(
-      screen.getByText('날짜를 누르면 그날의 청약·환불·상장 일정이 여기에 나옵니다'),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('일정 없음')).not.toBeInTheDocument()
+    await waitFor(() => {
+      // 선택된 날짜가 해제되어 제목이 빈 문자열이 됨
+      expect(screen.getByRole('heading', { name: '' })).toBeInTheDocument()
+      // 일정 리스트도 없어야 함
+      expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    })
   })
 
   it('12월에서 다음 달은 다음 해 1월, 1월에서 이전 달은 전년 12월이다', async () => {
@@ -343,7 +381,7 @@ describe('IpoCalendar', () => {
     ]
     renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    const dateButton = screen.getByRole('button', { name: /10월 5일/ })
+    const dateButton = screen.getByRole('button', { name: /^10월 5일/ })
     await userEvent.click(dateButton)
 
     const link = screen.getByRole('link', { name: /테스트기업 테스트IPO 상세 보기/ })
@@ -394,27 +432,27 @@ describe('IpoCalendar', () => {
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       // Initially, all three types of bars should be visible
-      expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /환불/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 청약/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 환불/ })).toBeInTheDocument()
 
       // 청약 끄기
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-      expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /환불/ })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 청약/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 환불/ })).toBeInTheDocument()
 
       // 환불 끄기
       await userEvent.click(screen.getByRole('button', { name: '환불' }))
-      expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: /환불/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 청약/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 상장/ })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 환불/ })).not.toBeInTheDocument()
 
       // 상장 끄기
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
-      expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: /상장/ })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: /환불/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 청약/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 상장/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업 환불/ })).not.toBeInTheDocument()
     })
 
     it('날짜 칸 aria-label의 일정 개수가 필터를 따른다', async () => {
@@ -428,22 +466,22 @@ describe('IpoCalendar', () => {
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       // 세 종 모두 켜짐: 3개
-      const dateButtonAll = screen.getByRole('button', { name: /10월 5일/ })
+      const dateButtonAll = screen.getByRole('button', { name: /^10월 5일/ })
       expect(dateButtonAll).toHaveAttribute('aria-label', '10월 5일, 일정 3개')
 
       // 청약 끄기
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-      const dateButtonTwo = screen.getByRole('button', { name: /10월 5일/ })
+      const dateButtonTwo = screen.getByRole('button', { name: /^10월 5일/ })
       expect(dateButtonTwo).toHaveAttribute('aria-label', '10월 5일, 일정 2개')
 
       // 환불 끄기
       await userEvent.click(screen.getByRole('button', { name: '환불' }))
-      const dateButtonOne = screen.getByRole('button', { name: /10월 5일/ })
+      const dateButtonOne = screen.getByRole('button', { name: /^10월 5일/ })
       expect(dateButtonOne).toHaveAttribute('aria-label', '10월 5일, 일정 1개')
 
       // 상장 끄기
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
-      const dateButtonZero = screen.getByRole('button', { name: /10월 5일/ })
+      const dateButtonZero = screen.getByRole('button', { name: /^10월 5일/ })
       // 일정이 없으면 개수 문구를 붙이지 않는다(기존 동작)
       expect(dateButtonZero).toHaveAttribute('aria-label', '10월 5일')
     })
@@ -495,7 +533,7 @@ describe('IpoCalendar', () => {
       ]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-      const dateButton = screen.getByRole('button', { name: /10월 1일/ })
+      const dateButton = screen.getByRole('button', { name: /^10월 1일/ })
       await userEvent.click(dateButton)
 
       expect(screen.getByText('2026-10-01 ~ 2026-10-03')).toBeInTheDocument()
@@ -505,8 +543,8 @@ describe('IpoCalendar', () => {
       const ipos = [makeIpo()]
       renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-      expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 청약/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업 상장/ })).toBeInTheDocument()
     })
   })
 
@@ -521,7 +559,7 @@ describe('IpoCalendar', () => {
       renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       // 10/8(목)~10/12(월)은 2주에 걸침
-      const bars = screen.getAllByRole('link', { name: /청약/ })
+      const bars = screen.getAllByRole('button', { name: /테스트기업 청약/ })
       expect(bars.length).toBe(2)
     })
   })
@@ -576,7 +614,7 @@ describe('IpoCalendar', () => {
       })
     })
 
-    it('일정이 없는 공휴일을 선택하면 "휴장일 · 이름"과 "일정 없음"이 모두 보인다', async () => {
+    it('일정이 없는 공휴일을 선택하면 "휴장일 · 이름"과 "공모주 일정이 없습니다"가 모두 보인다', async () => {
       setHolidays([{ date: '2026-10-09', name: '한글날' }])
       const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
       renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
@@ -589,7 +627,7 @@ describe('IpoCalendar', () => {
 
       await waitFor(() => {
         expect(screen.getByText('휴장일 · 한글날')).toBeInTheDocument()
-        expect(screen.getByText('일정 없음')).toBeInTheDocument()
+        expect(screen.getByText('공모주 일정이 없습니다')).toBeInTheDocument()
       })
     })
 
@@ -607,7 +645,7 @@ describe('IpoCalendar', () => {
       // 달력이 정상 렌더링됨
       await waitFor(() => {
         expect(screen.getByText('2026년 10월')).toBeInTheDocument()
-        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /청약/ })).toBeInTheDocument()
       })
       // 오류 문구가 없어야 함
       expect(screen.queryByText(/오류|에러|실패/i)).not.toBeInTheDocument()
@@ -653,6 +691,135 @@ describe('IpoCalendar', () => {
         const dateButton = screen.getByRole('button', { name: '10월 9일, 한글날, 일정 1개' })
         expect(dateButton).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('모바일 주말 표시·스크롤·reduced motion', () => {
+    const originalInnerWidth = window.innerWidth
+    const originalMatchMedia = window.matchMedia
+    let scrollMockFn: any
+
+    beforeEach(() => {
+      scrollMockFn = vi.fn()
+      const proto = (globalThis as any).HTMLElement?.prototype
+      if (proto)
+        Object.defineProperty(proto, 'scrollIntoView', {
+          value: scrollMockFn,
+          writable: true,
+          configurable: true,
+        })
+    })
+    afterEach(() => {
+      const proto = (globalThis as any).HTMLElement?.prototype
+      if (proto && proto.scrollIntoView === scrollMockFn) {
+        // restore by deleting mock (jsdom lacks method by default); no need to keep
+        delete proto.scrollIntoView
+      }
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      window.dispatchEvent(new Event('resize'))
+      window.matchMedia = originalMatchMedia
+    })
+
+    it('모바일(isMobile=true)에서 주말 전용 세그먼트는 렌더 세그먼트가 없고 Sun..Sat 전체 이벤트는 월~금 col1..5만 표시', async () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 390,
+      })
+      window.dispatchEvent(new Event('resize'))
+      const ipos = [
+        makeIpo({
+          subscriptionStartDate: '2026-10-10T09:00:00Z',
+          subscriptionEndDate: '2026-10-11T17:00:00Z',
+        }),
+      ]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+      expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+    })
+
+    it('날짜 클릭 후 상세 section의 scrollIntoView가 smooth behavior + block start로 호출된다', async () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 390,
+      })
+      window.dispatchEvent(new Event('resize'))
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+      await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+      expect(scrollMockFn).toHaveBeenCalled()
+      const args = (scrollMockFn.mock.calls[scrollMockFn.mock.calls.length - 1] || [])[0] as Record<
+        string,
+        unknown
+      >
+      expect(args.behavior).toBe('smooth')
+      expect(args.block).toBe('start')
+    })
+
+    it('initial render에서는 scrollIntoView가 호출되지 않는다', async () => {
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+      expect(scrollMockFn).not.toHaveBeenCalled()
+    })
+
+    it('reduced motion (matchMedia reduce=true) 시 클릭 시 scrollIntoView는 auto behavior + block start로 호출된다', async () => {
+      const mockMatchMedia = (query: string) => ({
+        matches: query === '(prefers-reduced-motion: reduce)',
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      })
+      const prev = window.matchMedia
+      window.matchMedia = mockMatchMedia as typeof window.matchMedia
+      try {
+        Object.defineProperty(window, 'innerWidth', {
+          writable: true,
+          configurable: true,
+          value: 390,
+        })
+        window.dispatchEvent(new Event('resize'))
+        const ipos = [makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]
+        renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+        await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+        expect(scrollMockFn).toHaveBeenCalled()
+        const args = (scrollMockFn.mock.calls[scrollMockFn.mock.calls.length - 1] ||
+          [])[0] as Record<string, unknown>
+        expect(args.behavior).toBe('auto')
+        expect(args.block).toBe('start')
+      } finally {
+        window.matchMedia = prev
+      }
+    })
+
+    it('초기 오늘 선택은 fake system time이 실제로 적용된다', async () => {
+      vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+      await waitFor(() => {
+        const todayButton = screen.getByRole('button', { name: /^10월 10일/ })
+        expect(todayButton).toHaveAttribute('aria-current', 'date')
+      })
+    })
+
+    it('desktop click (innerWidth=1024) 시 자동 scroll하지 않는다', async () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 1024,
+      })
+      window.dispatchEvent(new Event('resize'))
+      const ipos = [makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]
+      renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+      await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+      expect(scrollMockFn).not.toHaveBeenCalled()
     })
   })
 })

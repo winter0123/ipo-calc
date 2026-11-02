@@ -1,12 +1,55 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 최신 상태: OpenCode 하위 에이전트 watchdog 감시 보강 (2026-11-02)
+
+- 사용자 지시로 `scripts/orca-worker-watchdog.py`가 Orca 활성 Dispatch뿐 아니라 저장소 내 OpenCode 터미널, OpenCode DB `session.parent_id` 기반 하위 세션도 읽기 전용으로 검사하도록 보강했다.
+- `OpenCode stopped while this response was in progress`와 하위 도구 오류를 ERROR로 감지하며, 미완료 하위 세션의 8분 무출력도 STALL로 표시한다. 정산된 worker의 최근 1시간 OpenCode 터미널도 검사한다.
+- watchdog 터미널 `term_49f1a7a7-921e-48a7-a210-b2f86fd4e181`에서 새 명령으로 재기동했다. 중복 프로세스를 정리해 현재 단일 프로세스 PID 61401이다. 상태 파일에서 `OPENCODE_TERM` 감시를 확인했다.
+- 검증: `python3 -m py_compile scripts/orca-worker-watchdog.py` PASS, `--selftest` PASS, 실제 1회 스캔 PASS, `git diff --check` PASS.
+- OpenCode DB에 현재 하위 세션 행은 없었다. DB 기반 하위 세션 탐지는 selftest의 부모-자식 fixture로 확인했고, 실감지는 아직 NOT_RUN이다.
+
+## 최신 통합: 청약 등록 주관사 계좌 필터 (2026-11-02)
+
+- Orca task `task_6be9b36099a4` 완료 산출물을 main 작업 트리에 선별 통합했다. 기존 `SubscriptionRegisterPage`의 배정 등록 콜백 계약을 유지하고, worker worktree의 두 파일을 통째로 덮어쓰지 않았다.
+- UI 대상 Vitest 20/20 PASS, 대상 ESLint PASS, 대상 diff check PASS. 전체 `pnpm exec tsc -b`는 `ui/src/widgets/IpoCalendar/IpoCalendar.test.tsx:749` 구문 오류(TS1128)로 FAIL; 주관사 필터 변경은 타입검사 전체 PASS로 간주하지 않는다.
+- 워커 dispatch `ctx_bc8c8d5ddc19` release 요청 및 터미널 종료를 수행했다. Orca는 dispatch 상태를 `retained`/`external_terminal`로 응답했다. frontend-2 worktree에는 원본 변경이 남아 보존했다.
+- 당시 남은 UI·감시 task는 아래 2026-11-02 후속 처리 기록에서 구현·검증 후 completed로 정산했다.
+
+## 최신 처리: 남은 프런트엔드·감시 작업 직접 마무리 (2026-11-02)
+
+- 상세 상태 옆에 모든 주관사 이름을 표시하고, 달력 선택일의 청약 상세에도 주관사 이름을 표시한다. 상장일 당일 상태는 `상장일`, 이후 날짜는 `상장 완료`다.
+- 관리자 공모주 동기화 월 범위는 480px 이하에서 세로 배치한다. `IpoCalendar.test.tsx`의 여분 괄호와 `matchMedia` mock 타입을 수정해 타입검사를 복구했다.
+- 관련 UI 테스트 86/86 PASS, `pnpm exec tsc -b` PASS, 대상 ESLint 0 errors(3 warnings), `pnpm build` PASS. Python watchdog `py_compile` 및 `--selftest` PASS. 빌드에는 NotFoundPage chunk 경고가 남는다.
+- watchdog 한 프로세스가 상태 알림과 5분 간격 inbox peek를 함께 수행 중이며 `orca-coord-watch.sh`는 삭제 상태다. 활성 하위 에이전트 없음. frontend-2 완료 worktree를 제거했고, 프로젝트 worktree는 main 하나만 남았다.
+- 해당 Orca Run에서 ready/pending/dispatched task 없음. 기존 실패 이력은 보존했다. 작업 트리에는 본 세션 전부터 누적된 미커밋 변경이 다수 있어 커밋하지 않았다.
+
+## 최신 상태: 관리자 회원 관리·임퍼소네이션 종합 검증 (2026-10-31)
+
+- 변경 사항은 현재 main 작업 트리에 통합돼 있으며 아직 커밋하지 않았다. 별도 하위 워커 세션은 종료·정리됐다.
+- backend `./gradlew build`: PASS. 1,132 tests, Checkstyle main/test, Spotless 포함. 첫 실행 45건 실패는 E2E가 남긴 테스트 계정이 `ipo_slot_4`에 남아 생긴 격리 DB 오염이었다. 슬롯4만 reset한 뒤 재실행해 통과했다. 기본 `ipo_calc`와 운영 DB는 건드리지 않았다.
+- UI Vitest 758 tests: PASS. `pnpm typecheck`, `pnpm lint`, `pnpm build`: PASS. 빌드에서 `NotFoundPage`의 dynamic/static import가 같은 chunk에 들어간다는 비차단 알림이 남는다.
+- 브라우저 E2E 22개: PASS. E2E API helper가 CSRF 쿠키/헤더와 Origin을 보내지 않던 점, 낡은 회원가입 필드·경로·접근성 라벨·화면 문구, 공개 IPO 카드와 소유 청약을 혼동하던 검사를 수정했다. `tools/lib/stack.sh`의 `/api` 프록시가 `/api-proxy`를 먼저 가로채던 문제도 고쳤다.
+- Ansible `deploy-backend.yml` syntax-check: PASS. `git diff --check`: PASS.
+- `infra/ansible/backend-env.yml`에 운영 Origin `https://ipocalc.duckdns.org`가 지정돼 있음을 확인했다. Ansible 실행 및 집 Linux 서버 배포는 NOT_RUN.
+- Orca Run의 검증·구현 Task는 모두 completed로 정산했다. 과거 실패 시도는 `failed` 기록으로 보존했고 활성 worker는 없다.
+- 남은 결정 게이트는 `gate_b376cafb023d`(운영 Origin 선택) 하나다. 저장소 설정에는 `https://ipocalc.duckdns.org`가 있으나, 게이트가 사용자 결정을 기다려 운영 서버 적용은 NOT_RUN이다.
+
+## 하위 작업 통합 및 세션 정리 (2026-10-30, 최신)
+
+- 하위 worktree `backend-members`, `backend-security`, `frontend`, `planning`의 관련 백엔드 구현/테스트를 main 작업 트리에 선별 통합했다. 중복·낡은 구현과 무관한 테스트 비활성화 변경은 반영하지 않았다.
+- 하위 Orca worktree 4개와 자식 터미널을 제거했다. settled dispatch에 release를 요청했고, Orca는 일부 오래된 항목을 `external_terminal`/`identity_unproven`으로 남겼으나 현재 worker terminal 목록 및 worktree 목록에는 하위 세션이 없다.
+- 제거 전에 미커밋 변경을 `/tmp/ipo-calc-child-worktrees-20261030.tar.gz`에 보관했다.
+- Master 검증(후속 최신 실행): backend 전체 1,132 tests PASS(0 failures/skipped), Checkstyle main/test PASS; UI 전체 758 tests PASS, typecheck PASS, lint PASS(4 warnings), 수정 파일 Prettier PASS, `git diff --check` PASS. 브라우저 E2E와 운영 배포는 NOT_RUN.
+- 운영 `infra/`와 집 Linux 서버에는 접근/수정/배포하지 않았다. 남은 작업은 사용자 확인이 필요한 trusted Origin 운영 설정 및 전체 회귀 검증이다.
+
+
 ## v7 변경 선별 검토 및 통합 (2026-10-30, 현재)
 
 - Run `run_d65f7f73ea85`, coordinator `term_5dd38159-a03f-454a-b7fb-6c7da47605a1`. 실제 고정 작업공간은 Orca `worktree list` 결과를 사용한다.
 - main 반영 완료: UI 기본 구현 `10fb6143`, OpenCode 무료 모델 실측 `8f985bd8`, 임퍼소네이션 중 관리자 경로 차단 `9b9abde5`, AdminLayout 회귀 테스트 `83ce5e07`, 다른 탭 캐시 동기화·테스트 `079d1ff5`.
 - UI Master 검증: typecheck PASS, lint PASS(4 warnings), 관련 Vitest PASS(21+3+6+4 tests), production build PASS. 전체 Vitest는 753개 중 22개 FAIL로 기준선에서도 같은 22개가 실패했으며 신규 실패는 확인되지 않았다.
 - 테스트 복구: backend 테스트 전체 검색에서 `@Disabled` 0건. 슬롯4 Master 전체 실행 `./gradlew test --rerun`: 1,102 tests, 20 failures, 0 skipped — FAIL. 활성화된 기존 테스트에서 순환 의존, IPO 기대값·데이터 격리, 후속 컨텍스트의 DB 연결/테이블 부재, 청약 잔여행 문제가 드러났다.
-- 백엔드 구현은 아직 main에 병합하지 않았다. backend-members `task_d7f5395d15e4` / dispatch `ctx_94a322ecafa5`는 조사만 수행하고 구현하지 않아 `failed`로 정산됐으며 변경 파일 없음으로 보고했다. Dispatch는 release, delivery ACK 처리했다. 조사에서 회원 상세 수익 원가 계산, 전체 매도 반환, 배정 메모리 페이지네이션, 목록 N+1 집계 결함을 발견했다고 보고했으나 재현·수정·테스트 증거가 없어 검증된 결함으로 확정하지 않았다. 모듈 순환 수정 `task_87c34cfaea75`, 복구 후 통합 테스트 격리 `task_1ce1ae9235fc`, 계정 격리 `task_252783ea059f`, 로컬 CSRF 설정 `task_d2a651380b69`가 남아 있다.
+- 백엔드 구현은 아직 main에 병합하지 않았다. 첫 backend-members 시도 `ctx_94a322ecafa5`는 조사만 수행해 failed였고 release/ACK됐다. 재배정 `ctx_93984ada528c`는 `opencode/beam-free`로 구현을 제출했으나 Master 슬롯4 AdminUserServiceTest 6건 중 1건이 빈 DB에 사전 계정이 있다고 가정해 실패했다. Checkstyle도 워커 보고상 실패하여 task `task_d7f5395d15e4`를 Master 검증 FAIL로 되돌렸다. 현재 `task_15fb6c46dbd0` / dispatch `ctx_4ae900a28380`이 `opencode/flint-40b-free`로 결정적 fixture와 소유권/통계/계산 회귀를 보정 중이며 slot3 및 저장소 `.env-local` datasource 설정을 지시했다. 수정 후 Master 재검증 전까지 병합하지 않는다. 후속 모듈 순환 수정 `task_87c34cfaea75`, 통합 테스트 격리 `task_1ce1ae9235fc`, 계정 격리 `task_252783ea059f`, 로컬 CSRF 설정 `task_d2a651380b69`는 선행 결과를 기다린다.
 - Allocation 전용 실패는 Master 재실행에서 재현되지 않아 `task_12ce5394471c`를 NOT_REPRODUCED/failed로 닫았다. 구조화 워커는 마지막 활동 후 25분 무응답으로 abandon했으나 Orca가 identity_unproven 자원을 retained 상태로 두어 backend-security 작업공간 재배정은 보류한다. 부분 변경은 보존했다.
 - 운영 Origin gate `gate_b376cafb023d`가 사용자 결정을 기다린다. `infra/ansible`·`infra/caddy` 수정, 운영 배포는 NOT_RUN.
 - 다음 순서: AdminUserService 결과 검토 → 모듈 cycle 해소 → 복구된 통합 테스트 재검증 → 전체 슬롯4 검증 → 대상별 effective-account 격리/CSRF 로컬 설정 → 운영 Origin gate 결정 후에만 인프라 범위 판단.

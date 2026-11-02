@@ -214,10 +214,10 @@ describe('IpoCalendarPage', () => {
       renderPage(['/ipo-calendar?types=LISTING'])
 
       await waitFor(() => {
-        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
       })
       await waitFor(() => {
-        expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /테스트기업.*청약/ })).not.toBeInTheDocument()
       })
     })
 
@@ -227,8 +227,8 @@ describe('IpoCalendarPage', () => {
       renderPage(['/ipo-calendar'])
 
       await waitFor(() => {
-        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
-        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /테스트기업.*청약/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
       })
 
       // 청약 끄기
@@ -241,9 +241,9 @@ describe('IpoCalendarPage', () => {
 
       // 청약 막대가 사라지고 상장만 남음
       await waitFor(() => {
-        expect(screen.queryByRole('link', { name: /청약/ })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /테스트기업.*청약/ })).not.toBeInTheDocument()
       })
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
     })
 
     it('모두 보기 버튼을 누르면 모든 종류가 켜진다', async () => {
@@ -252,7 +252,7 @@ describe('IpoCalendarPage', () => {
       renderPage(['/ipo-calendar?types=LISTING'])
 
       await waitFor(() => {
-        expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
       })
 
       // 모두 보기 버튼으로 청약 켜기
@@ -264,9 +264,9 @@ describe('IpoCalendarPage', () => {
 
       // 청약과 상장 모두 보임
       await waitFor(() => {
-        expect(screen.getByRole('link', { name: /청약/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /테스트기업.*청약/ })).toBeInTheDocument()
       })
-      expect(screen.getByRole('link', { name: /상장/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
     })
 
     it('세 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 다시 켜면 값이 생기고 모두 켜면 사라진다', async () => {

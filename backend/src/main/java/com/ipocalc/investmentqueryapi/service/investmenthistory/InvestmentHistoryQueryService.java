@@ -54,7 +54,7 @@ public class InvestmentHistoryQueryService {
   public Page<InvestmentHistoryDto> getHistory(
       Long investorId, Long securitiesAccountId, Long ipoId, int page, int size) {
 
-    final Long currentAccountId = securityUtils.getCurrentAccountId();
+    final Long currentAccountId = securityUtils.getEffectiveAccountId();
 
     // Step 1: 인증 및 소유권 검증 (모든 필터에 대해 재검증)
     if (investorId != null) {

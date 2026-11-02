@@ -21,6 +21,7 @@ import com.ipocalc.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
@@ -101,7 +102,8 @@ class IpoControllerTest {
     // companyName 미제공 시 ipoName으로 자동 저장
     assertThat(response.get("companyName")).isEqualTo("공모주A");
     assertThat(response.get("ipoName")).isEqualTo("공모주A");
-    assertThat(response.get("stockCode")).isEqualTo("123456" + stockCodeSuffix);
+    assertThat(response.get("stockCode"))
+        .isEqualTo("123456" + stockCodeSuffix.toUpperCase(Locale.ROOT));
     assertThat(response.get("roundLabel")).isEqualTo("1차");
     assertThat(response.get("lowerBandPrice")).isEqualTo(10000);
     assertThat(response.get("upperBandPrice")).isEqualTo(12000);

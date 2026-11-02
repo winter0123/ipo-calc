@@ -59,8 +59,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @ActiveProfiles("test")
-@ContextConfiguration(
-    classes = {com.ipocalc.IpoCalcApplication.class})
+@ContextConfiguration(classes = {com.ipocalc.IpoCalcApplication.class})
 class InvestmentHistoryQueryServiceTest {
 
   @Autowired private InvestmentHistoryQueryService queryService;
@@ -101,8 +100,8 @@ class InvestmentHistoryQueryServiceTest {
 
   @BeforeEach
   void setUp() {
-    // SecurityUtils.getCurrentAccountId()가 CURRENT_ACCOUNT_ID를 반환하도록 설정
-    when(securityUtils.getCurrentAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
+    // SecurityUtils.getEffectiveAccountId()가 현재 실효 계정 ID를 반환하도록 설정
+    when(securityUtils.getEffectiveAccountId()).thenReturn(CURRENT_ACCOUNT_ID);
 
     // Ownership verifier가 예외 없이 통과하도록 설정
     doNothing().when(ownershipVerifier).verifyInvestorIdOwnership(anyLong());

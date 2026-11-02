@@ -15,4 +15,10 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
 
   /** 계정 ID 조건으로 투자자를 목록 조회한다. */
   List<Investor> findByAccountId(Long accountId);
+
+  /** 계정 ID 조건(삭제되지 않은 건만)으로 투자자를 목록 조회한다. */
+  List<Investor> findAllByAccountIdAndDeletedAtIsNull(Long accountId);
+
+  /** 계정에 등록된 삭제되지 않은 투자자 수를 조회한다. */
+  long countByAccountIdAndDeletedAtIsNull(Long accountId);
 }

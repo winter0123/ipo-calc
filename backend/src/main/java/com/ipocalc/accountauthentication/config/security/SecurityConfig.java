@@ -1,14 +1,17 @@
 package com.ipocalc.accountauthentication.config.security;
 
 import com.ipocalc.accountauthentication.config.ratelimit.RateLimitFilter;
+import com.ipocalc.accountauthentication.service.impersonation.ImpersonationService;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,6 +24,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.security.SpringSessionBackedSessionRegistry;
@@ -28,14 +36,30 @@ import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 /** Spring Security 설정. 세션 기반 인증을 사용하고 미인증 요청에는 401을 반환한다. */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
+
+  @Value("${app.csrf.enabled:true}")
+  private boolean csrfEnabled;
+
+  @Value("${app.csrf.trusted-origin:}")
+  private String csrfTrustedOrigin;
+
+  /** 브라우저가 읽을 수 있는 CSRF 쿠키 저장소를 생성한다. */
+  @Bean
+  public CsrfTokenRepository csrfTokenRepository() {
+    return CookieCsrfTokenRepository.withHttpOnlyFalse();
+  }
 
   /** 요청 인가 규칙, 세션 관리, 예외 처리를 구성하고 IP별 요청 제한 필터를 체인 앞쪽에 넣는다. */
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       ObjectProvider<RateLimitFilter> rateLimitFilterProvider,
-      SessionRegistry sessionRegistry)
+      SessionRegistry sessionRegistry,
+      ImpersonationService impersonationService,
+      com.ipocalc.accountauthentication.repository.account.AccountRepository accountRepository,
+      CsrfTokenRepository csrfTokenRepository)
       throws Exception {
     // 제한 필터가 없으면(비활성) 건너뛴다. 로그인·가입 시도를 세션·인가 처리보다 먼저 거절하기 위한 위치다.
     RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
@@ -45,7 +69,13 @@ public class SecurityConfig {
     http.authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
-                        "/accounts", "/auth/login", "/auth/logout", "/css/**", "/js/**", "/error")
+                        "/accounts",
+                        "/auth/login",
+                        "/auth/logout",
+                        "/auth/csrf",
+                        "/css/**",
+                        "/js/**",
+                        "/error")
                     .permitAll()
                     // 동기화 상태 조회는 ADMIN만 (GET /ipos/sync/**)
                     .requestMatchers(HttpMethod.GET, "/ipos/sync/**")
@@ -65,10 +95,18 @@ public class SecurityConfig {
                     .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
-        // D-I-006 (2026-09-21): CSRF 전역 비활성. 프로젝트 전체 로드맵(16개 Epic)에 브라우저 폼 제출 플로우가 없고
-        // React SPA가 JSON으로 /auth/* 호출하는 방식뿐이며 CSRF 토큰 요구 스펙도 없음.
-        // CSRF 토큰이 없으면 PATCH/DELETE 등 쓰기 API가 403으로 차단되어 Epic 2~12 전체에서 재발하므로 전역 비활성으로 결정.
-        .csrf(csrf -> csrf.disable())
+        // CSRF 보호 활성화 (Double Submit Cookie 방식) - 테스트에서는 비활성화 가능.
+        // 로그인·가입·로그아웃도 예외 없이 보호한다. 클라이언트는 먼저 GET /auth/csrf로 토큰을 받는다.
+        // SpaCsrfTokenRequestHandler의 XOR 마스킹을 쓰지 않고 원본 토큰을 그대로 내려준다.
+        .csrf(
+            csrf -> {
+              if (csrfEnabled) {
+                csrf.csrfTokenRepository(csrfTokenRepository)
+                    .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler());
+              } else {
+                csrf.disable();
+              }
+            })
         // D-I-006 (2026-09-21): 미인증 요청은 401 Unauthorized 반환 (기존 formLogin 기본 302 리다이렉트 대체).
         // spec AC-003(투자자 등록 미인증 401) 및 Epics 전반의 JSON API 계약에 부합.
         .exceptionHandling(
@@ -98,7 +136,13 @@ public class SecurityConfig {
                     .sessionRegistry(sessionRegistry)
                     // 다른 곳에서 로그인해 만료된 세션도 API답게 401로 답한다(302 리다이렉트 아님).
                     .expiredSessionStrategy(
-                        event -> event.getResponse().setStatus(HttpStatus.UNAUTHORIZED.value())));
+                        event -> event.getResponse().setStatus(HttpStatus.UNAUTHORIZED.value())))
+        // 커스텀 필터 추가 (Spring Security FilterChain 내부). 서블릿 컨테이너에 중복 등록되지 않도록
+        // @Component/@Bean으로 만들지 않고 여기서 직접 생성한다.
+        .addFilterAfter(
+            new ImpersonationContextFilter(impersonationService, accountRepository),
+            SecurityContextHolderFilter.class)
+        .addFilterAfter(new CsrfTokenFilter(csrfEnabled, csrfTrustedOrigin), CsrfFilter.class);
 
     return http.build();
   }

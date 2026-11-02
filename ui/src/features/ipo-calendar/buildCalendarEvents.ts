@@ -158,9 +158,18 @@ export function toTypesParam(visible: VisibleTypes): string | null {
   return ordered
 }
 
+function getWeekdayFromYmd(ymd: string): number {
+  // Timezone-safe: YYYY-MM-DD는 문자열 비교만으로 평일·주말 구분 가능
+  // 로컬 Date 생성 시 시간대 차이로 요일이 바뀔 수 있으므로, UTC 기준 고정 계산
+  const [y, m, d] = ymd.split('-').map(Number) as [number, number, number]
+  const date = new Date(Date.UTC(y, m - 1, d))
+  return date.getUTCDay()
+}
+
 export function buildWeekSegments(
   events: CalendarEvent[],
   weekDates: (string | null)[],
+  isMobile?: boolean,
 ): { segments: BarSegment[]; laneCount: number } {
   const segments: BarSegment[] = []
   const laneEndDates: string[] = []
@@ -204,6 +213,29 @@ export function buildWeekSegments(
       )
       if (!conflict) break
       lane++
+    }
+
+    if (isMobile) {
+      // Find weekday-only range: clip startCol to first weekday, endCol to last weekday
+      let firstWeekdayCol = -1
+      let lastWeekdayCol = -1
+      for (let i = startCol; i <= endCol; i++) {
+        const d = weekDates[i]
+        if (d) {
+          const dayOfWeek = getWeekdayFromYmd(d)
+          if (dayOfWeek >= 1 && dayOfWeek <= 5) { // 월~금
+            if (firstWeekdayCol === -1) firstWeekdayCol = i
+            lastWeekdayCol = i
+          }
+        }
+      }
+      // If segment has no weekday dates (entirely weekend), skip it
+      if (firstWeekdayCol === -1) {
+        continue
+      }
+      // Clip segment to weekday-only range
+      startCol = firstWeekdayCol
+      endCol = lastWeekdayCol
     }
 
     segments.push({

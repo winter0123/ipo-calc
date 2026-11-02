@@ -1,10 +1,13 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
-import { useIpos, type Ipo } from '@/entities/ipo/index.ts'
+import {
+  useSecuritiesAccounts,
+  type SecuritiesAccount,
+} from '@/entities/securities-account/index.ts'
+import { useIpos, type Ipo, type IpoInsight, useIpoInsight } from '@/entities/ipo/index.ts'
+import type { AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
-import { useAllocationRegister } from '@/features/allocation-register/useAllocationRegister.ts'
 import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
 import styles, { StyleScope } from './SubscriptionRegisterForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
@@ -16,6 +19,7 @@ import {
   sortIposForSubscription,
 } from './subscriptionForm.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
+import { useEffect, useRef } from 'react'
 
 type SubscriptionFormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
 
@@ -28,7 +32,33 @@ interface CombinedFormValues extends SubscriptionFormValues {
   note?: string
 }
 
-export default function SubscriptionRegisterForm() {
+// 주관사 이름과 계좌 증권사 이름 사이에 확정된 ID 연결이 없어 공백만 정규화해 정확 일치한다.
+function normalizeName(name: string | null | undefined): string {
+  return (name ?? '').trim().replace(/\s+/g, ' ')
+}
+
+const EMPTY_UNDERWRITERS: IpoInsight['underwriters'] = []
+
+function isUnderwriterAccount(
+  underwriters: IpoInsight['underwriters'],
+  securitiesFirmName: string | null | undefined,
+): boolean {
+  const firmName = normalizeName(securitiesFirmName)
+  if (!firmName) return false
+  return underwriters.some((underwriter) => normalizeName(underwriter.name) === firmName)
+}
+
+interface SubscriptionRegisterFormProps {
+  registerAllocation?: (request: AllocationRegisterRequest) => Promise<unknown>
+  allocationError?: unknown
+  allocationPending?: boolean
+}
+
+export default function SubscriptionRegisterForm({
+  registerAllocation,
+  allocationError,
+  allocationPending,
+}: SubscriptionRegisterFormProps = {}) {
   // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
   const { isLoading: investorsLoading } = useCurrentInvestor()
   const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
@@ -49,21 +79,41 @@ export default function SubscriptionRegisterForm() {
     )
   }
 
-  return <SubscriptionForm ipos={sortIposForSubscription(ipos ?? [], toLocalYmd())} />
+  return (
+    <SubscriptionForm
+      ipos={sortIposForSubscription(ipos ?? [], toLocalYmd())}
+      registerAllocation={registerAllocation}
+      allocationError={allocationError}
+      allocationPending={allocationPending}
+    />
+  )
 }
 
-function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
+function SubscriptionForm({
+  ipos,
+  registerAllocation,
+  allocationError,
+  allocationPending,
+}: {
+  ipos: Ipo[]
+  registerAllocation?: (request: AllocationRegisterRequest) => Promise<unknown>
+  allocationError?: unknown
+  allocationPending?: boolean
+}) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { current } = useCurrentInvestor()
+  const { current, isLoading: investorsLoading } = useCurrentInvestor()
 
   // ?ipoId=<id>로 들어오면 그 공모주를 미리 고른다(목록에 없으면 무시).
   const presetIpoId = Number(searchParams.get('ipoId'))
   const presetIpo = ipos.find((ipo) => ipo.id === presetIpoId)
 
-  const { mutateAsync: mutateSubAsync, isPending: isPendingSub, error: errorSub } = useSubscriptionRegister()
-  const { mutateAsync: mutateAllocAsync, isPending: isPendingAlloc, error: errorAlloc } = useAllocationRegister()
+  const {
+    mutateAsync: mutateSubAsync,
+    isPending: isPendingSub,
+    error: errorSub,
+  } = useSubscriptionRegister()
 
   const {
     register,
@@ -76,13 +126,26 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
     watch,
   } = useForm<CombinedFormValues>({
     mode: 'onSubmit',
-    defaultValues: { subscribedAt: toLocalYmd(), ipoId: presetIpo?.id, depositAmount: Number.NaN, allocatedQuantity: 0 },
+    defaultValues: {
+      subscribedAt: toLocalYmd(),
+      ipoId: presetIpo?.id,
+      depositAmount: Number.NaN,
+      allocatedQuantity: 0,
+    },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() is intentionally used in this non-memoized form.
   const watchedIpoId = watch('ipoId')
   const selectedIpo = ipos.find((ipo) => ipo.id === Number(watchedIpoId))
   const watchedAllocatedQty = watch('allocatedQuantity')
   const showAllocationFields = Number(watchedAllocatedQty ?? 0) > 0
+
+  // 주관사 인사이트 조회 (GET /ipos/{id}/insight의 underwriters)
+  const {
+    data: ipoInsight,
+    isLoading: ipoInsightLoading,
+    error: ipoInsightError,
+  } = useIpoInsight(watchedIpoId || undefined)
 
   /** 증거금 기본값(공모가×수량×50%). 사용자가 고친 칸은 덮어쓰지 않는다. */
   const syncDeposit = () => {
@@ -102,6 +165,59 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
     isLoading: securitiesAccountsLoading,
     error: securitiesAccountsError,
   } = useSecuritiesAccounts(selectedInvestorId)
+
+  const selectedIpoId = Number(watchedIpoId)
+  const ipoSelected = Number.isFinite(selectedIpoId)
+  const underwriters = ipoInsight?.underwriters ?? EMPTY_UNDERWRITERS
+  // 주관사를 실제로 받았을 때만 계좌를 걸러낸다. 로딩·조회 오류·빈 배열은 기존 계좌 선택 동작을 유지한다(AC2·AC4).
+  const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
+
+  // 필터링된 증권계좌 리스트 (render 시점 계산)
+  let filteredAccounts: SecuritiesAccount[] = securitiesAccounts ?? []
+  if (ipoSelected && underwritersReady) {
+    filteredAccounts = filteredAccounts.filter((account) =>
+      isUnderwriterAccount(underwriters, account.securitiesFirmName),
+    )
+  }
+
+  // 선택 IPO의 주관사 계좌가 하나도 없으면 알림 후 마이페이지로 보낸다(AC5). 선택 IPO마다 1회만 처리한다.
+  const warnedIpoIds = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    // 로딩 중에는 경고/이동을 하지 않는다(AC2)
+    // 상위 컴포넌트가 IPO/투자자 목록 로딩을 마친 뒤에만 폼을 렌더링한다.
+    if (investorsLoading || securitiesAccountsLoading || ipoInsightLoading) return
+    // 투자자가 선택되지 않았거나 계좌 목록을 아직 받지 못했다면 "주관사 계좌 없음"이 아니다
+    if (!investorSelected || !securitiesAccounts) return
+    // 계좌/주관사 조회 실패나 빈 주관사 배열은 "계좌 없음"이 아니다(AC4)
+    if (securitiesAccountsError || ipoInsightError) return
+    if (!ipoSelected || underwriters.length === 0) return
+    if (warnedIpoIds.current.has(selectedIpoId)) return
+
+    const matchedAccounts = securitiesAccounts.filter((account) =>
+      isUnderwriterAccount(underwriters, account.securitiesFirmName),
+    )
+    if (matchedAccounts.length > 0) return
+
+    warnedIpoIds.current.add(selectedIpoId)
+    const underwriterNames = underwriters
+      .map((underwriter) => normalizeName(underwriter.name))
+      .filter((name) => name.length > 0)
+      .join(' · ')
+    window.alert(`${underwriterNames} 주관사 증권계좌 등록이 필요합니다.`)
+    navigate('/my-page')
+  }, [
+    investorsLoading,
+    investorSelected,
+    securitiesAccounts,
+    securitiesAccountsLoading,
+    securitiesAccountsError,
+    ipoInsightLoading,
+    ipoInsightError,
+    underwriters,
+    ipoSelected,
+    selectedIpoId,
+    navigate,
+  ])
 
   const onSubmit = async (data: CombinedFormValues) => {
     if (selectedInvestorId === undefined) return
@@ -134,7 +250,10 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
           allocationPrice: data.allocationPrice,
           note: data.note,
         }
-        await mutateAllocAsync(allocData)
+        if (!registerAllocation) {
+          throw new Error('배정 등록 기능이 연결되지 않았습니다.')
+        }
+        await registerAllocation(allocData)
       }
 
       navigate('/subscriptions')
@@ -143,7 +262,7 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
     }
   }
 
-  const formErrorMessage = toErrorMessage(errorSub ?? errorAlloc, {
+  const formErrorMessage = toErrorMessage(errorSub ?? allocationError, {
     byStatus: {
       404: (e) => {
         const msg = e.serverMessage ?? ''
@@ -194,7 +313,7 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
                       ? '불러오는 중...'
                       : '증권계좌 선택'}
                 </option>
-                {securitiesAccounts?.map((account) => (
+                {filteredAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.securitiesFirmName ?? account.accountNumber}
                   </option>
@@ -239,8 +358,8 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
               )}
               {selectedIpo && (
                 <p className={styles.ipoInfo} data-testid="ipo-info">
-                  {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)} ~{' '}
-                  {formatDate(selectedIpo.subscriptionEndDate)}
+                  {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)}{' '}
+                  ~ {formatDate(selectedIpo.subscriptionEndDate)}
                 </p>
               )}
             </div>
@@ -276,7 +395,9 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
                 name="depositAmount"
                 allowNegative
                 aria-invalid={!!errors.depositAmount}
-                aria-describedby={errors.depositAmount ? 'depositAmount-error' : 'depositAmount-hint'}
+                aria-describedby={
+                  errors.depositAmount ? 'depositAmount-error' : 'depositAmount-hint'
+                }
                 requiredMessage="증거금을 입력해 주세요."
                 validate={(v) => (Number.isInteger(v) && v >= 0) || '0 이상 정수를 입력해 주세요.'}
                 disabled={isPendingSub}
@@ -329,14 +450,18 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
           </fieldset>
 
           {/* === 배정 섹션 (선택적) === */}
-          <fieldset className={`${styles.section} ${showAllocationFields ? '' : styles.sectionCollapsed}`}>
+          <fieldset
+            className={`${styles.section} ${showAllocationFields ? '' : styles.sectionCollapsed}`}
+          >
             <legend className={styles.sectionTitle}>
               <label className={styles.allocationToggle}>
                 <input
                   type="checkbox"
                   checked={showAllocationFields}
                   onChange={(e) => {
-                    setValue('allocatedQuantity', e.target.checked ? 1 : 0, { shouldValidate: true })
+                    setValue('allocatedQuantity', e.target.checked ? 1 : 0, {
+                      shouldValidate: true,
+                    })
                   }}
                   aria-label="배정 정보 입력"
                 />
@@ -354,10 +479,18 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
                     inputMode="numeric"
                     min="0"
                     aria-invalid={!!errors.allocatedQuantity}
-                    aria-describedby={errors.allocatedQuantity ? 'allocatedQuantity-error' : 'allocatedQuantity-hint'}
+                    aria-describedby={
+                      errors.allocatedQuantity
+                        ? 'allocatedQuantity-error'
+                        : 'allocatedQuantity-hint'
+                    }
                     {...register('allocatedQuantity', {
                       valueAsNumber: true,
-                      validate: (v) => v === undefined || v === null || (Number.isInteger(Number(v)) && Number(v) >= 0) || '0 이상 정수를 입력해 주세요.',
+                      validate: (v) =>
+                        v === undefined ||
+                        v === null ||
+                        (Number.isInteger(Number(v)) && Number(v) >= 0) ||
+                        '0 이상 정수를 입력해 주세요.',
                     })}
                     disabled={isPendingSub}
                   />
@@ -395,7 +528,9 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
                   <select
                     id="allocationMethod"
                     aria-invalid={!!errors.allocationMethod}
-                    aria-describedby={errors.allocationMethod ? 'allocationMethod-error' : undefined}
+                    aria-describedby={
+                      errors.allocationMethod ? 'allocationMethod-error' : undefined
+                    }
                     {...register('allocationMethod')}
                     disabled={isPendingSub}
                   >
@@ -457,8 +592,12 @@ function SubscriptionForm({ ipos }: { ipos: Ipo[] }) {
             </div>
           )}
 
-          <button type="submit" disabled={isPendingSub || isPendingAlloc} className={styles.submitButton}>
-            {isPendingSub || isPendingAlloc ? '등록 중...' : '등록'}
+          <button
+            type="submit"
+            disabled={isPendingSub || allocationPending}
+            className={styles.submitButton}
+          >
+            {isPendingSub || allocationPending ? '등록 중...' : '등록'}
           </button>
         </form>
       }

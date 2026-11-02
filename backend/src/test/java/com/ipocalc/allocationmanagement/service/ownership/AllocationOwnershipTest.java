@@ -39,7 +39,7 @@ class AllocationOwnershipTest {
             allocationRepository,
             new SubscriptionOwnership(
                 subscriptionRepository, new OwnershipGuard(securityUtils, investorRepository)));
-    when(securityUtils.getCurrentAccountId()).thenReturn(ME);
+    when(securityUtils.getEffectiveAccountId()).thenReturn(ME);
   }
 
   private void chain(Long accountId) {

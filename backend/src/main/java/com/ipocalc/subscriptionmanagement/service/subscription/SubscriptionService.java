@@ -97,7 +97,7 @@ public class SubscriptionService {
   public List<SubscriptionResponse> list(Long investorId, Long securitiesAccountId) {
     return subscriptionRepository
         .findAllByAccountWithFilters(
-            securityUtils.getCurrentAccountId(), investorId, securitiesAccountId)
+            securityUtils.getEffectiveAccountId(), investorId, securitiesAccountId)
         .stream()
         .map(SubscriptionResponse::from)
         .toList();
