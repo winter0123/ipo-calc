@@ -3,6 +3,24 @@ import type { SubscriptionScheduleItem } from './subscriptionSchedule.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import styles, { StyleScope } from './SubscriptionScheduleList.styles.ts'
 import { StatusPill } from '@/shared/components/Primitives.tsx'
+import { useIpoInsight } from '@/entities/ipo/index.ts'
+
+function UnderwriterChips({ ipoId }: { ipoId: number }) {
+  const { data } = useIpoInsight(ipoId)
+  const names = [
+    ...new Set((data?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+  ]
+  if (names.length === 0) return null
+  return (
+    <div className={styles.underwriterChips} aria-label="주관사">
+      {names.map((name) => (
+        <span key={name} className={styles.underwriterChip}>
+          {name}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 const STATUS: Record<SubscriptionScheduleItem['status'], string> = {
   before: '청약 전',
@@ -99,6 +117,7 @@ export default function SubscriptionScheduleList({
                   </>
                 )}
               </dl>
+              <UnderwriterChips ipoId={item.ipo.id} />
               {investorSelected && item.subscriptionCount === 0 && (
                 <Link className={styles.action} to={`/subscriptions/register?ipoId=${item.ipo.id}`}>
                   청약 등록

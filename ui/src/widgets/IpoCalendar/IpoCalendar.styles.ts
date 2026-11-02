@@ -476,6 +476,20 @@ export const StyleScope = styled.div`
   .s-e1b278a-eventUnderwriters {
     font-size: 13px;
     color: var(--ink-muted);
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .s-e1b278a-eventUnderwriterChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .s-e1b278a-eventPrice {
@@ -570,6 +584,18 @@ export const StyleScope = styled.div`
     .s-e1b278a-emptyCell,
     .s-e1b278a-dateCell {
       min-height: 72px;
+    }
+
+    /* 모바일(≤640px): 주말 헤더/열 숨김, 월~금 5열 */
+    .s-e1b278a-weekdays {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .s-e1b278a-weekdays > .s-e1b278a-weekday:nth-child(1),
+    .s-e1b278a-weekdays > .s-e1b278a-weekday:nth-child(7) {
+      display: none;
+    }
+    .s-e1b278a-week {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
     .s-e1b278a-filterButton {

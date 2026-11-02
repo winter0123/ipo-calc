@@ -14,7 +14,11 @@ export const EVENT_TYPE_CLASSES: Record<CalendarEventType, string> = {
 }
 
 /** 해당 달을 일요일 시작 주 단위(7칸, 빈 칸은 null)로 나눈다. */
-export function buildWeekRows(startingDayOfWeek: number, daysInMonth: number): (number | null)[][] {
+export function buildWeekRows(
+  startingDayOfWeek: number,
+  daysInMonth: number,
+  isMobile?: boolean,
+): (number | null)[][] {
   const rows: (number | null)[][] = []
   let week: (number | null)[] = Array(startingDayOfWeek).fill(null)
   for (let day = 1; day <= daysInMonth; day++) {
@@ -27,6 +31,9 @@ export function buildWeekRows(startingDayOfWeek: number, daysInMonth: number): (
   if (week.length > 0) {
     while (week.length < 7) week.push(null)
     rows.push(week)
+  }
+  if (isMobile) {
+    return rows.map((weekRow) => weekRow.filter((_, i) => i >= 1 && i <= 5))
   }
   return rows
 }

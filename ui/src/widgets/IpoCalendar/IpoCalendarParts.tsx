@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { forwardRef } from 'react'
 import type { CalendarEvent } from '@/features/ipo-calendar/index.ts'
-import { toLocalYmd } from '@/shared/lib/date.ts'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
 import styles, { StyleScope } from './IpoCalendar.styles.ts'
 import { EVENT_TYPE_CLASSES, EVENT_TYPE_LABELS } from './calendarHelpers.ts'
@@ -12,8 +11,15 @@ function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
     ...new Set((data?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
   ]
   if (names.length === 0) return null
-
-  return <span className={styles.eventUnderwriters}>주관사 {names.join(' · ')}</span>
+  return (
+    <span className={styles.eventUnderwriters} aria-label="주관사">
+      {names.map((name) => (
+        <span key={name} className={styles.eventUnderwriterChip}>
+          {name}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 /** 선택한 날짜의 일정 상세 구역. */
@@ -25,7 +31,7 @@ export const SelectedDayDetail = forwardRef<
     events: CalendarEvent[]
     today: Date
   }
->(({ selectedDate, holidayName, events, today }, ref) => {
+>(({ selectedDate, holidayName, events, today: _today }, ref) => {
   return (
     <StyleScope>
       {
@@ -64,9 +70,7 @@ export const SelectedDayDetail = forwardRef<
                         {event.startDate} ~ {event.endDate}
                       </span>
                     )}
-                    {event.type === 'SUBSCRIPTION' && (
-                      <SubscriptionUnderwriters ipoId={event.ipoId} />
-                    )}
+                    <SubscriptionUnderwriters ipoId={event.ipoId} />
                     <>
                       {event.price && <span className={styles.eventPrice}>{event.price}</span>}
                       <span className={styles.eventArrow} aria-hidden="true">
@@ -74,15 +78,7 @@ export const SelectedDayDetail = forwardRef<
                       </span>
                     </>
                   </Link>
-                  {event.type === 'SUBSCRIPTION' && event.endDate >= toLocalYmd(today) && (
-                    <Link
-                      to={`/subscriptions/register?ipoId=${event.ipoId}`}
-                      className={styles.registerLink}
-                      aria-label={`${event.companyName} 청약 등록`}
-                    >
-                      청약 등록
-                    </Link>
-                  )}
+                  {/* 청약 등록 링크는 /subscriptions 목록에서만 제공 */}
                 </li>
               ))}
             </ul>
