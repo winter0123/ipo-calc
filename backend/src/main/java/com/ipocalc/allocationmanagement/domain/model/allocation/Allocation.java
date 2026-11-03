@@ -31,7 +31,7 @@ public class Allocation {
       Long quantity,
       LocalDateTime allocatedAt,
       String method,
-      Long price,
+      Long allocatedAmount,
       String note,
       LocalDateTime now) {
     if (subscriptionId != null) {
@@ -46,8 +46,8 @@ public class Allocation {
     if (method != null) {
       this.allocationMethod = method;
     }
-    if (price != null) {
-      this.allocationPrice = price;
+    if (allocatedAmount != null) {
+      this.allocatedAmount = allocatedAmount;
     }
     if (note != null) {
       this.note = note;
@@ -88,10 +88,10 @@ public class Allocation {
   @Comment("배정 방식(비례/추첨/선착순 등)")
   private String allocationMethod;
 
-  /** 배정 단가(원, 보통 확정 공모가). 취득금액·총 투자금 계산 기준. 선택. */
-  @Column(name = "allocation_price")
-  @Comment("배정 단가(원)")
-  private Long allocationPrice;
+  /** 배정 총금액(원) = 확정 공모가 × 배정수량. 취득금액·총 투자금 계산 기준. 선택. */
+  @Column(name = "allocated_amount")
+  @Comment("배정 총금액(원) = 확정공모가 × 배정수량")
+  private Long allocatedAmount;
 
   /** 비고. 선택. */
   @Column(name = "note")

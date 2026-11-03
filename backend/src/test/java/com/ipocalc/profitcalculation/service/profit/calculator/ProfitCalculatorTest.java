@@ -10,20 +10,41 @@ class ProfitCalculatorTest {
   // ==================== calculateAcquisitionAmount 테스트 ====================
 
   @Test
-  void calculateAcquisitionAmount_withAllocationPrice_returnsProduct() {
-    // Given: allocationPrice=12000, fixedPrice=11000, saleQuantity=30
+  void calculateAcquisitionAmount_withAllocatedAmount_proratesByQuantity() {
+    // Given: 배정 총액=1,200,000, 배정수량=100, 매도수량=30
     // When
-    Long result = ProfitCalculator.calculateAcquisitionAmount(12000L, 11000L, 30L);
+    Long result = ProfitCalculator.calculateAcquisitionAmount(1_200_000L, 100L, 11000L, 30L);
 
-    // Then: allocationPrice 우선 사용
-    assertThat(result).isEqualTo(360000L); // 12000 × 30
+    // Then: 배정 총액 × 30/100 = 360000
+    assertThat(result).isEqualTo(360000L);
   }
 
   @Test
-  void calculateAcquisitionAmount_withNullAllocationPrice_usesFixedPrice() {
-    // Given: allocationPrice=null, fixedPrice=11000, saleQuantity=30 (AC-005)
+  void calculateAcquisitionAmount_roundsToNearestWon() {
+    // Given: 배정 총액=1000, 배정수량=3, 매도수량=1 → 333.33...
     // When
-    Long result = ProfitCalculator.calculateAcquisitionAmount(null, 11000L, 30L);
+    Long result = ProfitCalculator.calculateAcquisitionAmount(1000L, 3L, null, 1L);
+
+    // Then: 원 단위 반올림(D-P-005)
+    assertThat(result).isEqualTo(333L);
+  }
+
+  @Test
+  void calculateAcquisitionAmount_keepsWonPrecisionAboveDoubleRange() {
+    // Given: 금액 상한(9,999,999,999,999,999) 이내이지만 2^53을 넘는 배정 총액
+    // allocatedAmount=9,007,199,254,740,993, 배정수량=2, 매도수량=1 → 4,503,599,627,370,496.5
+    // When
+    Long result = ProfitCalculator.calculateAcquisitionAmount(9_007_199_254_740_993L, 2L, null, 1L);
+
+    // Then: double 경로에서 잃는 원 단위 정밀도를 유지한 HALF_UP 결과
+    assertThat(result).isEqualTo(4_503_599_627_370_497L);
+  }
+
+  @Test
+  void calculateAcquisitionAmount_withNullAllocatedAmount_usesFixedPrice() {
+    // Given: allocatedAmount=null, fixedPrice=11000, saleQuantity=30 (AC-005)
+    // When
+    Long result = ProfitCalculator.calculateAcquisitionAmount(null, 100L, 11000L, 30L);
 
     // Then: fixedPrice로 대체
     assertThat(result).isEqualTo(330000L); // 11000 × 30
@@ -31,9 +52,9 @@ class ProfitCalculatorTest {
 
   @Test
   void calculateAcquisitionAmount_withBothNull_returnsZero() {
-    // Given: allocationPrice=null, fixedPrice=null (엣지케이스: 단가 모두 없음)
+    // Given: allocatedAmount=null, fixedPrice=null (엣지케이스: 단가 모두 없음)
     // When
-    Long result = ProfitCalculator.calculateAcquisitionAmount(null, null, 30L);
+    Long result = ProfitCalculator.calculateAcquisitionAmount(null, 100L, null, 30L);
 
     // Then: 0 반환
     assertThat(result).isEqualTo(0L);
@@ -43,7 +64,7 @@ class ProfitCalculatorTest {
   void calculateAcquisitionAmount_withNullSaleQuantity_returnsZero() {
     // Given: saleQuantity=null
     // When
-    Long result = ProfitCalculator.calculateAcquisitionAmount(12000L, 11000L, null);
+    Long result = ProfitCalculator.calculateAcquisitionAmount(1_200_000L, 100L, 11000L, null);
 
     // Then: 0 반환 (null-safe)
     assertThat(result).isEqualTo(0L);
@@ -53,7 +74,17 @@ class ProfitCalculatorTest {
   void calculateAcquisitionAmount_withZeroSaleQuantity_returnsZero() {
     // Given: saleQuantity=0
     // When
-    Long result = ProfitCalculator.calculateAcquisitionAmount(12000L, 11000L, 0L);
+    Long result = ProfitCalculator.calculateAcquisitionAmount(1_200_000L, 100L, 11000L, 0L);
+
+    // Then: 0 반환
+    assertThat(result).isEqualTo(0L);
+  }
+
+  @Test
+  void calculateAcquisitionAmount_withZeroAllocatedQuantity_returnsZero() {
+    // Given: 배정수량=0 (방어적 처리)
+    // When
+    Long result = ProfitCalculator.calculateAcquisitionAmount(0L, 0L, null, 1L);
 
     // Then: 0 반환
     assertThat(result).isEqualTo(0L);

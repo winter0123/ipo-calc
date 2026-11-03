@@ -26,7 +26,7 @@ public class AllocationResponse {
 
   private String allocationMethod;
 
-  private Long allocationPrice;
+  private Long allocatedAmount;
 
   private String note;
 
@@ -46,7 +46,7 @@ public class AllocationResponse {
         .allocatedQuantity(allocation.getAllocatedQuantity())
         .allocatedAt(allocation.getAllocatedAt())
         .allocationMethod(allocation.getAllocationMethod())
-        .allocationPrice(allocation.getAllocationPrice())
+        .allocatedAmount(allocation.getAllocatedAmount())
         .note(allocation.getNote())
         .status(allocation.getStatus().name())
         .deletedAt(allocation.getDeletedAt())

@@ -138,12 +138,8 @@ class BrokerSyncConfirmIntegrationTest {
                     subscriptionId,
                     "allocatedQuantity",
                     100L,
-                    "allocatedAt",
-                    "2026-10-05T18:00:00",
                     "allocationMethod",
-                    "균등배정",
-                    "allocationPrice",
-                    10000)));
+                    "균등배정")));
   }
 
   @AfterEach

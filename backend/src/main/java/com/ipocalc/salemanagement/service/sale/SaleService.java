@@ -79,8 +79,6 @@ public class SaleService {
                 .investorId(request.getInvestorId())
                 .securitiesAccountId(request.getSecuritiesAccountId())
                 .allocatedQuantity(request.getAllocatedQuantity())
-                .allocatedAt(request.getSaleDate())
-                .allocationPrice(request.getPrice())
                 .note("매도 등록에서 자동 생성된 배정 연결 기록")
                 .build();
         allocationId = allocationService.register(allocationRequest).getId();

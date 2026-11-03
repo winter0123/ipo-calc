@@ -1,6 +1,5 @@
 package com.ipocalc.allocationmanagement.controller.allocation.dto;
 
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,11 +25,7 @@ public class AllocationRegisterRequest {
 
   private Long allocatedQuantity;
 
-  private LocalDateTime allocatedAt;
-
   private String allocationMethod;
-
-  private Long allocationPrice;
 
   private String note;
 }

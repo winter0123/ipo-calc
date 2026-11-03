@@ -159,9 +159,7 @@ class OwnershipIsolationTest {
   void otherAccountCannotAttachToRecords() throws Exception {
     String now = "2026-10-01T09:00:00";
     assertStatus(
-        json(post("/allocations"), allocationBody(subscription.getId(), now)),
-        intruderSession,
-        403);
+        json(post("/allocations"), allocationBody(subscription.getId())), intruderSession, 403);
     assertStatus(json(post("/sales"), saleBody(allocation.getId(), now)), intruderSession, 403);
   }
 
@@ -184,12 +182,8 @@ class OwnershipIsolationTest {
     assertStatus(get("/investors/" + investor.getId() + "/profits"), ownerSession, 200);
   }
 
-  private String allocationBody(Long subscriptionId, String at) {
-    return "{\"subscriptionId\":"
-        + subscriptionId
-        + ",\"allocatedQuantity\":1,\"allocatedAt\":\""
-        + at
-        + "\"}";
+  private String allocationBody(Long subscriptionId) {
+    return "{\"subscriptionId\":" + subscriptionId + ",\"allocatedQuantity\":1}";
   }
 
   private String saleBody(Long allocationId, String at) {

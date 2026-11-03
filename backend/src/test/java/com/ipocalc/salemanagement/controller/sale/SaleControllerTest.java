@@ -274,12 +274,8 @@ class SaleControllerTest {
                                 subscriptionId,
                                 "allocatedQuantity",
                                 allocatedQuantity,
-                                "allocatedAt",
-                                "2026-10-05T18:00:00",
                                 "allocationMethod",
                                 "균등배정",
-                                "allocationPrice",
-                                10000,
                                 "note",
                                 "배정 비고"))))
             .andReturn();
@@ -696,12 +692,8 @@ class SaleControllerTest {
                                 subscriptionId1,
                                 "allocatedQuantity",
                                 100L,
-                                "allocatedAt",
-                                "2026-10-05T18:00:00",
                                 "allocationMethod",
                                 "균등배정",
-                                "allocationPrice",
-                                10000,
                                 "note",
                                 "투자자1 배정"))))
             .andReturn();
@@ -762,12 +754,8 @@ class SaleControllerTest {
                                 subscriptionId2,
                                 "allocatedQuantity",
                                 100L,
-                                "allocatedAt",
-                                "2026-10-05T18:00:00",
                                 "allocationMethod",
                                 "균등배정",
-                                "allocationPrice",
-                                10000,
                                 "note",
                                 "투자자2 배정"))))
             .andReturn();
@@ -841,12 +829,8 @@ class SaleControllerTest {
                                 subscriptionId1,
                                 "allocatedQuantity",
                                 100L,
-                                "allocatedAt",
-                                "2026-10-05T18:00:00",
                                 "allocationMethod",
                                 "균등배정",
-                                "allocationPrice",
-                                10000,
                                 "note",
                                 "투자자1 배정"))))
             .andReturn();

@@ -137,15 +137,7 @@ class InputLimitsTest {
     assertThat(
             postStatus(
                 "/allocations",
-                map(
-                    "subscriptionId",
-                    1,
-                    "allocatedQuantity",
-                    1,
-                    "allocatedAt",
-                    DATE,
-                    "note",
-                    "n".repeat(256))))
+                map("subscriptionId", 1, "allocatedQuantity", 1, "note", "n".repeat(256))))
         .isEqualTo(400);
   }
 

@@ -17,6 +17,6 @@ public class AllocationSummaryResponse {
   private Long allocatedQuantity;
   private String allocatedAt;
   private String allocationMethod;
-  private Long allocationPrice;
+  private Long allocatedAmount;
   private String status;
 }

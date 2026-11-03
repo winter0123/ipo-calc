@@ -15,13 +15,18 @@ import com.ipocalc.allocationmanagement.domain.model.allocation.Allocation;
 import com.ipocalc.allocationmanagement.repository.allocation.AllocationRepository;
 import com.ipocalc.allocationmanagement.service.ownership.AllocationOwnership;
 import com.ipocalc.investormanagement.service.ownership.OwnershipErrors;
+import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
+import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
 import com.ipocalc.subscriptionmanagement.controller.subscription.dto.SubscriptionRegisterRequest;
 import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import com.ipocalc.subscriptionmanagement.service.ownership.SubscriptionOwnership;
 import com.ipocalc.subscriptionmanagement.service.subscription.SubscriptionService;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,6 +49,8 @@ public class AllocationService {
   private final SubscriptionService subscriptionService;
   private final SubscriptionOwnership subscriptionOwnership;
   private final AllocationOwnership allocationOwnership;
+  private final IpoRepository ipoRepository;
+  private final BusinessDayCalculator businessDayCalculator;
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
@@ -78,7 +85,7 @@ public class AllocationService {
                                   .ipoId(request.getIpoId())
                                   .quantity(request.getAllocatedQuantity())
                                   .depositAmount(0L)
-                                  .subscribedAt(request.getAllocatedAt())
+                                  .subscribedAt(LocalDateTime.now(clock))
                                   .memo("매도/배정 등록에서 자동 생성된 청약 연결 기록")
                                   .build())
                           .getId());
@@ -95,13 +102,17 @@ public class AllocationService {
     checkDuplicate(subscriptionId);
 
     LocalDateTime now = LocalDateTime.now(clock);
+    Ipo ipo = findIpo(subscription);
+    Long computedAllocatedAmount = computeAllocatedAmount(ipo, request.getAllocatedQuantity());
+    LocalDateTime computedAllocatedAt = resolveAllocatedAt(ipo, now);
+
     Allocation allocation =
         Allocation.builder()
             .subscriptionId(subscriptionId)
             .allocatedQuantity(request.getAllocatedQuantity())
-            .allocatedAt(request.getAllocatedAt())
+            .allocatedAt(computedAllocatedAt)
             .allocationMethod(request.getAllocationMethod())
-            .allocationPrice(request.getAllocationPrice())
+            .allocatedAmount(computedAllocatedAmount)
             .note(request.getNote())
             .status(RecordStatus.ACTIVE)
             .deletedAt(null)
@@ -123,20 +134,14 @@ public class AllocationService {
     if (request == null) {
       throw new AllocationValidationException("배정 등록 정보는 필수입니다.");
     }
-    if (request.getAllocatedQuantity() == null || request.getAllocatedAt() == null) {
-      throw new AllocationValidationException("allocatedQuantity, allocatedAt는 필수입니다.");
+    if (request.getAllocatedQuantity() == null) {
+      throw new AllocationValidationException("allocatedQuantity는 필수입니다.");
     }
-    validateAmountAndText(
-        request.getAllocationPrice(), request.getAllocationMethod(), request.getNote());
+    validateText(request.getAllocationMethod(), request.getNote());
   }
 
-  // 금액 상한과 텍스트 길이(DB 컬럼 255자 — 넘으면 500이 되므로 400으로 막는다)
-  private void validateAmountAndText(Long allocationPrice, String allocationMethod, String note) {
-    if (allocationPrice != null
-        && (allocationPrice < 0 || allocationPrice > InputLimits.MAX_AMOUNT)) {
-      throw new AllocationValidationException(
-          "allocationPrice는 0 이상 " + InputLimits.MAX_AMOUNT + " 이하여야 합니다.");
-    }
+  // 텍스트 길이(DB 컬럼 255자 — 넘으면 500이 되므로 400으로 막는다)
+  private void validateText(String allocationMethod, String note) {
     if (allocationMethod != null && allocationMethod.length() > TEXT_MAX_LENGTH) {
       throw new AllocationValidationException(
           "allocationMethod는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
@@ -144,6 +149,49 @@ public class AllocationService {
     if (note != null && note.length() > TEXT_MAX_LENGTH) {
       throw new AllocationValidationException("note는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
     }
+  }
+
+  // 배정 총액(확정공모가 × 배정수량)을 계산한다. 공모가를 모르면 null로 둔다.
+  private Long computeAllocatedAmount(Ipo ipo, Long allocatedQuantity) {
+    if (ipo == null || ipo.getFixedPrice() == null || allocatedQuantity == null) {
+      return null;
+    }
+    try {
+      return validateComputedAmount(Math.multiplyExact(ipo.getFixedPrice(), allocatedQuantity));
+    } catch (ArithmeticException ex) {
+      throw new AllocationValidationException("배정 총액이 계산 가능한 범위를 넘습니다.");
+    }
+  }
+
+  // 계산된 총액도 금액 상한을 넘지 않아야 한다(입력 검증 대신 서버 계산값을 막는다).
+  private Long validateComputedAmount(Long amount) {
+    if (amount < 0 || amount > InputLimits.MAX_AMOUNT) {
+      throw new AllocationValidationException(
+          "배정 총액은 0 이상 " + InputLimits.MAX_AMOUNT + " 이하여야 합니다.");
+    }
+    return amount;
+  }
+
+  // 배정일: IPO 확정 배정일 우선, 없으면 청약 종료일 +2 KRX 영업일, 그것도 없으면 현재 시각.
+  private LocalDateTime resolveAllocatedAt(Ipo ipo, LocalDateTime now) {
+    if (ipo != null && ipo.getAllotmentDate() != null) {
+      return ipo.getAllotmentDate().atTime(LocalTime.of(9, 0));
+    }
+    LocalDate subscriptionEndDate = ipo != null ? ipo.getSubscriptionEndDate() : null;
+    if (subscriptionEndDate != null) {
+      LocalDate estimated = businessDayCalculator.plusBusinessDaysOrNull(subscriptionEndDate, 2);
+      if (estimated != null) {
+        return estimated.atTime(LocalTime.of(9, 0));
+      }
+    }
+    return now;
+  }
+
+  private Ipo findIpo(Subscription subscription) {
+    if (subscription.getIpoId() == null) {
+      return null;
+    }
+    return ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
   }
 
   // AC-003: 배정수량은 0 이상이며, 청약수량(subscription.quantity)을 초과할 수 없다 (D-A-005, 단순 값 검증).
@@ -196,22 +244,22 @@ public class AllocationService {
 
     Long updatedSubscriptionId = request.getSubscriptionId();
     Long updatedAllocatedQuantity = request.getAllocatedQuantity();
-    final LocalDateTime updatedAllocatedAt = request.getAllocatedAt();
     final String updatedAllocationMethod = request.getAllocationMethod();
-    final Long updatedAllocationPrice = request.getAllocationPrice();
     final String updatedNote = request.getNote();
 
-    validateAmountAndText(updatedAllocationPrice, updatedAllocationMethod, updatedNote);
+    validateText(updatedAllocationMethod, updatedNote);
 
     // 같은 청약을 다시 지정하면 이동이 아니다
     boolean moving =
         updatedSubscriptionId != null
             && !updatedSubscriptionId.equals(allocation.getSubscriptionId());
     long soldQuantity = activeSaleQuantityReader.sumActiveSaleQuantity(allocation.getId());
+    Subscription effectiveSubscription = null;
 
     if (moving) {
       subscriptionRepository.findByIdForUpdate(updatedSubscriptionId);
       Subscription targetSubscription = findOwnedSubscription(updatedSubscriptionId);
+      effectiveSubscription = targetSubscription;
       Subscription current =
           subscriptionOwnership.requireOwnedIncludingDeleted(
               allocation.getSubscriptionId(), OWNERSHIP_ERRORS);
@@ -233,6 +281,7 @@ public class AllocationService {
           subscriptionOwnership.requireOwnedActive(
               allocation.getSubscriptionId(), OWNERSHIP_ERRORS);
       validateQuantity(updatedAllocatedQuantity, subscription.getQuantity());
+      effectiveSubscription = subscription;
     }
 
     if (updatedAllocatedQuantity != null && updatedAllocatedQuantity < soldQuantity) {
@@ -240,14 +289,29 @@ public class AllocationService {
           "배정수량은 이미 매도한 수량(" + soldQuantity + "주)보다 작을 수 없습니다.");
     }
 
+    LocalDateTime now = LocalDateTime.now(clock);
+    Long newAllocatedAmount = null;
+    LocalDateTime newAllocatedAt = null;
+    // 수량이나 연결 청약이 바뀌면 총액을 다시 계산하고, 이동이면 배정일도 다시 정한다.
+    if (moving || updatedAllocatedQuantity != null) {
+      Ipo ipo = findIpo(effectiveSubscription);
+      long finalQuantity =
+          updatedAllocatedQuantity != null
+              ? updatedAllocatedQuantity
+              : allocation.getAllocatedQuantity();
+      newAllocatedAmount = computeAllocatedAmount(ipo, finalQuantity);
+      if (moving) {
+        newAllocatedAt = resolveAllocatedAt(ipo, now);
+      }
+    }
     allocation.updateDetails(
         updatedSubscriptionId,
         updatedAllocatedQuantity,
-        updatedAllocatedAt,
+        newAllocatedAt,
         updatedAllocationMethod,
-        updatedAllocationPrice,
+        newAllocatedAmount,
         updatedNote,
-        LocalDateTime.now(clock));
+        now);
     try {
       Allocation saved = allocationRepository.saveAndFlush(allocation);
       return AllocationResponse.from(saved);

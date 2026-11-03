@@ -131,8 +131,7 @@ class SaleServiceTest {
                     requestForAllocation.getIpoId().equals(11L)
                         && requestForAllocation.getInvestorId().equals(12L)
                         && requestForAllocation.getSecuritiesAccountId().equals(13L)
-                        && requestForAllocation.getAllocatedQuantity().equals(3L)
-                        && requestForAllocation.getAllocatedAt().equals(AT)));
+                        && requestForAllocation.getAllocatedQuantity().equals(3L)));
   }
 
   @Test
