@@ -124,8 +124,8 @@ Master Lead는 요구사항 이해, 범위 통제, 워커 조율, 결과 검증,
 - **작업공간**: 역할 고정 worktree 3~5개(7.2절). **한 트리에 워커는 하나만** 붙인다 — 두 워커가 같은 트리를 고치면 중간 충돌이 난다. 병렬 처리량은 팀장 계층이 아니라 이 작업공간 분리에서 나온다(2026-09-28 실측).
 - **워커 배정**: 한 SF = 한 워커. 단 같은 패키지에서 앞 SF 코드를 이어 쓰는 후속 SF는 앞 SF가 병합된 뒤 **같은 워커 터미널에 이어 시킬 수 있다**(조건은 `docs/worker-spec-template.md`의 "이어 쓰기 세션"). 워커에게는 대화가 아니라 **자기완결적 spec**을 던진다(`docs/worker-spec-template.md`). 무료 모델은 범위·사실관계에서 실수하므로, 좋은 spec 한 장이 나중의 교정 라운드보다 훨씬 싸다.
 - **의존성**: 세션 시작 때 `task-create --deps`로 로드맵 의존성을 한 번에 DAG로 정의한다. 선행 task가 `completed`가 되면 후속 task가 자동으로 `ready`가 되므로, "이제 시작해도 된다"를 매번 말로 전달하지 않는다.
-- **대기**: `check --wait --timeout-ms 3600000`처럼 **긴 blocking 하나**로 기다린다. 5분짜리 짧은 타임아웃으로 재시도를 반복하면 그때마다 reasoning 턴이 열려 토큰이 계속 나간다(2026-09-28 실측된 주요 낭비 원인).
-- **감시**: `scripts/orca-worker-watchdog.py --loop 120`을 별도 터미널에서 띄워둔다. Master는 워커 터미널 원문(회당 수천 토큰) 대신 상태 파일(`/tmp/orca-worker-status.txt`, 수십 토큰)만 읽는다. watchdog은 감지만 하고 재배정은 Master가 판단한다.
+- **대기**: 워커 시작 receipt의 `next`를 따라 Orca 자동 알림에 제어를 넘긴다. 소비형 `check --wait`를 백그라운드에 남긴 채 턴을 끝내지 않는다. 메시지를 먼저 handled로 바꿔 코디네이터의 완료 알림을 놓칠 수 있다. 셸 대기가 필요하면 `check --peek --wait`만 사용하고, 코디네이터가 깨어났을 때 직접 `check`로 처리한다.
+- **감시**: `scripts/orca-worker-watchdog.py --start --loop 30 --run <run_id> --coordinator-terminal <handle>`로 저장소당 백그라운드 프로세스 하나만 실행한다. 감시용 터미널을 만들지 않는다. Master는 상태 파일(`/tmp/orca-worker-status.txt`) 요약을 보고, 새 이상 상태와 완료 후 검토 필요 알림은 Orca Run으로 받는다. 재배정과 완료 판정은 Master가 한다.
 - **검증**: 테스트·lint·build 명령은 Master가 **직접 실행**한다(결정적 출력이라 싸다). 통과했을 때만 diff를 읽는다. 워커의 "다 통과했습니다" 같은 산문은 증거로 쓰지 않는다 — 2026-09-28에 워커가 자기가 만든 회귀를 "기존 문제"라고 주장한 사례가 있다.
 - **병합**: Master가 검증 후 병합한다. 가능하면 2~3개를 묶어 한 번의 검증 패스에서 처리한다.
 - **depth 한도**: Master(0) → 워커(1). 워커가 또 다른 워커를 만들지 않는다.
@@ -145,7 +145,7 @@ Nested worker depth 한도가 2 이상인 프로젝트는 역할별 고정 작�
 - **팀장은 파일을 직접 고치지 않는다 (예외 없음)**: 팀장은 자기 손으로 Edit/Write 도구를 써서 코드·테스트·문서를 수정하지 않는다. 분량이 적어 보이거나 "이 정도는 내가 하는 게 빠르다"는 판단이 들어도 예외를 두지 않는다 — 반드시 depth 2 워커를 만들어 그 워커가 파일을 고치게 하고, 팀장은 조사·판단·diff 검증만 한다. (2026-09-28 실제 사고 사례: 팀장이 "단일 문서 수정은 직접 해도 된다"는 예외를 근거로 프로덕션 코드·문서를 직접 고친 일이 있었다 — 이 예외는 폐기됐다.) 필요하면 depth 2 워커를 동시에 여러 개 만들어 병렬로 돌려도 된다. 금지되는 것은 워커 개수가 아니라 **워커가 또 다른 워커를 만드는 depth 3 위임**뿐이다.
 - **권한 경계**: 팀장은 검증이 끝난 결과를 직접 commit하고 PR을 생성한다(git 작업 자체는 팀장이 해도 된다 — 위 금지는 코드/문서 내용 수정에 한정). main으로의 최종 병합은 Master가 팀장의 PR을 한 번 더 확인한 뒤 수행한다(팀장은 병합하지 않는다) — 이중 검증 체계. 이 경계는 프로젝트별로 명시적으로 재확인할 수 있으나, 별도 합의가 없으면 이 기본값을 따른다.
 - **보고**: 팀장은 담당 SF 하나가 검증·병합될 때마다 Master의 Run에 요약 보고를 보낸다(`orca orchestration send --to run:<master-run-id>` 또는 동등한 주소). Master는 팀장의 요약 보고만 받으며, 팀장 밑의 개별 워커 dispatch에는 직접 개입하지 않는다(팀장이 응답 없어 복구가 필요한 경우는 예외).
-- **감시 방식**: 이 구조에서도 감시는 `scripts/orca-worker-watchdog.py --loop 120`(셸)이 하고, Master와 팀장 모두 터미널 원문 대신 `/tmp/orca-worker-status.txt` 요약을 본다(8.4절). `worker-list`의 `liveness: live`는 프로세스 생존만 의미하므로 그것만으로 정상 판단하지 않는다. Master가 멈춘 워커를 먼저 발견하면 직접 고치지 않고 해당 팀장에게 dispatch id와 화면의 에러 문구를 알려주며, 재배정은 팀장이 한다.
+- **감시 방식**: 이 구조에서도 8.4절의 단일 백그라운드 watchdog을 사용하고, Master와 팀장 모두 터미널 원문 대신 `/tmp/orca-worker-status.txt` 요약을 본다. `worker-list`의 `liveness: live`는 프로세스 생존만 의미한다. Master가 멈춘 워커를 먼저 발견하면 해당 팀장에게 dispatch id와 오류를 알려주며, 재배정은 팀장이 한다.
 - **Master의 역할 변화**: 이 구조에서 Master는 워커에게 바로 일을 시키지 않고, 항상 팀장에게 위임한다. Master가 직접 만들고 유지하는 것은 팀장 3개뿐이다.
 - **depth 한도 준수**: Master(0) → 팀장(1) → 팀장의 워커(2)까지만 허용한다. 팀장의 워커가 또 다른 워커를 만드는 추가 위임(depth 3)은 하지 않는다.
 - **세션별 실제 정보**: 팀장의 터미널 handle·dispatch id·담당 Epic/SF는 세션마다 바뀌므로 `docs/current-status.md`에 기록한다. 팀장에게 줄 초기 프롬프트는 `docs/prompt-backend.md`/`prompt-frontend.md`/`prompt-planning.md`에 있다.
@@ -285,11 +285,12 @@ orca orchestration send --from <핸들> --type worker_done --subject "완료: <�
 
 Run을 재개할 때마다 `run-use --id <run_id>`로 다시 바인딩한다. 먼저 오래된 미확인 배치를 확인하고, 워커를 배정하기 전에 Run의 `coordinator_handle`을 기록한다. Orca terminal 밖의 셸 · exec에서 `check`를 실행하면 매번 `--terminal <coordinator_handle>`을 명시한다. `orca status --json`의 `caller`가 `null`이면 Orca terminal 안에서 실행 중인 것이 아니므로 handle 생략을 허용하지 않는다. 실제 coordinator terminal 안에서 실행할 때만 `--terminal`을 생략한다.
 
-완료는 워커 화면의 최종 답변이 아니라 현재 Dispatch의 `worker_done`으로 수집한다. 대기 명령은 올바른 Run과 coordinator handle로 한 번 실행해 유지한다. 각 메시지에서 Task ID·Dispatch ID·outcome을 현재 활성 작업과 대조하고, 기존 delivery가 반복되면 새 완료로 취급하지 않는다. `worker_done`이 오면 변경 파일·검증 결과를 직접 확인하고, 해당 terminal의 다음 소유자(즉시 재사용·명시적 보존·release)를 결정한 뒤 같은 delivery를 ACK한다. ACK 전에는 새 메시지를 기다리지 않는다.
+완료는 현재 Dispatch의 `worker_done`으로 수집한다. 워커 시작 후에는 Orca 자동 알림에 제어를 넘기며, 소비형 대기 명령을 백그라운드에 남기지 않는다. 메시지에서 Task ID·Dispatch ID·outcome을 현재 작업과 대조하고 반복 알림을 새 완료로 취급하지 않는다. `worker_done`이 오면 즉시 직접 검증하고 terminal의 재사용·보존·release를 결정한다. 현재 Orca의 일반 `check`는 반환한 배치를 handled로 처리하므로 별도 ACK가 필요 없다. 구버전이 delivery ID와 ACK를 명시한 경우에만 해당 ID를 ACK한다.
 
 ```bash
 orca orchestration check --terminal <코디네이터-핸들> --peek --json
-orca orchestration check --terminal <코디네이터-핸들> --wait --types worker_done,escalation,question --timeout-ms 3600000 --json
+orca orchestration check --terminal <코디네이터-핸들> --json
+# 셸에서 관측 대기가 꼭 필요할 때만: --peek --wait --timeout-ms 3600000
 orca orchestration check --terminal <코디네이터-핸들> --ack <deliveryId> --json
 orca orchestration task-list --json
 ```
@@ -300,30 +301,25 @@ orca orchestration task-list --json
 
 `dispatched` 상태가 계속된다고 워커가 실제 동작 중인 것은 아니다. **`worker-list`의 `liveness: live`도 프로세스 생존만 의미한다** — OpenRouter 429로 화면에 에러만 뜬 채 멈춰도 `live`로 나온다(2026-09-28 실사고). 실제 정지 판정은 터미널 텍스트를 봐야 가능하다.
 
-그 텍스트 확인을 사람이나 claude/codex가 매번 하면 회당 수천 토큰이 드므로, **셸 watchdog에 맡긴다**:
+그 텍스트 확인은 셸 watchdog에 맡긴다. 감시용 터미널은 만들지 않는다.
 
-```bash
-# 별도 터미널에서 한 번 띄워두고 세션 내내 돌린다
-scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle>
-# 옵션 없이 실행하면 현재 git 저장소(repo)의 모든 worktree를 점검한다
-# 수동 필터가 필요할 때만: scripts/orca-worker-watchdog.py --tree-filter "문자열" --loop 120
-# 코디네이터는 원문 대신 이 요약만 읽는다
-cat /tmp/orca-worker-status.txt
-```
-
-watchdog은 활성 Dispatch 터미널과 저장소 worktree의 OpenCode 터미널을 훑고, OpenCode 로컬 DB의 `session.parent_id` 하위 세션도 읽기 전용으로 검사한다. 업스트림 에러, `OpenCode stopped while this response was in progress`, 권한 질문, 하위 세션의 무출력 정지를 감지하고 실제 사용 모델도 요약한다. **감지만 하고 재배정은 하지 않는다.** 상태 파일은 요약 확인용이며 워커 누락·오탐이 가능하므로, watchdog의 `OK`나 Orca의 `liveness: live`만으로 정상 작업·정지·완료를 단정하지 않는다. 이상 상태는 필요한 해당 워커/하위 세션의 실제 터미널과 결과로 확인한다.
+    scripts/orca-worker-watchdog.py --start --loop 30 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300
+    scripts/orca-worker-watchdog.py --status
+    scripts/orca-worker-watchdog.py --stop
 
 #### 통합 watchdog 알림
 
-워커 터미널 감지와 저비용 알림은 단일 Python 프로세스가 수행한다. 워커를 배정한 뒤 아래 명령 하나만 별도 터미널에서 실행한다.
+저장소의 모든 worktree는 같은 잠금 파일을 사용하므로 프로세스는 하나만 실행된다. --start 재실행은 같은 PID를 돌려주며, 다른 Run/코디네이터로 바꾸려면 --stop 후 새 인자로 시작한다. --status는 PID, Run, 스캔 신선도, 전달 대기/실패를 보여준다.
 
-```bash
-scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300
-```
+30초마다 Orca Dispatch 상태와 현재 터미널 화면(--screen), OpenCode 하위 세션을 검사한다. 상태 파일 전체를 검사하며 마지막 5줄 제한은 알림에 적용하지 않는다. 누적 출력 속의 과거 오류와 복구된 하위 세션의 오류는 현재 오류로 재알림하지 않는다.
 
-watchdog은 120초마다 저장소의 활성 Dispatch, OpenCode 터미널, OpenCode DB에 기록된 하위 세션을 검사해 오류·정지·권한 질문·모델 정보를 `/tmp/orca-worker-status.txt`에 기록한다. 완료된 Dispatch라도 live OpenCode 터미널이면 최근 1시간 출력의 오류를 검사한다. 300초마다 상태 파일의 마지막 5줄과 지정 Run의 Orca inbox를 확인해 새 ERROR/STALL/PERM/UNKNOWN 및 `worker_done`/`question`/`escalation`만 한 번 알린다. Inbox 확인은 `--peek` 방식이므로 메시지를 소비하거나 ACK하지 않는다. 반복 상태는 중복 알림하지 않고, 상태가 OK로 해소된 뒤 다시 발생하면 다시 알린다.
+- ERROR/STALL/PERM/UNKNOWN: 오류·무출력·권한 대기·관측 실패.
+- REPORT_MISSING: OpenCode 응답 종료 화면이 지속되지만 Dispatch는 열려 있음. 완료 판정 없이 보고 누락/추가 작업 여부를 확인한다.
+- REVIEW/FAILED: 관측하던 Dispatch가 Orca에서 정산됨. 코디네이터가 검증하거나 실패를 처리해야 한다.
 
-macOS에서는 사용자 알림을 띄우며, 다른 환경에서는 stdout에 이벤트를 남긴다. 알림은 Codex 세션을 깨우지 않으므로 코디네이터는 긴 `check --wait`를 유지하고, 알림을 받으면 coordinator handle로 Orca 메시지를 확인·처리·ACK한다. watchdog은 감지와 알림만 하며 작업 완료를 판정하거나 워커를 중지·재배정하지 않는다. 상태 요약이나 Orca 상태만으로 완료·실패를 단정하지 않는다.
+상태 변화는 즉시 지정 Run으로 높은 우선순위 status 메시지를 보낸다. escalation은 활성 워커 전용이므로 watchdog이 사용하지 않는다. 전달 실패는 outbox에 보존해 재시도하고 같은 사건은 반복 전달하지 않는다. 300초마다 inbox를 --peek로 보조 확인하며 소비/ACK하지 않는다. watchdog 자신의 메시지는 다시 알리지 않는다.
+
+Orca 알림을 받은 코디네이터는 직접 check로 메시지를 처리하고 대상만 bounded read한다. 소비형 check --wait를 백그라운드에 남기지 않는다. macOS 알림은 보조 수단이며, 모델 세션이 중지되거나 사용량 제한 상태이면 즉시 작업이 실행된다고 보장하지 않는다. 미처리 사건은 Orca inbox와 outbox에 남는다. watchdog은 워커 중지·재배정·Task 완료 정산을 하지 않는다.
 
 유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다. 워커별 점검은 상태 요약이나 메시지에 이상 징후가 있거나, 완료 여부를 판정할 때만 수행한다.
 

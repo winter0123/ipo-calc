@@ -19,7 +19,7 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 1. `orca worktree list --json`으로 실제 작업공간 경로를 확인한다(`docs/`에 적힌 경로를 믿지 않는다 — 접미사가 계속 바뀐다).
 2. `orca orchestration run-create`로 Run을 만든다. **세션이 중단됐다 재개되면 매번 `run-use --id <run_id>`로 다시 바인딩한다** — 프로세스 incarnation이 바뀌면 `consumer_fenced`로 조용히 끊긴다.
 3. **DAG를 한 번에 정의한다**: 이번 세션에 할 SF들을 `task-create`로 모두 만들고, 선행 관계는 `--deps '["<task_id>"]'`로 건다. 그러면 선행이 `completed`가 되는 순간 후속이 자동으로 `ready`가 된다.
-4. 통합 watchdog을 띄운다: `scripts/orca-worker-watchdog.py --loop 120 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300`을 별도 터미널에서 한 번 실행한다. 120초마다 Dispatch·OpenCode 터미널·OpenCode 내부 하위 세션을 스캔하고, 300초마다 상태 요약/inbox 알림을 같은 프로세스에서 처리한다.
+4. 통합 watchdog은 창 없이 실행한다: `scripts/orca-worker-watchdog.py --start --loop 30 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300`. `--status`로 단일 PID와 전달 상태를 확인하고 Run 변경 시 `--stop` 후 다시 시작한다.
 
 ## 워커 운영
 
@@ -28,13 +28,13 @@ Pro 구독이라 토큰이 한정돼 있다. 2026-09-28 실측 결과, 비용의
 - backend 워커를 띄울 때 빈 슬롯(1~3)을 지정하고 spec의 검증 명령에 그 슬롯 번호(`scripts/db-slot.sh reset <n>` + `DB_NAME=ipo_slot_<n>`)를 넣는다. 워커가 끝나면 슬롯을 회수한다(다음 사용자가 reset 한다). Master 자신의 검증은 슬롯 4를 쓴다. (`docs/guide-backend.md` 2·5절)
 - backend spec의 [하지 말 것]에는 `docs/guide-backend.md` 5절(지뢰 목록)을 그대로 붙인다. 같은 패키지에서 이어지는 SF는 앞 SF 병합 뒤 같은 터미널에 이어 시킬 수 있다(`docs/worker-spec-template.md`).
 - 워커에게는 대화가 아니라 `docs/worker-spec-template.md` 형식의 **자기완결적 spec**을 준다. 무료 모델은 범위와 사실관계에서 실수하므로, spec에 토큰을 쓰는 게 나중에 교정 라운드를 도는 것보다 싸다.
-- 기다릴 때는 `check --wait --timeout-ms 3600000` 같은 **긴 blocking 하나**로 기다린다. 5분짜리 짧은 타임아웃으로 재시도를 반복하지 않는다 — 재시도마다 턴이 열려 토큰이 나간다.
+- 워커 시작 receipt의 next를 따라 Orca 자동 알림에 제어를 넘긴다. 소비형 `check --wait`를 백그라운드에 남기지 않는다. 셸 관측 대기가 필요하면 `--peek --wait`만 쓰고 일반 `check`는 코디네이터가 직접 처리한다.
 - 워커가 끝나면 `worker-release --dispatch <id>`로 정리하고, `task-list --status ready`에서 다음 일을 당겨와 바로 다음 워커를 배정한다.
 
 ## 감시
 
 - 워커·OpenCode 하위 에이전트 터미널 원문을 주기적으로 읽지 않는다. `cat /tmp/orca-worker-status.txt`로 watchdog 요약만 본다.
-- 상태 파일에 `ERROR`/`STALL`이 찍힌 워커만 실제 터미널을 열어 확인한다.
+- ERROR/STALL/PERM/UNKNOWN/REPORT_MISSING/REVIEW/FAILED가 찍힌 대상만 실제 화면 `--screen`과 Dispatch를 확인한다. 완료 메시지는 직접 검증하고, 보고 누락은 현재 Dispatch에 보고를 요청한다.
 - 멈춘 워커 복구: `worker-abandon` → `git status --short`로 부분 작업 확인(삭제하지 않는다) → `terminal close` → 다른 무료 모델로 `terminal create` → `Build · <모델명>` 줄 확인 → `worker-start --retry-of <이전 dispatch>` → spec에 재개 문구 덧붙임.
 
 ## 검증과 병합

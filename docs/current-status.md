@@ -1,5 +1,18 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 최신 상태: 단일 백그라운드 watchdog과 Orca 전달 복구 (2026-11-03)
+
+- 사용자 지시에 따라 watchdog을 직접 수정했다. 현재 화면 대신 누적 출력을 읽던 점, 마지막 5줄만 알리던 점, 정산 Dispatch가 감시에서 사라지던 점, macOS 알림만 보내던 점을 수정했다. 기존 진행분은 보존했다.
+- 저장소 공통 잠금과 `--start`/`--status`/`--stop`을 추가했다. 30초 스캔 및 300초 inbox peek를 한 프로세스로 실행하고 감시 전용 창은 만들지 않는다. 상태 변화는 높은 우선순위 Orca status로 전달하며 실패 outbox를 보존·재시도한다. escalation은 워커 전용이라 watchdog에서 사용하지 않는다.
+- 완료 전이는 REVIEW/FAILED, 열린 Dispatch의 응답 종료 화면 지속은 REPORT_MISSING으로 알린다. Task 완료 판정·검증·중지·재시도는 Master가 한다. 소비형 `check --wait`를 백그라운드에 남기지 않도록 AGENTS/운영 가이드/Master 프롬프트/로컬 orca-worker-ops 스킬을 갱신했다.
+- 빈 frontend 셸, 오래된 watchdog 창, 기존 watchdog 실행 창, SSH 비밀번호 대기 창을 정리했다. Master 외에는 OpenCode 작업 터미널 하나만 유지한다. 운영 이미지 서버 확인은 SSH 인증 대기이며 배포 변경은 하지 않았다.
+- watchdog 검증: selftest PASS(5줄 밖 오류·완료 전이·보고 누락·전달 재시도·하위 세션 오류 복구 포함), py_compile PASS, 단일 PID 재시작/중복 시작 방지 PASS, 실제 Run 상태 알림 수신 PASS. 실제 frontend 워커의 /tmp 권한 대기를 탐지·수신하고 Allow once로 처리한 뒤 OK 복귀를 확인했다.
+- 같은 /tmp 권한 대기가 재발해 현재 OpenCode 세션이 재시작될 때까지만 `/tmp/*` 접근을 허용했다. 반복 확인창을 없애고 작업을 재개했으며, 프로젝트 설정·시크릿은 변경하지 않았다. BSD sed 오류와 잘못된 head/tail 범위에 대한 수정 지시를 현재 dispatch에 전달했다.
+- 이전 배정/청약/매도 통합 및 달력·상세 CTA 산출물은 직접 검증 후 커밋 `09ff6972`로 main에 fast-forward 병합 및 원격 push했다. 최신 직접 검증: 테스트 806/806 PASS, typecheck PASS, lint PASS(오류 0, 경고 4), build PASS, 최신 변경 대상 Prettier PASS, `git diff --check` PASS. 전체 `format:check`는 변경하지 않은 기준선 파일 7개에서 FAIL이다.
+- Run `run_de814d446ea3`의 제품 작업 태스크는 완료됐다. calendar bars는 청약 종료일 하루만 표시하고 `startDate/endDate` 원본을 보존한다. 달력의 오늘/모두 보기 버튼과 상세 복귀 링크를 제거했다. IPO 상세의 청약/매도 CTA는 데스크톱 헤더 좌측 제목과 같은 행의 우측에 배치하고 모바일은 줄바꿈한다. 비로그인 매도 CTA가 `/login`으로 이동할 때 `state.from=/sales/register?ipoId=<id>`를 전달하도록 보완하고 실제 Router state 테스트를 추가했다. 필터 grid area와 모바일 공휴일 이름 숨김을 보존했다.
+- 무료 모델 한도: OpenRouter `free-models-per-day-high-balance` 오류 뒤 OpenCode Zen `beam-free`로 전환했다. 1회 probe PASS(`PROBE_OK`), 품질 등급은 미평가. 모델 관찰은 `docs/ai-free-model.md`에 추가했다.
+- frontend 작업 worktree와 로컬 브랜치는 병합 확인 후 제거했다. watchdog은 Run 종료 후 중지했다. Orca에는 종료 상태이나 liveness가 unverifiable인 과거 retained dispatch 기록이 남아 있어 미확인 프로세스를 강제 종료하거나 전체 상태 reset은 하지 않았다. 운영 아이콘·증권사 이미지 서버 확인은 SSH 인증이 필요해 계속 BLOCKED이며 운영 변경은 하지 않았다.
+
 ## 최신 상태: 홈 Linux 운영 서버 재배포 (2026-11-02)
 
 - 배포 커밋 `e39d024`를 집 Ubuntu 서버 `joyhp`에 반영했다. 백엔드는 `clean bootJar` PASS 후 Ansible 배포, systemd `active`; UI 정적 파일과 Caddy 설정도 배포했다.

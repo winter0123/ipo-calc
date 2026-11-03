@@ -193,3 +193,9 @@ OpenRouter `free-models-per-day-high-balance`는 계정 전체 일일 한도임�
 | 8 | `opencode/nemotron-3.5-super-vl-free` | FAIL (무응답) | — | 30초 이내 응답 없어 Ctrl-C | 없음 | 평가 미실시 | 중단. |
 | 9 | `opencode/beam-free` | PASS (단답 재확인) | `beam-free` | 약 6.2초 | probe 변경 없음 | 작업 적합성 평가 미실시 | 이후 AdminUserService 구현에 사용했으나 Master 테스트에서 fixture 1건 실패; 모델 품질 판정 보류. |
 | 10 | `opencode/flint-40b-free` | PASS (단답 재확인) | `flint-40b-free` | 약 8.1초 | probe 변경 없음 | 작업 적합성 평가 미실시 | AdminUserService 테스트 보정에 배정, 결과 대기 중. |
+
+### 2026-11-03 OpenCode Zen 추가 probe
+
+| 순서 | 모델 ID | 관찰 결과 | 확인 방식 | 코드 변경 | 역할 적합성 | 비고 |
+|---|---|---|---|---|---|---|
+| 1 | `opencode/beam-free` | PASS (`PROBE_OK`) | `opencode run -m opencode/beam-free` 직접 실행, 비용 0 | 없음 | 평가 미실시 | OpenRouter `free-models-per-day-high-balance` 제한 뒤 후보 1개를 시험. 이후 Orca 작업은 별도 평가이며 이 단답 probe만으로 구현 역할 추천으로 올리지 않음. |
