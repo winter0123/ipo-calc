@@ -263,15 +263,18 @@ describe('buildWeekSegments', () => {
     const { segments, laneCount } = buildWeekSegments(events, weekDates)
 
     expect(segments).toHaveLength(1)
-    expect(segments[0].startCol).toBe(1)
+    // SUBSCRIPTION 막대는 종료일 하루만 표시되므로, endDate인 10/06이 있는 열(col 2)에만 표시됨
+    expect(segments[0].startCol).toBe(2)
     expect(segments[0].endCol).toBe(2)
-    expect(segments[0].continuesBefore).toBe(false)
+    // SUBSCRIPTION의 continuesBefore는 실제 시작일이 시각적 시작일보다 이전인지 여부
+    // 여기서는 실제 시작일(10/05)이 시각적 표시일(10/06)보다 이전이므로 true
+    expect(segments[0].continuesBefore).toBe(true)
     expect(segments[0].continuesAfter).toBe(false)
     expect(segments[0].lane).toBe(0)
     expect(laneCount).toBe(1)
   })
 
-  it('주를 넘기는 청약: 두 주에서 각각 continuesAfter / continuesBefore true', () => {
+  it('주를 넘기는 청약: 종료일이 있는 주에만 막대가 나타난다', () => {
     const events = [
       {
         ipoId: 1,
@@ -305,14 +308,16 @@ describe('buildWeekSegments', () => {
     const { segments: seg1 } = buildWeekSegments(events, week1)
     const { segments: seg2 } = buildWeekSegments(events, week2)
 
-    expect(seg1[0].continuesAfter).toBe(true)
-    expect(seg1[0].continuesBefore).toBe(false)
-    expect(seg1[0].endCol).toBe(6)
+    // 첫 주: 종료일(10/12)이 첫 주에 없으므로 막대 없음
+    expect(seg1).toHaveLength(0)
 
+    // 둘째 주: 종료일(10/12)이 둘째 주에 있으므로 막대 표시
+    expect(seg2).toHaveLength(1)
+    expect(seg2[0].startCol).toBe(1) // 10/12 월요일
+    expect(seg2[0].endCol).toBe(1) // 10/12 월요일
+    // 실제 시작일(10/08)이 시각적 표시일(10/12)보다 이전이므로 continuesBefore true
     expect(seg2[0].continuesBefore).toBe(true)
     expect(seg2[0].continuesAfter).toBe(false)
-    expect(seg2[0].startCol).toBe(0)
-    expect(seg2[0].endCol).toBe(1)
   })
 
   it('겹치는 두 청약은 lane 0, 1에 배치된다', () => {
@@ -323,15 +328,15 @@ describe('buildWeekSegments', () => {
         companyName: '테스트1',
         ipoName: '테스트1',
         startDate: '2026-10-05',
-        endDate: '2026-10-07',
+        endDate: '2026-10-06', // Same end date
       },
       {
         ipoId: 2,
         type: 'SUBSCRIPTION' as const,
         companyName: '테스트2',
         ipoName: '테스트2',
-        startDate: '2026-10-06',
-        endDate: '2026-10-08',
+        startDate: '2026-10-04',
+        endDate: '2026-10-06', // Same end date - both show on 10/06
       },
     ]
     const { segments, laneCount } = buildWeekSegments(events, weekDates)
@@ -388,7 +393,9 @@ describe('buildWeekSegments', () => {
     ]
     const { segments } = buildWeekSegments(events, weekWithNulls)
 
-    expect(segments[0].startCol).toBe(2)
+    expect(segments).toHaveLength(1)
+    // SUBSCRIPTION 막대는 종료일(10/03)에만 표시됨. 10/03은 col 4 (0-based: null, null, 1, 2, 3, 4, 5)
+    expect(segments[0].startCol).toBe(4)
     expect(segments[0].endCol).toBe(4)
   })
 
@@ -426,6 +433,8 @@ describe('buildWeekSegments', () => {
 
   it('평일+주말 세그먼트는 모바일에서 평일 구간만 잘라서 유지한다', () => {
     // 2026-10-09(금) ~ 2026-10-12(월): 주말 포함
+    // 10/12가 월요일이므로 모바일(평일만)에서 표시되려면 종료일이 평일인 주여야 함
+    // 이 테스트는 종료일이 평일인 경우를 테스트
     const mixedEvent = [
       {
         ipoId: 1,
@@ -433,7 +442,7 @@ describe('buildWeekSegments', () => {
         companyName: '혼합테스트',
         ipoName: '혼합테스트',
         startDate: '2026-10-09',
-        endDate: '2026-10-12',
+        endDate: '2026-10-09', // 금요일 종료
       },
     ]
     const mixedWeek = [
@@ -448,11 +457,11 @@ describe('buildWeekSegments', () => {
     const { segments } = buildWeekSegments(mixedEvent, mixedWeek, true)
     expect(segments).toHaveLength(1)
     expect(segments[0].startCol).toBe(5) // 금(9일) col5 in Sun->Sat
-    expect(segments[0].endCol).toBe(5) // 평일만 유지, 토/일 제외
-    // desktop (isMobile=false)에서는 주 전체 col0..6 유지됨 — 별도 검증
+    expect(segments[0].endCol).toBe(5) // 평일만 유지
+    // desktop (isMobile=false)에서도 동일하게 표시됨
     const { segments: segDesktop } = buildWeekSegments(mixedEvent, mixedWeek, false)
     expect(segDesktop[0].startCol).toBe(5)
-    expect(segDesktop[0].endCol).toBe(6) // Mon 12 is next week not included here; full range of covered dates in week
+    expect(segDesktop[0].endCol).toBe(5)
   })
 
   it('timezone-safe: YYYY-MM-DD 문자열로 평일/주말 파싱이 로컬/UTC 차이로 바뀌지 않는다', () => {

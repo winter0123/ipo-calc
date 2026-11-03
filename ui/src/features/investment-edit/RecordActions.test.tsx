@@ -3,12 +3,62 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fill } from '@/test/fill'
-import { apiFetch } from '@/shared/api/client.ts'
 import { ApiError } from '@/shared/api/apiError.ts'
 import RecordActions, { type RecordKind } from './RecordActions.tsx'
 
-vi.mock('@/shared/api/client.ts', () => ({ apiFetch: vi.fn() }))
-const mockFetch = vi.mocked(apiFetch)
+vi.mock('@/entities/allocation/index.ts', async () => {
+  const actual = await vi.importActual('@/entities/allocation/index.ts')
+  return {
+    ...actual,
+    getAllocation: vi.fn(),
+    updateAllocation: vi.fn(),
+    deleteAllocation: vi.fn(),
+  }
+})
+
+vi.mock('@/entities/sale/index.ts', async () => {
+  const actual = await vi.importActual('@/entities/sale/index.ts')
+  return {
+    ...actual,
+    getSale: vi.fn(),
+    updateSale: vi.fn(),
+    deleteSale: vi.fn(),
+  }
+})
+
+vi.mock('@/entities/subscription/index.ts', async () => {
+  const actual = await vi.importActual('@/entities/subscription/index.ts')
+  return {
+    ...actual,
+    getSubscription: vi.fn(),
+    updateSubscription: vi.fn(),
+    deleteSubscription: vi.fn(),
+    useInvestmentHistoryDetail: vi.fn(),
+    investmentHistoryKeys: {
+      source: (type: string, id: number) => ['investment-history', type, id],
+    },
+  }
+})
+
+import {
+  deleteSubscription,
+  getSubscription,
+  updateSubscription,
+  useInvestmentHistoryDetail,
+} from '@/entities/subscription/index.ts'
+import { getAllocation, updateAllocation, deleteAllocation } from '@/entities/allocation/index.ts'
+import { getSale, updateSale, deleteSale } from '@/entities/sale/index.ts'
+
+const mockDeleteSubscription = vi.mocked(deleteSubscription)
+const mockDeleteAllocation = vi.mocked(deleteAllocation)
+const mockDeleteSale = vi.mocked(deleteSale)
+const mockGetSubscription = vi.mocked(getSubscription)
+const mockUpdateSubscription = vi.mocked(updateSubscription)
+const mockGetSale = vi.mocked(getSale)
+const mockUpdateSale = vi.mocked(updateSale)
+const mockGetAllocation = vi.mocked(getAllocation)
+const mockUpdateAllocation = vi.mocked(updateAllocation)
+const mockUseInvestmentHistoryDetail = vi.mocked(useInvestmentHistoryDetail)
 
 const RECORDS: Record<RecordKind, object> = {
   subscription: {
@@ -29,7 +79,7 @@ const RECORDS: Record<RecordKind, object> = {
     subscriptionId: 1,
     allocatedQuantity: 5,
     allocatedAt: '2026-09-05T09:00:00',
-    allocationPrice: 10000,
+    allocatedAmount: 50000,
     allocationMethod: 'LOTTERY',
     note: '',
     status: 'ACTIVE',
@@ -53,13 +103,106 @@ const RECORDS: Record<RecordKind, object> = {
     updatedAt: '2026-09-10T09:00:00',
   },
 }
+
+const SUB_DETAIL_FOR_ALLOCATION = {
+  id: 1,
+  subscribedAt: '2026-09-01T09:00:00Z',
+  ipoId: 1,
+  ipoName: '테스트 공모주',
+  ipoFixedPrice: 10000,
+  subscriptionQuantity: 10,
+  subscriptionStatus: 'ACTIVE',
+  allocation: { id: 2, allocatedQuantity: 5, allocatedAmount: 50000, allocationStatus: 'ACTIVE' },
+  sales: [],
+  remainingQuantity: 5,
+  investorName: '홍길동',
+  securitiesFirmName: '테스트증권',
+  securitiesAccountId: 1,
+  securitiesAccountName: '테스트계좌',
+}
+
 const ID = { subscription: 1, allocation: 2, sale: 3 }
-const PATH = { subscription: '/subscriptions/1', allocation: '/allocations/2', sale: '/sales/3' }
 
 function setup(kind: RecordKind) {
-  mockFetch.mockImplementation((_path, options) =>
-    Promise.resolve(options?.method && options.method !== 'GET' ? undefined : RECORDS[kind]),
+  // 개별 API 함수 mock 설정 (dialog query에서 사용)
+  mockGetSubscription.mockResolvedValue(
+    RECORDS.subscription as Awaited<ReturnType<typeof getSubscription>>,
   )
+  mockGetAllocation.mockResolvedValue(
+    RECORDS.allocation as Awaited<ReturnType<typeof getAllocation>>,
+  )
+  mockGetSale.mockResolvedValue(RECORDS.sale as Awaited<ReturnType<typeof getSale>>)
+  mockUpdateSubscription.mockResolvedValue({ ...RECORDS.subscription, quantity: 20 } as Awaited<
+    ReturnType<typeof updateSubscription>
+  >)
+  mockUpdateAllocation.mockResolvedValue({
+    ...RECORDS.allocation,
+    allocatedQuantity: 60,
+  } as Awaited<ReturnType<typeof updateAllocation>>)
+  mockUpdateSale.mockResolvedValue({ ...RECORDS.sale, quantity: 2 } as Awaited<
+    ReturnType<typeof updateSale>
+  >)
+  if (kind === 'allocation') {
+    mockUseInvestmentHistoryDetail.mockReturnValue({
+      data: SUB_DETAIL_FOR_ALLOCATION,
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      failureCount: 0,
+      failureReason: null,
+      refetch: vi.fn(),
+      fetchStatus: 'idle',
+      status: 'success',
+      dataUpdatedAt: Date.now(),
+      errorUpdatedAt: 0,
+      isFetched: true,
+      isFetching: false,
+      isRefetching: false,
+      isStale: false,
+    } as unknown as ReturnType<typeof useInvestmentHistoryDetail>)
+  } else if (kind === 'subscription') {
+    mockUseInvestmentHistoryDetail.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      failureCount: 0,
+      failureReason: null,
+      refetch: vi.fn(),
+      fetchStatus: 'idle',
+      status: 'success',
+      dataUpdatedAt: Date.now(),
+      errorUpdatedAt: 0,
+      isFetched: true,
+      isFetching: false,
+      isRefetching: false,
+      isStale: false,
+    } as unknown as ReturnType<typeof useInvestmentHistoryDetail>)
+  } else if (kind === 'sale') {
+    mockUseInvestmentHistoryDetail.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      failureCount: 0,
+      failureReason: null,
+      refetch: vi.fn(),
+      fetchStatus: 'idle',
+      status: 'success',
+      dataUpdatedAt: Date.now(),
+      errorUpdatedAt: 0,
+      isFetched: true,
+      isFetching: false,
+      isRefetching: false,
+      isStale: false,
+    } as unknown as ReturnType<typeof useInvestmentHistoryDetail>)
+  }
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
@@ -69,10 +212,42 @@ function setup(kind: RecordKind) {
   )
 }
 
-const call = (method: string) => mockFetch.mock.calls.find(([, o]) => o?.method === method)
+type PatchCall = [unknown, unknown]
+
+const call = (method: string, kind?: RecordKind): PatchCall | number | undefined => {
+  if (method === 'DELETE' && kind) {
+    const mockDelete =
+      kind === 'subscription'
+        ? mockDeleteSubscription
+        : kind === 'allocation'
+          ? mockDeleteAllocation
+          : mockDeleteSale
+    const call = mockDelete.mock.calls[0]
+    return call ? call[0] : undefined
+  }
+  if (method === 'PATCH' && kind) {
+    const mockUpdate =
+      kind === 'subscription'
+        ? mockUpdateSubscription
+        : kind === 'allocation'
+          ? mockUpdateAllocation
+          : mockUpdateSale
+    const call = mockUpdate.mock.calls[0]
+    return call ? [call[0], call[1]] : undefined
+  }
+  return undefined
+}
 
 describe('RecordActions', () => {
-  beforeEach(() => mockFetch.mockReset())
+  beforeEach(() => {
+    mockDeleteSubscription.mockReset()
+    mockDeleteAllocation.mockReset()
+    mockDeleteSale.mockReset()
+    mockUpdateSubscription.mockReset()
+    mockUpdateAllocation.mockReset()
+    mockUpdateSale.mockReset()
+    mockUseInvestmentHistoryDetail.mockReset()
+  })
 
   it('청약 수정: 바뀐 값을 PATCH로 보낸다', async () => {
     setup('subscription')
@@ -80,10 +255,10 @@ describe('RecordActions', () => {
     await fill(await screen.findByLabelText('청약수량'), '20')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    await waitFor(() => expect(call('PATCH')).toBeDefined())
-    const [path, options] = call('PATCH')!
-    expect(path).toBe(PATH.subscription)
-    expect(JSON.parse(options!.body as string)).toEqual({
+    await waitFor(() => expect(call('PATCH', 'subscription')).toBeDefined())
+    const patchCall = call('PATCH', 'subscription') as PatchCall
+    const [, data] = patchCall
+    expect(data).toEqual({
       quantity: 20,
       depositAmount: 200000,
       subscribedAt: '2026-09-01T09:00',
@@ -98,13 +273,11 @@ describe('RecordActions', () => {
     await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    await waitFor(() => expect(call('PATCH')).toBeDefined())
-    const [path, options] = call('PATCH')!
-    expect(path).toBe(PATH.allocation)
-    expect(JSON.parse(options!.body as string)).toEqual({
+    await waitFor(() => expect(call('PATCH', 'allocation')).toBeDefined())
+    const patchCall = call('PATCH', 'allocation') as PatchCall
+    const [, data] = patchCall
+    expect(data).toEqual({
       allocatedQuantity: 3,
-      allocatedAt: '2026-09-05T09:00',
-      allocationPrice: 10000,
       allocationMethod: 'PROPORTIONAL',
       note: '',
     })
@@ -119,10 +292,10 @@ describe('RecordActions', () => {
     await fill(screen.getByLabelText('공모주수수료'), '1000')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    await waitFor(() => expect(call('PATCH')).toBeDefined())
-    const [path, options] = call('PATCH')!
-    expect(path).toBe(PATH.sale)
-    expect(JSON.parse(options!.body as string)).toEqual({
+    await waitFor(() => expect(call('PATCH', 'sale')).toBeDefined())
+    const patchCall = call('PATCH', 'sale') as PatchCall
+    const [, data] = patchCall
+    expect(data).toEqual({
       quantity: 2,
       price: 20000,
       amount: 40000,
@@ -141,19 +314,26 @@ describe('RecordActions', () => {
         within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
       )
 
-      await waitFor(() => expect(call('DELETE')?.[0]).toBe(PATH[kind]))
+      const expectedId = kind === 'subscription' ? 1 : kind === 'allocation' ? 2 : 3
+      const mockDelete =
+        kind === 'subscription'
+          ? mockDeleteSubscription
+          : kind === 'allocation'
+            ? mockDeleteAllocation
+            : mockDeleteSale
+      await waitFor(() => expect(mockDelete).toHaveBeenCalledWith(expectedId, expect.any(Object)))
     },
   )
 
   it('삭제 확인을 연달아 눌러도 DELETE는 한 번만 나간다', async () => {
     let release: () => void = () => {}
-    mockFetch.mockImplementation((_path, options) =>
-      options?.method === 'DELETE'
-        ? new Promise((resolve) => {
-            release = () => resolve(undefined)
-          })
-        : Promise.resolve(RECORDS.sale),
+    const mockDeleteSaleLocal = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => resolve()
+        }),
     )
+    mockDeleteSale.mockImplementation(mockDeleteSaleLocal)
     render(
       <QueryClientProvider client={new QueryClient()}>
         <RecordActions kind="sale" id={3} />
@@ -165,27 +345,21 @@ describe('RecordActions', () => {
     await userEvent.click(confirm)
     release()
 
-    await waitFor(() =>
-      expect(mockFetch.mock.calls.filter(([, o]) => o?.method === 'DELETE')).toHaveLength(1),
-    )
+    await waitFor(() => expect(mockDeleteSaleLocal).toHaveBeenCalledTimes(1))
   })
 
-  it('배정 수정에서 있던 배정단가를 비우면 저장하지 않고 안내한다', async () => {
+  it('배정 수정에는 배정일·배정단가 입력이 없고 배정 총액은 읽기 전용이다', async () => {
     setup('allocation')
     await userEvent.click(screen.getByRole('button', { name: /수정$/ }))
-    const price = await screen.findByLabelText(/배정단가/)
-    await userEvent.clear(price)
-    await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(
-      await screen.findByText('배정단가는 비울 수 없습니다. 값을 입력해 주세요.'),
-    ).toBeInTheDocument()
-    expect(call('PATCH')).toBeUndefined()
+    expect(await screen.findByLabelText('배정 총액')).toHaveTextContent('50,000원')
+    expect(screen.queryByLabelText('배정일')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/배정단가/)).not.toBeInTheDocument()
   })
 
   it('삭제가 409면 서버 메시지를 그대로 보여 준다', async () => {
     const message = '매도 기록이 있는 배정은 취소할 수 없습니다. 매도를 먼저 삭제해 주세요.'
-    mockFetch.mockRejectedValueOnce(new ApiError(409, message, message))
+    mockDeleteAllocation.mockRejectedValueOnce(new ApiError(409, message, message))
     render(
       <QueryClientProvider client={new QueryClient()}>
         <RecordActions kind="allocation" id={2} />

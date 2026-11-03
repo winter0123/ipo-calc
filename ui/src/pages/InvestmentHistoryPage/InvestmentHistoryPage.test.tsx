@@ -111,7 +111,7 @@ const HISTORY_RESPONSE: InvestmentHistoryResponse = {
       allocation: {
         id: 1,
         allocatedQuantity: 20,
-        allocationPrice: 55000,
+        allocatedAmount: 1100000,
         allocationStatus: 'CONFIRMED',
       },
       sales: [],

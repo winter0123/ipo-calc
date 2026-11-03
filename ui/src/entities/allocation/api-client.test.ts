@@ -9,7 +9,7 @@ const ALLOCATION = {
   allocatedQuantity: 0,
   allocatedAt: TS,
   allocationMethod: null,
-  allocationPrice: null,
+  allocatedAmount: 0,
   note: null,
   status: 'ACTIVE',
   deletedAt: null,
@@ -47,9 +47,9 @@ describe('allocation mutations', () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(ALLOCATION))))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(
-      createAllocation({ subscriptionId: 2, allocatedQuantity: 0, allocatedAt: TS }),
-    ).resolves.toEqual(ALLOCATION)
+    await expect(createAllocation({ subscriptionId: 2, allocatedQuantity: 0 })).resolves.toEqual(
+      ALLOCATION,
+    )
     expect(fetchMock).toHaveBeenLastCalledWith(
       expect.stringMatching(/\/allocations$/),
       expect.objectContaining({ method: 'POST' }),
@@ -66,7 +66,7 @@ describe('allocation mutations', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 1 }))))
 
     await expect(
-      createAllocation({ subscriptionId: 2, allocatedQuantity: 0, allocatedAt: TS }),
+      createAllocation({ subscriptionId: 2, allocatedQuantity: 0 }),
     ).rejects.toBeInstanceOf(ZodError)
   })
 })

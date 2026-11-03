@@ -11,7 +11,7 @@ const validateNonNegativeInteger = (v: unknown) =>
 /** 세금 및 기타 수수료·실현손익·공모주수수료와 최종수익금 요약. */
 export default function SaleProfitFields({ f }: { f: SaleForm }) {
   'use no memo'
-  const { errors, isPending, ipoPrice, finalAmount } = f
+  const { errors, isPending, ipoPrice, finalAmount, canCalcAcquisition } = f
   return (
     <StyleScope>
       {
@@ -56,15 +56,15 @@ export default function SaleProfitFields({ f }: { f: SaleForm }) {
                 if (!isNum(v) || !Number.isInteger(v)) return '정수를 입력해 주세요.'
                 if (f.lastEdited !== 'profit') return true
                 const { price, quantity, otherFees } = f.getValues()
-                if (ipoPrice == null) {
+                if (!canCalcAcquisition) {
                   return (
                     isNum(otherFees) ||
-                    '공모가를 알 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.'
+                    '취득금액을 계산할 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.'
                   )
                 }
                 if (!isNum(price) || !isNum(quantity)) return true
                 return (
-                  otherFeesFromRealizedProfit(price, quantity, ipoPrice, v) >= 0 ||
+                  otherFeesFromRealizedProfit(price, quantity, ipoPrice ?? 0, v) >= 0 ||
                   '실현손익이 (매도단가×수량 − 공모가×수량)보다 클 수 없습니다.'
                 )
               }}

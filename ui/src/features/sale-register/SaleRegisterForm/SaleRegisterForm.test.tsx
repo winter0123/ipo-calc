@@ -15,25 +15,38 @@ vi.mock('@/shared/api/client.ts', () => ({
 vi.mock('@/shared/lib/ocr/recognizeImages.ts', () => ({
   recognizeImages: vi.fn(async () => [{ width: 1125, height: 2436, words: [] }]),
 }))
-vi.mock('@/entities/sale/index.ts', async () => ({
-  ...(await vi.importActual<object>('@/entities/sale/index.ts')),
-  parseCapture: () => ({
-    kind: 'A_detail',
-    broker: 'KIS',
-    records: [
-      {
-        stockName: '카카오뱅크',
-        stockCode: '323410',
-        saleDate: '2026-10-25',
-        quantity: 30,
-        salePrice: 12000,
-        fee: 5,
-        tax: 20,
-        realizedProfit: 59975,
-      },
-    ],
-  }),
-}))
+vi.mock('@/entities/sale/index.ts', async () => {
+  const actual = await vi.importActual<object>('@/entities/sale/index.ts')
+  return {
+    ...actual,
+    parseCapture: () => ({
+      kind: 'A_detail',
+      broker: 'KIS',
+      records: [
+        {
+          stockName: '카카오뱅크',
+          stockCode: '323410',
+          saleDate: '2026-10-25',
+          quantity: 30,
+          salePrice: 12000,
+          fee: 5,
+          tax: 20,
+          realizedProfit: 59975,
+        },
+      ],
+    }),
+    allocationUnitPrice: (
+      fixedPrice: number | null | undefined,
+      allocatedAmount?: number,
+      allocatedQuantity?: number,
+    ) => {
+      if (allocatedAmount != null && allocatedQuantity != null && allocatedQuantity > 0) {
+        return Math.round(allocatedAmount / allocatedQuantity)
+      }
+      return fixedPrice ?? null
+    },
+  }
+})
 
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -47,7 +60,7 @@ vi.mock('react-router-dom', async () => {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '@/shared/api/apiError.ts'
 
-let mutationFnMock: (data: unknown) => Promise<unknown> = () => Promise.resolve({})
+const mutationFnMock = vi.fn(() => Promise.resolve({}))
 
 vi.mock('../useSaleRegister.ts', () => ({
   useSaleRegister: () => {
@@ -126,7 +139,7 @@ const ALLOCATION_DETAIL = {
   allocation: {
     id: 1,
     allocatedQuantity: 50,
-    allocationPrice: null,
+    allocatedAmount: null,
     allocationStatus: 'ACTIVE',
   },
   sales: [],
@@ -187,7 +200,8 @@ describe('SaleRegisterForm', () => {
   beforeEach(() => {
     localStorage.setItem('currentInvestorId', '1')
     mockNavigate.mockClear()
-    mutationFnMock = () => Promise.resolve({})
+    mutationFnMock.mockReset()
+    mutationFnMock.mockResolvedValue({})
     defaultMock()
   })
 
@@ -256,19 +270,20 @@ describe('SaleRegisterForm', () => {
       expect(value('매도일')).toBe('')
     })
 
-    it('확정 공모가가 없으면 배정단가를 매도단가로 쓴다', async () => {
+    it('확정 공모가가 없으면 배정 평균 단가를 매도단가 기본값으로 사용한다', async () => {
       defaultMock({
         ipo: { ...IPO, fixedPrice: null },
         detail: {
           ...ALLOCATION_DETAIL,
           ipoFixedPrice: null,
-          allocation: { ...ALLOCATION_DETAIL.allocation, allocationPrice: 9500 },
+          allocation: { ...ALLOCATION_DETAIL.allocation, allocatedAmount: 475000 },
         },
       })
       renderForm()
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
       await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
       await fill(screen.getByLabelText('청약'), '1')
+      // 배정 평균 단가(475000/50=9500)가 기본값으로 들어간다
       await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('9,500'))
     })
   })
@@ -285,7 +300,7 @@ describe('SaleRegisterForm', () => {
 
     it('금액은 천 단위 쉼표로 보이고 저장 값은 숫자다', async () => {
       const spy = vi.fn().mockResolvedValue({ id: 1 })
-      mutationFnMock = spy
+      mutationFnMock.mockImplementation(spy)
       await setupForm()
       expect(screen.getByLabelText('매도단가')).toHaveAttribute('inputmode', 'numeric')
       await fill(screen.getByLabelText('매도단가'), '15000')
@@ -392,7 +407,7 @@ describe('SaleRegisterForm', () => {
   describe('저장 값', () => {
     it('매도단가×수량을 금액으로, 공모주수수료를 수수료로, 세금 및 기타를 세금으로 보낸다', async () => {
       const spy = vi.fn().mockResolvedValue({ id: 1 })
-      mutationFnMock = spy
+      mutationFnMock.mockImplementation(spy)
       await setupForm()
       await fill(screen.getByLabelText('매도단가'), '15000')
       await fill(screen.getByLabelText('세금 및 기타 수수료 (선택)'), '1500')
@@ -411,7 +426,7 @@ describe('SaleRegisterForm', () => {
 
     it('증권사 실현손익을 넣고 세금 및 기타를 비워 두면 거꾸로 계산한 값이 세금으로 저장된다', async () => {
       const spy = vi.fn().mockResolvedValue({ id: 1 })
-      mutationFnMock = spy
+      mutationFnMock.mockImplementation(spy)
       await setupForm()
       await fill(screen.getByLabelText('매도단가'), '15000')
       await fill(screen.getByLabelText('실현손익'), '148500')
@@ -467,31 +482,46 @@ describe('SaleRegisterForm', () => {
       })
     })
 
-    it('공모가를 몰라 단가가 비어 있고 실현손익만 넣으면 세금 및 기타를 직접 넣으라고 안내한다', async () => {
+    it('공모가·배정총액 모두 없으면 취득금액 계산 불가 → 실현손익 입력 시 세금 필수 안내', async () => {
       defaultMock({
         ipo: { ...IPO, fixedPrice: null },
-        detail: { ...ALLOCATION_DETAIL, ipoFixedPrice: null },
+        detail: {
+          ...ALLOCATION_DETAIL,
+          ipoFixedPrice: null,
+          allocation: { ...ALLOCATION_DETAIL.allocation, allocatedAmount: null },
+        },
       })
       renderForm()
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
       await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
       await fill(screen.getByLabelText('청약'), '1')
       await waitFor(() => expect(screen.getByLabelText('매도수량')).toHaveValue(30))
+      // 매도단가 기본값이 비어 있음
       expect(value('매도단가')).toBe('')
-      await fill(screen.getByLabelText('매도단가'), '15000')
+      // 매도단가를 비운 상태로 실현손익만 입력 → 취득금액 계산 불가 상태에서 세금 필수 에러
       await fill(screen.getByLabelText('실현손익'), '100000')
+      // lastEdited 상태가 'profit'으로 갱신되도록 React 업데이트 플러시 대기
+      await new Promise((r) => setTimeout(r, 100))
+      // 취득금액 계산 불가 상태에서 실현손익만 넣으면 세금 필수 에러
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
         expect(
-          screen.getByText('공모가를 알 수 없어 세금 및 기타 수수료를 직접 입력해 주세요.'),
+          screen.getByText(/취득금액을 계산할 수 없어 세금 및 기타 수수료를 직접 입력해 주세요/),
         ).toBeInTheDocument()
+      })
+      // 매도단가와 세금을 넣으면 제출 가능
+      await fill(screen.getByLabelText('매도단가'), '15000')
+      await fill(screen.getByLabelText('세금 및 기타 수수료 (선택)'), '350000')
+      await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+      await waitFor(() => {
+        expect(mutationFnMock).toHaveBeenCalled()
       })
     })
   })
 
   describe('서버 응답', () => {
     it('등록 성공 시 /investments로 이동 (AC-001)', async () => {
-      mutationFnMock = vi.fn().mockResolvedValue({ id: 1 })
+      mutationFnMock.mockResolvedValue({ id: 1 })
       await setupForm()
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
@@ -500,7 +530,7 @@ describe('SaleRegisterForm', () => {
     })
 
     it('404 에러 시 "배정을 찾을 수 없습니다." 표시 (AC-004)', async () => {
-      mutationFnMock = vi.fn().mockRejectedValue(new ApiError(404, 'Request failed: 404'))
+      mutationFnMock.mockRejectedValue(new ApiError(404, 'Request failed: 404'))
       await setupForm()
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
@@ -509,7 +539,7 @@ describe('SaleRegisterForm', () => {
     })
 
     it('409 에러 시 원본 메시지 표시 (AC-005)', async () => {
-      mutationFnMock = vi.fn().mockRejectedValue(new ApiError(409, '<상세>', '<상세>'))
+      mutationFnMock.mockRejectedValue(new ApiError(409, '<상세>', '<상세>'))
       await setupForm()
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
@@ -518,7 +548,7 @@ describe('SaleRegisterForm', () => {
     })
 
     it('400 에러 시 "입력값을 확인해 주세요." 표시 (AC-006)', async () => {
-      mutationFnMock = vi.fn().mockRejectedValue(new ApiError(400, 'Request failed: 400'))
+      mutationFnMock.mockRejectedValue(new ApiError(400, 'Request failed: 400'))
       await setupForm()
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
@@ -527,7 +557,7 @@ describe('SaleRegisterForm', () => {
     })
 
     it('네트워크 오류 시 "네트워크 연결을 확인해 주세요." 표시 (AC-021)', async () => {
-      mutationFnMock = vi.fn().mockRejectedValue(new Error('Failed to fetch'))
+      mutationFnMock.mockRejectedValue(new Error('Failed to fetch'))
       await setupForm()
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => {
@@ -558,7 +588,8 @@ describe('상장일 시초가로 매도단가 기본값(AC-2105~2108)', () => {
   beforeEach(() => {
     localStorage.setItem('currentInvestorId', '1')
     mockNavigate.mockClear()
-    mutationFnMock = () => Promise.resolve({})
+    mutationFnMock.mockReset()
+    mutationFnMock.mockResolvedValue({})
   })
 
   it('시초가가 있으면 매도단가 기본값이 시초가, 안내 문구에 "상장일 시초가" (AC-2105)', async () => {

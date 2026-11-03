@@ -246,7 +246,7 @@ describe('IpoCalendarPage', () => {
       expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
     })
 
-    it('모두 보기 버튼을 누르면 모든 종류가 켜진다', async () => {
+    it('필터 버튼을 통해 개별 종류를 켜고 끌 수 있다', async () => {
       setIpos([makeIpo()])
       setHolidays([])
       renderPage(['/ipo-calendar?types=LISTING'])
@@ -255,12 +255,8 @@ describe('IpoCalendarPage', () => {
         expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
       })
 
-      // 모두 보기 버튼으로 청약 켜기
-      const showAllButton = screen.getByRole('button', { name: '모두 보기' })
-      await waitFor(() => {
-        expect(showAllButton).not.toBeDisabled()
-      })
-      await userEvent.click(showAllButton)
+      // 청약 필터 버튼으로 청약 켜기
+      await userEvent.click(screen.getByRole('button', { name: '청약' }))
 
       // 청약과 상장 모두 보임
       await waitFor(() => {
@@ -291,13 +287,13 @@ describe('IpoCalendarPage', () => {
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=')
       expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '모두 보기' })).not.toBeDisabled()
 
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=SUBSCRIPTION')
 
-      // 모두 보기로 3종이 켜지면 쿼리가 사라진다
-      await userEvent.click(screen.getByRole('button', { name: '모두 보기' }))
+      // 3종이 켜지면 쿼리가 사라진다
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
       expect(screen.getByTestId('search').textContent).toBe('')
     })
   })

@@ -13,12 +13,14 @@ import styles, { StyleScope } from './SubscriptionRegisterForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import {
+  allocationTotalFor,
   depositFor,
   formatDate,
   ipoPriceInfo,
   sortIposForSubscription,
 } from './subscriptionForm.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
+import { formatWon } from '@/shared/lib/format.ts'
 import { useEffect, useRef } from 'react'
 
 type SubscriptionFormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
@@ -26,9 +28,7 @@ type SubscriptionFormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
 interface CombinedFormValues extends SubscriptionFormValues {
   // 배정 필드 (선택적)
   allocatedQuantity?: number
-  allocatedAt?: string
   allocationMethod?: string
-  allocationPrice?: number
   note?: string
 }
 
@@ -138,7 +138,8 @@ function SubscriptionForm({
   const watchedIpoId = watch('ipoId')
   const selectedIpo = ipos.find((ipo) => ipo.id === Number(watchedIpoId))
   const watchedAllocatedQty = watch('allocatedQuantity')
-  const showAllocationFields = Number(watchedAllocatedQty ?? 0) > 0
+  const allocationTotal = allocationTotalFor(selectedIpo, Number(watchedAllocatedQty ?? 0))
+  const allocationPriceMissing = selectedIpo !== undefined && selectedIpo.fixedPrice == null
 
   // 주관사 인사이트 조회 (GET /ipos/{id}/insight의 underwriters)
   const {
@@ -147,7 +148,7 @@ function SubscriptionForm({
     error: ipoInsightError,
   } = useIpoInsight(watchedIpoId || undefined)
 
-  /** 증거금 기본값(공모가×수량×50%). 사용자가 고친 칸은 덮어쓰지 않는다. */
+  /** 증거금 기본값(확정 공모가×수량×50%). 사용자가 고친 칸은 덮어쓰지 않는다. */
   const syncDeposit = () => {
     if (getFieldState('depositAmount').isDirty) return
     const { ipoId, quantity } = getValues()
@@ -155,7 +156,8 @@ function SubscriptionForm({
       ipos.find((ipo) => ipo.id === Number(ipoId)),
       quantity,
     )
-    if (deposit !== undefined) setValue('depositAmount', deposit)
+    // 확정 공모가가 없으면 계산하지 않고, 이전 공모주의 자동값이 남지 않도록 비운다.
+    setValue('depositAmount', deposit ?? Number.NaN)
   }
 
   const selectedInvestorId = current?.id
@@ -239,15 +241,14 @@ function SubscriptionForm({
       // 2) 배정 필드가 채워져 있으면 배정도 등록 (allocatedQuantity > 0일 때만)
       const allocatedQty = Number(data.allocatedQuantity ?? 0)
       if (allocatedQty > 0) {
+        // 배정일과 배정 총액은 서버가 계산한다(요청에 보내지 않는다).
         const allocData = {
           subscriptionId: subResult.id,
           ipoId: data.ipoId,
           investorId: selectedInvestorId,
           securitiesAccountId: data.securitiesAccountId,
           allocatedQuantity: allocatedQty,
-          allocatedAt: `${data.allocatedAt}T09:00`,
           allocationMethod: data.allocationMethod,
-          allocationPrice: data.allocationPrice,
           note: data.note,
         }
         if (!registerAllocation) {
@@ -408,7 +409,9 @@ function SubscriptionForm({
                 </span>
               ) : (
                 <span id="depositAmount-hint" className={styles.hint}>
-                  공모가 × 청약수량 × 50%로 채워 드려요. 증권사 기준에 맞게 고치세요.
+                  {allocationPriceMissing
+                    ? '확정 공모가가 없어 증거금을 자동 계산하지 않습니다. 직접 입력하세요.'
+                    : '확정 공모가 × 청약수량 × 50%로 채워 드려요. 증권사 기준에 맞게 고치세요.'}
                 </span>
               )}
             </div>
@@ -449,141 +452,93 @@ function SubscriptionForm({
             </div>
           </fieldset>
 
-          {/* === 배정 섹션 (선택적) === */}
-          <fieldset
-            className={`${styles.section} ${showAllocationFields ? '' : styles.sectionCollapsed}`}
-          >
-            <legend className={styles.sectionTitle}>
-              <label className={styles.allocationToggle}>
-                <input
-                  type="checkbox"
-                  checked={showAllocationFields}
-                  onChange={(e) => {
-                    setValue('allocatedQuantity', e.target.checked ? 1 : 0, {
-                      shouldValidate: true,
-                    })
-                  }}
-                  aria-label="배정 정보 입력"
-                />
-                배정 결과 입력 (선택)
-              </label>
-            </legend>
+          {/* === 배정 섹션 === */}
+          <fieldset className={styles.section}>
+            <legend className={styles.sectionTitle}>배정 결과 입력</legend>
 
-            {showAllocationFields && (
-              <>
-                <div className={styles.field}>
-                  <label htmlFor="allocatedQuantity">배정수량</label>
-                  <input
-                    id="allocatedQuantity"
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    aria-invalid={!!errors.allocatedQuantity}
-                    aria-describedby={
-                      errors.allocatedQuantity
-                        ? 'allocatedQuantity-error'
-                        : 'allocatedQuantity-hint'
-                    }
-                    {...register('allocatedQuantity', {
-                      valueAsNumber: true,
-                      validate: (v) =>
-                        v === undefined ||
-                        v === null ||
-                        (Number.isInteger(Number(v)) && Number(v) >= 0) ||
-                        '0 이상 정수를 입력해 주세요.',
-                    })}
-                    disabled={isPendingSub}
-                  />
-                  <span id="allocatedQuantity-hint" className={styles.hint}>
-                    배정 결과를 확인했지만 배정받지 못한 경우 0주를 입력하세요.
-                  </span>
-                  {errors.allocatedQuantity && (
-                    <span id="allocatedQuantity-error" className={styles.error} aria-live="polite">
-                      {String(errors.allocatedQuantity.message)}
-                    </span>
-                  )}
-                </div>
+            <div className={styles.field}>
+              <label htmlFor="allocatedQuantity">배정수량</label>
+              <input
+                id="allocatedQuantity"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                aria-invalid={!!errors.allocatedQuantity}
+                aria-describedby={
+                  errors.allocatedQuantity ? 'allocatedQuantity-error' : 'allocatedQuantity-hint'
+                }
+                {...register('allocatedQuantity', {
+                  valueAsNumber: true,
+                  validate: (v) =>
+                    v === undefined ||
+                    v === null ||
+                    (Number.isInteger(Number(v)) && Number(v) >= 0) ||
+                    '0 이상 정수를 입력해 주세요.',
+                })}
+                disabled={isPendingSub}
+              />
+              <span id="allocatedQuantity-hint" className={styles.hint}>
+                배정 결과를 확인했지만 배정받지 못한 경우 0주를 입력하세요.
+              </span>
+              {errors.allocatedQuantity && (
+                <span id="allocatedQuantity-error" className={styles.error} aria-live="polite">
+                  {String(errors.allocatedQuantity.message)}
+                </span>
+              )}
+            </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="allocatedAt">배정일</label>
-                  <input
-                    id="allocatedAt"
-                    type="date"
-                    aria-invalid={!!errors.allocatedAt}
-                    aria-describedby={errors.allocatedAt ? 'allocatedAt-error' : undefined}
-                    {...register('allocatedAt', {
-                      required: '배정일을 선택해 주세요.',
-                    })}
-                    disabled={isPendingSub}
-                  />
-                  {errors.allocatedAt && (
-                    <span id="allocatedAt-error" className={styles.error} aria-live="polite">
-                      {String(errors.allocatedAt.message)}
-                    </span>
-                  )}
-                </div>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>배정 공모주 총 가격</span>
+              <output
+                className={styles.allocationTotal}
+                aria-label="배정 공모주 총 가격"
+                data-testid="allocation-total"
+              >
+                {allocationTotal === undefined
+                  ? '확정 공모가가 없어 자동 계산할 수 없습니다.'
+                  : formatWon(allocationTotal)}
+              </output>
+              <span className={styles.hint}>
+                확정 공모가 × 배정수량으로 자동 계산됩니다. 서버에 금액을 보내지 않습니다.
+              </span>
+            </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="allocationMethod">배정방식 (선택)</label>
-                  <select
-                    id="allocationMethod"
-                    aria-invalid={!!errors.allocationMethod}
-                    aria-describedby={
-                      errors.allocationMethod ? 'allocationMethod-error' : undefined
-                    }
-                    {...register('allocationMethod')}
-                    disabled={isPendingSub}
-                  >
-                    <option value="">배정방식 선택</option>
-                    <option value="PROPORTIONAL">비례배정</option>
-                    <option value="LOTTERY">추첨배정</option>
-                    <option value="FIRST_COME">선착순</option>
-                  </select>
-                  {errors.allocationMethod && (
-                    <span id="allocationMethod-error" className={styles.error} aria-live="polite">
-                      {String(errors.allocationMethod.message)}
-                    </span>
-                  )}
-                </div>
+            <div className={styles.field}>
+              <label htmlFor="allocationMethod">배정방식 (선택)</label>
+              <select
+                id="allocationMethod"
+                aria-invalid={!!errors.allocationMethod}
+                aria-describedby={errors.allocationMethod ? 'allocationMethod-error' : undefined}
+                {...register('allocationMethod')}
+                disabled={isPendingSub}
+              >
+                <option value="">배정방식 선택</option>
+                <option value="PROPORTIONAL">비례배정</option>
+                <option value="LOTTERY">추첨배정</option>
+                <option value="FIRST_COME">선착순</option>
+              </select>
+              {errors.allocationMethod && (
+                <span id="allocationMethod-error" className={styles.error} aria-live="polite">
+                  {String(errors.allocationMethod.message)}
+                </span>
+              )}
+            </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="allocationPrice">배정단가 (선택)</label>
-                  <MoneyInput
-                    id="allocationPrice"
-                    control={control}
-                    name="allocationPrice"
-                    allowNegative
-                    aria-invalid={!!errors.allocationPrice}
-                    aria-describedby={errors.allocationPrice ? 'allocationPrice-error' : undefined}
-                    validate={(v) =>
-                      !v || (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.'
-                    }
-                    disabled={isPendingSub}
-                  />
-                  {errors.allocationPrice && (
-                    <span id="allocationPrice-error" className={styles.error} aria-live="polite">
-                      {String(errors.allocationPrice.message)}
-                    </span>
-                  )}
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="note">비고 (선택)</label>
-                  <textarea
-                    id="note"
-                    aria-invalid={!!errors.note}
-                    aria-describedby={errors.note ? 'note-error' : undefined}
-                    {...register('note')}
-                    disabled={isPendingSub}
-                  />
-                  {errors.note && (
-                    <span id="note-error" className={styles.error} aria-live="polite">
-                      {String(errors.note.message)}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
+            <div className={styles.field}>
+              <label htmlFor="note">비고 (선택)</label>
+              <textarea
+                id="note"
+                aria-invalid={!!errors.note}
+                aria-describedby={errors.note ? 'note-error' : undefined}
+                {...register('note')}
+                disabled={isPendingSub}
+              />
+              {errors.note && (
+                <span id="note-error" className={styles.error} aria-live="polite">
+                  {String(errors.note.message)}
+                </span>
+              )}
+            </div>
           </fieldset>
 
           {formErrorMessage && (

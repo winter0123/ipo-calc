@@ -47,9 +47,16 @@ export const StyleScope = styled.div`
     gap: var(--space-2);
   }
 
-  .s-e642165-field label {
+  .s-e642165-field label,
+  .s-e642165-fieldLabel {
     font-size: 14px;
     font-weight: 650;
+    color: var(--ink);
+  }
+
+  .s-e642165-allocationTotal {
+    font-size: 16px;
+    font-weight: 700;
     color: var(--ink);
   }
 

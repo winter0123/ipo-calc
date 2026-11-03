@@ -89,8 +89,8 @@ export function GatedOutlet() {
         title="증권계좌를 먼저 등록해 주세요"
         message={
           <>
-            &apos;공모주 청약&apos;을 위해{' '}
-            <b>마이페이지</b> → <b>증권사 계좌 등록</b>을 먼저 진행 해주세요.
+            &apos;공모주 청약&apos;을 위해 <b>마이페이지</b> → <b>증권사 계좌 등록</b>을 먼저 진행
+            해주세요.
           </>
         }
         confirmLabel="마이페이지"

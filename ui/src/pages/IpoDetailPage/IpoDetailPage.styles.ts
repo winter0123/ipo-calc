@@ -16,11 +16,30 @@ export const StyleScope = styled.div`
   }
 
   .s-66fd75d-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: var(--space-4);
+  }
+
+  .s-66fd75d-header h1 {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .s-66fd75d-headerCTA {
+    grid-column: 2;
+    grid-row: 1;
     display: flex;
-    flex-direction: column;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-self: start;
   }
 
   .s-66fd75d-meta {
+    grid-column: 1 / -1;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -86,6 +105,27 @@ export const StyleScope = styled.div`
 
   /* 휴대폰: 짧은 값은 2단, 주소·최대주주처럼 긴 값만 한 줄 전체 폭. */
   @media (max-width: 640px) {
+    .s-66fd75d-header {
+      grid-template-columns: 1fr;
+    }
+
+    .s-66fd75d-header h1 {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .s-66fd75d-headerCTA {
+      grid-column: 1;
+      grid-row: 2;
+      justify-content: flex-start;
+      width: 100%;
+    }
+
+    .s-66fd75d-headerCTA .s-66fd75d-primaryLink {
+      flex: 1;
+      text-align: center;
+    }
+
     .s-66fd75d-detailGrid {
       gap: var(--space-4) var(--space-3);
       padding: var(--space-4);

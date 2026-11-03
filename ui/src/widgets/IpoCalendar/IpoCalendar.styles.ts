@@ -74,28 +74,6 @@ export const StyleScope = styled.div`
     border: 0;
   }
 
-  .s-e1b278a-todayButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0 var(--space-3);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--ink);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 650;
-    cursor: pointer;
-  }
-
-  .s-e1b278a-todayButton:hover {
-    background: var(--surface-soft);
-  }
-
-  .s-e1b278a-todayButton:focus-visible,
   .s-e1b278a-dateCell:focus-visible {
     outline: 2px solid var(--link);
     outline-offset: 2px;
@@ -168,38 +146,6 @@ export const StyleScope = styled.div`
 
   .s-e1b278a-filterOff .s-e1b278a-filterDot {
     background: var(--border-strong);
-  }
-
-  .s-e1b278a-showAllButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 var(--space-3);
-    margin-left: auto;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--ink);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 650;
-    cursor: pointer;
-  }
-
-  .s-e1b278a-showAllButton:hover:not(:disabled) {
-    background: var(--surface-soft);
-  }
-
-  .s-e1b278a-showAllButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .s-e1b278a-showAllButton:focus-visible {
-    outline: 2px solid var(--link);
-    outline-offset: 2px;
-    z-index: 1;
   }
 
   .s-e1b278a-weekdays {
@@ -571,16 +517,6 @@ export const StyleScope = styled.div`
       font-size: 14px;
     }
 
-    .s-e1b278a-todayButton {
-      min-width: 36px;
-      padding: 0 var(--space-2);
-    }
-
-    /* 칸이 좁아 잘린 이름 조각만 보이므로 숨긴다(붉은 날짜·접근성 이름·선택일 안내는 유지) */
-    .s-e1b278a-holidayName {
-      display: none;
-    }
-
     .s-e1b278a-emptyCell,
     .s-e1b278a-dateCell {
       min-height: 72px;
@@ -604,10 +540,8 @@ export const StyleScope = styled.div`
       font-size: 13px;
     }
 
-    .s-e1b278a-showAllButton {
-      min-height: 44px;
-      padding: 0 var(--space-2);
-      font-size: 13px;
+    .s-e1b278a-holidayName {
+      display: none;
     }
   }
 

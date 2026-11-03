@@ -96,8 +96,6 @@ export default function IpoCalendar({
     setSelectedDate(null)
   }
 
-  const goToday = () => moveTo(today.getFullYear(), today.getMonth() + 1)
-
   const handleDateClick = (date: string) => {
     setSelectedDate(date)
     // 모바일에서 날짜 클릭 시 상세 영역으로 스크롤
@@ -148,13 +146,6 @@ export default function IpoCalendar({
     onVisibleTypesChange(next)
   }
 
-  const handleShowAll = () => {
-    if (!onVisibleTypesChange) return
-    onVisibleTypesChange(new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING']))
-  }
-
-  const allTypesVisible = visibleTypes.size === 3
-
   return (
     <StyleScope>
       {
@@ -197,9 +188,6 @@ export default function IpoCalendar({
                 {year}년 {month}월
               </span>
             </div>
-            <button type="button" className={styles.todayButton} onClick={goToday}>
-              오늘
-            </button>
           </div>
 
           {onVisibleTypesChange && (
@@ -219,14 +207,6 @@ export default function IpoCalendar({
                   <span className={styles.filterLabel}>{EVENT_TYPE_LABELS[type]}</span>
                 </button>
               ))}
-              <button
-                type="button"
-                className={styles.showAllButton}
-                onClick={handleShowAll}
-                disabled={allTypesVisible}
-              >
-                모두 보기
-              </button>
             </div>
           )}
 
@@ -309,7 +289,13 @@ export default function IpoCalendar({
                         '--calendar-bar-margin-left': segment.continuesBefore ? '0px' : '2px',
                         '--calendar-bar-margin-right': segment.continuesAfter ? '0px' : '2px',
                       })}
-                      onClick={() => handleDateClick(segment.event.startDate)}
+                      onClick={() =>
+                        handleDateClick(
+                          segment.event.type === 'SUBSCRIPTION'
+                            ? segment.event.endDate
+                            : segment.event.startDate,
+                        )
+                      }
                       aria-label={barLabel(segment.event)}
                     >
                       {segment.event.companyName}

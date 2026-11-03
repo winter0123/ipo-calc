@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import IpoDetailPage from './IpoDetailPage.tsx'
 import type { Ipo } from '@/entities/ipo/index.ts'
@@ -26,22 +27,6 @@ function makeIpo(overrides: Partial<Ipo> = {}): Ipo {
     updatedAt: '2026-09-01T00:00:00Z',
     ...overrides,
   }
-}
-
-function createWrapper(initialEntries: string[] = ['/ipos/7']) {
-  const Wrapper = () => (
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
-      <MemoryRouter initialEntries={initialEntries}>
-        <Routes>
-          <Route path="/ipos/:ipoId" element={<IpoDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
-  )
-  Wrapper.displayName = 'TestWrapper'
-  return Wrapper
 }
 
 const INSIGHT = {
@@ -76,6 +61,31 @@ const stubFetch = (body: unknown, status = 200) =>
       ),
     ),
   )
+
+function createWrapper(initialEntries: string[] = ['/ipos/7']) {
+  const Wrapper = () => (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path="/ipos/:ipoId" element={<IpoDetailPage />} />
+          <Route path="/login" element={<LoginLocationProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+  Wrapper.displayName = 'TestWrapper'
+  return Wrapper
+}
+
+// LoginLocationProbe: /login 경로에서 location.state를 data-testid 요소로 렌더링
+function LoginLocationProbe() {
+  const location = useLocation()
+  // location.state가 있으면 즉시 렌더링, 없으면 no-state
+  const stateText = location.state ? JSON.stringify(location.state) : 'no-state'
+  return <div data-testid="login-location-state">{stateText}</div>
+}
 
 // /auth/me와 /ipos/7을 구분해 응답한다. account가 null이면 로그인 전(401)이다.
 const OPEN_PERIOD = {
@@ -242,7 +252,7 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() => expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(5))
   })
 
-  it('404 에러 시 "공모주를 찾을 수 없습니다."와 돌아가기 링크가 보인다', async () => {
+  it('404 에러 시 "공모주를 찾을 수 없습니다."가 보인다', async () => {
     stubFetch({ message: 'Not found' }, 404)
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/999']) })
@@ -250,14 +260,12 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() =>
       expect(screen.getByText('공모주를 찾을 수 없습니다.')).toBeInTheDocument(),
     )
-    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toBeInTheDocument()
   })
 
   it('숫자가 아닌 id(예: /ipos/abc)일 때 "공모주를 찾을 수 없습니다."가 보인다', async () => {
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/abc']) })
 
     expect(screen.getByText('공모주를 찾을 수 없습니다.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toBeInTheDocument()
   })
 
   it('로딩 중일 때 Spinner가 보인다', async () => {
@@ -288,16 +296,12 @@ describe('IpoDetailPage', () => {
     })
   })
 
-  it('로그인한 경우 돌아가기 링크는 /ipo-calendar로, 청약 등록 링크는 /subscriptions/register로 간다', async () => {
+  it('로그인한 경우 청약 등록 링크는 /subscriptions/register로 간다', async () => {
     stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' })
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toHaveAttribute(
-      'href',
-      '/ipo-calendar',
-    )
     expect(await screen.findByRole('link', { name: '청약 등록하기' })).toHaveAttribute(
       'href',
       '/subscriptions/register?ipoId=7',
@@ -316,7 +320,7 @@ describe('IpoDetailPage', () => {
     expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
   })
 
-  it('로그인 전에는 청약 등록 대신 로그인 링크가 보이고 돌아가기는 그대로다', async () => {
+  it('로그인 전에는 청약 등록 대신 로그인 링크가 보인다', async () => {
     stubIpoAndAccount(null)
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
@@ -326,6 +330,65 @@ describe('IpoDetailPage', () => {
       '/login',
     )
     expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '공모주 일정으로 돌아가기' })).toBeInTheDocument()
+  })
+
+  it('로그인한 사용자는 헤더 CTA에 청약 등록 링크 1개와 매도 등록 링크 1개가 있다', async () => {
+    stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' })
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+
+    // 헤더 CTA 영역의 링크만 확인 (하단 nav에는 링크가 없어야 함)
+    const headerCtaLinks = screen.getAllByRole('link')
+    const registerLinks = headerCtaLinks.filter((link) => link.textContent === '청약 등록하기')
+    const saleLinks = headerCtaLinks.filter((link) => link.textContent === '매도 등록하기')
+
+    expect(registerLinks).toHaveLength(1)
+    expect(registerLinks[0]).toHaveAttribute('href', '/subscriptions/register?ipoId=7')
+
+    expect(saleLinks).toHaveLength(1)
+    expect(saleLinks[0]).toHaveAttribute('href', '/sales/register?ipoId=7')
+  })
+
+  it('청약 종료 후에는 청약 등록 링크가 없고 매도 등록 링크만 1개 남는다', async () => {
+    stubIpoAndAccount(
+      { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
+      {},
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
+
+    // 매도 등록 링크는 정확히 1개만 있어야 함 (헤더 CTA에만)
+    const saleLinks = screen.getAllByRole('link', { name: '매도 등록하기' })
+    expect(saleLinks).toHaveLength(1)
+    expect(saleLinks[0]).toHaveAttribute('href', '/sales/register?ipoId=7')
+  })
+
+  it('비로그인 사용자의 매도 CTA는 로그인 경로 및 from 상태를 보존한다', async () => {
+    stubIpoAndAccount(null)
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+
+    // 비로그인 시 매도 CTA는 로그인 링크로 연결되고 state.from이 설정되어야 함
+    const saleLink = await screen.findByRole('link', { name: '로그인하고 매도 등록하기' })
+    expect(saleLink).toHaveAttribute('href', '/login')
+
+    // Link 클릭으로 navigation 발생
+    await userEvent.click(saleLink)
+
+    // /login 경로로 이동하고 LoginLocationProbe가 location.state를 렌더링했는지 확인
+    await vi.waitFor(() => {
+      const stateElement = screen.getByTestId('login-location-state')
+      const text = stateElement.textContent || ''
+      expect(text).not.toBe('no-state')
+      const state = JSON.parse(text)
+      expect(state).toEqual({ from: '/sales/register?ipoId=7' })
+    })
   })
 })

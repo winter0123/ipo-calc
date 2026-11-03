@@ -33,7 +33,7 @@ export type Subscription = z.infer<typeof subscriptionSchema>
 export const allocationSummarySchema = z.object({
   id: z.number(),
   allocatedQuantity: z.number(),
-  allocationPrice: z.number().nullable(),
+  allocatedAmount: z.number().nullable(),
   allocationStatus: z.string(),
 })
 

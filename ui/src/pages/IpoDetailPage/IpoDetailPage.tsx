@@ -76,9 +76,31 @@ export default function IpoDetailPage() {
   const underwriterNames = [
     ...new Set((insight?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
   ]
-  // 청약 기간이 끝나기 전(예정·진행 중)에만 등록 버튼을 보인다.
+
+  // 청약 가능 여부: 청약 예정·진행 중인 경우에만 보이게 함
   const canRegister = status.label === '청약 예정' || status.label === '청약 진행 중'
-  const registerPath = `/subscriptions/register?ipoId=${id}`
+
+  // 상단 우측 CTA 영역 (청약/매도 등록)
+  const registerCTA = canRegister
+    ? isGuest
+      ? {
+          text: '로그인하고 청약 등록하기',
+          href: '/login',
+          state: { from: `/subscriptions/register?ipoId=${id}` },
+        }
+      : { text: '청약 등록하기', href: `/subscriptions/register?ipoId=${id}` }
+    : null
+
+  const saleCTA =
+    isValidId && id > 0
+      ? isGuest
+        ? {
+            text: '로그인하고 매도 등록하기',
+            href: '/login',
+            state: { from: `/sales/register?ipoId=${id}` },
+          }
+        : { text: '매도 등록하기', href: `/sales/register?ipoId=${id}` }
+      : null
 
   if (isLoading) {
     return (
@@ -100,9 +122,6 @@ export default function IpoDetailPage() {
           <div className={styles.container}>
             <h1>공모주 상세</h1>
             <ErrorMessage message={!isValidId ? '공모주를 찾을 수 없습니다.' : getErrorMessage()} />
-            <Link to="/ipo-calendar" className={styles.backLink}>
-              공모주 일정으로 돌아가기
-            </Link>
           </div>
         }
       </StyleScope>
@@ -120,6 +139,23 @@ export default function IpoDetailPage() {
               <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
               {underwriterNames.length > 0 && (
                 <span className={styles.underwriters}>주관사 {underwriterNames.join(' · ')}</span>
+              )}
+            </div>
+            {/* 상단 우측 CTO 영역: 청약·매도 CTA */}
+            <div className={styles.headerCTA} aria-label="상단 우측 작업">
+              {registerCTA && (
+                <Link
+                  to={registerCTA.href}
+                  state={registerCTA.state}
+                  className={styles.primaryLink}
+                >
+                  {registerCTA.text}
+                </Link>
+              )}
+              {saleCTA && (
+                <Link to={saleCTA.href} state={saleCTA.state} className={styles.primaryLink}>
+                  {saleCTA.text}
+                </Link>
               )}
             </div>
           </header>
@@ -173,22 +209,6 @@ export default function IpoDetailPage() {
           </dl>
 
           <IpoInsightSections ipoId={id} listingDate={dateOnly(ipo!.listingDate)} />
-
-          <nav className={styles.actions} aria-label="공모주 상세 액션">
-            <Link to="/ipo-calendar" className={styles.secondaryLink}>
-              공모주 일정으로 돌아가기
-            </Link>
-            {canRegister &&
-              (isGuest ? (
-                <Link to="/login" state={{ from: registerPath }} className={styles.primaryLink}>
-                  로그인하고 청약 등록하기
-                </Link>
-              ) : (
-                <Link to={registerPath} className={styles.primaryLink}>
-                  청약 등록하기
-                </Link>
-              ))}
-          </nav>
         </div>
       }
     </StyleScope>

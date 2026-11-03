@@ -6,8 +6,7 @@ import ReferenceQuantity from './ReferenceQuantity.tsx'
 import { type AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import styles, { StyleScope } from './AllocationRegisterForm.styles.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
-import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
-import { toLocalYmd } from '@/shared/lib/date.ts'
+import { formatWon } from '@/shared/lib/format.ts'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
@@ -39,24 +38,32 @@ export default function AllocationRegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-    control,
+    watch,
   } = useForm<AllocationRegisterRequest>({
     mode: 'onSubmit',
     defaultValues: {
-      allocatedAt: toLocalYmd(),
-      allocationPrice: Number.NaN,
+      allocatedQuantity: Number.NaN,
     },
   })
 
+  // 배정일과 배정 총액은 서버가 계산한다. 화면은 확정 공모가×배정수량만 미리 보여 준다.
+  const fixedPrice = ipoQuery.data?.fixedPrice ?? subscriptionDetail?.ipoFixedPrice ?? null
+  const watchedAllocatedQuantity = watch('allocatedQuantity')
+  const allocationTotal =
+    fixedPrice == null
+      ? undefined
+      : fixedPrice *
+        (Number.isFinite(watchedAllocatedQuantity) && watchedAllocatedQuantity > 0
+          ? watchedAllocatedQuantity
+          : 0)
+
   const onSubmit = (data: AllocationRegisterRequest) => {
     mutate(
-      // 날짜만 입력받고 서버 형식에 맞춰 시각은 09:00으로 채운다.
       {
         ...data,
         subscriptionId,
         ipoId,
         investorId,
-        allocatedAt: `${data.allocatedAt}T09:00`,
       },
       {
         onSuccess: () => {
@@ -161,22 +168,19 @@ export default function AllocationRegisterForm() {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="allocatedAt">배정일</label>
-            <input
-              id="allocatedAt"
-              type="date"
-              aria-invalid={!!errors.allocatedAt}
-              aria-describedby={errors.allocatedAt ? 'allocatedAt-error' : undefined}
-              {...register('allocatedAt', {
-                required: '배정일을 선택해 주세요.',
-              })}
-              disabled={isPending}
-            />
-            {errors.allocatedAt && (
-              <span id="allocatedAt-error" className={styles.error} aria-live="polite">
-                {String(errors.allocatedAt.message)}
-              </span>
-            )}
+            <span className={styles.fieldLabel}>배정 공모주 총 가격</span>
+            <output
+              className={styles.allocationTotal}
+              aria-label="배정 공모주 총 가격"
+              data-testid="allocation-total"
+            >
+              {allocationTotal === undefined
+                ? '확정 공모가가 없어 자동 계산할 수 없습니다.'
+                : formatWon(allocationTotal)}
+            </output>
+            <span className={styles.hint}>
+              확정 공모가 × 배정수량으로 자동 계산됩니다. 서버에 금액을 보내지 않습니다.
+            </span>
           </div>
 
           <div className={styles.field}>
@@ -196,27 +200,6 @@ export default function AllocationRegisterForm() {
             {errors.allocationMethod && (
               <span id="allocationMethod-error" className={styles.error} aria-live="polite">
                 {String(errors.allocationMethod.message)}
-              </span>
-            )}
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="allocationPrice">배정단가 (선택)</label>
-            <MoneyInput
-              id="allocationPrice"
-              control={control}
-              name="allocationPrice"
-              allowNegative // 음수를 입력하면 지우지 않고 검증 메시지로 알린다
-              aria-invalid={!!errors.allocationPrice}
-              aria-describedby={errors.allocationPrice ? 'allocationPrice-error' : undefined}
-              validate={(v) =>
-                !v || (Number.isInteger(v) && v > 0) || '0 초과 정수를 입력해 주세요.'
-              }
-              disabled={isPending}
-            />
-            {errors.allocationPrice && (
-              <span id="allocationPrice-error" className={styles.error} aria-live="polite">
-                {String(errors.allocationPrice.message)}
               </span>
             )}
           </div>

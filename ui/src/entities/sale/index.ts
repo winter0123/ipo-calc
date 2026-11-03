@@ -8,7 +8,9 @@ export {
   listingDate,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
+  acquisitionAmountForSale,
   acquisitionUnitPrice,
+  allocationUnitPrice,
   resolveIpoPrice,
   toSalePayload,
 } from './saleMath.ts'

@@ -96,10 +96,10 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
                   <dd>{detail.allocation.allocatedQuantity}</dd>
                 </div>
                 <div className={styles.dlRow}>
-                  <dt>배정 가격</dt>
+                  <dt>배정 총액</dt>
                   <dd>
-                    {detail.allocation.allocationPrice !== null
-                      ? formatWon(detail.allocation.allocationPrice)
+                    {detail.allocation.allocatedAmount !== null
+                      ? formatWon(detail.allocation.allocatedAmount)
                       : '-'}
                   </dd>
                 </div>

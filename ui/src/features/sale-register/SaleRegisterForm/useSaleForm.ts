@@ -10,11 +10,11 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import {
   DEFAULT_IPO_FEE,
   finalProfit,
-  grossGain,
   listingDate,
+  acquisitionAmountForSale,
   otherFeesFromRealizedProfit,
   realizedProfitFromFees,
-  acquisitionUnitPrice,
+  allocationUnitPrice,
   resolveIpoPrice,
   toSalePayload,
 } from '@/entities/sale/index.ts'
@@ -78,34 +78,42 @@ export function useSaleForm() {
   } = useForm<SaleFormValues>({ mode: 'onSubmit', defaultValues: { ipoFee: DEFAULT_IPO_FEE } })
 
   const hasPriorSales = allocationData?.sales.some((sale) => sale.status === 'ACTIVE') ?? false
-  // 실현손익 계산의 취득 단가 — 서버와 같은 규칙(배정단가 우선)이어야 저장 후 값이 같다.
-  const ipoPrice = acquisitionUnitPrice(
-    allocationData?.allocation?.allocationPrice,
-    ipo?.fixedPrice ?? allocationData?.ipoFixedPrice,
-  )
+  const allocation = allocationData?.allocation
+  const fixedPrice = ipo?.fixedPrice ?? allocationData?.ipoFixedPrice
+  const allocatedAmount = allocation?.allocatedAmount ?? null
+  const allocatedQuantity = allocation?.allocatedQuantity ?? null
+  const canCalcAcquisition =
+    (fixedPrice != null && fixedPrice > 0) ||
+    (allocatedAmount != null && allocatedQuantity != null && allocatedQuantity > 0)
 
   /** 매도단가·수량·공모가가 정해져 있으면 마지막에 고치지 않은 쪽을 공식으로 다시 계산한다. */
   const syncLinked = (override?: {
     price?: number
     quantity?: number
-    ipoPrice?: number | null
+    fixedPrice?: number | null | undefined
+    allocatedAmount?: number | null | undefined
+    allocatedQuantity?: number | null | undefined
     source?: 'fees' | 'profit'
   }) => {
     const values = getValues()
     const price = override?.price ?? values.price
     const quantity = override?.quantity ?? values.quantity
-    const basis = override && 'ipoPrice' in override ? override.ipoPrice : ipoPrice
-    if (!isNum(price) || !isNum(quantity) || basis == null) return
+    const fp = override && 'fixedPrice' in override ? override.fixedPrice : fixedPrice
+    const aa =
+      override && 'allocatedAmount' in override ? override.allocatedAmount : allocatedAmount
+    const aq =
+      override && 'allocatedQuantity' in override ? override.allocatedQuantity : allocatedQuantity
+    if (!isNum(price) || !isNum(quantity)) return
     if ((override?.source ?? lastEdited) === 'profit') {
       if (isNum(values.realizedProfit)) {
         setValue(
           'otherFees',
-          otherFeesFromRealizedProfit(price, quantity, basis, values.realizedProfit),
+          otherFeesFromRealizedProfit(price, quantity, fp, values.realizedProfit, aa, aq),
         )
       }
     } else {
       const fees = isNum(values.otherFees) ? values.otherFees : 0
-      setValue('realizedProfit', realizedProfitFromFees(price, quantity, basis, fees))
+      setValue('realizedProfit', realizedProfitFromFees(price, quantity, fp, fees, aa, aq))
     }
   }
 
@@ -121,21 +129,19 @@ export function useSaleForm() {
   }
 
   useEffect(() => {
-    const allocation = allocationData?.allocation
     if (!selectedSubscriptionId || !allocation) return
     setValue('allocationId', allocation.id)
     // 공모주 정보(상장일·공모가)까지 불러온 뒤 한 번만 기본값을 넣는다. 사용자가 이미 고친 칸은 건드리지 않는다.
     if (ipoPending || prefilledFor.current === selectedSubscriptionId) return
     prefilledFor.current = selectedSubscriptionId
-    const basis = resolveIpoPrice(
-      ipo?.fixedPrice ?? allocationData.ipoFixedPrice,
-      allocation.allocationPrice,
-    )
+    const basis = resolveIpoPrice(fixedPrice)
     const openPrice =
       typeof ipo?.listingOpenPrice === 'number' && ipo.listingOpenPrice > 0
         ? ipo.listingOpenPrice
         : null
-    const priceDefault = openPrice != null ? openPrice : basis
+    // 매도단가 기본값: 시초가 → 확정가 → 배정 평균 단가(allocatedAmount/allocatedQuantity)
+    const allocationAvgPrice = allocationUnitPrice(fixedPrice, allocatedAmount, allocatedQuantity)
+    const priceDefault = openPrice != null ? openPrice : (basis ?? allocationAvgPrice)
     const quantity = allocationData.remainingQuantity ?? allocation.allocatedQuantity
     const priorSales = allocationData.sales.some((sale) => sale.status === 'ACTIVE')
     const saleDate = listingDate(ipo?.listingDate)
@@ -144,7 +150,7 @@ export function useSaleForm() {
     if (!getFieldState('saleDate').isDirty && saleDate) setValue('saleDate', saleDate)
     // 공모주수수료는 배정 1건당 한 번이라, 이미 매도 기록이 있으면 0원으로 시작한다.
     if (!getFieldState('ipoFee').isDirty && priorSales) setValue('ipoFee', 0)
-    syncLinked({ ipoPrice: basis, source: 'fees' })
+    syncLinked({ fixedPrice, allocatedAmount, allocatedQuantity, source: 'fees' })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 청약·공모주 정보가 도착했을 때만 실행한다
   }, [allocationData, ipo, ipoPending, selectedSubscriptionId])
 
@@ -173,7 +179,7 @@ export function useSaleForm() {
     selectedSubscriptionId,
     allocationData,
     ipoPending,
-    ipoPrice,
+    ipoPrice: allocationUnitPrice(fixedPrice, allocatedAmount, allocatedQuantity),
     prefilledFor,
     setValue,
     getValues,
@@ -232,7 +238,8 @@ export function useSaleForm() {
       typeof ipo?.listingOpenPrice === 'number' && ipo.listingOpenPrice > 0
         ? ipo.listingOpenPrice
         : null,
-    ipoPrice,
+    ipoPrice: allocationUnitPrice(fixedPrice, allocatedAmount, allocatedQuantity),
+    canCalcAcquisition,
     hasPriorSales,
     lastEdited,
     syncLinked,
@@ -242,8 +249,9 @@ export function useSaleForm() {
       ? finalProfit(realizedProfit, isNum(ipoFee) ? ipoFee : 0)
       : undefined,
     grossValue:
-      ipoPrice != null && isNum(priceValue) && isNum(quantityValue)
-        ? grossGain(priceValue, quantityValue, ipoPrice)
+      isNum(quantityValue) && isNum(priceValue)
+        ? priceValue * quantityValue -
+          acquisitionAmountForSale(quantityValue, fixedPrice, allocatedAmount, allocatedQuantity)
         : undefined,
     securitiesAccounts: securitiesAccounts ?? [],
     accountsLoading,

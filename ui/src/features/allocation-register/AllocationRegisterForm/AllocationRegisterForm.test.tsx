@@ -80,10 +80,22 @@ async function waitForDetailLoaded() {
 
 async function fillValidForm() {
   await fill(screen.getByLabelText('배정수량'), '50')
-  await fill(screen.getByLabelText('배정일'), '2026-09-21')
   await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
-  await fill(screen.getByLabelText('배정단가 (선택)'), '39000')
   await fill(screen.getByLabelText('비고 (선택)'), '테스트 배정')
+}
+
+const ALLOCATION_RESPONSE = {
+  id: 1,
+  subscriptionId: 1,
+  allocatedQuantity: 50,
+  allocatedAt: '2026-09-21T10:00:00',
+  allocationMethod: 'PROPORTIONAL',
+  allocatedAmount: 1950000,
+  note: '테스트 배정',
+  status: 'ACTIVE',
+  deletedAt: null,
+  createdAt: '2026-09-21T00:00:00Z',
+  updatedAt: '2026-09-21T00:00:00Z',
 }
 
 describe('AllocationRegisterForm', () => {
@@ -125,19 +137,7 @@ describe('AllocationRegisterForm', () => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
-        return {
-          id: 1,
-          subscriptionId: 1,
-          allocatedQuantity: 50,
-          allocatedAt: '2026-09-21T10:00:00',
-          allocationMethod: 'PROPORTIONAL',
-          allocationPrice: 39000,
-          note: '테스트 배정',
-          status: 'CONFIRMED',
-          deletedAt: null,
-          createdAt: '2026-09-21T00:00:00Z',
-          updatedAt: '2026-09-21T00:00:00Z',
-        }
+        return ALLOCATION_RESPONSE
       }
       throw new Error(`unexpected path: ${String(path)}`)
     })
@@ -158,27 +158,26 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    expect(body.allocatedAt).toBe('2026-09-21T09:00')
     expect(body.allocationMethod).toBe('PROPORTIONAL')
-    expect(body.allocationPrice).toBe(39000)
     expect(body.note).toBe('테스트 배정')
+    expect(body).not.toHaveProperty('allocatedAt')
+    expect(body).not.toHaveProperty('allocationPrice')
+    expect(body).not.toHaveProperty('allocatedAmount')
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/subscriptions')
     })
   })
 
-  it('필수값(배정수량, 배정일) 미입력 시 클라이언트 사이드 검증 메시지 표시', async () => {
+  it('필수값(배정수량) 미입력 시 클라이언트 사이드 검증 메시지 표시', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
 
-    await userEvent.clear(screen.getByLabelText('배정일'))
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('배정수량을 입력해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('배정일을 선택해 주세요.')).toBeInTheDocument()
     })
     expect(apiFetch).not.toHaveBeenCalledWith(
       '/allocations',
@@ -211,7 +210,8 @@ describe('AllocationRegisterForm', () => {
     vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
-      if (path === '/allocations' && options?.method === 'POST') return { id: 4 }
+      if (path === '/allocations' && options?.method === 'POST')
+        return { ...ALLOCATION_RESPONSE, id: 4, allocatedQuantity: 0, allocatedAmount: 0 }
       throw new Error(`unexpected path: ${String(path)}`)
     })
     await fillValidForm()
@@ -229,21 +229,32 @@ describe('AllocationRegisterForm', () => {
     expect(JSON.parse((call[1] as RequestInit).body as string).allocatedQuantity).toBe(0)
   })
 
-  it('배정단가가 음수이면 에러 메시지 표시', async () => {
+  it('배정일·배정단가 입력칸이 없고 확정 공모가×배정수량 총액을 자동 표시한다', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
 
-    await fillValidForm()
-    await fill(screen.getByLabelText('배정단가 (선택)'), '-1')
-    await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+    expect(screen.queryByLabelText('배정일')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/배정단가/)).not.toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.getByText('0 초과 정수를 입력해 주세요.')).toBeInTheDocument()
+    await fill(screen.getByLabelText('배정수량'), '3')
+    expect(screen.getByTestId('allocation-total')).toHaveTextContent('117,000원')
+    await fill(screen.getByLabelText('배정수량'), '0')
+    expect(screen.getByTestId('allocation-total')).toHaveTextContent('0원')
+  })
+
+  it('확정 공모가가 없으면 총액을 꾸며내지 않고 안내한다', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
+      if (path === '/investment-history/1' && (!options || options.method === 'GET')) {
+        return { ...SUBSCRIPTION_DETAIL, ipoFixedPrice: null }
+      }
+      throw new Error(`unexpected path: ${String(path)}`)
     })
-    expect(apiFetch).not.toHaveBeenCalledWith(
-      '/allocations',
-      expect.objectContaining({ method: 'POST' }),
+    renderForm()
+    await waitForDetailLoaded()
+    await fill(screen.getByLabelText('배정수량'), '3')
+    expect(screen.getByTestId('allocation-total')).toHaveTextContent(
+      '확정 공모가가 없어 자동 계산할 수 없습니다.',
     )
   })
 
@@ -353,7 +364,7 @@ describe('AllocationRegisterForm', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('선택 필드(배정방식, 배정단가, 비고)는 비워도 제출 가능', async () => {
+  it('선택 필드(배정방식, 비고)는 비워도 제출 가능', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
@@ -362,25 +373,13 @@ describe('AllocationRegisterForm', () => {
       if (path === '/investment-history/1' && (!options || options.method === 'GET'))
         return SUBSCRIPTION_DETAIL
       if (path === '/allocations' && options?.method === 'POST') {
-        return {
-          id: 1,
-          subscriptionId: 1,
-          allocatedQuantity: 50,
-          allocatedAt: '2026-09-21T10:00:00',
-          allocationMethod: undefined,
-          allocationPrice: undefined,
-          note: undefined,
-          status: 'CONFIRMED',
-          createdAt: '2026-09-21T00:00:00Z',
-          updatedAt: '2026-09-21T00:00:00Z',
-        }
+        return ALLOCATION_RESPONSE
       }
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
     // 필수 필드만 입력 (배정방식은 선택하지 않음)
     await fill(screen.getByLabelText('배정수량'), '50')
-    await fill(screen.getByLabelText('배정일'), '2026-09-21')
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
@@ -396,22 +395,12 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    expect(body.allocatedAt).toBe('2026-09-21T09:00')
     // select 미선택 시 빈 문자열로 전송됨
     expect(body.allocationMethod).toBe('')
-    // number 입력 비움 시 null로 전송됨 (valueAsNumber 동작)
-    expect(body.allocationPrice).toBeNull()
     // textarea 비움 시 빈 문자열로 전송됨
     expect(body.note).toBe('')
-  })
-
-  it('배정일은 오늘로 채워져 있고 배정단가는 천 단위 쉼표로 보인다', async () => {
-    mockSubscriptionDetailFetch()
-    renderForm()
-    await waitForDetailLoaded()
-    expect(screen.getByLabelText('배정일')).toHaveValue(new Date().toLocaleDateString('sv-SE'))
-    await fill(screen.getByLabelText('배정단가 (선택)'), '39000')
-    expect(screen.getByLabelText('배정단가 (선택)')).toHaveDisplayValue('39,000')
-    expect(screen.getByLabelText('배정단가 (선택)')).toHaveAttribute('inputmode', 'numeric')
+    expect(body).not.toHaveProperty('allocatedAt')
+    expect(body).not.toHaveProperty('allocationPrice')
+    expect(body).not.toHaveProperty('allocatedAmount')
   })
 })

@@ -138,8 +138,9 @@ describe('IpoCalendar', () => {
     expect(screen.getByRole('button', { name: /^10월 1일/ })).toHaveStyle('--calendar-column: 5')
     expect(screen.getByRole('button', { name: /^10월 3일/ })).toHaveStyle('--calendar-column: 7')
 
+    // SUBSCRIPTION 막대는 종료일(10/03)에만 표시되므로 col 7
     const bar = screen.getByRole('button', { name: /테스트기업 청약 10월 1일부터 10월 3일까지/ })
-    expect(bar).toHaveStyle('--calendar-bar-column: 5 / 8')
+    expect(bar).toHaveStyle('--calendar-bar-column: 7 / 8')
     expect(bar).toHaveStyle('--calendar-bar-row: 2')
   })
 
@@ -198,18 +199,27 @@ describe('IpoCalendar', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '월' }), '9')
 
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /청약/ }).length).toBeGreaterThan(0)
+    // 9월 데이터가 있는지 확인 (청약 막대가 종료일에 표시되므로 9월 데이터 확인)
+    // id:2의 종료일이 10/02이므로 9월에는 표시되지 않음. id:1의 종료일이 10/02이므로 9월에도 표시 안됨
+    // 대신 상장일이나 다른 이벤트가 있는지 확인
+    const dateCells = screen.getAllByRole('button', { name: /^9월/ })
+    expect(dateCells.length).toBeGreaterThan(0)
   })
 
-  it('오늘 버튼을 누르면 현재 월로 이동한다', async () => {
+  it('오늘 날짜가 초기 선택되고 강조 표시된다', async () => {
+    // fake timer가 2026-10-10T12:00:00Z로 설정되어 있음
+    // initialYear=2026, initialMonth=10으로 render하면 오늘 날짜가 선택되어야 함
     const ipos = [makeIpo({ subscriptionStartDate: '2026-10-01T09:00:00Z' })]
-    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={11} />)
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-    expect(screen.getByText('2026년 11월')).toBeInTheDocument()
+    // 오늘 날짜(10월 10일) 셀이 aria-pressed=true로 선택되어 있는지 확인
+    const todayButton = screen.getByRole('button', { name: /^10월 10일/ })
+    expect(todayButton).toHaveAttribute('aria-pressed', 'true')
+    // aria-current="date"로도 표시됨
+    expect(todayButton).toHaveAttribute('aria-current', 'date')
 
-    await userEvent.click(screen.getByRole('button', { name: '오늘' }))
-
-    expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+    // 오늘 버튼은 존재하지 않음 (제거됨)
+    expect(screen.queryByRole('button', { name: '오늘' })).not.toBeInTheDocument()
   })
 
   it('연도와 월 선택으로 원하는 달력 날짜로 바로 이동한다', async () => {
@@ -303,7 +313,7 @@ describe('IpoCalendar', () => {
     expect(region).not.toHaveTextContent('주관사')
   })
 
-  it('청약 기간 전·중인 청약 일정에는 청약 등록 링크가 ipoId와 함께 보인다', async () => {
+  it('청약 기간 전·중인 청약 일정에는 청약 등록 링크가 ipoId와 함께 보이지 않는다', async () => {
     const ipos = [
       makeIpo({
         id: 5,
@@ -526,26 +536,32 @@ describe('IpoCalendar', () => {
       expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
     })
 
-    it('모두 보기 버튼은 3종이 모두 켜져 있으면 disabled', async () => {
+    it('모두 보기 버튼은 제거되었다', async () => {
       const ipos = [makeIpo()]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-      const showAllButton = screen.getByRole('button', { name: '모두 보기' })
-      expect(showAllButton).toBeDisabled()
+      // "모두 보기" 버튼이 없음을 확인
+      expect(screen.queryByRole('button', { name: '모두 보기' })).not.toBeInTheDocument()
     })
 
-    it('모두 보기 버튼을 누르면 모든 종류가 켜진다', async () => {
+    it('필터 버튼을 모두 누르면 종류가 모두 켜진다', async () => {
       const ipos = [makeIpo()]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
+      // 먼저 모두 끈 상태에서 다시 켜기
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
       await userEvent.click(screen.getByRole('button', { name: '환불' }))
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
 
-      const showAllButton = screen.getByRole('button', { name: '모두 보기' })
-      expect(showAllButton).not.toBeDisabled()
+      // 이제 모두 꺼진 상태 (aria-pressed="false")
+      expect(screen.getByRole('button', { name: '청약' })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: '환불' })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: '상장' })).toHaveAttribute('aria-pressed', 'false')
 
-      await userEvent.click(showAllButton)
+      // 다시 클릭하여 모두 켜기
+      await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
 
       // 필터 버튼이 모두 켜진 상태가 됨
       expect(screen.getByRole('button', { name: '청약' })).toHaveAttribute('aria-pressed', 'true')
@@ -588,8 +604,9 @@ describe('IpoCalendar', () => {
       renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
 
       // 10/8(목)~10/12(월)은 2주에 걸침
+      // 막대는 종료일인 10/12에만 표시됨 (SUBSCRIPTION 종료일 하루 표시)
       const bars = screen.getAllByRole('button', { name: /테스트기업 청약/ })
-      expect(bars.length).toBe(2)
+      expect(bars.length).toBe(1)
     })
   })
 

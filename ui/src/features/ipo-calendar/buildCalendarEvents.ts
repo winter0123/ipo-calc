@@ -44,6 +44,15 @@ export function eventCoversDate(event: CalendarEvent, date: string): boolean {
   return event.startDate <= date && date <= event.endDate
 }
 
+export function eventBarCoversDate(event: CalendarEvent, date: string): boolean {
+  // SUBSCRIPTION 막대는 종료일 하루만 표시
+  // REFUND/LISTING은 기존 기간 기준
+  if (event.type === 'SUBSCRIPTION') {
+    return date === event.endDate
+  }
+  return event.startDate <= date && date <= event.endDate
+}
+
 export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): CalendarEvent[] {
   const events: CalendarEvent[] = []
   const targetStart = `${year}-${String(month).padStart(2, '0')}-01`
@@ -175,15 +184,25 @@ export function buildWeekSegments(
   const laneEndDates: string[] = []
 
   const sortedEvents = [...events].sort((a, b) => {
-    const aStartCol = weekDates.findIndex((d) => d && eventCoversDate(a, d))
-    const bStartCol = weekDates.findIndex((d) => d && eventCoversDate(b, d))
-    if (aStartCol !== bStartCol) return aStartCol - bStartCol
+    const aBarCol =
+      a.type === 'SUBSCRIPTION'
+        ? weekDates.findIndex((d) => d && eventBarCoversDate(a, d))
+        : weekDates.findIndex((d) => d && eventCoversDate(a, d))
+    const bBarCol =
+      b.type === 'SUBSCRIPTION'
+        ? weekDates.findIndex((d) => d && eventBarCoversDate(b, d))
+        : weekDates.findIndex((d) => d && eventCoversDate(b, d))
+    if (aBarCol !== bBarCol) return aBarCol - bBarCol
     const aEndCol =
-      weekDates.length - 1 - [...weekDates].reverse().findIndex((d) => d && eventCoversDate(a, d))
+      weekDates.length -
+      1 -
+      [...weekDates].reverse().findIndex((d) => d && eventBarCoversDate(a, d))
     const bEndCol =
-      weekDates.length - 1 - [...weekDates].reverse().findIndex((d) => d && eventCoversDate(b, d))
-    const aLen = aEndCol - aStartCol
-    const bLen = bEndCol - bStartCol
+      weekDates.length -
+      1 -
+      [...weekDates].reverse().findIndex((d) => d && eventBarCoversDate(b, d))
+    const aLen = a.type === 'SUBSCRIPTION' ? 0 : aEndCol - aBarCol
+    const bLen = b.type === 'SUBSCRIPTION' ? 0 : bEndCol - bBarCol
     if (aLen !== bLen) return bLen - aLen
     if (a.type !== b.type) return a.type === 'SUBSCRIPTION' ? -1 : 1
     return a.ipoId - b.ipoId
@@ -195,7 +214,9 @@ export function buildWeekSegments(
 
     for (let i = 0; i < weekDates.length; i++) {
       const date = weekDates[i]
-      if (date && eventCoversDate(event, date)) {
+      if (date === null) continue
+      const covers = eventBarCoversDate(event, date)
+      if (covers) {
         if (startCol === -1) startCol = i
         endCol = i
       }
@@ -203,8 +224,11 @@ export function buildWeekSegments(
 
     if (startCol === -1) continue
 
-    const continuesBefore = event.startDate < weekDates[startCol]!
-    const continuesAfter = event.endDate > weekDates[endCol]!
+    // For SUBSCRIPTION, continuesBefore should be based on actual startDate vs visual startCol
+    // Since SUBSCRIPTION bars only show on endDate, continuesBefore means actual startDate is before the visual week
+    const visualStartDate = event.type === 'SUBSCRIPTION' ? event.endDate : weekDates[startCol]!
+    const actualContinuesBefore = event.startDate < visualStartDate
+    const actualContinuesAfter = event.endDate > weekDates[endCol]!
 
     let lane = 0
     while (true) {
@@ -223,7 +247,8 @@ export function buildWeekSegments(
         const d = weekDates[i]
         if (d) {
           const dayOfWeek = getWeekdayFromYmd(d)
-          if (dayOfWeek >= 1 && dayOfWeek <= 5) { // 월~금
+          if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+            // 월~금
             if (firstWeekdayCol === -1) firstWeekdayCol = i
             lastWeekdayCol = i
           }
@@ -243,8 +268,8 @@ export function buildWeekSegments(
       startCol,
       endCol,
       lane,
-      continuesBefore,
-      continuesAfter,
+      continuesBefore: actualContinuesBefore,
+      continuesAfter: actualContinuesAfter,
     })
 
     if (lane >= laneEndDates.length) {

@@ -93,6 +93,23 @@ const IPOS = [
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
+  {
+    id: 2,
+    companyName: '희망가기업',
+    ipoName: '희망가만 공모주',
+    stockCode: '654321',
+    roundLabel: '본청약',
+    lowerBandPrice: 9000,
+    upperBandPrice: 13000,
+    fixedPrice: null,
+    subscriptionStartDate: '2026-09-03',
+    subscriptionEndDate: '2026-09-04',
+    listingDate: '2026-09-18',
+    offeringShareCount: 500000,
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
 ]
 
 const IPOS_WITH_UNDERWRITERS = [
@@ -109,6 +126,23 @@ const IPOS_WITH_UNDERWRITERS = [
     subscriptionEndDate: '2026-09-02',
     listingDate: '2026-09-15',
     offeringShareCount: 1000000,
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 2,
+    companyName: '희망가기업',
+    ipoName: '희망가만 공모주',
+    stockCode: '654321',
+    roundLabel: '본청약',
+    lowerBandPrice: 9000,
+    upperBandPrice: 13000,
+    fixedPrice: null,
+    subscriptionStartDate: '2026-09-03',
+    subscriptionEndDate: '2026-09-04',
+    listingDate: '2026-09-18',
+    offeringShareCount: 500000,
     status: 'ACTIVE',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -163,7 +197,12 @@ function mockFetchesWithAccounts(accounts: typeof SECURITIES_ACCOUNTS) {
   })
 }
 
-function renderForm(url = '/subscriptions/register') {
+function renderForm(
+  url = '/subscriptions/register',
+  props: {
+    registerAllocation?: (request: unknown) => Promise<unknown>
+  } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -173,7 +212,7 @@ function renderForm(url = '/subscriptions/register') {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[url]}>
-        <SubscriptionRegisterForm />
+        <SubscriptionRegisterForm {...props} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -457,6 +496,94 @@ describe('SubscriptionRegisterForm', () => {
       renderForm('/subscriptions/register?ipoId=999')
       await waitForDropdownsLoaded()
       expect(screen.getByLabelText('공모주')).toHaveValue('')
+    })
+  })
+
+  describe('배정 결과 입력', () => {
+    it('체크박스 없이 항상 보이고 배정일·배정단가 입력은 없다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('배정 정보 입력')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('배정수량')).toBeInTheDocument()
+      expect(screen.queryByLabelText('배정일')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/배정단가/)).not.toBeInTheDocument()
+    })
+
+    it('확정 공모가 × 배정수량을 읽기 전용 총액으로 실시간 표시한다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await fill(screen.getByLabelText('배정수량'), '3')
+      expect(screen.getByTestId('allocation-total')).toHaveTextContent('33,000원')
+
+      await fill(screen.getByLabelText('배정수량'), '5')
+      expect(screen.getByTestId('allocation-total')).toHaveTextContent('55,000원')
+
+      await fill(screen.getByLabelText('배정수량'), '0')
+      expect(screen.getByTestId('allocation-total')).toHaveTextContent('0원')
+    })
+
+    it('희망가만 있는 공모주는 공모가로 노출하지 않고 증거금·총액을 계산하지 않는다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '2')
+
+      expect(screen.getByTestId('ipo-info')).toHaveTextContent('공모가 미정')
+      expect(screen.getByTestId('ipo-info')).not.toHaveTextContent('희망 공모가')
+      expect(screen.getByTestId('ipo-info')).not.toHaveTextContent('13,000원')
+      expect(screen.getByLabelText('증거금')).toHaveDisplayValue('')
+      expect(
+        screen.getByText(/확정 공모가가 없어 증거금을 자동 계산하지 않습니다/),
+      ).toBeInTheDocument()
+      expect(screen.getByTestId('allocation-total')).toHaveTextContent(
+        '확정 공모가가 없어 자동 계산할 수 없습니다.',
+      )
+    })
+
+    it('배정 등록 요청에 배정일·배정단가·총액을 보내지 않는다', async () => {
+      const registerAllocation = vi.fn().mockResolvedValue({ id: 9 })
+      mockDropdownFetches()
+      renderForm('/subscriptions/register', { registerAllocation })
+      await waitForDropdownsLoaded()
+      await fillValidForm()
+      await fill(screen.getByLabelText('배정수량'), '3')
+      await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
+
+      vi.mocked(apiFetch).mockResolvedValueOnce({
+        id: 1,
+        investorId: 1,
+        securitiesAccountId: 1,
+        ipoId: 1,
+        quantity: 100,
+        depositAmount: 0,
+        subscribedAt: '2026-09-21T10:00:00',
+        memo: '',
+        status: 'ACTIVE',
+        createdAt: '2026-09-21T00:00:00Z',
+        updatedAt: '2026-09-21T00:00:00Z',
+      })
+      await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+
+      await waitFor(() => expect(registerAllocation).toHaveBeenCalledTimes(1))
+      const request = registerAllocation.mock.calls[0][0] as Record<string, unknown>
+      expect(request).toMatchObject({
+        subscriptionId: 1,
+        ipoId: 1,
+        investorId: 1,
+        securitiesAccountId: 1,
+        allocatedQuantity: 3,
+        allocationMethod: 'PROPORTIONAL',
+      })
+      expect(request).not.toHaveProperty('allocatedAt')
+      expect(request).not.toHaveProperty('allocationPrice')
+      expect(request).not.toHaveProperty('allocatedAmount')
+      expect(JSON.stringify(request)).not.toContain('2026-09-21T09:00')
+      expect(JSON.stringify(request)).not.toContain('33000')
     })
   })
 

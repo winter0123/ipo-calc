@@ -71,7 +71,7 @@ export const allocationSummarySchema = z.object({
   allocatedQuantity: z.number().nullable(),
   allocatedAt: z.string().nullable(),
   allocationMethod: z.string().nullable(),
-  allocationPrice: z.number().nullable(),
+  allocatedAmount: z.number().nullable(),
   status: z.string(),
 })
 export type AllocationSummary = z.infer<typeof allocationSummarySchema>

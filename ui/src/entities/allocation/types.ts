@@ -6,9 +6,7 @@ export interface AllocationRegisterRequest {
   investorId?: number
   securitiesAccountId?: number
   allocatedQuantity: number
-  allocatedAt: string
   allocationMethod?: string
-  allocationPrice?: number
   note?: string
 }
 
@@ -18,7 +16,7 @@ export const allocationSchema = z.object({
   allocatedQuantity: z.number(),
   allocatedAt: z.string(),
   allocationMethod: z.string().nullable(),
-  allocationPrice: z.number().nullable(),
+  allocatedAmount: z.number().nullable(),
   note: z.string().nullable(),
   status: z.string(),
   deletedAt: z.string().nullable(),
@@ -30,8 +28,6 @@ export type Allocation = z.infer<typeof allocationSchema>
 
 export interface AllocationUpdateRequest {
   allocatedQuantity?: number
-  allocatedAt?: string
   allocationMethod?: string
-  allocationPrice?: number
   note?: string
 }

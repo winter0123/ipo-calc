@@ -164,7 +164,7 @@ describe('InvestmentHistoryDetail — 투자자명/증권사명', () => {
 const ALLOCATED: InvestmentHistoryItem = {
   ...ITEM_WITH_NAMES,
   id: 7,
-  allocation: { id: 3, allocatedQuantity: 10, allocationPrice: 39000, allocationStatus: 'ACTIVE' },
+  allocation: { id: 3, allocatedQuantity: 10, allocatedAmount: 390000, allocationStatus: 'ACTIVE' },
   remainingQuantity: 4,
 }
 

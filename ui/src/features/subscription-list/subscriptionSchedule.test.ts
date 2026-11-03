@@ -98,7 +98,7 @@ describe('subscription schedule helpers', () => {
           ...item(3, {
             id: 3,
             allocatedQuantity: 2,
-            allocationPrice: null,
+            allocatedAmount: null,
             allocationStatus: 'CONFIRMED',
           }),
           ipoId: 3,
@@ -107,7 +107,7 @@ describe('subscription schedule helpers', () => {
           ...item(4, {
             id: 4,
             allocatedQuantity: 3,
-            allocationPrice: null,
+            allocatedAmount: null,
             allocationStatus: 'CONFIRMED',
           }),
           ipoId: 4,
@@ -116,7 +116,7 @@ describe('subscription schedule helpers', () => {
           ...item(5, {
             id: 5,
             allocatedQuantity: 0,
-            allocationPrice: null,
+            allocatedAmount: null,
             allocationStatus: 'CONFIRMED',
           }),
           ipoId: 5,
@@ -131,7 +131,7 @@ describe('subscription schedule helpers', () => {
           ...item(2, {
             id: 2,
             allocatedQuantity: 1,
-            allocationPrice: null,
+            allocatedAmount: null,
             allocationStatus: 'CONFIRMED',
           }),
           ipoId: 1,

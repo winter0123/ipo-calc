@@ -36,9 +36,16 @@ export const StyleScope = styled.div`
     gap: var(--space-2);
   }
 
-  .s-aeddfbc-field label {
+  .s-aeddfbc-field label,
+  .s-aeddfbc-fieldLabel {
     font-size: 14px;
     font-weight: 650;
+    color: var(--ink);
+  }
+
+  .s-aeddfbc-allocationTotal {
+    font-size: 16px;
+    font-weight: 700;
     color: var(--ink);
   }
 
@@ -109,24 +116,6 @@ export const StyleScope = styled.div`
     font-size: 15px;
     font-weight: 700;
     color: var(--ink);
-  }
-
-  .s-aeddfbc-allocationToggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  .s-aeddfbc-allocationToggle input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary);
-  }
-
-  .s-aeddfbc-sectionCollapsed {
-    opacity: 0.7;
   }
 `
 
