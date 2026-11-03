@@ -223,7 +223,7 @@ public class AdminUserService {
           for (Sale s : sales) {
             Allocation a = allocationRepository.findById(s.getAllocationId()).orElse(null);
             Long fixedPrice = null;
-            if (a != null && a.getAllocationPrice() == null) {
+            if (a != null && a.getAllocatedAmount() == null) {
               Subscription su = subscriptionRepository.findById(a.getSubscriptionId()).orElse(null);
               if (su != null) {
                 Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(su.getIpoId()).orElse(null);
@@ -234,7 +234,10 @@ public class AdminUserService {
             }
             long acq =
                 ProfitCalculator.calculateAcquisitionAmount(
-                    a == null ? null : a.getAllocationPrice(), fixedPrice, s.getQuantity());
+                    a == null ? null : a.getAllocatedAmount(),
+                    a == null ? null : a.getAllocatedQuantity(),
+                    fixedPrice,
+                    s.getQuantity());
             long realized =
                 ProfitCalculator.calculateRealizedProfit(
                     s.getAmount(), acq, s.getTax(), s.getOtherCost());

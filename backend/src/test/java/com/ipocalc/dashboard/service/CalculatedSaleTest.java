@@ -34,8 +34,9 @@ class CalculatedSaleTest {
   }
 
   @Test
-  void investmentFallsBackToFixedPriceWhenAllocationPriceMissing() {
-    Allocation noPrice = Allocation.builder().id(1L).allocationPrice(null).build();
+  void investmentFallsBackToFixedPriceWhenAllocatedAmountMissing() {
+    Allocation noPrice =
+        Allocation.builder().id(1L).allocatedQuantity(10L).allocatedAmount(null).build();
 
     CalculatedSale cs = CalculatedSale.of(sale(), noPrice, INVESTOR, null, null, ipo());
 
@@ -46,8 +47,9 @@ class CalculatedSaleTest {
   }
 
   @Test
-  void allocationPriceWinsOverFixedPrice() {
-    Allocation priced = Allocation.builder().id(1L).allocationPrice(9_000L).build();
+  void allocatedAmountWinsOverFixedPrice() {
+    Allocation priced =
+        Allocation.builder().id(1L).allocatedQuantity(10L).allocatedAmount(90_000L).build();
 
     assertThat(CalculatedSale.of(sale(), priced, INVESTOR, null, null, ipo()).acquisitionAmount())
         .isEqualTo(90_000L);

@@ -176,7 +176,7 @@ class QueryCountTest {
                   .allocatedQuantity(100L)
                   .allocatedAt(now)
                   .allocationMethod("균등배정")
-                  .allocationPrice(12000L)
+                  .allocatedAmount(1200000L)
                   .status(RecordStatus.ACTIVE)
                   .createdAt(now)
                   .updatedAt(now)

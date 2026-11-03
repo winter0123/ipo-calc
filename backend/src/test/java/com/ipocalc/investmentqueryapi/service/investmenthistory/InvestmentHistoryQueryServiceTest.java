@@ -173,7 +173,7 @@ class InvestmentHistoryQueryServiceTest {
             .id(5L)
             .subscriptionId(SUBSCRIPTION_ID)
             .allocatedQuantity(100L)
-            .allocationPrice(12000L)
+            .allocatedAmount(1200000L)
             .status(RecordStatus.ACTIVE)
             .build();
 

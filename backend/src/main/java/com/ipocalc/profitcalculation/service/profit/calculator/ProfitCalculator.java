@@ -1,8 +1,11 @@
 package com.ipocalc.profitcalculation.service.profit.calculator;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
- * 수익 계산의 핵심 로직을 담은 stateless 유틸리티 클래스. 각 메서드는 null-safe하며, null 파라미터는 0으로 간주한다. 반올림은 Math.round(소수
- * 첫째 자리에서 반올림 → Long)를 사용한다 (D-P-005).
+ * 수익 계산의 핵심 로직을 담은 stateless 유틸리티 클래스. 각 메서드는 null-safe하며, null 파라미터는 0으로 간주한다. 반올림은 원 단위 HALF_UP을
+ * 사용한다 (D-P-005). 금액 상한이 2^53을 넘어 double로는 원 단위 정밀도를 보장할 수 없으므로 BigDecimal 정수 연산을 쓴다.
  */
 public final class ProfitCalculator {
 
@@ -11,16 +14,27 @@ public final class ProfitCalculator {
   }
 
   /**
-   * 대응취득가액을 계산한다. allocationPrice × saleQuantity allocationPrice가 null이면 fixedPrice로 대체, 둘 다 null이면
-   * 0 반환.
+   * 대응취득가액을 계산한다. 배정 총액(allocatedAmount)을 배정수량 대비 매도수량 비율로 안분하고 원 단위로 반올림한다. 배정 총액이 null이면
+   * 확정공모가(fixedPrice) × 매도수량으로 대체하며, 둘 다 null이면 0을 반환한다.
    */
   public static Long calculateAcquisitionAmount(
-      Long allocationPrice, Long fixedPrice, Long saleQuantity) {
-    Long price = (allocationPrice != null) ? allocationPrice : fixedPrice;
-    if (price == null || saleQuantity == null) {
+      Long allocatedAmount, Long allocatedQuantity, Long fixedPrice, Long saleQuantity) {
+    if (saleQuantity == null) {
       return 0L;
     }
-    return price * saleQuantity;
+    if (allocatedAmount != null && allocatedQuantity != null) {
+      if (allocatedQuantity <= 0) {
+        return 0L;
+      }
+      return BigDecimal.valueOf(allocatedAmount)
+          .multiply(BigDecimal.valueOf(saleQuantity))
+          .divide(BigDecimal.valueOf(allocatedQuantity), 0, RoundingMode.HALF_UP)
+          .longValueExact();
+    }
+    if (fixedPrice == null) {
+      return 0L;
+    }
+    return fixedPrice * saleQuantity;
   }
 
   /**

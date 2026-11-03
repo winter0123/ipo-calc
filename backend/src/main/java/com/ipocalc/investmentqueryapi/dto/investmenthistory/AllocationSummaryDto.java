@@ -16,6 +16,6 @@ public class AllocationSummaryDto {
 
   private Long id;
   private Long allocatedQuantity;
-  private Long allocationPrice;
+  private Long allocatedAmount;
   private String allocationStatus;
 }

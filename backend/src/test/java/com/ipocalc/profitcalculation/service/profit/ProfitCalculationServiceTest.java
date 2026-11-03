@@ -82,8 +82,13 @@ class ProfitCalculationServiceTest {
     when(ipos.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.ofNullable(ipo));
   }
 
-  private static Allocation alloc(Long price) {
-    return Allocation.builder().id(5L).subscriptionId(7L).allocationPrice(price).build();
+  private static Allocation alloc(Long unitPrice) {
+    return Allocation.builder()
+        .id(5L)
+        .subscriptionId(7L)
+        .allocatedQuantity(10L)
+        .allocatedAmount(unitPrice == null ? null : unitPrice * 10L)
+        .build();
   }
 
   private static Subscription subscription() {
@@ -136,7 +141,7 @@ class ProfitCalculationServiceTest {
 
     givenChain(alloc(1_000L), subscription(), ipo);
     ProfitDto withAlloc = service.calculateForSale(1L);
-    // 취득 10*1000, 세전 2000-10000-100 = -8100, 세후 -8150
+    // 취득 10000×10/10, 세전 2000-10000-100 = -8100, 세후 -8150
     assertThat(withAlloc.getMatchedAcquisitionAmount()).isEqualTo(10_000L);
     assertThat(withAlloc.getPreTaxProfit()).isEqualTo(-8_100L);
     assertThat(withAlloc.getAfterTaxProfit()).isEqualTo(-8_150L);
@@ -184,7 +189,12 @@ class ProfitCalculationServiceTest {
         .thenReturn(
             List.of(
                 alloc(1_000L),
-                Allocation.builder().id(6L).subscriptionId(8L).allocationPrice(100L).build()));
+                Allocation.builder()
+                    .id(6L)
+                    .subscriptionId(8L)
+                    .allocatedQuantity(10L)
+                    .allocatedAmount(1_000L)
+                    .build()));
     when(subs.findAllById(any()))
         .thenReturn(
             List.of(

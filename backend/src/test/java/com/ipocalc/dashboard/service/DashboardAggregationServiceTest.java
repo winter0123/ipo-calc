@@ -140,12 +140,12 @@ class DashboardAggregationServiceTest {
   }
 
   private Allocation createAllocation(
-      Long id, Long subscriptionId, Long allocatedQuantity, Long allocationPrice) {
+      Long id, Long subscriptionId, Long allocatedQuantity, Long unitPrice) {
     return Allocation.builder()
         .id(id)
         .subscriptionId(subscriptionId)
         .allocatedQuantity(allocatedQuantity)
-        .allocationPrice(allocationPrice)
+        .allocatedAmount(unitPrice == null ? null : unitPrice * allocatedQuantity)
         .allocationMethod("PROPORTIONAL")
         .allocatedAt(LocalDateTime.now())
         .status(RecordStatus.ACTIVE)
@@ -238,13 +238,13 @@ class DashboardAggregationServiceTest {
 
   @Test
   void getSummaryAggregatesCorrectlyWithMultipleSales() {
-    // Given: 2개의 Sale, 각각 다른 allocationPrice와 수량
+    // Given: 2개의 Sale, 각각 다른 배정단가와 수량
     // Sale 1: quantity=10, amount=150000, fee=1000, tax=5000, otherCost=200
-    //          allocation: allocatedQuantity=50, allocationPrice=10000
+    //          allocation: allocatedQuantity=50, total=500000 (단가 10000)
     //          subscription: investorId=10, securitiesAccountId=1, ipoId=1, quantity=100
     //          ipo: fixedPrice=9000
     // Sale 2: quantity=20, amount=300000, fee=2000, tax=10000, otherCost=500
-    //          allocation: allocatedQuantity=100, allocationPrice=12000
+    //          allocation: allocatedQuantity=100, total=1200000 (단가 12000)
     //          subscription: investorId=10, securitiesAccountId=1, ipoId=1, quantity=100
 
     Sale sale1 = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
@@ -287,7 +287,7 @@ class DashboardAggregationServiceTest {
     // Then: 집계 검증
     assertThat(result).isNotNull();
 
-    // totalInvestmentAmount = Σ(allocationPrice × 매도수량) = 10000*10 + 12000*20 =
+    // totalInvestmentAmount = Σ(배정 총액 × 매도수량/배정수량) = 500000*10/50 + 1200000*20/100 =
     // 100000 + 240000 = 340000 (배정금액을 매도 수량 비율로 안분)
     assertThat(result.getTotalInvestmentAmount()).isEqualTo(340000L);
 
@@ -314,10 +314,10 @@ class DashboardAggregationServiceTest {
 
   @Test
   void getSummaryUsesFixedPriceForInvestmentWhenAllocationPriceMissing() {
-    // Given: allocationPrice가 null인 Sale (총투자금 0)
+    // Given: allocatedAmount가 null인 Sale
     Sale sale = createSale(1L, 100L, 10L, 150000L, 1000L, 5000L, 200L);
 
-    Allocation allocation = createAllocation(100L, 1000L, 50L, null); // allocationPrice = null
+    Allocation allocation = createAllocation(100L, 1000L, 50L, null); // allocatedAmount = null
 
     Subscription subscription = createSubscription(1000L, 10L, 1L, 1L, 100L);
 
@@ -327,7 +327,7 @@ class DashboardAggregationServiceTest {
 
     SecuritiesFirm securitiesFirm = createSecuritiesFirm(100L, "테스트 증권사");
 
-    Ipo ipo = createIpo(1L, 9000L); // allocationPrice가 null이면 공모가로 대체(수익 계산과 같은 규칙)
+    Ipo ipo = createIpo(1L, 9000L); // allocatedAmount가 null이면 공모가로 대체(수익 계산과 같은 규칙)
 
     setupMocksWithSales(
         List.of(sale),

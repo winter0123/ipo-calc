@@ -60,7 +60,7 @@ class AllocationRepositoryTest {
         .allocatedQuantity(50L)
         .allocatedAt(createdAt)
         .allocationMethod("균등배정")
-        .allocationPrice(10000L)
+        .allocatedAmount(10000L)
         .note(note)
         .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
@@ -87,7 +87,7 @@ class AllocationRepositoryTest {
     assertThat(found.get().getSubscriptionId()).isEqualTo(subscriptionId);
     assertThat(found.get().getAllocatedQuantity()).isEqualTo(50L);
     assertThat(found.get().getAllocationMethod()).isEqualTo("균등배정");
-    assertThat(found.get().getAllocationPrice()).isEqualTo(10000L);
+    assertThat(found.get().getAllocatedAmount()).isEqualTo(10000L);
     assertThat(found.get().getNote()).isEqualTo("비고");
     assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();

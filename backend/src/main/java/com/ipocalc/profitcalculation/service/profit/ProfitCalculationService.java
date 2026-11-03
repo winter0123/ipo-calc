@@ -67,7 +67,7 @@ public class ProfitCalculationService {
         () -> new ProfitNotFoundException("해당 투자자를 찾을 수 없습니다."),
         () -> new ProfitForbiddenException("계정 소유권이 없습니다."));
 
-    // 4. IPO 조건부 조회 — allocationPrice가 null이면 fixedPrice 사용
+    // 4. IPO 조건부 조회 — allocatedAmount가 null이면 fixedPrice 사용
     Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
 
     // 5. 대응취득가액/세전·세후순수익 계산 및 ProfitDto 구성
@@ -214,12 +214,15 @@ public class ProfitCalculationService {
 
   // 대응취득가액/세전·세후순수익/실현손익을 계산해 ProfitDto를 구성한다 (저장 없음).
   private ProfitDto buildProfitDto(Sale sale, Allocation allocation, Ipo ipo) {
-    // allocationPrice가 없을 때만 공모가(fixedPrice)로 대체한다.
+    // allocatedAmount가 없을 때만 공모가(fixedPrice)로 대체한다.
     Long fixedPrice =
-        allocation.getAllocationPrice() == null && ipo != null ? ipo.getFixedPrice() : null;
+        allocation.getAllocatedAmount() == null && ipo != null ? ipo.getFixedPrice() : null;
     Long acquisitionAmount =
         ProfitCalculator.calculateAcquisitionAmount(
-            allocation.getAllocationPrice(), fixedPrice, sale.getQuantity());
+            allocation.getAllocatedAmount(),
+            allocation.getAllocatedQuantity(),
+            fixedPrice,
+            sale.getQuantity());
     Long preTaxProfit =
         ProfitCalculator.calculatePreTaxProfit(
             sale.getAmount(), acquisitionAmount, sale.getFee(), sale.getOtherCost());

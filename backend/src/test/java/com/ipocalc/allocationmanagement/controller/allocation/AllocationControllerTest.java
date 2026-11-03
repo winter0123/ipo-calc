@@ -50,7 +50,7 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * AC 인용: docs/spec/allocation-management.md, docs/breakdown/allocation-management.md SF-2 - AC-001:
  * 배정 등록 성공 — 존재하는 Subscription과 유효한 배정수량/배정일시가 제공되면 201 + ACTIVE 기록 생성 - AC-002: 배정 등록 실패 (필수값 누락)
- * — subscriptionId/allocatedQuantity/allocatedAt 중 하나 이상 누락 시 400 - AC-003: 배정 등록 실패 (배정수량 값 오류) —
+ * — subscriptionId/allocatedQuantity 중 하나 이상 누락 시 400 - AC-003: 배정 등록 실패 (배정수량 값 오류) —
  * allocatedQuantity < 0 또는 청약수량 초과 시 400 - AC-004: 배정 등록 실패 (Subscription 미존재) — 존재하지 않는
  * subscriptionId → 404 - AC-005: 배정 등록 실패 (중복, 1:1 제약) — 동일 subscriptionId에 이미 ACTIVE 배정 기록 존재 시
  * 409 - AC-006: 취소된 배정이 있으면 재등록 성공 — 동일 subscriptionId에 CANCELLED 배정만 있으면 201 - 소유권 검증: Allocation은
@@ -201,6 +201,10 @@ class AllocationControllerTest {
   }
 
   private Long createIpo() {
+    return createIpo(null);
+  }
+
+  private Long createIpo(java.time.LocalDate allotmentDate) {
     LocalDateTime now = LocalDateTime.now();
     String uniqueCode = "123456" + ThreadLocalRandom.current().nextLong(100000, 999999);
     Ipo ipo =
@@ -214,6 +218,7 @@ class AllocationControllerTest {
                 .fixedPrice(11000L)
                 .subscriptionStartDate(java.time.LocalDate.of(2026, 10, 1))
                 .subscriptionEndDate(java.time.LocalDate.of(2026, 10, 2))
+                .allotmentDate(allotmentDate)
                 .listingDate(java.time.LocalDate.of(2026, 10, 15))
                 .offeringShareCount(1000000L)
                 .status(RecordStatus.ACTIVE)
@@ -256,9 +261,7 @@ class AllocationControllerTest {
     Map<String, Object> request = new LinkedHashMap<>();
     request.put("subscriptionId", subscriptionId);
     request.put("allocatedQuantity", 50);
-    request.put("allocatedAt", "2026-10-05T18:00:00");
     request.put("allocationMethod", "균등배정");
-    request.put("allocationPrice", 10000);
     request.put("note", "비고");
     return request;
   }
@@ -314,9 +317,11 @@ class AllocationControllerTest {
     assertThat(response.get("id")).isNotNull();
     assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId);
     assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(50L);
-    assertThat(response.get("allocatedAt")).isEqualTo("2026-10-05T18:00:00");
+    // 자동 배정일: IPO allotmentDate 없음 → 청약 종료일 2026-10-02 +2 KRX 영업일(10-05 휴장) = 2026-10-07 09:00
+    assertThat(response.get("allocatedAt")).isEqualTo("2026-10-07T09:00:00");
     assertThat(response.get("allocationMethod")).isEqualTo("균등배정");
-    assertThat(((Number) response.get("allocationPrice")).longValue()).isEqualTo(10000L);
+    // 자동 총액: 확정공모가 11000 × 50주 = 550000
+    assertThat(((Number) response.get("allocatedAmount")).longValue()).isEqualTo(550000L);
     assertThat(response.get("note")).isEqualTo("비고");
     assertThat(response.get("status")).isEqualTo("ACTIVE");
     assertThat(response.get("deletedAt")).isNull();
@@ -330,13 +335,33 @@ class AllocationControllerTest {
   }
 
   @Test
+  void registerAllocationUsesIpoAllotmentDateWhenPresent() throws Exception {
+    // Given: IPO에 확정 배정일(allotmentDate)이 있는 경우
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long accountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo(java.time.LocalDate.of(2026, 10, 6));
+    Long subscriptionId = createSubscriptionForInvestor(investorId, accountId, ipoId, 100L);
+
+    // When: 배정을 등록하면
+    MvcResult result = registerAllocation(validRequest(subscriptionId));
+
+    // Then: 청약 종료일 추정 대신 IPO 배정일이 우선 사용된다
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> response = readBody(result);
+    assertThat(response.get("allocatedAt")).isEqualTo("2026-10-06T09:00:00");
+    assertThat(((Number) response.get("allocatedAmount")).longValue()).isEqualTo(550000L);
+  }
+
+  @Test
   void registerAllocationWithMissingRequiredFieldsReturns400() throws Exception {
     // Given: 유효한 등록 준비가 끝나 있고, 필수 필드 중 하나씩을 제거해 요청함 (AC-002)
     signupAndLogin();
     Long subscriptionId = createSubscription(100L);
 
-    // When/Then: subscriptionId/allocatedQuantity/allocatedAt 각각 누락 시 400 (AC-002)
-    for (String field : List.of("subscriptionId", "allocatedQuantity", "allocatedAt")) {
+    // When/Then: subscriptionId/allocatedQuantity 각각 누락 시 400 (AC-002)
+    for (String field : List.of("subscriptionId", "allocatedQuantity")) {
       Map<String, Object> request = validRequest(subscriptionId);
       request.remove(field);
       assertValidationError(registerAllocation(request));
@@ -601,11 +626,12 @@ class AllocationControllerTest {
     assertThat(((Number) response.get("id")).longValue()).isEqualTo(allocationId);
     assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(80L);
     assertThat(response.get("note")).isEqualTo("수정된 비고");
-    // subscriptionId, allocatedAt, allocationMethod, allocationPrice는 기존값 유지
+    // subscriptionId·allocatedAt·allocationMethod는 기존값 유지, 수량 변경분만 총액에 반영
     assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId);
-    assertThat(response.get("allocatedAt")).isEqualTo("2026-10-05T18:00:00");
+    assertThat(response.get("allocatedAt")).isEqualTo("2026-10-07T09:00:00");
     assertThat(response.get("allocationMethod")).isEqualTo("균등배정");
-    assertThat(((Number) response.get("allocationPrice")).longValue()).isEqualTo(10000L);
+    // 확정공모가 11000 × 80주 = 880000
+    assertThat(((Number) response.get("allocatedAmount")).longValue()).isEqualTo(880000L);
     assertThat(response.get("status")).isEqualTo("ACTIVE");
   }
 

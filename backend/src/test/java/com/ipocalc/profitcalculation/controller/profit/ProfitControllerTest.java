@@ -130,7 +130,7 @@ class ProfitControllerTest {
         mockMvc, objectMapper, session, testEmail, testPassword, "수익테스터");
   }
 
-  private Long setupFoundation(Long allocationPrice) {
+  private Long setupFoundation(Long unitPrice) {
     LocalDateTime now = LocalDateTime.now();
     Investor investor =
         investorRepository.save(
@@ -178,7 +178,7 @@ class ProfitControllerTest {
                 .allocatedQuantity(100L)
                 .allocatedAt(now)
                 .allocationMethod("균등배정")
-                .allocationPrice(allocationPrice)
+                .allocatedAmount(unitPrice == null ? null : unitPrice * 100L)
                 .note("테스트 배정")
                 .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
@@ -362,7 +362,7 @@ class ProfitControllerTest {
   @Test
   void calculateProfitForSaleReturns200AndCorrectProfit() throws Exception {
     // Given: ACTIVE 상태의 Sale이 존재하고, 배정금액/비용 기준 데이터가 준비되어 있음 (AC-001)
-    // - allocationPrice=12000, allocatedQuantity=100, saleQuantity=30
+    // - 배정 총액=1,200,000, allocatedQuantity=100, saleQuantity=30
     // - totalActiveCost=40000 (ACTIVE Cost 1건)
     // - saleAmount=750000, fee=1500, tax=0, otherCost=0
     // - matchedAcquisitionAmount = 12000 × 30 = 360000
@@ -434,27 +434,27 @@ class ProfitControllerTest {
 
   @Test
   void calculateProfitWithSplitSaleComputesCorrectAcquisitionAmount() throws Exception {
-    // Given: 배정수량 100인 Allocation에 allocationPrice=12000, 매도 30주 (AC-003)
-    // - matchedAcquisitionAmount = allocationPrice × Sale.quantity = 12000 × 30 = 360000
+    // Given: 배정수량 100인 Allocation에 배정 총액 1,200,000원(단가 12,000원), 매도 30주 (AC-003)
+    // - matchedAcquisitionAmount = 배정 총액 × 30/100 = 1200000 × 30/100 = 360000
     signupAndLogin();
     Long allocationId = setupFoundation(12000L);
     Long saleId =
         createSale(allocationId, 30L, 750000L, 0L, 0L, 0L, LocalDateTime.of(2026, 10, 15, 14, 30));
 
-    // When/Then: matchedAcquisitionAmount = 12000 × 30 = 360000 (AC-003)
+    // When/Then: matchedAcquisitionAmount = 1200000 × 30/100 = 360000 (AC-003)
     MvcResult result = getSaleProfit(saleId);
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = readBody(result);
     assertThat(((Number) body.get("matchedAcquisitionAmount")).longValue())
-        .as("분할 매도 시 취득가액 = allocationPrice × quantity (AC-003)")
+        .as("분할 매도 시 취득가액 = 배정 총액 안분 (AC-003)")
         .isEqualTo(360000L);
   }
 
-  // ==================== AC-005: allocationPrice가 없는 경우 fixedPrice 대체 ====================
+  // ==================== AC-005: allocatedAmount가 없는 경우 fixedPrice 대체 ====================
 
   @Test
   void calculateProfitWithNullAllocationPriceUsesIpoFixedPrice() throws Exception {
-    // Given: Allocation.allocationPrice가 null이고, IPO.fixedPrice가 11000원 (AC-005)
+    // Given: Allocation.allocatedAmount가 null이고, IPO.fixedPrice가 11000원 (AC-005)
     // - 참조 경로: Sale → Allocation → Subscription → IPO
     // - matchedAcquisitionAmount = IPO.fixedPrice × Sale.quantity = 11000 × 30 = 330000
     signupAndLogin();
@@ -505,7 +505,7 @@ class ProfitControllerTest {
                 .build());
     createdSubscriptions.add(subscription);
 
-    // allocationPrice = null
+    // allocatedAmount = null
     Allocation allocation =
         allocationRepository.save(
             Allocation.builder()
@@ -513,7 +513,7 @@ class ProfitControllerTest {
                 .allocatedQuantity(100L)
                 .allocatedAt(now)
                 .allocationMethod("균등배정")
-                .allocationPrice(null)
+                .allocatedAmount(null)
                 .note("테스트 배정")
                 .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
@@ -534,7 +534,7 @@ class ProfitControllerTest {
     assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = readBody(result);
     assertThat(((Number) body.get("matchedAcquisitionAmount")).longValue())
-        .as("allocationPrice null 시 IPO.fixedPrice로 대체 (AC-005)")
+        .as("allocatedAmount null 시 IPO.fixedPrice로 대체 (AC-005)")
         .isEqualTo(330000L);
   }
 
@@ -642,7 +642,7 @@ class ProfitControllerTest {
   @Test
   void getInvestorProfitsReturns200WithMultipleSalesAndTotals() throws Exception {
     // Given: 한 투자자에 여러 ACTIVE Sale이 존재함 (AC-010)
-    // - allocationPrice=12000, allocatedQuantity=100, ACTIVE Cost 합계 40000
+    // - 배정 총액=1,200,000, allocatedQuantity=100, ACTIVE Cost 합계 40000
     // - Sale 1 (2026-10-14): quantity=30, amount=750000, fee=1500, tax=0
     //   matchedAcquisition=360000, matchedCost=12000, preTax=376500, afterTax=376500
     // - Sale 2 (2026-10-15): quantity=20, amount=500000, fee=0, tax=0
@@ -1051,11 +1051,11 @@ class ProfitControllerTest {
 
   // ==================== 헬퍼: 배정수량 커스텀 ====================
 
-  private Long setupFoundationWithAllocatedQuantity(Long allocationPrice, Long allocatedQuantity) {
+  private Long setupFoundationWithAllocatedQuantity(Long unitPrice, Long allocatedQuantity) {
     findOrCreateAccount();
     LocalDateTime now = LocalDateTime.now();
 
-    // IPO 생성 (allocationPrice null 대체용)
+    // IPO 생성 (allocatedAmount null 대체용)
     Long ipoId = createIpoWithFixedPrice(11000L);
 
     Investor investor =
@@ -1104,7 +1104,7 @@ class ProfitControllerTest {
                 .allocatedQuantity(allocatedQuantity)
                 .allocatedAt(now)
                 .allocationMethod("균등배정")
-                .allocationPrice(allocationPrice)
+                .allocatedAmount(unitPrice == null ? null : unitPrice * allocatedQuantity)
                 .note("테스트 배정")
                 .status(RecordStatus.ACTIVE)
                 .deletedAt(null)

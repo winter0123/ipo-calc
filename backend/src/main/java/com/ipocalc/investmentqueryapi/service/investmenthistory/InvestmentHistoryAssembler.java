@@ -50,7 +50,7 @@ public class InvestmentHistoryAssembler {
       AllocationSummaryDto allocationDto = new AllocationSummaryDto();
       allocationDto.setId(allocation.getId());
       allocationDto.setAllocatedQuantity(allocation.getAllocatedQuantity());
-      allocationDto.setAllocationPrice(allocation.getAllocationPrice());
+      allocationDto.setAllocatedAmount(allocation.getAllocatedAmount());
       allocationDto.setAllocationStatus(allocation.getStatus().name());
       dto.setAllocation(allocationDto);
     } else {

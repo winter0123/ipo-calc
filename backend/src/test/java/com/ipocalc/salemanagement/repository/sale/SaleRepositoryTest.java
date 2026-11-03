@@ -84,7 +84,7 @@ class SaleRepositoryTest {
             .allocatedQuantity(allocatedQuantity)
             .allocatedAt(createdAt)
             .allocationMethod("균등배정")
-            .allocationPrice(10000L)
+            .allocatedAmount(10000L * allocatedQuantity)
             .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)
@@ -177,13 +177,13 @@ class SaleRepositoryTest {
   }
 
   private Allocation createAllocationEntity(
-      Long subscriptionId, Long allocatedQuantity, Long allocationPrice, LocalDateTime createdAt) {
+      Long subscriptionId, Long allocatedQuantity, Long unitPrice, LocalDateTime createdAt) {
     return Allocation.builder()
         .subscriptionId(subscriptionId)
         .allocatedQuantity(allocatedQuantity)
         .allocatedAt(createdAt)
         .allocationMethod("PROPORTIONAL")
-        .allocationPrice(allocationPrice)
+        .allocatedAmount(unitPrice == null ? null : unitPrice * allocatedQuantity)
         .status(RecordStatus.ACTIVE)
         .createdAt(createdAt)
         .updatedAt(createdAt)
