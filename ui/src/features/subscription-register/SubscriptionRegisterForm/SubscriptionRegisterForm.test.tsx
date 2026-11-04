@@ -223,9 +223,11 @@ async function waitForDropdownsLoaded() {
 }
 
 async function fillValidForm() {
-  await screen.findByRole('option', { name: '미래에셋증권' })
-  await fill(screen.getByLabelText('증권계좌'), '1')
   await fill(screen.getByLabelText('공모주'), '1')
+  await waitFor(() =>
+    expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
+  )
+  await fill(screen.getByLabelText('증권계좌'), '1')
   await fill(screen.getByLabelText('청약수량'), '100')
   await fill(screen.getByLabelText('증거금'), '0')
   await fill(screen.getByLabelText('청약일'), '2026-09-21')
@@ -265,7 +267,14 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    expect(await screen.findByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+    // IPO 미선택 시 계좌 disabled / 옵션 없음 (AC-1)
+    expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+    expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
+
+    await fill(screen.getByLabelText('공모주'), '1')
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
+    )
     expect(screen.getByLabelText('증권계좌')).toBeEnabled()
     expect(screen.queryByLabelText('투자자')).not.toBeInTheDocument()
     expect(apiFetch).toHaveBeenCalledWith('/securities-accounts?investorId=1', expect.anything())
@@ -694,24 +703,122 @@ describe('SubscriptionRegisterForm', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    it('공모주를 고르기 전에는 전체 계좌를 보여 주고, 고른 뒤에는 주관사 계좌로 좁혀진다', async () => {
+    it('IPO 미선택 시 계좌 선택 disabled·전체 계좌 없음; 선택 후 주관사 계좌만 표시', async () => {
       const alertSpy = vi.mocked(window.alert)
       mockDropdownFetches()
       renderForm()
 
       await waitForDropdownsLoaded()
-      expect(await screen.findByRole('option', { name: '하나은행' })).toBeInTheDocument()
+      // AC-1: IPO 미선택 시 계좌 옵션 없음, disabled
+      expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+      expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
       expect(alertSpy).not.toHaveBeenCalled()
 
       await fill(screen.getByLabelText('공모주'), '1')
 
+      // AC-2: insight 로딩/완료 중 전체 계좌 노출 없음 (loading이 빠른 mock에서 바로 필터링)
       await waitFor(() => {
         expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
       })
-      expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'KB증권' })).toBeInTheDocument()
+
+      // AC-3: 인사이트 완료 후 주관사 매칭 계좌만 표시
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+        expect(screen.getByRole('option', { name: 'KB증권' })).toBeInTheDocument()
+      })
+      expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      expect(screen.getByLabelText('증권계좌')).toBeEnabled()
       expect(alertSpy).not.toHaveBeenCalled()
       expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
+    it('AC-4: IPO 변경 시 기존 증권계좌 선택 즉시 초기화', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await waitFor(() =>
+        expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
+      )
+      await fill(screen.getByLabelText('증권계좌'), '1')
+      // 다른 IPO로 변경
+      await fill(screen.getByLabelText('공모주'), '2')
+      await waitFor(() => {
+        expect((screen.getByLabelText('증권계좌') as HTMLSelectElement).value).toBe('')
+      })
+    })
+
+    it('AC-2 (pending): IPO 선택 후 insight pending 동안 disabled·옵션 없음, resolve 후 필터링', async () => {
+      let resolveInsight: (value: unknown) => void = () => {}
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1/insight') {
+          return new Promise((resolve) => {
+            resolveInsight = resolve
+          })
+        }
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      // pending 상태: disabled, 전체 계좌 옵션 없음
+      expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+      expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
+      resolveInsight(IPO_INSIGHT)
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument()
+        expect(screen.getByLabelText('증권계좌')).toBeEnabled()
+      })
+    })
+
+    it('AC-5 (rejection): insight 요청 실패 시 disabled·옵션 없음·오류 안내', async () => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) {
+          throw new ApiError(500, '인사이트 조회 실패')
+        }
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await waitFor(() => {
+        expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+        expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
+      })
+      expect(
+        screen.getByRole('option', { name: '주관사 정보를 확인할 수 없습니다.' }),
+      ).toBeInTheDocument()
+    })
+
+    it('AC-5 (empty underwriters): 빈 주관사 목록 시 disabled·옵션 없음·안내', async () => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) {
+          return { underwriters: [] }
+        }
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await waitFor(() => {
+        expect(screen.getByLabelText('증권계좌')).toBeDisabled()
+        expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
+      })
+      expect((screen.getByLabelText('증권계좌') as HTMLSelectElement).value).toBe('')
     })
   })
 })
