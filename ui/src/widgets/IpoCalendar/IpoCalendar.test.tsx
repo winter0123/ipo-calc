@@ -354,6 +354,58 @@ describe('IpoCalendar', () => {
     expect(within(region).queryByRole('link', { name: /청약 등록/ })).not.toBeInTheDocument()
   })
 
+  it('청약 막대 radius는 항상 6px이며 마진은 2px이다', async () => {
+    const ipos = [
+      makeIpo({
+        subscriptionStartDate: '2026-10-01T09:00:00Z',
+        subscriptionEndDate: '2026-10-03T17:00:00Z',
+      }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    // 청약 바는 종료일(10/03)만 표시되므로 single-column 바가 렌더링됨
+    const bar = screen.getByRole('button', { name: /테스트기업 청약/ })
+    expect(bar).toHaveStyle('--calendar-bar-radius-left: 6px')
+    expect(bar).toHaveStyle('--calendar-bar-radius-right: 6px')
+    expect(bar).toHaveStyle('--calendar-bar-margin-left: 2px')
+    expect(bar).toHaveStyle('--calendar-bar-margin-right: 2px')
+  })
+
+  it('청약 외 다른_event_type 바는 렌더링되며 기존 클래스를 유지한다', async () => {
+    const ipos = [makeIpo({ listingDate: '2026-10-15T09:00:00Z' })]
+    renderWithRouter(
+      <IpoCalendar
+        ipos={ipos}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['LISTING'])}
+      />,
+    )
+
+    const listingBar = screen.getByRole('button', { name: /테스트기업 상장/ })
+    expect(listingBar).toBeInTheDocument()
+    // 기존 바 클래스 유지 확인
+    expect(listingBar).toHaveClass('s-e1b278a-bar')
+    expect(listingBar).toHaveClass('s-e1b278a-barListing')
+  })
+
+  it('환불 바는 렌더링되며 기존 클래스를 유지한다', async () => {
+    const ipos = [makeIpo({ refundDate: '2026-10-10T09:00:00Z' })]
+    renderWithRouter(
+      <IpoCalendar
+        ipos={ipos}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['REFUND'])}
+      />,
+    )
+
+    const refundBar = screen.getByRole('button', { name: /테스트기업 환불/ })
+    expect(refundBar).toBeInTheDocument()
+    // 기존 바 클래스 유지 확인
+    expect(refundBar).toHaveClass('s-e1b278a-bar')
+    expect(refundBar).toHaveClass('s-e1b278a-barRefund')
+  })
   it('청약 기간이 지난 일정에는 청약 등록 링크가 없다', async () => {
     const ipos = [
       makeIpo({
@@ -459,6 +511,52 @@ describe('IpoCalendar', () => {
       expect(screen.getByRole('button', { name: '청약' })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: '환불' })).toHaveAttribute('aria-pressed', 'true')
       expect(screen.getByRole('button', { name: '상장' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('필터 버튼은 선택 시 각 타입의 팔레트(배경·글자·테두리)를 갖는다', async () => {
+      const ipos = [makeIpo()]
+      renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      const subButton = screen.getByRole('button', { name: '청약' })
+      const refButton = screen.getByRole('button', { name: '환불' })
+      const lisButton = screen.getByRole('button', { name: '상장' })
+
+      // 선택된 상태: filterOn + 타입 클래스
+      expect(subButton).toHaveClass('s-e1b278a-filterOn')
+      expect(subButton).toHaveClass('s-e1b278a-barSubscription')
+      expect(refButton).toHaveClass('s-e1b278a-filterOn')
+      expect(refButton).toHaveClass('s-e1b278a-barRefund')
+      expect(lisButton).toHaveClass('s-e1b278a-filterOn')
+      expect(lisButton).toHaveClass('s-e1b278a-barListing')
+      // dot 존재 확인
+      expect(subButton.querySelector('.s-e1b278a-filterDot')).toBeInTheDocument()
+      expect(refButton.querySelector('.s-e1b278a-filterDot')).toBeInTheDocument()
+      expect(lisButton.querySelector('.s-e1b278a-filterDot')).toBeInTheDocument()
+    })
+
+    it('필터 버튼 비선택 시 dot으로 상태가 구분되며 최소 높이 44px 유지', async () => {
+      const ipos = [makeIpo()]
+      renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+      // 모두 끈 후
+      await userEvent.click(screen.getByRole('button', { name: '청약' }))
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      await userEvent.click(screen.getByRole('button', { name: '상장' }))
+
+      const buttons = screen.getAllByRole('button', { name: /청약|환불|상장/ })
+      // 최소 높이 44px 확인
+      expect(buttons[0]).toHaveStyle('min-height: 44px')
+      expect(buttons[1]).toHaveStyle('min-height: 44px')
+      expect(buttons[2]).toHaveStyle('min-height: 44px')
+      // 비선택 상태에서 filterOff + 타입 클래스 유지
+      buttons.forEach((btn) => {
+        expect(btn).toHaveClass('s-e1b278a-filterOff')
+        expect(btn.querySelector('.s-e1b278a-filterDot')).toBeInTheDocument()
+      })
+      // 각 버튼이 올바른 타입 클래스를 유지함
+      expect(screen.getByRole('button', { name: '청약' })).toHaveClass('s-e1b278a-barSubscription')
+      expect(screen.getByRole('button', { name: '환불' })).toHaveClass('s-e1b278a-barRefund')
+      expect(screen.getByRole('button', { name: '상장' })).toHaveClass('s-e1b278a-barListing')
     })
 
     it('필터 버튼을 누르면 onVisibleTypesChange에 해당 종류가 빠진 집합이 전달된다', async () => {

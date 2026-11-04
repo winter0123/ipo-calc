@@ -123,29 +123,57 @@ export const StyleScope = styled.div`
     flex-shrink: 0;
   }
 
-  .s-e1b278a-filterOn {
+  .s-e1b278a-filterButton.s-e1b278a-barSubscription.s-e1b278a-filterOn {
     background: var(--surface-sea);
-    color: var(--ink);
-    border-color: var(--border-strong);
+    color: var(--primary-deep);
+    border-color: var(--info-border);
+  }
+
+  .s-e1b278a-filterButton.s-e1b278a-barRefund.s-e1b278a-filterOn {
+    background: var(--warning-bg);
+    color: var(--warning-ink);
+    border-color: var(--warning-border);
+  }
+
+  .s-e1b278a-filterButton.s-e1b278a-barListing.s-e1b278a-filterOn {
+    background: var(--success-bg);
+    color: var(--success-ink);
+    border-color: var(--success-border);
+  }
+
+  .s-e1b278a-filterOff .s-e1b278a-filterDot {
+    background: currentColor;
   }
 
   .s-e1b278a-filterOn .s-e1b278a-filterDot {
     background: currentColor;
   }
 
-  .s-e1b278a-filterOn[class*='barListing'] .s-e1b278a-filterDot,
-  .s-e1b278a-filterOn.s-e1b278a-barListing .s-e1b278a-filterDot {
-    background: var(--success-bg);
-  }
-
-  .s-e1b278a-filterOff {
+  .s-e1b278a-filterButton.s-e1b278a-barSubscription.s-e1b278a-filterOff {
     background: var(--surface);
     color: var(--ink-muted);
-    border-color: var(--border-strong);
+    border-color: var(--info-border);
+  }
+  .s-e1b278a-filterButton.s-e1b278a-barSubscription.s-e1b278a-filterOff .s-e1b278a-filterDot {
+    background: var(--primary-deep);
   }
 
-  .s-e1b278a-filterOff .s-e1b278a-filterDot {
-    background: var(--border-strong);
+  .s-e1b278a-filterButton.s-e1b278a-barRefund.s-e1b278a-filterOff {
+    background: var(--surface);
+    color: var(--ink-muted);
+    border-color: var(--warning-border);
+  }
+  .s-e1b278a-filterButton.s-e1b278a-barRefund.s-e1b278a-filterOff .s-e1b278a-filterDot {
+    background: var(--warning-ink);
+  }
+
+  .s-e1b278a-filterButton.s-e1b278a-barListing.s-e1b278a-filterOff {
+    background: var(--surface);
+    color: var(--ink-muted);
+    border-color: var(--success-border);
+  }
+  .s-e1b278a-filterButton.s-e1b278a-barListing.s-e1b278a-filterOff .s-e1b278a-filterDot {
+    background: var(--success-ink);
   }
 
   .s-e1b278a-weekdays {
