@@ -136,6 +136,14 @@ function SubscriptionForm({
 
   // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() is intentionally used in this non-memoized form.
   const watchedIpoId = watch('ipoId')
+  // 선택 IPO가 바뀔 때 이전 IPO의 계좌 선택을 즉시 초기화
+  useEffect(() => {
+    setValue('securitiesAccountId', undefined as unknown as number, {
+      shouldValidate: false,
+      shouldDirty: false,
+    })
+  }, [watchedIpoId, setValue])
+
   const selectedIpo = ipos.find((ipo) => ipo.id === Number(watchedIpoId))
   const watchedAllocatedQty = watch('allocatedQuantity')
   const allocationTotal = allocationTotalFor(selectedIpo, Number(watchedAllocatedQty ?? 0))
@@ -171,13 +179,13 @@ function SubscriptionForm({
   const selectedIpoId = Number(watchedIpoId)
   const ipoSelected = Number.isFinite(selectedIpoId)
   const underwriters = ipoInsight?.underwriters ?? EMPTY_UNDERWRITERS
-  // 주관사를 실제로 받았을 때만 계좌를 걸러낸다. 로딩·조회 오류·빈 배열은 기존 계좌 선택 동작을 유지한다(AC2·AC4).
+  // 주관사를 실제로 받았을 때만 계좌를 걸러낸다. 로딩/오류/빈 배열은 계좌 옵션을 노출하지 않고 select를 disabled로 유지한다(AC2·AC3·AC5).
   const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
 
-  // 필터링된 증권계좌 리스트 (render 시점 계산)
-  let filteredAccounts: SecuritiesAccount[] = securitiesAccounts ?? []
+  // 필터링된 증권계좌 리스트 (IPO 미선택·인사이트 로딩·오류·빈 주관사는 옵션 노출 금지)
+  let filteredAccounts: SecuritiesAccount[] = []
   if (ipoSelected && underwritersReady) {
-    filteredAccounts = filteredAccounts.filter((account) =>
+    filteredAccounts = (securitiesAccounts ?? []).filter((account) =>
       isUnderwriterAccount(underwriters, account.securitiesFirmName),
     )
   }
@@ -330,7 +338,7 @@ function SubscriptionForm({
               <label htmlFor="securitiesAccountId">증권계좌</label>
               <select
                 id="securitiesAccountId"
-                aria-invalid={!!errors.securitiesAccountId}
+                aria-invalid={errors.securitiesAccountId ? true : false}
                 aria-describedby={
                   errors.securitiesAccountId ? 'securitiesAccountId-error' : undefined
                 }
@@ -338,14 +346,33 @@ function SubscriptionForm({
                   required: '증권계좌를 선택해 주세요.',
                   valueAsNumber: true,
                 })}
-                disabled={isPendingSub || !investorSelected || securitiesAccountsLoading}
+                disabled={
+                  !!(
+                    isPendingSub ||
+                    !investorSelected ||
+                    securitiesAccountsLoading ||
+                    !ipoSelected ||
+                    ipoInsightLoading ||
+                    (ipoSelected &&
+                      !ipoInsightLoading &&
+                      (ipoInsightError || underwriters.length === 0))
+                  )
+                }
               >
                 <option value="">
                   {!investorSelected
                     ? '투자자를 먼저 선택해 주세요'
                     : securitiesAccountsLoading
                       ? '불러오는 중...'
-                      : '증권계좌 선택'}
+                      : !ipoSelected
+                        ? '공모주를 먼저 선택해 주세요'
+                        : ipoInsightLoading
+                          ? '주관사 확인 중...'
+                          : ipoInsightError
+                            ? '주관사 정보를 확인할 수 없습니다.'
+                            : underwriters.length === 0
+                              ? '등록된 주관사 정보가 없습니다.'
+                              : '증권계좌 선택'}
                 </option>
                 {filteredAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
