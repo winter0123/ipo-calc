@@ -6,7 +6,7 @@
 - 달력 상세 일정은 달력 막대와 동일하게 청약 종료일에만 청약 IPO를 보여준다. OpenDART `[발행조건확정]` 공시만 `fixedPrice`에 반영하고, 이미 상장된 레코드는 단일 가격 밴드가 있을 때 상세 화면에 확정가를 보완 표시한다.
 - frontend: typecheck PASS, lint PASS(오류 0·경고 4), Vitest PASS, production build PASS. 첫 검증에서 신규 assertion·export·TypeScript mock 오류를 발견해 수정 후 전체 재검증했다.
 - backend: 슬롯4 전체 테스트 PASS, Checkstyle main/test PASS, Gradle build PASS. V41 마이그레이션은 로컬 슬롯 DB 전체 테스트에서 적용 확인했다. `git diff --check` PASS.
-- Run `run_6f27d9899194`의 이전 구현 결과는 main 작업 트리에 복사·통합했다. 마지막 frontend 테스트 dispatch는 무료 모델 한도 오류로 abandon/fenced 상태이며, Orca가 terminal을 retained/unverifiable로 표시해 프로세스 종료를 주장하지 않는다.
+- Run `run_6f27d9899194`의 이전 구현 결과는 main 커밋에 통합했다. backend/frontend 임시 worktree와 터미널은 제거했고, backend·frontend 성공 dispatch 및 abandon된 테스트 dispatch 모두 `worker-read`에서 terminal/liveness `exited`를 확인했다. 관련 Task는 모두 completed다.
 - 운영 서버 배포와 원격 push는 이번 작업에서 실행하지 않았다.
 
 ## 최신 상태: 단일 백그라운드 watchdog과 Orca 전달 복구 (2026-11-03)
