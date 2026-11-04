@@ -196,7 +196,7 @@ export default function IpoCalendar({
                 <button
                   key={type}
                   type="button"
-                  className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff}`}
+                  className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff} ${EVENT_TYPE_CLASSES[type]}`}
                   onClick={() => toggleType(type)}
                   aria-pressed={visibleTypes.has(type)}
                 >
@@ -284,10 +284,30 @@ export default function IpoCalendar({
                       style={gridStyle({
                         '--calendar-bar-column': `${segment.startCol + 1} / ${segment.endCol + 2}`,
                         '--calendar-bar-row': String(segment.lane + 2),
-                        '--calendar-bar-radius-left': segment.continuesBefore ? '0px' : '6px',
-                        '--calendar-bar-radius-right': segment.continuesAfter ? '0px' : '6px',
-                        '--calendar-bar-margin-left': segment.continuesBefore ? '0px' : '2px',
-                        '--calendar-bar-margin-right': segment.continuesAfter ? '0px' : '2px',
+                        '--calendar-bar-radius-left':
+                          segment.event.type === 'SUBSCRIPTION'
+                            ? '6px'
+                            : segment.continuesBefore
+                              ? '0px'
+                              : '6px',
+                        '--calendar-bar-radius-right':
+                          segment.event.type === 'SUBSCRIPTION'
+                            ? '6px'
+                            : segment.continuesAfter
+                              ? '0px'
+                              : '6px',
+                        '--calendar-bar-margin-left':
+                          segment.event.type === 'SUBSCRIPTION'
+                            ? '2px'
+                            : segment.continuesBefore
+                              ? '0px'
+                              : '2px',
+                        '--calendar-bar-margin-right':
+                          segment.event.type === 'SUBSCRIPTION'
+                            ? '2px'
+                            : segment.continuesAfter
+                              ? '0px'
+                              : '2px',
                       })}
                       onClick={() =>
                         handleDateClick(
