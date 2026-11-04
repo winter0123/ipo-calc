@@ -187,7 +187,7 @@ export const StyleScope = styled.div`
     align-items: center;
     min-height: 44px;
     padding: var(--space-2) var(--space-4);
-    background-color: var(--primary);
+    background-color: var(--gain);
     color: var(--on-primary);
     border-radius: var(--radius-sm);
     font-size: 14px;
@@ -196,7 +196,7 @@ export const StyleScope = styled.div`
   }
 
   .s-e368fae-actionLink:hover {
-    background-color: var(--primary-hover);
+    background-color: var(--gain);
   }
 
   .s-e368fae-stack {

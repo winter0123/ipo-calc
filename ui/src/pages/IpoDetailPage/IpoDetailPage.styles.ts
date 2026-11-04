@@ -197,6 +197,35 @@ export const StyleScope = styled.div`
       0 0 0 4px var(--link);
   }
 
+  .s-66fd75d-salePrimaryLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    background-color: var(--gain);
+    color: var(--on-primary);
+    border: 1px solid transparent;
+  }
+
+  .s-66fd75d-salePrimaryLink:hover {
+    background-color: var(--gain);
+  }
+
+  .s-66fd75d-salePrimaryLink:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--link);
+  }
+
   .s-66fd75d-secondaryLink {
     background-color: var(--surface);
     color: var(--ink);

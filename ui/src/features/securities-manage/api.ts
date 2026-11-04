@@ -4,7 +4,6 @@ import {
   registerSecuritiesAccount,
   revealSecuritiesAccountNumber,
   securitiesAccountKeys,
-  setDefaultSecuritiesAccount,
   updateSecuritiesAccount,
   type SecuritiesAccountRegisterRequest,
 } from '@/entities/securities-account/index.ts'
@@ -31,8 +30,6 @@ export const useUpdateAccount = () =>
 
 export const useDeleteAccount = () =>
   useAccountMutation((id: number) => apiFetch(`${BASE}/${id}`, { method: 'DELETE' }))
-
-export const useSetDefaultAccount = () => useAccountMutation(setDefaultSecuritiesAccount)
 
 // 평문 계좌번호는 쿼리 캐시에 두지 않는다. 호출한 컴포넌트의 상태로만 들고 있다가 페이지를 떠나면 사라진다.
 export function useRevealAccountNumber() {

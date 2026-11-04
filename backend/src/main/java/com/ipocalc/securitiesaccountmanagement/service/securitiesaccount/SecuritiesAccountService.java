@@ -6,7 +6,6 @@ import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
-import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountConflictException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountNotFoundException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountValidationException;
 import com.ipocalc.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
@@ -23,7 +22,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,13 +79,6 @@ public class SecuritiesAccountService {
         .findByIdAndDeletedAtIsNull(securitiesFirmId)
         .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 증권사입니다"));
 
-    // D-SA-003: 투자자의 첫 번째 계좌 등록 시 요청의 isDefault와 무관하게 true로 강제
-    boolean firstAccount =
-        securitiesAccountRepository
-            .findByInvestorIdAndStatus(investorId, RecordStatus.ACTIVE)
-            .isEmpty();
-    boolean isDefault = firstAccount || Boolean.TRUE.equals(request.getIsDefault());
-
     LocalDateTime now = LocalDateTime.now(clock);
     SecuritiesAccount entity =
         SecuritiesAccount.builder()
@@ -95,23 +86,12 @@ public class SecuritiesAccountService {
             .securitiesFirmId(securitiesFirmId)
             .accountNumber(accountNumberEncryptor.encrypt(plainAccountNumber))
             .accountName(request.getAccountName())
-            .isDefault(isDefault)
             .status(RecordStatus.ACTIVE)
             .deletedAt(null)
             .createdAt(now)
             .updatedAt(now)
             .build();
 
-    if (isDefault) {
-      // 기존 기본 계좌를 먼저 해제·flush해야 partial unique index를 위반하지 않는다(setDefault와 같은 순서).
-      securitiesAccountRepository
-          .findByInvestorIdAndIsDefaultTrue(investorId)
-          .ifPresent(
-              previous -> {
-                previous.clearDefault(now);
-                securitiesAccountRepository.saveAndFlush(previous);
-              });
-    }
     SecuritiesAccount saved = securitiesAccountRepository.save(entity);
     // 저장 직후이므로 저장에 사용한 원본 평문을 그대로 마스킹에 사용한다 (다시 복호화할 필요 없음)
     return SecuritiesAccountResponse.from(saved, AccountNumberMasker.mask(plainAccountNumber));
@@ -204,69 +184,10 @@ public class SecuritiesAccountService {
     ownershipVerifier.requireOwner(account);
 
     LocalDateTime now = LocalDateTime.now(clock);
-    // D-SA-004: 비활성화 대상이 기본 계좌였다면 함께 clear해 "INACTIVE인데 isDefault=true" 상태를 만들지 않는다
-    final boolean wasDefault = Boolean.TRUE.equals(account.getIsDefault());
     account.deactivate(now);
     securitiesAccountRepository.saveAndFlush(account);
     // 비밀키 암호문을 남기지 않도록 API 인증정보는 물리 삭제한다.
     accountCredentialDeletion.deleteBySecuritiesAccountId(id);
-    // 남은 활성 계좌 중 가장 오래된 것을 기본으로 승격한다.
-    if (wasDefault) {
-      securitiesAccountRepository
-          .findByInvestorIdAndStatusOrderByCreatedAtAscIdAsc(
-              account.getInvestorId(), RecordStatus.ACTIVE)
-          .stream()
-          .findFirst()
-          .ifPresent(
-              next -> {
-                next.makeDefault(now);
-                securitiesAccountRepository.save(next);
-              });
-    }
-  }
-
-  /** 지정한 계좌를 투자자의 기본 계좌로 설정한다. */
-  @Transactional
-  public SecuritiesAccountResponse setDefault(Long id) {
-    // D-SA-006: findByIdAndDeletedAtIsNull이 아닌 findById를 사용한다 — INACTIVE(soft-deleted) 계좌도
-    // "존재는 하지만 비활성"으로 취급해 404가 아닌 400(AC-016)을 반환해야 하기 때문
-    SecuritiesAccount account =
-        securitiesAccountRepository
-            .findById(id)
-            .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
-
-    ownershipVerifier.requireOwner(account);
-
-    if (account.getStatus() != RecordStatus.ACTIVE) {
-      throw new SecuritiesAccountValidationException("비활성화된 계좌는 기본 계좌로 지정할 수 없습니다.");
-    }
-
-    // AC-015: 이미 기본 계좌면 트랜잭션을 시작하지 않고 즉시 409
-    if (Boolean.TRUE.equals(account.getIsDefault())) {
-      throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
-    }
-
-    LocalDateTime now = LocalDateTime.now(clock);
-    try {
-      // 기존 기본 계좌 해제를 먼저 flush해 신규 지정 UPDATE와 동시에 커밋되지 않게 한다.
-      // (Hibernate의 dirty-checking 플러시 순서는 호출 순서를 보장하지 않아, flush 없이는
-      // 두 UPDATE가 뒤바뀌어 순간적으로 is_default=true가 2건이 되며 partial unique index 위반 발생)
-      securitiesAccountRepository
-          .findByInvestorIdAndIsDefaultTrue(account.getInvestorId())
-          .ifPresent(
-              previousDefault -> {
-                previousDefault.clearDefault(now);
-                securitiesAccountRepository.saveAndFlush(previousDefault);
-              });
-
-      account.makeDefault(now);
-      SecuritiesAccount saved = securitiesAccountRepository.saveAndFlush(account);
-      return toMaskedResponse(saved);
-    } catch (DataIntegrityViolationException e) {
-      // D-SA-006: 명시적 락 대신 partial unique index(uk_securities_account_default)에 의존한다.
-      // 동시 요청으로 유니크 위반이 실제 발생하면 409로 변환하는 방어 코드
-      throw new SecuritiesAccountConflictException("이미 기본 계좌로 지정되어 있습니다.");
-    }
   }
 
   private SecuritiesAccount findActive(Long id) {

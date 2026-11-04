@@ -73,8 +73,25 @@ export default function IpoDetailPage() {
   }
 
   const status = getStatus(ipo)
+  const isListed = Boolean(ipo?.listingDate && dateOnly(ipo.listingDate) <= toLocalYmd())
+  const singleBandPrice =
+    ipo?.lowerBandPrice != null &&
+    ipo.lowerBandPrice > 0 &&
+    ipo.lowerBandPrice === ipo.upperBandPrice
+      ? ipo.lowerBandPrice
+      : null
+  const confirmedPriceForDisplay =
+    ipo?.fixedPrice != null && ipo.fixedPrice > 0
+      ? ipo.fixedPrice
+      : isListed
+        ? singleBandPrice
+        : null
   const underwriterNames = [
-    ...new Set((insight?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+    ...new Set(
+      (insight?.underwriters ?? [])
+        .map(({ name }) => name.trim().replace(/증권$/, '').slice(0, 2))
+        .filter(Boolean),
+    ),
   ]
 
   // 청약 가능 여부: 청약 예정·진행 중인 경우에만 보이게 함
@@ -138,7 +155,7 @@ export default function IpoDetailPage() {
               <span className={styles.company}>{ipo!.companyName}</span>
               <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
               {underwriterNames.length > 0 && (
-                <span className={styles.underwriters}>주관사 {underwriterNames.join(' · ')}</span>
+                <span className={styles.underwriters}>{underwriterNames.join(' · ')}</span>
               )}
             </div>
             {/* 상단 우측 CTO 영역: 청약·매도 CTA */}
@@ -153,7 +170,7 @@ export default function IpoDetailPage() {
                 </Link>
               )}
               {saleCTA && (
-                <Link to={saleCTA.href} state={saleCTA.state} className={styles.primaryLink}>
+                <Link to={saleCTA.href} state={saleCTA.state} className={styles.salePrimaryLink}>
                   {saleCTA.text}
                 </Link>
               )}
@@ -196,7 +213,7 @@ export default function IpoDetailPage() {
             </div>
             <div className={styles.detailItem}>
               <dt>확정 공모가</dt>
-              <dd>{formatPrice(ipo!.fixedPrice)}</dd>
+              <dd>{formatPrice(confirmedPriceForDisplay)}</dd>
             </div>
             <div className={styles.detailItem}>
               <dt>희망 공모가</dt>

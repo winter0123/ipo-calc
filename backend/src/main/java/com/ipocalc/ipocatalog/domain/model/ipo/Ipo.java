@@ -106,6 +106,7 @@ public class Ipo {
   public void syncFromOpenDart(
       String companyName,
       Long offerPrice,
+      Long confirmedPrice,
       Long shares,
       LocalDate start,
       LocalDate end,
@@ -118,6 +119,9 @@ public class Ipo {
     if (offerPrice != null) {
       this.lowerBandPrice = offerPrice;
       this.upperBandPrice = offerPrice;
+    }
+    if (this.fixedPrice == null && confirmedPrice != null) {
+      this.fixedPrice = confirmedPrice;
     }
     if (shares != null) {
       this.offeringShareCount = shares;

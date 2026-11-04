@@ -14,8 +14,8 @@ function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
   return (
     <span className={styles.eventUnderwriters} aria-label="주관사">
       {names.map((name) => (
-        <span key={name} className={styles.eventUnderwriterChip}>
-          {name}
+        <span key={name} className={styles.eventUnderwriterChip} title={name}>
+          {name.trim().replace(/증권$/, '').slice(0, 2)}
         </span>
       ))}
     </span>

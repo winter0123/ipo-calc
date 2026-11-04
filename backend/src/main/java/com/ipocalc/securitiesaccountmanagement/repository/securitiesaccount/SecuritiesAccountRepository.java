@@ -20,9 +20,6 @@ public interface SecuritiesAccountRepository extends JpaRepository<SecuritiesAcc
   /** ID 조건(삭제되지 않은 건만)으로 증권계좌를 단건 조회한다. */
   Optional<SecuritiesAccount> findByIdAndDeletedAtIsNull(Long id);
 
-  /** 투자자 ID · 기본 계좌 여부 조건으로 증권계좌를 단건 조회한다. */
-  Optional<SecuritiesAccount> findByInvestorIdAndIsDefaultTrue(Long investorId);
-
   /** 투자자의 활성 계좌를 오래된 순으로 조회한다. */
   List<SecuritiesAccount> findByInvestorIdAndStatusOrderByCreatedAtAscIdAsc(
       Long investorId, RecordStatus status);

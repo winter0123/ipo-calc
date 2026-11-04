@@ -131,7 +131,6 @@ class QueryCountTest {
                   .investorId(investor.getId())
                   .securitiesFirmId(firm.getId())
                   .accountNumber(encryptor.encrypt("123-456-" + (100000 + i)))
-                  .isDefault(i == 0)
                   .createdAt(now)
                   .updatedAt(now)
                   .build());

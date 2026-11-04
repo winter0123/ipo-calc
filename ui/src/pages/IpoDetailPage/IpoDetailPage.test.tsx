@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -203,11 +203,11 @@ describe('IpoDetailPage', () => {
     })
   })
 
-  it('상태 옆에 주관사 전체 이름을 표시한다', async () => {
+  it('상태 옆에 주관사 약칭 이름을 표시한다', async () => {
     stubFetch(makeIpo())
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
-    expect(await screen.findByText('주관사 미래에셋증권 · KB증권')).toBeInTheDocument()
+    expect(await screen.findByText('미래 · KB')).toBeInTheDocument()
   })
 
   it('null 필드는 "-"로 표시된다', async () => {
@@ -225,6 +225,38 @@ describe('IpoDetailPage', () => {
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(5))
+  })
+
+  it('상장된 IPO는 확정가 필드가 비어도 단일 가격 데이터가 있으면 확정 공모가를 표시한다', async () => {
+    stubFetch(
+      makeIpo({
+        listingDate: '2026-09-15T09:00:00Z',
+        fixedPrice: null,
+        lowerBandPrice: 25000,
+        upperBandPrice: 25000,
+      }),
+    )
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    const fixedPriceRow = (await screen.findByText('확정 공모가')).parentElement
+    expect(fixedPriceRow).not.toBeNull()
+    expect(await within(fixedPriceRow!).findByText('25,000원')).toBeInTheDocument()
+  })
+
+  it('상장 전에는 단일 희망 공모가를 확정 공모가로 표시하지 않는다', async () => {
+    stubFetch(
+      makeIpo({
+        listingDate: '2026-10-15T09:00:00Z',
+        fixedPrice: null,
+        lowerBandPrice: 25000,
+        upperBandPrice: 25000,
+      }),
+    )
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+
+    const fixedPriceRow = (await screen.findByText('확정 공모가')).parentElement
+    expect(fixedPriceRow).not.toBeNull()
+    expect(within(fixedPriceRow!).getByText('-')).toBeInTheDocument()
   })
 
   it('희망 공모가: 둘 다 있을 때 "하단~상단원", 하나만 있으면 있는 값만, 둘 다 없으면 "-"', async () => {

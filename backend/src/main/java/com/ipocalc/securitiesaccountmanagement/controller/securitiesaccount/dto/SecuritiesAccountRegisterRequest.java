@@ -21,6 +21,4 @@ public class SecuritiesAccountRegisterRequest {
   private String accountNumber;
 
   private String accountName;
-
-  private Boolean isDefault;
 }

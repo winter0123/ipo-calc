@@ -50,9 +50,3 @@ export function updateSecuritiesAccount(
     body: JSON.stringify(data),
   })
 }
-
-export function setDefaultSecuritiesAccount(id: number): Promise<SecuritiesAccount> {
-  return apiFetchParsed(`/securities-accounts/${id}/set-default`, securitiesAccountSchema, {
-    method: 'PATCH',
-  })
-}

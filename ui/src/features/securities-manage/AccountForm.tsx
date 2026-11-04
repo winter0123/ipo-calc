@@ -7,7 +7,6 @@ import styles, { StyleScope } from './SecuritiesManage.styles.ts'
 interface FormValues {
   accountNumber: string
   accountName: string
-  isDefault: boolean
 }
 
 const formatAccountNumber = (v: string) =>
@@ -42,7 +41,6 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
     defaultValues: {
       accountNumber: '',
       accountName: isEdit ? target.accountName : '',
-      isDefault: false,
     },
   })
 
@@ -57,7 +55,6 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
           securitiesFirmId: target.firmId,
           accountNumber: v.accountNumber,
           accountName: name || undefined,
-          isDefault: v.isDefault,
         },
         { onSuccess: onDone },
       )
@@ -114,12 +111,6 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
               disabled={isPending}
             />
           </div>
-          {!isEdit && (
-            <label className={styles.check}>
-              <input type="checkbox" {...register('isDefault')} disabled={isPending} />
-              기본 계좌로 설정
-            </label>
-          )}
           {formError && (
             <div className={styles.formError} role="alert">
               {formError}

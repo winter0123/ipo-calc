@@ -53,49 +53,49 @@ describe.each([
   })
 })
 
-describe.each([
-  ['투자자 등록', useRegisterInvestor, investorKeys.all],
-])('%s 성공 시 invalidation', (_name, useHook, key) => {
-  it('관련 목록 쿼리를 무효화한다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      key === investorKeys.all
-        ? {
-            id: 1,
-            displayName: '테스트 투자자',
-            relationship: null,
-            accountId: 1,
-            status: 'ACTIVE',
-            deletedAt: null,
-            createdAt: '2026-10-26T00:00:00',
-            updatedAt: '2026-10-26T00:00:00',
-          }
-        : {
-            id: 1,
-            investorId: 1,
-            securitiesFirmId: 1,
-            securitiesFirmName: '테스트 증권사',
-            accountNumber: '****1234',
-            accountName: null,
-            isDefault: true,
-            status: 'ACTIVE',
-            deletedAt: null,
-            createdAt: '2026-10-26T00:00:00',
-            updatedAt: '2026-10-26T00:00:00',
-          },
-    )
-    const queryClient = new QueryClient()
-    const spy = vi.spyOn(queryClient, 'invalidateQueries')
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    )
-    const { result } = renderHook(() => useHook(), { wrapper })
+describe.each([['투자자 등록', useRegisterInvestor, investorKeys.all]])(
+  '%s 성공 시 invalidation',
+  (_name, useHook, key) => {
+    it('관련 목록 쿼리를 무효화한다', async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        key === investorKeys.all
+          ? {
+              id: 1,
+              displayName: '테스트 투자자',
+              relationship: null,
+              accountId: 1,
+              status: 'ACTIVE',
+              deletedAt: null,
+              createdAt: '2026-10-26T00:00:00',
+              updatedAt: '2026-10-26T00:00:00',
+            }
+          : {
+              id: 1,
+              investorId: 1,
+              securitiesFirmId: 1,
+              securitiesFirmName: '테스트 증권사',
+              accountNumber: '****1234',
+              accountName: null,
+              status: 'ACTIVE',
+              deletedAt: null,
+              createdAt: '2026-10-26T00:00:00',
+              updatedAt: '2026-10-26T00:00:00',
+            },
+      )
+      const queryClient = new QueryClient()
+      const spy = vi.spyOn(queryClient, 'invalidateQueries')
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+      const { result } = renderHook(() => useHook(), { wrapper })
 
-    act(() => result.current.mutate({} as never))
+      act(() => result.current.mutate({} as never))
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(spy.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([key])
-  })
-})
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      expect(spy.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([key])
+    })
+  },
+)
 
 describe('브로커 동기화 확정 성공 시 invalidation', () => {
   it('미리보기와 투자 내역·수익·대시보드 쿼리를 무효화한다', async () => {

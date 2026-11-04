@@ -116,9 +116,8 @@ describe('MainLayout', () => {
     expect(within(nav).getByRole('link', { name: '홈' })).toHaveAttribute('href', '/')
     expect(within(nav).queryByRole('link', { name: '공모주 일정' })).not.toBeInTheDocument()
     expect(
-      within(screen.getByRole('banner')).getByRole('link', { name: '공모주 일정' }),
-    ).toHaveAttribute('href', '/ipo-calendar')
-    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
+      within(screen.getByRole('banner')).getAllByRole('link', { name: '공모주 일정' }),
+    ).toHaveLength(2)
     expect(screen.queryByRole('button', { name: '메뉴' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: '대시보드' })).not.toBeInTheDocument()
@@ -130,6 +129,33 @@ describe('MainLayout', () => {
     expect(signup).toHaveAttribute('href', '/signup')
     expect(nav).not.toContainElement(login)
     expect(nav).not.toContainElement(signup)
+  })
+
+  it('PC 헤더 왼쪽 상단 로고는 공모주 일정 경로의 링크다 (로그인 전)', async () => {
+    renderLayout()
+
+    await screen.findByRole('navigation', { name: '주요 메뉴' })
+    const calendarLogoLinks = within(screen.getByRole('banner')).getAllByRole('link', {
+      name: '공모주 일정',
+    })
+    expect(calendarLogoLinks).toHaveLength(2)
+    for (const link of calendarLogoLinks) {
+      expect(link).toHaveAttribute('href', '/ipo-calendar')
+    }
+  })
+
+  it('PC 헤더 왼쪽 상단 로고는 공모주 일정 경로의 링크다 (로그인 후)', async () => {
+    loggedInAs('USER')
+    renderLayout()
+
+    await screen.findByRole('navigation', { name: '주요 메뉴' })
+    const calendarLogoLinks = within(screen.getByRole('banner')).getAllByRole('link', {
+      name: '공모주 일정',
+    })
+    expect(calendarLogoLinks).toHaveLength(2)
+    for (const link of calendarLogoLinks) {
+      expect(link).toHaveAttribute('href', '/ipo-calendar')
+    }
   })
 
   it('관리자에게만 관리센터 링크가 보임', async () => {

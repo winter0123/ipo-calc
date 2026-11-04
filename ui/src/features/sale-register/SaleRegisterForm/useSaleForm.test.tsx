@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useSaleForm } from './useSaleForm.ts'
@@ -13,6 +13,11 @@ const mocks = vi.hoisted(() => ({
   useIpo: vi.fn(() => ({
     data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
     isPending: false,
+  })),
+  useIpoInsight: vi.fn(() => ({
+    data: { underwriters: [{ name: '테스트증권', role: '주관', shares: 1 }] },
+    isLoading: false,
+    error: null,
   })),
   useInvestmentHistory: vi.fn(() => ({ data: { content: [{ id: 1 }] }, isLoading: false })),
   useInvestmentHistoryDetail: vi.fn(() => ({
@@ -37,6 +42,7 @@ vi.mock('@/entities/investor/index.ts', () => ({
 }))
 vi.mock('@/entities/ipo/index.ts', () => ({
   useIpo: () => mocks.useIpo(),
+  useIpoInsight: () => mocks.useIpoInsight(),
 }))
 vi.mock('@/entities/subscription/index.ts', () => ({
   useInvestmentHistory: () => mocks.useInvestmentHistory(),
@@ -143,6 +149,112 @@ describe('useSaleForm 상호 계산', () => {
         investorId: 1,
       }),
     )
+  })
+
+  it('IPO 진입(직접 등록) 시 해당 공모주 상장일을 매도일 기본값으로 넣는다', async () => {
+    mocks.useIpo.mockReturnValue({
+      data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
+      isPending: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.getValues('saleDate')).toBe('2026-10-23'))
+  })
+
+  it('IPO 진입 시 해당 주관사 계좌만 남기고 한 건이면 자동 선택한다', async () => {
+    mocks.useIpoInsight.mockReturnValue({
+      data: { underwriters: [{ name: '테스트증권', role: '주관', shares: 1 }] },
+      isLoading: false,
+      error: null,
+    })
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 7, securitiesFirmName: '테스트증권', accountName: '테스트계좌' },
+        { id: 8, securitiesFirmName: '다른증권', accountName: '다른계좌' },
+      ],
+      isLoading: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(1))
+    expect(result.current.securitiesAccounts[0]).toMatchObject({
+      id: 7,
+      securitiesFirmName: '테스트증권',
+    })
+  })
+
+  it('IPO 진입 시 복수 주관사 계좌가 주관사 순, 같은 주관사 내 계좌명 순으로 정렬되어 노출된다', async () => {
+    mocks.useIpo.mockReturnValue({
+      data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
+      isPending: false,
+    })
+    mocks.useIpoInsight.mockReturnValue({
+      data: {
+        underwriters: [
+          { name: 'AAA증권', role: '주관', shares: 1 },
+          { name: 'BBB증권', role: '주관', shares: 1 },
+        ],
+      },
+      isLoading: false,
+      error: null,
+    })
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 2, securitiesFirmName: 'BBB증권', accountName: 'BBB계좌' },
+        { id: 1, securitiesFirmName: 'AAA증권', accountName: 'AAA계좌' },
+        { id: 3, securitiesFirmName: 'BBB증권', accountName: 'AAA계좌' },
+      ],
+      isLoading: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(3))
+    const accounts = result.current.securitiesAccounts
+    expect(accounts.map((account) => account.id)).toEqual([1, 3, 2])
+    expect(accounts.map((account) => account.securitiesFirmName)).toEqual([
+      'AAA증권',
+      'BBB증권',
+      'BBB증권',
+    ])
+  })
+
+  it('IPO 진입 시 증권계좌 조회가 로딩 중이면 타사 계좌를 노출하지 않는다', async () => {
+    mocks.useIpo.mockReturnValue({
+      data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
+      isPending: false,
+    })
+    mocks.useIpoInsight.mockReturnValue({
+      data: { underwriters: [] },
+      isLoading: true,
+      error: null,
+    })
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 8, securitiesFirmName: '다른증권', accountName: '다른계좌' },
+        { id: 7, securitiesFirmName: 'AAA증권', accountName: 'AAA계좌' },
+      ],
+      isLoading: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    expect(result.current.securitiesAccounts).toHaveLength(0)
+  })
+
+  it('IPO 진입 시 증권계좌 조회가 실패하면 타사 계좌를 노출하지 않는다', async () => {
+    mocks.useIpo.mockReturnValue({
+      data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
+      isPending: false,
+    })
+    mocks.useIpoInsight.mockReturnValue({
+      data: { underwriters: [] },
+      isLoading: false,
+      error: new Error('ipo insight failed'),
+    } as unknown as ReturnType<typeof mocks.useIpoInsight>)
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 8, securitiesFirmName: '다른증권', accountName: '다른계좌' },
+        { id: 7, securitiesFirmName: 'AAA증권', accountName: 'AAA계좌' },
+      ],
+      isLoading: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    expect(result.current.securitiesAccounts).toHaveLength(0)
   })
 
   it('세금 및 기타 수수료를 고치면 실현손익이 매도금액 − 취득금액 − 수수료로 계산된다 (allocatedAmount 사용)', () => {

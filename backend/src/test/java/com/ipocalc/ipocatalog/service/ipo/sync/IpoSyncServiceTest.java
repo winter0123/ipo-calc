@@ -79,11 +79,16 @@ class IpoSyncServiceTest {
   }
 
   private OpenDartDisclosureItem createCompany(String corpCode, String corpName, String stockCode) {
+    return createCompany(corpCode, corpName, stockCode, "증권신고서(지분증권)");
+  }
+
+  private OpenDartDisclosureItem createCompany(
+      String corpCode, String corpName, String stockCode, String reportName) {
     return OpenDartDisclosureItem.builder()
         .corpCode(corpCode)
         .corpName(corpName)
         .stockCode(stockCode)
-        .reportNm("증권신고서(지분증권)")
+        .reportNm(reportName)
         .build();
   }
 
@@ -244,6 +249,61 @@ class IpoSyncServiceTest {
     assertThat(saved.getSubscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 6)); // 다음 영업일
     assertThat(saved.getFixedPrice()).isNull();
     assertThat(saved.getListingDate()).isNull();
+  }
+
+  @Test
+  void sync_setsFixedPriceOnlyForFinalizedDisclosure() {
+    OpenDartDisclosureItem company = createCompany("01658035", "옵토닉스", "", "[발행조건확정]증권신고서(지분증권)");
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    OpenDartEquitySecurityDetail detail =
+        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "12,000");
+    when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
+        .thenReturn(Optional.empty());
+    when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
+        .thenReturn(List.of());
+    when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 5)))
+        .thenReturn(LocalDate.of(2026, 11, 6));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(12_000L);
+  }
+
+  @Test
+  void sync_fillsMissingFixedPriceWhenExistingRecordReceivesFinalizedDisclosure() {
+    OpenDartDisclosureItem company = createCompany("01658035", "옵토닉스", "", "[발행조건확정]증권신고서(지분증권)");
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    OpenDartEquitySecurityDetail detail =
+        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "12,000");
+    when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
+    Ipo existing =
+        Ipo.builder()
+            .id(1L)
+            .companyName("옵토닉스")
+            .ipoName("옵토닉스")
+            .corpCode("01658035")
+            .lowerBandPrice(10_000L)
+            .upperBandPrice(10_000L)
+            .fixedPrice(null)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .status(RecordStatus.ACTIVE)
+            .syncSource("OPENDART")
+            .build();
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(existing));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getUpdated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(12_000L);
   }
 
   @Test

@@ -1,5 +1,14 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 최신 상태: 계좌 기본값 제거·공모주 화면 보정 main 통합 (2026-11-04)
+
+- backend/frontend 워커 작업분과 남은 달력·확정 공모가 수정을 현재 `main` 작업 트리에 통합했다. 증권계좌 기본값 기능과 DB `is_default` 컬럼 제거, 매도 등록 계좌 제한·기본값, 달력 일정 노출, IPO 상세 가격 표시를 포함한다.
+- 달력 상세 일정은 달력 막대와 동일하게 청약 종료일에만 청약 IPO를 보여준다. OpenDART `[발행조건확정]` 공시만 `fixedPrice`에 반영하고, 이미 상장된 레코드는 단일 가격 밴드가 있을 때 상세 화면에 확정가를 보완 표시한다.
+- frontend: typecheck PASS, lint PASS(오류 0·경고 4), Vitest PASS, production build PASS. 첫 검증에서 신규 assertion·export·TypeScript mock 오류를 발견해 수정 후 전체 재검증했다.
+- backend: 슬롯4 전체 테스트 PASS, Checkstyle main/test PASS, Gradle build PASS. V41 마이그레이션은 로컬 슬롯 DB 전체 테스트에서 적용 확인했다. `git diff --check` PASS.
+- Run `run_6f27d9899194`의 이전 구현 결과는 main 작업 트리에 복사·통합했다. 마지막 frontend 테스트 dispatch는 무료 모델 한도 오류로 abandon/fenced 상태이며, Orca가 terminal을 retained/unverifiable로 표시해 프로세스 종료를 주장하지 않는다.
+- 운영 서버 배포와 원격 push는 이번 작업에서 실행하지 않았다.
+
 ## 최신 상태: 단일 백그라운드 watchdog과 Orca 전달 복구 (2026-11-03)
 
 - 사용자 지시에 따라 watchdog을 직접 수정했다. 현재 화면 대신 누적 출력을 읽던 점, 마지막 5줄만 알리던 점, 정산 Dispatch가 감시에서 사라지던 점, macOS 알림만 보내던 점을 수정했다. 기존 진행분은 보존했다.

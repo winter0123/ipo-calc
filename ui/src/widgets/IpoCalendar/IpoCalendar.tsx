@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, type CSSProperties, useEffect, useRef }
 import {
   buildCalendarEvents,
   buildWeekSegments,
-  eventCoversDate,
+  eventBarCoversDate,
   type CalendarEventType,
   type BarSegment,
 } from '@/features/ipo-calendar/index.ts'
@@ -132,7 +132,7 @@ export default function IpoCalendar({
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return []
-    return events.filter((e) => eventCoversDate(e, selectedDate))
+    return events.filter((e) => eventBarCoversDate(e, selectedDate))
   }, [events, selectedDate])
 
   const toggleType = (type: CalendarEventType) => {
@@ -242,7 +242,7 @@ export default function IpoCalendar({
                     }
 
                     const dateKey = formatDateKey(day)
-                    const dayEvents = events.filter((e) => eventCoversDate(e, dateKey))
+                    const dayEvents = events.filter((e) => eventBarCoversDate(e, dateKey))
                     const holidayName = holidayMap.get(dateKey)
                     const isSelected = selectedDate === dateKey
                     const isToday =
@@ -296,9 +296,10 @@ export default function IpoCalendar({
                             : segment.event.startDate,
                         )
                       }
+                      title={segment.event.companyName}
                       aria-label={barLabel(segment.event)}
                     >
-                      {segment.event.companyName}
+                      <span className={styles.barName}>{segment.event.companyName}</span>
                     </button>
                   ))}
                 </div>

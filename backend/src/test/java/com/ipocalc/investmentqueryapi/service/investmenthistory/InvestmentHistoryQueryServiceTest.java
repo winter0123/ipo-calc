@@ -137,7 +137,6 @@ class InvestmentHistoryQueryServiceTest {
             .securitiesFirmId(1L)
             .accountNumber("123-456-789")
             .accountName("테스트 계좌")
-            .isDefault(true)
             .status(RecordStatus.ACTIVE)
             .build();
 

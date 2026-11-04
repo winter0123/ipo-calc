@@ -9,6 +9,5 @@ export { securitiesAccountKeys } from './queryKeys.ts'
 export {
   registerSecuritiesAccount,
   revealSecuritiesAccountNumber,
-  setDefaultSecuritiesAccount,
   updateSecuritiesAccount,
 } from './api-client.ts'

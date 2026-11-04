@@ -7,7 +7,6 @@ export const securitiesAccountSchema = z.object({
   securitiesFirmName: z.string().nullable(),
   accountNumber: z.string(),
   accountName: z.string().nullable(),
-  isDefault: z.boolean(),
   status: z.string(),
   deletedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -29,5 +28,4 @@ export interface SecuritiesAccountRegisterRequest {
   securitiesFirmId: number
   accountNumber: string
   accountName?: string
-  isDefault?: boolean
 }

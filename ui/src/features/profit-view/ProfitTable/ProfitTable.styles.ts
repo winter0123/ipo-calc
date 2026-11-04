@@ -98,7 +98,7 @@ export const StyleScope = styled.div`
   .s-aaead19-emptyLink {
     display: inline-block;
     margin-top: var(--space-3);
-    color: var(--link);
+    color: var(--gain);
     font-weight: 650;
   }
 

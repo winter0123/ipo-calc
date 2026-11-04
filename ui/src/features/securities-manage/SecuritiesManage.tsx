@@ -6,19 +6,18 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 import SecuritiesLogo from '@/shared/components/SecuritiesLogo/SecuritiesLogo.tsx'
-import { useDeleteAccount, useSetDefaultAccount } from './api.ts'
+import { useDeleteAccount } from './api.ts'
 import AccountForm from './AccountForm.tsx'
 import AccountRow from './AccountRow.tsx'
 import styles, { StyleScope } from './SecuritiesManage.styles.ts'
 
 type Panel = { kind: 'create'; firmId: number } | { kind: 'edit'; accountId: number } | null
 
-// 현재 투자자의 증권사별 계좌 목록. 등록된 증권사를 위로 올리고 계좌 등록·수정·삭제·기본 지정을 한다.
+// 현재 투자자의 증권사별 계좌 목록. 등록된 증권사를 위로 올리고 계좌 등록·수정·삭제를 한다.
 export default function SecuritiesManage({ investorId }: { investorId: number }) {
   const firms = useSecuritiesFirms()
   const accounts = useSecuritiesAccounts(investorId)
   const del = useDeleteAccount()
-  const setDefault = useSetDefaultAccount()
   const [panel, setPanel] = useState<Panel>(null)
   const [deleting, setDeleting] = useState<SecuritiesAccount | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -46,9 +45,9 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
   const allFirms = firms.data ?? []
   const registered = allFirms.filter((f) => byFirm.has(f.id))
   const others = allFirms.filter((f) => !byFirm.has(f.id))
-  const busy = del.isPending || setDefault.isPending
+  const busy = del.isPending
 
-  const run = (m: typeof del | typeof setDefault, id: number, after?: () => void) => {
+  const run = (m: typeof del, id: number, after?: () => void) => {
     setActionError(null)
     m.mutate(id, {
       onSuccess: after,
@@ -67,7 +66,6 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
           <div className={styles.firmHead}>
             <SecuritiesLogo firmName={firm.name} size={20} className={styles.firmLogo} />
             <h3 className={styles.firmName}>{firm.name}</h3>
-            {mine.length > 0 && <span className={styles.badge}>등록됨</span>}
             {!formOpen && (
               <Button
                 variant="secondary"
@@ -87,7 +85,6 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
                   busy={busy}
                   onEdit={() => setPanel({ kind: 'edit', accountId: a.id })}
                   onDelete={() => setDeleting(a)}
-                  onSetDefault={() => run(setDefault, a.id)}
                 />
               ))}
             </ul>

@@ -27,7 +27,6 @@ const account = (id: number, investorId: number, firmId: number, over = {}) => (
   securitiesFirmName: null,
   accountNumber: '1234-****-90',
   accountName: null,
-  isDefault: false,
   status: 'ACTIVE',
   deletedAt: null,
   createdAt: TS,
@@ -43,7 +42,7 @@ let overrides: Record<string, () => unknown>
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   accounts = {
-    7: [account(10, 7, 3, { accountName: '주력', isDefault: true }), account(11, 7, 3)],
+    7: [account(10, 7, 3, { accountName: '주력' }), account(11, 7, 3)],
     8: [account(20, 8, 1)],
   }
   overrides = {}
@@ -58,10 +57,7 @@ beforeEach(() => {
       return account(30, 7, 2, { accountNumber: '1234-****-3456' })
     }
     if (key === 'PATCH /securities-accounts/10') {
-      return account(10, 7, 3, { accountName: '월급 계좌', isDefault: true })
-    }
-    if (key === 'PATCH /securities-accounts/11/set-default') {
-      return account(11, 7, 3, { accountName: null, isDefault: true })
+      return account(10, 7, 3, { accountName: '월급 계좌' })
     }
     if (key.endsWith('/api-credential')) {
       return {
@@ -100,15 +96,13 @@ const calls = (method: string, path: string) =>
   vi.mocked(apiFetch).mock.calls.filter(([p, i]) => p === path && (i?.method ?? 'GET') === method)
 
 describe('SecuritiesManage', () => {
-  it('등록된 증권사를 위로 올리고 마스킹된 번호·기본 계좌를 보여 준다', async () => {
+  it('등록된 증권사를 위로 올리고 마스킹된 번호를 보여 준다', async () => {
     render(ui(7))
     const items = await screen.findAllByRole('heading', { level: 3 })
     expect(items.map((h) => h.textContent)).toEqual(['다증권', '가증권', '나증권'])
     expect(screen.getByRole('heading', { level: 2, name: '등록한 증권사' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: '다른 증권사' })).toBeInTheDocument()
     expect(screen.getAllByText('1234-****-90')).toHaveLength(2)
-    expect(screen.getByText('등록됨')).toBeInTheDocument()
-    expect(screen.getByText('기본 계좌')).toBeInTheDocument()
   })
 
   it('투자자가 바뀌면 그 투자자의 계좌로 바뀐다', async () => {
@@ -166,16 +160,6 @@ describe('SecuritiesManage', () => {
       within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
     )
     await waitFor(() => expect(calls('DELETE', '/securities-accounts/10')).toHaveLength(1))
-  })
-
-  it('기본으로를 누르면 기본 지정을 요청하고 기본 계좌에는 버튼이 없다', async () => {
-    render(ui(7))
-    await screen.findByText('주력')
-    expect(screen.queryByRole('button', { name: '주력 기본으로 지정' })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '계좌 기본으로 지정' }))
-    await waitFor(() =>
-      expect(calls('PATCH', '/securities-accounts/11/set-default')).toHaveLength(1),
-    )
   })
 
   it('API 오류 메시지를 그대로 보여 준다', async () => {

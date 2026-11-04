@@ -4,7 +4,6 @@ import {
   fetchSecuritiesAccounts,
   registerSecuritiesAccount,
   revealSecuritiesAccountNumber,
-  setDefaultSecuritiesAccount,
   updateSecuritiesAccount,
 } from './api-client.ts'
 
@@ -19,7 +18,6 @@ const ACCOUNT = {
   securitiesFirmName: null,
   accountNumber: '***',
   accountName: null,
-  isDefault: false,
   status: 'ACTIVE',
   deletedAt: null,
   createdAt: TS,
@@ -32,7 +30,7 @@ describe('securities-account api-client 응답 검증', () => {
   it('증권사명·계좌명 null을 허용하고 타입이 어긋나면 거부한다', async () => {
     stub([ACCOUNT])
     await expect(fetchSecuritiesAccounts(1)).resolves.toHaveLength(1)
-    stub([{ ...ACCOUNT, isDefault: 'no' }])
+    stub([{ ...ACCOUNT, securitiesFirmId: 'invalid' }])
     await expect(fetchSecuritiesAccounts(1)).rejects.toBeInstanceOf(ZodError)
   })
 
@@ -74,7 +72,7 @@ describe('securities-account api-client 응답 검증', () => {
     await expect(registerSecuritiesAccount(request)).rejects.toBeInstanceOf(ZodError)
   })
 
-  it('계좌 수정과 기본 계좌 지정 응답을 schema로 검증한다', async () => {
+  it('계좌 수정 응답을 schema로 검증한다', async () => {
     const updated = { ...ACCOUNT, accountName: '새 계좌명' }
     const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(updated))))
     vi.stubGlobal('fetch', fetchMock)
@@ -87,17 +85,5 @@ describe('securities-account api-client 응답 검증', () => {
         body: JSON.stringify({ accountName: '새 계좌명' }),
       }),
     )
-
-    await expect(setDefaultSecuritiesAccount(1)).resolves.toEqual(updated)
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      expect.stringMatching(/\/securities-accounts\/1\/set-default$/),
-      expect.objectContaining({ method: 'PATCH' }),
-    )
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: 1 })))),
-    )
-    await expect(setDefaultSecuritiesAccount(1)).rejects.toBeInstanceOf(ZodError)
   })
 })

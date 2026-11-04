@@ -59,13 +59,17 @@ export default function MainLayout() {
             <div className={styles.brand}>
               {/* 데스크톱: 브랜드 마크. 모바일(≤900px): 같은 자리의 물결이 메뉴 버튼 */}
               {isGuest ? (
-                <Link to="/" className={`${styles.logo} ${styles.guestLogo}`} aria-label="홈으로">
+                <Link
+                  to="/ipo-calendar"
+                  className={`${styles.logo} ${styles.guestLogo}`}
+                  aria-label="공모주 일정"
+                >
                   <img src="/images/icon/icon.png" alt="" aria-hidden="true" />
                 </Link>
               ) : (
-                <span className={styles.logo} aria-hidden="true">
-                  <img src="/images/icon/icon.png" alt="" />
-                </span>
+                <Link to="/ipo-calendar" className={styles.logo} aria-label="공모주 일정">
+                  <img src="/images/icon/icon.png" alt="" aria-hidden="true" />
+                </Link>
               )}
               {currentAccount && (
                 <button

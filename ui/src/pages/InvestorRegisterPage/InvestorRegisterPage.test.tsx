@@ -14,7 +14,6 @@ const account = (id: number, investorId: number) => ({
   securitiesFirmName: '증권사',
   accountNumber: '1234',
   accountName: null,
-  isDefault: true,
   status: 'ACTIVE',
   deletedAt: null,
   createdAt: '2026-10-22T00:00:00',

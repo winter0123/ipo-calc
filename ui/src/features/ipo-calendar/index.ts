@@ -1,6 +1,7 @@
 export {
   buildCalendarEvents,
   eventCoversDate,
+  eventBarCoversDate,
   buildWeekSegments,
   parseVisibleTypes,
   toTypesParam,

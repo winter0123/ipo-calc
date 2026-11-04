@@ -113,7 +113,7 @@ export const StyleScope = styled.div`
     flex: 1;
     min-width: 80px;
     padding: var(--space-2) var(--space-3);
-    background-color: var(--primary);
+    background-color: var(--gain);
     color: var(--on-primary);
     border: none;
     border-radius: var(--radius-sm);
@@ -126,7 +126,7 @@ export const StyleScope = styled.div`
   }
 
   .s-63ae5ae-actionButton:hover {
-    background-color: var(--primary-hover);
+    background-color: var(--gain);
   }
 
   .s-63ae5ae-empty {

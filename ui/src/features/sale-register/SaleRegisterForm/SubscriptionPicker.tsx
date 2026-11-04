@@ -72,6 +72,30 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
           {hasNoSubscription && (
             <>
               <div className={styles.field}>
+                <label htmlFor="securitiesAccountId">증권계좌 *</label>
+                <select
+                  id="securitiesAccountId"
+                  {...f.register('securitiesAccountId', {
+                    required: '증권계좌를 선택해 주세요.',
+                    valueAsNumber: true,
+                  })}
+                  disabled={isPending || accountsLoading}
+                >
+                  <option value="">계좌 선택</option>
+                  {(securitiesAccounts ?? []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
+                    </option>
+                  ))}
+                </select>
+                {errors.securitiesAccountId && (
+                  <span className={styles.error} aria-live="polite">
+                    {String(errors.securitiesAccountId.message)}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.field}>
                 <label htmlFor="allocatedQuantity">배정수량 *</label>
                 <input
                   id="allocatedQuantity"
@@ -94,30 +118,6 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
                 {errors.allocatedQuantity && (
                   <span id="allocatedQuantity-error" className={styles.error} aria-live="polite">
                     {String(errors.allocatedQuantity.message)}
-                  </span>
-                )}
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="securitiesAccountId">증권계좌 *</label>
-                <select
-                  id="securitiesAccountId"
-                  {...f.register('securitiesAccountId', {
-                    required: '증권계좌를 선택해 주세요.',
-                    valueAsNumber: true,
-                  })}
-                  disabled={isPending || accountsLoading}
-                >
-                  <option value="">계좌 선택</option>
-                  {(securitiesAccounts ?? []).map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
-                    </option>
-                  ))}
-                </select>
-                {errors.securitiesAccountId && (
-                  <span className={styles.error} aria-live="polite">
-                    {String(errors.securitiesAccountId.message)}
                   </span>
                 )}
               </div>

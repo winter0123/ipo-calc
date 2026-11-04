@@ -65,7 +65,9 @@ export default function DashboardTodo() {
                 <span>
                   {i.ipoName ?? '공모주'} · 아직 안 판 수량 {formatShares(i.remainingQuantity ?? 0)}
                 </span>
-                <Link to={`/sales/register?subscriptionId=${i.id}`}>매도 등록</Link>
+                <Link to={`/sales/register?subscriptionId=${i.id}`} className={styles.saleRowLink}>
+                  매도 등록
+                </Link>
               </li>
             ))}
           </ul>

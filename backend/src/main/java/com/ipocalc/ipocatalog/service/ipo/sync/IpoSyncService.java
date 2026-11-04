@@ -364,7 +364,7 @@ public class IpoSyncService {
         status -> {
           try {
             IpoSyncPersistence.Outcome outcome =
-                ipoSyncPersistence.persist(corpCode, corpName, detail);
+                ipoSyncPersistence.persist(corpCode, corpName, detail, company.isFinalizedReport());
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);

@@ -245,6 +245,30 @@ describe('IpoCalendar', () => {
     expect(detailRegion).toHaveTextContent('청약')
   })
 
+  it('청약 상세는 달력 막대와 같이 마감일에만 표시된다', async () => {
+    const ipos = [
+      makeIpo({
+        subscriptionStartDate: '2026-10-08T09:00:00Z',
+        subscriptionEndDate: '2026-10-12T17:00:00Z',
+        listingDate: null,
+      }),
+    ]
+    renderWithRouter(<IpoCalendar ipos={ipos} initialYear={2026} initialMonth={10} />)
+
+    const startDate = screen.getByRole('button', { name: /^10월 8일/ })
+    expect(startDate).not.toHaveClass(styles.hasEvents)
+    await userEvent.click(startDate)
+    const detailRegion = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    expect(detailRegion).toHaveTextContent('공모주 일정이 없습니다')
+    expect(detailRegion).not.toHaveTextContent('테스트기업')
+
+    const endDate = screen.getByRole('button', { name: /^10월 12일/ })
+    expect(endDate).toHaveClass(styles.hasEvents)
+    await userEvent.click(endDate)
+    expect(detailRegion).toHaveTextContent('테스트기업')
+    expect(detailRegion).toHaveTextContent('청약')
+  })
+
   it('선택 날짜의 청약 상세에 모든 주관사 이름을 표시한다', async () => {
     renderWithRouter(
       <IpoCalendar
@@ -258,8 +282,8 @@ describe('IpoCalendar', () => {
 
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     await waitFor(() => {
-      expect(region).toHaveTextContent('미래에셋증권')
-      expect(region).toHaveTextContent('KB증권')
+      expect(region).toHaveTextContent('미래')
+      expect(region).toHaveTextContent('KB')
     })
     // '주관사' 접두어는 제거되어야 함
     expect(region).not.toHaveTextContent('주관사')
@@ -283,8 +307,8 @@ describe('IpoCalendar', () => {
     await userEvent.click(screen.getByRole('button', { name: /^10월 10일/ }))
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     await waitFor(() => {
-      expect(region).toHaveTextContent('미래에셋증권')
-      expect(region).toHaveTextContent('KB증권')
+      expect(region).toHaveTextContent('미래')
+      expect(region).toHaveTextContent('KB')
     })
     expect(region).not.toHaveTextContent('주관사')
   })
@@ -307,8 +331,8 @@ describe('IpoCalendar', () => {
     await userEvent.click(screen.getByRole('button', { name: /^10월 20일/ }))
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     await waitFor(() => {
-      expect(region).toHaveTextContent('미래에셋증권')
-      expect(region).toHaveTextContent('KB증권')
+      expect(region).toHaveTextContent('미래')
+      expect(region).toHaveTextContent('KB')
     })
     expect(region).not.toHaveTextContent('주관사')
   })
@@ -578,7 +602,7 @@ describe('IpoCalendar', () => {
       ]
       renderWithRouter(<FilterTestWrapper ipos={ipos} initialYear={2026} initialMonth={10} />)
 
-      const dateButton = screen.getByRole('button', { name: /^10월 1일/ })
+      const dateButton = screen.getByRole('button', { name: /^10월 3일/ })
       await userEvent.click(dateButton)
 
       expect(screen.getByText('2026-10-01 ~ 2026-10-03')).toBeInTheDocument()

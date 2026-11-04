@@ -69,7 +69,6 @@ export const StyleScope = styled.div`
     color: var(--ink-muted);
   }
 
-  .s-ed0b413-badge,
   .s-ed0b413-badgeLink {
     font-size: 12px;
     font-weight: 650;

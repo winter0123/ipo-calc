@@ -73,6 +73,7 @@ export const StyleScope = styled.div`
   .s-ee1412e-action {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: 44px;
     padding: 0 var(--space-3);
     border-radius: var(--radius-sm);
@@ -80,6 +81,33 @@ export const StyleScope = styled.div`
     color: var(--on-primary);
     text-decoration: none;
     white-space: nowrap;
+  }
+
+  .s-ee1412e-saleAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--gain);
+    color: var(--on-primary);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .s-ee1412e-actionGroup {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .s-ee1412e-actionGroup .s-ee1412e-action,
+  .s-ee1412e-actionGroup .s-ee1412e-saleAction {
+    flex: 1 1 0;
+    min-height: 36px;
+    padding: 0 var(--space-2);
+    font-size: 13px;
+    font-weight: 650;
   }
   .s-ee1412e-empty {
     padding: var(--space-5);

@@ -267,7 +267,6 @@ class SubscriptionControllerTest {
                 .securitiesFirmId(firmId)
                 .accountNumber(accountNumberEncryptor.encrypt("777-666-555444"))
                 .accountName("다른계정계좌")
-                .isDefault(true)
                 .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)

@@ -29,7 +29,6 @@ function setup(
       securitiesFirmName: '증권사',
       accountNumber: '1234',
       accountName: null,
-      isDefault: true,
       status: 'ACTIVE',
       deletedAt: null,
       createdAt: '2026-01-01',

@@ -69,6 +69,12 @@ export const StyleScope = styled.div`
     font-size: 14px;
   }
 
+  .s-4569b8b-row a.s-4569b8b-saleRowLink {
+    color: var(--gain);
+    font-size: 14px;
+    font-weight: 650;
+  }
+
   .s-4569b8b-muted {
     margin: 0;
     color: var(--ink-muted);

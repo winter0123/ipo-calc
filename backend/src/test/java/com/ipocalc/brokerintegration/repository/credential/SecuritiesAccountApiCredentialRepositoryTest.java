@@ -90,7 +90,6 @@ class SecuritiesAccountApiCredentialRepositoryTest {
                 .securitiesFirmId(securitiesFirm.getId())
                 .accountNumber("encrypted-account-number")
                 .accountName("개인 MTS 계좌")
-                .isDefault(false)
                 .status(RecordStatus.ACTIVE)
                 .deletedAt(null)
                 .createdAt(now)

@@ -77,13 +77,4 @@ public class SecuritiesAccountController {
     securitiesAccountService.deactivate(id);
     return ResponseEntity.noContent().build();
   }
-
-  /**
-   * 증권계좌 ID로 해당 계좌를 기본 계좌로 지정하고, 갱신된 계좌 정보를 반환한다. 존재하지 않으면 404, 현재 계정 소유가 아니면 403, 비활성화된 계좌면 400,
-   * 이미 기본 계좌면 409를 반환한다.
-   */
-  @PatchMapping("/{id}/set-default")
-  public ResponseEntity<SecuritiesAccountResponse> setDefault(@PathVariable Long id) {
-    return ResponseEntity.ok(securitiesAccountService.setDefault(id));
-  }
 }

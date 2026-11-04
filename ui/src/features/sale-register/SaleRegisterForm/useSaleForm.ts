@@ -1,8 +1,8 @@
 import { useForm, useWatch } from 'react-hook-form'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import { useIpo } from '@/entities/ipo/index.ts'
+import { useIpo, useIpoInsight } from '@/entities/ipo/index.ts'
 import { useInvestmentHistory, useInvestmentHistoryDetail } from '@/entities/subscription/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 import { useSaleRegister } from '../useSaleRegister.ts'
@@ -60,9 +60,41 @@ export function useSaleForm() {
   const effectiveIpoId = presetIpoId ?? ipoIdFromSubscription
   const { data: ipo, isPending: ipoPending } = useIpo(effectiveIpoId)
 
+  const {
+    data: ipoInsight,
+    isLoading: ipoInsightLoading,
+    error: ipoInsightError,
+  } = useIpoInsight(effectiveIpoId)
+
   // 증권계좌 목록 (직접 매도 등록 시 필요)
   const { data: securitiesAccounts, isLoading: accountsLoading } =
     useSecuritiesAccounts(selectedInvestorId)
+
+  const underwriters = useMemo(() => ipoInsight?.underwriters ?? [], [ipoInsight])
+  const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
+  const isDirectEntry = !selectedSubscriptionId && selectedInvestorId !== undefined
+  const filteredSecuritiesAccounts = useMemo(() => {
+    const accounts = securitiesAccounts ?? []
+    if (!isDirectEntry) return accounts
+    if (effectiveIpoId == null) return accounts
+    if (!underwritersReady) return []
+    const matched = accounts.filter((account) =>
+      underwriters.some(
+        (underwriter) => underwriter.name.trim() === (account.securitiesFirmName ?? '').trim(),
+      ),
+    )
+    if (matched.length > 0) {
+      return [...matched].sort((a, b) => {
+        const firmOrder = (a.securitiesFirmName ?? '').localeCompare(
+          b.securitiesFirmName ?? '',
+          'ko-KR',
+        )
+        if (firmOrder !== 0) return firmOrder
+        return (a.accountName ?? '').localeCompare(b.accountName ?? '', 'ko-KR')
+      })
+    }
+    return []
+  }, [securitiesAccounts, isDirectEntry, effectiveIpoId, underwritersReady, underwriters])
 
   const { mutate, isPending, error } = useSaleRegister()
 
@@ -153,6 +185,31 @@ export function useSaleForm() {
     syncLinked({ fixedPrice, allocatedAmount, allocatedQuantity, source: 'fees' })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 청약·공모주 정보가 도착했을 때만 실행한다
   }, [allocationData, ipo, ipoPending, selectedSubscriptionId])
+
+  // IPO 진입(직접 매도 등록) 시 주관사 계좌가 하나면 자동 선택한다.
+  useEffect(() => {
+    if (!isDirectEntry || effectiveIpoId == null || !underwritersReady || accountsLoading) return
+    const accounts = filteredSecuritiesAccounts
+    if (accounts.length !== 1) return
+    setValue('securitiesAccountId', accounts[0].id)
+  }, [
+    isDirectEntry,
+    effectiveIpoId,
+    underwritersReady,
+    accountsLoading,
+    filteredSecuritiesAccounts,
+    setValue,
+  ])
+
+  // IPO 진입(직접 매도 등록) 시 해당 공모주 상장일을 매도일 기본값으로 넣는다.
+  useEffect(() => {
+    if (selectedSubscriptionId) return
+    if (!effectiveIpoId || ipoPending) return
+    const listing = ipo ? listingDate(ipo.listingDate) : undefined
+    if (!listing) return
+    if (getFieldState('saleDate').isDirty) return
+    setValue('saleDate', listing)
+  }, [selectedSubscriptionId, effectiveIpoId, ipoPending, ipo, getFieldState, setValue])
 
   const clearSaleFields = () => {
     resetField('allocationId')
@@ -253,9 +310,10 @@ export function useSaleForm() {
         ? priceValue * quantityValue -
           acquisitionAmountForSale(quantityValue, fixedPrice, allocatedAmount, allocatedQuantity)
         : undefined,
-    securitiesAccounts: securitiesAccounts ?? [],
+    securitiesAccounts: filteredSecuritiesAccounts,
     accountsLoading,
     effectiveIpoId,
+    ipoName: ipo?.ipoName ?? null,
   }
 }
 

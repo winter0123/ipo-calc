@@ -22,7 +22,6 @@ public class SecuritiesAccountResponse {
   private String securitiesFirmName;
   private String accountNumber;
   private String accountName;
-  private Boolean isDefault;
   private String status;
   private LocalDateTime deletedAt;
   private LocalDateTime createdAt;
@@ -44,7 +43,6 @@ public class SecuritiesAccountResponse {
         .securitiesFirmName(securitiesFirmName)
         .accountNumber(maskedAccountNumber)
         .accountName(account.getAccountName())
-        .isDefault(account.getIsDefault())
         .status(account.getStatus().name())
         .deletedAt(account.getDeletedAt())
         .createdAt(account.getCreatedAt())

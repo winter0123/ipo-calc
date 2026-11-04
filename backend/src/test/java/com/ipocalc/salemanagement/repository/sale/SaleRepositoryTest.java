@@ -153,7 +153,6 @@ class SaleRepositoryTest {
             .securitiesFirmId(securitiesFirmId)
             .accountNumber("12345678")
             .accountName("테스트 계좌")
-            .isDefault(true)
             .status(RecordStatus.ACTIVE)
             .createdAt(createdAt)
             .updatedAt(createdAt)

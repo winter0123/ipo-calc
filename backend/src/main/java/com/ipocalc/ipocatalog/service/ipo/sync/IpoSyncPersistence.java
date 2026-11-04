@@ -24,7 +24,11 @@ public class IpoSyncPersistence {
   private final Clock clock;
 
   /** 기존 레코드를 보존하거나 자동 동기화 IPO를 만들고 갱신한다. */
-  public Outcome persist(String corpCode, String corpName, OpenDartEquitySecurityDetail detail) {
+  public Outcome persist(
+      String corpCode,
+      String corpName,
+      OpenDartEquitySecurityDetail detail,
+      boolean finalizedReport) {
     LocalDate startDate = detail.getSubscriptionStartDate();
     LocalDate endDate = detail.getSubscriptionEndDate();
 
@@ -45,7 +49,7 @@ public class IpoSyncPersistence {
         log.debug("수동 등록 레코드 존재로 건너뜀 (corpCode 매칭): corpCode={}", corpCode);
         return Outcome.SKIPPED_MANUAL;
       }
-      updateExistingIpo(existing, corpName, detail, startDate, endDate);
+      updateExistingIpo(existing, corpName, detail, startDate, endDate, finalizedReport);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
       return Outcome.UPDATED;
     }
@@ -66,7 +70,8 @@ public class IpoSyncPersistence {
     }
 
     try {
-      ipoRepository.saveAndFlush(newIpo(corpCode, corpName, detail, startDate, endDate));
+      ipoRepository.saveAndFlush(
+          newIpo(corpCode, corpName, detail, startDate, endDate, finalizedReport));
       log.debug("신규 IPO 생성: corpCode={}, corpName={}", corpCode, corpName);
       return Outcome.CREATED;
     } catch (DataIntegrityViolationException e) {
@@ -83,8 +88,10 @@ public class IpoSyncPersistence {
       String corpName,
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
-      LocalDate endDate) {
+      LocalDate endDate,
+      boolean finalizedReport) {
     LocalDateTime now = LocalDateTime.now(clock);
+    Long confirmedPrice = finalizedReport ? detail.getOfferPrice() : null;
     return Ipo.builder()
         .companyName(corpName)
         .ipoName(corpName)
@@ -92,7 +99,7 @@ public class IpoSyncPersistence {
         .stockCode(null)
         .lowerBandPrice(detail.getOfferPrice())
         .upperBandPrice(detail.getOfferPrice())
-        .fixedPrice(null)
+        .fixedPrice(confirmedPrice)
         .subscriptionStartDate(startDate)
         .subscriptionEndDate(endDate)
         .listingDate(null)
@@ -112,11 +119,14 @@ public class IpoSyncPersistence {
       String corpName,
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
-      LocalDate endDate) {
+      LocalDate endDate,
+      boolean finalizedReport) {
     LocalDateTime now = LocalDateTime.now(clock);
+    Long confirmedPrice = finalizedReport ? detail.getOfferPrice() : null;
     existing.syncFromOpenDart(
         corpName,
         detail.getOfferPrice(),
+        confirmedPrice,
         detail.getOfferingShareCount(),
         startDate,
         endDate,

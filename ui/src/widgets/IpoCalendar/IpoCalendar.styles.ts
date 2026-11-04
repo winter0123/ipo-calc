@@ -189,7 +189,7 @@ export const StyleScope = styled.div`
   .s-e1b278a-week {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-template-rows: 38px repeat(var(--calendar-lanes, 0), 24px) minmax(8px, 1fr);
+    grid-template-rows: 38px repeat(var(--calendar-lanes, 0), 26px) minmax(8px, 1fr);
     min-height: 96px;
     min-width: 0;
     position: relative;
@@ -291,8 +291,10 @@ export const StyleScope = styled.div`
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    height: 20px;
-    padding: 0 6px;
+    gap: 6px;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid transparent;
     border-top-left-radius: var(--calendar-bar-radius-left);
     border-bottom-left-radius: var(--calendar-bar-radius-left);
     border-top-right-radius: var(--calendar-bar-radius-right);
@@ -300,13 +302,33 @@ export const StyleScope = styled.div`
     margin-left: var(--calendar-bar-margin-left);
     margin-right: var(--calendar-bar-margin-right);
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     z-index: 1;
-    transition: filter 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      filter 0.15s;
+  }
+
+  .s-e1b278a-bar::before {
+    content: '';
+    flex: 0 0 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.72;
+  }
+
+  .s-e1b278a-barName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .s-e1b278a-bar:hover {
@@ -321,17 +343,20 @@ export const StyleScope = styled.div`
 
   .s-e1b278a-barSubscription {
     background: var(--surface-sea);
-    color: var(--ink);
+    color: var(--primary-deep);
+    border-color: var(--info-border);
   }
 
   .s-e1b278a-barListing {
     background: var(--success-bg);
     color: var(--success-ink);
+    border-color: var(--success-border);
   }
 
   .s-e1b278a-barRefund {
     background: var(--warning-bg);
     color: var(--warning-ink);
+    border-color: var(--warning-border);
   }
 
   /* 증권사 데이터가 아니라 청약 종료일 + 2영업일로 계산한 환불일은 점선 테두리로 구분한다 */
@@ -538,6 +563,19 @@ export const StyleScope = styled.div`
       min-height: 44px;
       padding: 0 var(--space-2);
       font-size: 13px;
+    }
+
+    .s-e1b278a-bar {
+      gap: 4px;
+      height: 20px;
+      padding: 0 5px;
+      font-size: 11px;
+    }
+
+    .s-e1b278a-bar::before {
+      flex-basis: 5px;
+      width: 5px;
+      height: 5px;
     }
 
     .s-e1b278a-holidayName {

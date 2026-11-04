@@ -119,9 +119,17 @@ export default function SubscriptionScheduleList({
               </dl>
               <UnderwriterChips ipoId={item.ipo.id} />
               {investorSelected && item.subscriptionCount === 0 && (
-                <Link className={styles.action} to={`/subscriptions/register?ipoId=${item.ipo.id}`}>
-                  청약 등록
-                </Link>
+                <div className={styles.actionGroup}>
+                  <Link
+                    className={styles.action}
+                    to={`/subscriptions/register?ipoId=${item.ipo.id}`}
+                  >
+                    청약 등록
+                  </Link>
+                  <Link className={styles.saleAction} to={`/sales/register?ipoId=${item.ipo.id}`}>
+                    매도 등록
+                  </Link>
+                </div>
               )}
               {investorSelected &&
                 item.subscriptions.map((subscription) => (
@@ -147,7 +155,7 @@ export default function SubscriptionScheduleList({
                     {subscription.allocation !== null &&
                       (subscription.remainingQuantity ?? 0) > 0 && (
                         <Link
-                          className={styles.action}
+                          className={styles.saleAction}
                           to={`/sales/register?subscriptionId=${subscription.id}`}
                         >
                           매도 등록

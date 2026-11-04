@@ -42,9 +42,9 @@ export const StyleScope = styled.div`
 
   .s-d6e906b-sellButton {
     padding: var(--space-2) var(--space-4);
-    background-color: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--border-strong);
+    background-color: var(--gain);
+    color: var(--on-primary);
+    border: 1px solid transparent;
     border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 650;
@@ -53,8 +53,7 @@ export const StyleScope = styled.div`
   }
 
   .s-d6e906b-sellButton:hover {
-    background-color: var(--surface-soft);
-    border-color: var(--ink-muted);
+    background-color: var(--gain);
   }
 
   .s-d6e906b-registerButton {

@@ -1,7 +1,6 @@
 package com.ipocalc.securitiesaccountmanagement.repository.securitiesaccount;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
@@ -21,14 +20,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
  * AC 인용: docs/spec/securities-account-management.md, docs/work-log/securities-account-management.md
  * - AC-001: 증권계좌 등록 성공 — 저장 시 status=ACTIVE, is_default=false, deleted_at=null 기본값 - AC-006: 계좌 목록은
- * 투자자 + status 기준으로 조회된다 (ACTIVE 필터) - AC-017: 투자자당 기본 계좌는 정확히 1개 — partial unique
  * index(uk_securities_account_default)로 2개 이상 불가 - D-SA-003~007: 엔티티/Repository는 암호화·마스킹·논리삭제 처리 없이
  * 순수 도메인 값만 보관한다.
  */
@@ -100,7 +97,6 @@ class SecuritiesAccountRepositoryTest {
   private SecuritiesAccount buildAccount(
       Long investorIdForAccount,
       Long firmId,
-      boolean isDefault,
       RecordStatus status,
       LocalDateTime deletedAt,
       String accountNumber) {
@@ -110,7 +106,6 @@ class SecuritiesAccountRepositoryTest {
         .securitiesFirmId(firmId)
         .accountNumber(accountNumber)
         .accountName("개인 MTS 계좌")
-        .isDefault(isDefault)
         .status(status)
         .deletedAt(deletedAt)
         .createdAt(now)
@@ -149,12 +144,7 @@ class SecuritiesAccountRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     SecuritiesAccount account =
         buildAccount(
-            investorId,
-            securitiesFirmId,
-            false,
-            RecordStatus.ACTIVE,
-            null,
-            "encrypted-account-number-1");
+            investorId, securitiesFirmId, RecordStatus.ACTIVE, null, "encrypted-account-number-1");
 
     // When: 계좌 저장 후 findById로 조회
     SecuritiesAccount saved = securitiesAccountRepository.save(account);
@@ -167,7 +157,6 @@ class SecuritiesAccountRepositoryTest {
     assertThat(found.get().getSecuritiesFirmId()).isEqualTo(securitiesFirmId);
     assertThat(found.get().getAccountNumber()).isEqualTo("encrypted-account-number-1");
     assertThat(found.get().getAccountName()).isEqualTo("개인 MTS 계좌");
-    assertThat(found.get().getIsDefault()).isFalse();
     assertThat(found.get().getStatus()).isEqualTo(RecordStatus.ACTIVE);
     assertThat(found.get().getDeletedAt()).isNull();
     assertThat(found.get().getCreatedAt()).isNotNull();
@@ -181,9 +170,9 @@ class SecuritiesAccountRepositoryTest {
 
     LocalDateTime now = LocalDateTime.now();
     securitiesAccountRepository.save(
-        buildAccount(investorId, securitiesFirmId, false, RecordStatus.ACTIVE, null, "enc-A"));
+        buildAccount(investorId, securitiesFirmId, RecordStatus.ACTIVE, null, "enc-A"));
     securitiesAccountRepository.save(
-        buildAccount(investorId, securitiesFirmId, false, RecordStatus.INACTIVE, now, "enc-B"));
+        buildAccount(investorId, securitiesFirmId, RecordStatus.INACTIVE, now, "enc-B"));
 
     // When: 투자자 + ACTIVE 상태로 findByInvestorIdAndStatus 호출
     List<SecuritiesAccount> result =
@@ -202,9 +191,9 @@ class SecuritiesAccountRepositoryTest {
 
     LocalDateTime now = LocalDateTime.now();
     securitiesAccountRepository.save(
-        buildAccount(investorId, securitiesFirmId, false, RecordStatus.ACTIVE, null, "enc-A"));
+        buildAccount(investorId, securitiesFirmId, RecordStatus.ACTIVE, null, "enc-A"));
     securitiesAccountRepository.save(
-        buildAccount(investorId, securitiesFirmId, false, RecordStatus.INACTIVE, now, "enc-B"));
+        buildAccount(investorId, securitiesFirmId, RecordStatus.INACTIVE, now, "enc-B"));
 
     // When: 해당 투자자로 findByInvestorId 호출
     List<SecuritiesAccount> result = securitiesAccountRepository.findByInvestorId(investorId);
@@ -224,10 +213,10 @@ class SecuritiesAccountRepositoryTest {
     LocalDateTime now = LocalDateTime.now();
     SecuritiesAccount active =
         securitiesAccountRepository.save(
-            buildAccount(investorId, securitiesFirmId, false, RecordStatus.ACTIVE, null, "enc-A"));
+            buildAccount(investorId, securitiesFirmId, RecordStatus.ACTIVE, null, "enc-A"));
     SecuritiesAccount deleted =
         securitiesAccountRepository.save(
-            buildAccount(investorId, securitiesFirmId, false, RecordStatus.INACTIVE, now, "enc-B"));
+            buildAccount(investorId, securitiesFirmId, RecordStatus.INACTIVE, now, "enc-B"));
 
     // When: 각각 findByIdAndDeletedAtIsNull 호출
     Optional<SecuritiesAccount> activeResult =
@@ -242,66 +231,22 @@ class SecuritiesAccountRepositoryTest {
   }
 
   @Test
-  void findByInvestorIdAndIsDefaultTrueReturnsDefaultAccount() {
-    // Given: 같은 투자자의 기본 계좌(is_default=true) 1개와 일반 계좌 1개가 저장되어 있음
-    // - SF-7 기본 계좌 지정 시 기존 기본 계좌 조회에 사용
-
-    securitiesAccountRepository.saveAndFlush(
-        buildAccount(investorId, securitiesFirmId, true, RecordStatus.ACTIVE, null, "enc-default"));
-    securitiesAccountRepository.saveAndFlush(
-        buildAccount(investorId, securitiesFirmId, false, RecordStatus.ACTIVE, null, "enc-normal"));
-
-    // When: 해당 투자자로 findByInvestorIdAndIsDefaultTrue 호출
-    Optional<SecuritiesAccount> result =
-        securitiesAccountRepository.findByInvestorIdAndIsDefaultTrue(investorId);
-
-    // Then: 기본 계좌가 반환된다
-    assertThat(result).isPresent();
-    assertThat(result.get().getAccountNumber()).isEqualTo("enc-default");
-    assertThat(result.get().getIsDefault()).isTrue();
-  }
-
-  @Test
-  void saveTwoDefaultAccountsForSameInvestorThrowsDataIntegrityViolationException() {
-    // Given: 특정 투자자의 기본 계좌(is_default=true) 1개가 저장되어 있음
-    // - spec AC-017 / D-SF 계열과 동일 원리: partial unique index(uk_securities_account_default)로
-    //   투자자당 is_default=true는 정확히 1개만 허용 (PostgreSQL 부분 유니크)
-
-    securitiesAccountRepository.saveAndFlush(
-        buildAccount(investorId, securitiesFirmId, true, RecordStatus.ACTIVE, null, "enc-1"));
-
-    SecuritiesAccount secondDefault =
-        buildAccount(investorId, securitiesFirmId, true, RecordStatus.ACTIVE, null, "enc-2");
-
-    // When & Then: 같은 투자자의 두 번째 기본 계좌 저장 시 데이터 무결성 위반 예외 발생
-    assertThrows(
-        DataIntegrityViolationException.class,
-        () -> securitiesAccountRepository.saveAndFlush(secondDefault));
-  }
-
-  @Test
   void saveDefaultAccountsForDifferentInvestorsAllowed() {
-    // Given: 투자자 A가 기본 계좌를 보유한 상태
-    // - AC-017: 투자자당 1개의 제약이므로 서로 다른 투자자의 기본 계좌는 동시에 존재 가능
 
     securitiesAccountRepository.saveAndFlush(
-        buildAccount(
-            investorId, securitiesFirmId, true, RecordStatus.ACTIVE, null, "enc-A-default"));
+        buildAccount(investorId, securitiesFirmId, RecordStatus.ACTIVE, null, "enc-A-default"));
     Investor otherInvestor = createAdditionalInvestor("other-securities-owner@example.com");
 
-    // When: 투자자 B의 기본 계좌 저장
     SecuritiesAccount otherDefault =
         securitiesAccountRepository.saveAndFlush(
             buildAccount(
                 otherInvestor.getId(),
                 securitiesFirmId,
-                true,
                 RecordStatus.ACTIVE,
                 null,
                 "enc-B-default"));
 
     // Then: 유니크 위반 없이 저장된다
     assertThat(otherDefault.getId()).isNotNull();
-    assertThat(otherDefault.getIsDefault()).isTrue();
   }
 }

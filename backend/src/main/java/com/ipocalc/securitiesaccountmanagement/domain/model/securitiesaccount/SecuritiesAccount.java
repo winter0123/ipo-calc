@@ -40,19 +40,6 @@ public class SecuritiesAccount {
   public void deactivate(LocalDateTime now) {
     this.status = RecordStatus.INACTIVE;
     this.deletedAt = now;
-    this.isDefault = false;
-    this.updatedAt = now;
-  }
-
-  /** Marks this securities account as the default. */
-  public void makeDefault(LocalDateTime now) {
-    this.isDefault = true;
-    this.updatedAt = now;
-  }
-
-  /** Removes the default flag from this securities account. */
-  public void clearDefault(LocalDateTime now) {
-    this.isDefault = false;
     this.updatedAt = now;
   }
 
@@ -86,12 +73,6 @@ public class SecuritiesAccount {
   @Column(name = "account_name", length = 255)
   @Comment("계좌 별칭")
   private String accountName;
-
-  /** 이 투자자의 기본 계좌 여부. 투자자당 하나만 true. */
-  @Column(name = "is_default", nullable = false)
-  @Builder.Default
-  @Comment("기본 계좌 여부")
-  private Boolean isDefault = false;
 
   /** 레코드 상태. ACTIVE(사용 중) / CANCELLED(삭제·취소됨). 물리 삭제는 하지 않는다. */
   @Column(name = "status", nullable = false, length = 10)
