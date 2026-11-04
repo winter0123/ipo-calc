@@ -294,6 +294,39 @@ function SubscriptionForm({
             <legend className={styles.sectionTitle}>청약 등록</legend>
 
             <div className={styles.field}>
+              <label htmlFor="ipoId">공모주</label>
+              <select
+                id="ipoId"
+                aria-invalid={!!errors.ipoId}
+                aria-describedby={errors.ipoId ? 'ipoId-error' : undefined}
+                {...register('ipoId', {
+                  required: '공모주를 선택해 주세요.',
+                  valueAsNumber: true,
+                  onChange: syncDeposit,
+                })}
+                disabled={isPendingSub}
+              >
+                <option value="">공모주 선택</option>
+                {ipos.map((ipo) => (
+                  <option key={ipo.id} value={ipo.id}>
+                    {ipo.ipoName}
+                  </option>
+                ))}
+              </select>
+              {errors.ipoId && (
+                <span id="ipoId-error" className={styles.error} aria-live="polite">
+                  {String(errors.ipoId.message)}
+                </span>
+              )}
+              {selectedIpo && (
+                <p className={styles.ipoInfo} data-testid="ipo-info">
+                  {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)}{' '}
+                  ~ {formatDate(selectedIpo.subscriptionEndDate)}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.field}>
               <label htmlFor="securitiesAccountId">증권계좌</label>
               <select
                 id="securitiesAccountId"
@@ -329,39 +362,6 @@ function SubscriptionForm({
                 <span id="securitiesAccountId-error" className={styles.error} aria-live="polite">
                   {String(errors.securitiesAccountId.message)}
                 </span>
-              )}
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="ipoId">공모주</label>
-              <select
-                id="ipoId"
-                aria-invalid={!!errors.ipoId}
-                aria-describedby={errors.ipoId ? 'ipoId-error' : undefined}
-                {...register('ipoId', {
-                  required: '공모주를 선택해 주세요.',
-                  valueAsNumber: true,
-                  onChange: syncDeposit,
-                })}
-                disabled={isPendingSub}
-              >
-                <option value="">공모주 선택</option>
-                {ipos.map((ipo) => (
-                  <option key={ipo.id} value={ipo.id}>
-                    {ipo.ipoName}
-                  </option>
-                ))}
-              </select>
-              {errors.ipoId && (
-                <span id="ipoId-error" className={styles.error} aria-live="polite">
-                  {String(errors.ipoId.message)}
-                </span>
-              )}
-              {selectedIpo && (
-                <p className={styles.ipoInfo} data-testid="ipo-info">
-                  {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)}{' '}
-                  ~ {formatDate(selectedIpo.subscriptionEndDate)}
-                </p>
               )}
             </div>
 

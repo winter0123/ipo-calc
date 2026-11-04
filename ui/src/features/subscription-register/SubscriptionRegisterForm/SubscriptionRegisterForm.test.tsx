@@ -584,6 +584,17 @@ describe('SubscriptionRegisterForm', () => {
     })
   })
 
+  it('공모주 선택 필드가 증권계좌 필드보다 DOM 앞에 나타난다', async () => {
+    mockDropdownFetches()
+    renderForm()
+    await waitForDropdownsLoaded()
+    const ipoField = screen.getByLabelText('공모주')
+    const accountField = screen.getByLabelText('증권계좌')
+    const position = ipoField.compareDocumentPosition(accountField as Node)
+    // accountField이 ipoField 뒤에 오면 FOLLOWING(4) 비트 설정
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   describe('주관사 기반 증권계좌 필터링', () => {
     beforeEach(() => {
       vi.clearAllMocks()
