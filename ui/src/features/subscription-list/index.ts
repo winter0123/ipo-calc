@@ -9,5 +9,12 @@ export {
   filterIposBySubscriptionStart,
   parseDateRange,
   updateDateRangeParams,
+  paginateItems,
+  getTotalPages,
+  clampPage,
+  PAGE_SIZE,
+  getCurrentPhase,
+  getPhaseLabel,
+  type IpoPhase,
 } from './subscriptionSchedule.ts'
 export type { DateRange, SubscriptionScheduleItem } from './subscriptionSchedule.ts'
