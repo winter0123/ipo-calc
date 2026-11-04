@@ -26,6 +26,20 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
     <StyleScope>
       {
         <>
+          {f.effectiveIpoId != null && (
+            <div className={styles.field}>
+              <label htmlFor="ipoName">공모주</label>
+              <input
+                id="ipoName"
+                value={
+                  f.ipoName ?? (f.ipoNameLoading ? '불러오는 중...' : '이름을 불러오지 못했습니다')
+                }
+                readOnly
+                aria-busy={f.ipoNameLoading}
+              />
+            </div>
+          )}
+
           <div className={styles.field}>
             <label htmlFor="subscriptionId">청약</label>
             <select

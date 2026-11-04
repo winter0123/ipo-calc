@@ -56,7 +56,10 @@ export function useSaleForm() {
   const { data: allocationData, isLoading: allocationLoading } = useInvestmentHistoryDetail(
     selectedSubscriptionId ?? null,
   )
-  const ipoIdFromSubscription = allocationData?.ipoId
+  const selectedSubscription = subscriptionHistory?.content.find(
+    (item) => item.id === selectedSubscriptionId,
+  )
+  const ipoIdFromSubscription = allocationData?.ipoId ?? selectedSubscription?.ipoId
   const effectiveIpoId = presetIpoId ?? ipoIdFromSubscription
   const { data: ipo, isPending: ipoPending } = useIpo(effectiveIpoId)
 
@@ -313,7 +316,8 @@ export function useSaleForm() {
     securitiesAccounts: filteredSecuritiesAccounts,
     accountsLoading,
     effectiveIpoId,
-    ipoName: ipo?.ipoName ?? null,
+    ipoName: ipo?.ipoName ?? selectedSubscription?.ipoName ?? null,
+    ipoNameLoading: effectiveIpoId != null && ipoPending && !selectedSubscription?.ipoName,
   }
 }
 

@@ -155,6 +155,7 @@ function defaultMock(overrides: { ipo?: unknown; detail?: unknown } = {}) {
     if (p === '/investors' && isGet) return INVESTORS
     if (p === '/ipos' && isGet) return [IPO]
     if (p === '/ipos/10' && isGet) return overrides.ipo ?? IPO
+    if (p === '/ipos/10/insight' && isGet) return { underwriters: [] }
     if (p === '/investment-history/1' && isGet) return overrides.detail ?? ALLOCATION_DETAIL
     if (p.startsWith('/investment-history') && isGet) return SUBSCRIPTION_HISTORY
     throw new Error(`unexpected path: ${String(path)}`)
@@ -210,6 +211,13 @@ describe('SaleRegisterForm', () => {
     await waitFor(() => {
       expect(screen.getByText('홍길동')).toBeInTheDocument()
     })
+  })
+
+  it('공모주 상세에서 매도 등록으로 들어오면 해당 공모주 이름을 미리 표시한다', async () => {
+    renderForm('/sales/register?ipoId=10')
+
+    expect(await screen.findByLabelText('공모주')).toHaveValue('카카오뱅크')
+    expect(screen.getByLabelText('청약')).toHaveValue('')
   })
 
   it('참고 표시가 렌더링됨 (AC-018)', async () => {

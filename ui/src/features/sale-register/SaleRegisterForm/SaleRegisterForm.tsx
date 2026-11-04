@@ -29,7 +29,6 @@ export default function SaleRegisterForm() {
               <span>직접 매도 등록 모드</span>
               <span className={styles.modeDesc}>
                 청약·배정 없이 바로 매도 기록을 남깁니다. 배정수량과 증권계좌는 필수입니다.
-                {f.ipoName ? ` 해당 공모주 ${f.ipoName} 기준으로 기록합니다.` : ''}
               </span>
             </div>
           )}
