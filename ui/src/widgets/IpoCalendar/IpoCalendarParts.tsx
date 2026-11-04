@@ -5,6 +5,12 @@ import { useIpoInsight } from '@/entities/ipo/index.ts'
 import styles, { StyleScope } from './IpoCalendar.styles.ts'
 import { EVENT_TYPE_CLASSES, EVENT_TYPE_LABELS } from './calendarHelpers.ts'
 
+function underwriterAbbreviation(name: string): string {
+  const trimmed = name.trim()
+  if (trimmed === '아이엠증권') return 'IM'
+  return trimmed.replace(/증권$/, '').slice(0, 2)
+}
+
 function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
   const { data } = useIpoInsight(ipoId)
   const names = [
@@ -15,7 +21,7 @@ function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
     <span className={styles.eventUnderwriters} aria-label="주관사">
       {names.map((name) => (
         <span key={name} className={styles.eventUnderwriterChip} title={name}>
-          {name.trim().replace(/증권$/, '').slice(0, 2)}
+          {underwriterAbbreviation(name)}
         </span>
       ))}
     </span>

@@ -210,6 +210,33 @@ describe('IpoDetailPage', () => {
     expect(await screen.findByText('미래 · KB')).toBeInTheDocument()
   })
 
+  it('주관사 아이엠증권은 IM으로 표시되고 다른 증권사는 기존 약칭이 유지된다', async () => {
+    const customInsight = {
+      ...INSIGHT,
+      underwriters: [
+        { name: '아이엠증권', role: '주관', shares: 1000 },
+        { name: '미래에셋증권', role: '공동주관', shares: 500 },
+        { name: 'KB증권', role: '공동주관', shares: 300 },
+      ],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(String(url).endsWith('/insight') ? customInsight : makeIpo()),
+            { status: 200 },
+          ),
+        ),
+      ),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
+    // 아이엠증권 -> IM, 미래에셋증권 -> 미래, KB증권 -> KB
+    expect(await screen.findByText('IM · 미래 · KB')).toBeInTheDocument()
+  })
+
   it('null 필드는 "-"로 표시된다', async () => {
     const ipo = makeIpo({
       stockCode: null,

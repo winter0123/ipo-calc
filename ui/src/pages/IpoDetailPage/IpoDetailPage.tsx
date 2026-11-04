@@ -86,10 +86,16 @@ export default function IpoDetailPage() {
       : isListed
         ? singleBandPrice
         : null
+  function underwriterAbbreviation(name: string): string {
+    const trimmed = name.trim()
+    if (trimmed === '아이엠증권') return 'IM'
+    return trimmed.replace(/증권$/, '').slice(0, 2)
+  }
+
   const underwriterNames = [
     ...new Set(
       (insight?.underwriters ?? [])
-        .map(({ name }) => name.trim().replace(/증권$/, '').slice(0, 2))
+        .map(({ name }) => underwriterAbbreviation(name))
         .filter(Boolean),
     ),
   ]

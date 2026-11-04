@@ -313,6 +313,51 @@ describe('IpoCalendar', () => {
     expect(region).not.toHaveTextContent('주관사')
   })
 
+  it('주관사가 아이엠증권이면 칩이 IM으로 보이고 다른 증권사는 기존대로 유지된다', async () => {
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/market-holidays')) {
+        return Promise.resolve([])
+      }
+      if (typeof url === 'string' && /\/ipos\/\d+\/insight$/.test(url)) {
+        return Promise.resolve({
+          syncedAt: '2026-10-01T00:00:00Z',
+          sourceReportName: null,
+          sourceUrl: null,
+          ceoName: null,
+          establishedOn: null,
+          address: null,
+          parValue: null,
+          capitalStock: null,
+          largestShareholderName: null,
+          largestShareholderRatio: null,
+          institutionalCompetitionRate: null,
+          lockUpCommitmentRatio: null,
+          financials: [],
+          floatSchedule: [],
+          underwriters: [
+            { name: '아이엠증권', role: '주관', shares: 1000 },
+            { name: '미래에셋증권', role: '공동주관', shares: 500 },
+          ],
+        })
+      }
+      return Promise.resolve([])
+    })
+
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[makeIpo({ subscriptionStartDate: '2026-10-05T09:00:00Z' })]}
+        initialYear={2026}
+        initialMonth={10}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => {
+      expect(region).toHaveTextContent('IM')
+      expect(region).toHaveTextContent('미래')
+    })
+  })
+
   it('상장 이벤트 상세에서 모든 주관사 칩이 표시되고 접두어 없음', async () => {
     renderWithRouter(
       <IpoCalendar
