@@ -95,3 +95,47 @@ describe('SubscriptionScheduleList 주관사 chip', () => {
     expect(screen.queryByText('미래에셋증권')).not.toBeInTheDocument()
   })
 })
+
+describe('SubscriptionScheduleList 제목·주관사 레이아웃', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('ipoName 제목만 표시되고 companyName 줄은 DOM에 없다', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(INSIGHT)
+    const { Wrapper, queryClient } = createWrapper()
+
+    render(
+      <Wrapper>
+        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+    expect(screen.getByText('테스트IPO')).toBeInTheDocument()
+    expect(screen.queryByText('테스트기업')).not.toBeInTheDocument()
+  })
+
+  it('주관사 컨테이너가 제목과 같은 제목 그룹 안에 있다(버튼 위 단독 행 아님)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(INSIGHT)
+    const { Wrapper, queryClient } = createWrapper()
+
+    render(
+      <Wrapper>
+        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    const ipoName = screen.getByText('테스트IPO')
+    const titleGroup = ipoName.closest('.s-ee1412e-titleGroup')
+    expect(titleGroup).toBeInTheDocument()
+    expect(titleGroup).toContainHTML('미래에셋증권')
+    expect(titleGroup).toContainHTML('KB증권')
+  })
+})

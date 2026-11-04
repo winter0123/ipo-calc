@@ -30,16 +30,18 @@ export const StyleScope = styled.div`
     align-items: flex-start;
     gap: var(--space-3);
   }
+  .s-ee1412e-titleGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
   .s-ee1412e-header h2,
-  .s-ee1412e-header p,
   .s-ee1412e-subscription p {
     margin: 0;
   }
   .s-ee1412e-header h2 {
     font-size: 1.1rem;
-  }
-  .s-ee1412e-header p {
-    color: var(--ink-muted);
   }
   .s-ee1412e-badge {
     align-self: flex-start;
@@ -136,6 +138,9 @@ export const StyleScope = styled.div`
     .s-ee1412e-subscription {
       align-items: flex-start;
       flex-direction: column;
+    }
+    .s-ee1412e-titleGroup {
+      width: 100%;
     }
   }
 `

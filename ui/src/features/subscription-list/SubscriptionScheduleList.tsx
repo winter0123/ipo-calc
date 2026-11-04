@@ -63,9 +63,9 @@ export default function SubscriptionScheduleList({
           {items.map((item) => (
             <li className={styles.card} key={item.ipo.id}>
               <header className={styles.header}>
-                <div>
+                <div className={styles.titleGroup}>
                   <h2>{item.ipo.ipoName}</h2>
-                  <p>{item.ipo.companyName}</p>
+                  <UnderwriterChips ipoId={item.ipo.id} />
                 </div>
                 <StatusPill
                   $tone={
@@ -117,7 +117,6 @@ export default function SubscriptionScheduleList({
                   </>
                 )}
               </dl>
-              <UnderwriterChips ipoId={item.ipo.id} />
               {investorSelected && item.subscriptionCount === 0 && (
                 <div className={styles.actionGroup}>
                   <Link
