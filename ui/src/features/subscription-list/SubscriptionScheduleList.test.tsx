@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import SubscriptionScheduleList from './SubscriptionScheduleList.tsx'
 import type { SubscriptionScheduleItem } from './subscriptionSchedule.ts'
 import { ipoKeys } from '@/entities/ipo/index.ts'
@@ -55,44 +56,69 @@ function createWrapper() {
   return { Wrapper, queryClient }
 }
 
+function renderWithRouter(
+  element: React.ReactNode,
+  initialEntries: string[] = ['/subscriptions?from=2026-10-01&to=2026-10-31'],
+) {
+  const { Wrapper, queryClient } = createWrapper()
+  return {
+    result: render(
+      <Wrapper>
+        <MemoryRouter initialEntries={initialEntries}>{element}</MemoryRouter>
+      </Wrapper>,
+    ),
+    queryClient,
+  }
+}
+
+function mockInsight(insight = INSIGHT) {
+  vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+    const pathStr = String(path)
+    if (pathStr === '/investors') return []
+    if (pathStr === '/ipos') return [makeIpo()]
+    if (pathStr.includes('/insight')) return insight
+    if (pathStr.startsWith('/investment-history'))
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 1,
+        number: 0,
+        size: 100,
+      }
+    throw new Error(`unexpected request: ${pathStr}`)
+  })
+}
+
 describe('SubscriptionScheduleList 주관사 chip', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('카드에 주관사 2개 이름이 접두어 없이 chip으로 표시된다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(INSIGHT)
-    const { Wrapper, queryClient } = createWrapper()
-
-    render(
-      <Wrapper>
-        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
-      </Wrapper>,
+    mockInsight(INSIGHT)
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />,
     )
 
     await waitFor(() =>
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
-    expect(screen.getByText('미래에셋증권')).toBeInTheDocument()
-    expect(screen.getByText('KB증권')).toBeInTheDocument()
-    expect(screen.queryByText(/주관사/)).not.toBeInTheDocument()
+    expect(result.getByText('미래에셋증권')).toBeInTheDocument()
+    expect(result.getByText('KB증권')).toBeInTheDocument()
+    expect(result.queryByText(/주관사/)).not.toBeInTheDocument()
   })
 
   it('빈 underwriters일 때 chip 컨테이너가 나오지 않는다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ ...INSIGHT, underwriters: [] })
-    const { Wrapper, queryClient } = createWrapper()
-
-    render(
-      <Wrapper>
-        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
-      </Wrapper>,
+    mockInsight({ ...INSIGHT, underwriters: [] })
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />,
     )
 
     await waitFor(() =>
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
-    expect(screen.queryByLabelText('주관사')).not.toBeInTheDocument()
-    expect(screen.queryByText('미래에셋증권')).not.toBeInTheDocument()
+    expect(result.queryByLabelText('주관사')).not.toBeInTheDocument()
+    expect(result.queryByText('미래에셋증권')).not.toBeInTheDocument()
   })
 })
 
@@ -102,40 +128,494 @@ describe('SubscriptionScheduleList 제목·주관사 레이아웃', () => {
   })
 
   it('ipoName 제목만 표시되고 companyName 줄은 DOM에 없다', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(INSIGHT)
-    const { Wrapper, queryClient } = createWrapper()
-
-    render(
-      <Wrapper>
-        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
-      </Wrapper>,
+    mockInsight(INSIGHT)
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />,
     )
 
     await waitFor(() =>
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
-    expect(screen.getByText('테스트IPO')).toBeInTheDocument()
-    expect(screen.queryByText('테스트기업')).not.toBeInTheDocument()
+    expect(result.getByText('테스트IPO')).toBeInTheDocument()
+    expect(result.queryByText('테스트기업')).not.toBeInTheDocument()
   })
 
   it('주관사 컨테이너가 제목과 같은 제목 그룹 안에 있다(버튼 위 단독 행 아님)', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(INSIGHT)
-    const { Wrapper, queryClient } = createWrapper()
-
-    render(
-      <Wrapper>
-        <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />
-      </Wrapper>,
+    mockInsight(INSIGHT)
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList items={[makeItem()]} investorSelected={false} />,
     )
 
     await waitFor(() =>
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    const ipoName = screen.getByText('테스트IPO')
+    const ipoName = result.getByText('테스트IPO')
     const titleGroup = ipoName.closest('.s-ee1412e-titleGroup')
     expect(titleGroup).toBeInTheDocument()
     expect(titleGroup).toContainHTML('미래에셋증권')
     expect(titleGroup).toContainHTML('KB증권')
+  })
+})
+
+describe('SubscriptionScheduleList 페이지네이션', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockInsight(INSIGHT)
+  })
+
+  it('11개 아이템일 때 1페이지에 10개만 표시되고 다음 페이지 버튼이 활성화된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={Array.from({ length: 11 }, (_, i) =>
+          makeItem({ ipo: makeIpo({ id: i + 1, ipoName: `공모주 ${i + 1}` }) }),
+        )}
+        investorSelected={false}
+      />,
+      ['/subscriptions?from=2026-10-01&to=2026-10-31'],
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    // 1페이지에 10개만 표시
+    for (let i = 1; i <= 10; i++) {
+      expect(result.getByText(`공모주 ${i}`)).toBeInTheDocument()
+    }
+    expect(result.queryByText('공모주 11')).not.toBeInTheDocument()
+
+    // 페이지네이션 표시됨
+    expect(result.getByRole('navigation', { name: '공모주 일정 페이지 이동' })).toBeInTheDocument()
+    expect(result.getByText('1 / 2')).toBeInTheDocument()
+    expect(result.getByRole('button', { name: '다음 페이지' })).not.toBeDisabled()
+    expect(result.getByRole('button', { name: '이전 페이지' })).toBeDisabled()
+  })
+
+  it('다음 페이지 클릭 시 2페이지 아이템이 표시되고 URL이 업데이트된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={Array.from({ length: 11 }, (_, i) =>
+          makeItem({ ipo: makeIpo({ id: i + 1, ipoName: `공모주 ${i + 1}` }) }),
+        )}
+        investorSelected={false}
+      />,
+      ['/subscriptions?from=2026-10-01&to=2026-10-31'],
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    const nextButton = result.getByRole('button', { name: '다음 페이지' })
+    nextButton.click()
+
+    await waitFor(() => expect(result.getByText('공모주 11')).toBeInTheDocument())
+    expect(result.queryByText('공모주 1')).not.toBeInTheDocument()
+    expect(result.getByText('2 / 2')).toBeInTheDocument()
+    expect(result.getByRole('button', { name: '이전 페이지' })).not.toBeDisabled()
+    expect(result.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
+  })
+
+  it('10개 이하 아이템일 때 페이지네이션이 표시되지 않는다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={Array.from({ length: 10 }, (_, i) =>
+          makeItem({ ipo: makeIpo({ id: i + 1, ipoName: `공모주 ${i + 1}` }) }),
+        )}
+        investorSelected={false}
+      />,
+      ['/subscriptions?from=2026-10-01&to=2026-10-31'],
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(
+      result.queryByRole('navigation', { name: '공모주 일정 페이지 이동' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('빈 리스트일 때 빈 상태 메시지만 표시된다', async () => {
+    const { result } = renderWithRouter(
+      <SubscriptionScheduleList items={[]} investorSelected={false} />,
+      ['/subscriptions?from=2026-10-01&to=2026-10-31'],
+    )
+
+    await waitFor(() =>
+      expect(result.getByText('선택한 기간에 공모주 일정이 없습니다.')).toBeInTheDocument(),
+    )
+    expect(
+      result.queryByRole('navigation', { name: '공모주 일정 페이지 이동' }),
+    ).not.toBeInTheDocument()
+  })
+})
+
+describe('SubscriptionScheduleList 현재 단계 표시', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockInsight(INSIGHT)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-15'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('청약 예정 단계가 청약 결과 pill 앞에 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '미래 공모주',
+              subscriptionStartDate: '2026-11-01',
+              subscriptionEndDate: '2026-11-02',
+              listingDate: null,
+            }),
+          }),
+        ]}
+        investorSelected={true}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('청약 예정')).toBeInTheDocument()
+    expect(result.getByText('청약 전')).toBeInTheDocument()
+  })
+
+  it('청약 진행 중 단계가 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '진행중 공모주',
+              subscriptionStartDate: '2026-10-10',
+              subscriptionEndDate: '2026-10-20',
+              listingDate: null,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('청약 진행 중')).toBeInTheDocument()
+  })
+
+  it('상장 예정 단계가 표시된다 (청약 종료 후, 상장일 없음)', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '지난 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: null,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장 예정')).toBeInTheDocument()
+  })
+
+  it('상장일 단계가 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '상장일 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: '2026-10-15',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장일')).toBeInTheDocument()
+  })
+
+  it('상장 완료 단계가 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '상장완료 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: '2026-10-10',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장 완료')).toBeInTheDocument()
+  })
+})
+
+describe('SubscriptionScheduleList 가격 표시', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockInsight(INSIGHT)
+  })
+
+  it('공모가(fixedPrice)가 있을 때 공모가 라벨과 금액이 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '공모가 공모주',
+              fixedPrice: 15000,
+              lowerBandPrice: 10000,
+              upperBandPrice: 15000,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('공모가')).toBeInTheDocument()
+    expect(result.getByText('15,000원')).toBeInTheDocument()
+  })
+
+  it('희망가(lowerBandPrice, upperBandPrice)가 있을 때 희망가 라벨과 범위가 ~로 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '희망가 공모주',
+              fixedPrice: null,
+              lowerBandPrice: 10000,
+              upperBandPrice: 12000,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('희망가')).toBeInTheDocument()
+    expect(result.getByText('10,000원 ~ 12,000원')).toBeInTheDocument()
+  })
+
+  it('lowerBandPrice만 있을 때 희망가 라벨과 이상으로 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '단일밴드 공모주',
+              fixedPrice: null,
+              lowerBandPrice: 10000,
+              upperBandPrice: null,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('희망가')).toBeInTheDocument()
+    expect(result.getByText('10,000원 이상')).toBeInTheDocument()
+  })
+
+  it('가격 정보가 없을 때 미정으로 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '미정 공모주',
+              fixedPrice: null,
+              lowerBandPrice: null,
+              upperBandPrice: null,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('미정')).toBeInTheDocument()
+  })
+})
+
+describe('SubscriptionScheduleList 건수 제거 확인', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockInsight(INSIGHT)
+  })
+
+  it('내 청약에 건수 없이 수량만 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            subscriptionCount: 2,
+            subscriptionQuantity: 200,
+            allocatedCount: 1,
+            allocatedQuantity: 50,
+            pendingCount: 1,
+            status: 'partial',
+          }),
+        ]}
+        investorSelected={true}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    // "2건 · 200주"가 아닌 "200주"만 표시
+    expect(result.getByText('200주')).toBeInTheDocument()
+    expect(result.queryByText('2건')).not.toBeInTheDocument()
+  })
+
+  it('배정 결과에 입력/대기 건수 없이 배정 수량만 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            subscriptionCount: 2,
+            subscriptionQuantity: 200,
+            allocatedCount: 1,
+            allocatedQuantity: 50,
+            pendingCount: 1,
+            status: 'partial',
+          }),
+        ]}
+        investorSelected={true}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    // "1건 입력 · 50주 · 1건 대기"가 아닌 "50주"만 표시 (대기 텍스트도 제거)
+    expect(result.getByText('50주')).toBeInTheDocument()
+    expect(result.queryByText('1건 입력')).not.toBeInTheDocument()
+    expect(result.queryByText(/1건 대기/)).not.toBeInTheDocument() // 대기 텍스트도 제거됨
+  })
+
+  it('partial 상태 pill에 건수 텍스트 없이 상태명만 표시되고 중복되지 않는다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            subscriptionCount: 2,
+            subscriptionQuantity: 200,
+            allocatedCount: 1,
+            allocatedQuantity: 50,
+            pendingCount: 1,
+            status: 'partial',
+          }),
+        ]}
+        investorSelected={true}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    // "일부 결과 입력"이 정확히 1번만 표시됨 (중복된 statusDetail span 제거됨)
+    const partialTexts = result.getAllByText('일부 결과 입력')
+    expect(partialTexts).toHaveLength(1)
+    // pill에 건수 텍스트가 없음
+    const pill = partialTexts[0].closest('[class*="sc-"]') // StatusPill is a styled component
+    expect(pill).toBeInTheDocument()
+    expect(pill).toHaveTextContent('일부 결과 입력')
+    expect(pill).not.toHaveTextContent('건 입력')
+    expect(pill).not.toHaveTextContent('건 대기')
+  })
+
+  it('allocated 상태 pill에 배정 수량이 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            subscriptionCount: 1,
+            subscriptionQuantity: 100,
+            allocatedCount: 1,
+            allocatedQuantity: 30,
+            pendingCount: 0,
+            status: 'allocated',
+          }),
+        ]}
+        investorSelected={true}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    const statusDetail = result.getByText('30주', { selector: '.s-ee1412e-statusDetail' })
+    const pill = statusDetail.closest('[class*="sc-"]')
+    expect(pill).toBeInTheDocument()
+    expect(pill).toHaveTextContent('30주')
   })
 })

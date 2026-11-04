@@ -133,6 +133,73 @@ export const StyleScope = styled.div`
     font-size: 12px;
     white-space: nowrap;
   }
+  .s-ee1412e-phasePill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--info-bg);
+    color: var(--primary-deep);
+    border: 1px solid var(--info-border);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .s-ee1412e-priceRow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-right: var(--space-3);
+  }
+  .s-ee1412e-priceLabel {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+  .s-ee1412e-priceValue {
+    font-weight: 600;
+  }
+  .s-ee1412e-statusDetail {
+    margin-left: var(--space-2);
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+  .s-ee1412e-pendingText {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+  .s-ee1412e-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+  .s-ee1412e-pageButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: var(--on-primary);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .s-ee1412e-pageButton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .s-ee1412e-pageInfo {
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
   @media (max-width: 640px) {
     .s-ee1412e-header,
     .s-ee1412e-subscription {
@@ -141,6 +208,10 @@ export const StyleScope = styled.div`
     }
     .s-ee1412e-titleGroup {
       width: 100%;
+    }
+    .s-ee1412e-priceRow {
+      margin-right: 0;
+      margin-bottom: var(--space-1);
     }
   }
 `

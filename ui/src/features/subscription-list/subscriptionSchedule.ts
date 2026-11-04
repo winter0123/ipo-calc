@@ -36,6 +36,22 @@ export interface SubscriptionScheduleItem {
   status: 'before' | 'pending' | 'partial' | 'allocated' | 'unallocated'
 }
 
+export const PAGE_SIZE = 10
+
+export function paginateItems<T>(items: T[], page: number): T[] {
+  const start = page * PAGE_SIZE
+  return items.slice(start, start + PAGE_SIZE)
+}
+
+export function getTotalPages(items: unknown[]): number {
+  return Math.ceil(items.length / PAGE_SIZE)
+}
+
+export function clampPage(page: number, totalPages: number): number {
+  if (totalPages === 0) return 0
+  return Math.max(0, Math.min(page, totalPages - 1))
+}
+
 export function currentMonthRange(now = new Date()): DateRange {
   const first = new Date(now.getFullYear(), now.getMonth(), 1)
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -106,4 +122,44 @@ export function aggregateSubscriptionSchedule(
       status,
     }
   })
+}
+
+export type IpoPhase = 'scheduled' | 'subscribing' | 'listing-scheduled' | 'listing-day' | 'listed'
+
+export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
+  const todayStr = toLocalYmd(today)
+  const subscriptionStart = ipo.subscriptionStartDate.slice(0, 10)
+  const subscriptionEnd = ipo.subscriptionEndDate.slice(0, 10)
+  const listingDate = ipo.listingDate ? ipo.listingDate.slice(0, 10) : null
+
+  // 1. 청약 예정: subscriptionStart보다 이르면 listingDate 유무와 무관하게 scheduled
+  if (todayStr < subscriptionStart) return 'scheduled'
+
+  // 2. 청약 진행 중: subscriptionStart <= today <= subscriptionEnd
+  if (todayStr >= subscriptionStart && todayStr <= subscriptionEnd) return 'subscribing'
+
+  // 3. 청약 종료 후: listingDate 기준으로 상장 예정/상장일/상장 완료 분기
+  if (listingDate) {
+    if (todayStr < listingDate) return 'listing-scheduled'
+    if (todayStr === listingDate) return 'listing-day'
+    return 'listed'
+  }
+
+  // 4. listingDate가 없고 청약 종료 후: 상장 예정
+  return 'listing-scheduled'
+}
+
+export function getPhaseLabel(phase: IpoPhase): string {
+  switch (phase) {
+    case 'scheduled':
+      return '청약 예정'
+    case 'subscribing':
+      return '청약 진행 중'
+    case 'listing-scheduled':
+      return '상장 예정'
+    case 'listing-day':
+      return '상장일'
+    case 'listed':
+      return '상장 완료'
+  }
 }
