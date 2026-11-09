@@ -4,9 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.accountauthentication.repository.account.AccountRepository;
 import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
+import com.ipocalc.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
+import com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -22,6 +27,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
 /** 수량·금액 상한과 문자열 길이 상한: 오버플로·DB 컬럼 초과(500) 대신 400을 돌려준다. */
@@ -39,6 +45,7 @@ class InputLimitsTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private AccountRepository accountRepository;
   @Autowired private InvestorRepository investorRepository;
+  @Autowired private SecuritiesFirmRepository securitiesFirmRepository;
 
   private String email;
   private MockHttpSession session;
@@ -87,24 +94,74 @@ class InputLimitsTest {
 
   @Test
   void tooLongAccountNumberOrNameIs400() throws Exception {
-    assertThat(
-            postStatus(
-                "/securities-accounts",
-                map("investorId", 1, "securitiesFirmId", 1, "accountNumber", "1".repeat(51))))
-        .isEqualTo(400);
+    // Given: 유효한 투자자와 증권사 생성
+    Long investorId = registerInvestorAndGetId();
+    Long securitiesFirmId = registerFirm();
+
+    // When/Then: 계좌번호가 51자(최대 50자 초과)면 400
     assertThat(
             postStatus(
                 "/securities-accounts",
                 map(
                     "investorId",
-                    1,
+                    investorId,
                     "securitiesFirmId",
-                    1,
+                    securitiesFirmId,
+                    "accountNumber",
+                    "1".repeat(51))))
+        .isEqualTo(400);
+
+    // When/Then: 계좌번호 형식 오류(3자리) + 계좌명 256자(최대 255자 초과)면 400
+    assertThat(
+            postStatus(
+                "/securities-accounts",
+                map(
+                    "investorId",
+                    investorId,
+                    "securitiesFirmId",
+                    securitiesFirmId,
                     "accountNumber",
                     "123",
                     "accountName",
                     "n".repeat(256))))
         .isEqualTo(400);
+  }
+
+  private Long registerInvestorAndGetId() throws Exception {
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/investors")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            Map.of(
+                                "displayName", "한도테스트투자자",
+                                "relationship", "SELF")))
+                    .session(session))
+            .andReturn();
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    return ((Number)
+            objectMapper
+                .readValue(
+                    new String(
+                        result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                    Map.class)
+                .get("id"))
+        .longValue();
+  }
+
+  private Long registerFirm() throws Exception {
+    LocalDateTime now = LocalDateTime.now();
+    SecuritiesFirm firm =
+        securitiesFirmRepository.save(
+            SecuritiesFirm.builder()
+                .name("한도테스트증권사" + ThreadLocalRandom.current().nextLong())
+                .status(RecordStatus.ACTIVE)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    return firm.getId();
   }
 
   @Test

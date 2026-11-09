@@ -12,7 +12,7 @@
 **리스크**: 낮(단순 스키마 변경)
 
 ### SF-1: 백엔드 전체 + 테스트 (SF-0 후 단독)
-**범위**: 
+**범위**:
 - `SecuritiesAccountService`: register/update/getAccountNumber/deactivate 구현(위 아키텍처 명세대로)
 - `SecuritiesAccountController`: 응답/에러 반영
 - `SecuritiesAccountRepository`: 신규 쿼리 1개 추가

@@ -99,6 +99,31 @@ class ApiCredentialServiceTest {
         securitiesFirmRepository, encryptor, accountNumberEncryptor, Clock.systemDefaultZone());
   }
 
+  @Test
+  void assemblerToResponseWithNullAccountNumberReturnsNullMasked() {
+    // Given: 계좌번호가 없는 증권계좌
+    ApiCredentialAssembler assembler =
+        new ApiCredentialAssembler(
+            securitiesFirmRepository,
+            brokerSecretEncryptor,
+            accountNumberEncryptor,
+            Clock.systemDefaultZone());
+    SecuritiesAccount account =
+        SecuritiesAccount.builder()
+            .id(ACCOUNT_ID)
+            .investorId(INVESTOR_ID)
+            .securitiesFirmId(FIRM_ID)
+            .accountNumber(null)
+            .status(RecordStatus.ACTIVE)
+            .build();
+
+    // When
+    ApiCredentialResponse response = assembler.toResponse(account, null);
+
+    // Then: 마스킹된 계좌번호 null
+    assertThat(response.accountNumber()).isNull();
+  }
+
   private String newRandomKey() {
     byte[] keyBytes = new byte[32];
     secureRandom.nextBytes(keyBytes);
@@ -147,6 +172,33 @@ class ApiCredentialServiceTest {
         .thenReturn(
             Optional.of(Investor.builder().id(INVESTOR_ID).accountId(ownerAccountId).build()));
     when(securityUtils.getEffectiveAccountId()).thenReturn(ownerAccountId);
+  }
+
+  private void stubOwnedSecuritiesAccountWithNullAccountNumber() {
+    SecuritiesAccount account =
+        SecuritiesAccount.builder()
+            .id(ACCOUNT_ID)
+            .investorId(INVESTOR_ID)
+            .securitiesFirmId(FIRM_ID)
+            .accountNumber(null)
+            .accountName("개인 MTS 계좌")
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(securitiesAccountRepository.findByIdAndDeletedAtIsNull(ACCOUNT_ID))
+        .thenReturn(Optional.of(account));
+    lenient()
+        .when(securitiesFirmRepository.findByIdAndDeletedAtIsNull(FIRM_ID))
+        .thenReturn(
+            Optional.of(
+                SecuritiesFirm.builder()
+                    .id(FIRM_ID)
+                    .apiSupported(true)
+                    .apiProvider("KIS")
+                    .build()));
+    when(investorRepository.findById(INVESTOR_ID))
+        .thenReturn(
+            Optional.of(Investor.builder().id(INVESTOR_ID).accountId(OWNER_ACCOUNT_ID).build()));
+    when(securityUtils.getEffectiveAccountId()).thenReturn(OWNER_ACCOUNT_ID);
   }
 
   private void stubOwnedSecuritiesAccountForOtherAccount() {
@@ -261,6 +313,34 @@ class ApiCredentialServiceTest {
             ApiCredentialValidationException.class,
             () -> service.register(ACCOUNT_ID, "KIS", " ", DUMMY_APP_SECRET));
     assertThat(exception.getMessage()).contains("appKey");
+    verify(credentialRepository, never()).saveAndFlush(any(SecuritiesAccountApiCredential.class));
+  }
+
+  @Test
+  void registerWithNullAccountNumberThrowsValidationBeforeExternalCalls() {
+    // Given: 계좌번호가 없는 증권계좌
+    stubOwnedSecuritiesAccountWithNullAccountNumber();
+
+    // When & Then: 계좌번호 미등록 400 예외, 저장/외부 호출 없음
+    ApiCredentialValidationException exception =
+        assertThrows(
+            ApiCredentialValidationException.class,
+            () -> service.register(ACCOUNT_ID, "KIS", DUMMY_APP_KEY, DUMMY_APP_SECRET));
+    assertThat(exception.getMessage()).contains("계좌번호가 등록되지 않아");
+    verify(credentialRepository, never()).saveAndFlush(any(SecuritiesAccountApiCredential.class));
+  }
+
+  @Test
+  void replaceWithNullAccountNumberThrowsValidationBeforeExternalCalls() {
+    // Given: 계좌번호가 없는 증권계좌
+    stubOwnedSecuritiesAccountWithNullAccountNumber();
+
+    // When & Then: 계좌번호 미등록 400 예외, 저장/외부 호출 없음
+    ApiCredentialValidationException exception =
+        assertThrows(
+            ApiCredentialValidationException.class,
+            () -> service.replace(ACCOUNT_ID, DUMMY_APP_KEY, DUMMY_APP_SECRET, null));
+    assertThat(exception.getMessage()).contains("계좌번호가 등록되지 않아");
     verify(credentialRepository, never()).saveAndFlush(any(SecuritiesAccountApiCredential.class));
   }
 

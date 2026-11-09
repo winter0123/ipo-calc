@@ -108,6 +108,13 @@ public class BrokerSyncService {
     validateRange(start, end, today);
     final SecuritiesAccount account =
         apiCredentialService.requireOwnedSecuritiesAccount(securitiesAccountId);
+
+    // 계좌번호가 없으면 외부 API 호출 전에 400으로 거부
+    if (account.getAccountNumber() == null || account.getAccountNumber().isBlank()) {
+      throw new ApiCredentialValidationException(
+          "계좌번호가 등록되지 않아 조회할 수 없습니다. 계좌 수정에서 계좌번호를 입력해 주세요.");
+    }
+
     SecuritiesAccountApiCredential credential =
         credentialRepository
             .findBySecuritiesAccountIdAndDeletedAtIsNullOrderByUpdatedAtDesc(securitiesAccountId)

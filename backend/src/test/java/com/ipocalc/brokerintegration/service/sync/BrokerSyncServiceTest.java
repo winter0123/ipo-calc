@@ -150,6 +150,17 @@ class BrokerSyncServiceTest {
     when(saleRepository.findByAllocationIdInAndStatus(anyList(), any())).thenReturn(List.of());
   }
 
+  @Test
+  void previewWithNullAccountNumberThrowsValidationWithoutBrokerCall() {
+    // Given: 계좌번호가 없는 증권계좌
+    when(apiCredentialService.requireOwnedSecuritiesAccount(ACCOUNT_ID))
+        .thenReturn(SecuritiesAccount.builder().id(ACCOUNT_ID).accountNumber(null).build());
+
+    // When & Then: 400 예외, 외부 조회 호출 없음
+    assertThrows(ApiCredentialValidationException.class, () -> service.preview(ACCOUNT_ID));
+    verify(port, never()).queryPeriodTradeProfit(any(), any(), any(), any(), any());
+  }
+
   private String newKey() {
     byte[] key = new byte[32];
     new SecureRandom().nextBytes(key);

@@ -43,9 +43,15 @@ public class SecuritiesAccount {
     this.updatedAt = now;
   }
 
-  /** Replaces the encrypted account number. */
+  /** Replaces the encrypted account number (used for key rotation). */
   public void rotateAccountNumber(String encryptedAccountNumber) {
     this.accountNumber = encryptedAccountNumber;
+  }
+
+  /** 계좌번호가 없는 계좌에 암호화된 계좌번호를 최초 1회 등록한다. */
+  public void setAccountNumber(String encryptedAccountNumber, LocalDateTime now) {
+    this.accountNumber = encryptedAccountNumber;
+    this.updatedAt = now;
   }
 
   /** PK. DB가 자동으로 매기는 번호. */
@@ -64,8 +70,8 @@ public class SecuritiesAccount {
   @Comment("증권사 ID")
   private Long securitiesFirmId;
 
-  /** 계좌번호(암호화 저장). 화면에는 마스킹해서 보여 주고 수정할 수 없다. */
-  @Column(name = "account_number", nullable = false, length = 255)
+  /** 계좌번호(암호화 저장). 화면에는 마스킹해서 보여 주고 수정할 수 없다. 선택 사항(null 허용). */
+  @Column(name = "account_number", nullable = true, length = 255)
   @Comment("계좌번호(암호화)")
   private String accountNumber;
 

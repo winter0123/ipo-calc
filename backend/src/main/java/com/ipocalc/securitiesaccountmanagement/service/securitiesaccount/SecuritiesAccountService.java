@@ -1,11 +1,13 @@
 package com.ipocalc.securitiesaccountmanagement.service.securitiesaccount;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
+import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountAccountNumberResponse;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountRegisterRequest;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountResponse;
 import com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto.SecuritiesAccountUpdateRequest;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
+import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountConflictException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountNotFoundException;
 import com.ipocalc.securitiesaccountmanagement.exception.SecuritiesAccountValidationException;
 import com.ipocalc.securitiesaccountmanagement.infrastructure.encryption.AccountNumberEncryptor;
@@ -13,11 +15,13 @@ import com.ipocalc.securitiesaccountmanagement.infrastructure.encryption.Account
 import com.ipocalc.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.ipocalc.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -36,10 +40,13 @@ public class SecuritiesAccountService {
 
   private final SecuritiesFirmRepository securitiesFirmRepository;
   private final SecuritiesAccountRepository securitiesAccountRepository;
+  private final SubscriptionExistenceCheck subscriptionExistenceCheck;
   private final AccountCredentialDeletion accountCredentialDeletion;
   private final AccountNumberEncryptor accountNumberEncryptor;
   private final SecuritiesAccountOwnershipVerifier ownershipVerifier;
+  private final InvestorRepository investorRepository;
   private final Clock clock;
+  private final EntityManager entityManager;
 
   private static final int ACCOUNT_NUMBER_MAX_LENGTH = 50;
   private static final int ACCOUNT_NAME_MAX_LENGTH = 255;
@@ -51,27 +58,37 @@ public class SecuritiesAccountService {
     }
   }
 
+  /**
+   * 계좌번호 평문을 검증하고 정규화한다.
+   *
+   * @param plainAccountNumber 입력된 평문 계좌번호 (공백/하이픈 허용)
+   * @return 공백/하이픈이 제거된 정규화된 숫자 문자열
+   * @throws SecuritiesAccountValidationException 형식 오류 시
+   */
+  private String validateAndNormalizeAccountNumber(String plainAccountNumber) {
+    String normalized = plainAccountNumber.replaceAll("[\\s-]", "");
+    if (!normalized.matches("\\d{10,16}")) {
+      throw new SecuritiesAccountValidationException("계좌번호는 10~16자리 숫자여야 합니다.");
+    }
+    if (normalized.length() > ACCOUNT_NUMBER_MAX_LENGTH) {
+      throw new SecuritiesAccountValidationException(
+          "accountNumber는 " + ACCOUNT_NUMBER_MAX_LENGTH + "자 이하여야 합니다.");
+    }
+    return normalized;
+  }
+
   /** 증권계좌를 등록한다. */
   @Transactional
   public SecuritiesAccountResponse register(SecuritiesAccountRegisterRequest request) {
     Long investorId = request.getInvestorId();
     Long securitiesFirmId = request.getSecuritiesFirmId();
-    if (investorId == null || securitiesFirmId == null || request.getAccountNumber() == null) {
-      throw new SecuritiesAccountValidationException(
-          "investorId, securitiesFirmId, accountNumber는 필수 입력값입니다.");
-    }
-    // 공백·하이픈을 제거한 숫자 10~16자리만 허용하고 정규화한 값을 저장한다(화면 규칙과 동일).
-    String plainAccountNumber = request.getAccountNumber().replaceAll("[\\s-]", "");
-    if (!plainAccountNumber.matches("\\d{10,16}")) {
-      throw new SecuritiesAccountValidationException("계좌번호는 10~16자리 숫자여야 합니다.");
+
+    if (investorId == null || securitiesFirmId == null) {
+      throw new SecuritiesAccountValidationException("investorId, securitiesFirmId는 필수 입력값입니다.");
     }
 
+    // 계좌명 길이 검증을 분기 전에 수행 (번호 유무와 관계없이 동일하게 적용)
     validateAccountName(request.getAccountName());
-    // 암호문이 컬럼(255자)을 넘지 않도록 원문 길이를 제한한다.
-    if (plainAccountNumber.length() > ACCOUNT_NUMBER_MAX_LENGTH) {
-      throw new SecuritiesAccountValidationException(
-          "accountNumber는 " + ACCOUNT_NUMBER_MAX_LENGTH + "자 이하여야 합니다.");
-    }
 
     ownershipVerifier.requireOwnedInvestor(investorId);
 
@@ -80,6 +97,45 @@ public class SecuritiesAccountService {
         .orElseThrow(() -> new SecuritiesAccountNotFoundException("존재하지 않는 증권사입니다"));
 
     LocalDateTime now = LocalDateTime.now(clock);
+
+    // 투자자 행 락으로 동시성 제어 (계좌번호 유무와 관계없이 먼저 락 획득)
+    investorRepository
+        .findByIdForUpdate(investorId)
+        .orElseThrow(() -> new SecuritiesAccountNotFoundException("투자자를 찾을 수 없습니다."));
+
+    // 계좌번호가 제공되지 않았거나 공백인 경우: 기존 활성 계좌 재사용 또는 신규 생성(null)
+    String accountNumber = request.getAccountNumber();
+    if (accountNumber == null || accountNumber.isBlank()) {
+      // 같은 투자자+증권사의 가장 오래된 활성 계좌 조회
+      var existingAccount = findOldestActiveAccount(investorId, securitiesFirmId);
+
+      if (existingAccount.isPresent()) {
+        // 기존 활성 계좌 재사용 (updatedAt 변경 없음)
+        SecuritiesAccount reused = existingAccount.get();
+        ownershipVerifier.requireOwner(reused);
+        return toMaskedResponse(reused);
+      }
+
+      // 기존 활성 계좌 없음: accountNumber=null로 신규 생성
+      SecuritiesAccount entity =
+          SecuritiesAccount.builder()
+              .investorId(investorId)
+              .securitiesFirmId(securitiesFirmId)
+              .accountNumber(null)
+              .accountName(request.getAccountName())
+              .status(RecordStatus.ACTIVE)
+              .deletedAt(null)
+              .createdAt(now)
+              .updatedAt(now)
+              .build();
+
+      SecuritiesAccount saved = securitiesAccountRepository.save(entity);
+      return SecuritiesAccountResponse.from(saved, null);
+    }
+
+    // 계좌번호가 제공된 경우: 기존 검증·암호화 후 신규 생성
+    String plainAccountNumber = validateAndNormalizeAccountNumber(accountNumber);
+
     SecuritiesAccount entity =
         SecuritiesAccount.builder()
             .investorId(investorId)
@@ -93,7 +149,6 @@ public class SecuritiesAccountService {
             .build();
 
     SecuritiesAccount saved = securitiesAccountRepository.save(entity);
-    // 저장 직후이므로 저장에 사용한 원본 평문을 그대로 마스킹에 사용한다 (다시 복호화할 필요 없음)
     return SecuritiesAccountResponse.from(saved, AccountNumberMasker.mask(plainAccountNumber));
   }
 
@@ -140,10 +195,16 @@ public class SecuritiesAccountService {
     SecuritiesAccount account = findActive(id);
     Long currentAccountId = ownershipVerifier.requireOwner(account);
 
-    String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
+    String encrypted = account.getAccountNumber();
+    if (encrypted == null || encrypted.isBlank()) {
+      throw new SecuritiesAccountValidationException("계좌번호가 등록되지 않았습니다. 계좌 수정에서 계좌번호를 입력해 주세요.");
+    }
+
+    String plainAccountNumber = accountNumberEncryptor.decrypt(encrypted);
     Instant exposedAt = Instant.now(clock);
 
     // D-SA-005: 감사 로그는 SLF4J 애플리케이션 로그로만 기록 (별도 DB 테이블 없음)
+    // 평문 조회 성공 시에만 기록 (번호 없을 때는 기록하지 않음)
     log.info(
         "계좌번호 노출: accountId={}, requestedByAccountId={}, exposedAt={}",
         id,
@@ -156,7 +217,21 @@ public class SecuritiesAccountService {
   /** 증권계좌 정보를 수정한다. */
   @Transactional
   public SecuritiesAccountResponse update(Long id, SecuritiesAccountUpdateRequest request) {
+    // 투자자 행 락을 먼저 획득한 뒤 최신 엔티티를 읽어 stale read 방지
     SecuritiesAccount account = findActive(id);
+    Long investorId = account.getInvestorId();
+
+    // 락 획득
+    investorRepository
+        .findByIdForUpdate(investorId)
+        .orElseThrow(() -> new SecuritiesAccountNotFoundException("투자자를 찾을 수 없습니다."));
+
+    // 락 획득 후 엔티티 재조회로 최신 상태 확보 (1차 캐시 stale data 방지)
+    entityManager.refresh(account);
+    if (account.getDeletedAt() != null) {
+      throw new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다.");
+    }
+
     ownershipVerifier.requireOwner(account);
 
     if (request.getSecuritiesFirmId() != null) {
@@ -170,6 +245,21 @@ public class SecuritiesAccountService {
     }
 
     validateAccountName(request.getAccountName());
+
+    // accountNumber 처리: 미전달=무변경, 공백=400, 기존 암호문 존재=409, 유효값=검증+암호화 저장
+    String accountNumber = request.getAccountNumber();
+    if (accountNumber != null) {
+      if (accountNumber.isBlank()) {
+        throw new SecuritiesAccountValidationException("계좌번호는 10~16자리 숫자여야 합니다.");
+      }
+      if (account.getAccountNumber() != null && !account.getAccountNumber().isBlank()) {
+        throw new SecuritiesAccountConflictException("이미 계좌번호가 등록되어 있습니다");
+      }
+      String plainAccountNumber = validateAndNormalizeAccountNumber(accountNumber);
+      account.setAccountNumber(
+          accountNumberEncryptor.encrypt(plainAccountNumber), LocalDateTime.now(clock));
+    }
+
     account.changeDetails(
         request.getSecuritiesFirmId(), request.getAccountName(), LocalDateTime.now(clock));
     SecuritiesAccount saved = securitiesAccountRepository.save(account);
@@ -180,8 +270,27 @@ public class SecuritiesAccountService {
   /** 증권계좌를 비활성화(소프트 삭제)한다. */
   @Transactional
   public void deactivate(Long id) {
+    // 투자자 행 락을 먼저 획득한 뒤 최신 엔티티를 읽어 stale read 방지
     SecuritiesAccount account = findActive(id);
+    Long investorId = account.getInvestorId();
+
+    // 락 획득
+    investorRepository
+        .findByIdForUpdate(investorId)
+        .orElseThrow(() -> new SecuritiesAccountNotFoundException("투자자를 찾을 수 없습니다."));
+
+    // 락 획득 후 엔티티 재조회로 최신 상태 확보 (1차 캐시 stale data 방지)
+    entityManager.refresh(account);
+    if (account.getDeletedAt() != null) {
+      throw new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다.");
+    }
+
     ownershipVerifier.requireOwner(account);
+
+    // 청약 이력 존재 여부만 체크 (취소/논리삭제 포함 모든 이력)
+    if (subscriptionExistenceCheck.existsBySecuritiesAccountId(id)) {
+      throw new SecuritiesAccountConflictException("연결된 청약 이력이 있어 비활성화할 수 없습니다");
+    }
 
     LocalDateTime now = LocalDateTime.now(clock);
     account.deactivate(now);
@@ -194,6 +303,15 @@ public class SecuritiesAccountService {
     return securitiesAccountRepository
         .findByIdAndDeletedAtIsNull(id)
         .orElseThrow(() -> new SecuritiesAccountNotFoundException("증권계좌를 찾을 수 없습니다."));
+  }
+
+  /** 투자자+증권사의 가장 오래된 활성 계좌를 조회한다. */
+  @SuppressWarnings("checkstyle:LineLength")
+  private Optional<SecuritiesAccount> findOldestActiveAccount(
+      Long investorId, Long securitiesFirmId) {
+    return securitiesAccountRepository
+        .findFirstByInvestorIdAndSecuritiesFirmIdAndStatusAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
+            investorId, securitiesFirmId, RecordStatus.ACTIVE);
   }
 
   private SecuritiesAccountResponse toMaskedResponse(SecuritiesAccount account) {
@@ -209,8 +327,14 @@ public class SecuritiesAccountService {
 
   private SecuritiesAccountResponse toMaskedResponse(
       SecuritiesAccount account, String securitiesFirmName) {
-    String plainAccountNumber = accountNumberEncryptor.decrypt(account.getAccountNumber());
-    String maskedAccountNumber = AccountNumberMasker.mask(plainAccountNumber);
+    String encrypted = account.getAccountNumber();
+    String maskedAccountNumber;
+    if (encrypted == null || encrypted.isBlank()) {
+      maskedAccountNumber = null;
+    } else {
+      String plainAccountNumber = accountNumberEncryptor.decrypt(encrypted);
+      maskedAccountNumber = AccountNumberMasker.mask(plainAccountNumber);
+    }
     return SecuritiesAccountResponse.from(account, maskedAccountNumber, securitiesFirmName);
   }
 

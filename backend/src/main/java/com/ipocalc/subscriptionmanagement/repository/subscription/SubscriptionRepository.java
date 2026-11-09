@@ -29,6 +29,12 @@ public interface SubscriptionRepository
   List<Subscription> findAllBySecuritiesAccountIdAndDeletedAtIsNullOrderByCreatedAtDesc(
       Long securitiesAccountId);
 
+  /** 증권계좌 ID 조건(상태·삭제 무관)으로 청약을 목록 조회한다(생성일 내림차순). */
+  List<Subscription> findAllBySecuritiesAccountIdOrderByCreatedAtDesc(Long securitiesAccountId);
+
+  /** 해당 증권계좌를 참조하는 청약(상태·삭제 무관)이 하나라도 있는지 확인한다. */
+  boolean existsBySecuritiesAccountId(Long securitiesAccountId);
+
   /** 투자자 ID · 증권계좌 ID · 공모주 ID · 상태 조건(삭제되지 않은 건만)으로 청약을 단건 조회한다. */
   Optional<Subscription> findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
       Long investorId, Long securitiesAccountId, Long ipoId, RecordStatus status);

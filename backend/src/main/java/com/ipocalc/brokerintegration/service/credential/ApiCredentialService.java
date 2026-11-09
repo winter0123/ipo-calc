@@ -97,6 +97,12 @@ public class ApiCredentialService {
 
     final SecuritiesAccount account = requireOwnedSecuritiesAccount(securitiesAccountId);
 
+    // 계좌번호가 없으면 외부 키/토큰/API 호출 전에 400으로 거부
+    if (account.getAccountNumber() == null || account.getAccountNumber().isBlank()) {
+      throw new ApiCredentialValidationException(
+          "계좌번호가 등록되지 않아 브로커 연동을 할 수 없습니다. 계좌 수정에서 계좌번호를 입력해 주세요.");
+    }
+
     // AC-1814: 키가 미설정이면 암호화 자체가 불가능하므로 기동은 유지하되 연결 등록만 거부한다.
     if (!brokerSecretEncryptor.isConfigured()) {
       throw new BrokerConnectionUnavailableException(
@@ -167,6 +173,13 @@ public class ApiCredentialService {
     }
     rateLimiter.acquire(keyWriteBucket(), KEY_WRITE_LIMIT);
     final SecuritiesAccount account = requireOwnedSecuritiesAccount(securitiesAccountId);
+
+    // 계좌번호가 없으면 외부 키/토큰/API 호출 전에 400으로 거부
+    if (account.getAccountNumber() == null || account.getAccountNumber().isBlank()) {
+      throw new ApiCredentialValidationException(
+          "계좌번호가 등록되지 않아 브로커 연동을 할 수 없습니다. 계좌 수정에서 계좌번호를 입력해 주세요.");
+    }
+
     if (!brokerSecretEncryptor.isConfigured()) {
       throw new BrokerConnectionUnavailableException(
           "브로커 연결 미활성: APP_ENCRYPTION_BROKER_KEY(또는 app.encryption.broker-key)가 "

@@ -28,7 +28,7 @@ Optional<SecuritiesAccount> findFirstByInvestorIdAndSecuritiesFirmIdAndStatusAnd
 
 **getAccountNumber**: `accountNumber==null`이면 400 "계좌번호가 등록되지 않았습니다. 계좌 수정에서 계좌번호를 입력해 주세요." 복호화 전 null 체크 필수, **감사 로그 기록 안 함**(평문 반환 성공 시에만 기록).
 
-**deactivate**: 해당 계좌의 `subscriptionRepository.existsBySecuritiesAccountId(id)`만 체크. true=409 "연결된 청약 이력이 있어 비활성화할 수 없습니다", false=진행. 동일 투자자+증권사 타 계좌 존재 여부는 개별 DELETE 차단 안 함.
+**deactivate**: 해당 계좌의 `subscriptionExistenceCheck.existsBySecuritiesAccountId(id)`만 체크. true=409 "연결된 청약 이력이 있어 비활성화할 수 없습니다", false=진행. 동일 투자자+증권사 타 계좌 존재 여부는 개별 DELETE 차단 안 함.
 
 **toMaskedResponse**: `accountNumber==null`이면 `null` 반환, 아니면 복호화+마스킹.
 
@@ -71,7 +71,7 @@ ALTER TABLE securities_accounts ALTER COLUMN account_number DROP NOT NULL;
 전역 `spring.jackson.default-property-inclusion=NON_NULL` 여부 확인. `NON_NULL`이면 `SecuritiesAccountResponse.accountNumber` 필드에 `@JsonInclude(JsonInclude.Include.ALWAYS)` 강제 적용. 프론트 `undefined` 우회 금지, 키 반드시 포함.
 
 ## 의존성 추가
-- `SubscriptionRepository`: `boolean existsBySecuritiesAccountId(Long)` 필요(없으면 추가)
+- `SubscriptionExistenceCheck` 포트(SubscriptionExistenceCheckAdapter)로 청약 존재 여부 확인
 
 ## 테스트 전략
 - Service: register/update/getAccountNumber/deactivate 각 AC별 정상/실패/경계/권한/동시성

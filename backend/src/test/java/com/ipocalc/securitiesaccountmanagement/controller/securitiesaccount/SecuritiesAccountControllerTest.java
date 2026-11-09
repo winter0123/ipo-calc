@@ -19,6 +19,8 @@ import com.ipocalc.securitiesaccountmanagement.infrastructure.encryption.Account
 import com.ipocalc.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
 import com.ipocalc.securitiesfirmcatalog.domain.model.securitiesfirm.SecuritiesFirm;
 import com.ipocalc.securitiesfirmcatalog.repository.securitiesfirm.SecuritiesFirmRepository;
+import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
+import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -26,7 +28,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +85,8 @@ class SecuritiesAccountControllerTest {
 
   @Autowired private SecuritiesAccountApiCredentialRepository credentialRepository;
 
+  @Autowired private SubscriptionRepository subscriptionRepository;
+
   private String testEmail;
   private String testPassword;
   private String testName;
@@ -116,8 +125,13 @@ class SecuritiesAccountControllerTest {
               .filter(i -> acctId.equals(i.getAccountId()))
               .collect(Collectors.toList());
       for (Investor investor : investors) {
+        // 연관된 청약 먼저 삭제 (외래키 제약 때문) - deletedAt 관계없이 모두 삭제
         List<SecuritiesAccount> accounts =
             securitiesAccountRepository.findByInvestorId(investor.getId());
+        for (SecuritiesAccount acc : accounts) {
+          subscriptionRepository.deleteAll(
+              subscriptionRepository.findAllBySecuritiesAccountIdOrderByCreatedAtDesc(acc.getId()));
+        }
         securitiesAccountRepository.deleteAll(accounts);
         createdAccounts.removeAll(accounts);
       }
@@ -260,24 +274,22 @@ class SecuritiesAccountControllerTest {
         .as("securitiesFirmId 누락 시 에러 코드는 VALIDATION_ERROR여야 합니다 (AC-002)")
         .isEqualTo("VALIDATION_ERROR");
 
-    // When/Then: accountNumber 누락 시 400 + VALIDATION_ERROR (AC-002)
+    // When/Then: accountNumber 누락/공백 시 신규 생성 또는 재사용 (AC-001, AC-002 변경: 선택 필드)
     MvcResult noNumber =
         registerSecuritiesAccount(
             Map.of(
                 "investorId", investorId,
                 "securitiesFirmId", securitiesFirmId));
     assertThat(noNumber.getResponse().getStatus())
-        .as("accountNumber 누락 시 400 Bad Request를 반환해야 합니다 (AC-002)")
-        .isEqualTo(400);
+        .as("accountNumber 미제공 시 기존 계좌가 없으면 201 Created로 신규 생성(null) (AC-002)")
+        .isEqualTo(201);
     Map<String, Object> noNumberBody = objectMapper.readValue(utf8Body(noNumber), Map.class);
-    assertThat(noNumberBody.get("error"))
-        .as("accountNumber 누락 시 에러 코드는 VALIDATION_ERROR여야 합니다 (AC-002)")
-        .isEqualTo("VALIDATION_ERROR");
+    assertThat(noNumberBody.get("accountNumber")).as("계좌번호가 null로 생성되어야 합니다").isNull();
 
-    // And: 레코드가 생성되지 않음 (AC-002)
+    // And: 레코드가 생성됨 (AC-002)
     assertThat(securitiesAccountRepository.findByInvestorId(investorId))
-        .as("검증 실패 시 증권계좌 레코드가 생성되지 않아야 합니다 (AC-002)")
-        .isEmpty();
+        .as("accountNumber 미제공 시에도 계좌가 생성되어야 합니다 (AC-002)")
+        .hasSize(1);
   }
 
   @Test
@@ -709,8 +721,8 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
-  void updateSecuritiesAccountIgnoresAccountNumberChangeInRequest() throws Exception {
-    // Given: 인증된 계정이 소유한 증권계좌가 있음 (SF-5: accountNumber는 불변)
+  void updateSecuritiesAccountWithExistingAccountNumberReturns409() throws Exception {
+    // Given: 인증된 계정이 소유한 증권계좌가 있고 계좌번호가 이미 등록됨 (AC-007)
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
     Long firmId = registerFirm();
@@ -729,7 +741,7 @@ class SecuritiesAccountControllerTest {
             .longValue();
     createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
 
-    // When: 요청 본문에 accountNumber 변경값을 포함해 PATCH 요청을 보냄 (SF-5)
+    // When: 이미 계좌번호가 있는 계좌에 다른 계좌번호로 PATCH 요청을 보냄 (AC-007)
     MvcResult result =
         updateSecuritiesAccount(
             accountId,
@@ -737,17 +749,18 @@ class SecuritiesAccountControllerTest {
                 "accountName", "새 이름",
                 "accountNumber", "000-000-000000"));
 
-    // Then: 200 OK + accountNumber는 요청값과 무관하게 원래 값(마스킹) 그대로 유지됨 (SF-5)
-    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    // Then: 409 Conflict + 에러 메시지 (AC-007)
+    assertThat(result.getResponse().getStatus())
+        .as("기존 계좌번호가 있을 때 다른 번호로 변경 시도 시 409 반환 (AC-007)")
+        .isEqualTo(409);
     Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(response.get("accountNumber"))
-        .as("accountNumber는 요청에 있어도 무시되고 기존 값이 유지되어야 합니다 (SF-5)")
-        .isEqualTo(AccountNumberMasker.mask(ACCOUNT_NUMBER));
+    assertThat(response.get("error")).isEqualTo("CONFLICT");
+    assertThat(response.get("message")).isEqualTo("이미 계좌번호가 등록되어 있습니다");
 
-    // And: DB에 저장된 실제 계좌번호도 변경되지 않음 (SF-5)
+    // And: DB에 저장된 실제 계좌번호도 변경되지 않음
     SecuritiesAccount updated = securitiesAccountRepository.findById(accountId).orElseThrow();
     assertThat(accountNumberEncryptor.decrypt(updated.getAccountNumber()))
-        .as("DB의 계좌번호도 변경되면 안 됩니다 (SF-5)")
+        .as("DB의 계좌번호도 변경되면 안 됩니다")
         .isEqualTo(ACCOUNT_NUMBER);
   }
 
@@ -976,5 +989,425 @@ class SecuritiesAccountControllerTest {
                 "securitiesFirmId", firmId,
                 "accountNumber", number));
     return ((Number) objectMapper.readValue(utf8Body(r), Map.class).get("id")).longValue();
+  }
+
+  // === 회귀 테스트: account-presence SF-1 ===
+
+  @Test
+  void responseContainsAccountNumberKeyWithNullWhenNoAccountNumber() throws Exception {
+    // Given: accountNumber 없이 계좌 생성
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    // When: accountNumber 생략하여 POST
+    MvcResult result =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+
+    // Then: 201 + accountNumber 키가 null 값으로 포함됨
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body).containsKey("accountNumber");
+    assertThat(body.get("accountNumber")).isNull();
+
+    // And: DB에도 null 저장됨
+    Long savedId = ((Number) body.get("id")).longValue();
+    SecuritiesAccount saved = securitiesAccountRepository.findById(savedId).orElseThrow();
+    assertThat(saved.getAccountNumber()).isNull();
+  }
+
+  @Test
+  void registerOmittedAccountNumberReusesExistingOldestAccount() throws Exception {
+    // Given: 기존 활성 계좌가 있는 투자자
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    // 첫 번째 계좌 생성 (번호 있음)
+    MvcResult first =
+        registerSecuritiesAccount(
+            Map.of(
+                "investorId",
+                investorId,
+                "securitiesFirmId",
+                firmId,
+                "accountNumber",
+                "111111111111"));
+    assertThat(first.getResponse().getStatus()).isEqualTo(201);
+    Long firstId =
+        ((Number) objectMapper.readValue(utf8Body(first), Map.class).get("id")).longValue();
+    String firstUpdatedAt =
+        (String) objectMapper.readValue(utf8Body(first), Map.class).get("updatedAt");
+
+    // When: accountNumber 생략하여 다시 POST (재사용 경로)
+    MvcResult reused =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+
+    // Then: 201 + 기존 계좌 재사용 (동일 ID, updatedAt 불변)
+    assertThat(reused.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> reusedBody = objectMapper.readValue(utf8Body(reused), Map.class);
+    assertThat(((Number) reusedBody.get("id")).longValue()).isEqualTo(firstId);
+    assertThat(reusedBody.get("updatedAt")).isEqualTo(firstUpdatedAt);
+    assertThat(reusedBody.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("111111111111"));
+
+    // And: DB 레코드 수도 1개 유지
+    assertThat(securitiesAccountRepository.findByInvestorId(investorId)).hasSize(1);
+  }
+
+  @Test
+  void registerBlankAccountNumberReusesExistingAccount() throws Exception {
+    // Given: 기존 활성 계좌가 있는 투자자
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    registerSecuritiesAccount(
+        Map.of(
+            "investorId", investorId, "securitiesFirmId", firmId, "accountNumber", "222222222222"));
+
+    // When: accountNumber를 빈 문자열로 전송
+    MvcResult result =
+        registerSecuritiesAccount(
+            Map.of("investorId", investorId, "securitiesFirmId", firmId, "accountNumber", ""));
+
+    // Then: 재사용됨 (빈 문자열도 미입력으로 처리)
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("222222222222"));
+  }
+
+  @Test
+  void registerAccountNameTooLongReturns400EvenWithoutAccountNumber() throws Exception {
+    // Given: accountNumber 없이 256자 계좌명으로 요청
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    String longName = "n".repeat(256);
+
+    // When: POST
+    MvcResult result =
+        registerSecuritiesAccount(
+            Map.of("investorId", investorId, "securitiesFirmId", firmId, "accountName", longName));
+
+    // Then: 400 (계좌명 길이 검증이 분기 전에 수행됨)
+    assertThat(result.getResponse().getStatus()).isEqualTo(400);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("VALIDATION_ERROR");
+  }
+
+  @Test
+  void patchNullToNumberSucceedsWithSameIdAndMask() throws Exception {
+    // Given: accountNumber 없이 생성된 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+    assertThat(created.getResponse().getStatus()).isEqualTo(201);
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    String createdAt =
+        (String) objectMapper.readValue(utf8Body(created), Map.class).get("createdAt");
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: null -> 번호로 PATCH
+    MvcResult patched = updateSecuritiesAccount(accountId, Map.of("accountNumber", "333333333333"));
+
+    // Then: 200 + 동일 ID + 암호화 저장 + 마스크 응답
+    assertThat(patched.getResponse().getStatus()).isEqualTo(200);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(patched), Map.class);
+    assertThat(((Number) body.get("id")).longValue()).isEqualTo(accountId);
+    assertThat(body.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("333333333333"));
+    assertThat(body.get("createdAt")).isEqualTo(createdAt); // createdAt 불변
+
+    // And: DB에 암호문 저장됨
+    SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
+    assertThat(saved.getAccountNumber()).isNotNull();
+    assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("333333333333");
+  }
+
+  @Test
+  void patchBlankAccountNumberReturns400() throws Exception {
+    // Given: accountNumber 없이 생성된 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: 빈 문자열로 PATCH
+    MvcResult result = updateSecuritiesAccount(accountId, Map.of("accountNumber", ""));
+
+    // Then: 400
+    assertThat(result.getResponse().getStatus()).isEqualTo(400);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("VALIDATION_ERROR");
+  }
+
+  @Test
+  void patchAccountNumberWhenAlreadyExistsReturns409() throws Exception {
+    // Given: 이미 계좌번호가 있는 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(
+            Map.of(
+                "investorId",
+                investorId,
+                "securitiesFirmId",
+                firmId,
+                "accountNumber",
+                "444444444444"));
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: 다른 번호로 PATCH 시도
+    MvcResult result = updateSecuritiesAccount(accountId, Map.of("accountNumber", "555555555555"));
+
+    // Then: 409 + 기존 번호 보존
+    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("CONFLICT");
+    assertThat(body.get("message")).isEqualTo("이미 계좌번호가 등록되어 있습니다");
+
+    SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
+    assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("444444444444");
+  }
+
+  @Test
+  void patchAccountNameTooLongReturns400() throws Exception {
+    // Given: accountNumber 없는 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: 256자 계좌명으로 PATCH
+    String longName = "n".repeat(256);
+    MvcResult result = updateSecuritiesAccount(accountId, Map.of("accountName", longName));
+
+    // Then: 400
+    assertThat(result.getResponse().getStatus()).isEqualTo(400);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("VALIDATION_ERROR");
+  }
+
+  @Test
+  void deleteWithSubscriptionHistoryReturns409EvenIfCancelled() throws Exception {
+    // Given: 청약 이력(취소 포함)이 있는 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(
+            Map.of(
+                "investorId",
+                investorId,
+                "securitiesFirmId",
+                firmId,
+                "accountNumber",
+                "666666666666"));
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // 청약 생성 후 취소 (CANCELLED 상태)
+    Long subscriptionId = createSubscription(accountId, investorId);
+    Subscription sub = subscriptionRepository.findById(subscriptionId).orElseThrow();
+    sub.cancel(LocalDateTime.now());
+    subscriptionRepository.save(sub);
+
+    // When: DELETE 시도
+    MvcResult result =
+        mockMvc
+            .perform(delete("/securities-accounts/{id}", accountId).session(session))
+            .andReturn();
+
+    // Then: 409 (취소된 청약도 이력으로 간주)
+    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("CONFLICT");
+    assertThat(body.get("message")).isEqualTo("연결된 청약 이력이 있어 비활성화할 수 없습니다");
+  }
+
+  @Test
+  void deactivateSecuritiesAccountOwnedByOtherAccountReturns403() throws Exception {
+    // Given: 다른 계정 소유 계좌
+    signupAndLogin();
+    Long otherInvestorId = createOtherAccountInvestor();
+    Long securitiesFirmId = registerFirm();
+
+    LocalDateTime now = LocalDateTime.now();
+    SecuritiesAccount otherAccount =
+        securitiesAccountRepository.save(
+            SecuritiesAccount.builder()
+                .investorId(otherInvestorId)
+                .securitiesFirmId(securitiesFirmId)
+                .accountNumber(accountNumberEncryptor.encrypt("123456789012"))
+                .accountName("다른계정계좌")
+                .status(RecordStatus.ACTIVE)
+                .deletedAt(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    createdAccounts.add(otherAccount);
+
+    // When: DELETE 시도
+    MvcResult result =
+        mockMvc
+            .perform(delete("/securities-accounts/{id}", otherAccount.getId()).session(session))
+            .andReturn();
+
+    // Then: 403
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
+    assertThat(body.get("error")).isEqualTo("FORBIDDEN");
+  }
+
+  @Test
+  void concurrentRegisterCreatesOnlyOneAccount() throws Exception {
+    // Given: 동시 POST 요청 환경
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    // When: 10개 스레드로 동시 POST (accountNumber 없음)
+    ExecutorService executor = Executors.newFixedThreadPool(10);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch endLatch = new CountDownLatch(10);
+    AtomicReference<Integer> successCount = new AtomicReference<>(0);
+    AtomicReference<Integer> conflictCount = new AtomicReference<>(0);
+
+    for (int i = 0; i < 10; i++) {
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+              MvcResult result =
+                  registerSecuritiesAccount(
+                      Map.of("investorId", investorId, "securitiesFirmId", firmId));
+              if (result.getResponse().getStatus() == 201) {
+                successCount.updateAndGet(v -> v + 1);
+              } else if (result.getResponse().getStatus() == 409) {
+                conflictCount.updateAndGet(v -> v + 1);
+              }
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            } finally {
+              endLatch.countDown();
+            }
+          });
+    }
+
+    startLatch.countDown();
+    assertThat(endLatch.await(30, TimeUnit.SECONDS)).isTrue();
+    executor.shutdown();
+
+    // Then: 모든 POST가 재사용으로 201 성공하고 계좌는 정확히 1개만 생성됨
+    assertThat(successCount.get()).isEqualTo(10);
+    assertThat(conflictCount.get()).isEqualTo(0);
+    List<SecuritiesAccount> accounts = securitiesAccountRepository.findByInvestorId(investorId);
+    assertThat(accounts).hasSize(1);
+  }
+
+  @Test
+  void concurrentPatchNullToNumberOneSuccessOneConflict() throws Exception {
+    // Given: accountNumber 없는 계좌
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+
+    MvcResult created =
+        registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
+    Long accountId =
+        ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
+    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+
+    // When: 두 스레드가 동시에 null->번호 PATCH (서로 다른 번호)
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch endLatch = new CountDownLatch(2);
+    AtomicReference<Integer> successCount = new AtomicReference<>(0);
+    AtomicReference<Integer> conflictCount = new AtomicReference<>(0);
+
+    executor.submit(
+        () -> {
+          try {
+            startLatch.await();
+            MvcResult result =
+                updateSecuritiesAccount(accountId, Map.of("accountNumber", "888888888888"));
+            if (result.getResponse().getStatus() == 200) {
+              successCount.updateAndGet(v -> v + 1);
+            } else if (result.getResponse().getStatus() == 409) {
+              conflictCount.updateAndGet(v -> v + 1);
+            }
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          } finally {
+            endLatch.countDown();
+          }
+        });
+
+    executor.submit(
+        () -> {
+          try {
+            startLatch.await();
+            MvcResult result =
+                updateSecuritiesAccount(accountId, Map.of("accountNumber", "999999999999"));
+            if (result.getResponse().getStatus() == 200) {
+              successCount.updateAndGet(v -> v + 1);
+            } else if (result.getResponse().getStatus() == 409) {
+              conflictCount.updateAndGet(v -> v + 1);
+            }
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          } finally {
+            endLatch.countDown();
+          }
+        });
+
+    startLatch.countDown();
+    assertThat(endLatch.await(30, TimeUnit.SECONDS)).isTrue();
+    executor.shutdown();
+
+    // Then: 하나 성공(200), 하나 409, 번호 영구 보존
+    assertThat(successCount.get()).isEqualTo(1);
+    assertThat(conflictCount.get()).isEqualTo(1);
+
+    SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
+    String finalNumber = accountNumberEncryptor.decrypt(saved.getAccountNumber());
+    assertThat(finalNumber).isIn("888888888888", "999999999999");
+  }
+
+  private Long createSubscription(Long accountId, Long investorId) {
+    LocalDateTime now = LocalDateTime.now();
+    Subscription sub =
+        Subscription.builder()
+            .investorId(investorId)
+            .securitiesAccountId(accountId)
+            .ipoId(999999L)
+            .quantity(10L)
+            .depositAmount(500000L)
+            .subscribedAt(now)
+            .status(RecordStatus.ACTIVE)
+            .deletedAt(null)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
+    return subscriptionRepository.save(sub).getId();
   }
 }

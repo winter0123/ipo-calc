@@ -108,4 +108,25 @@ class EncryptionRotationServiceTest {
     verify(credentialRepository).saveAll(List.<SecuritiesAccountApiCredential>of());
     org.mockito.Mockito.verify(accountRepository).saveAll(anyList());
   }
+
+  @Test
+  void rotateAllSkipsNullAccountNumberWithoutFailure() {
+    // Given: 계좌번호가 null인 계좌 행
+    SecuritiesAccount nullAccount = SecuritiesAccount.builder().id(20L).accountNumber(null).build();
+    when(credentialRepository.findAll()).thenReturn(List.of());
+    when(accountRepository.findAll()).thenReturn(List.of(nullAccount));
+
+    // When
+    EncryptionRotationService.Result result =
+        new EncryptionRotationService(
+                credentialRepository,
+                accountRepository,
+                new BrokerSecretEncryptor(newKey()),
+                new AccountNumberEncryptor(newKey()))
+            .rotateAll();
+
+    // Then: 계좌 재암호화 0건, 실패 0건
+    assertThat(result.accounts()).isEqualTo(0);
+    assertThat(result.failures()).isEqualTo(0);
+  }
 }
