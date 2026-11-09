@@ -18,7 +18,7 @@ const STATUS_OPTIONS = [
   { value: 'CANCELLED', label: '비활성' },
 ] as const
 
-type StatusFilter = typeof STATUS_OPTIONS[number]['value']
+type StatusFilter = (typeof STATUS_OPTIONS)[number]['value']
 
 const getToday = () => {
   const date = new Date()
@@ -161,14 +161,8 @@ export default function AdminAnnouncementsPage() {
         {/* 폼 섹션 */}
         <div className={`${styles.section} ${styles.formSection}`}>
           <header className={styles.formHeader}>
-            <h2 className={styles.formTitle}>
-              {editing ? '공지 수정' : '공지 등록'}
-            </h2>
-            {editing && (
-              <span className={styles.formBadge}>
-                {getStatusLabel(form.status)}
-              </span>
-            )}
+            <h2 className={styles.formTitle}>{editing ? '공지 수정' : '공지 등록'}</h2>
+            {editing && <span className={styles.formBadge}>{getStatusLabel(form.status)}</span>}
           </header>
 
           <form className={styles.form} onSubmit={submit}>
@@ -196,10 +190,7 @@ export default function AdminAnnouncementsPage() {
             {editing && (
               <label>
                 상태
-                <select
-                  value={form.status}
-                  onChange={(e) => handleSelectChange('status', e)}
-                >
+                <select value={form.status} onChange={(e) => handleSelectChange('status', e)}>
                   <option value="ACTIVE">게시</option>
                   <option value="CANCELLED">비활성</option>
                 </select>
@@ -265,7 +256,9 @@ export default function AdminAnnouncementsPage() {
         {/* 목록 섹션 */}
         <div className={`${styles.section} ${styles.listSection}`}>
           {query.isPending && (
-            <div className={styles.status} role="status">불러오는 중...</div>
+            <div className={styles.status} role="status">
+              불러오는 중...
+            </div>
           )}
 
           {query.isError && (
@@ -274,15 +267,15 @@ export default function AdminAnnouncementsPage() {
             </div>
           )}
 
-          {!query.isPending && !query.isError && (!query.data?.content || query.data.content.length === 0) && (
-            <div className={styles.empty}>
-              <span className={styles.emptyIcon}>📭</span>
-              <p className={styles.emptyText}>등록된 공지사항이 없습니다.</p>
-              <p className={styles.emptySubtext}>
-                위 폼에서 첫 공지사항을 등록해 보세요.
-              </p>
-            </div>
-          )}
+          {!query.isPending &&
+            !query.isError &&
+            (!query.data?.content || query.data.content.length === 0) && (
+              <div className={styles.empty}>
+                <span className={styles.emptyIcon}>📭</span>
+                <p className={styles.emptyText}>등록된 공지사항이 없습니다.</p>
+                <p className={styles.emptySubtext}>위 폼에서 첫 공지사항을 등록해 보세요.</p>
+              </div>
+            )}
 
           <ul className={styles.list}>
             {query.data?.content.map((item) => (
@@ -290,8 +283,12 @@ export default function AdminAnnouncementsPage() {
                 <div className={styles.listContent}>
                   <strong className={styles.listTitle}>{item.title}</strong>
                   <div className={styles.listMeta}>
-                    <span>{item.startAt} ~ {item.endAt}</span>
-                    <span className={`${styles.statusBadge} ${styles[`statusBadge${getStatusBadgeClass(item.status)}`] as string}`}>
+                    <span>
+                      {item.startAt} ~ {item.endAt}
+                    </span>
+                    <span
+                      className={`${styles.statusBadge} ${styles[`statusBadge${getStatusBadgeClass(item.status)}`] as string}`}
+                    >
                       {getStatusLabel(item.status)}
                     </span>
                   </div>

@@ -1,46 +1,39 @@
 # 프로젝트 현재 상황 (Master 소유)
 
-갱신: 2026-11-10. 기본 1차 개발 완료 후 사용자 기능 수정 단계다.
+갱신: 2026-11-10.
 
-## 계좌 보유 체크 등록 완료
+## CI 실패·의존성 보완 (#496)
 
-- GitHub #493 CLOSED. 백엔드 PR #495 MERGED(4b4c7a0d → bdd6375e), 프론트엔드 PR #494 MERGED(823633df → 5eba16f6). 사용자 승인에 따라 커밋·push·main 병합을 완료했다.
-- 증권사별 체크로 계좌 보유를 등록한다. 계좌번호는 가짜 값 대신 NULL로 저장하고, 미입력 계좌는 나중에 같은 ID로 번호를 한 번 입력할 수 있다. 기존 번호 교체는 제공하지 않는다.
-- 번호 없는 등록은 가장 오래된 활성 계좌를 재사용한다. 투자자 쓰기 락과 refresh로 동시 등록·번호 입력을 보호한다. 청약 이력이 있으면 취소·삭제 여부와 관계없이 계좌 해제를 거부한다.
-- 번호가 없으면 증권사 조회 API 연결·갱신·동기화를 외부 호출 전에 차단한다. 기존 이미지 자동 입력은 유지했다.
-- V42는 account_number의 NOT NULL 제약만 제거한다. 기존 암호문·ID·참조를 보존하며 운영 마이그레이션은 실행하지 않았다.
+- 사용자 지시 "워커 돌리지말고 너가해"에 따라 이번 수정은 Codex가 직접 수행했다. 새 워커·Codex 하위 세션·watchdog은 만들지 않았다.
+- 브랜치 winter0123/ci-quality-repair에서 로컬 구현·검증 완료, 원격 CI 확인 후 커밋을 main에 통합한다. 기존 .playwright-cli/ 산출물은 보존한다.
+- backend는 Clock spy에 나노초 시각을 넣어 기존 CI 실패2건을 재현했다. 생성 응답 .123456789와 DB 왕복 .123457을 잘못 비교하던 테스트를 DB 저장값 기준으로 고쳤다. 시계를1초 진행하고 응답·DB 양쪽의 createdAt/updatedAt 불변을 정확히 확인한다. 제품 backend 로직은 수정하지 않았다.
+- UI 투자자 전환 버튼에 aria-label을 명시해 이름의 공백 불일치를 해결했다. 기존 포맷 미준수6파일은 Prettier로만 정리했다.
+- jsdom의 undici8.12.4와 typescript-estree 경로에 한정한 minimatch11.0.5로 갱신했다. 부모가 minimatch10.x만 허용해 좁은 override가 필요하며, 기존 minimatch3.x 경로와 직접 런타임 의존성은 유지한다.
 
-## Master 검증
-
-| 검증 | 결과 | 근거와 범위 |
+| 검증 | 결과 | 근거 |
 |---|---|---|
-| 백엔드 전체 테스트 | PASS | 슬롯4, 1,138건, failures/errors/skipped 0 |
-| 마지막 동시성 회귀 보완 | PASS | 계좌 Controller 34건, 동시 POST 모두201·계좌1개, PATCH 성공1/409 1 |
-| Checkstyle·Spotless·build | PASS | main/test 위반0, 직접 명령 실행 |
-| 프론트엔드 대상 회귀 | PASS | 관련7파일68건 |
-| UI typecheck·lint·build | PASS | 기존 lint 경고4, 오류0; 마지막 CSS 수정 후 typecheck/build 재실행 |
-| 변경 UI Prettier·diff check | PASS | 모든 변경 UI 및 main 통합 diff 확인 |
-| 모의API 브라우저 | PASS | 체크 등록→번호 후입력, 키보드 포커스, 375/640/768/1024px 가로 넘침 없음 |
-| 통합 소스 동일성 | PASS | main의 backend/ui가 직접 검증한 각 브랜치와 동일 |
-| 전체 UI 테스트 | FAIL | 874 PASS, 기존 InvestorGate 2 FAIL; 변경 전에도 재현된 기준선 |
-| 전체 UI format:check | FAIL | 변경 밖의 기존 AdminAnnouncementsPage 2파일·SecuritiesLogo 3파일·securitiesLogo.ts |
-| 의존성 audit | FAIL | 기존 high4/moderate5, jsdom→undici 포함; 의존성 변경 없음 |
-| 실제 백엔드 연결 브라우저 | NOT_RUN | 모의API 검증과 구분 |
-| 원격 CI 최종 결과 판정 | NOT_RUN | PR 생성 후 실행 중인 상태까지만 확인, 로컬 PASS와 구분 |
-| 운영 DB·배포 | NOT_RUN | 이번 승인 범위는 커밋·push·병합 |
+| backend 실패 재현 | PASS | 나노초 Clock으로 기존 두 실패를 로컬에서 재현 |
+| backend 전체 테스트 | PASS | 슬롯4, 1,138건, failures/errors/skipped0 |
+| backend Checkstyle/Spotless/build | PASS | main/test 위반0, 최종 명령 실행 |
+| UI 전체 테스트 | PASS | 107파일876건, 기존2실패 해소 |
+| UI lint/typecheck/format/build | PASS | 기존 lint 경고4·NotFoundPage import 경고는 유지, 오류0 |
+| 의존성 audit/frozen install | PASS | 알려진 취약점9→0, lockfile 일치 |
+| 전이 의존성 호환성 | PASS | 실제 설치 경로의 glob 양성·음성·숨김 파일 및 loopback HTTP 확인 |
+| 원격 CI | NOT_RUN | PR push 후 UI/backend 결과 모두 확인한 뒤 병합 |
+| 운영 DB·배포 | NOT_RUN | 이번 범위 밖 |
 
-검증 로그는 /tmp/account-presence-master-*에 보존했다. 이전 worker의 부정확한 테스트 개수·통과 주장 대신 위 직접 실행 결과를 기준으로 한다.
+근거: docs/work-log/ci-quality-repair.md, /tmp/ci-repair-* 로그.
 
-## Orca·작업공간 정리
+## 이미 병합된 계좌 보유 등록
 
-- Run run_374c2a862662의 구현 및 보완 태스크 완료. 활성 워커 0, ready 큐 0.
-- OpenRouter 일일 무료 한도 소진 후 단일 요청을 통과한 Zen Beam Free(backend)·Flint 40B Free(frontend)로 전환했다. 동일 모델 중복·유료 모델·하위 워커는 사용하지 않았다.
-- 완료 Dispatch release와 PTY 종료를 확인했다. 두 임시 account-presence 작업공간의 남은 셸도 닫고 작업공간을 제거했다. watchdog PID98361 중지.
-- main의 기존 .playwright-cli/ 산출물은 보존했다. docs/daily-log/2026_11_09.md와 2026_11_10.md에 정산을 남긴다.
-- watchdog CHILD_SCAN의 OpenCode DB 경로 조회 실패는 설치 버전의 db path 미지원이다. 429 행 번호 오탐도 실제 화면으로 구분했으며 감시 코드 자체는 이번 범위에서 수정하지 않았다.
+- #493 CLOSED, PR #495(backend)·#494(UI) MERGED. main의 이전 정산 커밋 d5725289.
+- 증권사 체크로 계좌 보유를 등록하고 번호는 NULL로 저장한다. 나중에 같은 ID에 최초1회 번호를 입력하며 기존 번호 교체는 제공하지 않는다.
+- 동시 등록·후입력 보호, 청약 이력 계좌 삭제 거부, 번호 없는 브로커 연결·동기화 차단을 유지한다. 기존 이미지 자동 입력은 유지했다.
+- V42는 계좌번호 NOT NULL 제약만 제거한다. 기존 암호문·ID·참조를 보존하며 운영 마이그레이션은 실행하지 않았다.
+- 이전 Run run_374c2a862662 워커·임시 작업공간·watchdog은 정리했다. 이번 보완에는 워커를 사용하지 않는다.
 
-## 다른 요청과 다음 후보
+## 다음 단계
 
-1. 배포 요청 시 백엔드 V42와 UI를 함께 적용한다. 앞선 UI 배포는 SSH 인증 실패로 실제 완료를 확인하지 못했다.
-2. SimwonAmericaCorp. 철회·일정 정정 문제는 연구 문서와 work-log를 fc61626b로 push했다. 철회 공시를 기존 공모 건과 연결해 상태를 전이하고 일정 변경을 반영하는 구현은 아직 하지 않았다. 공식 원문·공모 건 식별 및 데이터 처리 결정을 확정한 뒤 spec부터 진행한다.
-3. 기존 InvestorGate 테스트·포맷·의존성 audit 부채는 별도 범위를 정해 처리한다. 이번 기능에 무관한 코드·의존성 수정은 하지 않았다.
+1. #496 보완의 원격 CI UI/backend 성공 확인 후 main 병합·최종 정산.
+2. 별도 배포 요청 시 backend V42와 UI를 함께 적용한다. 앞선 UI 배포는 SSH 인증 실패로 완료를 확인하지 못했다.
+3. SimwonAmericaCorp. 철회·일정 정정은 연구 문서만 fc61626b로 병합했다. 공식 공모 건 식별·데이터 처리 결정 후 설계·구현 범위를 확정한다.
