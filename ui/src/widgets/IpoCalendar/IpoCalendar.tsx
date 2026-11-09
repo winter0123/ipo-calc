@@ -25,11 +25,7 @@ type CalendarGridStyle = CSSProperties & Record<`--calendar-${string}`, string>
 const gridStyle = (properties: Record<`--calendar-${string}`, string>): CalendarGridStyle =>
   properties
 
-const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set([
-  'SUBSCRIPTION',
-  'REFUND',
-  'LISTING',
-])
+const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set(['SUBSCRIPTION', 'LISTING'])
 const FIRST_SELECTABLE_YEAR = 2015
 
 interface IpoCalendarProps {
@@ -188,27 +184,27 @@ export default function IpoCalendar({
                 {year}년 {month}월
               </span>
             </div>
-          </div>
 
-          {onVisibleTypesChange && (
-            <div className={styles.filterGroup} role="group" aria-label="일정 종류 필터">
-              {(['SUBSCRIPTION', 'REFUND', 'LISTING'] as CalendarEventType[]).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff} ${EVENT_TYPE_CLASSES[type]}`}
-                  onClick={() => toggleType(type)}
-                  aria-pressed={visibleTypes.has(type)}
-                >
-                  <span
-                    className={`${styles.filterDot} ${EVENT_TYPE_CLASSES[type]}`}
-                    aria-hidden="true"
-                  />
-                  <span className={styles.filterLabel}>{EVENT_TYPE_LABELS[type]}</span>
-                </button>
-              ))}
-            </div>
-          )}
+            {onVisibleTypesChange && (
+              <div className={styles.filterGroup} role="group" aria-label="일정 종류 필터">
+                {(['SUBSCRIPTION', 'REFUND', 'LISTING'] as CalendarEventType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`${styles.filterButton} ${visibleTypes.has(type) ? styles.filterOn : styles.filterOff} ${EVENT_TYPE_CLASSES[type]}`}
+                    onClick={() => toggleType(type)}
+                    aria-pressed={visibleTypes.has(type)}
+                  >
+                    <span
+                      className={`${styles.filterDot} ${EVENT_TYPE_CLASSES[type]}`}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.filterLabel}>{EVENT_TYPE_LABELS[type]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className={styles.weekdays} aria-hidden="true">
             {DAYS_OF_WEEK.map((day) => (

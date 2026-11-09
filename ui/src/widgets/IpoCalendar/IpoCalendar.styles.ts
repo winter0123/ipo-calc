@@ -15,7 +15,6 @@ export const StyleScope = styled.div`
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'header'
-      'filter'
       'weekdays'
       'grid'
       'detail'
@@ -27,7 +26,6 @@ export const StyleScope = styled.div`
   }
 
   .s-e1b278a-header {
-    grid-area: header;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -39,6 +37,16 @@ export const StyleScope = styled.div`
     display: flex;
     align-items: center;
     gap: var(--space-1);
+  }
+
+  .s-e1b278a-filterGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border);
   }
 
   .s-e1b278a-dateSelect {
@@ -81,7 +89,6 @@ export const StyleScope = styled.div`
   }
 
   .s-e1b278a-filterGroup {
-    grid-area: filter;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
