@@ -19,7 +19,7 @@
 ### SF-0: 문서 계약 확정
 **범위**: 연구/명세/아키텍처/분해 문서 최종 검토, 구현 계약(범위/AC/동시성/에러 메시지/검증 명령) 확정, Master 승인
 **비범위**: 제품 코드 수정, DB 마이그레이션, Entity 변경
-**AC**: 
+**AC**:
 - AC-SF0-01: Phase 0 문서 6종(research/spec/architecture/breakdown-research/breakdown/work-log) 내용 모순 없음
 - AC-SF0-02: 구현 범위·AC·동시성·에러 메시지·검증 명령이 spec/architecture/breakdown과 일치
 - AC-SF0-03: Master 승인 후 SF-1/SF-2 배정 가능
@@ -34,7 +34,7 @@
 - `SecuritiesAccountService.register`: `accountNumber` optional. 미제공/공백 시 `findFirstBy...OrderByCreatedAtAscIdAsc`로 가장 오래된 활성 계좌 1개 재사용(**기존 계좌 그대로 반환, `updatedAt` 변경 없음**), 없으면 `accountNumber=null` 신규 생성. 제공 시 기존 검증+암호화 후 신규 생성. **투자자 행 `PESSIMISTIC_WRITE` 락**으로 동시성 직렬화.
 - `update`: `accountNumber` optional. 미전달=무변경, 공백=400, 기존 암호문=409("이미 계좌번호가 등록되어 있습니다"), 유효값=정규화+검증+암호화 저장(`setAccountNumber`).
 - `getAccountNumber`: `accountNumber==null`이면 400 "계좌번호가 등록되지 않았습니다. 계좌 수정에서 계좌번호를 입력해 주세요." 복호화 전 null 체크, **감사 로그 기록 안 함**(평문 반환 성공 시에만 기록).
-- `deactivate`: `subscriptionRepository.existsBySecuritiesAccountId(id)`만 체크. true=409 "연결된 청약 이력이 있어 비활성화할 수 없습니다", false=진행. 타 계좌 존재 여부 차단 안 함.
+- `deactivate`: `subscriptionExistenceCheck.existsBySecuritiesAccountId(id)`만 체크. true=409 "연결된 청약 이력이 있어 비활성화할 수 없습니다", false=진행. 타 계좌 존재 여부 차단 안 함.
 - `SecuritiesAccountRepository`: 신규 쿼리 1개 추가(`findFirstBy...OrderByCreatedAtAscIdAsc`)
 - DTO: `SecuritiesAccountResponse` `accountNumber` nullable + `@JsonInclude(ALWAYS)`, `reused` 없음. `SecuritiesAccountUpdateRequest` `accountNumber` 추가.
 - 브로커: `ApiCredentialService.register`/`BrokerSyncService.preview` 진입 전 `accountNumber==null` 체크 400. `ApiCredentialAssembler` null-safe. `EncryptionRotationService` 기존 null-skip 재사용.
@@ -63,7 +63,7 @@
 - AC-CB-06: 복수 계좌 해제 시도 시 안내 후 개별 관리 유도, 체크 유지
 - AC-CB-07: 실계좌 추가 버튼 보존(기존대로 여러 실계좌 등록 가능)
 - AC-CB-08: 브로커 연동 진입 시 계좌번호 미입력이면 "계좌번호를 먼저 입력해 주세요" 안내 후 차단
-**AC**: 
+**AC**:
 - AC-SF2-01: 등록 폼 계좌번호 미입력 시 전송 성공
 - AC-SF2-02: 등록 폼 계좌번호 입력 시 10~16자리 검증/오류 인라인 표시
 - AC-SF2-03: 목록 "미입력" 배지 표시

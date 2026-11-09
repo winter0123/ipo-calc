@@ -23,4 +23,12 @@ public interface SecuritiesAccountRepository extends JpaRepository<SecuritiesAcc
   /** 투자자의 활성 계좌를 오래된 순으로 조회한다. */
   List<SecuritiesAccount> findByInvestorIdAndStatusOrderByCreatedAtAscIdAsc(
       Long investorId, RecordStatus status);
+
+  /**
+   * 투자자+증권사+ACTIVE+deletedAt null 중 가장 오래된 계좌 1개 조회(재사용용). createdAt 오름차순, 동일이면 ID 오름차순으로 가장 먼저 생성된
+   * 계좌를 찾는다.
+   */
+  Optional<SecuritiesAccount>
+      findFirstByInvestorIdAndSecuritiesFirmIdAndStatusAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
+          Long investorId, Long securitiesFirmId, RecordStatus status);
 }

@@ -47,8 +47,12 @@ public class ApiCredentialAssembler {
    */
   public ApiCredentialResponse toResponse(
       SecuritiesAccount account, SecuritiesAccountApiCredential credential) {
-    String maskedAccountNumber =
-        AccountNumberMasker.mask(accountNumberEncryptor.decrypt(account.getAccountNumber()));
+    String maskedAccountNumber = null;
+    String encryptedAccountNumber = account.getAccountNumber();
+    if (encryptedAccountNumber != null && !encryptedAccountNumber.isBlank()) {
+      maskedAccountNumber =
+          AccountNumberMasker.mask(accountNumberEncryptor.decrypt(encryptedAccountNumber));
+    }
     return new ApiCredentialResponse(
         credential == null ? null : credential.getId(),
         account.getId(),

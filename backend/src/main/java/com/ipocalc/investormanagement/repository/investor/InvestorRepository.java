@@ -2,8 +2,12 @@ package com.ipocalc.investormanagement.repository.investor;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.investormanagement.domain.model.investor.Investor;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /** 투자자 JPA 저장소. */
@@ -21,4 +25,9 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
 
   /** 계정에 등록된 삭제되지 않은 투자자 수를 조회한다. */
   long countByAccountIdAndDeletedAtIsNull(Long accountId);
+
+  /** 투자자 ID로 투자자를 조회하고 비관적 쓰기 락을 건다(동시성 제어용). */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT i FROM Investor i WHERE i.id = :id")
+  Optional<Investor> findByIdForUpdate(Long id);
 }

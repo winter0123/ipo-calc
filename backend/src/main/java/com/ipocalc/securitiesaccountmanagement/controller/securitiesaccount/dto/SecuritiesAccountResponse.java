@@ -1,5 +1,6 @@
 package com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,11 @@ public class SecuritiesAccountResponse {
   private Long investorId;
   private Long securitiesFirmId;
   private String securitiesFirmName;
+
+  /** 계좌번호(마스킹/null). Jackson 전역 NON_NULL 설정 시에도 키를 포함하기 위해 ALWAYS 강제. */
+  @JsonInclude(JsonInclude.Include.ALWAYS)
   private String accountNumber;
+
   private String accountName;
   private String status;
   private LocalDateTime deletedAt;
