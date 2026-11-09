@@ -1,11 +1,32 @@
 import { ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import styles, { StyleScope } from './MainLayout.styles.ts'
 
-// 현재 투자자 전환기. 투자자가 없으면 보이지 않는다.
-// 이니셜 아바타 + 이름 한 덩어리의 알약 모양이고, 2명 이상이면 눌러서 바꾼다(실제 요소는 select).
+// 현재 투자자 전환기. 투자자가 없으면 보이지 않고, 여러 명이면 버튼 아래 목록을 연다.
 export default function InvestorSwitcher() {
   const { investors, current, select } = useCurrentInvestor()
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      buttonRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', closeOnOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [investors.length, open])
   if (investors.length === 0) return null
 
   const name = current?.displayName ?? '투자자 선택'
@@ -32,23 +53,58 @@ export default function InvestorSwitcher() {
   return (
     <StyleScope>
       {
-        <label className={`${styles.investorChip} ${styles.investorChipButton}`}>
-          {avatar}
-          <select
-            aria-label="현재 투자자"
-            className={styles.chipSelect}
-            value={current?.id ?? ''}
-            onChange={(e) => select(Number(e.target.value))}
+        <div
+          ref={rootRef}
+          role="group"
+          aria-label="투자자 선택"
+          tabIndex={0}
+          className={styles.investorSwitcher}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setOpen(false)
+          }}
+        >
+          <button
+            ref={buttonRef}
+            type="button"
+            className={`${styles.investorChip} ${styles.investorChipButton}`}
+            aria-expanded={open}
+            aria-controls="investor-switcher-options"
+            aria-haspopup="true"
+            onClick={() => setOpen((value) => !value)}
           >
-            {current === null && <option value="">선택해 주세요</option>}
-            {investors.map((investor) => (
-              <option key={investor.id} value={investor.id}>
-                {investor.displayName}
-              </option>
-            ))}
-          </select>
-          <ChevronDown aria-hidden="true" size={16} className={styles.chevron} />
-        </label>
+            {avatar}
+            <span className={styles.srOnly}>현재 투자자: </span>
+            <span className={styles.chipName}>{name}</span>
+            <ChevronDown aria-hidden="true" size={16} className={styles.chevron} />
+          </button>
+          {open && (
+            <div
+              id="investor-switcher-options"
+              className={styles.investorOptions}
+              role="group"
+              aria-label="투자자 선택"
+            >
+              {investors.map((investor) => (
+                <button
+                  key={investor.id}
+                  type="button"
+                  className={styles.investorOption}
+                  aria-pressed={investor.id === current?.id}
+                  onClick={() => {
+                    select(investor.id)
+                    setOpen(false)
+                    buttonRef.current?.focus()
+                  }}
+                >
+                  {investor.displayName}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       }
     </StyleScope>
   )

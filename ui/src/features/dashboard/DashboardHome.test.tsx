@@ -58,7 +58,7 @@ describe('DashboardHome', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it('배정 미입력 청약은 배정 입력, 남은 수량이 있는 배정은 매도 등록 링크를 보여 준다', () => {
+  it('매도 미입력 배정만 매도 등록 링크로 보여 준다', () => {
     setup(
       [
         item({ id: 3 }),
@@ -67,10 +67,7 @@ describe('DashboardHome', () => {
       ],
       [],
     )
-    expect(screen.getByRole('link', { name: '배정 입력' })).toHaveAttribute(
-      'href',
-      '/allocations/register?subscriptionId=3',
-    )
+    expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
       'href',
       '/sales/register?subscriptionId=4',
@@ -78,9 +75,9 @@ describe('DashboardHome', () => {
     expect(screen.getAllByRole('link', { name: '매도 등록' })).toHaveLength(1)
   })
 
-  it('할 일이 없으면 안내 문구, 투자자가 없으면 선택 안내', () => {
+  it('매도 미입력 항목이 없으면 안내 문구, 투자자가 없으면 선택 안내', () => {
     setup([], [])
-    expect(screen.getByText('처리할 일이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('미입력된 매도가 없습니다.')).toBeInTheDocument()
   })
 
   it('투자자가 선택되지 않았으면 안내만 보여 준다', () => {

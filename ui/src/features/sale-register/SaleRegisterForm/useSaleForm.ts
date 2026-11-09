@@ -70,8 +70,11 @@ export function useSaleForm() {
   } = useIpoInsight(effectiveIpoId)
 
   // 증권계좌 목록 (직접 매도 등록 시 필요)
-  const { data: securitiesAccounts, isLoading: accountsLoading } =
-    useSecuritiesAccounts(selectedInvestorId)
+  const {
+    data: securitiesAccounts,
+    isLoading: accountsLoading,
+    isError: accountsError,
+  } = useSecuritiesAccounts(selectedInvestorId)
 
   const underwriters = useMemo(() => ipoInsight?.underwriters ?? [], [ipoInsight])
   const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
@@ -98,6 +101,13 @@ export function useSaleForm() {
     }
     return []
   }, [securitiesAccounts, isDirectEntry, effectiveIpoId, underwritersReady, underwriters])
+  const missingUnderwriterAccount =
+    isDirectEntry &&
+    effectiveIpoId != null &&
+    underwritersReady &&
+    !accountsLoading &&
+    !accountsError &&
+    filteredSecuritiesAccounts.length === 0
 
   const { mutate, isPending, error } = useSaleRegister()
 
@@ -315,6 +325,8 @@ export function useSaleForm() {
         : undefined,
     securitiesAccounts: filteredSecuritiesAccounts,
     accountsLoading,
+    missingUnderwriterAccount,
+    underwriterNames: [...new Set(underwriters.map(({ name }) => name.trim()).filter(Boolean))],
     effectiveIpoId,
     ipoName: ipo?.ipoName ?? selectedSubscription?.ipoName ?? null,
     ipoNameLoading: effectiveIpoId != null && ipoPending && !selectedSubscription?.ipoName,

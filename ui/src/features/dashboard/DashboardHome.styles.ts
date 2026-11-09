@@ -15,13 +15,6 @@ export const StyleScope = styled.div`
     gap: var(--space-4);
   }
 
-  /* 데스크톱: 할 일 · 다가오는 일정 2열 */
-  @media (min-width: 1024px) {
-    .s-4569b8b-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
   .s-4569b8b-card {
     min-width: 0;
     display: flex;

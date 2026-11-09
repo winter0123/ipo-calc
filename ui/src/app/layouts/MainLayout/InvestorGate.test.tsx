@@ -107,15 +107,15 @@ describe('현재 투자자 선택', () => {
     await userEvent.click(screen.getByRole('button', { name: '김철수' }))
 
     expect(await screen.findByText('투자 내역 화면')).toBeInTheDocument()
-    expect(screen.getByLabelText('현재 투자자')).toHaveValue('2')
+    expect(screen.getByRole('button', { name: /현재 투자자: 김철수/ })).toBeInTheDocument()
   })
 
   it('전환기로 투자자를 바꿀 수 있고 선택은 기억된다', async () => {
     localStorage.setItem('currentInvestorId', '1')
     setup([investor(1, '홍길동'), investor(2, '김철수')])
-    const select = await screen.findByLabelText('현재 투자자')
-    expect(select).toHaveValue('1')
-    await userEvent.selectOptions(select, '2')
+    const switcher = await screen.findByRole('button', { name: /현재 투자자: 홍길동/ })
+    await userEvent.click(switcher)
+    await userEvent.click(screen.getByRole('button', { name: '김철수' }))
     expect(localStorage.getItem('currentInvestorId')).toBe('2')
   })
 

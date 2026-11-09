@@ -285,7 +285,7 @@ export const StyleScope = styled.div`
       right: 0;
       flex-direction: column;
       align-items: stretch;
-      gap: 0;
+      gap: var(--space-2);
       height: auto;
       margin: 0;
       padding: var(--space-2) var(--gutter) var(--space-4);
@@ -294,7 +294,8 @@ export const StyleScope = styled.div`
     }
 
     /* 모바일에서 내비는 absolute라 투자자/인증 버튼을 우측으로 민다 */
-    .s-91ad696-investorChip,
+    .s-91ad696-investorSwitcher,
+    .s-91ad696-investorChip:not(.s-91ad696-investorChipButton),
     .s-91ad696-authActions {
       margin-left: auto;
     }
@@ -336,7 +337,7 @@ export const StyleScope = styled.div`
       justify-content: space-between;
       width: 100%;
       min-height: 48px;
-      margin-top: var(--space-2);
+      margin-top: 0;
       padding: 0 var(--space-3);
       color: var(--ink);
       font-size: 14px;
@@ -363,7 +364,7 @@ export const StyleScope = styled.div`
       display: flex;
       position: static;
       min-width: 0;
-      margin: 2px 0 var(--space-2) var(--space-3);
+      margin: 0 0 0 var(--space-3);
       padding: 0 0 0 var(--space-2);
       border: 0;
       border-left: 2px solid var(--border);
@@ -414,6 +415,7 @@ export const StyleScope = styled.div`
   .s-91ad696-investorChipButton {
     padding-right: var(--space-4);
     cursor: pointer;
+    font-family: inherit;
   }
 
   .s-91ad696-investorChipButton:hover {
@@ -445,26 +447,51 @@ export const StyleScope = styled.div`
     text-overflow: ellipsis;
   }
 
-  /* select는 접근성을 위해 실제 요소로 두되 모양은 벗겨 낸다 */
-  .s-91ad696-chipSelect {
-    appearance: none;
-    min-height: 0;
-    max-width: 140px;
-    padding: 0 var(--space-3) 0 0;
-    margin: 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-    text-overflow: ellipsis;
+  .s-91ad696-investorSwitcher {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
   }
 
-  .s-91ad696-chipSelect:focus,
-  .s-91ad696-chipSelect:focus-visible {
-    outline: none;
-    box-shadow: none;
+  .s-91ad696-investorOptions {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    max-width: min(240px, calc(100vw - 24px));
+    max-height: min(60vh, 320px);
+    overflow-y: auto;
+    padding: var(--space-1);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .s-91ad696-investorOption {
+    min-height: 40px;
+    padding: 0 var(--space-3);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .s-91ad696-investorOption:hover,
+  .s-91ad696-investorOption[aria-pressed='true'] {
+    background: var(--surface-sea);
+    color: var(--primary);
+  }
+
+  .s-91ad696-investorOption:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: -2px;
   }
 
   .s-91ad696-chevron {
@@ -541,7 +568,6 @@ export const StyleScope = styled.div`
       display: none;
     }
 
-    .s-91ad696-chipSelect,
     .s-91ad696-chipName {
       max-width: 96px;
     }
@@ -612,6 +638,24 @@ export const StyleScope = styled.div`
     .s-91ad696-signupButton {
       padding: 0 var(--space-3);
       font-size: 14px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .s-91ad696-layout {
+      --gutter: var(--space-2);
+    }
+
+    .s-91ad696-main {
+      padding: var(--space-2) 0 var(--space-5);
+    }
+
+    .s-91ad696-main > * {
+      padding: var(--space-3) var(--space-2);
+      gap: var(--space-4);
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
     }
   }
 

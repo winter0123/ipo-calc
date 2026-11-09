@@ -1,19 +1,38 @@
+import { useNavigate } from 'react-router-dom'
 import styles, { StyleScope } from './SaleRegisterForm.styles.ts'
 import CaptureImport from './CaptureImport.tsx'
 import SubscriptionPicker from './SubscriptionPicker.tsx'
 import SaleBasicFields from './SaleBasicFields.tsx'
 import SaleProfitFields from './SaleProfitFields.tsx'
 import { useSaleForm } from './useSaleForm.ts'
+import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 
 export default function SaleRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const f = useSaleForm()
+  const navigate = useNavigate()
 
   if (f.investorsLoading) {
     return <StyleScope>{<div className={styles.loading}>목록을 불러오는 중...</div>}</StyleScope>
   }
 
   const isDirectMode = !f.selectedSubscriptionId && f.selectedInvestorId
+
+  if (f.missingUnderwriterAccount) {
+    return (
+      <ConfirmDialog
+        isOpen
+        title="주관사 계좌를 등록해 주세요"
+        message={
+          <>{f.underwriterNames.join(', ')} 중 한 곳의 증권계좌를 마이페이지에서 등록해 주세요.</>
+        }
+        confirmLabel="마이페이지"
+        cancelLabel="돌아가기"
+        onConfirm={() => navigate('/my-page')}
+        onCancel={() => navigate('/subscriptions')}
+      />
+    )
+  }
 
   return (
     <StyleScope>

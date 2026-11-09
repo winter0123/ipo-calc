@@ -7,8 +7,8 @@ export default function DashboardHome() {
     <StyleScope>
       {
         <div className={styles.grid}>
-          <DashboardTodo />
           <DashboardUpcoming />
+          <DashboardTodo />
         </div>
       }
     </StyleScope>

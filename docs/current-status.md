@@ -1,12 +1,62 @@
 # 프로젝트 현재 상황 (Master 소유, 계속 최신화)
 
+## 수정: 모바일 공통 화면 여백 축소 (2026-11-09)
+
+- 사용자의 명시적 직접 수정 지시에 따라 Master가 MainLayout.styles.ts에 640px 이하 공통 규칙만 추가했다. 기존 미커밋 변경은 보존했다.
+- 모바일 본문 바깥 좌우 패딩 0, 화면 루트 좌우 8px·상하 12px, 공통 간격 16px. 바깥 카드의 테두리·둥근 모서리·그림자를 제거하고 헤더 gutter를 8px로 줄였다. 소개 페이지 mainWide의 기존 풀폭 규칙은 뒤에서 유지한다.
+- Master 검증: MainLayout·달력 대상 74건 PASS, typecheck PASS, build PASS, 변경 파일 ESLint/Prettier PASS, diff check PASS. 전체 테스트 FAIL(853 PASS/2 FAIL): 기존 InvestorGate 테스트 2건은 이번 여백 패치만 제거한 비교 실행에서도 동일하게 FAIL이다. 관련 없는 기존 구현은 수정하지 않았다.
+- Playwright 공통 레이아웃 실측 PASS: 375/640px에서 main 패딩 8px 0 24px, 화면 루트 12px 8px. 768/1024px는 기존 패딩 유지, 네 폭 모두 document.scrollWidth=viewport.width. 로컬 API 서버 미실행으로 일정 데이터 로딩은 실패 화면이며 실제 데이터 채운 각 화면 검증은 NOT_RUN.
+- 변경은 로컬 미커밋 상태. push·배포 NOT_RUN. 임시 Playwright 브라우저와 Vite 서버 종료.
+
+## 완료: 달력 중복 이름·모바일 가독성 수정 (2026-11-09)
+
+- 커밋 `8523d518`을 main에 fast-forward 통합했다. 날짜 상세의 괄호 IPO명을 제거하고 회사명·환불 예상·주관사·기간·가격·링크를 유지했다. 달력 막대의 장식 원과 말줄임표를 없애고 모바일 좌우 패딩을 5px에서 2px로 줄였다. 상세 회사명은 긴 경우 줄바꿈한다.
+- Master 검증: 초기 전체 UI 테스트 855건 PASS, 최종 달력 테스트 51건 PASS, lint PASS(기존 경고 4), typecheck PASS, build PASS, 변경 파일 Prettier PASS, git diff check PASS. 실제 모바일 브라우저 검증·push·배포는 NOT_RUN이다.
+- 의존성 audit FAIL: 기존 jsdom→undici 경로를 포함해 high 4/moderate 5 보고. 이번 변경에 의존성 변경은 없으며 audit 보고는 `/tmp/ipo-calendar-audit.log`에 보존했다.
+- Run `run_e4511e36ed34`의 Task 모두 completed. 마지막 Dispatch `ctx_87bbd5592bc2` release 및 terminal 종료 확인. 임시 frontend-calendar-readability 작업공간 제거, watchdog 중지. 기존 main 미커밋 변경은 보존했다.
+- 무료 워커 보완 과정에서 CSS 잘못된 문자열과 문서 허위 검증을 발견해 재수정 후 직접 확인했다. 실제 모바일 화면 검증을 PASS로 간주하지 않는다.
+
+## 진행: 달력 중복 이름·모바일 가독성 수정 (2026-11-09)
+
+- 사용자 요청을 단일 SF로 정의했다: 날짜 상세 괄호 IPO명 제거, 달력 막대 동그라미·말줄임표 제거 및 모바일 패딩 축소. 기존 일정 데이터·환불 예상·주관사·링크는 보존한다.
+- Run `run_e4511e36ed34`, Task `task_72405cb9d4e5`, Dispatch `ctx_72fe78ffcfa0`. OpenCode `openrouter/cohere/north-mini-code:free` 무료 가격 0과 단답 probe PASS, watchdog 표시 모델 `North Mini Code` 확인.
+- 작업공간 `/Users/joy/orca/workspaces/ipo-calc/frontend-calendar-readability`, 브랜치 `winter0123/frontend-calendar-readability`. 기존 main 변경과 격리해 워커 1명만 배정했다. 동일 파일 대상이므로 병렬 분할하지 않는다.
+- watchdog 단일 프로세스 실행. 현재 OpenCode CLI는 기존 `opencode db path`를 지원하지 않아 하위 세션 DB 감시는 BLOCKED다. 하위 에이전트 생성은 금지했으며 Orca Dispatch/터미널 감시는 유지한다. inbox 식별자를 현재 agent session으로 수정했다.
+- Master 검증·main 통합은 NOT_RUN, worker_done 후 직접 수행한다.
+
+## 세션 준비: 기능 수정 요구사항 대기 (2026-11-09)
+
+- Run `run_e4511e36ed34` 생성·바인딩. Master 1명, 실제 구현은 OpenCode 무료 모델 depth 1 워커만 사용한다.
+- Git/Orca 실제 작업공간은 `/Users/joy/IdeaProjects/ipo-calc`의 `main` 하나다. 로컬 `origin/main` 대비 14커밋 앞서며, 세션 시작 당시 미커밋 파일 14개를 보존했다. 원격 fetch는 NOT_RUN이다.
+- 이번 세션의 신규 기능 수정 요구사항이 아직 제공되지 않아 SF DAG·워커 배정은 BLOCKED다. 요구사항 수신 후 범위·AC·의존성을 확정하고 필요한 작업공간과 무료 모델을 검증한다.
+- 기존 최신 UI 변경의 테스트·typecheck·lint·build는 NOT_RUN이다. watchdog은 중지 상태이며, 워커 배정 시 현재 Run과 코디네이터 식별자로 시작한다.
+- 안내된 `docs/CODEX-NAVIGATION-GUIDE.md`는 현재 저장소에 없다. 제품 코드·테스트·기획 문서는 수정하지 않았다.
+
+## 최신 수정: 매도 미입력·모바일 메뉴·주관사 계좌 안내 (2026-11-04)
+
+- 대시보드의 `할 일`을 `매도 미입력`으로 바꾸고, 배정 대기 항목은 이 영역에서 제외했다. 남은 매도 수량만 표시하며 `다가오는 일정` 다음 줄에 둔다.
+- 모바일 메뉴의 항목 간격을 균일하게 하고 그룹 버튼의 중복 위쪽 여백을 제거했다. 투자자 전환은 네이티브 select 팝업 대신 버튼 아래 오른쪽에 붙는 선택 목록으로 열리며 바깥 클릭과 Escape로 닫힌다.
+- IPO별 매도 직접 등록은 주관사 계좌 조회가 끝난 뒤 일치하는 계좌가 없으면 해당 주관사 계좌 등록 안내를 띄우고 마이페이지 이동 버튼을 제공한다. 계좌 조회 오류를 계좌 미등록으로 오인하지 않도록 했다.
+- 검증은 `git diff --check` PASS. UI 테스트·typecheck·lint·build는 이번 변경에서 NOT_RUN이며 push·배포하지 않았다.
+
+## 최신 수정: 청약 일정 화면과 청약 등록 필터 (2026-11-04)
+
+- 청약 일정 목록은 페이지당 10개로 나누고 URL의 날짜 검색값을 유지한다. 각 IPO에 청약 예정·청약 진행 중·상장 예정·상장일·상장 완료 단계를 표시하며, 공모가/희망가를 분리하고 청약 등록/매도 등록 버튼 순서를 조정했다.
+- 일정 요약에서 청약·배정 건수 문구를 제거하고 일부 결과 상태의 중복 문구를 없앴다. 상장일이 미래여도 청약 전이면 `청약 예정`으로 표시되도록 단계 판정 순서를 보정했다.
+- 청약 등록은 공모주를 먼저 고르게 하고 선택 IPO의 주관사 조회가 끝나기 전까지 계좌 선택을 비활성화한다. 주관사 응답이 오류/빈 목록이면 계좌를 노출하지 않으며 IPO 변경 시 이전 계좌 선택을 비운다.
+- 일정 목록 커밋 `3c3d7cf`, 계좌 필터 커밋 `6ea1f1d`를 main에 병합했다(병합 커밋 `26180fc`, `6af55da`). 로컬 main은 origin/main보다 14개 커밋 앞서 있고 push·배포는 하지 않았다.
+- main에서 UI 전체 테스트 855/855 PASS, typecheck PASS, production build PASS, 변경 파일 ESLint·Prettier PASS, `git diff --check` PASS. Build에는 기존 NotFoundPage dynamic import 경고가 있다.
+- 두 임시 worktree는 main 병합 후 제거했다. OpenCode terminal은 Orca가 `external_terminal`로 판정해 worker-release가 닫지 않았고, `terminal show`에서는 둘 다 `orphaned`, `connected=false`, `writable=false`로 종료된 상태다.
+- 주관사 확인 전 계좌 차단 Task와 일정 단계 판정 Task는 완료됐다. 후속 건수/테스트 정리 요구는 자동 생성된 `New messages` dispatch에서 구현·검증됐다. 같은 worktree에 별도로 배정한 중복 Task `task_7be60e82770d`는 readiness timeout으로 실패했으며 별도 코드 변경을 만들지 않았다.
+- 매도 등록의 청약 자동 연결 및 과거 집계/중복 정책 조사 문서 Task `task_52733af170fb`는 별도 직접 리뷰가 남아 있다. 서버 배포와 원격 push는 이번 작업 범위에 포함하지 않았다.
+
 ## 최신 수정: 청약 목록·달력 시각 구분 보정 (2026-11-04)
 
 - 청약 목록 카드에서 공모주 제목 옆에 주관사 태그를 배치하고, 중복으로 보이던 연한 공모주 이름을 제거했다.
 - 달력의 청약 막대는 마감일 한 칸만 둥근 모서리로 표시한다. 청약·환불·상장 필터는 선택 상태에 유형별 배경/테두리, 비선택 상태에 중립 배경과 유형별 테두리/dot을 적용했다.
 - calendar 변경 커밋 `98f703b`를 `main` 병합 커밋 `3ea02c0`에 통합했다. 두 작업 task는 completed이며 임시 calendar worktree·브랜치·터미널을 제거했다.
 - 병합 후 UI 전체 테스트 823건 PASS, lint PASS(오류 0·경고 4), typecheck PASS, build PASS, 변경 파일 Prettier PASS, `git diff --check` PASS.
-- 홈 Linux 서버 UI 재배포는 시작했으며 Ansible 터미널에서 SSH 비밀번호 입력을 기다리는 중이다. 원격 반영은 아직 확인되지 않았다.
+- 홈 Linux 서버 UI 재배포는 완료됐다. Ansible 결과 `ok=19 changed=1 failed=0`; 브라우저 사후 확인은 위 최신 상태의 NOT_RUN을 따른다.
 
 ## 최신 수정: 매도 등록 공모주 이름 표시 (2026-11-04)
 

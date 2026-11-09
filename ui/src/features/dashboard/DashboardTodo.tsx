@@ -11,7 +11,6 @@ export default function DashboardTodo() {
     { enabled: !!current },
   )
   const items = data ?? []
-  const needAllocation = items.filter((i) => i.allocation === null)
   const needSale = items.filter((i) => i.allocation !== null && (i.remainingQuantity ?? 0) > 0)
 
   const renderBody = () => {
@@ -30,7 +29,11 @@ export default function DashboardTodo() {
     if (!current)
       return (
         <StyleScope>
-          {<p className={styles.muted}>상단에서 투자자를 선택하면 할 일을 보여 드립니다.</p>}
+          {
+            <p className={styles.muted}>
+              상단에서 투자자를 선택하면 매도 미입력 항목을 보여 드립니다.
+            </p>
+          }
         </StyleScope>
       )
     if (error) {
@@ -38,28 +41,19 @@ export default function DashboardTodo() {
         <StyleScope>
           {
             <p className={styles.error} role="alert">
-              할 일을 불러오는 데 실패했습니다.
+              매도 현황을 불러오는 데 실패했습니다.
             </p>
           }
         </StyleScope>
       )
     }
-    if (needAllocation.length === 0 && needSale.length === 0) {
-      return <StyleScope>{<p className={styles.muted}>처리할 일이 없습니다.</p>}</StyleScope>
+    if (needSale.length === 0) {
+      return <StyleScope>{<p className={styles.muted}>미입력된 매도가 없습니다.</p>}</StyleScope>
     }
     return (
       <StyleScope>
         {
           <ul className={styles.list}>
-            {needAllocation.map((i) => (
-              <li key={`a-${i.id}`} className={styles.row}>
-                <span>
-                  {i.ipoName ?? '공모주'} · 배정 결과를 입력하세요 (
-                  {new Date(i.subscribedAt).toLocaleDateString('ko-KR')} 청약)
-                </span>
-                <Link to={`/allocations/register?subscriptionId=${i.id}`}>배정 입력</Link>
-              </li>
-            ))}
             {needSale.map((i) => (
               <li key={`s-${i.id}`} className={styles.row}>
                 <span>
@@ -81,7 +75,7 @@ export default function DashboardTodo() {
       {
         <section aria-labelledby="dash-todo" className={styles.card}>
           <h2 id="dash-todo" className={styles.title}>
-            할 일
+            매도 미입력
           </h2>
           {renderBody()}
         </section>

@@ -68,7 +68,7 @@ function NoInvestorGate() {
 
 // 로그인한 사용자의 본문. 선택이 필요하면 작업 화면 대신 선택 화면을 보여 준다.
 export function GatedOutlet() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const navigate = useNavigate()
   const { needsSelection, investors, current, isLoading } = useCurrentInvestor()
   const accountsQuery = useSecuritiesAccounts(current?.id)
@@ -76,7 +76,11 @@ export function GatedOutlet() {
   if (needsSelection) return <InvestorGate />
   const selfGuided = pathname.startsWith('/investments') || pathname === '/securities'
   if (!isLoading && investors.length === 0 && !selfGuided) return <NoInvestorGate />
+  const saleIpoId = Number(new URLSearchParams(search).get('ipoId'))
+  const saleIpoEntry =
+    pathname === '/sales/register' && Number.isInteger(saleIpoId) && saleIpoId > 0
   const needsSecuritiesAccount =
+    !saleIpoEntry &&
     pathname !== '/securities' &&
     current !== null &&
     !accountsQuery.isLoading &&
