@@ -32,3 +32,10 @@ minimatch 패치 범위는 [공식 보안 공지](https://github.com/advisories/
 - backend 전체1,138건 PASS(failures/errors/skipped0), Checkstyle main/test 위반0 PASS, Spotless/build PASS. 최초 Spotless 검사에서 새 assertion 줄바꿈1건이 검출되어 해당 줄만 직접 정리했다. 전체 spotlessApply는 실행하지 않았다.
 - UI 전체876건, lint/typecheck/format/build, frozen install 및 audit 모두 PASS. 알려진 취약점0.
 - backend 제품 코드·기존 migration은 변경하지 않았다. 원격 CI는 아직 NOT_RUN이며 성공 확인 전 병합하지 않는다.
+
+## 원격 1차 결과와 이미지 경로 보완
+
+- run42720547292: backend 전체 품질 검사 PASS. UI 테스트·lint·typecheck·format PASS 후 build FAIL. 테스트 실패가 가려 두었던 기존 정적 자산 경로 문제다.
+- ui/public/images가 /Users/joy/IdeaProjects/ipo-calc/images 절대 심볼릭 링크여서 Linux에서 ENOENT가 발생했다. 저장소의 ../../images 상대 링크로 바꿨다. 추적 중인 심볼릭 링크는 이 한 개이며 기존 이미지 파일은 수정하지 않았다.
+- 로컬 build/format PASS. Git index를 아카이브해 별도의 임시 경로에 풀고 offline frozen install→build를 실행했다. 경로가 바뀌어도 아이콘·증권사 로고가 dist/images에 포함됨을 확인했다. 이식성 검증 PASS.
+- 원격 CI는 새 커밋에서 다시 확인한다. 성공 전 병합하지 않는다.

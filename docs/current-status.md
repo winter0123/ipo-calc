@@ -19,7 +19,7 @@
 | UI lint/typecheck/format/build | PASS | 기존 lint 경고4·NotFoundPage import 경고는 유지, 오류0 |
 | 의존성 audit/frozen install | PASS | 알려진 취약점9→0, lockfile 일치 |
 | 전이 의존성 호환성 | PASS | 실제 설치 경로의 glob 양성·음성·숨김 파일 및 loopback HTTP 확인 |
-| 원격 CI | NOT_RUN | PR push 후 UI/backend 결과 모두 확인한 뒤 병합 |
+| 원격 CI | FAIL | 1차 run42720547292 backend PASS, UI의 테스트·정적 검사 PASS 후 정적 이미지 절대 링크에서 build FAIL; 상대 링크 수정 후 재검증 |
 | 운영 DB·배포 | NOT_RUN | 이번 범위 밖 |
 
 근거: docs/work-log/ci-quality-repair.md, /tmp/ci-repair-* 로그.
@@ -37,3 +37,8 @@
 1. #496 보완의 원격 CI UI/backend 성공 확인 후 main 병합·최종 정산.
 2. 별도 배포 요청 시 backend V42와 UI를 함께 적용한다. 앞선 UI 배포는 SSH 인증 실패로 완료를 확인하지 못했다.
 3. SimwonAmericaCorp. 철회·일정 정정은 연구 문서만 fc61626b로 병합했다. 공식 공모 건 식별·데이터 처리 결정 후 설계·구현 범위를 확정한다.
+
+## 원격 빌드 경로 보완
+
+- PR #497에서 backend는 PASS. UI 빌드가 Mac 전용 ui/public/images 절대 링크로 실패해 ../../images 상대 링크로 수정했다. 이미지 내용은 유지했다.
+- 별도 임시 경로에 Git index를 아카이브한 새 소스로 offline frozen install/build를 실행하고 dist 아이콘·증권사 로고 포함까지 PASS 확인했다. 이번 수정도 Codex가 직접 수행했다. 새 CI 성공 확인 전 병합하지 않는다.
