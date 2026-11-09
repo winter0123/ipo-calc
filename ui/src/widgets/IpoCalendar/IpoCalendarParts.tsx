@@ -61,7 +61,7 @@ export const SelectedDayDetail = forwardRef<
                   <Link
                     to={`/ipos/${event.ipoId}`}
                     className={styles.eventLink}
-                    aria-label={`${event.companyName} ${event.ipoName} 상세 보기`}
+                    aria-label={`${event.companyName} 상세 보기`}
                   >
                     <span className={`${styles.eventType} ${EVENT_TYPE_CLASSES[event.type]}`}>
                       {EVENT_TYPE_LABELS[event.type]}
@@ -70,7 +70,6 @@ export const SelectedDayDetail = forwardRef<
                     {event.type === 'REFUND' && event.estimated && (
                       <span className={styles.eventIpo}> (예상)</span>
                     )}
-                    <span className={styles.eventIpo}>({event.ipoName})</span>
                     {event.type === 'SUBSCRIPTION' && (
                       <span className={styles.eventPeriod}>
                         {event.startDate} ~ {event.endDate}

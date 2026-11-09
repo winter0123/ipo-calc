@@ -243,6 +243,7 @@ describe('IpoCalendar', () => {
     const detailRegion = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
     expect(detailRegion).toHaveTextContent('테스트기업')
     expect(detailRegion).toHaveTextContent('청약')
+    expect(detailRegion).not.toHaveTextContent('(테스트IPO)')
   })
 
   it('청약 상세는 달력 막대와 같이 마감일에만 표시된다', async () => {
@@ -267,6 +268,7 @@ describe('IpoCalendar', () => {
     await userEvent.click(endDate)
     expect(detailRegion).toHaveTextContent('테스트기업')
     expect(detailRegion).toHaveTextContent('청약')
+    expect(detailRegion).not.toHaveTextContent('(테스트IPO)')
   })
 
   it('선택 날짜의 청약 상세에 모든 주관사 이름을 표시한다', async () => {
@@ -287,6 +289,7 @@ describe('IpoCalendar', () => {
     })
     // '주관사' 접두어는 제거되어야 함
     expect(region).not.toHaveTextContent('주관사')
+    expect(region).not.toHaveTextContent('(테스트IPO)')
   })
 
   it('환불 이벤트 상세에서 모든 주관사 칩이 표시되고 접두어 없음', async () => {
@@ -544,7 +547,7 @@ describe('IpoCalendar', () => {
     const dateButton = screen.getByRole('button', { name: /^10월 5일/ })
     await userEvent.click(dateButton)
 
-    const link = screen.getByRole('link', { name: /테스트기업 테스트IPO 상세 보기/ })
+    const link = screen.getByRole('link', { name: /테스트기업 상세 보기/ })
     expect(link).toHaveAttribute('href', '/ipos/7')
   })
 

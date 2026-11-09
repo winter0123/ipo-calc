@@ -335,7 +335,7 @@ export const StyleScope = styled.div`
     line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
     z-index: 1;
     transition:
       background-color 0.15s,
@@ -343,20 +343,12 @@ export const StyleScope = styled.div`
       filter 0.15s;
   }
 
-  .s-e1b278a-bar::before {
-    content: '';
-    flex: 0 0 6px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.72;
-  }
-
   .s-e1b278a-barName {
     min-width: 0;
+    max-width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 
   .s-e1b278a-bar:hover {
@@ -398,7 +390,7 @@ export const StyleScope = styled.div`
   .s-e1b278a-detail {
     grid-area: detail;
     margin-top: var(--space-5);
-    padding: var(--space-5);
+    padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
@@ -460,6 +452,9 @@ export const StyleScope = styled.div`
   .s-e1b278a-eventCompany {
     font-weight: 650;
     color: var(--ink);
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .s-e1b278a-eventIpo {
@@ -506,7 +501,7 @@ export const StyleScope = styled.div`
     gap: var(--space-2);
     flex-wrap: wrap;
     width: 100%;
-    padding: var(--space-2);
+    padding: var(--space-1);
     text-decoration: none;
     color: var(--ink);
     border-radius: var(--radius-sm);
@@ -594,16 +589,13 @@ export const StyleScope = styled.div`
     }
 
     .s-e1b278a-bar {
-      gap: 4px;
+      gap: 2px;
       height: 20px;
-      padding: 0 5px;
+      padding: 0 2px;
       font-size: 11px;
-    }
-
-    .s-e1b278a-bar::before {
-      flex-basis: 5px;
-      width: 5px;
-      height: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
     }
 
     .s-e1b278a-holidayName {
