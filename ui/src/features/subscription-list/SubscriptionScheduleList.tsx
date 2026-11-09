@@ -30,8 +30,8 @@ function UnderwriterChips({ ipoId }: { ipoId: number }) {
 }
 
 const STATUS: Record<SubscriptionScheduleItem['status'], string> = {
-  before: '청약 전',
-  pending: '청약 완료 · 배정 결과 입력 전',
+  before: '청약 예정',
+  pending: '청약 진행 중',
   partial: '일부 결과 입력',
   allocated: '배정 받음',
   unallocated: '미배정 · 결과 확인',
@@ -39,40 +39,23 @@ const STATUS: Record<SubscriptionScheduleItem['status'], string> = {
 
 function priceLabel(item: SubscriptionScheduleItem): React.ReactNode {
   const ipo = item.ipo
-  const parts: React.ReactNode[] = []
 
   if (ipo.fixedPrice != null && ipo.fixedPrice > 0) {
-    parts.push(
-      <span key="fixed" className={styles.priceRow}>
+    return (
+      <span className={styles.priceRow}>
         <span className={styles.priceLabel}>공모가</span>
         <span className={styles.priceValue}>{formatWon(ipo.fixedPrice)}</span>
-      </span>,
+      </span>
     )
   }
 
-  if (ipo.lowerBandPrice != null && ipo.lowerBandPrice > 0) {
-    const upper = ipo.upperBandPrice
-    parts.push(
-      <span key="hope" className={styles.priceRow}>
-        <span className={styles.priceLabel}>희망가</span>
-        <span className={styles.priceValue}>
-          {upper != null && upper > 0
-            ? `${formatWon(ipo.lowerBandPrice)} ~ ${formatWon(upper)}`
-            : `${formatWon(ipo.lowerBandPrice)} 이상`}
-        </span>
-      </span>,
-    )
-  }
-
-  if (parts.length === 0) {
-    return <span className={styles.priceValue}>미정</span>
-  }
-
-  return parts
+  return <span className={styles.priceValue}>미정</span>
 }
 
 function phaseLabel(ipo: SubscriptionScheduleItem['ipo'], today: Date): React.ReactNode {
   const phase = getCurrentPhase(ipo, today)
+  // 청약 예정은 pill로 표시하지 않음
+  if (phase === 'scheduled') return null
   const label = getPhaseLabel(phase)
   return <span className={styles.phasePill}>{label}</span>
 }
@@ -178,6 +161,19 @@ export default function SubscriptionScheduleList({
                     </Link>
                     <Link className={styles.saleAction} to={`/sales/register?ipoId=${item.ipo.id}`}>
                       매도 등록
+                    </Link>
+                  </div>
+                )}
+                {investorSelected && item.subscriptionCount > 0 && (
+                  <div className={styles.actionGroup}>
+                    <Link
+                      className={styles.action}
+                      to={`/subscriptions/register?ipoId=${item.ipo.id}`}
+                    >
+                      청약 수정
+                    </Link>
+                    <Link className={styles.saleAction} to={`/sales/register?ipoId=${item.ipo.id}`}>
+                      매도 수정
                     </Link>
                   </div>
                 )}

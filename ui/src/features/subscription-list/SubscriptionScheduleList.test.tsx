@@ -42,7 +42,7 @@ function makeItem(overrides: Partial<SubscriptionScheduleItem> = {}): Subscripti
     allocatedCount: 0,
     allocatedQuantity: 0,
     pendingCount: 0,
-    status: 'before',
+    status: 'pending',
     ...overrides,
   }
 }
@@ -264,7 +264,7 @@ describe('SubscriptionScheduleList 현재 단계 표시', () => {
     vi.useRealTimers()
   })
 
-  it('청약 예정 단계가 청약 결과 pill 앞에 표시된다', async () => {
+  it('청약 진행 중 단계가 표시된다', async () => {
     const { result, queryClient } = renderWithRouter(
       <SubscriptionScheduleList
         items={[
@@ -286,8 +286,8 @@ describe('SubscriptionScheduleList 현재 단계 표시', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    expect(result.getByText('청약 예정')).toBeInTheDocument()
-    expect(result.getByText('청약 전')).toBeInTheDocument()
+    expect(result.queryByText('청약 예정')).not.toBeInTheDocument()
+    expect(result.queryByText('청약 전')).not.toBeInTheDocument()
   })
 
   it('청약 진행 중 단계가 표시된다', async () => {
@@ -421,58 +421,6 @@ describe('SubscriptionScheduleList 가격 표시', () => {
 
     expect(result.getByText('공모가')).toBeInTheDocument()
     expect(result.getByText('15,000원')).toBeInTheDocument()
-  })
-
-  it('희망가(lowerBandPrice, upperBandPrice)가 있을 때 희망가 라벨과 범위가 ~로 표시된다', async () => {
-    const { result, queryClient } = renderWithRouter(
-      <SubscriptionScheduleList
-        items={[
-          makeItem({
-            ipo: makeIpo({
-              id: 1,
-              ipoName: '희망가 공모주',
-              fixedPrice: null,
-              lowerBandPrice: 10000,
-              upperBandPrice: 12000,
-            }),
-          }),
-        ]}
-        investorSelected={false}
-      />,
-    )
-
-    await waitFor(() =>
-      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
-    )
-
-    expect(result.getByText('희망가')).toBeInTheDocument()
-    expect(result.getByText('10,000원 ~ 12,000원')).toBeInTheDocument()
-  })
-
-  it('lowerBandPrice만 있을 때 희망가 라벨과 이상으로 표시된다', async () => {
-    const { result, queryClient } = renderWithRouter(
-      <SubscriptionScheduleList
-        items={[
-          makeItem({
-            ipo: makeIpo({
-              id: 1,
-              ipoName: '단일밴드 공모주',
-              fixedPrice: null,
-              lowerBandPrice: 10000,
-              upperBandPrice: null,
-            }),
-          }),
-        ]}
-        investorSelected={false}
-      />,
-    )
-
-    await waitFor(() =>
-      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
-    )
-
-    expect(result.getByText('희망가')).toBeInTheDocument()
-    expect(result.getByText('10,000원 이상')).toBeInTheDocument()
   })
 
   it('가격 정보가 없을 때 미정으로 표시된다', async () => {

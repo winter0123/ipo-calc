@@ -70,12 +70,12 @@ export const SelectedDayDetail = forwardRef<
                     {event.type === 'REFUND' && event.estimated && (
                       <span className={styles.eventIpo}> (예상)</span>
                     )}
+                    <SubscriptionUnderwriters ipoId={event.ipoId} />
                     {event.type === 'SUBSCRIPTION' && (
                       <span className={styles.eventPeriod}>
                         {event.startDate} ~ {event.endDate}
                       </span>
                     )}
-                    <SubscriptionUnderwriters ipoId={event.ipoId} />
                     <>
                       {event.price && <span className={styles.eventPrice}>{event.price}</span>}
                       <span className={styles.eventArrow} aria-hidden="true">

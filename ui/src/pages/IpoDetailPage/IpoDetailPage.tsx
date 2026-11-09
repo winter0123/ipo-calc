@@ -37,19 +37,6 @@ export default function IpoDetailPage() {
     return formatWon(price)
   }
 
-  const formatBandPrice = (lower: number | null, upper: number | null) => {
-    if (lower !== null && upper !== null) {
-      return `${lower.toLocaleString()}~${upper.toLocaleString()}원`
-    }
-    if (lower !== null) {
-      return formatWon(lower)
-    }
-    if (upper !== null) {
-      return formatWon(upper)
-    }
-    return '-'
-  }
-
   const formatShareCount = (count: number | null) => {
     if (count === null) return '-'
     return formatShares(count)
@@ -218,12 +205,8 @@ export default function IpoDetailPage() {
               <dd>{formatDate(ipo!.listingDate)}</dd>
             </div>
             <div className={styles.detailItem}>
-              <dt>확정 공모가</dt>
+              <dt>공모가</dt>
               <dd>{formatPrice(confirmedPriceForDisplay)}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt>희망 공모가</dt>
-              <dd>{formatBandPrice(ipo!.lowerBandPrice, ipo!.upperBandPrice)}</dd>
             </div>
             <div className={styles.detailItem}>
               <dt>공모 주식 수</dt>

@@ -265,12 +265,12 @@ describe('IpoDetailPage', () => {
     )
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
-    const fixedPriceRow = (await screen.findByText('확정 공모가')).parentElement
+    const fixedPriceRow = (await screen.findByText('공모가')).parentElement
     expect(fixedPriceRow).not.toBeNull()
     expect(await within(fixedPriceRow!).findByText('25,000원')).toBeInTheDocument()
   })
 
-  it('상장 전에는 단일 희망 공모가를 확정 공모가로 표시하지 않는다', async () => {
+  it('상장 전에는 단일 희망 공모가를 공모가로 표시하지 않는다', async () => {
     stubFetch(
       makeIpo({
         listingDate: '2026-10-15T09:00:00Z',
@@ -281,34 +281,9 @@ describe('IpoDetailPage', () => {
     )
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
-    const fixedPriceRow = (await screen.findByText('확정 공모가')).parentElement
+    const fixedPriceRow = (await screen.findByText('공모가')).parentElement
     expect(fixedPriceRow).not.toBeNull()
     expect(within(fixedPriceRow!).getByText('-')).toBeInTheDocument()
-  })
-
-  it('희망 공모가: 둘 다 있을 때 "하단~상단원", 하나만 있으면 있는 값만, 둘 다 없으면 "-"', async () => {
-    // 둘 다 있음
-    stubFetch(makeIpo({ lowerBandPrice: 20000, upperBandPrice: 25000, fixedPrice: null }))
-    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
-    await vi.waitFor(() => expect(screen.getByText('20,000~25,000원')).toBeInTheDocument())
-
-    // 하단만 있음
-    vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
-    stubFetch(makeIpo({ lowerBandPrice: 20000, upperBandPrice: null, fixedPrice: null }))
-    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
-    await vi.waitFor(() => expect(screen.getByText('20,000원')).toBeInTheDocument())
-
-    // 상단만 있음
-    vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
-    stubFetch(makeIpo({ lowerBandPrice: null, upperBandPrice: 25000, fixedPrice: null }))
-    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
-    await vi.waitFor(() => expect(screen.getByText('25,000원')).toBeInTheDocument())
-
-    // 둘 다 없음
-    vi.setSystemTime(new Date('2026-10-10T12:00:00Z'))
-    stubFetch(makeIpo({ lowerBandPrice: null, upperBandPrice: null, fixedPrice: null }))
-    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
-    await vi.waitFor(() => expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(5))
   })
 
   it('404 에러 시 "공모주를 찾을 수 없습니다."가 보인다', async () => {

@@ -52,7 +52,7 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
               to={`/subscriptions/register?ipoId=${item.ipoId}`}
               className={styles.actionButton}
             >
-              청약등록
+              청약 수정
             </Link>
             <Link
               to={`/allocations/register?subscriptionId=${item.id}`}
@@ -61,7 +61,7 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
               배정등록
             </Link>
             <Link to={`/sales/register?subscriptionId=${item.id}`} className={styles.actionButton}>
-              매도등록
+              매도 수정
             </Link>
           </div>
         </li>
