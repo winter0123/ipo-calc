@@ -5,7 +5,7 @@ export const securitiesAccountSchema = z.object({
   investorId: z.number(),
   securitiesFirmId: z.number(),
   securitiesFirmName: z.string().nullable(),
-  accountNumber: z.string(),
+  accountNumber: z.string().nullable(),
   accountName: z.string().nullable(),
   status: z.string(),
   deletedAt: z.string().nullable(),
@@ -26,6 +26,11 @@ export type RevealedSecuritiesAccountNumber = z.infer<typeof revealedSecuritiesA
 export interface SecuritiesAccountRegisterRequest {
   investorId: number
   securitiesFirmId: number
-  accountNumber: string
+  accountNumber?: string
   accountName?: string
+}
+
+export interface SecuritiesAccountUpdateRequest {
+  accountName?: string
+  accountNumber?: string
 }

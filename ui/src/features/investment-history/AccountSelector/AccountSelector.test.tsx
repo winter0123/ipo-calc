@@ -94,6 +94,20 @@ describe('AccountSelector', () => {
     expect(onChange).toHaveBeenCalledWith('10')
   })
 
+  it('계좌번호가 없으면 표시명에 미입력을 보여 준다', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+      const pathStr = String(path)
+      if (pathStr.startsWith('/securities-accounts')) {
+        return [{ ...MOCK_SECURITIES_ACCOUNTS[0], accountNumber: null }]
+      }
+      throw new Error(`unexpected path: ${pathStr}`)
+    })
+    renderComponent({ investorId: '1' })
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: '한국투자증권 - 미입력' })).toBeInTheDocument()
+    })
+  })
+
   it('증권계좌가 없는 투자자에게는 안내가 보인다', async () => {
     renderComponent({ investorId: '2' })
     expect(await screen.findByText('해당 투자자의 증권계좌가 없습니다')).toBeInTheDocument()

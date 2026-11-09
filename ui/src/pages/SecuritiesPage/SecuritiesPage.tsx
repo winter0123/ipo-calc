@@ -18,7 +18,7 @@ export default function SecuritiesPage() {
               <p>
                 {current.displayName} 투자자의 증권사 계좌입니다. 등록한 증권사가 위에 보입니다.
               </p>
-              <SecuritiesManage investorId={current.id} />
+              <SecuritiesManage key={current.id} investorId={current.id} />
             </>
           ) : (
             <p>

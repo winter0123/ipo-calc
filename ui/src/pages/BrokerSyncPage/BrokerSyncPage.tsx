@@ -18,6 +18,7 @@ export default function BrokerSyncPage() {
   const loaded = accounts.data !== undefined && !accounts.isFetching
   const belongs = accounts.data?.some((a) => String(a.id) === securitiesAccountId) ?? false
   const selectedAccountId = belongs ? Number(securitiesAccountId) : 0
+  const selectedAccount = accounts.data?.find((a) => String(a.id) === securitiesAccountId) ?? null
   const stale = securitiesAccountId !== '' && loaded && !belongs
 
   useEffect(() => {
@@ -42,10 +43,12 @@ export default function BrokerSyncPage() {
               <BrokerConnectPanel
                 key={`connect-${selectedAccountId}`}
                 securitiesAccountId={selectedAccountId}
+                accountNumber={selectedAccount?.accountNumber ?? null}
               />
               <BrokerSyncPanel
                 key={`sync-${selectedAccountId}`}
                 securitiesAccountId={selectedAccountId}
+                accountNumber={selectedAccount?.accountNumber ?? null}
               />
             </>
           ) : (

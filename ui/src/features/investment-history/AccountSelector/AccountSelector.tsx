@@ -25,7 +25,7 @@ export default function AccountSelector({
 
   const getSecuritiesAccountDisplayName = (account: SecuritiesAccount) => {
     const firmName = account.securitiesFirmName ?? '알 수 없는 증권사'
-    const accountNum = account.accountNumber
+    const accountNum = account.accountNumber ?? '미입력'
     return `${firmName} - ${accountNum}`
   }
 

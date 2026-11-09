@@ -49,6 +49,27 @@ export const StyleScope = styled.div`
     margin-right: var(--space-2);
   }
 
+  .s-ed0b413-firmCheckbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .s-ed0b413-firmCheckbox input {
+    min-width: 24px;
+    min-height: 24px;
+    cursor: pointer;
+  }
+
+  .s-ed0b413-firmCheckbox input:disabled {
+    cursor: not-allowed;
+  }
+
   .s-ed0b413-account {
     display: flex;
     flex-direction: column;
@@ -63,6 +84,15 @@ export const StyleScope = styled.div`
     font-weight: 650;
     color: var(--ink);
     overflow-wrap: anywhere;
+  }
+
+  .s-ed0b413-numberNone {
+    font-size: 13px;
+    color: var(--ink-muted);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1px var(--space-2);
   }
 
   .s-ed0b413-alias {
@@ -116,6 +146,18 @@ export const StyleScope = styled.div`
   .s-ed0b413-fieldError {
     color: var(--danger);
     font-size: 13px;
+  }
+
+  .s-ed0b413-fieldHint {
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
+  .s-ed0b413-fieldHintBlock {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
   }
 
   .s-ed0b413-formError {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useBrokerCredential,
   useSyncPreview,
@@ -40,7 +41,13 @@ function rangeError(range: SyncRange, today: string, rule: RangeRule): string | 
   return null
 }
 
-export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAccountId: number }) {
+export default function BrokerSyncPanel({
+  securitiesAccountId,
+  accountNumber,
+}: {
+  securitiesAccountId: number
+  accountNumber: string | null
+}) {
   const today = toLocalYmd(new Date())
   const credential = useBrokerCredential(securitiesAccountId)
   const rule =
@@ -58,6 +65,25 @@ export default function BrokerSyncPanel({ securitiesAccountId }: { securitiesAcc
   const preview = useSyncPreview(securitiesAccountId, submitted)
   const confirm = useConfirmSync(securitiesAccountId)
   const draftError = rangeError(draft, today, rule)
+
+  // 훅은 항상 호출하고, 계좌번호가 등록되지 않았으면 번호 입력 안내와 마이페이지 링크만 보여 준다.
+  if (accountNumber == null) {
+    return (
+      <StyleScope>
+        {
+          <section className={styles.panel} aria-labelledby="broker-sync-title">
+            <h2 id="broker-sync-title" className={styles.title}>
+              매도 내역 동기화
+            </h2>
+            <p role="alert">
+              계좌번호가 등록되지 않았습니다. 계좌 수정에서 계좌번호를 입력해 주세요.
+            </p>
+            <Link to="/my-page">마이페이지로 이동하여 계좌번호를 등록하세요.</Link>
+          </section>
+        }
+      </StyleScope>
+    )
+  }
 
   const handleQuery = () => {
     setSavedCount(null)

@@ -18,7 +18,13 @@ const formatAccountNumber = (v: string) =>
 
 export type AccountFormTarget =
   | { kind: 'create'; investorId: number; firmId: number; firmName: string }
-  | { kind: 'edit'; accountId: number; firmName: string; accountName: string }
+  | {
+      kind: 'edit'
+      accountId: number
+      firmName: string
+      accountName: string
+      accountNumber?: string | null
+    }
 
 interface Props {
   target: AccountFormTarget
@@ -26,7 +32,9 @@ interface Props {
   onCancel: () => void
 }
 
-// 증권사 카드 안에 펼치는 등록·수정 폼. 수정은 계좌명만 바꾼다(계좌번호는 서버가 수정을 받지 않는다).
+// 증권사 카드 안에 펼치는 등록·수정 폼.
+// 생성: 계좌번호 optional(미입력 시 계좌번호 없이 등록). 수정: 번호가 없으면 입력칸으로 사후 입력,
+//       번호가 있으면 마스킹 표시 + 교체 불가 안내(번호 입력칸 미제공).
 export default function AccountForm({ target, onDone, onCancel }: Props) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const create = useCreateAccount()
@@ -47,13 +55,15 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
   const onSubmit = (v: FormValues) => {
     const name = v.accountName.trim()
     if (target.kind === 'edit') {
-      update.mutate({ id: target.accountId, accountName: name }, { onSuccess: onDone })
+      const body: { accountName: string; accountNumber?: string } = { accountName: name }
+      if (v.accountNumber !== '') body.accountNumber = v.accountNumber
+      update.mutate({ id: target.accountId, ...body }, { onSuccess: onDone })
     } else {
       create.mutate(
         {
           investorId: target.investorId,
           securitiesFirmId: target.firmId,
-          accountNumber: v.accountNumber,
+          accountNumber: v.accountNumber || undefined,
           accountName: name || undefined,
         },
         { onSuccess: onDone },
@@ -63,6 +73,9 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
 
   const formError = toErrorMessage(error)
   const idp = `${target.kind}-${target.kind === 'edit' ? target.accountId : target.firmId}`
+  // 수정 모드에서 기존 번호가 있으면 입력칸을 내지 않고 마스킹+안내만 보여 준다(번호 교체 UI 금지).
+  const hasExistingNumber = isEdit && target.accountNumber != null && target.accountNumber !== ''
+  const showNumberInput = !isEdit || !hasExistingNumber
 
   return (
     <StyleScope>
@@ -73,20 +86,24 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
           aria-label={`${target.firmName} 계좌 ${isEdit ? '수정' : '등록'}`}
           noValidate
         >
-          {!isEdit && (
+          {showNumberInput && (
             <div className={styles.field}>
               <label htmlFor={`${idp}-number`}>계좌번호</label>
               <input
                 id={`${idp}-number`}
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder="예: 1234-5678-90"
+                placeholder={
+                  isEdit && target.accountNumber == null
+                    ? '계좌번호를 입력해 주세요.'
+                    : '계좌번호(선택, 미입력 시 미입력)'
+                }
                 aria-invalid={!!errors.accountNumber}
                 aria-describedby={errors.accountNumber ? `${idp}-number-error` : undefined}
                 {...register('accountNumber', {
                   validate: (v) => {
                     const digits = v.replace(/\D/g, '').length
-                    if (digits === 0) return '계좌번호를 입력해 주세요.'
+                    if (digits === 0) return undefined // 번호 미입력도 허용(선택 입력)
                     return (digits >= 10 && digits <= 16) || '계좌번호는 10~16자리 숫자여야 합니다.'
                   },
                   onChange: (e) => {
@@ -100,6 +117,12 @@ export default function AccountForm({ target, onDone, onCancel }: Props) {
                   {errors.accountNumber.message}
                 </span>
               )}
+            </div>
+          )}
+          {hasExistingNumber && (
+            <div className={styles.fieldHintBlock}>
+              <span className={styles.number}>{target.accountNumber}</span>
+              <span className={styles.fieldHint}>이미 등록된 계좌번호입니다.</span>
             </div>
           )}
           <div className={styles.field}>
