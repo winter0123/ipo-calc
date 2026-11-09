@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -53,7 +54,7 @@ function setup(over: Over = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <BrokerConnectPanel securitiesAccountId={10} />
+      <BrokerConnectPanel securitiesAccountId={10} accountNumber="1234-****-90" />
     </QueryClientProvider>,
   )
 }
@@ -128,6 +129,27 @@ describe('BrokerConnectPanel', () => {
     setup({ supportedProvider: null })
 
     expect(await screen.findByText(/아직 API 연동을 지원하지 않습니다/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('앱키')).not.toBeInTheDocument()
+  })
+
+  it('계좌번호가 없으면 연결 폼 대신 번호 입력 안내와 마이페이지 링크를 보여준다', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (_path: unknown, init?: RequestInit) => {
+      if (init?.method === 'POST' || init?.method === 'PUT') {
+        return credential({ connectionStatus: 'CONNECTED' })
+      }
+      return credential({})
+    })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <BrokerConnectPanel securitiesAccountId={10} accountNumber={null} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText(/계좌번호가 등록되지 않았습니다/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /마이페이지로 이동/ })).toBeInTheDocument()
     expect(screen.queryByLabelText('앱키')).not.toBeInTheDocument()
   })
 

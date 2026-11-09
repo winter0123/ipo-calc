@@ -24,8 +24,8 @@ function useAccountMutation<V>(fn: (v: V) => Promise<unknown>) {
 export const useCreateAccount = () => useAccountMutation(registerSecuritiesAccount)
 
 export const useUpdateAccount = () =>
-  useAccountMutation((v: { id: number; accountName: string }) =>
-    updateSecuritiesAccount(v.id, { accountName: v.accountName }),
+  useAccountMutation((v: { id: number; accountName?: string; accountNumber?: string }) =>
+    updateSecuritiesAccount(v.id, { accountName: v.accountName, accountNumber: v.accountNumber }),
   )
 
 export const useDeleteAccount = () =>

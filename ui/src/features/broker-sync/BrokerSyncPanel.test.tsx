@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -87,7 +88,7 @@ function setup(preview: unknown = PREVIEW, provider = 'KIS') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <BrokerSyncPanel securitiesAccountId={10} />
+      <BrokerSyncPanel securitiesAccountId={10} accountNumber="1234-****-90" />
     </QueryClientProvider>,
   )
 }
@@ -272,6 +273,24 @@ describe('BrokerSyncPanel', () => {
     await clickQuery()
 
     expect(await screen.findByText('조회된 매도 내역이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('계좌번호가 없으면 동기화 폼 대신 번호 입력 안내와 마이페이지 링크를 보여준다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <BrokerSyncPanel securitiesAccountId={10} accountNumber={null} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText(/계좌번호가 등록되지 않았습니다/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /마이페이지로 이동/ })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '증권사에서 매도 내역 조회' }),
+    ).not.toBeInTheDocument()
+    expect(previewCalls()).toHaveLength(0)
   })
 
   it('LS증권은 한 번에 31일까지만 조회하도록 기본 기간과 검증을 바꾼다', async () => {

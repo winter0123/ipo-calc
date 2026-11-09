@@ -2,6 +2,7 @@ export type {
   RevealedSecuritiesAccountNumber,
   SecuritiesAccount,
   SecuritiesAccountRegisterRequest,
+  SecuritiesAccountUpdateRequest,
 } from './types.ts'
 export { securitiesAccountSchema, revealedSecuritiesAccountNumberSchema } from './types.ts'
 export { useSecuritiesAccounts } from './useSecuritiesAccounts.ts'

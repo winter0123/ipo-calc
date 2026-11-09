@@ -19,13 +19,18 @@ export default function AccountRow({ account, busy, onEdit, onDelete }: Props) {
   const { data: credential } = useBrokerCredential(account.id)
   const label = account.accountName ?? '계좌'
   const revealError = toErrorMessage(reveal.error)
+  const hasNumber = account.accountNumber != null && account.accountNumber !== ''
 
   return (
     <StyleScope>
       {
         <li className={styles.account}>
           <div className={styles.accountMain}>
-            <span className={styles.number}>{reveal.data ?? account.accountNumber}</span>
+            {hasNumber ? (
+              <span className={styles.number}>{reveal.data ?? account.accountNumber}</span>
+            ) : (
+              <span className={styles.numberNone}>미입력</span>
+            )}
             {account.accountName && <span className={styles.alias}>{account.accountName}</span>}
             {credential?.supportedProvider && (
               <Link to="/broker-sync" className={styles.badgeLink}>
@@ -34,27 +39,31 @@ export default function AccountRow({ account, busy, onEdit, onDelete }: Props) {
             )}
           </div>
           <div className={styles.accountActions}>
-            {reveal.data ? (
-              <Button variant="secondary" onClick={() => reveal.reset()}>
-                숨기기
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => reveal.mutate(account.id)}
-                disabled={reveal.isPending}
-                aria-label={`${label} 계좌번호 보기`}
-              >
-                보기
-              </Button>
-            )}
+            {hasNumber ? (
+              <>
+                {reveal.data ? (
+                  <Button variant="secondary" onClick={() => reveal.reset()}>
+                    숨기기
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => reveal.mutate(account.id)}
+                    disabled={reveal.isPending}
+                    aria-label={`${label} 계좌번호 보기`}
+                  >
+                    보기
+                  </Button>
+                )}
+              </>
+            ) : null}
             <Button
               variant="secondary"
               onClick={onEdit}
               disabled={busy}
-              aria-label={`${label} 수정`}
+              aria-label={`${label} ${hasNumber ? '수정' : '번호 입력'}`}
             >
-              수정
+              {hasNumber ? '수정' : '번호 입력'}
             </Button>
             <Button
               variant="secondary"

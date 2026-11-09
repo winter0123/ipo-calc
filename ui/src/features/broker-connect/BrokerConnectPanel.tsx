@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useBrokerCredential } from '@/entities/broker/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
@@ -34,8 +35,10 @@ function daysUntil(isoDate: string, today: string) {
 
 export default function BrokerConnectPanel({
   securitiesAccountId,
+  accountNumber,
 }: {
   securitiesAccountId: number
+  accountNumber: string | null
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [replacing, setReplacing] = useState(false)
@@ -153,16 +156,25 @@ export default function BrokerConnectPanel({
               />
             </>
           ) : provider ? (
-            <BrokerKeyForm
-              idPrefix="broker"
-              submitLabel="연결"
-              pendingLabel="연결 중..."
-              pending={register.isPending}
-              errorMessage={registerError}
-              today={today}
-              showIssuedOn={isKis}
-              onSubmit={submitRegister}
-            />
+            accountNumber == null ? (
+              <>
+                <p role="alert">
+                  계좌번호가 등록되지 않았습니다. 계좌 수정에서 계좌번호를 입력해 주세요.
+                </p>
+                <Link to="/my-page">마이페이지로 이동하여 계좌번호를 등록하세요.</Link>
+              </>
+            ) : (
+              <BrokerKeyForm
+                idPrefix="broker"
+                submitLabel="연결"
+                pendingLabel="연결 중..."
+                pending={register.isPending}
+                errorMessage={registerError}
+                today={today}
+                showIssuedOn={isKis}
+                onSubmit={submitRegister}
+              />
+            )
           ) : (
             <p role="status">이 증권계좌의 증권사는 아직 API 연동을 지원하지 않습니다.</p>
           )}

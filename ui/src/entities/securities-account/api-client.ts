@@ -5,6 +5,7 @@ import type {
   RevealedSecuritiesAccountNumber,
   SecuritiesAccount,
   SecuritiesAccountRegisterRequest,
+  SecuritiesAccountUpdateRequest,
 } from './types.ts'
 
 export async function fetchSecuritiesAccounts(
@@ -43,7 +44,7 @@ export function registerSecuritiesAccount(
 
 export function updateSecuritiesAccount(
   id: number,
-  data: { accountName: string },
+  data: SecuritiesAccountUpdateRequest,
 ): Promise<SecuritiesAccount> {
   return apiFetchParsed(`/securities-accounts/${id}`, securitiesAccountSchema, {
     method: 'PATCH',
