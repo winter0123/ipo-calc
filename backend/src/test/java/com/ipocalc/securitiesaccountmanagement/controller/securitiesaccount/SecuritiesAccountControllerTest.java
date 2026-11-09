@@ -1,6 +1,7 @@
 package com.ipocalc.securitiesaccountmanagement.controller.securitiesaccount;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -23,6 +24,7 @@ import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription
 import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,6 +48,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
@@ -86,6 +89,8 @@ class SecuritiesAccountControllerTest {
   @Autowired private SecuritiesAccountApiCredentialRepository credentialRepository;
 
   @Autowired private SubscriptionRepository subscriptionRepository;
+
+  @MockitoSpyBean private Clock clock;
 
   private String testEmail;
   private String testPassword;
@@ -1022,6 +1027,7 @@ class SecuritiesAccountControllerTest {
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
     Long firmId = registerFirm();
+    doReturn(Instant.parse("2026-11-10T00:00:00.123456789Z")).when(clock).instant();
 
     // 첫 번째 계좌 생성 (번호 있음)
     MvcResult first =
@@ -1036,8 +1042,10 @@ class SecuritiesAccountControllerTest {
     assertThat(first.getResponse().getStatus()).isEqualTo(201);
     Long firstId =
         ((Number) objectMapper.readValue(utf8Body(first), Map.class).get("id")).longValue();
-    String firstUpdatedAt =
-        (String) objectMapper.readValue(utf8Body(first), Map.class).get("updatedAt");
+    // DB에 저장된 시각을 기준으로 비교한다(나노초 입력은 PostgreSQL에서 마이크로초로 반올림된다).
+    LocalDateTime firstUpdatedAt =
+        securitiesAccountRepository.findById(firstId).orElseThrow().getUpdatedAt();
+    doReturn(Instant.parse("2026-11-10T00:00:01.123456789Z")).when(clock).instant();
 
     // When: accountNumber 생략하여 다시 POST (재사용 경로)
     MvcResult reused =
@@ -1047,11 +1055,13 @@ class SecuritiesAccountControllerTest {
     assertThat(reused.getResponse().getStatus()).isEqualTo(201);
     Map<String, Object> reusedBody = objectMapper.readValue(utf8Body(reused), Map.class);
     assertThat(((Number) reusedBody.get("id")).longValue()).isEqualTo(firstId);
-    assertThat(reusedBody.get("updatedAt")).isEqualTo(firstUpdatedAt);
+    assertThat(LocalDateTime.parse((String) reusedBody.get("updatedAt"))).isEqualTo(firstUpdatedAt);
     assertThat(reusedBody.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("111111111111"));
 
     // And: DB 레코드 수도 1개 유지
     assertThat(securitiesAccountRepository.findByInvestorId(investorId)).hasSize(1);
+    assertThat(securitiesAccountRepository.findById(firstId).orElseThrow().getUpdatedAt())
+        .isEqualTo(firstUpdatedAt);
   }
 
   @Test
@@ -1101,15 +1111,18 @@ class SecuritiesAccountControllerTest {
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
     Long firmId = registerFirm();
+    doReturn(Instant.parse("2026-11-10T00:00:00.123456789Z")).when(clock).instant();
 
     MvcResult created =
         registerSecuritiesAccount(Map.of("investorId", investorId, "securitiesFirmId", firmId));
     assertThat(created.getResponse().getStatus()).isEqualTo(201);
     Long accountId =
         ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
-    String createdAt =
-        (String) objectMapper.readValue(utf8Body(created), Map.class).get("createdAt");
-    createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
+    SecuritiesAccount createdAccount =
+        securitiesAccountRepository.findById(accountId).orElseThrow();
+    LocalDateTime createdAt = createdAccount.getCreatedAt();
+    createdAccounts.add(createdAccount);
+    doReturn(Instant.parse("2026-11-10T00:00:01.123456789Z")).when(clock).instant();
 
     // When: null -> 번호로 PATCH
     MvcResult patched = updateSecuritiesAccount(accountId, Map.of("accountNumber", "333333333333"));
@@ -1119,10 +1132,11 @@ class SecuritiesAccountControllerTest {
     Map<String, Object> body = objectMapper.readValue(utf8Body(patched), Map.class);
     assertThat(((Number) body.get("id")).longValue()).isEqualTo(accountId);
     assertThat(body.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("333333333333"));
-    assertThat(body.get("createdAt")).isEqualTo(createdAt); // createdAt 불변
+    assertThat(LocalDateTime.parse((String) body.get("createdAt"))).isEqualTo(createdAt);
 
     // And: DB에 암호문 저장됨
     SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
+    assertThat(saved.getCreatedAt()).isEqualTo(createdAt);
     assertThat(saved.getAccountNumber()).isNotNull();
     assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("333333333333");
   }

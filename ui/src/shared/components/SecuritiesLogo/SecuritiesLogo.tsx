@@ -7,7 +7,11 @@ interface SecuritiesLogoProps {
   className?: string
 }
 
-export default function SecuritiesLogo({ firmName, size = 32, className = '' }: SecuritiesLogoProps) {
+export default function SecuritiesLogo({
+  firmName,
+  size = 32,
+  className = '',
+}: SecuritiesLogoProps) {
   const src = getSecuritiesLogoUrl(firmName)
   const alt = getSecuritiesLogoAlt(firmName)
 

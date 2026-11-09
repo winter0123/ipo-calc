@@ -116,7 +116,9 @@ export const StyleScope = styled.div`
     font-size: 15px;
     color: var(--ink);
     background: var(--surface);
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
   }
   .s-ccbb7cb-form input:hover,
   .s-ccbb7cb-form textarea:hover,
@@ -172,7 +174,10 @@ export const StyleScope = styled.div`
     border-radius: var(--radius-sm);
     cursor: pointer;
     border: 1px solid transparent;
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
   }
   .s-ccbb7cb-btn:disabled {
     opacity: 0.5;
@@ -378,7 +383,10 @@ export const StyleScope = styled.div`
     border: 1px solid var(--border-strong);
     background: var(--surface);
     color: var(--ink);
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
   }
   .s-ccbb7cb-pagingBtn:hover:not(:disabled) {
     background: var(--surface-soft);

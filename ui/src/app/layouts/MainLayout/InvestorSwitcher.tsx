@@ -70,6 +70,7 @@ export default function InvestorSwitcher() {
             ref={buttonRef}
             type="button"
             className={`${styles.investorChip} ${styles.investorChipButton}`}
+            aria-label={`현재 투자자: ${name}`}
             aria-expanded={open}
             aria-controls="investor-switcher-options"
             aria-haspopup="true"
