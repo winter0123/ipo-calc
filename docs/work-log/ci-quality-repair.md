@@ -39,3 +39,9 @@ minimatch 패치 범위는 [공식 보안 공지](https://github.com/advisories/
 - ui/public/images가 /Users/joy/IdeaProjects/ipo-calc/images 절대 심볼릭 링크여서 Linux에서 ENOENT가 발생했다. 저장소의 ../../images 상대 링크로 바꿨다. 추적 중인 심볼릭 링크는 이 한 개이며 기존 이미지 파일은 수정하지 않았다.
 - 로컬 build/format PASS. Git index를 아카이브해 별도의 임시 경로에 풀고 offline frozen install→build를 실행했다. 경로가 바뀌어도 아이콘·증권사 로고가 dist/images에 포함됨을 확인했다. 이식성 검증 PASS.
 - 원격 CI는 새 커밋에서 다시 확인한다. 성공 전 병합하지 않는다.
+
+## 원격 최종 검증·병합
+
+- [run42721712150](https://github.com/winter0123/ipo-calc/actions/runs/42721712150): UI quality와 Backend quality 모두 SUCCESS(PASS). 검증 head는 f63c7d1bd105b7bc4b28a6fc36e0391c11274c39다.
+- [PR #497](https://github.com/winter0123/ipo-calc/pull/497) MERGED, 병합 커밋e6b89a7d. #496 CLOSED 확인. main의 backend/ui는 검증 head와 동일하다.
+- 워커 없이 Codex가 직접 수정·검증·커밋·push·병합했다. 운영 DB·배포는 NOT_RUN이며 기존 .playwright-cli/는 보존했다.
