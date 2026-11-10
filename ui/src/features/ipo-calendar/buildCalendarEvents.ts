@@ -35,6 +35,7 @@ function getPriceDisplay(ipo: Ipo): string | undefined {
     lowerBandPrice > 0 &&
     upperBandPrice > 0
   ) {
+    if (lowerBandPrice === upperBandPrice) return formatWon(lowerBandPrice)
     return `${lowerBandPrice.toLocaleString()}~${upperBandPrice.toLocaleString()}원`
   }
   return undefined

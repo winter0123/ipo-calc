@@ -176,16 +176,10 @@ export default function IpoDetailPage() {
               <dd>{ipo!.stockCode ?? '-'}</dd>
             </div>
             <div className={styles.detailItem}>
-              <dt>회차</dt>
-              <dd>{ipo!.roundLabel ?? '-'}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt>청약 시작일</dt>
-              <dd>{formatDate(ipo!.subscriptionStartDate)}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt>청약 종료일</dt>
-              <dd>{formatDate(ipo!.subscriptionEndDate)}</dd>
+              <dt>청약일</dt>
+              <dd>
+                {formatDate(ipo!.subscriptionStartDate)} ~ {formatDate(ipo!.subscriptionEndDate)}
+              </dd>
             </div>
             <div className={styles.detailItem}>
               <dt>환불일</dt>
@@ -214,7 +208,12 @@ export default function IpoDetailPage() {
             </div>
           </dl>
 
-          <IpoInsightSections ipoId={id} listingDate={dateOnly(ipo!.listingDate)} />
+          <IpoInsightSections
+            ipoId={id}
+            listingDate={dateOnly(ipo!.listingDate)}
+            lowerBandPrice={ipo!.lowerBandPrice}
+            upperBandPrice={ipo!.upperBandPrice}
+          />
         </div>
       }
     </StyleScope>
