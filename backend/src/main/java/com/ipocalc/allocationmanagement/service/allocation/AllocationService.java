@@ -191,7 +191,7 @@ public class AllocationService {
     if (subscription.getIpoId() == null) {
       return null;
     }
-    return ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
+    return ipoRepository.findById(subscription.getIpoId()).orElse(null);
   }
 
   // AC-003: 배정수량은 0 이상이며, 청약수량(subscription.quantity)을 초과할 수 없다 (D-A-005, 단순 값 검증).

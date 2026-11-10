@@ -1,6 +1,7 @@
 package com.ipocalc.ipocatalog.repository.ipo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.ipocalc.IpoCalcApplication;
@@ -346,9 +347,10 @@ class IpoRepositoryTest {
   }
 
   @Test
-  void saveDuplicateActiveCorpCodeThrowsDataIntegrityViolationException() {
-    // Given: 동일 corp_code의 ACTIVE IPO가 하나 저장되어 있음
-    // - uk_ipo_corp_code_active 부분 유니크 인덱스로 활성 IPO 간 corp_code 중복 방지
+  void saveDuplicateActiveCorpCodeWithSameReceiptThrowsDataIntegrityViolationException() {
+    // Given: 동일 corp_code + 동일 source_receipt_no의 ACTIVE IPO가 하나 저장되어 있음
+    // - V44 uk_ipo_corp_code_source_receipt_active 부분 유니크 인덱스로 동일 공모의 중복 활성 방지
+    // - 서로 다른 receipt의 재추진(신규 공모)은 허용되며, 서비스가 감지해 덮어쓰기 없이 보류한다
 
     LocalDateTime now = LocalDateTime.now();
     String corpCode = uniqueCorpCode();
@@ -357,6 +359,7 @@ class IpoRepositoryTest {
             .companyName("기업A")
             .ipoName("공모주A")
             .corpCode(corpCode)
+            .sourceReceiptNo("20261012000149")
             .subscriptionStartDate(LocalDate.of(2026, 10, 1))
             .subscriptionEndDate(LocalDate.of(2026, 10, 2))
             .status(RecordStatus.ACTIVE)
@@ -369,6 +372,7 @@ class IpoRepositoryTest {
             .companyName("기업B")
             .ipoName("공모주B")
             .corpCode(corpCode) // 동일 corp_code
+            .sourceReceiptNo("20261012000149") // 동일 접수번호(동일 공모)
             .subscriptionStartDate(LocalDate.of(2026, 11, 1))
             .subscriptionEndDate(LocalDate.of(2026, 11, 2))
             .status(RecordStatus.ACTIVE)
@@ -376,9 +380,47 @@ class IpoRepositoryTest {
             .updatedAt(LocalDateTime.now())
             .build();
 
-    // When & Then: 동일 corp_code + ACTIVE로 저장 시 데이터 무결성 위반 예외 발생
+    // When & Then: 동일 corp_code + 동일 접수번호 + ACTIVE로 저장 시 데이터 무결성 위반 예외 발생
     assertThrows(
         DataIntegrityViolationException.class, () -> ipoRepository.saveAndFlush(duplicate));
+  }
+
+  @Test
+  void saveSameCorpWithDifferentReceiptIsAllowed() {
+    // Given: 동일 corp_code의 ACTIVE IPO가 하나 저장되어 있음
+    // - 서로 다른 접수번호의 재추진(신규 공모)은 ACTIVE로 생성 가능해야 한다 (철회 없이 진행되는 동일 회사 재공모)
+    // - 동일 공모 여부 구분은 source_receipt_no로 하고, 구분 불가 시 서비스가 덮어쓰기 없이 보류한다
+
+    LocalDateTime now = LocalDateTime.now();
+    String corpCode = uniqueCorpCode();
+    ipoRepository.save(
+        Ipo.builder()
+            .companyName("기업A")
+            .ipoName("공모주A")
+            .corpCode(corpCode)
+            .sourceReceiptNo("20261012000149")
+            .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+            .status(RecordStatus.ACTIVE)
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
+
+    Ipo repromotion =
+        Ipo.builder()
+            .companyName("기업B")
+            .ipoName("공모주B")
+            .corpCode(corpCode) // 동일 corp_code
+            .sourceReceiptNo("20261101000099") // 다른 접수번호(재추진)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 2))
+            .status(RecordStatus.ACTIVE)
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+
+    // When: 재추진 건을 저장해도 예외가 발생하지 않는다 (FR-06 다른 receipt 재추진 허용)
+    assertThatCode(() -> ipoRepository.saveAndFlush(repromotion)).doesNotThrowAnyException();
   }
 
   @Test

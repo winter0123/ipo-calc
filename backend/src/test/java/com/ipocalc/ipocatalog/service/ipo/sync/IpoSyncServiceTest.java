@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,7 +26,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -63,18 +63,34 @@ class IpoSyncServiceTest {
       Clock.fixed(Instant.parse("2026-10-15T00:00:00Z"), SEOUL);
 
   private IpoSyncService syncService;
+  private IpoSyncRunRecorder recorder;
 
   private final ArgumentCaptor<Ipo> ipoCaptor = ArgumentCaptor.forClass(Ipo.class);
 
   @BeforeEach
   void setUp() {
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of());
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK);
+    IpoReconciliationService reconciliationService =
+        new IpoReconciliationService(
+            corpDisclosureClient,
+            equitySecuritiesClient,
+            ipoRepository,
+            persistence,
+            transactionTemplate,
+            FIXED_CLOCK);
+    recorder = mock(IpoSyncRunRecorder.class);
     syncService =
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
-            new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK),
+            persistence,
             transactionTemplate,
             ipoScheduleMergeService,
+            reconciliationService,
+            recorder,
             FIXED_CLOCK);
   }
 
@@ -129,8 +145,8 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(ipo));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(ipo));
     assertThat(syncService.sync(7).getUpdated()).isEqualTo(1);
     assertThat(ipo.getDeletedAt()).isNotNull();
   }
@@ -187,8 +203,8 @@ class IpoSyncServiceTest {
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
         .thenReturn(List.of(withdrawalNoticeDetail, originalDetail)); // 최신이 앞에 있어도 원공시 선택돼야 함
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(ipo));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(ipo));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -231,8 +247,8 @@ class IpoSyncServiceTest {
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
         .thenReturn(List.of(withdrawalNoticeDetail, originalDetail));
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(ipo));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(ipo));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -253,8 +269,9 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -311,8 +328,9 @@ class IpoSyncServiceTest {
         .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035"))
         .thenReturn(List.of(createDetailWithDates("2026년 11월 10일", "2026년 11월 10일")));
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -344,8 +362,9 @@ class IpoSyncServiceTest {
             .status(RecordStatus.ACTIVE)
             .syncSource("OPENDART+USTOCKPLUS")
             .build();
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
 
     syncService.sync(7);
 
@@ -365,8 +384,9 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일", "1,000,000", "15,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -395,8 +415,9 @@ class IpoSyncServiceTest {
     OpenDartEquitySecurityDetail detail =
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "12,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -432,8 +453,9 @@ class IpoSyncServiceTest {
             .status(RecordStatus.ACTIVE)
             .syncSource("OPENDART")
             .build();
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
 
     IpoSyncResult result = syncService.sync(7);
 
@@ -474,8 +496,9 @@ class IpoSyncServiceTest {
             .updatedAt(LocalDateTime.now().minusDays(1))
             .build();
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -532,8 +555,9 @@ class IpoSyncServiceTest {
             .updatedAt(LocalDateTime.now().minusDays(10))
             .build();
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.of(manualRecord));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of(manualRecord));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -558,8 +582,9 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
 
     Ipo manualRecord =
         Ipo.builder()
@@ -657,8 +682,9 @@ class IpoSyncServiceTest {
         createDetail("01028933", "멜콘", "2026년 11월 10일 ~ 2026년 11월 11일", "1,500,000", "20,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01028933")).thenReturn(List.of(detail2));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01028933", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 10), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -724,8 +750,9 @@ class IpoSyncServiceTest {
         createDetail("01028933", "멜콘", "2026년 11월 10일 ~ 2026년 11월 11일", "1,500,000", "20,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01028933")).thenReturn(List.of(detail2));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01028933", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01028933", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 10), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -753,8 +780,9 @@ class IpoSyncServiceTest {
         createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
         .thenReturn(List.of());
@@ -904,8 +932,9 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(details));
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("01658035", RecordStatus.ACTIVE))
-        .thenReturn(Optional.empty());
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
     when(businessDayCalculator.nextBusinessDay(any())).thenReturn(LocalDate.of(2026, 11, 6));
     return syncService.sync(7);
   }
@@ -1015,5 +1044,81 @@ class IpoSyncServiceTest {
 
     assertThat(other.get())
         .isInstanceOf(com.ipocalc.ipocatalog.exception.IpoSyncBusyException.class);
+  }
+
+  @Test
+  void sync_reconcileExceptionDoesNotStopNewFilingCollection() {
+    // given: 재점검 단계(대상 조회)에서 예외 발생 → 신규 수집은 계속되어야 한다
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenThrow(new RuntimeException("boom"));
+    OpenDartDisclosureItem company = createCompany("01658035", "옵토닉스", "");
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    OpenDartEquitySecurityDetail detail =
+        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "10,000");
+    when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+            "01658035", RecordStatus.ACTIVE))
+        .thenReturn(List.of());
+    when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            LocalDate.of(2026, 11, 5), RecordStatus.ACTIVE))
+        .thenReturn(List.of());
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 철회 점검 실패는 기록되지만 신규 수집은 정상 완료된다
+    assertThat(result.getCreated()).isEqualTo(1);
+    assertThat(result.getFailures())
+        .anySatisfy(failure -> assertThat(failure.getReason()).contains("철회점검:"));
+  }
+
+  @Test
+  void sync_reconcileAuthAbortStopsNewFilingCollection() {
+    // given: 활성 자동 공모가 있고 재점검 중 인증 오류 발생 → 같은 키를 쓰므로 신규 수집도 중단해야 한다
+    Ipo row =
+        Ipo.builder()
+            .id(1L)
+            .corpCode("corp")
+            .companyName("심원")
+            .ipoName("심원")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .status(RecordStatus.ACTIVE)
+            .syncSource("OPENDART")
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+    when(corpDisclosureClient.searchAllByDateRange(
+            org.mockito.ArgumentMatchers.eq("corp"), any(), any()))
+        .thenThrow(new OpenDartAuthenticationException("011", "인증 오류"));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 인증 오류는 재시도 없이 중단되고 신규 수집은 호출되지 않는다
+    assertThat(result.isAborted()).isTrue();
+    assertThat(result.getFailureCount()).isZero();
+    verify(corpDisclosureClient, never()).searchRecentEquitySecuritiesCompanies(7);
+  }
+
+  @Test
+  void recoverAfterDeploy_reconcileExceptionIsReportedAsFailure_notSuccess() {
+    // given: 재점검 대상 조회에서 예외 → 복구가 SUCCESS로 마킹되면 안 된다
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenThrow(new RuntimeException("boom"));
+
+    // when
+    syncService.recoverAfterDeploy();
+
+    // then: recordRecover 에는 failed >= 1 이 전달된다 (가짜 성공 금지)
+    org.mockito.ArgumentCaptor<IpoReconcileResult> captor =
+        org.mockito.ArgumentCaptor.forClass(IpoReconcileResult.class);
+    verify(recorder).recordRecover(org.mockito.ArgumentMatchers.any(), captor.capture());
+    assertThat(captor.getValue().getFailed()).isGreaterThanOrEqualTo(1);
+    assertThat(captor.getValue().getFailures())
+        .anySatisfy(failure -> assertThat(failure.getReason()).contains("RuntimeException"));
   }
 }

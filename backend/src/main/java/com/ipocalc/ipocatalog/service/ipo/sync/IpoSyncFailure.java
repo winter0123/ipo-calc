@@ -22,4 +22,7 @@ public class IpoSyncFailure {
 
   /** 실패 사유. */
   private String reason;
+
+  /** 관련 공모주 id (회사 단위 실패면 null). */
+  private Long ipoId;
 }

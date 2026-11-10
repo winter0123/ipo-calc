@@ -68,7 +68,8 @@ public class ProfitCalculationService {
         () -> new ProfitForbiddenException("계정 소유권이 없습니다."));
 
     // 4. IPO 조건부 조회 — allocatedAmount가 null이면 fixedPrice 사용
-    Ipo ipo = ipoRepository.findByIdAndDeletedAtIsNull(subscription.getIpoId()).orElse(null);
+    // 철회(INACTIVE+deletedAt)된 공모도 수익 계산에는 soft-deleted 제외 없이 그대로 읽는다
+    Ipo ipo = ipoRepository.findById(subscription.getIpoId()).orElse(null);
 
     // 5. 대응취득가액/세전·세후순수익 계산 및 ProfitDto 구성
     return buildProfitDto(sale, allocation, ipo);
