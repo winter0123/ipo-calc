@@ -227,7 +227,7 @@ export default function IpoInsightSections({
 }) {
   const { data, isLoading, isError } = useIpoInsight(ipoId)
   const price = priceBand(lowerBandPrice, upperBandPrice)
-  const forecastRows = ([['희망 공모가', price]] as Row[])
+  const forecastRows = [['희망 공모가', price]] as Row[]
   if (isLoading)
     return (
       <>
