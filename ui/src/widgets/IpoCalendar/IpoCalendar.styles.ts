@@ -46,7 +46,6 @@ export const StyleScope = styled.div`
     gap: var(--space-2);
     margin-bottom: var(--space-3);
     padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--border);
   }
 
   .s-e1b278a-dateSelect {
