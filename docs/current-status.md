@@ -120,3 +120,26 @@
 - V44원공시receipt/날짜원본추적/실행이력추가. 배포후ApplicationReady비동기복구→한국04:30배치정기전수점검. 복구키ipo-reconciliation-v1,실패는미완료로재시도,수동로그인불필요.
 - 식별불명·공시자료없는자동공모는보류/FAILED로남을수있음. 기존출처불명날짜의일괄백필없음. 다중서버배타제어는범위밖(현재단일JVM).
 - 워커release완료,watchdog중지. branch winter0123/automatic-ipo-reconciliation. 이번V44자동화는미커밋·미배포,운영자동복구실행검증NOT_RUN. 이전PR500배포버전과구분.
+
+## PR501 운영 배포·자동 복구 확인 완료
+
+- PR501 cdb392b4978c019fa6acb515fecfe5cbe6978fba 병합. UI/Backend quality 모두SUCCESS. main동기화완료.
+- 사용자인증후backend배포및읽기전용운영검증PASS:Ansible ok11/changed2/failed0. 중간FAILED-RETRYING은복구기록생성대기조건재조회이며최종실패아님.
+- 운영DB읽기검증:Flyway44 success=true,ipos id20 INACTIVE/withdrawn_receipt_no20261012000149,POST_DEPLOY_RECOVER SUCCESS/targets37/succeeded37/failed0.
+- 관리자로그인·버튼조작없이ApplicationReady자동복구실행확인. 공개API HTTP200/목록36건/Simwon id20없음.
+- 기존자동화구현전체1189건/checkstyle/spotless/bootJar PASS. 다음04:30실제일일배치·실서버재기동스킵실측NOT_RUN(로컬회귀검증PASS).
+- 워커정리완료. 미추적.playwright-cli/와구형simwon-withdrawal-procedure초안은배포/커밋에서제외. 새제품수정없음.
+
+## 2026-11-11 환불 기본필터 해제
+
+- 사용자요청:모든화면에서공모주일정진입시환불기본선택off,청약/상장on. 명시URL/수동환불선택존중. parseVisibleTypes와toTypesParam의새기본왕복일치도수정.
+- branch winter0123/calendar-refund-default-off. Run run_1fa8904e7107,task_f7073fb689bf,dispatch ctx_33729951d185,terminal term_5f739c8d-dda3-43c9-a046-4cde75b7f3ac. OpenRouter Inkling2Small무료모델응답/화면확인.
+- frontend단일워커배정,제품변경3파일범위,완료후Master직접검증. 이번수정배포미실행.
+
+- 환불기본off수정완료:parseVisibleTypes누락/무효→청약·상장,types빈값→전체off유지,명시환불선택존중,toTypesParam새기본null/all3명시로왕복일치.
+- Master 직접검증PASS:관련4파일116건,typecheck,lint(기존경고4/오류0),build,diff검사. 워커release/watchdog중지. 이번UI수정미커밋·미배포,실브라우저수동검증NOT_RUN.
+
+## 2026-11-11 통합 요청 확인
+
+- 열린PR0개,활성worker0개. 기존브랜치중대부분main의ancestor. nonancestor중automatic-ipo-reconciliation/ipo-schedule-reconciliation/ui-request-batch는PR501/500/499 squash병합으로반영완료. listing-open-price-backend의핵심서비스는main에동일동작(포맷차이),sync-range-ui는main에기간선택및진행상태가구현되고스타일시스템만변경됨. 구버전재병합불필요.
+- 미반영환불기본off UI3파일및Master상태/일일로그를현재브랜치에서커밋·PR·CI후병합한다. 임시.playwright-cli/및오래된운영SQL초안은포함하지않는다.
