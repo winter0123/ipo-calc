@@ -20,7 +20,8 @@
 | 의존성 audit/frozen install | PASS | 알려진 취약점9→0, lockfile 일치 |
 | 전이 의존성 호환성 | PASS | 실제 설치 경로의 glob 양성·음성·숨김 파일 및 loopback HTTP 확인 |
 | 원격 CI | PASS | run42721712150에서 UI quality·Backend quality 모두 SUCCESS, 검증된 f63c7d1b를 병합 |
-| 운영 DB·배포 | NOT_RUN | 이번 범위 밖 |
+| 운영 배포 | PASS | 2026-11-10 backend/UI 배포, 홈페이지·API HTTP 200 |
+| Flyway 적용 버전 직접 조회 | NOT_RUN | 배포 후 DB 확인에 추가 sudo 인증이 필요해 수행하지 않음 |
 
 근거: docs/work-log/ci-quality-repair.md, /tmp/ci-repair-* 로그.
 
@@ -29,13 +30,13 @@
 - #493 CLOSED, PR #495(backend)·#494(UI) MERGED. main의 이전 정산 커밋 d5725289.
 - 증권사 체크로 계좌 보유를 등록하고 번호는 NULL로 저장한다. 나중에 같은 ID에 최초1회 번호를 입력하며 기존 번호 교체는 제공하지 않는다.
 - 동시 등록·후입력 보호, 청약 이력 계좌 삭제 거부, 번호 없는 브로커 연결·동기화 차단을 유지한다. 기존 이미지 자동 입력은 유지했다.
-- V42는 계좌번호 NOT NULL 제약만 제거한다. 기존 암호문·ID·참조를 보존하며 운영 마이그레이션은 실행하지 않았다.
+- V42는 계좌번호 NOT NULL 제약만 제거한다. 기존 암호문·ID·참조를 보존한다. 2026-11-10 backend/UI 배포 후 backend 서비스 active 및 API HTTP 200을 확인했으며, Flyway 적용 버전은 DB에서 직접 조회하지 않았다.
 - 이전 Run run_374c2a862662 워커·임시 작업공간·watchdog은 정리했다. 이번 보완에는 워커를 사용하지 않는다.
 
 ## 다음 단계
 
 1. #496·PR #497 보완 완료. 활성 워커0이며 추가 검증 대기는 없다.
-2. 별도 배포 요청 시 backend V42와 UI를 함께 적용한다. 앞선 UI 배포는 SSH 인증 실패로 완료를 확인하지 못했다.
+2. 로컬 보류 브랜치 `winter0123/listing-open-price-backend`와 `winter0123/sync-range-ui`는 이번 릴리스에 포함하지 않았다. Epic 21 백엔드 및 선행 백엔드가 필요한 UI 변경으로 별도 검토가 필요하다.
 3. SimwonAmericaCorp. 철회·일정 정정은 연구 문서만 fc61626b로 병합했다. 공식 공모 건 식별·데이터 처리 결정 후 설계·구현 범위를 확정한다.
 
 ## 원격 빌드 경로 보완
