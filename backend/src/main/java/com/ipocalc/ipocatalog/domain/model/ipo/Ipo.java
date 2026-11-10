@@ -34,7 +34,7 @@ public class Ipo {
     this.subscriptionEndDate = subscriptionEndDate;
   }
 
-  /** Fills missing IPO schedule fields from a supplemental source. */
+  /** 보조 일정의 빈 필드와 수집 상장일 정정을 반영하고 수동 값은 보존한다. */
   public boolean mergeSupplementalSchedule(
       String stockCode,
       LocalDate allotment,
@@ -55,8 +55,12 @@ public class Ipo {
       this.refundDate = refund;
       changed = true;
     }
-    if (this.listingDate == null && listing != null) {
+    if (listing != null
+        && (this.listingDate == null || this.listingDate.equals(this.lastImportedListingDate))
+        && !listing.equals(this.listingDate)) {
       this.listingDate = listing;
+      this.listingOpenPrice = null;
+      this.lastImportedListingDate = listing;
       changed = true;
     }
     if (changed) {
@@ -231,6 +235,25 @@ public class Ipo {
   @Column(name = "sync_source", length = 20)
   @Comment("자동 동기화 출처")
   private String syncSource;
+
+  /** 마지막으로 보조 일정에서 반영한 상장일. 기존 값의 출처가 불명확하면 null로 보호한다. */
+  @Column(name = "last_imported_listing_date")
+  private LocalDate lastImportedListingDate;
+
+  /** 철회된 공모의 접수번호. 같은 공시의 재수집으로 복원하지 않는다. */
+  @Column(name = "withdrawn_receipt_no", length = 20)
+  private String withdrawnReceiptNo;
+
+  /** 관리자 입력은 보조 일정의 자동 정정 대상에서 제외한다. */
+  public void protectListingDate() {
+    this.lastImportedListingDate = null;
+  }
+
+  /** 해당 공모를 철회하고 이력은 보존한다. */
+  public void withdraw(String receiptNo, LocalDateTime now) {
+    this.withdrawnReceiptNo = receiptNo;
+    deactivate(now);
+  }
 
   /** 마지막 자동 동기화 시각. */
   @Column(name = "last_synced_at")

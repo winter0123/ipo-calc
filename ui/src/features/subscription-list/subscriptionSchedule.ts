@@ -132,10 +132,11 @@ export function aggregateSubscriptionSchedule(
   })
 }
 
-export type IpoPhase = 'scheduled' | 'subscribing' | 'listing-scheduled' | 'listing-day' | 'listed'
+export type IpoPhase =
+  'scheduled' | 'subscribing' | 'listing-scheduled' | 'listing-unknown' | 'listed'
 
 export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
-  const todayStr = toLocalYmd(today)
+  const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(today)
   const subscriptionStart = ipo.subscriptionStartDate.slice(0, 10)
   const subscriptionEnd = ipo.subscriptionEndDate.slice(0, 10)
   const listingDate = ipo.listingDate ? ipo.listingDate.slice(0, 10) : null
@@ -149,12 +150,11 @@ export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
   // 3. 청약 종료 후: listingDate 기준으로 상장 예정/상장일/상장 완료 분기
   if (listingDate) {
     if (todayStr < listingDate) return 'listing-scheduled'
-    if (todayStr === listingDate) return 'listing-day'
     return 'listed'
   }
 
-  // 4. listingDate가 없고 청약 종료 후: 상장 예정
-  return 'listing-scheduled'
+  // 상장일이 없으면 상장 여부를 추측하지 않는다.
+  return 'listing-unknown'
 }
 
 export function getPhaseLabel(phase: IpoPhase): string {
@@ -165,8 +165,8 @@ export function getPhaseLabel(phase: IpoPhase): string {
       return '청약 진행 중'
     case 'listing-scheduled':
       return '상장 예정'
-    case 'listing-day':
-      return '상장일'
+    case 'listing-unknown':
+      return '상장일 미정'
     case 'listed':
       return '상장 완료'
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import SubscriptionScheduleList from './SubscriptionScheduleList.tsx'
@@ -366,7 +366,7 @@ describe('SubscriptionScheduleList 현재 단계 표시', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    expect(result.getByText('상장 예정')).toBeInTheDocument()
+    expect(result.getByText('상장일 미정')).toBeInTheDocument()
   })
 
   it('상장일 단계가 표시된다', async () => {
@@ -391,7 +391,55 @@ describe('SubscriptionScheduleList 현재 단계 표시', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    expect(result.getByText('상장일')).toBeInTheDocument()
+    expect(result.getByText('상장 완료')).toBeInTheDocument()
+  })
+
+  it('화면 복귀 시 한국 날짜를 다시 계산하고 일정 쿼리를 갱신한다', async () => {
+    vi.setSystemTime(new Date('2026-11-09T14:59:59Z'))
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              subscriptionStartDate: '2026-11-02',
+              subscriptionEndDate: '2026-11-03',
+              listingDate: '2026-11-10',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+    await waitFor(() => expect(result.getByText('상장 예정')).toBeInTheDocument())
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    vi.setSystemTime(new Date('2026-11-09T15:00:00Z'))
+    fireEvent.focus(window)
+    expect(result.getByText('상장 완료')).toBeInTheDocument()
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ipoKeys.list() })
+  })
+
+  it('한국 자정에 열어 둔 화면의 상태가 갱신된다', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-09T14:59:59Z'))
+    const { result } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              subscriptionStartDate: '2026-11-02',
+              subscriptionEndDate: '2026-11-03',
+              listingDate: '2026-11-10',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+    expect(result.getByText('상장 예정')).toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100)
+    })
+    expect(result.getByText('상장 완료')).toBeInTheDocument()
   })
 
   it('상장 완료 단계가 표시된다', async () => {

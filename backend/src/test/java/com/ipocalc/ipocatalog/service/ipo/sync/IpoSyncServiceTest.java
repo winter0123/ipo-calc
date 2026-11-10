@@ -107,6 +107,142 @@ class IpoSyncServiceTest {
   }
 
   @Test
+  void withdrawnReceiptMustMatchBeforeDeactivation() {
+    var company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo("receipt")
+            .rm("철")
+            .reportNm("증권신고서(지분증권)")
+            .build();
+    var detail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("receipt")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    var ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(ipo));
+    assertThat(syncService.sync(7).getUpdated()).isEqualTo(1);
+    assertThat(ipo.getDeletedAt()).isNotNull();
+  }
+
+  @Test
+  void differentReceiptCannotWithdrawAnotherOffering() {
+    var company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo("withdrawn")
+            .rm("철")
+            .reportNm("증권신고서(지분증권)")
+            .build();
+    var detail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("new-offering")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+    assertThat(syncService.sync(7).getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void withdrawnSelectsDetailByOriginalReceiptNotLatest() {
+    // given: 원공시 rm=철, DS006에 원공시(작은 rceptNo)와 철회신고서(큰 rceptNo) 둘 다 있음
+    var company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo("20261012000149") // 원공시 접수번호
+            .rm("철")
+            .reportNm("증권신고서(지분증권)")
+            .build();
+    var originalDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261012000149") // 원공시와 일치
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    var withdrawalNoticeDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261030000200") // 철회신고서(더 최신)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    var ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
+        .thenReturn(List.of(withdrawalNoticeDetail, originalDetail)); // 최신이 앞에 있어도 원공시 선택돼야 함
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(ipo));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 원공시 접수번호로 매칭되어 철회 처리됨
+    assertThat(result.getUpdated()).isEqualTo(1);
+    assertThat(ipo.getDeletedAt()).isNotNull();
+    assertThat(ipo.getStatus()).isEqualTo(RecordStatus.INACTIVE);
+  }
+
+  @Test
+  void withdrawnWithRealSbdParsingSelectsCorrectDetail() {
+    // given: 실제 sbd 파싱 기반 케이스 - "2026년 11월 05일" 단일일자
+    var company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo("20261012000149")
+            .rm("철")
+            .reportNm("증권신고서(지분증권)")
+            .build();
+    var originalDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261012000149")
+            .sbd("2026년 11월 05일")
+            .build();
+    originalDetail.parseDerivedFields(); // subscriptionStartDate=2026-11-05
+    var withdrawalNoticeDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261030000200")
+            .sbd("2026년 11월 05일")
+            .build();
+    withdrawalNoticeDetail.parseDerivedFields();
+    var ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
+        .thenReturn(List.of(withdrawalNoticeDetail, originalDetail));
+    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(ipo));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: parseDerivedFields 후에도 원공시 접수번호로 매칭되어 철회 처리됨
+    assertThat(result.getUpdated()).isEqualTo(1);
+    assertThat(ipo.getDeletedAt()).isNotNull();
+  }
+
+  @Test
   void sync_createsNewIpo_whenNoExistingRecord() {
     // given
     OpenDartDisclosureItem company = createCompany("01658035", "옵토닉스", "");

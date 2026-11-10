@@ -29,6 +29,10 @@ public class IpoSyncPersistence {
       String corpName,
       OpenDartEquitySecurityDetail detail,
       boolean finalizedReport) {
+    if (detail.getRceptNo() != null
+        && ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, detail.getRceptNo())) {
+      return Outcome.SKIPPED_WITHDRAWN;
+    }
     LocalDate startDate = detail.getSubscriptionStartDate();
     LocalDate endDate = detail.getSubscriptionEndDate();
 
@@ -77,6 +81,27 @@ public class IpoSyncPersistence {
     } catch (DataIntegrityViolationException e) {
       throw new RuntimeException("중복 키 위반: " + e.getMessage(), e);
     }
+  }
+
+  /** 공시 접수번호와 청약 시작일로 확인한 활성 자동 공모만 철회한다. 이미 철회된 경우 멱등하게 true 반환. */
+  public boolean withdraw(String corpCode, OpenDartEquitySecurityDetail detail) {
+    if (detail.getRceptNo() == null || detail.getSubscriptionStartDate() == null) {
+      return false;
+    }
+    // 이미 같은 접수번호로 철회 처리된 경우 멱등 성공 처리 (save 없이 true 반환)
+    if (ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, detail.getRceptNo())) {
+      return true;
+    }
+    var existing =
+        ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
+    if (existing.isEmpty()
+        || existing.get().getSyncSource() == null
+        || !detail.getSubscriptionStartDate().equals(existing.get().getSubscriptionStartDate())) {
+      return false;
+    }
+    existing.get().withdraw(detail.getRceptNo(), LocalDateTime.now(clock));
+    ipoRepository.saveAndFlush(existing.get());
+    return true;
   }
 
   public IpoRepository getIpoRepository() {
@@ -140,6 +165,7 @@ public class IpoSyncPersistence {
   enum Outcome {
     CREATED,
     UPDATED,
-    SKIPPED_MANUAL
+    SKIPPED_MANUAL,
+    SKIPPED_WITHDRAWN
   }
 }

@@ -35,8 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>채우기 규칙:
  *       <ul>
  *         <li>allotmentDate, refundDate: DART 값이 우선이라 대상이 null일 때만 ustockplus 값으로 보충(덮어쓰지 않음)
- *         <li>listingDate: 대상의 listingDate가 null일 때만 ustockplus 값으로 채움(이미 값이 있으면 수동 입력으로 간주해 보존).
- *             ustockplus 값이 null이면 해당 필드는 건드리지 않음
+ *         <li>listingDate: 비어 있으면 채우고, 마지막 수집 값과 같으면 정정을 반영한다. 출처 불명·수동 입력은 보존. ustockplus 값이
+ *             null이면 해당 필드는 건드리지 않음
  *       </ul>
  *   <li>갱신 시: {@code syncSource="OPENDART+USTOCKPLUS"}, {@code lastSyncedAt=now}, {@code
  *       updatedAt=now}로 설정하고 saveAndFlush. 변경된 게 없으면 저장하지 않음
