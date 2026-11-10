@@ -206,11 +206,11 @@ describe('subscription schedule helpers', () => {
     // 상장 예정: subscriptionEnd < today, no listingDate
     expect(
       getCurrentPhase(ipo(1, '2026-10-01', { subscriptionEndDate: '2026-10-05' }), today),
-    ).toBe('listing-scheduled')
+    ).toBe('listing-unknown')
 
     // 상장일: today === listingDate
     expect(getCurrentPhase(ipo(1, '2026-10-01', { listingDate: '2026-10-15' }), today)).toBe(
-      'listing-day',
+      'listed',
     )
 
     // 상장 완료: today > listingDate
@@ -258,7 +258,7 @@ describe('subscription schedule helpers', () => {
         ipo(1, '2026-10-10', { subscriptionEndDate: '2026-10-14' }),
         new Date('2026-10-15'),
       ),
-    ).toBe('listing-scheduled')
+    ).toBe('listing-unknown')
 
     // subscriptionEnd 다음 날, listingDate 미래 → listing-scheduled
     expect(
@@ -274,7 +274,7 @@ describe('subscription schedule helpers', () => {
         ipo(1, '2026-10-10', { subscriptionEndDate: '2026-10-14', listingDate: '2026-10-15' }),
         new Date('2026-10-15'),
       ),
-    ).toBe('listing-day')
+    ).toBe('listed')
 
     // subscriptionEnd 다음 날, listingDate 과거 → listed
     expect(
@@ -285,11 +285,20 @@ describe('subscription schedule helpers', () => {
     ).toBe('listed')
   })
 
+  it('한국 자정에 상장 완료로 전환한다', () => {
+    const target = ipo(1, '2026-11-02', {
+      subscriptionEndDate: '2026-11-03',
+      listingDate: '2026-11-10',
+    })
+    expect(getCurrentPhase(target, new Date('2026-11-09T14:59:59Z'))).toBe('listing-scheduled')
+    expect(getCurrentPhase(target, new Date('2026-11-09T15:00:00Z'))).toBe('listed')
+  })
+
   it('getPhaseLabel returns correct Korean labels', () => {
     expect(getPhaseLabel('scheduled')).toBe('미청약')
     expect(getPhaseLabel('subscribing')).toBe('청약 진행 중')
     expect(getPhaseLabel('listing-scheduled')).toBe('상장 예정')
-    expect(getPhaseLabel('listing-day')).toBe('상장일')
+    expect(getPhaseLabel('listing-unknown')).toBe('상장일 미정')
     expect(getPhaseLabel('listed')).toBe('상장 완료')
   })
 

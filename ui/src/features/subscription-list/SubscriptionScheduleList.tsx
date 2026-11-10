@@ -1,5 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ipoKeys } from '@/entities/ipo/queryKeys.ts'
 import type { SubscriptionScheduleItem } from './subscriptionSchedule.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import {
@@ -75,21 +77,28 @@ export default function SubscriptionScheduleList({
   investorSelected: boolean
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const [today, setToday] = useState(() => new Date())
   useEffect(() => {
     let timer: number
     const scheduleMidnightRefresh = () => {
       const now = new Date()
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      const midnight = new Date(now)
+      midnight.setTime(
+        Math.floor((now.getTime() + 9 * 3600000) / 86400000) * 86400000 + 86400000 - 9 * 3600000,
+      )
       timer = window.setTimeout(
         () => {
-          setToday(new Date())
+          refreshDate()
           scheduleMidnightRefresh()
         },
         midnight.getTime() - now.getTime() + 25,
       )
     }
-    const refreshDate = () => setToday(new Date())
+    const refreshDate = () => {
+      setToday(new Date())
+      void queryClient.invalidateQueries({ queryKey: ipoKeys.list() })
+    }
     scheduleMidnightRefresh()
     window.addEventListener('focus', refreshDate)
     document.addEventListener('visibilitychange', refreshDate)
@@ -98,7 +107,7 @@ export default function SubscriptionScheduleList({
       window.removeEventListener('focus', refreshDate)
       document.removeEventListener('visibilitychange', refreshDate)
     }
-  }, [])
+  }, [queryClient])
   const pageParam = searchParams.get('page')
   const currentPage = clampPage(pageParam ? parseInt(pageParam, 10) : 0, getTotalPages(items))
   const totalPages = getTotalPages(items)

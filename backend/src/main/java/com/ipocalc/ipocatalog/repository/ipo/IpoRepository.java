@@ -12,6 +12,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface IpoRepository extends JpaRepository<Ipo, Long> {
 
+  /** 같은 공시로 철회된 공모의 재생성을 막는다. */
+  boolean existsByCorpCodeAndWithdrawnReceiptNo(String corpCode, String withdrawnReceiptNo);
+
   /** ID 조건(삭제되지 않은 건만)으로 공모주를 단건 조회한다. */
   Optional<Ipo> findByIdAndDeletedAtIsNull(Long id);
 

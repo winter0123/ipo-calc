@@ -330,14 +330,42 @@ public class IpoSyncService {
       return true;
     }
 
-    // 정정 공시가 있으면 여러 건 → 접수번호가 가장 큰(최신) 건을 명시적으로 선택
-    OpenDartEquitySecurityDetail detail =
-        details.stream()
-            .max(
-                Comparator.comparing(
-                    OpenDartEquitySecurityDetail::getRceptNo,
-                    Comparator.nullsFirst(Comparator.naturalOrder())))
-            .orElseThrow();
+    // 정정/발행조건확정 공시가 있으면 여러 건 → 접수번호가 가장 큰(최신) 건을 명시적으로 선택
+    // 단, 원공시가 철회(rm에 "철" 포함)된 경우는 해당 원공시의 접수번호와 일치하는 상세를 선택해야 함
+    OpenDartEquitySecurityDetail detail;
+    if (company.getRm() != null && company.getRm().contains("철")) {
+      // 철회 대상 원공시의 접수번호로 DS006 상세에서 매칭되는 것 선택
+      detail = details.stream()
+          .filter(d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
+          .findFirst()
+          .orElse(null);
+      if (detail == null) {
+        String reason = "철회 대상 원공시(" + company.getRceptNo() + ")에 대응하는 DS006 상세 없음: 자동 변경 보류";
+        recordFailure(result, corpCode, corpName, reason);
+        return true;
+      }
+    } else {
+      // 일반 케이스: 최신 접수번호(정정/발행조건확정) 선택
+      detail = details.stream()
+          .max(
+              Comparator.comparing(
+                  OpenDartEquitySecurityDetail::getRceptNo,
+                  Comparator.nullsFirst(Comparator.naturalOrder())))
+          .orElseThrow();
+    }
+
+    if (company.getRm() != null && company.getRm().contains("철")) {
+      // 이미 위에서 매칭된 detail 사용, 추가 검증은 생략 (매칭 실패 시 이미 리턴됨)
+      transactionTemplate.executeWithoutResult(
+          status -> {
+            if (!ipoSyncPersistence.withdraw(corpCode, detail)) {
+              recordFailure(result, corpCode, corpName, "철회 공모 매칭 실패: 자동 변경 보류");
+            } else {
+              result.setUpdated(result.getUpdated() + 1);
+            }
+          });
+      return true;
+    }
 
     // subscriptionStartDate가 null이면 실패 처리
     if (detail.getSubscriptionStartDate() == null) {
@@ -368,6 +396,7 @@ public class IpoSyncService {
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);
+              case SKIPPED_WITHDRAWN -> log.debug("철회된 동일 공시 재생성 방지: corpCode={}", corpCode);
               case SKIPPED_MANUAL -> result.setSkippedManual(result.getSkippedManual() + 1);
               default -> throw new IllegalStateException("Unexpected IPO sync outcome: " + outcome);
             }

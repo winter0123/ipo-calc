@@ -49,3 +49,51 @@
 - 청약 상태·일일 갱신, IBK 표시, 계좌 선택·관리 행, 상세 제목·홈 이동 반영.
 - 검증 PASS: 관련 테스트 144개, lint/typecheck/build, diff 검사, 의존성 audit.
 - 사용자 승인으로 커밋·PR 병합 및 UI 배포 진행.
+
+## 2026-11-10 상장 상태·일정 정정 보완(로컬)
+
+- PR #499 병합 및 UI 배포 PASS: Ansible ok=19 changed=1 failed=0, 웹/API 응답 PASS.
+- 한국 날짜 기준 상장일 당일부터 상장 완료, 날짜 누락은 상장일 미정. 한국 자정·화면 복귀 시 일정 쿼리 재조회.
+- 기존 04:30 KST 배치에서 보조 일정의 마지막 반영 날짜를 기록하고 이후 정정을 반영. 출처 불명인 기존 값과 관리자 입력은 보호. 상장일 정정 시 기존 시초가는 재수집하도록 비움.
+- 철회 비고는 DS001/DS006 접수번호와 활성 자동 공모의 시작일 일치 시 논리 비활성화. 동일 철회 접수번호의 재생성 방지, 다른 접수번호의 신규 공모는 허용. 매칭 실패는 실패 목록에 기록.
+- V43 마이그레이션 추가. 운영 적용 NOT_RUN. 기존 날짜 일괄 보정 및 Simwon 운영 철회 처리 BLOCKED: 입력 출처·공모 접수번호 실응답 확인 필요.
+- 검증 PASS: UI 관련 36건, typecheck/lint(기존 경고 4건)/build, backend slot4 관련 49건/checkstyleMain/checkstyleTest/bootJar, diff 검사. 전체 회귀·실제 외부 API 연동 NOT_RUN.
+- 이번 보완은 미커밋·미배포 상태. 워커 사용 없음.
+
+## Orca 재시작 후 잔여 보완 워커
+
+- Run run_c17799ef7190 재바인딩. 기존 ctx_2cdbd3ca6c67은 재시작 중 agent_readiness/terminal_handle_stale로 실패, 코드 변경 없음.
+- 동일 Task task_592e55cfe896을 ctx_3c8be70ec51a로 재연결 중. OpenCode mini 2.1.3, OpenRouter Nemotron 3 Ultra (free), terminal term_1bb0cd01-2986-4345-8f4f-84fde11caade.
+- 단일 작업공간에서 기존 미커밋 변경 보존. 워커 슬롯1, Master 검증 슬롯4. 운영 데이터 쓰기·배포는 워커 범위 밖.
+- watchdog PID 83196, 동일 Run/코디네이터 전달 정상. CHILD_SCAN의 OpenCode DB 경로 확인은 UNKNOWN이며 Dispatch와 실제 모델 확인으로 대조.
+
+- 재시도 ctx_3c8be70ec51a도 mini TUI 준비 감지 timeout. Orca 관리 실행 경로로 동일 Task를 재시도한 ctx_6ab42fcd26a9는 ready 및 지시 전달 확인. 실제 terminal term_387d46e4-41ea-4789-8c8d-04c62cd786ac, 지정 모델 OpenRouter nvidia/nemotron-3-ultra-550b-a55b:free, watchdog 모델 대조 확인. 자동 완료 알림 대기. 기존 mini 터미널은 작업 지시 없는 입력 대기로 보존.
+
+- ctx_6ab42fcd26a9 완료 보고 후 Master 슬롯4 관련 test/checkstyle/bootJar PASS. 문서 집계 모순 및 .env-local 기존 OpenDART 키 확인 누락으로 보고 보정 요청.
+- 후속 ctx_20a6b7c5aa6f / task_53bfd12b9857 같은 무료 워커에 배정. 기존 키 비노출 방식으로 실제 DS001/DS006 조회 및 문서/필요 코드 보완. GT-02 기술검증은 사용자 승인 불필요, 실제 Orca Gate 0개. 운영 쓰기·배포는 미실행.
+
+- Master 공식 OpenDART DS001/DS006 직접 GET PASS(기존 로컬 키 비노출). Simwon corp02038432, 원공시20261012000149 rm=철, 철회신고서20261030000200. DS006 원공시 일반사항 sbd2026년11월05일/pymd11월09일 확인.
+- 워커의 디듀프 원인 결론 반려: 지분증권 필터가 철회신고서를 먼저 제외하므로 원공시가 최신 철회신고서에 밀려 탈락하지 않음. DS006은 corp/date 조회이며 접수번호별 조회 주장도 반려.
+- 후속 ctx_c1a9162b4f13/task_dc9ffe6d6e54 배정: 실제 응답 회귀,동일 철회 반복 처리 idempotence,필요시 동일일자 접수번호 정렬 보완,문서 오류 제거. 운영 쓰기·배포·커밋 미실행.
+
+- ctx_c1a9162b4f13 검증: Master 슬롯4 관련4클래스/checkstyle/bootJar PASS. 그러나 신규 receipt 선택분기 회귀·철회 멱등 보완 누락 및 운영표 허구가 남아 승인 반려.
+- 후속 ctx_77e7f27f3394/task_8299bc64bd1c: 누락된 실제 응답·멱등 테스트와 최소 코드, API JSON 기반 운영표 재생성, 문서6종 축소/정정 요청. 실 DS006은 원공시1건, 기존 배포 rm미처리가 확정 원인임. 최신상세 혼합선택은 잠재위험으로만 기록하도록 지시.
+
+- ctx_77e7f27f3394 코드 보완 Master 검증 PASS: 슬롯4 관련4클래스77건,checkstyleMain/Test,bootJar. 멱등·원공시선택·실sbd파싱회귀 확인. 운영문서는여전히964줄과오류남아별도정정.
+- 기존워커release완료. 무료probe OK인OpenRouter cohere/north-mini-code:free 문서전담 ctx_fb88f9734edd/task_4f419fdee442 배정(terminal term_bcb7c5dc-d0fc-4b8d-a0cd-d3b9e58a26b4). 문서6종실제덮어쓰기/간결화/사실정정만,코드수정금지.
+- 운영방안은직접SQL아닌배포후기존동기화로Simwon1건제외. 운영V43/코드배포미실행,승인별도필요.
+
+- North Mini 문서워커는제약미충족/허위완료및보고누락2회로ctx_fb88f9734edd abandon(배정fence). release는identity_unproven으로실프로세스보존,worker-show live/idle 확인.
+- 동일Task task_4f419fdee442를ctx_96ed4acf4446로재시도. OpenRouter thinkingmachines/inkling-2-small:free probe OK,정상배정. 문서6개만,코드변경금지. terminal term_157f16ff-a930-40f0-9fa9-e147302b4bb0.
+
+## 잔여 수정 검증 완료 / 운영 적용 승인 대기
+
+- 문서6종 실측37/40/55/44/32/46줄, 사실·운영안 직접 검토 및 diff 검사 PASS. 코드검증은 Master 슬롯4 관련77건/checkstyle/bootJar PASS, UI36건/typecheck/lint/build PASS.
+- ctx_96ed4acf4446 release완료(terminal닫힘). NorthMini abandoned터미널은identity_unproven으로보존(이전관측idle). mini실행실패터미널도입력대기로보존. 새워커없음,watchdog중지.
+- 운영적용 task_84d2b61d1967에Gate생성. V43포함backend/UI배포후기존동기화로Simwon(id20/corp02038432/원공시20261012000149)논리비활성화,투자이력보존/목록제외/재생성없음확인계획. 직접SQL없음.
+- 코드·문서 미커밋,운영데이터변경/배포NOT_RUN. 기타36건공식일정추가대조NOT_RUN.
+
+## 운영 적용 승인 반영
+
+- 사용자 '진행해'로gate_130bb69219e6해결. 커밋·푸시·CI·병합후V43포함backend/UI배포와기존동기화로Simwon철회처리진행.
+- 브랜치 winter0123/ipo-schedule-reconciliation. 최종검증PASS:backend77건/checkstyle/bootJar,UI36건/typecheck/lint/build,의존성audit,git diff검사.

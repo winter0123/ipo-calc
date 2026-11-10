@@ -458,6 +458,38 @@ class OpenDartCorpDisclosureClientTest {
     mockServer.verify(); // 기대 요청이 없으므로 호출이 있었다면 위에서 이미 실패한다.
   }
 
+  @Test
+  void searchByDateRange_filtersOutWithdrawalNoticeKeepsOriginalWithRmIron() throws IOException {
+    // given: 원공시(rm=철)와 철회신고서가 함께 응답으로 옴
+    // 철회신고서(report_nm="철회신고서")는 isEquitySecuritiesReport에서 걸러져야 함
+    // 원공시(report_nm="증권신고서(지분증권)", rm="철")만 남아야 함
+    String originalItem =
+        "{\"corp_code\":\"02038432\",\"corp_name\":\"SimwonAmericaCorp.\",\"stock_code\":\"\","
+            + "\"corp_cls\":\"E\",\"report_nm\":\"증권신고서(지분증권)\","
+            + "\"rcept_no\":\"20261012000149\",\"flr_nm\":\"SimwonAmericaCorp.\","
+            + "\"rcept_dt\":\"20261012\",\"rm\":\"철\"}";
+    String withdrawalNoticeItem =
+        "{\"corp_code\":\"02038432\",\"corp_name\":\"SimwonAmericaCorp.\",\"stock_code\":\"\","
+            + "\"corp_cls\":\"E\",\"report_nm\":\"철회신고서\","
+            + "\"rcept_no\":\"20261030000200\",\"flr_nm\":\"SimwonAmericaCorp.\","
+            + "\"rcept_dt\":\"20261030\",\"rm\":\"\"}";
+    String fixture = listBody(withdrawalNoticeItem, originalItem); // 철회신고서가 최신순으로 앞에 있음
+    expectListRequest(fixture);
+
+    // when
+    List<OpenDartDisclosureItem> result = client.searchByDateRange(
+        LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 10));
+
+    // then: 철회신고서는 필터링되고, 원공시(rm=철)만 남음
+    assertThat(result).hasSize(1);
+    OpenDartDisclosureItem kept = result.get(0);
+    assertThat(kept.getRceptNo()).isEqualTo("20261012000149");
+    assertThat(kept.getReportNm()).isEqualTo("증권신고서(지분증권)");
+    assertThat(kept.getRm()).isEqualTo("철");
+    assertThat(kept.isEquitySecuritiesReport()).isTrue();
+    mockServer.verify();
+  }
+
   private void expectOverview(String body) {
     mockServer
         .expect(requestTo(containsString("/api/company.json")))
