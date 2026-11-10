@@ -26,15 +26,24 @@ import org.hibernate.annotations.Comment;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Ipo {
-  /** Corrects the IPO schedule dates. */
+  /** Corrects the IPO schedule dates. 수동/정정 반영이므로 수집 원본 추적값을 무효화한다. */
   public void correctSchedule(
       LocalDate listingDate, LocalDate refundDate, LocalDate subscriptionEndDate) {
+    if (listingDate != null) {
+      this.lastImportedListingDate = null;
+    }
+    if (refundDate != null) {
+      this.lastImportedRefundDate = null;
+    }
+    if (subscriptionEndDate != null) {
+      this.lastImportedSubscriptionEndDate = null;
+    }
     this.listingDate = listingDate;
     this.refundDate = refundDate;
     this.subscriptionEndDate = subscriptionEndDate;
   }
 
-  /** 보조 일정의 빈 필드와 수집 상장일 정정을 반영하고 수동 값은 보존한다. */
+  /** 보조 일정의 빈 필드와 수집 상장일·환불일 정정을 반영하고 수동 값은 보존한다. */
   public boolean mergeSupplementalSchedule(
       String stockCode,
       LocalDate allotment,
@@ -51,9 +60,12 @@ public class Ipo {
       this.allotmentDate = allotment;
       changed = true;
     }
-    if (this.refundDate == null && refund != null) {
-      this.refundDate = refund;
-      changed = true;
+    if (canAutoOverwrite(this.refundDate, this.lastImportedRefundDate) && refund != null) {
+      if (!refund.equals(this.refundDate)) {
+        this.refundDate = refund;
+        this.lastImportedRefundDate = refund;
+        changed = true;
+      }
     }
     if (listing != null
         && (this.listingDate == null || this.listingDate.equals(this.lastImportedListingDate))
@@ -106,7 +118,7 @@ public class Ipo {
     this.updatedAt = now;
   }
 
-  /** Applies IPO fields from an OpenDART synchronization. */
+  /** Applies IPO fields from an OpenDART synchronization. 청약/환불 일정은 수집 원본 추적값을 따른다. */
   public void syncFromOpenDart(
       String companyName,
       Long offerPrice,
@@ -130,17 +142,31 @@ public class Ipo {
     if (shares != null) {
       this.offeringShareCount = shares;
     }
-    this.subscriptionStartDate = start;
-    this.subscriptionEndDate = end;
+    if (start != null
+        && canAutoOverwrite(this.subscriptionStartDate, this.lastImportedSubscriptionStartDate)) {
+      this.subscriptionStartDate = start;
+      this.lastImportedSubscriptionStartDate = start;
+    }
+    if (end != null
+        && canAutoOverwrite(this.subscriptionEndDate, this.lastImportedSubscriptionEndDate)) {
+      this.subscriptionEndDate = end;
+      this.lastImportedSubscriptionEndDate = end;
+    }
     if (allotment != null) {
       this.allotmentDate = allotment;
     }
-    if (refund != null) {
+    if (refund != null && canAutoOverwrite(this.refundDate, this.lastImportedRefundDate)) {
       this.refundDate = refund;
+      this.lastImportedRefundDate = refund;
     }
     this.syncSource = source;
     this.lastSyncedAt = now;
     this.updatedAt = now;
+  }
+
+  /** 수집 원본(수집기 저장 시점) 규칙: 현재 값이 없거나 추적 값과 같으면 자동 정정을 허용한다. */
+  private static boolean canAutoOverwrite(LocalDate current, LocalDate tracked) {
+    return current == null || (tracked != null && tracked.equals(current));
   }
 
   /** PK. DB가 자동으로 매기는 번호. */
@@ -244,9 +270,41 @@ public class Ipo {
   @Column(name = "withdrawn_receipt_no", length = 20)
   private String withdrawnReceiptNo;
 
+  /** 이 행의 데이터를 만든 최신 DS006 접수번호(자동 수집 행만). 철회 점검 시 원공시 매칭에 쓴다. */
+  @Column(name = "source_receipt_no", length = 20)
+  @Comment("이 행의 데이터를 만든 최신 DS006 접수번호")
+  private String sourceReceiptNo;
+
+  /** 자동 수집이 마지막으로 반영한 청약 시작일. 출처 불명·수동 입력이면 null로 보호한다. */
+  @Column(name = "last_imported_subscription_start_date")
+  private LocalDate lastImportedSubscriptionStartDate;
+
+  /** 자동 수집이 마지막으로 반영한 청약 종료일. 출처 불명·수동 입력이면 null로 보호한다. */
+  @Column(name = "last_imported_subscription_end_date")
+  private LocalDate lastImportedSubscriptionEndDate;
+
+  /** 자동 수집이 마지막으로 반영한 환불일. 출처 불명·수동 입력이면 null로 보호한다. */
+  @Column(name = "last_imported_refund_date")
+  private LocalDate lastImportedRefundDate;
+
   /** 관리자 입력은 보조 일정의 자동 정정 대상에서 제외한다. */
   public void protectListingDate() {
     this.lastImportedListingDate = null;
+  }
+
+  /** 관리자 입력(청약 시작일)은 자동 정정 대상에서 제외한다. */
+  public void protectSubscriptionStartDate() {
+    this.lastImportedSubscriptionStartDate = null;
+  }
+
+  /** 관리자 입력(청약 종료일)은 자동 정정 대상에서 제외한다. */
+  public void protectSubscriptionEndDate() {
+    this.lastImportedSubscriptionEndDate = null;
+  }
+
+  /** 자동 수집이 이 행에 반영한 DS006 접수번호를 기록한다. */
+  public void recordSyncSourceReceipt(String receiptNo) {
+    this.sourceReceiptNo = receiptNo;
   }
 
   /** 해당 공모를 철회하고 이력은 보존한다. */

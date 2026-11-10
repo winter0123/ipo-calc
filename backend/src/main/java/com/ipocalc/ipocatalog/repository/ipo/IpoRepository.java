@@ -24,6 +24,9 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
   /** 종목코드 · 상태 조건(삭제되지 않은 건만)으로 공모주를 단건 조회한다. */
   Optional<Ipo> findByStockCodeAndStatusAndDeletedAtIsNull(String stockCode, RecordStatus status);
 
+  /** 법인코드 · 상태 조건(삭제되지 않은 건만)으로 공모주를 목록 조회한다. 동일 회사 ACTIVE 복수 건 감지용. */
+  List<Ipo> findAllByCorpCodeAndStatusAndDeletedAtIsNull(String corpCode, RecordStatus status);
+
   /** 법인코드 · 상태 조건(삭제되지 않은 건만)으로 공모주를 단건 조회한다. */
   Optional<Ipo> findByCorpCodeAndStatusAndDeletedAtIsNull(String corpCode, RecordStatus status);
 
@@ -44,6 +47,14 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
    */
   List<Ipo> findBySubscriptionStartDateBetweenAndCorpCodeIsNotNullAndDeletedAtIsNull(
       LocalDate startDate, LocalDate endDate);
+
+  /**
+   * 상태 · 자동 수집 출처 존재 · 삭제되지 않은 공모주 목록을 조회한다(재점검 대상). 상장일 유무·경과와 무관하게 조회한다.
+   *
+   * @param status 조회할 상태 (예: RecordStatus.ACTIVE)
+   * @return 자동 수집 출처가 있는 ACTIVE 공모주 목록
+   */
+  List<Ipo> findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus status);
 
   /**
    * 종목코드가 null이고 동기화 출처가 있는(자동 동기화) · 상태 조건(삭제되지 않은 건만) 공모주 목록을 조회한다. ustockplus 일정 병합 시 회사명 정규화 매칭

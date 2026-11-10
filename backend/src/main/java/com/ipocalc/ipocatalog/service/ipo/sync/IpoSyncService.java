@@ -10,6 +10,7 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureIt
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,6 +46,8 @@ public class IpoSyncService {
   private final IpoSyncPersistence ipoSyncPersistence;
   private final TransactionTemplate transactionTemplate;
   private final IpoScheduleMergeService ipoScheduleMergeService;
+  private final IpoReconciliationService ipoReconciliationService;
+  private final IpoSyncRunRecorder ipoSyncRunRecorder;
   private final Clock clock;
 
   /** 동기화 중복 실행 방지(스케줄러·관리자 수동 실행 공용). 같은 스레드는 재진입한다. */
@@ -178,17 +181,17 @@ public class IpoSyncService {
     try {
       return corpDisclosureClient.searchByDateRange(monthStart, monthEnd);
     } catch (OpenDartAuthenticationException e) {
-      abort(result, "인증 오류: " + e.getMessage(), false);
-      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getMessage());
+      abort(result, "인증 오류", false);
+      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getClass().getSimpleName());
       return null;
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
-        abort(result, "요청 제한 초과(020): " + e.getMessage(), false);
-        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
+        abort(result, "요청 제한 초과(020)", false);
+        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getClass().getSimpleName());
         return null;
       }
-      abort(result, "API 오류: " + e.getMessage(), true);
-      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
+      abort(result, "API 오류 (재시도 가능)", true);
+      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getClass().getSimpleName());
       return null;
     }
   }
@@ -218,35 +221,113 @@ public class IpoSyncService {
   }
 
   private IpoSyncResult doSync(int daysBack) {
+    LocalDateTime startedAt = LocalDateTime.now(clock);
     IpoSyncResult result = emptyResult();
 
-    // Step 1: DS001 공시검색으로 최근 지분증권 증권신고서 제출 회사 목록 조회
-    List<OpenDartDisclosureItem> companies = fetchCompaniesOrAbort(daysBack, result);
-    if (companies == null) {
-      return result;
+    // Step 1: 활성 자동 공모 재점검 — 신규 수집보다 먼저 실행해, 오래된 공모를 새 공시 upsert가 덮어쓰지 못하게 한다
+    IpoReconcileResult reconcile = reconcileStep(result);
+
+    List<OpenDartDisclosureItem> companies = null;
+    if (reconcile.isAborted()) {
+      // 인증 오류·020은 같은 키를 쓰므로 신규 수집도 중단하고 다음 일정 실행에서 재확인한다
+      abort(result, reconcile.getAbortReason(), false);
+      log.error("신규 수집 건너뜀 (재점검 중단): {}", reconcile.getAbortReason());
+    } else {
+      // Step 2: DS001 공시검색으로 최근 지분증권 증권신고서 제출 회사 목록 조회
+      companies = fetchCompaniesOrAbort(daysBack, result);
     }
+    if (companies != null) {
+      log.info("DS001 조회 결과: {}개 회사", companies.size());
 
-    log.info("DS001 조회 결과: {}개 회사", companies.size());
-
-    // Step 2: 각 회사별 DS006 상세 조회 및 upsert
-    for (OpenDartDisclosureItem company : companies) {
-      if (!processCompany(result, company, equitySecuritiesClient::getEquitySecurityDetail)) {
-        return result;
+      // Step 3: 각 회사별 DS006 상세 조회 및 upsert
+      for (OpenDartDisclosureItem company : companies) {
+        if (!processCompany(result, company, equitySecuritiesClient::getEquitySecurityDetail)) {
+          break;
+        }
       }
+
+      log.info(
+          "동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, "
+              + "failures={}, aborted={}",
+          result.getCreated(),
+          result.getUpdated(),
+          result.getSkippedManual(),
+          result.getSkippedNonIpo(),
+          result.getFailureCount(),
+          result.isAborted());
+
+      mergeSchedule(result);
     }
 
+    recordDailyRun(startedAt, reconcile, result);
+
+    return result;
+  }
+
+  /** 재점검 단계를 격리 실행한다. 재점검 실패가 신규 수집을 막지 않는다. */
+  private IpoReconcileResult reconcileStep(IpoSyncResult result) {
+    IpoReconcileResult reconcile;
+    try {
+      reconcile = ipoReconciliationService.reconcileActiveOfferings();
+    } catch (Exception e) {
+      // 재점검 단계 예외: 격리하고 신규 수집은 계속한다(인증/020은 서비스 안에서 aborted로 처리).
+      // 성공 기록을 남기지 않고 failure 1건을 남겨 다음 실행이 재시도하게 한다
+      log.error("재점검 단계 예외 (신규 수집은 계속): {}", e.getClass().getSimpleName());
+      reconcile = new IpoReconcileResult();
+      IpoSyncFailure failure =
+          IpoSyncFailure.builder()
+              .corpCode(null)
+              .corpName(null)
+              .reason("철회점검: 재점검 단계 예외: " + e.getClass().getSimpleName())
+              .build();
+      reconcile.getFailures().add(failure);
+      reconcile.setFailed(1);
+      result.getFailures().add(failure);
+      result.setFailureCount(result.getFailureCount() + 1);
+      return reconcile;
+    }
+    // 재점검 실패를 결과에 병합 (aborted 플래그는 바꾸지 않음)
+    result.getFailures().addAll(reconcile.getFailures());
+    result.setFailureCount(result.getFailureCount() + reconcile.getFailed());
+    result.setUpdated(result.getUpdated() + reconcile.getWithdrawn());
+    return reconcile;
+  }
+
+  /** 일일 재점검 실행 결과를 ipo_sync_runs에 기록한다. 완료 판정은 SUCCESS 행만 인정한다. */
+  private void recordDailyRun(
+      LocalDateTime startedAt, IpoReconcileResult reconcile, IpoSyncResult result) {
+    int collectFailureCount = Math.max(0, result.getFailureCount() - reconcile.getFailed());
+    try {
+      ipoSyncRunRecorder.recordDaily(
+          startedAt, reconcile, result.getFailures(), result.isAborted(), collectFailureCount);
+    } catch (Exception e) {
+      log.warn("일일 재점검 실행 기록 실패: {}", e.getClass().getSimpleName());
+    }
+  }
+
+  /**
+   * 배포 후 자동복구: 활성 자동 공모 재점검만 실행하고 ipo_sync_runs(POST_DEPLOY_RECOVER)에 기록한다.
+   *
+   * @return 재점검 단계 결과(스케줄러/러너 로그용)
+   */
+  public IpoSyncResult recoverAfterDeploy() {
+    return runExclusively(() -> doRecover());
+  }
+
+  private IpoSyncResult doRecover() {
+    LocalDateTime startedAt = LocalDateTime.now(clock);
+    IpoSyncResult result = emptyResult();
+    IpoReconcileResult reconcile = reconcileStep(result);
+    try {
+      ipoSyncRunRecorder.recordRecover(startedAt, reconcile);
+    } catch (Exception e) {
+      log.warn("POST_DEPLOY_RECOVER 기록 실패: {}", e.getClass().getSimpleName());
+    }
     log.info(
-        "동기화 완료: created={}, updated={}, skippedManual={}, skippedNonIpo={}, "
-            + "failures={}, aborted={}",
-        result.getCreated(),
-        result.getUpdated(),
-        result.getSkippedManual(),
-        result.getSkippedNonIpo(),
-        result.getFailureCount(),
-        result.isAborted());
-
-    mergeSchedule(result);
-
+        "배포 후 재점검 완료: withdrawn={}, failed={}, aborted={}",
+        reconcile.getWithdrawn(),
+        reconcile.getFailed(),
+        reconcile.isAborted());
     return result;
   }
 
@@ -261,18 +342,18 @@ public class IpoSyncService {
     try {
       return corpDisclosureClient.searchRecentEquitySecuritiesCompanies(daysBack);
     } catch (OpenDartAuthenticationException e) {
-      abort(result, "인증 오류: " + e.getMessage(), false);
-      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getMessage());
+      abort(result, "인증 오류", false);
+      log.error("OpenDART 인증 오류로 동기화 중단: {}", e.getClass().getSimpleName());
       return null;
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
-        abort(result, "요청 제한 초과(020): " + e.getMessage(), false);
-        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getMessage());
+        abort(result, "요청 제한 초과(020)", false);
+        log.error("OpenDART 요청 제한 초과로 동기화 중단: {}", e.getClass().getSimpleName());
         return null;
       }
       // 일반 API 오류 (예: 800 시스템 점검) → 재시도 가능으로 표시
-      abort(result, "API 오류: " + e.getMessage(), true);
-      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getMessage());
+      abort(result, "API 오류 (재시도 가능)", true);
+      log.error("OpenDART API 오류로 동기화 중단 (재시도 가능): {}", e.getClass().getSimpleName());
       return null;
     }
   }
@@ -309,18 +390,19 @@ public class IpoSyncService {
     try {
       details = detailFetcher.apply(corpCode);
     } catch (OpenDartAuthenticationException e) {
-      abort(result, "인증 오류: " + e.getMessage(), false);
-      log.error("OpenDART 인증 오류로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
+      abort(result, "인증 오류", false);
+      log.error("OpenDART 인증 오류로 동기화 중단 (corpCode={}): {}", corpCode, e.getClass().getSimpleName());
       return false;
     } catch (OpenDartApiException e) {
       if ("020".equals(e.getStatusCode())) {
-        abort(result, "요청 제한 초과(020): " + e.getMessage(), false);
-        log.error("OpenDART 요청 제한 초과로 동기화 중단 (corpCode={}): {}", corpCode, e.getMessage());
+        abort(result, "요청 제한 초과(020)", false);
+        log.error(
+            "OpenDART 요청 제한 초과로 동기화 중단 (corpCode={}): {}", corpCode, e.getClass().getSimpleName());
         return false;
       }
       // 그 외 API 오류는 해당 건만 실패 처리하고 계속
-      recordFailure(result, corpCode, corpName, "DS006 조회 실패: " + e.getMessage());
-      log.warn("DS006 조회 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
+      recordFailure(result, corpCode, corpName, "DS006 조회 실패 (status=" + safeStatus(e) + ")");
+      log.warn("DS006 조회 실패 (계속 진행): corpCode={}, 예외={}", corpCode, e.getClass().getSimpleName());
       return true;
     }
 
@@ -395,19 +477,29 @@ public class IpoSyncService {
         status -> {
           try {
             IpoSyncPersistence.Outcome outcome =
-                ipoSyncPersistence.persist(corpCode, corpName, detail, company.isFinalizedReport());
+                ipoSyncPersistence.persist(
+                    corpCode,
+                    corpName,
+                    detail,
+                    company.isFinalizedReport(),
+                    company.isCorrectionOrFinalized());
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);
               case SKIPPED_WITHDRAWN -> log.debug("철회된 동일 공시 재생성 방지: corpCode={}", corpCode);
               case SKIPPED_MANUAL -> result.setSkippedManual(result.getSkippedManual() + 1);
+              case BLOCKED_MULTIPLE ->
+                  recordFailure(result, corpCode, corpName, "철회점검: 동일 회사 ACTIVE 복수 건");
+              case HELD_UNDETERMINED ->
+                  recordFailure(result, corpCode, corpName, "신규 공모/정정 구분 불가: 자동 갱신 보류");
               default -> throw new IllegalStateException("Unexpected IPO sync outcome: " + outcome);
             }
           } catch (Exception e) {
             // 트랜잭션 롤백 표시 (이미 롤백됨)
             status.setRollbackOnly();
-            recordFailure(result, corpCode, corpName, "처리 중 예외: " + e.getMessage());
-            log.warn("IPO 처리 실패 (계속 진행): corpCode={}, error={}", corpCode, e.getMessage());
+            recordFailure(result, corpCode, corpName, "처리 중 예외: " + e.getClass().getSimpleName());
+            log.warn(
+                "IPO 처리 실패 (계속 진행): corpCode={}, 예외={}", corpCode, e.getClass().getSimpleName());
           }
         });
 
@@ -418,6 +510,10 @@ public class IpoSyncService {
     result.setAborted(true);
     result.setRetryable(retryable);
     result.setAbortReason(reason);
+  }
+
+  private static String safeStatus(OpenDartApiException e) {
+    return e == null ? "-" : e.getStatusCode();
   }
 
   private static void recordFailure(
@@ -439,7 +535,7 @@ public class IpoSyncService {
       result.setScheduleMerged(merged);
       log.info("ustockplus 일정 병합 완료: merged={}", merged);
     } catch (Exception e) {
-      log.warn("ustockplus 일정 병합 중 예외 발생 (OpenDART 결과 유지): {}", e.getMessage());
+      log.warn("ustockplus 일정 병합 중 예외 발생 (OpenDART 결과 유지): {}", e.getClass().getSimpleName());
       result.setScheduleMerged(0);
     }
   }

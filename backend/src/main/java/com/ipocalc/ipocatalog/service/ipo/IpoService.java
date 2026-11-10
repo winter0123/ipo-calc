@@ -91,6 +91,12 @@ public class IpoService {
 
     checkDuplicate(computedStockCode, computedIpoName, computedSubscriptionStartDate, id);
 
+    if (request.getSubscriptionStartDate() != null) {
+      ipo.protectSubscriptionStartDate();
+    }
+    if (request.getSubscriptionEndDate() != null) {
+      ipo.protectSubscriptionEndDate();
+    }
     if (request.getListingDate() != null) {
       ipo.protectListingDate();
     }

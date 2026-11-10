@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,14 +62,28 @@ class IpoSyncServiceMonthRangeTest {
 
     when(marketHolidayRepository.findByYear(anyInt())).thenReturn(Collections.emptyList());
 
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of());
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock);
+    IpoReconciliationService reconciliationService =
+        new IpoReconciliationService(
+            corpDisclosureClient,
+            equitySecuritiesClient,
+            ipoRepository,
+            persistence,
+            transactionTemplate,
+            fixedClock);
     service =
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
-            new IpoSyncPersistence(
-                ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock),
+            persistence,
             transactionTemplate,
             scheduleMergeService,
+            reconciliationService,
+            mock(IpoSyncRunRecorder.class),
             fixedClock);
   }
 
@@ -88,9 +101,9 @@ class IpoSyncServiceMonthRangeTest {
             anyString(), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
             anyString(), eq(RecordStatus.ACTIVE)))
-        .thenReturn(Optional.empty());
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             any(LocalDate.class), eq(RecordStatus.ACTIVE)))
         .thenReturn(Collections.emptyList());
@@ -152,9 +165,9 @@ class IpoSyncServiceMonthRangeTest {
             eq("corp3"), any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(detail3));
 
-    when(ipoRepository.findByCorpCodeAndStatusAndDeletedAtIsNull(
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
             anyString(), eq(RecordStatus.ACTIVE)))
-        .thenReturn(Optional.empty());
+        .thenReturn(List.of());
     when(ipoRepository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
             any(LocalDate.class), eq(RecordStatus.ACTIVE)))
         .thenReturn(Collections.emptyList());

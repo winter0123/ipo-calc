@@ -79,7 +79,7 @@ class ProfitCalculationServiceTest {
         .thenReturn(Optional.of(sale(1, 5, LocalDateTime.of(2026, 10, 1, 9, 0), 2_000L)));
     when(allocs.findById(5L)).thenReturn(Optional.ofNullable(a));
     when(subs.findById(7L)).thenReturn(Optional.ofNullable(s));
-    when(ipos.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.ofNullable(ipo));
+    when(ipos.findById(3L)).thenReturn(Optional.ofNullable(ipo));
   }
 
   private static Allocation alloc(Long unitPrice) {
@@ -156,6 +156,28 @@ class ProfitCalculationServiceTest {
     assertThat(noIpo.getMatchedAcquisitionAmount()).isZero();
     assertThat(noIpo.getIpoName()).isNull();
     assertThat(noIpo.getListingDate()).isNull();
+  }
+
+  @Test
+  void 철회되어_소프트삭제된_공모주도_단건수익에서_이름과_상장일과_공모가가_복원된다() {
+    guardAllows();
+    // 철회(INACTIVE+deletedAt)된 공모주도 이력 조회·수익 계산에서는 그대로 읽어야 한다
+    Ipo withdrawn =
+        Ipo.builder()
+            .id(3L)
+            .ipoName("심원")
+            .listingDate(LocalDate.of(2026, 11, 25))
+            .fixedPrice(500L)
+            .status(RecordStatus.INACTIVE)
+            .deletedAt(LocalDateTime.of(2026, 11, 12, 0, 0))
+            .build();
+
+    givenChain(alloc(null), subscription(), withdrawn);
+
+    ProfitDto dto = service.calculateForSale(1L);
+    assertThat(dto.getIpoName()).isEqualTo("심원");
+    assertThat(dto.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(dto.getMatchedAcquisitionAmount()).isEqualTo(5_000L);
   }
 
   @Test

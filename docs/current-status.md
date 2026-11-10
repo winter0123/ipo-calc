@@ -97,3 +97,26 @@
 
 - 사용자 '진행해'로gate_130bb69219e6해결. 커밋·푸시·CI·병합후V43포함backend/UI배포와기존동기화로Simwon철회처리진행.
 - 브랜치 winter0123/ipo-schedule-reconciliation. 최종검증PASS:backend77건/checkstyle/bootJar,UI36건/typecheck/lint/build,의존성audit,git diff검사.
+
+## 자동 재점검 확대 구현 착수
+
+- PR500은9c3b1b2b로병합,CI양쪽PASS,Ansible27/changed3/failed0으로backend/UI배포완료. 현재Simwon id20 ACTIVE. 관리자동기화요청은사용자지시로철회하고관리자조작없는자동배치확대로전환.
+- 사용자상세계획구현승인. branch winter0123/automatic-ipo-reconciliation,Run run_b10d1515cf68. DAG SF0 task_2fd4a7ff6dc7→SF1 task_207fc1a6746b(실제deps설정).
+- SF0 dispatch ctx_4ddbf2072f1e,terminal term_0194f2d5-7f8b-487b-8bf8-6e7ff7200e09,OpenCode/OpenRouter thinkingmachines/inkling-2-small:free probe/화면확인. 활성작업공간1개라충돌방지순차.
+- SF0 공식API기간·식별·지속상태계약확정후Master검토,SF1자동철회/일정정정/배포후복구실구현. 워커DBslot1,Master검증slot4. 기존V43수정금지,V44이후사용. 운영쓰기·배포는워커범위밖.
+- watchdog PID38237 동일Run에재시작. 시작초기UNKNOWN은ready터미널확인후대조.
+
+- SF0검토완료: 계약오류(DS001페이지2회상한/DAILY유니크/앱버전fallback/청약·환불보호누락/receipt저장불가주장)보정지침전달. 완료task의deps해제확인후SF1배정.
+- SF1 task_207fc1a6746b / ctx_8886cb3dbfd5 / terminal term_d3ead477-4533-4b14-a938-862c86bef150. OpenRouter Inkling2Small(free)화면확인,DBslot1. 문서/필수이력조회서비스보완범위추가허용.
+- 복구키ipo-reconciliation-v1,POST_DEPLOY에만SUCCESS유니크,매일04:30재점검/페이지전체조회/자동날짜원본추적및수동보호구현. 사용자구현승인재질문불필요.
+
+- SF1 Master 슬롯4 전체검증 --rerun-tasks PASS(1m58s). 단 코드검토6건으로승인반려: 재점검예외빈정상결과→복구허위SUCCESS,다른공모receipt업서트덮어쓰기,회사별Runtime격리누락,빈응답성공판정,disabled스케줄에서도기동복구,트랜잭션안유니크예외삼키기.
+- 동일워커에실제코드/회귀테스트보완요청. 아직미커밋·미병합·미배포. 공유개발DB COMMENT probe는지시위반으로기록,slot1외DB접근금지재지시.
+
+## 자동 재점검 구현·Master 검증 완료(로컬)
+
+- SF1후속ctx_cdd6223a1f92 보완6건수용. Master 슬롯4 reset후전체검증 --rerun-tasks PASS:1189건/실패0/오류0,checkstyleMain/Test,spotlessJavaCheck,bootJar(2m2s),git diff검사.
+- 예외/빈응답의복구허위SUCCESS차단,회사별Runtime격리,다른공모판단불가시전체값보존,disabled조건존중,ONCONFLICT원자기록확인.
+- V44원공시receipt/날짜원본추적/실행이력추가. 배포후ApplicationReady비동기복구→한국04:30배치정기전수점검. 복구키ipo-reconciliation-v1,실패는미완료로재시도,수동로그인불필요.
+- 식별불명·공시자료없는자동공모는보류/FAILED로남을수있음. 기존출처불명날짜의일괄백필없음. 다중서버배타제어는범위밖(현재단일JVM).
+- 워커release완료,watchdog중지. branch winter0123/automatic-ipo-reconciliation. 이번V44자동화는미커밋·미배포,운영자동복구실행검증NOT_RUN. 이전PR500배포버전과구분.

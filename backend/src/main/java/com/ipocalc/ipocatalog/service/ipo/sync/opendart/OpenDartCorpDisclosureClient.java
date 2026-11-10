@@ -88,7 +88,28 @@ public class OpenDartCorpDisclosureClient {
    */
   public List<OpenDartDisclosureItem> searchByDateRange(LocalDate startDate, LocalDate endDate) {
     validateApiKey();
+    return searchInternal(startDate, endDate, null);
+  }
 
+  /**
+   * 지정된 회사의 지정 기간 내 지분증권 증권신고서를 모두 조회한다(재점검용, 필터링만 하고 회사별 디듀프는 하지 않는다).
+   *
+   * <p>철회(rm=철) 원공시는 같은 회사의 최신 정정 공시보다 접수번호가 작아, 회사별 최신 1건만 남기는 디듀프를 적용하면 누락된다. 재점검은 모든 원공시를 봐야 하므로
+   * 디듀프 없이 지분증권 신고서 전체를 반환한다.
+   *
+   * @param corpCode 회사고유번호 (8자리)
+   * @param startDate 시작일 (포함)
+   * @param endDate 종료일 (포함)
+   * @return 필터링된 {@link OpenDartDisclosureItem} 리스트 (접수일 내림차순)
+   */
+  public List<OpenDartDisclosureItem> searchAllByDateRange(
+      String corpCode, LocalDate startDate, LocalDate endDate) {
+    validateApiKey();
+    return searchInternal(startDate, endDate, corpCode);
+  }
+
+  private List<OpenDartDisclosureItem> searchInternal(
+      LocalDate startDate, LocalDate endDate, String corpCode) {
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
     String bgnDe = startDate.format(formatter);
     String endDe = endDate.format(formatter);
@@ -106,16 +127,21 @@ public class OpenDartCorpDisclosureClient {
             restClient
                 .get()
                 .uri(
-                    uriBuilder ->
-                        uriBuilder
-                            .path(ENDPOINT_PATH)
-                            .queryParam("crtfc_key", properties.getApiKey())
-                            .queryParam("bgn_de", bgnDe)
-                            .queryParam("end_de", endDe)
-                            .queryParam("pblntf_detail_ty", REPORT_TYPE_FILTER)
-                            .queryParam("page_no", currentPage)
-                            .queryParam("page_count", PAGE_COUNT)
-                            .build())
+                    uriBuilder -> {
+                      var builder =
+                          uriBuilder
+                              .path(ENDPOINT_PATH)
+                              .queryParam("crtfc_key", properties.getApiKey())
+                              .queryParam("bgn_de", bgnDe)
+                              .queryParam("end_de", endDe)
+                              .queryParam("pblntf_detail_ty", REPORT_TYPE_FILTER)
+                              .queryParam("page_no", currentPage)
+                              .queryParam("page_count", PAGE_COUNT);
+                      if (corpCode != null && !corpCode.isBlank()) {
+                        builder.queryParam("corp_code", corpCode);
+                      }
+                      return builder.build();
+                    })
                 .retrieve()
                 .body(OpenDartListResponse.class);
       } catch (RestClientException e) {
@@ -145,7 +171,18 @@ public class OpenDartCorpDisclosureClient {
 
     } while (pageNo <= totalPages);
 
-    // 지분증권 증권신고서만 필터링 + 정정/발행조건확정 디듀프
+    // 지분증권 증권신고서만 필터링 (재점검은 회사별 디듀프 없이 전건 반환)
+    if (corpCode != null) {
+      return allItems.stream()
+          .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
+          .sorted(
+              Comparator.comparing(
+                      OpenDartDisclosureItem::getRceptDt,
+                      Comparator.nullsFirst(Comparator.<String>naturalOrder()))
+                  .reversed())
+          .toList();
+    }
+    // corp_code가 없는 기존 호출: 지분증권만 필터링하고 회사별 최신 1건으로 디듀프
     return filterAndDeduplicate(allItems);
   }
 

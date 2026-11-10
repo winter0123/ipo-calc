@@ -34,7 +34,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>수동 등록 보호: syncSource가 null인 레코드는 절대 수정하지 않음 (종목코드 매칭 경우도 동일)
  *   <li>채우기 규칙:
  *       <ul>
- *         <li>allotmentDate, refundDate: DART 값이 우선이라 대상이 null일 때만 ustockplus 값으로 보충(덮어쓰지 않음)
+ *         <li>allotmentDate: DART 값이 우선이라 대상이 null일 때만 ustockplus 값으로 보충(덮어쓰지 않음)
+ *         <li>refundDate: 비어 있으면 채우고, 마지막 수집 값과 같으면 정정을 반영한다. 출처 불명·수동 입력은 보존
  *         <li>listingDate: 비어 있으면 채우고, 마지막 수집 값과 같으면 정정을 반영한다. 출처 불명·수동 입력은 보존. ustockplus 값이
  *             null이면 해당 필드는 건드리지 않음
  *       </ul>
