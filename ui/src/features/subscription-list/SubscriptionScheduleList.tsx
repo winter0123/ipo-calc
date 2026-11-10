@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import type { SubscriptionScheduleItem } from './subscriptionSchedule.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import {
@@ -11,11 +12,16 @@ import {
 import styles, { StyleScope } from './SubscriptionScheduleList.styles.ts'
 import { StatusPill } from '@/shared/components/Primitives.tsx'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 function UnderwriterChips({ ipoId }: { ipoId: number }) {
   const { data } = useIpoInsight(ipoId)
   const names = [
-    ...new Set((data?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+    ...new Set(
+      (data?.underwriters ?? [])
+        .map(({ name }) => formatSecuritiesFirmName(name.trim()))
+        .filter(Boolean),
+    ),
   ]
   if (names.length === 0) return null
   return (
@@ -30,11 +36,12 @@ function UnderwriterChips({ ipoId }: { ipoId: number }) {
 }
 
 const STATUS: Record<SubscriptionScheduleItem['status'], string> = {
-  before: '청약 예정',
+  before: '미청약',
   pending: '청약 진행 중',
   partial: '일부 결과 입력',
   allocated: '배정 받음',
   unallocated: '미배정 · 결과 확인',
+  sold: '매도 완료',
 }
 
 function priceLabel(item: SubscriptionScheduleItem): React.ReactNode {
@@ -68,11 +75,34 @@ export default function SubscriptionScheduleList({
   investorSelected: boolean
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [today, setToday] = useState(() => new Date())
+  useEffect(() => {
+    let timer: number
+    const scheduleMidnightRefresh = () => {
+      const now = new Date()
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      timer = window.setTimeout(
+        () => {
+          setToday(new Date())
+          scheduleMidnightRefresh()
+        },
+        midnight.getTime() - now.getTime() + 25,
+      )
+    }
+    const refreshDate = () => setToday(new Date())
+    scheduleMidnightRefresh()
+    window.addEventListener('focus', refreshDate)
+    document.addEventListener('visibilitychange', refreshDate)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('focus', refreshDate)
+      document.removeEventListener('visibilitychange', refreshDate)
+    }
+  }, [])
   const pageParam = searchParams.get('page')
   const currentPage = clampPage(pageParam ? parseInt(pageParam, 10) : 0, getTotalPages(items))
   const totalPages = getTotalPages(items)
   const paginatedItems = paginateItems(items, currentPage)
-  const today = new Date()
 
   const updatePage = (page: number) => {
     const clampedPage = clampPage(page, totalPages)
@@ -109,7 +139,7 @@ export default function SubscriptionScheduleList({
                   </div>
                   <StatusPill
                     $tone={
-                      item.status === 'allocated'
+                      item.status === 'allocated' || item.status === 'sold'
                         ? 'success'
                         : item.status === 'unallocated'
                           ? 'warning'
@@ -119,11 +149,12 @@ export default function SubscriptionScheduleList({
                     }
                   >
                     {investorSelected ? STATUS[item.status] : '투자자 선택 필요'}
-                    {investorSelected && item.status === 'allocated' && (
-                      <span className={styles.statusDetail}>
-                        {formatShares(item.allocatedQuantity)}
-                      </span>
-                    )}
+                    {investorSelected &&
+                      (item.status === 'allocated' || item.status === 'sold') && (
+                        <span className={styles.statusDetail}>
+                          {formatShares(item.allocatedQuantity)}
+                        </span>
+                      )}
                   </StatusPill>
                 </header>
                 <dl className={styles.details}>
@@ -182,7 +213,7 @@ export default function SubscriptionScheduleList({
                     <section className={styles.subscription} key={subscription.id}>
                       <p>
                         {subscription.subscribedAt.slice(0, 10)} ·{' '}
-                        {subscription.securitiesFirmName ?? '증권사 미상'}
+                        {formatSecuritiesFirmName(subscription.securitiesFirmName ?? '증권사 미상')}
                         {subscription.securitiesAccountName
                           ? ` · ${subscription.securitiesAccountName}`
                           : subscription.securitiesAccountId

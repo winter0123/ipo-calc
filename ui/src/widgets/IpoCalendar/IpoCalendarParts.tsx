@@ -4,9 +4,11 @@ import type { CalendarEvent } from '@/features/ipo-calendar/index.ts'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
 import styles, { StyleScope } from './IpoCalendar.styles.ts'
 import { EVENT_TYPE_CLASSES, EVENT_TYPE_LABELS } from './calendarHelpers.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 function underwriterAbbreviation(name: string): string {
   const trimmed = name.trim()
+  if (formatSecuritiesFirmName(trimmed) === 'IBK') return 'IBK'
   if (trimmed === '아이엠증권') return 'IM'
   return trimmed.replace(/증권$/, '').slice(0, 2)
 }
@@ -14,7 +16,11 @@ function underwriterAbbreviation(name: string): string {
 function SubscriptionUnderwriters({ ipoId }: { ipoId: number }) {
   const { data } = useIpoInsight(ipoId)
   const names = [
-    ...new Set((data?.underwriters ?? []).map(({ name }) => name.trim()).filter(Boolean)),
+    ...new Set(
+      (data?.underwriters ?? [])
+        .map(({ name }) => formatSecuritiesFirmName(name.trim()))
+        .filter(Boolean),
+    ),
   ]
   if (names.length === 0) return null
   return (

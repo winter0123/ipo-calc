@@ -8,6 +8,7 @@ import styles, { StyleScope } from './IpoDetailPage.styles.ts'
 import IpoInsightSections from './IpoInsightSections.tsx'
 import { dateOnly, toLocalYmd } from '@/shared/lib/date.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 export default function IpoDetailPage() {
   const { ipoId } = useParams<{ ipoId: string }>()
@@ -75,6 +76,7 @@ export default function IpoDetailPage() {
         : null
   function underwriterAbbreviation(name: string): string {
     const trimmed = name.trim()
+    if (formatSecuritiesFirmName(trimmed) === 'IBK') return 'IBK'
     if (trimmed === '아이엠증권') return 'IM'
     return trimmed.replace(/증권$/, '').slice(0, 2)
   }
@@ -82,7 +84,7 @@ export default function IpoDetailPage() {
   const underwriterNames = [
     ...new Set(
       (insight?.underwriters ?? [])
-        .map(({ name }) => underwriterAbbreviation(name))
+        .map(({ name }) => underwriterAbbreviation(formatSecuritiesFirmName(name)))
         .filter(Boolean),
     ),
   ]
@@ -143,9 +145,9 @@ export default function IpoDetailPage() {
       {
         <div className={styles.container}>
           <header className={styles.header}>
-            <h1>{ipo!.ipoName}</h1>
+            <h1>공모주 상세정보</h1>
             <div className={styles.meta}>
-              <span className={styles.company}>{ipo!.companyName}</span>
+              <span className={styles.company}>{ipo!.ipoName}</span>
               <span className={`${styles.statusChip} ${status.className}`}>{status.label}</span>
               {underwriterNames.length > 0 && (
                 <span className={styles.underwriters}>{underwriterNames.join(' · ')}</span>

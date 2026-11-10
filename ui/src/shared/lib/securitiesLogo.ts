@@ -1,3 +1,5 @@
+import { formatSecuritiesFirmName } from './formatSecuritiesFirmName.ts'
+
 export const SECURITIES_LOGOS_BASE = '/images/securities-logos'
 
 export const SECURITIES_FIRM_LOGOS: Record<string, string> = {
@@ -47,5 +49,5 @@ export function getSecuritiesLogoUrl(firmName: string): string {
 }
 
 export function getSecuritiesLogoAlt(firmName: string): string {
-  return `${firmName} 로고`
+  return `${formatSecuritiesFirmName(firmName)} 로고`
 }

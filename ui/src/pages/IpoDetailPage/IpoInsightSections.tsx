@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import styled from 'styled-components'
 import { useIpoInsight } from '@/entities/ipo/index.ts'
 import type { IpoInsight } from '@/entities/ipo/index.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 import { expectedUnlockDate } from './lockUpDate.ts'
 import styles, { StyleScope } from './IpoDetailPage.styles.ts'
 
@@ -204,7 +205,7 @@ function Underwriters({ rows }: { rows: IpoInsight['underwriters'] }) {
     <Table title="인수단" label="인수단 표" head={['증권사', '역할', '인수 수량']}>
       {rows.map((u, i) => (
         <tr key={`${u.name}-${i}`}>
-          <th scope="row">{u.name}</th>
+          <th scope="row">{formatSecuritiesFirmName(u.name)}</th>
           <td>{u.role ?? '-'}</td>
           <td>{shares(u.shares) ?? '-'}</td>
         </tr>

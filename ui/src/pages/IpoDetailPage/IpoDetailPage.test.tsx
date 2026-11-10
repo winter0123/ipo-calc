@@ -317,7 +317,7 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
   })
 
-  it('공모주명(h1)과 회사명이 헤더에 표시된다', async () => {
+  it('고정 제목과 공모주명이 헤더에 표시된다', async () => {
     const ipo = makeIpo({ ipoName: '내공모주', companyName: '내회사' })
     stubFetch(ipo)
 
@@ -325,8 +325,8 @@ describe('IpoDetailPage', () => {
 
     await vi.waitFor(() => {
       const h1 = screen.getByRole('heading', { level: 1 })
-      expect(h1).toHaveTextContent('내공모주')
-      expect(screen.getByText('내회사')).toBeInTheDocument()
+      expect(h1).toHaveTextContent('공모주 상세정보')
+      expect(screen.getByText('내공모주')).toBeInTheDocument()
     })
   })
 

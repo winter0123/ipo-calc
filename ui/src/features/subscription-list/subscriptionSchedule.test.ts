@@ -286,10 +286,37 @@ describe('subscription schedule helpers', () => {
   })
 
   it('getPhaseLabel returns correct Korean labels', () => {
-    expect(getPhaseLabel('scheduled')).toBe('청약 예정')
+    expect(getPhaseLabel('scheduled')).toBe('미청약')
     expect(getPhaseLabel('subscribing')).toBe('청약 진행 중')
     expect(getPhaseLabel('listing-scheduled')).toBe('상장 예정')
     expect(getPhaseLabel('listing-day')).toBe('상장일')
     expect(getPhaseLabel('listed')).toBe('상장 완료')
+  })
+
+  it('청약 내역이 모두 배정되고 전량 매도되면 sold로 집계한다', () => {
+    const sold = {
+      ...item(1, {
+        id: 11,
+        allocatedQuantity: 5,
+        allocatedAmount: null,
+        allocationStatus: 'CONFIRMED',
+      }),
+      ipoId: 1,
+      sales: [
+        {
+          id: 21,
+          quantity: 5,
+          amount: null,
+          fee: null,
+          tax: null,
+          otherCost: null,
+          status: 'ACTIVE',
+          soldAt: '2026-10-10',
+        },
+      ],
+      remainingQuantity: 0,
+    }
+
+    expect(aggregateSubscriptionSchedule([ipo(1, '2026-10-01')], [sold])[0].status).toBe('sold')
   })
 })

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import ReferenceQuantity from './ReferenceQuantity.tsx'
 import styles, { StyleScope } from './SaleRegisterForm.styles.ts'
 import type { SaleForm } from './useSaleForm.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 const formatDate = (value: string) => {
   const [y, m, d] = value.slice(0, 10).split('-').map(Number)
@@ -98,7 +99,8 @@ export default function SubscriptionPicker({ f }: { f: SaleForm }) {
                   <option value="">계좌 선택</option>
                   {(securitiesAccounts ?? []).map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
+                      {formatSecuritiesFirmName(account.securitiesFirmName ?? '증권사')} ·{' '}
+                      {account.accountName ?? '계좌'}
                     </option>
                   ))}
                 </select>

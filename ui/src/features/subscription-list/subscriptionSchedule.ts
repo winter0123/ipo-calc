@@ -33,7 +33,7 @@ export interface SubscriptionScheduleItem {
   allocatedCount: number
   allocatedQuantity: number
   pendingCount: number
-  status: 'before' | 'pending' | 'partial' | 'allocated' | 'unallocated'
+  status: 'before' | 'pending' | 'partial' | 'allocated' | 'unallocated' | 'sold'
 }
 
 export const PAGE_SIZE = 10
@@ -107,7 +107,15 @@ export function aggregateSubscriptionSchedule(
     const pendingCount = subscriptions.length - allocated.length
     let status: SubscriptionScheduleItem['status'] = 'before'
     if (subscriptions.length > 0) {
-      if (pendingCount === subscriptions.length) status = 'pending'
+      const allAllocatedAndSold = subscriptions.every(
+        (item) =>
+          item.allocation !== null &&
+          item.allocation.allocatedQuantity > 0 &&
+          item.sales.length > 0 &&
+          item.remainingQuantity === 0,
+      )
+      if (allAllocatedAndSold) status = 'sold'
+      else if (pendingCount === subscriptions.length) status = 'pending'
       else if (pendingCount > 0) status = 'partial'
       else status = allocatedQuantity > 0 ? 'allocated' : 'unallocated'
     }
@@ -152,7 +160,7 @@ export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
 export function getPhaseLabel(phase: IpoPhase): string {
   switch (phase) {
     case 'scheduled':
-      return '청약 예정'
+      return '미청약'
     case 'subscribing':
       return '청약 진행 중'
     case 'listing-scheduled':
