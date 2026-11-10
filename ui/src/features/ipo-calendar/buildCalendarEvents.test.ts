@@ -510,13 +510,13 @@ describe('buildWeekSegments', () => {
 })
 
 describe('parseVisibleTypes', () => {
-  it('쿼리 없음: 3종 모두 켜짐', () => {
+  it('쿼리 없음: 청약·상장만 켜짐(환불 꺼짐)', () => {
     const params = new URLSearchParams()
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
-    expect(visible.has('REFUND')).toBe(true)
+    expect(visible.has('REFUND')).toBe(false)
     expect(visible.has('LISTING')).toBe(true)
-    expect(visible.size).toBe(3)
+    expect(visible.size).toBe(2)
   })
 
   it('일부만 지정: 지정된 것만 켜짐', () => {
@@ -537,13 +537,13 @@ describe('parseVisibleTypes', () => {
     expect(visible.size).toBe(2)
   })
 
-  it('알 수 있는 값이 하나도 없으면(types=foo): 3종 모두 켜짐', () => {
+  it('알 수 있는 값이 하나도 없으면(types=foo): 청약·상장만 켜짐', () => {
     const params = new URLSearchParams('types=foo')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
-    expect(visible.has('REFUND')).toBe(true)
+    expect(visible.has('REFUND')).toBe(false)
     expect(visible.has('LISTING')).toBe(true)
-    expect(visible.size).toBe(3)
+    expect(visible.size).toBe(2)
   })
 
   it('빈 값(types=): 0종(모두 꺼짐)', () => {
@@ -552,20 +552,50 @@ describe('parseVisibleTypes', () => {
     expect(visible.size).toBe(0)
   })
 
-  it('예전 값(SUBSCRIPTION_START 등)은 알 수 없는 값으로 처리되어 3종 모두 켜짐', () => {
+  it('예전 값(SUBSCRIPTION_START 등)은 알 수 없는 값으로 처리되어 청약·상장만 켜짐', () => {
     const params = new URLSearchParams('types=SUBSCRIPTION_START,SUBSCRIPTION_END')
     const visible = parseVisibleTypes(params)
     expect(visible.has('SUBSCRIPTION')).toBe(true)
-    expect(visible.has('REFUND')).toBe(true)
+    expect(visible.has('REFUND')).toBe(false)
     expect(visible.has('LISTING')).toBe(true)
+    expect(visible.size).toBe(2)
+  })
+
+  it('types=REFUND처럼 명시 선택은 환불만 켜진다', () => {
+    const params = new URLSearchParams('types=REFUND')
+    const visible = parseVisibleTypes(params)
+    expect(visible.has('SUBSCRIPTION')).toBe(false)
+    expect(visible.has('REFUND')).toBe(true)
+    expect(visible.has('LISTING')).toBe(false)
+    expect(visible.size).toBe(1)
+  })
+
+  it('types=SUBSCRIPTION,REFUND,LISTING처럼 3종 명시는 그대로 존중된다', () => {
+    const params = new URLSearchParams('types=SUBSCRIPTION,REFUND,LISTING')
+    const visible = parseVisibleTypes(params)
     expect(visible.size).toBe(3)
+    expect(visible.has('REFUND')).toBe(true)
+  })
+
+  it('일부 유효 + 일부 무효 혼합이면 유효한 것만 켜진다', () => {
+    const params = new URLSearchParams('types=REFUND,foo')
+    const visible = parseVisibleTypes(params)
+    expect(visible.has('SUBSCRIPTION')).toBe(false)
+    expect(visible.has('REFUND')).toBe(true)
+    expect(visible.has('LISTING')).toBe(false)
+    expect(visible.size).toBe(1)
   })
 })
 
 describe('toTypesParam', () => {
-  it('3종 모두 켜짐: null(쿼리에서 types 제거)', () => {
-    const visible = new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND', 'LISTING'])
+  it('기본 세트(청약+상장): null(쿼리에서 types 제거)', () => {
+    const visible = new Set<CalendarEventType>(['SUBSCRIPTION', 'LISTING'])
     expect(toTypesParam(visible)).toBeNull()
+  })
+
+  it('3종 모두 켜짐: SUBSCRIPTION,REFUND,LISTING 명시 반환(환불 수동 on 유지)', () => {
+    const visible = new Set<CalendarEventType>(['LISTING', 'SUBSCRIPTION', 'REFUND'])
+    expect(toTypesParam(visible)).toBe('SUBSCRIPTION,REFUND,LISTING')
   })
 
   it('1종만 켜짐: 해당 값만', () => {
@@ -573,8 +603,37 @@ describe('toTypesParam', () => {
     expect(toTypesParam(visible)).toBe('LISTING')
   })
 
-  it('0종(모두 꺼짐): 빈 문자열(types=)이며 모두 켜짐(null)과 구분된다', () => {
+  it('2종(청약+상장이 아닌 조합): 쉼표로 이은 값', () => {
+    expect(toTypesParam(new Set<CalendarEventType>(['SUBSCRIPTION', 'REFUND']))).toBe(
+      'SUBSCRIPTION,REFUND',
+    )
+    expect(toTypesParam(new Set<CalendarEventType>(['REFUND', 'LISTING']))).toBe('REFUND,LISTING')
+  })
+
+  it('0종(모두 꺼짐): 빈 문자열(types=)이며 기본 세트(null)와 구분된다', () => {
     const visible = new Set<CalendarEventType>()
     expect(toTypesParam(visible)).toBe('')
   })
+})
+
+describe('parseVisibleTypes/toTypesParam roundtrip', () => {
+  const ALL_TYPES: CalendarEventType[] = ['SUBSCRIPTION', 'REFUND', 'LISTING']
+  const subsets: CalendarEventType[][] = []
+  for (let mask = 0; mask < 1 << ALL_TYPES.length; mask++) {
+    const subset = ALL_TYPES.filter((_, index) => (mask & (1 << index)) !== 0)
+    subsets.push(subset)
+  }
+
+  it.each(subsets.map((s) => [s.join(',') || '(빈 집합)', s] as const))(
+    'parse(serialize(set)) === set: %s',
+    (_label, subset) => {
+      const visible = new Set<CalendarEventType>(subset)
+      const serialized = toTypesParam(visible)
+      const params =
+        serialized === null ? new URLSearchParams() : new URLSearchParams(`types=${serialized}`)
+      const parsed = parseVisibleTypes(params)
+      expect([...parsed].sort()).toEqual([...visible].sort())
+      expect(parsed.size).toBe(visible.size)
+    },
+  )
 })

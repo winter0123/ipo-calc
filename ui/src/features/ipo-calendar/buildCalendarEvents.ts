@@ -126,10 +126,13 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
 
 export type VisibleTypes = ReadonlySet<CalendarEventType>
 
+// 기본 노출 세트: 청약·상장만 켜고 환불은 끈다.
+const DEFAULT_VISIBLE_TYPES: ReadonlySet<CalendarEventType> = new Set(['SUBSCRIPTION', 'LISTING'])
+
 export function parseVisibleTypes(searchParams: URLSearchParams): VisibleTypes {
   const typesParam = searchParams.get('types')
   if (typesParam === null) {
-    return new Set(['SUBSCRIPTION', 'REFUND', 'LISTING'])
+    return new Set(DEFAULT_VISIBLE_TYPES)
   }
   if (typesParam === '') {
     return new Set()
@@ -138,18 +141,23 @@ export function parseVisibleTypes(searchParams: URLSearchParams): VisibleTypes {
     .split(',')
     .filter((t) => t === 'SUBSCRIPTION' || t === 'REFUND' || t === 'LISTING')
   if (types.length === 0) {
-    return new Set(['SUBSCRIPTION', 'REFUND', 'LISTING'])
+    return new Set(DEFAULT_VISIBLE_TYPES)
   }
   return new Set(types as CalendarEventType[])
 }
 
 /**
- * 켜진 일정 종류를 `types` 쿼리 값으로 바꾼다. 모두 켜짐이면 null(쿼리에서 지운다),
+ * 켜진 일정 종류를 `types` 쿼리 값으로 바꾼다. 기본 세트(청약+상장)면 null(쿼리에서 지운다),
  * 모두 꺼짐이면 빈 문자열(`types=`), 그 외에는 쉼표로 이은 값이다.
+ * 3종 모두 켜짐은 `SUBSCRIPTION,REFUND,LISTING`으로 명시해, 사용자가 환불을 직접 켠 상태가
+ * 기본값으로 오인되지 않도록 한다.
  */
 export function toTypesParam(visible: VisibleTypes): string | null {
-  if (visible.size === 3) {
-    return null
+  if (visible.size === DEFAULT_VISIBLE_TYPES.size) {
+    const isDefault = [...DEFAULT_VISIBLE_TYPES].every((t) => visible.has(t))
+    if (isDefault) {
+      return null
+    }
   }
   if (visible.size === 0) {
     return ''

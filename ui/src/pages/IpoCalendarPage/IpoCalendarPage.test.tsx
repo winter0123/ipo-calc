@@ -265,25 +265,21 @@ describe('IpoCalendarPage', () => {
       expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
     })
 
-    it('세 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 다시 켜면 값이 생기고 모두 켜면 사라진다', async () => {
+    it('세 종류를 모두 끄면 주소가 types= 가 되고 안내 문구가 보이며, 다시 켜면 값이 생기고 3종이 켜지면 명시 값이 유지된다', async () => {
       setIpos([makeIpo()])
       setHolidays([])
       renderPage(['/ipo-calendar'])
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '청약' })).toBeInTheDocument()
       })
+      // 기본 진입: 청약·상장만 켜져 있고 types 쿼리는 없다
       expect(screen.getByTestId('search').textContent).toBe('')
 
-      // 청약을 끄면 남은 종류가 환불·상장 순서로 저장된다
+      // 청약을 끄면 상장만 남는다
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
-      expect(decodeURIComponent(screen.getByTestId('search').textContent ?? '')).toBe(
-        '?types=REFUND,LISTING',
-      )
-
-      await userEvent.click(screen.getByRole('button', { name: '환불' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=LISTING')
 
-      // 모두 끄면 빈 값(types=)이며 모두 켜짐(쿼리 없음)과 구분된다
+      // 모두 끄면 빈 값(types=)이며 기본(쿼리 없음)과 구분된다
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=')
       expect(screen.getByText('표시할 일정 종류를 선택해 주세요.')).toBeInTheDocument()
@@ -291,10 +287,97 @@ describe('IpoCalendarPage', () => {
       await userEvent.click(screen.getByRole('button', { name: '청약' }))
       expect(screen.getByTestId('search').textContent).toBe('?types=SUBSCRIPTION')
 
-      // 3종이 켜지면 쿼리가 사라진다
+      // 3종이 모두 켜지면 types=SUBSCRIPTION,REFUND,LISTING으로 명시 유지된다
       await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      expect(decodeURIComponent(screen.getByTestId('search').textContent ?? '')).toBe(
+        '?types=SUBSCRIPTION,REFUND',
+      )
       await userEvent.click(screen.getByRole('button', { name: '상장' }))
+      expect(decodeURIComponent(screen.getByTestId('search').textContent ?? '')).toBe(
+        '?types=SUBSCRIPTION,REFUND,LISTING',
+      )
+
+      // 환불을 다시 끄면 기본 세트(청약+상장)가 되어 쿼리가 사라진다
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
       expect(screen.getByTestId('search').textContent).toBe('')
+    })
+
+    it('기본 진입에서는 청약·상장 막대만 보이고 환불 막대는 보이지 않는다', async () => {
+      setIpos([makeIpo({ refundDate: '2026-10-08T00:00:00Z' })])
+      setHolidays([])
+      renderPage(['/ipo-calendar'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /테스트기업.*청약/ })).toBeInTheDocument()
+      })
+      expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업.*환불/ })).not.toBeInTheDocument()
+    })
+
+    it('다른 화면에서 메뉴로 재진입(types 없는 링크)하면 환불은 기본으로 꺼져 있다', async () => {
+      setIpos([makeIpo({ refundDate: '2026-10-08T00:00:00Z' })])
+      setHolidays([])
+
+      // 환불을 수동으로 켠 상태(types=SUBSCRIPTION,REFUND,LISTING)로 진입
+      const { unmount } = renderPage(['/ipo-calendar?types=SUBSCRIPTION,REFUND,LISTING'])
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /테스트기업.*환불/ })).toBeInTheDocument()
+      })
+
+      // 다른 화면으로 이동했다가 types 없는 /ipo-calendar로 재진입한 상황을 새로 마운트로 재현
+      unmount()
+      renderPage(['/ipo-calendar'])
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /테스트기업.*청약/ })).toBeInTheDocument()
+      })
+      expect(screen.queryByRole('button', { name: /테스트기업.*환불/ })).not.toBeInTheDocument()
+    })
+
+    it('types=REFUND 명시 선택에서는 환불 막대만 보인다', async () => {
+      setIpos([makeIpo({ refundDate: '2026-10-08T00:00:00Z' })])
+      setHolidays([])
+      renderPage(['/ipo-calendar?types=REFUND'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /테스트기업.*환불/ })).toBeInTheDocument()
+      })
+      expect(screen.queryByRole('button', { name: /테스트기업.*청약/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /테스트기업.*상장/ })).not.toBeInTheDocument()
+    })
+
+    it('types=SUBSCRIPTION,REFUND,LISTING 명시 선택에서는 환불을 포함한 3종이 모두 보인다', async () => {
+      setIpos([makeIpo({ refundDate: '2026-10-08T00:00:00Z' })])
+      setHolidays([])
+      renderPage(['/ipo-calendar?types=SUBSCRIPTION,REFUND,LISTING'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /테스트기업.*환불/ })).toBeInTheDocument()
+      })
+      expect(screen.getByRole('button', { name: /테스트기업.*청약/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /테스트기업.*상장/ })).toBeInTheDocument()
+    })
+
+    it('환불을 수동으로 켜면 types에 명시되어 새로고침 후에도 유지되고, 다시 끄면 기본(쿼리 없음)으로 돌아온다', async () => {
+      setIpos([makeIpo({ refundDate: '2026-10-08T00:00:00Z' })])
+      setHolidays([])
+      renderPage(['/ipo-calendar'])
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '환불' })).toBeInTheDocument()
+      })
+      expect(screen.queryByRole('button', { name: /테스트기업.*환불/ })).not.toBeInTheDocument()
+
+      // 환불 수동 on → 3종 명시 유지
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      expect(decodeURIComponent(screen.getByTestId('search').textContent ?? '')).toBe(
+        '?types=SUBSCRIPTION,REFUND,LISTING',
+      )
+      expect(screen.getByRole('button', { name: /테스트기업.*환불/ })).toBeInTheDocument()
+
+      // 환불 수동 off → 기본 세트로 돌아가 쿼리 제거
+      await userEvent.click(screen.getByRole('button', { name: '환불' }))
+      expect(screen.getByTestId('search').textContent).toBe('')
+      expect(screen.queryByRole('button', { name: /테스트기업.*환불/ })).not.toBeInTheDocument()
     })
   })
 })
