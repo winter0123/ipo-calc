@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ipoKeys } from '@/entities/ipo/queryKeys.ts'
+import { ipoKeys } from '@/entities/ipo/index.ts'
 import type { SubscriptionScheduleItem } from './subscriptionSchedule.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import {

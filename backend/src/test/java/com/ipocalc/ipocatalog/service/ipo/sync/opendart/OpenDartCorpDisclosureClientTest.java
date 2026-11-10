@@ -477,8 +477,8 @@ class OpenDartCorpDisclosureClientTest {
     expectListRequest(fixture);
 
     // when
-    List<OpenDartDisclosureItem> result = client.searchByDateRange(
-        LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 10));
+    List<OpenDartDisclosureItem> result =
+        client.searchByDateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 10));
 
     // then: 철회신고서는 필터링되고, 원공시(rm=철)만 남음
     assertThat(result).hasSize(1);

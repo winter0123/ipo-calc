@@ -335,10 +335,12 @@ public class IpoSyncService {
     OpenDartEquitySecurityDetail detail;
     if (company.getRm() != null && company.getRm().contains("철")) {
       // 철회 대상 원공시의 접수번호로 DS006 상세에서 매칭되는 것 선택
-      detail = details.stream()
-          .filter(d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
-          .findFirst()
-          .orElse(null);
+      detail =
+          details.stream()
+              .filter(
+                  d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
+              .findFirst()
+              .orElse(null);
       if (detail == null) {
         String reason = "철회 대상 원공시(" + company.getRceptNo() + ")에 대응하는 DS006 상세 없음: 자동 변경 보류";
         recordFailure(result, corpCode, corpName, reason);
@@ -346,12 +348,13 @@ public class IpoSyncService {
       }
     } else {
       // 일반 케이스: 최신 접수번호(정정/발행조건확정) 선택
-      detail = details.stream()
-          .max(
-              Comparator.comparing(
-                  OpenDartEquitySecurityDetail::getRceptNo,
-                  Comparator.nullsFirst(Comparator.naturalOrder())))
-          .orElseThrow();
+      detail =
+          details.stream()
+              .max(
+                  Comparator.comparing(
+                      OpenDartEquitySecurityDetail::getRceptNo,
+                      Comparator.nullsFirst(Comparator.naturalOrder())))
+              .orElseThrow();
     }
 
     if (company.getRm() != null && company.getRm().contains("철")) {
