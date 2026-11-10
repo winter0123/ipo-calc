@@ -33,6 +33,23 @@ export const StyleScope = styled.div`
     gap: var(--space-2);
     flex-shrink: 0;
   }
+  .s-adl-homeLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+  }
+  .s-adl-homeLink:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+  }
+  .s-adl-homeLink img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
   .s-adl-siteName {
     font-size: 17px;
     font-weight: 800;

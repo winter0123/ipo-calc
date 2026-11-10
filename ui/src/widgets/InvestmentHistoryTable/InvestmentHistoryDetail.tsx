@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { statusLabel } from './statusLabel.ts'
 import styles, { StyleScope } from './InvestmentHistoryDetail.styles.ts'
 import { formatWon } from '@/shared/lib/format.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 const won = (value: number | null): string => (value === null ? '-' : formatWon(value))
 
@@ -53,7 +54,7 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
             </div>
             <div className={styles.dlRow}>
               <dt>증권사명</dt>
-              <dd>{detail.securitiesFirmName ?? '-'}</dd>
+              <dd>{formatSecuritiesFirmName(detail.securitiesFirmName ?? '-')}</dd>
             </div>
             <div className={styles.dlRow}>
               <dt>공모가</dt>

@@ -10,6 +10,7 @@ import { formatWon } from '@/shared/lib/format.ts'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpo } from '@/entities/ipo/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 export default function AllocationRegisterForm() {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
@@ -134,7 +135,8 @@ export default function AllocationRegisterForm() {
                   <option value="">계좌 선택</option>
                   {(accountsQuery.data ?? []).map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.securitiesFirmName ?? '증권사'} · {account.accountName ?? '계좌'}
+                      {formatSecuritiesFirmName(account.securitiesFirmName ?? '증권사')} ·{' '}
+                      {account.accountName ?? '계좌'}
                     </option>
                   ))}
                 </select>

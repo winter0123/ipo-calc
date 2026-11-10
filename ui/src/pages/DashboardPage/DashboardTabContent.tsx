@@ -10,6 +10,7 @@ import type {
 } from '@/features/dashboard/index.ts'
 import { formatWon } from '@/shared/lib/format.ts'
 import styles, { StyleScope } from './DashboardTabContent.styles.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 const EMPTY_SUMMARY: DashboardSummary = {
   totalInvestmentAmount: 0,
@@ -103,7 +104,7 @@ export default function DashboardTabContent({
               <AmountList
                 items={securitiesFirmSummaries.map((item) => ({
                   key: item.securitiesFirmName,
-                  label: item.securitiesFirmName,
+                  label: formatSecuritiesFirmName(item.securitiesFirmName),
                   amount: item.totalInvestmentAmount,
                 }))}
               />

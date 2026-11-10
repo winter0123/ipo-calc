@@ -636,6 +636,44 @@ describe('SubscriptionRegisterForm', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
+    it('번호 없는 IBK 보유 등록 계좌를 매칭하고 단일 주관사 계좌를 IPO 변경 때마다 선택한다', async () => {
+      const alertSpy = vi.mocked(window.alert)
+      const account = {
+        ...SECURITIES_ACCOUNTS[0],
+        securitiesFirmName: 'IBK투자증권',
+        accountNumber: null,
+      }
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return [account]
+        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1/insight') {
+          return {
+            ...IPO_INSIGHT,
+            underwriters: [{ name: 'IBK투자증권', role: '주관', shares: 100 }],
+          }
+        }
+        if (pathStr === '/ipos/2/insight') {
+          return {
+            ...IPO_INSIGHT,
+            underwriters: [{ name: '아이비케이투자증권 주식회사', role: '주관', shares: 100 }],
+          }
+        }
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+
+      renderForm()
+      await waitForDropdownsLoaded()
+      await fill(screen.getByLabelText('공모주'), '1')
+      await waitFor(() => expect(screen.getByLabelText('증권계좌')).toHaveValue('1'))
+
+      await fill(screen.getByLabelText('공모주'), '2')
+      await waitFor(() => expect(screen.getByLabelText('증권계좌')).toHaveValue('1'))
+      expect(alertSpy).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
     it('일치하는 주관사 계좌가 없으면 안내 문구와 함께 /my-page로 이동한다', async () => {
       const alertSpy = vi.mocked(window.alert)
       // 계좌는 있지만 주관사와 매칭되지 않는 경우

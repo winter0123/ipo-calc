@@ -122,6 +122,35 @@ describe('SubscriptionScheduleList 주관사 chip', () => {
   })
 })
 
+describe('SubscriptionScheduleList 진행 상태', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('매도 완료 상태를 표시한다', async () => {
+    mockInsight()
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[makeItem({ status: 'sold', allocatedQuantity: 5 })]}
+        investorSelected={true}
+      />,
+    )
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+    expect(result.getByText('매도 완료')).toBeInTheDocument()
+  })
+
+  it('청약하지 않은 공모주는 미청약으로 표시한다', async () => {
+    mockInsight()
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList items={[makeItem({ status: 'before' })]} investorSelected={true} />,
+    )
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+    expect(result.getByText('미청약')).toBeInTheDocument()
+  })
+})
+
 describe('SubscriptionScheduleList 제목·주관사 레이아웃', () => {
   beforeEach(() => {
     vi.clearAllMocks()

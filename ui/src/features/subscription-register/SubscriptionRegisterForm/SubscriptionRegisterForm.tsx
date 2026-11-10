@@ -1,15 +1,13 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
-import {
-  useSecuritiesAccounts,
-  type SecuritiesAccount,
-} from '@/entities/securities-account/index.ts'
+import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
 import { useIpos, type Ipo, type IpoInsight, useIpoInsight } from '@/entities/ipo/index.ts'
 import type { AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
 import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
 import styles, { StyleScope } from './SubscriptionRegisterForm.styles.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import {
@@ -21,7 +19,7 @@ import {
 } from './subscriptionForm.ts'
 import { toLocalYmd } from '@/shared/lib/date.ts'
 import { formatWon } from '@/shared/lib/format.ts'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 type SubscriptionFormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
 
@@ -34,7 +32,13 @@ interface CombinedFormValues extends SubscriptionFormValues {
 
 // 주관사 이름과 계좌 증권사 이름 사이에 확정된 ID 연결이 없어 공백만 정규화해 정확 일치한다.
 function normalizeName(name: string | null | undefined): string {
-  return (name ?? '').trim().replace(/\s+/g, ' ')
+  return (name ?? '')
+    .normalize('NFKC')
+    .replace(/주식회사|\(주\)|㈜/g, '')
+    .replace(/\s+/g, '')
+    .replace(/^아이비케이/, 'IBK')
+    .replace(/^ibk/i, 'IBK')
+    .replace(/[^a-zA-Z0-9가-힣]/g, '')
 }
 
 const EMPTY_UNDERWRITERS: IpoInsight['underwriters'] = []
@@ -45,7 +49,10 @@ function isUnderwriterAccount(
 ): boolean {
   const firmName = normalizeName(securitiesFirmName)
   if (!firmName) return false
-  return underwriters.some((underwriter) => normalizeName(underwriter.name) === firmName)
+  return underwriters.some(
+    (underwriter) =>
+      normalizeName(underwriter.name).toLocaleLowerCase() === firmName.toLocaleLowerCase(),
+  )
 }
 
 interface SubscriptionRegisterFormProps {
@@ -183,12 +190,29 @@ function SubscriptionForm({
   const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
 
   // 필터링된 증권계좌 리스트 (IPO 미선택·인사이트 로딩·오류·빈 주관사는 옵션 노출 금지)
-  let filteredAccounts: SecuritiesAccount[] = []
-  if (ipoSelected && underwritersReady) {
-    filteredAccounts = (securitiesAccounts ?? []).filter((account) =>
+  const filteredAccounts = useMemo(() => {
+    if (!ipoSelected || !underwritersReady) return []
+    return (securitiesAccounts ?? []).filter((account) =>
       isUnderwriterAccount(underwriters, account.securitiesFirmName),
     )
-  }
+  }, [ipoSelected, underwritersReady, securitiesAccounts, underwriters])
+
+  // 단일 주관사에 일치하는 계좌가 하나뿐이면 그 계좌를 기본 선택한다.
+  useEffect(() => {
+    if (!underwritersReady || securitiesAccountsLoading || underwriters.length !== 1) return
+    if (filteredAccounts.length !== 1) return
+    setValue('securitiesAccountId', filteredAccounts[0].id, {
+      shouldValidate: false,
+      shouldDirty: false,
+    })
+  }, [
+    watchedIpoId,
+    underwritersReady,
+    securitiesAccountsLoading,
+    underwriters.length,
+    filteredAccounts,
+    setValue,
+  ])
 
   // 선택 IPO의 주관사 계좌가 하나도 없으면 알림 후 마이페이지로 보낸다(AC5). 선택 IPO마다 1회만 처리한다.
   const warnedIpoIds = useRef<Set<number>>(new Set())
@@ -210,7 +234,7 @@ function SubscriptionForm({
 
     warnedIpoIds.current.add(selectedIpoId)
     const underwriterNames = underwriters
-      .map((underwriter) => normalizeName(underwriter.name))
+      .map((underwriter) => formatSecuritiesFirmName(normalizeName(underwriter.name)))
       .filter((name) => name.length > 0)
       .join(' · ')
     window.alert(`${underwriterNames} 주관사 증권계좌 등록이 필요합니다.`)
@@ -376,7 +400,9 @@ function SubscriptionForm({
                 </option>
                 {filteredAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.securitiesFirmName ?? account.accountNumber}
+                    {formatSecuritiesFirmName(
+                      account.securitiesFirmName ?? account.accountNumber ?? '증권사',
+                    )}
                   </option>
                 ))}
               </select>

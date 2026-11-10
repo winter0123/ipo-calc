@@ -43,3 +43,9 @@
 
 - PR #497의 첫 CI는 backend PASS, UI build FAIL이었다. Mac 전용 ui/public/images 절대 링크를 ../../images 상대 링크로 수정한 뒤 두 번째 CI의 UI/backend 모두 PASS를 확인했다. 이미지 내용은 유지했다.
 - 별도 임시 경로에 Git index를 아카이브한 새 소스로 offline frozen install/build를 실행하고 dist 아이콘·증권사 로고 포함까지 PASS 확인했다. 직접 수정·검증 후 CI 성공을 확인해 병합했으며, main의 backend/ui가 검증된 커밋과 동일함도 확인했다.
+
+## 2026-11-10 UI 요청 묶음
+
+- 청약 상태·일일 갱신, IBK 표시, 계좌 선택·관리 행, 상세 제목·홈 이동 반영.
+- 검증 PASS: 관련 테스트 144개, lint/typecheck/build, diff 검사, 의존성 audit.
+- 사용자 승인으로 커밋·PR 병합 및 UI 배포 진행.

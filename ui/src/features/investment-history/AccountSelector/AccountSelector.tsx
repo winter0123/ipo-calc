@@ -3,6 +3,7 @@ import {
   type SecuritiesAccount,
 } from '@/entities/securities-account/index.ts'
 import styles, { StyleScope } from './AccountSelector.styles.ts'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 
 export interface AccountSelectorProps {
   investorId: string
@@ -24,7 +25,7 @@ export default function AccountSelector({
   }
 
   const getSecuritiesAccountDisplayName = (account: SecuritiesAccount) => {
-    const firmName = account.securitiesFirmName ?? '알 수 없는 증권사'
+    const firmName = formatSecuritiesFirmName(account.securitiesFirmName ?? '알 수 없는 증권사')
     const accountNum = account.accountNumber ?? '미입력'
     return `${firmName} - ${accountNum}`
   }

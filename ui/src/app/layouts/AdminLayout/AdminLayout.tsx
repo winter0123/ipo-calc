@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
 import { useImpersonation } from '@/entities/impersonation/index.ts'
 import { Navigate } from 'react-router-dom'
@@ -33,6 +33,9 @@ export default function AdminLayout() {
       <div className={styles.layout}>
         <header className={styles.header}>
           <div className={styles.brand}>
+            <Link to="/ipo-calendar" className={styles.homeLink} aria-label="공모주 일정 홈">
+              <img src="/images/icon/icon.png" alt="" aria-hidden="true" />
+            </Link>
             <span className={styles.siteName}>관리센터</span>
           </div>
           <nav className={styles.nav} aria-label="관리 메뉴">

@@ -6,6 +6,7 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Button from '@/shared/components/Button/Button.tsx'
 import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 import SecuritiesLogo from '@/shared/components/SecuritiesLogo/SecuritiesLogo.tsx'
+import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
 import { useCreateAccount, useDeleteAccount } from './api.ts'
 import AccountForm from './AccountForm.tsx'
 import AccountRow from './AccountRow.tsx'
@@ -100,6 +101,7 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
   }
 
   const renderFirm = (firm: (typeof allFirms)[number]) => {
+    const displayName = formatSecuritiesFirmName(firm.name)
     const mine = byFirm.get(firm.id) ?? []
     const formOpen =
       (panel?.kind === 'create' && panel.firmId === firm.id) ||
@@ -114,14 +116,14 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
         <li className={formOpen ? `${styles.firm} ${styles.wide}` : styles.firm}>
           <div className={styles.firmHead}>
             <SecuritiesLogo firmName={firm.name} size={20} className={styles.firmLogo} />
-            <h3 className={styles.firmName}>{firm.name}</h3>
+            <h3 className={styles.firmName}>{displayName}</h3>
             <label className={styles.firmCheckbox}>
               <input
                 type="checkbox"
                 checked={checked}
                 disabled={firmBusy}
                 onChange={(e) => handleFirmCheck(firm, e.target.checked)}
-                aria-label={`${firm.name} 계좌 사용 ${checked ? '해제' : '등록'}`}
+                aria-label={`${displayName} 계좌 사용 ${checked ? '해제' : '등록'}`}
               />
             </label>
             {!formOpen && (
@@ -129,7 +131,7 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
                 variant="secondary"
                 onClick={() => setPanel({ kind: 'create', firmId: firm.id })}
                 disabled={firmBusy}
-                aria-label={`${firm.name} ${mine.length > 0 ? '계좌 추가' : '계좌 등록'}`}
+                aria-label={`${displayName} ${mine.length > 0 ? '계좌 추가' : '계좌 등록'}`}
               >
                 {mine.length > 0 ? '계좌 추가' : '계좌 등록'}
               </Button>
@@ -155,7 +157,7 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
           )}
           {panel?.kind === 'create' && panel.firmId === firm.id && (
             <AccountForm
-              target={{ kind: 'create', investorId, firmId: firm.id, firmName: firm.name }}
+              target={{ kind: 'create', investorId, firmId: firm.id, firmName: displayName }}
               onDone={() => setPanel(null)}
               onCancel={() => setPanel(null)}
             />
@@ -169,7 +171,7 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
                   target={{
                     kind: 'edit',
                     accountId: a.id,
-                    firmName: firm.name,
+                    firmName: displayName,
                     accountName: a.accountName ?? '',
                     accountNumber: a.accountNumber,
                   }}
