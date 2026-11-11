@@ -764,7 +764,6 @@ class AutomaticReconciliationTest {
                 .subscriptionId(subscription.getId())
                 .allocatedQuantity(30L)
                 .allocatedAt(now.minusDays(8))
-                .allocationMethod("균등배정")
                 .allocatedAmount(450_000L)
                 .status(RecordStatus.ACTIVE)
                 .createdAt(now)

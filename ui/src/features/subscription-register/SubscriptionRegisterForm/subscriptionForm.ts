@@ -18,6 +18,46 @@ export function ipoPriceInfo(ipo: Ipo): string {
   return '공모가 미정'
 }
 
+/** 한국 시간대 오늘을 'YYYY-MM-DD'로. 브라우저 시간대와 무관하게 한국 기준 날짜를 쓴다. */
+export function koreanToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(now)
+}
+
+const ymd = /^\d{4}-\d{2}-\d{2}$/
+
+/** '2026-11-10T00:00:00' → '2026-11-10'. null/undefined/형식 오류면 null. */
+function periodDay(value: string | null | undefined): string | null {
+  const day = value?.slice(0, 10) ?? ''
+  return ymd.test(day) ? day : null
+}
+
+/**
+ * 청약 기간의 실제 날짜 목록(첫날~마지막날, 포함). 시작·종료가 없거나 형식이 잘못됐거나
+ * 시작이 종료보다 뒤면 null을 돌려준다(임의 값으로 대체하지 않는다).
+ */
+export function subscriptionPeriodDates(ipo: {
+  subscriptionStartDate: string | null | undefined
+  subscriptionEndDate: string | null | undefined
+}): string[] | null {
+  const start = periodDay(ipo.subscriptionStartDate)
+  const end = periodDay(ipo.subscriptionEndDate)
+  if (!start || !end || start > end) return null
+  const dates: string[] = []
+  const cursor = new Date(`${start}T00:00:00Z`)
+  const last = new Date(`${end}T00:00:00Z`)
+  while (cursor <= last) {
+    dates.push(cursor.toISOString().slice(0, 10))
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+  return dates.length > 0 ? dates : null
+}
+
+/** 기본 청약일: 한국 오늘이 기간 안이면 오늘, 아니면 첫날. dates가 비면 빈 문자열. */
+export function defaultSubscribedAt(dates: string[], today: string): string {
+  if (dates.length === 0) return ''
+  return dates.includes(today) ? today : dates[0]
+}
+
 /** 기본 증거금 = 확정 공모가 × 청약수량 × 50%(원 단위 올림). 계산할 수 없으면 undefined. */
 export function depositFor(ipo: Ipo | undefined, quantity: number): number | undefined {
   const price = ipo && basePrice(ipo)

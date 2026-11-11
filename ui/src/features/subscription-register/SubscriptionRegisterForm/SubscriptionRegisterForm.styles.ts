@@ -18,6 +18,8 @@ export const StyleScope = styled.div`
 
   .s-aeddfbc-blockError {
     color: var(--danger);
+    background-color: var(--danger-bg);
+    border-radius: var(--radius-sm);
   }
 
   /* 폼 공통 규칙: 라벨은 입력창 위, 필드 간격 24px, 제출 버튼은 왼쪽 정렬 */
@@ -99,6 +101,84 @@ export const StyleScope = styled.div`
     margin: 0;
     font-size: 13px;
     color: var(--ink-muted);
+  }
+
+  .s-aeddfbc-staticValue {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-size: 15px;
+  }
+
+  .s-aeddfbc-guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .s-aeddfbc-guide h2 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--ink);
+  }
+
+  .s-aeddfbc-guide p {
+    margin: 0;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  .s-aeddfbc-guide a {
+    align-self: flex-start;
+    color: var(--link);
+    font-weight: 650;
+  }
+
+  .s-aeddfbc-dateRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .s-aeddfbc-dateButton {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .s-aeddfbc-dateButton:hover:not(:disabled) {
+    border-color: var(--primary);
+  }
+
+  .s-aeddfbc-dateButton[aria-pressed='true'] {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--on-primary);
+  }
+
+  .s-aeddfbc-dateButton:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  .s-aeddfbc-dateButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   /* 섹션 스타일 */

@@ -143,20 +143,20 @@ describe('SubscriptionListPage', () => {
     expect(screen.getByTestId('search')).toHaveTextContent(/to=\d{4}-\d{2}-\d{2}/)
   })
 
-  it('상단 버튼 순서가 왼쪽 청약 등록, 오른쪽 매도 등록이며 청약 버튼은 "청약 등록" 텍스트를 가진다', async () => {
+  it('상단 공통 청약·매도 등록 버튼이 없고 카드 액션만 남는다', async () => {
     mockApi([])
     renderPage('/subscriptions?from=2026-10-01&to=2026-10-31')
 
-    // titleRow 내의 버튼 그룹 찾기 (h1 다음의 첫 번째 div)
-    const titleRow = screen.getByText('공모주 청약').closest('div')?.parentElement
-    const buttonGroup = titleRow?.querySelector('.s-d6e906b-buttonGroup')
-    const buttons = buttonGroup?.querySelectorAll('a') ?? []
-
-    // 첫 번째 버튼이 청약 등록, 두 번째가 매도 등록
-    expect(buttons[0]).toHaveTextContent('청약 등록')
-    expect(buttons[0]).toHaveAttribute('href', '/subscriptions/register')
-    expect(buttons[1]).toHaveTextContent('매도 등록')
-    expect(buttons[1]).toHaveAttribute('href', '/sales/register')
+    expect(await screen.findByRole('heading', { name: '공모주 청약' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: IPO.ipoName })).toBeInTheDocument()
+    // 문맥 없는 상단 공통 등록 링크는 삭제됐다 (카드의 문맥 있는 ?ipoId 링크만 남는다)
+    const plainLinks = document.querySelectorAll(
+      'a[href="/subscriptions/register"], a[href="/sales/register"]',
+    )
+    expect(plainLinks).toHaveLength(0)
+    // 카드 안의 문맥 있는 청약 등록 링크는 유지된다
+    const card = screen.getByText('가나다 공모주').closest('li')
+    expect(card?.querySelector('a[href="/subscriptions/register?ipoId=10"]')).toBeInTheDocument()
   })
 
   it('투자자가 없을 때 선택할 투자자가 없습니다 메시지가 표시된다', async () => {

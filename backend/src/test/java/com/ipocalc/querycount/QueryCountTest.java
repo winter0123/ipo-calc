@@ -174,7 +174,6 @@ class QueryCountTest {
                   .subscriptionId(sub.getId())
                   .allocatedQuantity(100L)
                   .allocatedAt(now)
-                  .allocationMethod("균등배정")
                   .allocatedAmount(1200000L)
                   .status(RecordStatus.ACTIVE)
                   .createdAt(now)

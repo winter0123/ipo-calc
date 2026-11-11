@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export interface SaleRegisterRequest {
   allocationId?: number
+  /** 매도 등록 시 기존 청약에 연결할 때 쓴다(청약·배정 자동 연결). 배정 수량이 필요하면 allocatedQuantity를 함께 보낸다. */
+  subscriptionId?: number
   quantity: number
   price?: number
   amount?: number

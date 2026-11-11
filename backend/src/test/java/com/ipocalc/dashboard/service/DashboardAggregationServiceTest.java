@@ -146,7 +146,6 @@ class DashboardAggregationServiceTest {
         .subscriptionId(subscriptionId)
         .allocatedQuantity(allocatedQuantity)
         .allocatedAmount(unitPrice == null ? null : unitPrice * allocatedQuantity)
-        .allocationMethod("PROPORTIONAL")
         .allocatedAt(LocalDateTime.now())
         .status(RecordStatus.ACTIVE)
         .createdAt(LocalDateTime.now())

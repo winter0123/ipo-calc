@@ -1,8 +1,8 @@
 import { useForm } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useSecuritiesAccounts } from '@/entities/securities-account/index.ts'
-import { useIpos, type Ipo, type IpoInsight, useIpoInsight } from '@/entities/ipo/index.ts'
+import { useIpo, type Ipo, type IpoInsight, useIpoInsight } from '@/entities/ipo/index.ts'
 import type { AllocationRegisterRequest } from '@/entities/allocation/index.ts'
 import { useSubscriptionRegister } from '../useSubscriptionRegister.ts'
 import { type SubscriptionRegisterRequest } from '@/entities/subscription/index.ts'
@@ -12,12 +12,13 @@ import { toErrorMessage } from '@/shared/api/apiError.ts'
 import MoneyInput from '@/shared/components/MoneyInput/MoneyInput.tsx'
 import {
   allocationTotalFor,
+  defaultSubscribedAt,
   depositFor,
   formatDate,
   ipoPriceInfo,
-  sortIposForSubscription,
+  koreanToday,
+  subscriptionPeriodDates,
 } from './subscriptionForm.ts'
-import { toLocalYmd } from '@/shared/lib/date.ts'
 import { formatWon } from '@/shared/lib/format.ts'
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -26,7 +27,6 @@ type SubscriptionFormValues = Omit<SubscriptionRegisterRequest, 'investorId'>
 interface CombinedFormValues extends SubscriptionFormValues {
   // 배정 필드 (선택적)
   allocatedQuantity?: number
-  allocationMethod?: string
   note?: string
 }
 
@@ -55,6 +55,12 @@ function isUnderwriterAccount(
   )
 }
 
+const parseIdParam = (raw: string | null): number | undefined => {
+  if (raw == null) return undefined
+  const value = Number(raw)
+  return Number.isInteger(value) && value > 0 ? value : undefined
+}
+
 interface SubscriptionRegisterFormProps {
   registerAllocation?: (request: AllocationRegisterRequest) => Promise<unknown>
   allocationError?: unknown
@@ -68,27 +74,60 @@ export default function SubscriptionRegisterForm({
 }: SubscriptionRegisterFormProps = {}) {
   // 투자자는 상단 전환기의 현재 투자자다. 전환하면 페이지가 이 폼을 새로 만든다.
   const { isLoading: investorsLoading } = useCurrentInvestor()
-  const { data: ipos, isLoading: iposLoading, error: iposError } = useIpos()
+  const [searchParams] = useSearchParams()
+  const rawIpoId = searchParams.get('ipoId')
+  const presetIpoId = parseIdParam(rawIpoId)
+  const ipoQuery = useIpo(presetIpoId)
 
-  if (investorsLoading || iposLoading) {
+  if (investorsLoading) {
     return <StyleScope>{<div className={styles.loading}>목록을 불러오는 중...</div>}</StyleScope>
   }
 
-  if (iposError) {
+  // 문맥(공모주) 없는 /subscriptions/register — 임의 선택 없이 청약 목록으로 안내만 한다
+  if (rawIpoId == null) {
     return (
       <StyleScope>
-        {
-          <div className={styles.blockError}>
-            목록을 불러올 수 없습니다. 새로고침 후 다시 시도해 주세요.
-          </div>
-        }
+        <div className={styles.guide}>
+          <h2>공모주를 선택해 들어와 주세요</h2>
+          <p>
+            공모주 청약 목록에서 공모주를 누르고 그 화면의 <strong>청약 등록</strong>을 열어 주세요.
+          </p>
+          <Link to="/subscriptions">공모주 청약 목록으로 이동</Link>
+        </div>
+      </StyleScope>
+    )
+  }
+
+  // 문맥은 있지만 id가 올바르지 않으면 폼을 열지 않는다
+  if (presetIpoId === undefined) {
+    return (
+      <StyleScope>
+        <div className={styles.blockError} role="alert">
+          공모주 주소가 올바르지 않습니다. 공모주 청약 목록에서 다시 열어 주세요.{' '}
+          <Link to="/subscriptions">공모주 청약 목록으로 이동</Link>
+        </div>
+      </StyleScope>
+    )
+  }
+
+  if (ipoQuery.isPending) {
+    return <StyleScope>{<div className={styles.loading}>목록을 불러오는 중...</div>}</StyleScope>
+  }
+
+  if (ipoQuery.isError || !ipoQuery.data) {
+    return (
+      <StyleScope>
+        <div className={styles.blockError} role="alert">
+          공모주를 찾을 수 없습니다. 공모주 청약 목록에서 다시 열어 주세요.{' '}
+          <Link to="/subscriptions">공모주 청약 목록으로 이동</Link>
+        </div>
       </StyleScope>
     )
   }
 
   return (
     <SubscriptionForm
-      ipos={sortIposForSubscription(ipos ?? [], toLocalYmd())}
+      ipo={ipoQuery.data}
       registerAllocation={registerAllocation}
       allocationError={allocationError}
       allocationPending={allocationPending}
@@ -97,24 +136,23 @@ export default function SubscriptionRegisterForm({
 }
 
 function SubscriptionForm({
-  ipos,
+  ipo,
   registerAllocation,
   allocationError,
   allocationPending,
 }: {
-  ipos: Ipo[]
+  ipo: Ipo
   registerAllocation?: (request: AllocationRegisterRequest) => Promise<unknown>
   allocationError?: unknown
   allocationPending?: boolean
 }) {
   'use no memo' // react-hook-form의 formState는 제자리 변경되는 객체라 컴파일러 메모이제이션과 맞지 않는다
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { current, isLoading: investorsLoading } = useCurrentInvestor()
 
-  // ?ipoId=<id>로 들어오면 그 공모주를 미리 고른다(목록에 없으면 무시).
-  const presetIpoId = Number(searchParams.get('ipoId'))
-  const presetIpo = ipos.find((ipo) => ipo.id === presetIpoId)
+  // 청약 기간의 실제 날짜(없거나 역전이면 null — 임의 값으로 대체하지 않는다)
+  const periodDates = subscriptionPeriodDates(ipo)
+  const defaultDate = defaultSubscribedAt(periodDates ?? [], koreanToday())
 
   const {
     mutateAsync: mutateSubAsync,
@@ -134,44 +172,32 @@ function SubscriptionForm({
   } = useForm<CombinedFormValues>({
     mode: 'onSubmit',
     defaultValues: {
-      subscribedAt: toLocalYmd(),
-      ipoId: presetIpo?.id,
+      subscribedAt: defaultDate,
+      ipoId: ipo.id,
       depositAmount: Number.NaN,
       allocatedQuantity: 0,
     },
   })
 
+  // subscribedAt은 입력 UI 없이 날짜 버튼이 setValue로 채운다. 검증 규칙만 등록한다.
+  register('subscribedAt', {
+    required: '청약일을 선택해 주세요.',
+    validate: (v) =>
+      (periodDates?.includes(v) ?? false) || '청약 기간 안의 날짜만 선택할 수 있습니다.',
+  })
+
   // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() is intentionally used in this non-memoized form.
-  const watchedIpoId = watch('ipoId')
-  // 선택 IPO가 바뀔 때 이전 IPO의 계좌 선택을 즉시 초기화
-  useEffect(() => {
-    setValue('securitiesAccountId', undefined as unknown as number, {
-      shouldValidate: false,
-      shouldDirty: false,
-    })
-  }, [watchedIpoId, setValue])
-
-  const selectedIpo = ipos.find((ipo) => ipo.id === Number(watchedIpoId))
+  const watchedSubscribedAt = watch('subscribedAt')
   const watchedAllocatedQty = watch('allocatedQuantity')
-  const allocationTotal = allocationTotalFor(selectedIpo, Number(watchedAllocatedQty ?? 0))
-  const allocationPriceMissing = selectedIpo !== undefined && selectedIpo.fixedPrice == null
-
-  // 주관사 인사이트 조회 (GET /ipos/{id}/insight의 underwriters)
-  const {
-    data: ipoInsight,
-    isLoading: ipoInsightLoading,
-    error: ipoInsightError,
-  } = useIpoInsight(watchedIpoId || undefined)
+  const allocationTotal = allocationTotalFor(ipo, Number(watchedAllocatedQty ?? 0))
+  const allocationPriceMissing = ipo.fixedPrice == null
 
   /** 증거금 기본값(확정 공모가×수량×50%). 사용자가 고친 칸은 덮어쓰지 않는다. */
   const syncDeposit = () => {
     if (getFieldState('depositAmount').isDirty) return
-    const { ipoId, quantity } = getValues()
-    const deposit = depositFor(
-      ipos.find((ipo) => ipo.id === Number(ipoId)),
-      quantity,
-    )
-    // 확정 공모가가 없으면 계산하지 않고, 이전 공모주의 자동값이 남지 않도록 비운다.
+    const { quantity } = getValues()
+    const deposit = depositFor(ipo, quantity)
+    // 확정 공모가가 없으면 계산하지 않고, 이전 자동값이 남지 않도록 비운다.
     setValue('depositAmount', deposit ?? Number.NaN)
   }
 
@@ -183,38 +209,44 @@ function SubscriptionForm({
     error: securitiesAccountsError,
   } = useSecuritiesAccounts(selectedInvestorId)
 
-  const selectedIpoId = Number(watchedIpoId)
-  const ipoSelected = Number.isFinite(selectedIpoId)
-  const underwriters = ipoInsight?.underwriters ?? EMPTY_UNDERWRITERS
-  // 주관사를 실제로 받았을 때만 계좌를 걸러낸다. 로딩/오류/빈 배열은 계좌 옵션을 노출하지 않고 select를 disabled로 유지한다(AC2·AC3·AC5).
-  const underwritersReady = !ipoInsightLoading && !ipoInsightError && underwriters.length > 0
+  const selectedIpoId = ipo.id
 
-  // 필터링된 증권계좌 리스트 (IPO 미선택·인사이트 로딩·오류·빈 주관사는 옵션 노출 금지)
+  // 주관사 인사이트 조회 (GET /ipos/{id}/insight의 underwriters)
+  const {
+    data: ipoInsight,
+    isLoading: ipoInsightLoading,
+    error: ipoInsightError,
+  } = useIpoInsight(selectedIpoId)
+  const resolvedUnderwriters = ipoInsight?.underwriters ?? EMPTY_UNDERWRITERS
+  // 주관사를 실제로 받았을 때만 계좌를 걸러낸다. 로딩/오류/빈 배열은 계좌 옵션을 노출하지 않고 select를 disabled로 유지한다(AC2·AC3·AC5).
+  const underwritersReady =
+    !ipoInsightLoading && !ipoInsightError && resolvedUnderwriters.length > 0
+
+  // 필터링된 증권계좌 리스트 (인사이트 로딩·오류·빈 주관사는 옵션 노출 금지)
   const filteredAccounts = useMemo(() => {
-    if (!ipoSelected || !underwritersReady) return []
+    if (!underwritersReady) return []
     return (securitiesAccounts ?? []).filter((account) =>
-      isUnderwriterAccount(underwriters, account.securitiesFirmName),
+      isUnderwriterAccount(resolvedUnderwriters, account.securitiesFirmName),
     )
-  }, [ipoSelected, underwritersReady, securitiesAccounts, underwriters])
+  }, [underwritersReady, securitiesAccounts, resolvedUnderwriters])
 
   // 단일 주관사에 일치하는 계좌가 하나뿐이면 그 계좌를 기본 선택한다.
   useEffect(() => {
-    if (!underwritersReady || securitiesAccountsLoading || underwriters.length !== 1) return
+    if (!underwritersReady || securitiesAccountsLoading || resolvedUnderwriters.length !== 1) return
     if (filteredAccounts.length !== 1) return
     setValue('securitiesAccountId', filteredAccounts[0].id, {
       shouldValidate: false,
       shouldDirty: false,
     })
   }, [
-    watchedIpoId,
     underwritersReady,
     securitiesAccountsLoading,
-    underwriters.length,
+    resolvedUnderwriters.length,
     filteredAccounts,
     setValue,
   ])
 
-  // 선택 IPO의 주관사 계좌가 하나도 없으면 알림 후 마이페이지로 보낸다(AC5). 선택 IPO마다 1회만 처리한다.
+  // 선택 IPO의 주관사 계좌가 하나도 없으면 알림 후 마이페이지로 보낸다(AC5). 공모주마다 1회만 처리한다.
   const warnedIpoIds = useRef<Set<number>>(new Set())
   useEffect(() => {
     // 로딩 중에는 경고/이동을 하지 않는다(AC2)
@@ -224,16 +256,16 @@ function SubscriptionForm({
     if (!investorSelected || !securitiesAccounts) return
     // 계좌/주관사 조회 실패나 빈 주관사 배열은 "계좌 없음"이 아니다(AC4)
     if (securitiesAccountsError || ipoInsightError) return
-    if (!ipoSelected || underwriters.length === 0) return
+    if (resolvedUnderwriters.length === 0) return
     if (warnedIpoIds.current.has(selectedIpoId)) return
 
     const matchedAccounts = securitiesAccounts.filter((account) =>
-      isUnderwriterAccount(underwriters, account.securitiesFirmName),
+      isUnderwriterAccount(resolvedUnderwriters, account.securitiesFirmName),
     )
     if (matchedAccounts.length > 0) return
 
     warnedIpoIds.current.add(selectedIpoId)
-    const underwriterNames = underwriters
+    const underwriterNames = resolvedUnderwriters
       .map((underwriter) => formatSecuritiesFirmName(normalizeName(underwriter.name)))
       .filter((name) => name.length > 0)
       .join(' · ')
@@ -247,20 +279,21 @@ function SubscriptionForm({
     securitiesAccountsError,
     ipoInsightLoading,
     ipoInsightError,
-    underwriters,
-    ipoSelected,
+    resolvedUnderwriters,
     selectedIpoId,
     navigate,
   ])
 
   const onSubmit = async (data: CombinedFormValues) => {
     if (selectedInvestorId === undefined) return
+    // 유효기간 밖 날짜는 어떤 경로로도 보내지 않는다
+    if (!periodDates || !periodDates.includes(data.subscribedAt)) return
 
     // 1) 청약 등록
     const subData: SubscriptionRegisterRequest = {
       investorId: selectedInvestorId,
       securitiesAccountId: data.securitiesAccountId,
-      ipoId: data.ipoId,
+      ipoId: ipo.id,
       quantity: data.quantity,
       depositAmount: data.depositAmount,
       subscribedAt: `${data.subscribedAt}T09:00`,
@@ -276,11 +309,10 @@ function SubscriptionForm({
         // 배정일과 배정 총액은 서버가 계산한다(요청에 보내지 않는다).
         const allocData = {
           subscriptionId: subResult.id,
-          ipoId: data.ipoId,
+          ipoId: ipo.id,
           investorId: selectedInvestorId,
           securitiesAccountId: data.securitiesAccountId,
           allocatedQuantity: allocatedQty,
-          allocationMethod: data.allocationMethod,
           note: data.note,
         }
         if (!registerAllocation) {
@@ -326,36 +358,16 @@ function SubscriptionForm({
             <legend className={styles.sectionTitle}>청약 등록</legend>
 
             <div className={styles.field}>
-              <label htmlFor="ipoId">공모주</label>
-              <select
-                id="ipoId"
-                aria-invalid={!!errors.ipoId}
-                aria-describedby={errors.ipoId ? 'ipoId-error' : undefined}
-                {...register('ipoId', {
-                  required: '공모주를 선택해 주세요.',
-                  valueAsNumber: true,
-                  onChange: syncDeposit,
-                })}
-                disabled={isPendingSub}
-              >
-                <option value="">공모주 선택</option>
-                {ipos.map((ipo) => (
-                  <option key={ipo.id} value={ipo.id}>
-                    {ipo.ipoName}
-                  </option>
-                ))}
-              </select>
-              {errors.ipoId && (
-                <span id="ipoId-error" className={styles.error} aria-live="polite">
-                  {String(errors.ipoId.message)}
-                </span>
-              )}
-              {selectedIpo && (
-                <p className={styles.ipoInfo} data-testid="ipo-info">
-                  {ipoPriceInfo(selectedIpo)} · 청약 {formatDate(selectedIpo.subscriptionStartDate)}{' '}
-                  ~ {formatDate(selectedIpo.subscriptionEndDate)}
-                </p>
-              )}
+              <span id="ipoNameLabel" className={styles.fieldLabel}>
+                공모주
+              </span>
+              <p aria-labelledby="ipoNameLabel" className={styles.staticValue}>
+                {ipo.ipoName}
+              </p>
+              <p className={styles.ipoInfo} data-testid="ipo-info">
+                {ipoPriceInfo(ipo)} · 청약 {formatDate(ipo.subscriptionStartDate)} ~{' '}
+                {formatDate(ipo.subscriptionEndDate)}
+              </p>
             </div>
 
             <div className={styles.field}>
@@ -375,11 +387,9 @@ function SubscriptionForm({
                     isPendingSub ||
                     !investorSelected ||
                     securitiesAccountsLoading ||
-                    !ipoSelected ||
                     ipoInsightLoading ||
-                    (ipoSelected &&
-                      !ipoInsightLoading &&
-                      (ipoInsightError || underwriters.length === 0))
+                    ipoInsightError ||
+                    resolvedUnderwriters.length === 0
                   )
                 }
               >
@@ -388,15 +398,13 @@ function SubscriptionForm({
                     ? '투자자를 먼저 선택해 주세요'
                     : securitiesAccountsLoading
                       ? '불러오는 중...'
-                      : !ipoSelected
-                        ? '공모주를 먼저 선택해 주세요'
-                        : ipoInsightLoading
-                          ? '주관사 확인 중...'
-                          : ipoInsightError
-                            ? '주관사 정보를 확인할 수 없습니다.'
-                            : underwriters.length === 0
-                              ? '등록된 주관사 정보가 없습니다.'
-                              : '증권계좌 선택'}
+                      : ipoInsightLoading
+                        ? '주관사 확인 중...'
+                        : ipoInsightError
+                          ? '주관사 정보를 확인할 수 없습니다.'
+                          : resolvedUnderwriters.length === 0
+                            ? '등록된 주관사 정보가 없습니다.'
+                            : '증권계좌 선택'}
                 </option>
                 {filteredAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
@@ -470,17 +478,40 @@ function SubscriptionForm({
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="subscribedAt">청약일</label>
-              <input
-                id="subscribedAt"
-                type="date"
-                aria-invalid={!!errors.subscribedAt}
-                aria-describedby={errors.subscribedAt ? 'subscribedAt-error' : undefined}
-                {...register('subscribedAt', {
-                  required: '청약일을 선택해 주세요.',
-                })}
-                disabled={isPendingSub}
-              />
+              <span id="subscribedAtLabel" className={styles.fieldLabel}>
+                청약일
+              </span>
+              {periodDates ? (
+                <div
+                  role="group"
+                  aria-labelledby="subscribedAtLabel"
+                  aria-describedby={errors.subscribedAt ? 'subscribedAt-error' : undefined}
+                  className={styles.dateRow}
+                >
+                  {periodDates.map((date) => (
+                    <button
+                      key={date}
+                      type="button"
+                      className={styles.dateButton}
+                      aria-pressed={watchedSubscribedAt === date}
+                      disabled={isPendingSub}
+                      onClick={() =>
+                        setValue('subscribedAt', date, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    >
+                      {date}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.error} role="alert">
+                  청약 일정을 확인할 수 없어 등록할 수 없습니다. 공모주 상세에서 청약 기간을 확인해
+                  주세요.
+                </div>
+              )}
               {errors.subscribedAt && (
                 <span id="subscribedAt-error" className={styles.error} aria-live="polite">
                   {String(errors.subscribedAt.message)}
@@ -557,27 +588,6 @@ function SubscriptionForm({
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="allocationMethod">배정방식 (선택)</label>
-              <select
-                id="allocationMethod"
-                aria-invalid={!!errors.allocationMethod}
-                aria-describedby={errors.allocationMethod ? 'allocationMethod-error' : undefined}
-                {...register('allocationMethod')}
-                disabled={isPendingSub}
-              >
-                <option value="">배정방식 선택</option>
-                <option value="PROPORTIONAL">비례배정</option>
-                <option value="LOTTERY">추첨배정</option>
-                <option value="FIRST_COME">선착순</option>
-              </select>
-              {errors.allocationMethod && (
-                <span id="allocationMethod-error" className={styles.error} aria-live="polite">
-                  {String(errors.allocationMethod.message)}
-                </span>
-              )}
-            </div>
-
-            <div className={styles.field}>
               <label htmlFor="note">비고 (선택)</label>
               <textarea
                 id="note"
@@ -602,7 +612,7 @@ function SubscriptionForm({
 
           <button
             type="submit"
-            disabled={isPendingSub || allocationPending}
+            disabled={isPendingSub || allocationPending || !periodDates}
             className={styles.submitButton}
           >
             {isPendingSub || allocationPending ? '등록 중...' : '등록'}

@@ -30,9 +30,10 @@ public class SaleController {
   private final SaleService saleService;
 
   /**
-   * 매도 등록 요청을 받아 새 매도 기록을 생성하고, 201 Created와 함께 생성된 매도 정보를 반환한다. Allocation이 존재하지 않으면 404,
-   * quantity가 0 이하면 400, 누적 매도수량이 배정수량을 초과하면 400을 반환한다. 분할 매도 지원: 하나의 Allocation에 여러 건의 Sale 등록이
-   * 가능하며, 각 등록 시 기존 ACTIVE 매도량 합계를 재계산해 검증한다.
+   * 매도 등록 요청을 받아 새 매도 기록을 생성하고, 201 Created와 함께 생성된 매도 정보를 반환한다. allocationId나 subscriptionId가 없으면
+   * (ipoId, investorId, securitiesAccountId) 조합으로 기존 청약·배정 연결을 찾고, 없으면 배정을 자동 생성한다(신규 생성이 필요한 경우에만
+   * allocatedQuantity를 요구한다). Allocation이 존재하지 않으면 404, quantity가 0 이하면 400, 누적 매도수량이 배정수량을 초과하면
+   * 400을 반환한다. 분할 매도 지원: 하나의 Allocation에 여러 건의 Sale 등록이 가능하며, 각 등록 시 기존 ACTIVE 매도량 합계를 재계산해 검증한다.
    */
   @PostMapping
   public ResponseEntity<SaleResponse> register(@RequestBody SaleRegisterRequest request) {

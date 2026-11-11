@@ -1,8 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { act, render, renderHook, waitFor } from '@testing-library/react'
+import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useSaleForm } from './useSaleForm.ts'
+
+const CANDIDATE_ITEM = {
+  id: 1,
+  subscribedAt: '2026-09-01T09:00:00Z',
+  ipoId: 10,
+  ipoName: '카카오뱅크',
+  ipoFixedPrice: 10000,
+  subscriptionQuantity: 100,
+  subscriptionStatus: 'ACTIVE',
+  allocation: null,
+  sales: [],
+  remainingQuantity: null,
+  investorName: null,
+  securitiesFirmName: null,
+  securitiesAccountId: 1,
+  securitiesAccountName: '테스트계좌',
+}
 
 const mocks = vi.hoisted(() => ({
   mutate: vi.fn(),
@@ -10,29 +27,72 @@ const mocks = vi.hoisted(() => ({
     current: { id: 1, displayName: '홍길동' },
     isLoading: false,
   })),
-  useIpo: vi.fn(() => ({
+  useIpo: vi.fn((_id?: number) => ({
     data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
     isPending: false,
+    error: null,
   })),
-  useIpoInsight: vi.fn(() => ({
+  useIpoInsight: vi.fn((_id?: number) => ({
     data: { underwriters: [{ name: '테스트증권', role: '주관', shares: 1 }] },
     isLoading: false,
     error: null,
   })),
-  useInvestmentHistory: vi.fn(() => ({ data: { content: [{ id: 1 }] }, isLoading: false })),
-  useInvestmentHistoryDetail: vi.fn(() => ({
-    isLoading: false,
-    data: {
-      ipoId: 10,
-      ipoFixedPrice: 10000,
-      allocation: { id: 1, allocatedQuantity: 50, allocatedAmount: 500000 },
-      sales: [],
-      remainingQuantity: 30,
-    },
-  })),
+  useInvestmentHistory: vi.fn(
+    (filters?: Record<string, unknown>, _options?: { enabled?: boolean }) =>
+      filters?.ipoId !== undefined
+        ? {
+            data: { content: [], totalElements: 0, totalPages: 0, number: 0, size: 1 },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [
+                {
+                  id: 1,
+                  subscribedAt: '2026-09-01T09:00:00Z',
+                  ipoId: 10,
+                  ipoName: '카카오뱅크',
+                  ipoFixedPrice: 10000,
+                  subscriptionQuantity: 100,
+                  subscriptionStatus: 'ACTIVE',
+                  allocation: null,
+                  sales: [],
+                  remainingQuantity: null,
+                  investorName: null,
+                  securitiesFirmName: null,
+                  securitiesAccountId: 1,
+                  securitiesAccountName: '테스트계좌',
+                },
+              ],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+  ),
+  useInvestmentHistoryDetail: vi.fn((id?: number | null): unknown =>
+    id == null
+      ? { isLoading: false, data: undefined, error: null }
+      : {
+          isLoading: false,
+          data: {
+            ipoId: 10,
+            ipoFixedPrice: 10000,
+            allocation: { id: 1, allocatedQuantity: 50, allocatedAmount: 500000 },
+            sales: [],
+            remainingQuantity: 30,
+          },
+          error: null,
+        },
+  ),
   useSecuritiesAccounts: vi.fn(() => ({
     data: [{ id: 1, securitiesFirmName: '테스트증권', accountName: '테스트계좌' }],
     isLoading: false,
+    isError: false,
   })),
   useSaleRegister: vi.fn(() => ({ mutate: mocks.mutate, isPending: false, error: null })),
 }))
@@ -41,12 +101,19 @@ vi.mock('@/entities/investor/index.ts', () => ({
   useCurrentInvestor: () => mocks.useCurrentInvestor(),
 }))
 vi.mock('@/entities/ipo/index.ts', () => ({
-  useIpo: () => mocks.useIpo(),
-  useIpoInsight: () => mocks.useIpoInsight(),
+  useIpos: () => ({ data: [] }),
+  useIpo: (id?: number) => mocks.useIpo(id),
+  useIpoInsight: (id?: number) => mocks.useIpoInsight(id),
 }))
 vi.mock('@/entities/subscription/index.ts', () => ({
-  useInvestmentHistory: () => mocks.useInvestmentHistory(),
-  useInvestmentHistoryDetail: () => mocks.useInvestmentHistoryDetail(),
+  useInvestmentHistory: (filters?: Record<string, unknown>, options?: { enabled?: boolean }) => {
+    // enabled: false면 쿼리가 비활성인 것처럼 data를 내리지 않는다
+    if (options?.enabled === false) {
+      return { data: undefined, isLoading: false, isSuccess: false }
+    }
+    return mocks.useInvestmentHistory(filters, options)
+  },
+  useInvestmentHistoryDetail: (id?: number | null) => mocks.useInvestmentHistoryDetail(id),
 }))
 vi.mock('@/entities/securities-account/index.ts', () => ({
   useSecuritiesAccounts: () => mocks.useSecuritiesAccounts(),
@@ -73,25 +140,36 @@ function setup() {
 }
 
 function setInvestmentHistoryDetail(data: {
-  isLoading: boolean
+  isLoading?: boolean
   data: {
     ipoId: number
     ipoFixedPrice: number | null
-    allocation: { id: number; allocatedQuantity: number; allocatedAmount: number | null }
+    allocation: { id: number; allocatedQuantity: number; allocatedAmount: number | null } | null
     sales: unknown[]
-    remainingQuantity: number
+    remainingQuantity: number | null
   } | null
+  error?: Error | null
 }) {
-  mocks.useInvestmentHistoryDetail.mockReturnValue(
-    data as ReturnType<typeof mocks.useInvestmentHistoryDetail>,
+  mocks.useInvestmentHistoryDetail.mockImplementation((id?: number | null) =>
+    id == null
+      ? { isLoading: false, data: undefined, error: null }
+      : {
+          isLoading: data.isLoading ?? false,
+          data: data.data ?? undefined,
+          error: data.error ?? null,
+        },
   )
 }
 
 function setIpo(data: {
-  data: { fixedPrice: number | null; listingDate: string; listingOpenPrice: number | null }
+  data: {
+    fixedPrice: number | null
+    listingDate: string | null
+    listingOpenPrice: number | null
+  }
   isPending: boolean
 }) {
-  mocks.useIpo.mockReturnValue(data as ReturnType<typeof mocks.useIpo>)
+  mocks.useIpo.mockReturnValue({ ...data, error: null } as ReturnType<typeof mocks.useIpo>)
 }
 
 describe('useSaleForm 상호 계산', () => {
@@ -105,10 +183,28 @@ describe('useSaleForm 상호 계산', () => {
     mocks.useIpo.mockReturnValue({
       data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
       isPending: false,
+      error: null,
     })
-    mocks.useInvestmentHistory.mockReturnValue({ data: { content: [{ id: 1 }] }, isLoading: false })
-    mocks.useInvestmentHistoryDetail.mockReturnValue({
-      isLoading: false,
+    mocks.useInvestmentHistory.mockImplementation((filters?: Record<string, unknown>) =>
+      filters?.ipoId !== undefined
+        ? {
+            data: { content: [], totalElements: 0, totalPages: 0, number: 0, size: 1 },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+    )
+    setInvestmentHistoryDetail({
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -120,15 +216,18 @@ describe('useSaleForm 상호 계산', () => {
     mocks.useSecuritiesAccounts.mockReturnValue({
       data: [{ id: 1, securitiesFirmName: '테스트증권', accountName: '테스트계좌' }],
       isLoading: false,
+      isError: false,
     })
     mocks.useSaleRegister.mockReturnValue({ mutate: mocks.mutate, isPending: false, error: null })
   })
 
-  it('청약 없이 매도하면 현재 투자자와 URL의 공모주 ID를 함께 전송한다', async () => {
+  it('공모주 진입으로 매도하면 현재 투자자와 URL의 공모주 ID·계좌를 함께 전송한다', async () => {
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(1))
+    // 주관사 계좌가 하나라 자동 선택된다
+    await waitFor(() => expect(result.current.getValues('securitiesAccountId')).toBe(1))
     act(() => {
       result.current.setValue('allocatedQuantity', 10)
-      result.current.setValue('securitiesAccountId', 1)
       result.current.setValue('quantity', 10)
       result.current.setValue('price', 12000)
       result.current.setValue('saleDate', '2026-10-23')
@@ -142,22 +241,98 @@ describe('useSaleForm 상호 계산', () => {
 
     expect(mocks.mutate).toHaveBeenCalledWith(
       expect.objectContaining({
-        allocationId: undefined,
         allocatedQuantity: 10,
         securitiesAccountId: 1,
         ipoId: 10,
         investorId: 1,
       }),
     )
+    // 연결이 없으면 청약 ID는 보내지 않는다
+    expect(mocks.mutate.mock.calls[0][0]).not.toHaveProperty('subscriptionId')
+  })
+
+  it('공모주 진입에서 계좌를 고르면 (투자자·공모주·계좌) 연결을 조회한다', async () => {
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 1, securitiesFirmName: '테스트증권', accountName: '테스트계좌' },
+        { id: 2, securitiesFirmName: '테스트증권', accountName: '둘째계좌' },
+      ],
+      isLoading: false,
+      isError: false,
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(2))
+    act(() => {
+      result.current.setValue('securitiesAccountId', 2)
+    })
+    await waitFor(() =>
+      expect(mocks.useInvestmentHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          investorId: 1,
+          ipoId: 10,
+          securitiesAccountId: 2,
+          size: 1,
+        }),
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('기존 연결이 있으면 배정수량 없이도 등록되고 연결 ID가 전송된다', async () => {
+    mocks.useInvestmentHistory.mockImplementation((filters?: Record<string, unknown>) =>
+      filters?.ipoId !== undefined
+        ? {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 1,
+            },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+    )
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(1))
+    await waitFor(() => expect(result.current.getValues('securitiesAccountId')).toBe(1))
+    await waitFor(() => expect(result.current.connectionId).toBe(1))
+    expect(result.current.needsAllocatedQuantity).toBe(false)
+    act(() => {
+      result.current.setValue('quantity', 30)
+      result.current.setValue('price', 12000)
+      result.current.setValue('saleDate', '2026-10-23')
+    })
+    await act(async () => {
+      await result.current.submit()
+    })
+    expect(mocks.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionId: 1, ipoId: 10, investorId: 1 }),
+    )
+    expect(mocks.mutate.mock.calls[0][0]).not.toHaveProperty('allocatedQuantity')
+    expect(mocks.mutate.mock.calls[0][0]).not.toHaveProperty('securitiesAccountId')
   })
 
   it('IPO 진입(직접 등록) 시 해당 공모주 상장일을 매도일 기본값으로 넣는다', async () => {
     mocks.useIpo.mockReturnValue({
       data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
       isPending: false,
+      error: null,
     })
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
     await waitFor(() => expect(result.current.getValues('saleDate')).toBe('2026-10-23'))
+    expect(result.current.getValues('price')).toBe(10000)
   })
 
   it('IPO 진입 시 해당 주관사 계좌만 남기고 한 건이면 자동 선택한다', async () => {
@@ -172,6 +347,7 @@ describe('useSaleForm 상호 계산', () => {
         { id: 8, securitiesFirmName: '다른증권', accountName: '다른계좌' },
       ],
       isLoading: false,
+      isError: false,
     })
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
     await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(1))
@@ -185,6 +361,7 @@ describe('useSaleForm 상호 계산', () => {
     mocks.useIpo.mockReturnValue({
       data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
       isPending: false,
+      error: null,
     })
     mocks.useIpoInsight.mockReturnValue({
       data: {
@@ -203,6 +380,7 @@ describe('useSaleForm 상호 계산', () => {
         { id: 3, securitiesFirmName: 'BBB증권', accountName: 'AAA계좌' },
       ],
       isLoading: false,
+      isError: false,
     })
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
     await waitFor(() => expect(result.current.securitiesAccounts).toHaveLength(3))
@@ -219,18 +397,20 @@ describe('useSaleForm 상호 계산', () => {
     mocks.useIpo.mockReturnValue({
       data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
       isPending: false,
+      error: null,
     })
     mocks.useIpoInsight.mockReturnValue({
       data: { underwriters: [] },
       isLoading: true,
       error: null,
-    })
+    } as unknown as ReturnType<typeof mocks.useIpoInsight>)
     mocks.useSecuritiesAccounts.mockReturnValue({
       data: [
         { id: 8, securitiesFirmName: '다른증권', accountName: '다른계좌' },
         { id: 7, securitiesFirmName: 'AAA증권', accountName: 'AAA계좌' },
       ],
       isLoading: false,
+      isError: false,
     })
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
     expect(result.current.securitiesAccounts).toHaveLength(0)
@@ -240,6 +420,7 @@ describe('useSaleForm 상호 계산', () => {
     mocks.useIpo.mockReturnValue({
       data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
       isPending: false,
+      error: null,
     })
     mocks.useIpoInsight.mockReturnValue({
       data: { underwriters: [] },
@@ -252,9 +433,138 @@ describe('useSaleForm 상호 계산', () => {
         { id: 7, securitiesFirmName: 'AAA증권', accountName: 'AAA계좌' },
       ],
       isLoading: false,
+      isError: false,
     })
     const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
     expect(result.current.securitiesAccounts).toHaveLength(0)
+  })
+
+  it('계좌를 바꾸면 이전 연결의 기본값(수량)이 지워지고 새 연결 기준으로 다시 채워진다', async () => {
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 1, securitiesFirmName: '테스트증권', accountName: '첫째계좌' },
+        { id: 2, securitiesFirmName: '테스트증권', accountName: '둘째계좌' },
+      ],
+      isLoading: false,
+      isError: false,
+    })
+    mocks.useInvestmentHistory.mockImplementation((filters?: Record<string, unknown>) =>
+      filters?.ipoId !== undefined
+        ? {
+            data:
+              filters.securitiesAccountId === 1
+                ? {
+                    content: [CANDIDATE_ITEM],
+                    totalElements: 1,
+                    totalPages: 1,
+                    number: 0,
+                    size: 1,
+                  }
+                : {
+                    content: [],
+                    totalElements: 0,
+                    totalPages: 0,
+                    number: 0,
+                    size: 1,
+                  },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+    )
+    setInvestmentHistoryDetail({
+      data: {
+        ipoId: 10,
+        ipoFixedPrice: 10000,
+        allocation: { id: 1, allocatedQuantity: 50, allocatedAmount: 500000 },
+        sales: [],
+        remainingQuantity: 5,
+      },
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    act(() => {
+      result.current.setValue('securitiesAccountId', 1)
+    })
+    await waitFor(() => expect(result.current.connectionId).toBe(1))
+    await waitFor(() => expect(result.current.getValues('quantity')).toBe(5))
+    // 계좌를 바꾸면 이전 연결의 기본값은 지워진다
+    act(() => {
+      result.current.setValue('securitiesAccountId', 2)
+    })
+    await waitFor(() => expect(result.current.connectionId).toBeUndefined())
+    expect(result.current.getValues('quantity')).toBeUndefined()
+  })
+
+  it('계좌를 바꿔도 사용자가 직접 고친 매도수량은 유지된다', async () => {
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [
+        { id: 1, securitiesFirmName: '테스트증권', accountName: '첫째계좌' },
+        { id: 2, securitiesFirmName: '테스트증권', accountName: '둘째계좌' },
+      ],
+      isLoading: false,
+      isError: false,
+    })
+    mocks.useInvestmentHistory.mockImplementation((filters?: Record<string, unknown>) =>
+      filters?.ipoId !== undefined
+        ? {
+            data:
+              filters.securitiesAccountId === 1
+                ? {
+                    content: [CANDIDATE_ITEM],
+                    totalElements: 1,
+                    totalPages: 1,
+                    number: 0,
+                    size: 1,
+                  }
+                : {
+                    content: [],
+                    totalElements: 0,
+                    totalPages: 0,
+                    number: 0,
+                    size: 1,
+                  },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+    )
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    act(() => {
+      result.current.setValue('securitiesAccountId', 1)
+    })
+    await waitFor(() => expect(result.current.connectionId).toBe(1))
+    act(() => {
+      // 사용자가 직접 고친 것처럼 dirty로 표시한다
+      result.current.setValue('quantity', 42, { shouldDirty: true })
+      result.current.setValue('allocatedQuantity', 33, { shouldDirty: true })
+    })
+    act(() => {
+      result.current.setValue('securitiesAccountId', 2)
+    })
+    await waitFor(() => expect(result.current.connectionId).toBeUndefined())
+    // 사용자가 고친 매도수량은 유지되고, 연결마다 의미가 다른 배정수량은 비워진다
+    expect(result.current.getValues('quantity')).toBe(42)
+    expect(result.current.getValues('allocatedQuantity')).toBeUndefined()
   })
 
   it('세금 및 기타 수수료를 고치면 실현손익이 매도금액 − 취득금액 − 수수료로 계산된다 (allocatedAmount 사용)', () => {
@@ -278,7 +588,6 @@ describe('useSaleForm 상호 계산', () => {
 
   it('allocatedAmount가 null이면 fixedPrice로 취득금액 계산 (fallback)', () => {
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -331,9 +640,33 @@ describe('useSaleForm 상호 계산', () => {
     ])
   })
 
+  it('배정이 없는 청약이면 배정수량을 요구하고, 입력하면 연결에 그대로 쓴다', async () => {
+    setInvestmentHistoryDetail({
+      data: {
+        ipoId: 10,
+        ipoFixedPrice: 10000,
+        allocation: null,
+        sales: [],
+        remainingQuantity: null,
+      },
+    })
+    const { result } = renderHook(() => useSaleForm(), { wrapper })
+    await waitFor(() => expect(result.current.needsAllocatedQuantity).toBe(true))
+  })
+
+  it('배정이 있는 청약이면 배정수량을 요구하지 않는다', () => {
+    const { result } = renderHook(() => useSaleForm(), { wrapper })
+    expect(result.current.needsAllocatedQuantity).toBe(false)
+  })
+
+  it('매도 등록 폼에는 청약 선택 상태가 노출되지 않는다', () => {
+    const { result } = renderHook(() => useSaleForm(), { wrapper })
+    expect(result.current).not.toHaveProperty('selectedSubscriptionId')
+    expect(result.current).not.toHaveProperty('handleSubscriptionChange')
+  })
+
   it('allocatedAmount=95000, allocatedQuantity=10, 매도 5주 → 취득금액 47500 (테스트 a)', () => {
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -354,7 +687,6 @@ describe('useSaleForm 상호 계산', () => {
 
   it('allocatedAmount=100, allocatedQuantity=3, 매도 2주 → 취득금액 67 (HALF_UP, 테스트 b)', () => {
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -379,7 +711,6 @@ describe('useSaleForm 상호 계산', () => {
       isPending: false,
     })
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -395,7 +726,6 @@ describe('useSaleForm 상호 계산', () => {
 
   it('grossValue는 공모주수수료/기타 수수료를 제외한 수수료 전 차익이며 acquisitionAmountForSale 기준이다', () => {
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: 10000,
@@ -418,7 +748,6 @@ describe('useSaleForm 상호 계산', () => {
       isPending: false,
     })
     setInvestmentHistoryDetail({
-      isLoading: false,
       data: {
         ipoId: 10,
         ipoFixedPrice: null,
@@ -430,5 +759,112 @@ describe('useSaleForm 상호 계산', () => {
     const { result } = renderHook(() => useSaleForm(), { wrapper })
     expect(result.current.ipoPrice).toBe(10000)
     expect(result.current.openPrice).toBeNull()
+  })
+})
+
+describe('문맥 변경과 계좌 허용 검증', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.mutate.mockReset()
+    mocks.useCurrentInvestor.mockReturnValue({
+      current: { id: 1, displayName: '홍길동' },
+      isLoading: false,
+    })
+    mocks.useIpo.mockReturnValue({
+      data: { fixedPrice: 10000, listingDate: '2026-10-23', listingOpenPrice: null },
+      isPending: false,
+      error: null,
+    })
+    mocks.useIpoInsight.mockReturnValue({
+      data: { underwriters: [{ name: '테스트증권', role: '주관', shares: 1 }] },
+      isLoading: false,
+      error: null,
+    })
+    mocks.useInvestmentHistory.mockImplementation((filters?: Record<string, unknown>) =>
+      filters?.ipoId !== undefined
+        ? {
+            data: { content: [], totalElements: 0, totalPages: 0, number: 0, size: 1 },
+            isLoading: false,
+            isSuccess: true,
+          }
+        : {
+            data: {
+              content: [CANDIDATE_ITEM],
+              totalElements: 1,
+              totalPages: 1,
+              number: 0,
+              size: 10,
+            },
+            isLoading: false,
+            isSuccess: true,
+          },
+    )
+    mocks.useSecuritiesAccounts.mockReturnValue({
+      data: [{ id: 1, securitiesFirmName: '테스트증권', accountName: '테스트계좌' }],
+      isLoading: false,
+      isError: false,
+    })
+    mocks.useSaleRegister.mockReturnValue({ mutate: mocks.mutate, isPending: false, error: null })
+  })
+
+  it('허용되지 않은 계좌를 선택하면 등록할 수 없다', async () => {
+    const { result } = renderHook(() => useSaleForm(), { wrapper: directWrapper })
+    await waitFor(() => expect(result.current.getValues('securitiesAccountId')).toBe(1))
+    act(() => {
+      result.current.setValue('securitiesAccountId', 999)
+      result.current.setValue('allocatedQuantity', 10)
+      result.current.setValue('quantity', 10)
+      result.current.setValue('price', 12000)
+      result.current.setValue('saleDate', '2026-10-23')
+    })
+    await waitFor(() => expect(result.current.submitBlockReason).toBe('account-not-allowed'))
+    await act(async () => {
+      await result.current.submit()
+    })
+    expect(mocks.mutate).not.toHaveBeenCalled()
+  })
+
+  it('URL 문맥이 바뀌면 이전 계좌·캡처 연결·연결 기본값을 지운다', async () => {
+    mocks.useIpoInsight.mockImplementation((id?: number) =>
+      id === 20
+        ? {
+            data: { underwriters: [{ name: '다른증권', role: '주관', shares: 1 }] },
+            isLoading: false,
+            error: null,
+          }
+        : {
+            data: { underwriters: [{ name: '테스트증권', role: '주관', shares: 1 }] },
+            isLoading: false,
+            error: null,
+          },
+    )
+    const fRef: { current?: ReturnType<typeof useSaleForm> } = { current: undefined }
+    function NavigationHarness() {
+      fRef.current = useSaleForm()
+      return <div data-testid="sale-context">{fRef.current.effectiveIpoId ?? 'none'}</div>
+    }
+    const router = createMemoryRouter(
+      [{ path: '/sales/register', element: <NavigationHarness /> }],
+      { initialEntries: ['/sales/register?ipoId=10'] },
+    )
+    render(<RouterProvider router={router} />)
+    // IPO 10에서는 계좌가 하나라 자동 선택된다
+    await waitFor(() => expect(fRef.current?.getValues('securitiesAccountId')).toBe(1))
+    act(() => {
+      fRef.current?.setValue('allocatedQuantity', 33, { shouldDirty: true })
+      fRef.current?.setValue('quantity', 42, { shouldDirty: true })
+    })
+    // 같은 라우트에서 ipoId=20으로 이동한다(컴포넌트는 유지)
+    await act(async () => {
+      await router.navigate('/sales/register?ipoId=20')
+    })
+    await waitFor(() => expect(fRef.current?.effectiveIpoId).toBe(20))
+    // 이전 계좌·연결 기반 값이 지워진다
+    expect(fRef.current?.getValues('securitiesAccountId')).toBeUndefined()
+    expect(fRef.current?.getValues('allocatedQuantity')).toBeUndefined()
+    // 사용자가 직접 입력한 매도값은 유지된다
+    expect(fRef.current?.getValues('quantity')).toBe(42)
+    // IPO 20의 주관사 계좌는 등록돼 있지 않다
+    await waitFor(() => expect(fRef.current?.missingUnderwriterAccount).toBe(true))
   })
 })

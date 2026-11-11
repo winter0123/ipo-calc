@@ -1,13 +1,17 @@
-import { useEffect, useState, type MutableRefObject } from 'react'
+import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { UseFormGetValues, UseFormSetValue } from 'react-hook-form'
 import type { InvestmentHistoryItem } from '@/entities/subscription/index.ts'
 import { won } from './saleFormUtils.ts'
 import type { CaptureApply, CapturedField, SaleFormValues } from './saleFormTypes.ts'
 
 interface UseCaptureFillOptions {
-  selectedSubscriptionId?: number
+  connectionId?: number
   allocationData?: InvestmentHistoryItem
   ipoPending: boolean
+  /** 폼 문맥(공모주·연결)이 확정돼 캡처 값을 적용할 수 있는지 */
+  connectionReady: boolean
+  /** 연결 문맥이 바뀔 때 캡처 표시를 지우기 위한 계좌 ID(선택) */
+  accountId?: number
   ipoPrice: number | null
   prefilledFor: MutableRefObject<number | undefined>
   setValue: UseFormSetValue<SaleFormValues>
@@ -17,11 +21,13 @@ interface UseCaptureFillOptions {
   selectSubscription: (id: number) => void
 }
 
-/** 캡처 입력을 대기하고 청약·공모주 데이터가 준비된 뒤 매도 폼에 적용한다. */
+/** 캡처 입력을 대기하고 공모주·연결 데이터가 준비된 뒤 매도 폼에 적용한다. */
 export function useCaptureFill({
-  selectedSubscriptionId,
+  connectionId,
   allocationData,
   ipoPending,
+  connectionReady,
+  accountId,
   ipoPrice,
   prefilledFor,
   setValue,
@@ -34,14 +40,26 @@ export function useCaptureFill({
   const [captured, setCaptured] = useState<Partial<Record<CapturedField, number | string>>>({})
   const [captureNotes, setCaptureNotes] = useState<string[]>([])
 
-  // 기본값 채우기가 끝난 뒤 실행돼야 캡처 값이 기본값에 덮이지 않는다.
-  /* eslint-disable react-hooks/set-state-in-effect -- 청약 정보가 도착한 시점에 한 번만 적용한다 */
+  // 연결·계좌 문맥이 바뀌면 "캡처에서 채움" 표시와 대기 중인 캡처를 지운다(새 문맥 기준으로 다시 채울 수 있도록)
+  const previousContext = useRef<{ connectionId?: number; accountId?: number }>({})
   useEffect(() => {
-    if (!pendingCapture || !selectedSubscriptionId || !allocationData?.allocation || ipoPending)
-      return
-    if (prefilledFor.current !== selectedSubscriptionId) return
-    if (pendingCapture.subscriptionId && pendingCapture.subscriptionId !== selectedSubscriptionId)
-      return
+    const prev = previousContext.current
+    if (prev.connectionId === connectionId && prev.accountId === accountId) return
+    previousContext.current = { connectionId, accountId }
+    if (prev.connectionId === undefined && prev.accountId === undefined) return
+    setCaptured({})
+    setCaptureNotes([])
+    setPendingCapture(null)
+  }, [connectionId, accountId])
+
+  // 기본값 채우기가 끝난 뒤 실행돼야 캡처 값이 기본값에 덮이지 않는다.
+  /* eslint-disable react-hooks/set-state-in-effect -- 연결 정보가 준비된 시점에 한 번만 적용한다 */
+  useEffect(() => {
+    if (!pendingCapture || !connectionReady || ipoPending) return
+    // 캡처가 찾은 청약으로 바뀌는 중이면 바뀐 뒤 다시 적용한다
+    if (pendingCapture.subscriptionId && pendingCapture.subscriptionId !== connectionId) return
+    // 기존 배정이 있으면 기본값 채우기가 끝난 뒤에만 적용한다
+    if (connectionId && allocationData?.allocation && prefilledFor.current !== connectionId) return
 
     const { fill } = pendingCapture
     const notes = [...pendingCapture.notes]
@@ -76,12 +94,18 @@ export function useCaptureFill({
     setCaptured(mark)
     setCaptureNotes(notes)
     setPendingCapture(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 대기 중인 캡처와 청약 정보가 바뀔 때만 실행한다
-  }, [pendingCapture, allocationData, ipoPending, selectedSubscriptionId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 대기 중인 캡처와 연결 정보가 바뀔 때만 실행한다
+  }, [pendingCapture, allocationData, ipoPending, connectionReady, connectionId])
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /** 문맥을 확정할 수 없을 때의 즉시 안내(폼 입력은 건드리지 않고 메모만 보여 준다). */
+  const noteCapture = (notes: string[]) => {
+    setCaptured({})
+    setCaptureNotes(notes)
+    setPendingCapture(null)
+  }
   const applyCapture = (apply: CaptureApply) => {
-    if (apply.subscriptionId && apply.subscriptionId !== selectedSubscriptionId) {
+    if (apply.subscriptionId && apply.subscriptionId !== connectionId) {
       selectSubscription(apply.subscriptionId)
     }
     setCaptured({})
@@ -93,6 +117,7 @@ export function useCaptureFill({
     applyCapture,
     captured,
     captureNotes,
-    capturePending: pendingCapture !== null && !selectedSubscriptionId,
+    capturePending: pendingCapture !== null,
+    noteCapture,
   }
 }

@@ -186,27 +186,6 @@ export default function AllocationRegisterForm() {
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="allocationMethod">배정방식 (선택)</label>
-            <select
-              id="allocationMethod"
-              aria-invalid={!!errors.allocationMethod}
-              aria-describedby={errors.allocationMethod ? 'allocationMethod-error' : undefined}
-              {...register('allocationMethod')}
-              disabled={isPending}
-            >
-              <option value="">배정방식 선택</option>
-              <option value="PROPORTIONAL">비례배정</option>
-              <option value="LOTTERY">추첨배정</option>
-              <option value="FIRST_COME">선착순</option>
-            </select>
-            {errors.allocationMethod && (
-              <span id="allocationMethod-error" className={styles.error} aria-live="polite">
-                {String(errors.allocationMethod.message)}
-              </span>
-            )}
-          </div>
-
-          <div className={styles.field}>
             <label htmlFor="note">비고 (선택)</label>
             <textarea
               id="note"

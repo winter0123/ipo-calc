@@ -80,7 +80,6 @@ async function waitForDetailLoaded() {
 
 async function fillValidForm() {
   await fill(screen.getByLabelText('배정수량'), '50')
-  await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
   await fill(screen.getByLabelText('비고 (선택)'), '테스트 배정')
 }
 
@@ -158,7 +157,7 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    expect(body.allocationMethod).toBe('PROPORTIONAL')
+    expect(body).not.toHaveProperty('allocationMethod')
     expect(body.note).toBe('테스트 배정')
     expect(body).not.toHaveProperty('allocatedAt')
     expect(body).not.toHaveProperty('allocationPrice')
@@ -364,7 +363,7 @@ describe('AllocationRegisterForm', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('선택 필드(배정방식, 비고)는 비워도 제출 가능', async () => {
+  it('선택 필드(비고)는 비워도 제출 가능', async () => {
     mockSubscriptionDetailFetch()
     renderForm()
     await waitForDetailLoaded()
@@ -378,7 +377,7 @@ describe('AllocationRegisterForm', () => {
       throw new Error(`unexpected path: ${String(path)}`)
     })
 
-    // 필수 필드만 입력 (배정방식은 선택하지 않음)
+    // 필수 필드만 입력
     await fill(screen.getByLabelText('배정수량'), '50')
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
@@ -395,8 +394,8 @@ describe('AllocationRegisterForm', () => {
     const body = JSON.parse((call[1] as RequestInit).body as string)
     expect(body.subscriptionId).toBe(1)
     expect(body.allocatedQuantity).toBe(50)
-    // select 미선택 시 빈 문자열로 전송됨
-    expect(body.allocationMethod).toBe('')
+    // 배정방식 필드는 입력 요소가 없으므로 전송되지 않음
+    expect(body).not.toHaveProperty('allocationMethod')
     // textarea 비움 시 빈 문자열로 전송됨
     expect(body.note).toBe('')
     expect(body).not.toHaveProperty('allocatedAt')

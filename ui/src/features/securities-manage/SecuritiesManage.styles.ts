@@ -9,38 +9,63 @@ export const styles: Record<string, string> = new Proxy(
 
 export const StyleScope = styled.div`
   display: contents;
-  .s-ed0b413-firms,
-  .s-ed0b413-accounts {
+  .s-ed0b413-firms {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+  }
+
+  /* 목록은 1열 기본, min-width 1024px에서 정확히 2열(auto-fill 금지)
+     align-items: start — 행 높이가 가장 큰 카드에 맞춰 다른 카드가 늘어나지 않게 */
+  .s-ed0b413-firms {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+  }
+
+  @media (min-width: 1024px) {
+    .s-ed0b413-firms {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .s-ed0b413-firm {
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 8px 12px;
-    display: grid;
-    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
-    align-items: center;
-    gap: 12px;
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
 
   .s-ed0b413-firmHead,
-  .s-ed0b413-accountMain,
-  .s-ed0b413-accountActions,
-  .s-ed0b413-actions {
+  .s-ed0b413-numbers {
     display: flex;
     align-items: center;
     gap: 6px;
   }
 
+  /* 번호들은 필요한 만큼 작은 줄로 접힌다(단일 계좌는 한 줄 유지) */
+  .s-ed0b413-numbers {
+    gap: 4px;
+    min-width: 0;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .s-ed0b413-numbers .s-ed0b413-formError {
+    flex-basis: 100%;
+    margin-bottom: 0;
+  }
+
   .s-ed0b413-firmHead {
+    /* 기본 한 줄 유지: 초장 회사명(firmName)만 ellipsis로 유연하게 줄어든다 */
     flex-wrap: nowrap;
     min-width: 0;
+    gap: 4px;
   }
 
   .s-ed0b413-firmName {
@@ -48,6 +73,10 @@ export const StyleScope = styled.div`
     margin: 0;
     margin-right: auto;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 0 1 auto;
   }
 
   .s-ed0b413-firmLogo {
@@ -58,12 +87,14 @@ export const StyleScope = styled.div`
   .s-ed0b413-firmCheckbox {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-2);
     font-size: 14px;
     font-weight: 600;
     color: var(--ink);
-    min-height: 40px;
-    min-width: 40px;
+    min-height: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
   }
 
   .s-ed0b413-firmCheckbox input {
@@ -76,17 +107,6 @@ export const StyleScope = styled.div`
     cursor: not-allowed;
   }
 
-  .s-ed0b413-account {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    padding: 2px 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-  }
-
   .s-ed0b413-number {
     font-family: var(--mono);
     font-size: 13px;
@@ -95,38 +115,151 @@ export const StyleScope = styled.div`
     white-space: nowrap;
   }
 
-  .s-ed0b413-numberNone {
+  /* 계좌번호 자체가 마스킹↔평문 토글 버튼이다(별도 보기 버튼 없음) */
+  .s-ed0b413-numberButton {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0 2px;
+    min-height: 32px;
+    min-width: 32px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .s-ed0b413-numberButton:hover {
+    background: var(--surface-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .s-ed0b413-numberButton:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--link);
+  }
+
+  .s-ed0b413-numberButton:disabled {
+    cursor: progress;
+    color: var(--ink-muted);
+  }
+
+  .s-ed0b413-numberNoneText {
     font-size: 13px;
     color: var(--ink-muted);
     background: var(--surface-soft);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 1px var(--space-2);
-  }
-
-  .s-ed0b413-alias {
-    color: var(--ink-muted);
-    font-size: 12px;
+    padding: 0 var(--space-2);
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  .s-ed0b413-badgeLink {
+  /* 평소엔 "계좌관리" 토글 하나만 보이는 Compact 버튼 */
+  .s-ed0b413-actionToggle {
+    min-height: 32px;
+    padding: 0 12px;
     font-size: 12px;
     font-weight: 650;
-    padding: 2px var(--space-2);
-    border-radius: 999px;
-    background: var(--success-bg);
-    color: var(--success-ink);
-    border: 1px solid var(--success-border);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .s-ed0b413-badgeLink {
+  .s-ed0b413-actionToggle:hover {
+    background: var(--surface-soft);
+  }
+
+  .s-ed0b413-actionToggle[aria-expanded='true'] {
     background: var(--surface-sea);
+    border-color: var(--link);
     color: var(--link);
+  }
+
+  .s-ed0b413-actionToggle:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--link);
+  }
+
+  .s-ed0b413-actionToggle:disabled {
+    cursor: not-allowed;
+    color: var(--ink-muted);
     border-color: var(--border);
-    text-decoration: none;
+    background: var(--surface-soft);
+  }
+
+  /* 펼친 액션 패널(펼칠 때만 추가 높이 허용): 계좌별 한 행(대상 별칭/번호 + 수정·삭제) + 계좌추가 1행 */
+  .s-ed0b413-actionGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 2px 0;
+  }
+
+  .s-ed0b413-actionRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .s-ed0b413-actionTarget {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+
+  .s-ed0b413-actionGroup button {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .s-ed0b413-actionGroup button:hover {
+    background: var(--surface-soft);
+  }
+
+  .s-ed0b413-actionGroup button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--link);
+  }
+
+  .s-ed0b413-actionGroup button:disabled {
+    cursor: not-allowed;
+    color: var(--ink-muted);
+    border-color: var(--border);
+    background: var(--surface-soft);
   }
 
   .s-ed0b413-form {
@@ -134,6 +267,7 @@ export const StyleScope = styled.div`
     flex-direction: column;
     gap: var(--space-4);
     max-width: 420px;
+    min-width: 0;
   }
 
   .s-ed0b413-field {
@@ -186,73 +320,6 @@ export const StyleScope = styled.div`
     font-size: 15px;
     color: var(--ink-muted);
     margin: var(--space-4) 0 var(--space-2);
-  }
-
-  /* 등록 안 한 증권사는 촘촘한 격자로(휴대폰은 1열) */
-  .s-ed0b413-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--space-2);
-  }
-
-  .s-ed0b413-grid > .s-ed0b413-firm {
-    padding: var(--space-2) var(--space-3);
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .s-ed0b413-grid .s-ed0b413-firmName {
-    font-size: 15px;
-  }
-
-  /* 등록 폼이 열린 칸은 한 줄 전체를 쓴다 */
-  .s-ed0b413-wide {
-    grid-column: 1 / -1;
-  }
-
-  .s-ed0b413-accounts {
-    min-width: 0;
-    gap: 2px;
-  }
-
-  .s-ed0b413-accountMain,
-  .s-ed0b413-accountActions {
-    flex-wrap: nowrap;
-    gap: 6px;
-    min-width: 0;
-  }
-
-  .s-ed0b413-accountActions > button,
-  .s-ed0b413-firmHead > button {
-    min-height: 40px;
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .s-ed0b413-form,
-  .s-ed0b413-wide > .s-ed0b413-form,
-  .s-ed0b413-wide > .s-ed0b413-formError {
-    grid-column: 1 / -1;
-  }
-
-  .s-ed0b413-firm > .s-ed0b413-formError {
-    grid-column: 1 / -1;
-  }
-
-  @media (max-width: 760px) {
-    .s-ed0b413-firms:not(.s-ed0b413-grid) > .s-ed0b413-firm {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 4px;
-    }
-
-    .s-ed0b413-account {
-      flex-wrap: wrap;
-    }
-
-    .s-ed0b413-accountActions {
-      margin-left: auto;
-    }
   }
 `
 

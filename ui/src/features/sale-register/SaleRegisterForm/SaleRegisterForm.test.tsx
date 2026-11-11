@@ -87,29 +87,6 @@ const INVESTORS = [
   },
 ]
 
-const SUBSCRIPTION_HISTORY = {
-  content: [
-    {
-      id: 1,
-      subscribedAt: '2026-09-01T09:00:00Z',
-      ipoId: 10,
-      ipoName: '카카오뱅크',
-      ipoFixedPrice: 39000,
-      subscriptionQuantity: 100,
-      subscriptionStatus: 'ACTIVE',
-      allocation: null,
-      sales: [],
-      remainingQuantity: 50,
-      investorName: null,
-      securitiesFirmName: null,
-    },
-  ],
-  totalElements: 1,
-  totalPages: 1,
-  number: 0,
-  size: 10,
-}
-
 const IPO = {
   id: 10,
   companyName: '카카오뱅크',
@@ -126,6 +103,83 @@ const IPO = {
   status: 'ACTIVE',
   createdAt: '2026-09-01T00:00:00Z',
   updatedAt: '2026-09-01T00:00:00Z',
+}
+
+const SECURITIES_ACCOUNTS = [
+  {
+    id: 1,
+    investorId: 1,
+    securitiesFirmId: 1,
+    securitiesFirmName: '테스트증권',
+    accountNumber: null,
+    accountName: '개인 MTS 계좌',
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  },
+]
+
+// useIpoInsight 응답은 스키마 전체를 포함해야 Zod 파싱을 통과한다.
+const insightWith = (
+  underwriters: Array<{ name: string; role: string | null; shares: number }>,
+) => ({
+  syncedAt: null,
+  sourceReportName: null,
+  sourceUrl: null,
+  ceoName: null,
+  establishedOn: null,
+  address: null,
+  parValue: null,
+  capitalStock: null,
+  largestShareholderName: null,
+  largestShareholderRatio: null,
+  institutionalCompetitionRate: null,
+  lockUpCommitmentRatio: null,
+  financials: [],
+  floatSchedule: [],
+  underwriters,
+})
+
+const SUBSCRIPTION_HISTORY_ITEM = {
+  id: 1,
+  subscribedAt: '2026-09-01T09:00:00Z',
+  ipoId: 10,
+  ipoName: '카카오뱅크',
+  ipoFixedPrice: 10000,
+  subscriptionQuantity: 100,
+  subscriptionStatus: 'ACTIVE',
+  allocation: null,
+  sales: [],
+  remainingQuantity: null,
+  investorName: null,
+  securitiesFirmName: null,
+  securitiesAccountId: 1,
+  securitiesAccountName: '개인 MTS 계좌',
+}
+
+const SUBSCRIPTION_HISTORY = {
+  content: [SUBSCRIPTION_HISTORY_ITEM],
+  totalElements: 1,
+  totalPages: 1,
+  number: 0,
+  size: 10,
+}
+
+const EMPTY_HISTORY_PAGE = {
+  content: [],
+  totalElements: 0,
+  totalPages: 0,
+  number: 0,
+  size: 1,
+}
+
+const CONNECTED_HISTORY_PAGE = {
+  content: [{ ...SUBSCRIPTION_HISTORY_ITEM, allocation: null, remainingQuantity: 30 }],
+  totalElements: 1,
+  totalPages: 1,
+  number: 0,
+  size: 1,
 }
 
 const ALLOCATION_DETAIL = {
@@ -146,18 +200,56 @@ const ALLOCATION_DETAIL = {
   remainingQuantity: 30,
   investorName: null,
   securitiesFirmName: null,
+  securitiesAccountId: 1,
+  securitiesAccountName: '개인 MTS 계좌',
 }
 
-function defaultMock(overrides: { ipo?: unknown; detail?: unknown } = {}) {
+function defaultMock(
+  overrides: {
+    ipo?: unknown
+    detail?: unknown
+    accounts?: unknown
+    insight?: unknown
+    history?: unknown
+    lookup?: unknown
+    ipoPending?: boolean
+    detailPending?: boolean
+    lookupPending?: boolean
+    lookupError?: unknown
+    accountsError?: unknown
+    insightError?: unknown
+  } = {},
+) {
   vi.mocked(apiFetch).mockImplementation(async (path: unknown, options?: RequestInit) => {
     const p = String(path)
     const isGet = !options || options.method === 'GET' || options.method === undefined
     if (p === '/investors' && isGet) return INVESTORS
     if (p === '/ipos' && isGet) return [IPO]
-    if (p === '/ipos/10' && isGet) return overrides.ipo ?? IPO
-    if (p === '/ipos/10/insight' && isGet) return { underwriters: [] }
-    if (p === '/investment-history/1' && isGet) return overrides.detail ?? ALLOCATION_DETAIL
-    if (p.startsWith('/investment-history') && isGet) return SUBSCRIPTION_HISTORY
+    if (p === '/ipos/10' && isGet) {
+      if (overrides.ipoPending) return new Promise(() => {})
+      return overrides.ipo ?? IPO
+    }
+    if (p === '/ipos/10/insight' && isGet) {
+      if (overrides.insightError) throw overrides.insightError
+      return overrides.insight ?? insightWith([])
+    }
+    if (p.startsWith('/securities-accounts')) {
+      if (overrides.accountsError) throw overrides.accountsError
+      return overrides.accounts ?? SECURITIES_ACCOUNTS
+    }
+    if (p === '/investment-history/1' && isGet) {
+      if (overrides.detailPending) return new Promise(() => {})
+      return overrides.detail ?? ALLOCATION_DETAIL
+    }
+    if (/^\/investment-history\/\d+/.test(p) && isGet) throw new Error('not found')
+    if (p.startsWith('/investment-history') && isGet) {
+      if (p.includes('securitiesAccountId=')) {
+        if (overrides.lookupError) throw overrides.lookupError
+        if (overrides.lookupPending) return new Promise(() => {})
+        return overrides.lookup ?? EMPTY_HISTORY_PAGE
+      }
+      return overrides.history ?? SUBSCRIPTION_HISTORY
+    }
     throw new Error(`unexpected path: ${String(path)}`)
   })
 }
@@ -175,16 +267,15 @@ function renderForm(url = '/sales/register') {
   )
 }
 
-/** 청약 → 배정 (투자자는 현재 투자자)을 고르고 기본값(공모가·상장일·수량)이 채워질 때까지 기다린다. */
+/** 청약 프리셋 링크로 들어와 배정 기준 기본값(공모가·상장일·수량)이 채워질 때까지 기다린다. */
 async function setupForm() {
-  renderForm()
+  renderForm('/sales/register?subscriptionId=1')
   await waitFor(() => {
     expect(screen.getByText('홍길동')).toBeInTheDocument()
   })
   await waitFor(() => {
-    expect(screen.getByLabelText('청약')).not.toBeDisabled()
+    expect(screen.getByLabelText('공모주')).toHaveValue('카카오뱅크')
   })
-  await fill(screen.getByLabelText('청약'), '1')
   await waitFor(() => {
     expect(screen.getByText('남은 수량')).toBeInTheDocument()
   })
@@ -206,18 +297,121 @@ describe('SaleRegisterForm', () => {
     defaultMock()
   })
 
-  it('투자자 목록을 로드하고 드롭다운에 표시함', async () => {
-    renderForm()
+  it('투자자 목록을 로드하고 현재 투자자 이름을 표시함', async () => {
+    renderForm('/sales/register?subscriptionId=1')
     await waitFor(() => {
       expect(screen.getByText('홍길동')).toBeInTheDocument()
     })
   })
 
-  it('공모주 상세에서 매도 등록으로 들어오면 해당 공모주 이름을 미리 표시한다', async () => {
-    renderForm('/sales/register?ipoId=10')
+  it('문맥 없는 /sales/register는 공모주 청약 목록으로 가는 안내만 보여 주고 폼을 렌더링하지 않는다', async () => {
+    renderForm('/sales/register')
+    const link = await screen.findByRole('link', { name: '공모주 청약 목록으로 이동' })
+    expect(link).toHaveAttribute('href', '/subscriptions')
+    expect(screen.queryByLabelText('매도수량')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
+  })
 
-    expect(await screen.findByLabelText('공모주')).toHaveValue('카카오뱅크')
-    expect(screen.getByLabelText('청약')).toHaveValue('')
+  it('공모주별 링크(ipoId)로 들어오면 공모주는 고정 표시되고 청약 선택 칸은 없다', async () => {
+    defaultMock({ insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]) })
+    renderForm('/sales/register?ipoId=10')
+    const ipoInput = await screen.findByLabelText('공모주')
+    await waitFor(() => expect(ipoInput).toHaveValue('카카오뱅크'))
+    expect(screen.queryByLabelText('청약')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: '청약' })).not.toBeInTheDocument()
+  })
+
+  it('잘못된 ipoId(abc)는 오류 안내만 보여 주고 폼을 렌더링하지 않는다', async () => {
+    renderForm('/sales/register?ipoId=abc')
+    expect(await screen.findByRole('alert')).toHaveTextContent('공모주를 찾을 수 없습니다.')
+    expect(screen.queryByLabelText('매도수량')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
+  })
+
+  it('잘못된 subscriptionId(abc)는 오류 안내만 보여 주고 폼을 렌더링하지 않는다', async () => {
+    renderForm('/sales/register?subscriptionId=abc')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '이 청약을 찾을 수 없거나 내 계정의 청약이 아닙니다.',
+    )
+    expect(screen.queryByLabelText('매도수량')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
+  })
+
+  it('공모주별 링크에서 주관사 계좌가 1개면 기본 선택되고, 연결이 없으면 배정수량을 요구한다', async () => {
+    defaultMock({ insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]) })
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByLabelText('증권계좌 *')).toHaveValue('1')
+    })
+    // 연결이 없다는 조회가 끝나면 배정수량 칸이 나타난다
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^배정수량/)).toBeInTheDocument()
+    })
+    // 번호가 없는 계좌도 정상적으로 선택된다
+    expect(screen.getByRole('option', { name: /개인 MTS 계좌/ })).toBeInTheDocument()
+  })
+
+  it('공모주별 링크에서 기존 연결(청약+배정)이 있으면 배정수량 없이 그 배정에 연결한다', async () => {
+    defaultMock({
+      insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]),
+      lookup: CONNECTED_HISTORY_PAGE,
+    })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByText('남은 수량')).toBeInTheDocument()
+    })
+    expect(screen.queryByLabelText(/^배정수량/)).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('10,000')
+    })
+    await userEvent.click(screen.getByRole('button', { name: '등록' }))
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const payload = spy.mock.calls[0][0]
+    expect(payload).toMatchObject({ subscriptionId: 1, ipoId: 10, investorId: 1 })
+    expect(payload.allocatedQuantity).toBeUndefined()
+    expect(payload.allocationId).toBeUndefined()
+  })
+
+  it('공모주별 링크에서 청약만 있고 배정이 없으면 배정수량을 입력받아 등록 시 배정을 함께 만든다', async () => {
+    defaultMock({
+      insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]),
+      lookup: { ...CONNECTED_HISTORY_PAGE, content: [SUBSCRIPTION_HISTORY_ITEM] },
+      detail: { ...ALLOCATION_DETAIL, allocation: null, remainingQuantity: null },
+    })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^배정수량/)).toBeInTheDocument()
+    })
+    await fill(screen.getByLabelText(/^배정수량/), '12')
+    await fill(screen.getByLabelText('매도수량'), '12')
+    await fill(screen.getByLabelText('매도단가'), '15000')
+    await userEvent.click(screen.getByRole('button', { name: '등록' }))
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const payload = spy.mock.calls[0][0]
+    expect(payload).toMatchObject({ subscriptionId: 1, allocatedQuantity: 12 })
+  })
+
+  it('링크의 공모주와 청약이 서로 다르면 등록하지 않고 안내만 보여 준다', async () => {
+    defaultMock({ detail: { ...ALLOCATION_DETAIL, ipoId: 20 } })
+    renderForm('/sales/register?ipoId=10&subscriptionId=1')
+    expect(
+      await screen.findByText(
+        '이 링크의 공모주와 청약 정보가 서로 다릅니다. 공모주 청약 목록에서 다시 열어 주세요.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('매도수량')).not.toBeInTheDocument()
+  })
+
+  it('남의 청약 링크면 등록하지 않고 안내만 보여 준다', async () => {
+    renderForm('/sales/register?subscriptionId=999')
+    expect(
+      await screen.findByText('이 청약을 찾을 수 없거나 내 계정의 청약이 아닙니다.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('매도수량')).not.toBeInTheDocument()
   })
 
   it('참고 표시가 렌더링됨 (AC-018)', async () => {
@@ -287,23 +481,18 @@ describe('SaleRegisterForm', () => {
           allocation: { ...ALLOCATION_DETAIL.allocation, allocatedAmount: 475000 },
         },
       })
-      renderForm()
+      renderForm('/sales/register?subscriptionId=1')
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-      await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
-      await fill(screen.getByLabelText('청약'), '1')
-      // 배정 평균 단가(475000/50=9500)가 기본값으로 들어간다
       await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('9,500'))
     })
   })
 
   describe('입력 편의', () => {
-    it('청약 선택지는 공모주 이름과 한국식 날짜만 보이고, 배정 선택 칸은 없다', async () => {
-      renderForm()
-      expect(
-        await screen.findByRole('option', { name: '카카오뱅크 · 2026. 9. 1.' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByLabelText('배정')).not.toBeInTheDocument()
-      expect(screen.queryByText(/배정 #/)).not.toBeInTheDocument()
+    it('공모주는 고정 표시되고 청약 선택 칸은 없다', async () => {
+      renderForm('/sales/register?subscriptionId=1')
+      const ipoInput = await screen.findByLabelText('공모주')
+      await waitFor(() => expect(ipoInput).toHaveValue('카카오뱅크'))
+      expect(screen.queryByLabelText('청약')).not.toBeInTheDocument()
     })
 
     it('금액은 천 단위 쉼표로 보이고 저장 값은 숫자다', async () => {
@@ -315,7 +504,11 @@ describe('SaleRegisterForm', () => {
       expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000')
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => expect(spy).toHaveBeenCalled())
-      expect(spy.mock.calls[0][0]).toMatchObject({ price: 15000, amount: 450000 })
+      expect(spy.mock.calls[0][0]).toMatchObject({
+        price: 15000,
+        amount: 450000,
+        subscriptionId: 1,
+      })
     })
 
     it('실현손익은 음수도 입력할 수 있다', async () => {
@@ -330,23 +523,34 @@ describe('SaleRegisterForm', () => {
       expect(screen.getByText(/공모주수수료는 빼지/).closest('details')).not.toHaveAttribute('open')
     })
 
-    it('?subscriptionId로 들어오면 그 청약이 미리 선택된다', async () => {
+    it('배정이 없으면 등록 시 배정수량과 공모주가 함께 전송된다', async () => {
+      defaultMock({
+        detail: {
+          ...ALLOCATION_DETAIL,
+          allocation: null,
+          remainingQuantity: null,
+        },
+      })
+      const spy = vi.fn().mockResolvedValue({ id: 1 })
+      mutationFnMock.mockImplementation(spy)
       renderForm('/sales/register?subscriptionId=1')
+      await waitFor(() => expect(screen.getByLabelText(/^배정수량/)).toBeInTheDocument())
       await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('10,000'))
-      expect(screen.getByLabelText('청약')).toHaveValue('1')
+      await fill(screen.getByLabelText(/^배정수량/), '25')
+      await fill(screen.getByLabelText('매도수량'), '25')
+      await userEvent.click(screen.getByRole('button', { name: '등록' }))
+      await waitFor(() => expect(spy).toHaveBeenCalled())
+      expect(spy.mock.calls[0][0]).toMatchObject({
+        subscriptionId: 1,
+        allocatedQuantity: 25,
+        ipoId: 10,
+        investorId: 1,
+      })
     })
 
-    it('현재 투자자의 청약이 아니면 미리 선택을 무시한다', async () => {
-      renderForm('/sales/register?subscriptionId=999')
-      await screen.findByRole('option', { name: /카카오뱅크/ })
-      expect(screen.getByLabelText('청약')).toHaveValue('')
-    })
-
-    it('배정이 아직 없는 청약이면 배정 등록으로 안내한다', async () => {
-      defaultMock({ detail: { ...ALLOCATION_DETAIL, allocation: null, remainingQuantity: null } })
-      renderForm('/sales/register?subscriptionId=1')
-      const link = await screen.findByRole('link', { name: '배정 등록하기' })
-      expect(link).toHaveAttribute('href', '/allocations/register?subscriptionId=1')
+    it('남은 수량이 있는 청약이면 배정수량 입력을 요구하지 않는다', async () => {
+      await setupForm()
+      expect(screen.queryByLabelText(/^배정수량/)).not.toBeInTheDocument()
     })
   })
 
@@ -422,7 +626,9 @@ describe('SaleRegisterForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /등록/i }))
       await waitFor(() => expect(spy).toHaveBeenCalled())
       expect(spy.mock.calls[0][0]).toEqual({
-        allocationId: 1,
+        subscriptionId: 1,
+        ipoId: 10,
+        investorId: 1,
         quantity: 30,
         price: 15000,
         amount: 450000,
@@ -490,6 +696,18 @@ describe('SaleRegisterForm', () => {
       })
     })
 
+    it('배정이 필요한데 배정수량을 비우면 배정수량 오류가 보인다', async () => {
+      defaultMock({ detail: { ...ALLOCATION_DETAIL, allocation: null, remainingQuantity: null } })
+      renderForm('/sales/register?subscriptionId=1')
+      await waitFor(() => expect(screen.getByLabelText(/^배정수량/)).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('10,000'))
+      await fill(screen.getByLabelText('매도수량'), '10')
+      await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+      await waitFor(() => {
+        expect(screen.getByText('배정수량을 입력해 주세요.')).toBeInTheDocument()
+      })
+    })
+
     it('공모가·배정총액 모두 없으면 취득금액 계산 불가 → 실현손익 입력 시 세금 필수 안내', async () => {
       defaultMock({
         ipo: { ...IPO, fixedPrice: null },
@@ -499,10 +717,8 @@ describe('SaleRegisterForm', () => {
           allocation: { ...ALLOCATION_DETAIL.allocation, allocatedAmount: null },
         },
       })
-      renderForm()
+      renderForm('/sales/register?subscriptionId=1')
       await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-      await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
-      await fill(screen.getByLabelText('청약'), '1')
       await waitFor(() => expect(screen.getByLabelText('매도수량')).toHaveValue(30))
       // 매도단가 기본값이 비어 있음
       expect(value('매도단가')).toBe('')
@@ -574,9 +790,9 @@ describe('SaleRegisterForm', () => {
     })
   })
 
-  it('캡처를 올리면 청약을 찾아 값을 채우고 "캡처에서 채움"을 표시한다(저장은 하지 않는다)', async () => {
+  it('캡처를 올리면 매칭되는 연결에 값을 채우고 "캡처에서 채움"을 표시한다(저장은 하지 않는다)', async () => {
     defaultMock()
-    renderForm()
+    renderForm('/sales/register?subscriptionId=1')
     const input = await screen.findByLabelText(/캡처 \(여러 장 가능\)/)
     await waitFor(() => expect(input).toBeEnabled())
     await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }))
@@ -586,7 +802,6 @@ describe('SaleRegisterForm', () => {
     expect(screen.getByLabelText('매도일')).toHaveValue('2026-10-25')
     expect(screen.getByLabelText(/세금 및 기타 수수료/)).toHaveValue('25')
     expect(screen.getByLabelText('실현손익')).toHaveValue('59,975')
-    expect(screen.getByLabelText('청약')).toHaveValue('1')
     expect(screen.getAllByText('캡처에서 채움').length).toBeGreaterThanOrEqual(4)
     expect(mockNavigate).not.toHaveBeenCalled()
   })
@@ -605,10 +820,7 @@ describe('상장일 시초가로 매도단가 기본값(AC-2105~2108)', () => {
       ipo: { ...IPO, listingOpenPrice: 15000 },
       detail: ALLOCATION_DETAIL,
     })
-    renderForm()
-    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
-    await fill(screen.getByLabelText('청약'), '1')
+    renderForm('/sales/register?subscriptionId=1')
     await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
     expect(value('매도단가')).toBe('15000')
     expect(
@@ -639,10 +851,7 @@ describe('상장일 시초가로 매도단가 기본값(AC-2105~2108)', () => {
     defaultMock({
       ipo: { ...IPO, listingOpenPrice: 15000 },
     })
-    renderForm()
-    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
-    await fill(screen.getByLabelText('청약'), '1')
+    renderForm('/sales/register?subscriptionId=1')
     await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
     expect(value('매도단가')).toBe('15000')
     expect(value('실현손익')).toBe('150000')
@@ -653,13 +862,149 @@ describe('상장일 시초가로 매도단가 기본값(AC-2105~2108)', () => {
     defaultMock({
       ipo: { ...IPO, listingOpenPrice: 15000 },
     })
-    renderForm()
-    await waitFor(() => expect(screen.getByText('홍길동')).toBeInTheDocument())
-    await waitFor(() => expect(screen.getByLabelText('청약')).not.toBeDisabled())
-    await fill(screen.getByLabelText('청약'), '1')
+    renderForm('/sales/register?subscriptionId=1')
     await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('15,000'))
     // 사용자가 이미 고친 값(12000)을 넣고 다시 렌더링하지 않으므로 덮어쓰지 않아야 함
     await fill(screen.getByLabelText('매도단가'), '12000')
     await waitFor(() => expect(screen.getByLabelText('매도단가')).toHaveDisplayValue('12,000'))
+  })
+})
+
+describe('필수 조회 상태와 등록 차단', () => {
+  beforeEach(() => {
+    localStorage.setItem('currentInvestorId', '1')
+    mockNavigate.mockClear()
+    mutationFnMock.mockReset()
+    mutationFnMock.mockResolvedValue({})
+    defaultMock()
+  })
+
+  const SECOND_ACCOUNT = {
+    id: 2,
+    investorId: 1,
+    securitiesFirmId: 1,
+    securitiesFirmName: '테스트증권',
+    accountNumber: null,
+    accountName: '둘째계좌',
+    status: 'ACTIVE',
+    deletedAt: null,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  }
+
+  it('청약·배정 연결 확인에 실패하면 등록 버튼을 비활성화하고 안내한다', async () => {
+    defaultMock({
+      insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]),
+      lookupError: new ApiError(500, 'Request failed: 500'),
+    })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+    await userEvent.click(screen.getByRole('button', { name: '등록' }))
+    expect(spy).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('청약·배정 연결을 확인하지 못했습니다.')
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+  })
+
+  it('청약·배정 연결을 확인하는 중에는 등록할 수 없다', async () => {
+    defaultMock({
+      insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]),
+      lookupPending: true,
+    })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+    expect(await screen.findByText('청약·배정 연결을 확인하는 중입니다…')).toBeInTheDocument()
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('연결 상세를 확인하는 중에는 등록할 수 없다', async () => {
+    defaultMock({ detailPending: true })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?subscriptionId=1')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+    expect(
+      await screen.findByText('연결된 청약·배정 정보를 확인하는 중입니다…'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '등록' }))
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('공모주 정보를 확인하는 중에는 등록할 수 없다', async () => {
+    defaultMock({ ipoPending: true })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+    expect(await screen.findByText('공모주 정보를 확인하는 중입니다…')).toBeInTheDocument()
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('공모주 주관사 정보 확인에 실패하면 등록할 수 없다', async () => {
+    defaultMock({ insightError: new ApiError(500, 'insight failed') })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('공모주 주관사 정보를 확인하지 못했습니다.')
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('문맥이 확정되기 전에는 캡처를 적용하지 않고 안내만 표시한다', async () => {
+    defaultMock({ detailPending: true })
+    renderForm('/sales/register?subscriptionId=1')
+    const input = await screen.findByLabelText(/캡처 \(여러 장 가능\)/)
+    await waitFor(() => expect(input).toBeEnabled())
+    await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }))
+    expect(
+      await screen.findByText('공모주 정보를 확인하는 중입니다. 잠시 후 다시 시도해 주세요.'),
+    ).toBeInTheDocument()
+    expect((screen.getByLabelText('매도수량') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('매도단가') as HTMLInputElement).value).toBe('')
+    expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+  })
+
+  it('같은 종목이라도 다른 계좌의 청약은 자동으로 바꾸지 않고 현재 계좌 기준으로 채운다', async () => {
+    defaultMock({
+      insight: insightWith([{ name: '테스트증권', role: '주관', shares: 1 }]),
+      accounts: [SECURITIES_ACCOUNTS[0], SECOND_ACCOUNT],
+      lookup: EMPTY_HISTORY_PAGE,
+    })
+    const spy = vi.fn().mockResolvedValue({ id: 1 })
+    mutationFnMock.mockImplementation(spy)
+    renderForm('/sales/register?ipoId=10')
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: /둘째계좌/ })).toBeInTheDocument(),
+    )
+    await fill(screen.getByLabelText('증권계좌 *'), '2')
+    await waitFor(() => expect(screen.getByLabelText('증권계좌 *')).toHaveValue('2'))
+    // 캡처 기록은 계좌 1의 청약에 매칭된다(종목코드 동일)
+    const input = await screen.findByLabelText(/캡처 \(여러 장 가능\)/)
+    await waitFor(() => expect(input).toBeEnabled())
+    await userEvent.upload(input, new File(['x'], 'a.png', { type: 'image/png' }))
+    await waitFor(() => expect(screen.getByLabelText('매도수량')).toHaveValue(30))
+    expect(screen.getByText(/다른 계좌의 청약에 대응합니다/)).toBeInTheDocument()
+    // 현재 계좌(2) 기준으로 남기고, 새 연결을 만든다
+    await fill(screen.getByLabelText(/^배정수량/), '10')
+    await userEvent.click(screen.getByRole('button', { name: '등록' }))
+    await waitFor(() => expect(spy).toHaveBeenCalled())
+    const payload = spy.mock.calls[0][0]
+    expect(payload.securitiesAccountId).toBe(2)
+    expect(payload.allocatedQuantity).toBe(10)
+    expect(payload).not.toHaveProperty('subscriptionId')
+    expect(payload).not.toHaveProperty('allocationId')
   })
 })

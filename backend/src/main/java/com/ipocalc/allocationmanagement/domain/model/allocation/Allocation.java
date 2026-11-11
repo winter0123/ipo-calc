@@ -30,7 +30,6 @@ public class Allocation {
       Long subscriptionId,
       Long quantity,
       LocalDateTime allocatedAt,
-      String method,
       Long allocatedAmount,
       String note,
       LocalDateTime now) {
@@ -42,9 +41,6 @@ public class Allocation {
     }
     if (allocatedAt != null) {
       this.allocatedAt = allocatedAt;
-    }
-    if (method != null) {
-      this.allocationMethod = method;
     }
     if (allocatedAmount != null) {
       this.allocatedAmount = allocatedAmount;
@@ -82,11 +78,6 @@ public class Allocation {
   @Column(name = "allocated_at", nullable = false)
   @Comment("배정일")
   private LocalDateTime allocatedAt;
-
-  /** 배정 방식. 예: 비례배정 / 추첨배정(균등) / 선착순. 선택. */
-  @Column(name = "allocation_method")
-  @Comment("배정 방식(비례/추첨/선착순 등)")
-  private String allocationMethod;
 
   /** 배정 총금액(원) = 확정 공모가 × 배정수량. 취득금액·총 투자금 계산 기준. 선택. */
   @Column(name = "allocated_amount")

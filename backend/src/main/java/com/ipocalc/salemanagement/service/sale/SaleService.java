@@ -20,6 +20,7 @@ import com.ipocalc.salemanagement.domain.model.sale.Sale;
 import com.ipocalc.salemanagement.repository.sale.SaleRepository;
 import com.ipocalc.subscriptionmanagement.domain.model.subscription.Subscription;
 import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.ipocalc.subscriptionmanagement.service.ownership.SubscriptionOwnership;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,6 +41,7 @@ public class SaleService {
   private final AllocationService allocationService;
   private final SubscriptionRepository subscriptionRepository;
   private final AllocationOwnership allocationOwnership;
+  private final SubscriptionOwnership subscriptionOwnership;
   private final SecurityUtils securityUtils;
   private final Clock clock;
 
@@ -50,39 +52,9 @@ public class SaleService {
 
     Long allocationId = request.getAllocationId();
     if (allocationId == null) {
-      Long subscriptionId = request.getSubscriptionId();
-      if (subscriptionId == null) {
-        subscriptionId =
-            subscriptionRepository
-                .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
-                    request.getInvestorId(),
-                    request.getSecuritiesAccountId(),
-                    request.getIpoId(),
-                    RecordStatus.ACTIVE)
-                .map(Subscription::getId)
-                .orElse(null);
-      }
-      Allocation existingAllocation =
-          subscriptionId == null
-              ? null
-              : allocationRepository
-                  .findBySubscriptionIdAndStatusAndDeletedAtIsNull(
-                      subscriptionId, RecordStatus.ACTIVE)
-                  .orElse(null);
-      if (existingAllocation != null) {
-        allocationId = existingAllocation.getId();
-      } else {
-        AllocationRegisterRequest allocationRequest =
-            AllocationRegisterRequest.builder()
-                .subscriptionId(subscriptionId)
-                .ipoId(request.getIpoId())
-                .investorId(request.getInvestorId())
-                .securitiesAccountId(request.getSecuritiesAccountId())
-                .allocatedQuantity(request.getAllocatedQuantity())
-                .note("매도 등록에서 자동 생성된 배정 연결 기록")
-                .build();
-        allocationId = allocationService.register(allocationRequest).getId();
-      }
+      allocationId = resolveAllocationId(request);
+    } else {
+      validateExplicitAllocationMatch(request, allocationId);
     }
 
     // 동시 매도가 한도를 넘지 않도록 배정 행을 먼저 잠근다(이후 조회는 잠금 뒤의 최신 값)
@@ -200,6 +172,107 @@ public class SaleService {
     return SaleResponse.from(saved);
   }
 
+  /**
+   * allocationId가 없을 때 청약·배정 연결을 찾아 배정 ID를 반환한다. 기존 배정이 있으면 재사용하고, 없을 때만 새로 만든다. 신규 생성이 필요한 경우에만
+   * allocatedQuantity를 요구한다.
+   */
+  private Long resolveAllocationId(SaleRegisterRequest request) {
+    Subscription subscription = null;
+    Long subscriptionId = request.getSubscriptionId();
+    if (subscriptionId != null) {
+      // 명시된 청약은 소유권을 먼저 확인하고, 함께 보낸 공모주·투자자·계좌가 청약과 같은지 확인한다
+      subscription = subscriptionOwnership.requireOwnedActive(subscriptionId, OWNERSHIP_ERRORS);
+      validateIdsMatch(request, subscription);
+    } else {
+      // 공모주·투자자·계좌 조합으로 기존 청약을 찾는다(없으면 새 청약·배정을 만든다)
+      subscription =
+          subscriptionRepository
+              .findByInvestorIdAndSecuritiesAccountIdAndIpoIdAndStatusAndDeletedAtIsNull(
+                  request.getInvestorId(),
+                  request.getSecuritiesAccountId(),
+                  request.getIpoId(),
+                  RecordStatus.ACTIVE)
+              // 조회 자체는 계정을 가리지 않으므로 소유권을 반드시 확인한다
+              .map(
+                  found -> {
+                    subscriptionOwnership.requireOwnedIncludingDeleted(
+                        found.getId(), OWNERSHIP_ERRORS);
+                    return found;
+                  })
+              .orElse(null);
+    }
+
+    if (subscription != null) {
+      Allocation existingAllocation =
+          allocationRepository
+              .findBySubscriptionIdAndStatusAndDeletedAtIsNull(
+                  subscription.getId(), RecordStatus.ACTIVE)
+              .orElse(null);
+      if (existingAllocation != null) {
+        return existingAllocation.getId();
+      }
+      if (request.getAllocatedQuantity() == null) {
+        throw new SaleValidationException("이 청약에는 아직 배정이 없습니다. 배정수량(allocatedQuantity)을 입력해 주세요.");
+      }
+      return allocationService
+          .register(
+              AllocationRegisterRequest.builder()
+                  .subscriptionId(subscription.getId())
+                  .allocatedQuantity(request.getAllocatedQuantity())
+                  .note("매도 등록에서 자동 생성된 배정 연결 기록")
+                  .build())
+          .getId();
+    }
+
+    // 기존 연결이 전혀 없으면 신규 배정 생성이 필요하므로 배정수량을 요구한다
+    if (request.getAllocatedQuantity() == null) {
+      throw new SaleValidationException("기존 청약·배정 연결이 없어 배정수량(allocatedQuantity)이 필요합니다.");
+    }
+    AllocationRegisterRequest allocationRequest =
+        AllocationRegisterRequest.builder()
+            .subscriptionId(null)
+            .ipoId(request.getIpoId())
+            .investorId(request.getInvestorId())
+            .securitiesAccountId(request.getSecuritiesAccountId())
+            .allocatedQuantity(request.getAllocatedQuantity())
+            .note("매도 등록에서 자동 생성된 배정 연결 기록")
+            .build();
+    return allocationService.register(allocationRequest).getId();
+  }
+
+  /**
+   * 명시된 allocationId의 소유권을 먼저 확인한 뒤, 함께 보낸 청약·공모주·투자자·계좌와 일치하는지 확인한다. 소유권 검증이 먼저여야 남의 배정 존재 여부가
+   * 400으로 새어 나가지 않는다.
+   */
+  private void validateExplicitAllocationMatch(SaleRegisterRequest request, Long allocationId) {
+    // (1) 존재하지 않으면 404, 타 계정 소유면 403 — 기존 등록 경로와 같은 검증을 먼저 수행한다
+    Allocation allocation = allocationOwnership.requireOwnedActive(allocationId, OWNERSHIP_ERRORS);
+    if (request.getSubscriptionId() != null
+        && !request.getSubscriptionId().equals(allocation.getSubscriptionId())) {
+      throw new SaleValidationException("입력한 청약(subscriptionId)이 배정의 청약과 다릅니다.");
+    }
+    // 청약이 이미 삭제된 경우에도 소유 계정은 유지되므로, 삭제 여부와 관계없이 소유권을 확인해 값을 읽는다
+    Subscription subscription =
+        subscriptionOwnership.requireOwnedIncludingDeleted(
+            allocation.getSubscriptionId(), OWNERSHIP_ERRORS);
+    validateIdsMatch(request, subscription);
+  }
+
+  /** 공모주·투자자·증권계좌 ID가 주어진 경우에만 청약의 값과 같은지 확인한다. */
+  private void validateIdsMatch(SaleRegisterRequest request, Subscription subscription) {
+    if (request.getIpoId() != null && !request.getIpoId().equals(subscription.getIpoId())) {
+      throw new SaleValidationException("입력한 공모주(ipoId)가 청약의 공모주와 다릅니다.");
+    }
+    if (request.getInvestorId() != null
+        && !request.getInvestorId().equals(subscription.getInvestorId())) {
+      throw new SaleValidationException("입력한 투자자(investorId)가 청약의 투자자와 다릅니다.");
+    }
+    if (request.getSecuritiesAccountId() != null
+        && !request.getSecuritiesAccountId().equals(subscription.getSecuritiesAccountId())) {
+      throw new SaleValidationException("입력한 증권계좌(securitiesAccountId)가 청약의 계좌와 다릅니다.");
+    }
+  }
+
   // 합산·곱셈 오버플로를 막는 상한(하한 검증은 호출부에서 한다)
   private void validateUpperBounds(
       Long quantity, Long price, Long amount, Long fee, Long tax, Long otherCost) {
@@ -242,24 +315,16 @@ public class SaleService {
     if (request == null) {
       throw new SaleValidationException("매도 등록 정보는 필수입니다.");
     }
-    // allocationId가 있으면 그대로 진행
-    // allocationId가 없고 subscriptionId가 있으면 기존 로직대로 진행
-    // 둘 다 없으면 ipoId, investorId, securitiesAccountId, allocatedQuantity가 필요
+    // 식별자(allocationId/subscriptionId)가 하나도 없으면 청약·배정을 찾을 수 있게 IPO·투자자·계좌가 필요하다.
+    // allocatedQuantity는 기존 배정이 없어 새로 만들어야 하는 경우에만 요구한다(resolveAllocationId).
     if (request.getAllocationId() == null && request.getSubscriptionId() == null) {
       if (request.getIpoId() == null
           || request.getInvestorId() == null
-          || request.getSecuritiesAccountId() == null
-          || request.getAllocatedQuantity() == null) {
+          || request.getSecuritiesAccountId() == null) {
         throw new SaleValidationException(
             "allocationId 또는 subscriptionId가 없을 때 "
-                + "ipoId, investorId, securitiesAccountId, allocatedQuantity가 필요합니다.");
+                + "ipoId, investorId, securitiesAccountId가 필요합니다.");
       }
-    } else if (request.getAllocationId() == null
-        && (request.getIpoId() == null
-            || request.getInvestorId() == null
-            || request.getSecuritiesAccountId() == null)) {
-      throw new SaleValidationException(
-          "allocationId가 없을 때 ipoId, investorId, securitiesAccountId가 필요합니다.");
     }
     if (request.getQuantity() == null) {
       throw new SaleValidationException("quantity는 필수입니다.");

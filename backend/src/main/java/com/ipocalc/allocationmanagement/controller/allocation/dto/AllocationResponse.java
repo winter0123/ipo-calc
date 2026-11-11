@@ -24,8 +24,6 @@ public class AllocationResponse {
 
   private LocalDateTime allocatedAt;
 
-  private String allocationMethod;
-
   private Long allocatedAmount;
 
   private String note;
@@ -45,7 +43,6 @@ public class AllocationResponse {
         .subscriptionId(allocation.getSubscriptionId())
         .allocatedQuantity(allocation.getAllocatedQuantity())
         .allocatedAt(allocation.getAllocatedAt())
-        .allocationMethod(allocation.getAllocationMethod())
         .allocatedAmount(allocation.getAllocatedAmount())
         .note(allocation.getNote())
         .status(allocation.getStatus().name())

@@ -9,7 +9,6 @@ import { EditForm, Field, Shell } from './editDialogParts.tsx'
 
 interface AllocationValues {
   allocatedQuantity: number
-  allocationMethod: string
   note: string
 }
 
@@ -18,7 +17,6 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
   const save = useRecordMutation((data: AllocationValues) =>
     updateAllocation(record.id, {
       allocatedQuantity: data.allocatedQuantity,
-      allocationMethod: data.allocationMethod || undefined,
       note: data.note,
     }),
   )
@@ -26,12 +24,10 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
     register,
     control,
     handleSubmit,
-    setError,
     formState: { errors },
   } = useForm<AllocationValues>({
     defaultValues: {
       allocatedQuantity: record.allocatedQuantity,
-      allocationMethod: record.allocationMethod ?? '',
       note: record.note ?? '',
     },
   })
@@ -46,13 +42,6 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
   return (
     <EditForm
       onSubmit={handleSubmit((data) => {
-        // 서버의 부분 수정은 빈 값을 '안 바꿈'으로 받는다. 있던 값을 비우면 저장돼도 그대로 남으므로 막는다.
-        if (record.allocationMethod && !data.allocationMethod) {
-          setError('allocationMethod', {
-            message: '배정방식은 비울 수 없습니다. 하나를 골라 주세요.',
-          })
-          return
-        }
         // 총액/배정일/배정단가는 서버로 보내지 않는다.
         save.mutate(data, { onSuccess: onClose })
       })}
@@ -86,18 +75,6 @@ function AllocationForm({ record, onClose }: { record: Allocation; onClose: () =
         <span className="hint">
           확정 공모가 × 배정수량으로 자동 계산됩니다. 서버에 금액을 보내지 않습니다.
         </span>
-      </Field>
-      <Field
-        id="edit-allocationMethod"
-        label="배정방식 (선택)"
-        error={errors.allocationMethod?.message}
-      >
-        <select id="edit-allocationMethod" {...register('allocationMethod')}>
-          <option value="">배정방식 선택</option>
-          <option value="PROPORTIONAL">비례배정</option>
-          <option value="LOTTERY">추첨배정</option>
-          <option value="FIRST_COME">선착순</option>
-        </select>
       </Field>
       <Field id="edit-note" label="비고 (선택)">
         <input id="edit-note" type="text" {...register('note')} />

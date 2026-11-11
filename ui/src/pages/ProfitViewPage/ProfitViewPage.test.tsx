@@ -246,12 +246,12 @@ describe('ProfitViewPage', () => {
     expect(screen.queryByText('366,000')).not.toBeInTheDocument()
   })
 
-  it('매도가 없으면 매도 등록 링크가 보인다', async () => {
+  it('매도가 없으면 공모주 청약 목록 링크가 보인다', async () => {
     localStorage.setItem('currentInvestorId', '2')
     renderPage()
-    expect(await screen.findByRole('link', { name: '매도 등록' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: '공모주 청약 목록' })).toHaveAttribute(
       'href',
-      '/sales/register',
+      '/subscriptions',
     )
   })
 

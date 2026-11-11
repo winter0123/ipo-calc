@@ -151,7 +151,8 @@ function mockDropdownFetches() {
     const pathStr = String(path)
     if (pathStr === '/investors') return INVESTORS
     if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-    if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+    if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+    if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
     if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
     throw new Error(`unexpected path: ${pathStr}`)
   })
@@ -188,14 +189,15 @@ function mockFetchesWithAccounts(accounts: typeof SECURITIES_ACCOUNTS) {
     const pathStr = String(path)
     if (pathStr === '/investors') return INVESTORS
     if (pathStr === '/securities-accounts?investorId=1') return accounts
-    if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+    if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+    if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
     if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
     throw new Error(`unexpected path: ${pathStr}`)
   })
 }
 
 function renderForm(
-  url = '/subscriptions/register',
+  url = '/subscriptions/register?ipoId=1',
   props: {
     registerAllocation?: (request: unknown) => Promise<unknown>
   } = {},
@@ -218,19 +220,19 @@ function renderForm(
 async function waitForDropdownsLoaded() {
   await waitFor(() => {
     expect(screen.getByText('홍길동')).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '테스트기업 공모주' })).toBeInTheDocument()
+    expect(screen.getByTestId('ipo-info')).toBeInTheDocument()
   })
 }
 
 async function fillValidForm() {
-  await fill(screen.getByLabelText('공모주'), '1')
   await waitFor(() =>
     expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
   )
   await fill(screen.getByLabelText('증권계좌'), '1')
   await fill(screen.getByLabelText('청약수량'), '100')
   await fill(screen.getByLabelText('증거금'), '0')
-  await fill(screen.getByLabelText('청약일'), '2026-09-21')
+  // 청약일은 기본값(한국 오늘이 기간 밖이면 첫날)이 이미 선택돼 있다 — 둘째 날로 바꿔 선택을 확인한다
+  await userEvent.click(screen.getByRole('button', { name: '2026-09-02' }))
 }
 
 describe('SubscriptionRegisterForm', () => {
@@ -249,7 +251,7 @@ describe('SubscriptionRegisterForm', () => {
         })
       }
       if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-      if (pathStr === '/ipos') return IPOS
+      if (pathStr === '/ipos/1') return IPOS[0]
       throw new Error(`unexpected path: ${pathStr}`)
     })
 
@@ -267,16 +269,14 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    // IPO 미선택 시 계좌 disabled / 옵션 없음 (AC-1)
-    expect(screen.getByLabelText('증권계좌')).toBeDisabled()
-    expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
-
-    await fill(screen.getByLabelText('공모주'), '1')
+    // 공모주는 URL 문맥으로 고정 — 주관사 확인 후 계좌가 활성화된다
     await waitFor(() =>
       expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
     )
     expect(screen.getByLabelText('증권계좌')).toBeEnabled()
     expect(screen.queryByLabelText('투자자')).not.toBeInTheDocument()
+    // 공모주 select는 없다 — 이름은 고정 텍스트로 표시된다
+    expect(screen.queryByRole('combobox', { name: '공모주' })).not.toBeInTheDocument()
     expect(apiFetch).toHaveBeenCalledWith('/securities-accounts?investorId=1', expect.anything())
   })
 
@@ -316,6 +316,7 @@ describe('SubscriptionRegisterForm', () => {
     expect(body.ipoId).toBe(1)
     expect(body.quantity).toBe(100)
     expect(body.depositAmount).toBe(0)
+    expect(body.subscribedAt).toBe('2026-09-02T09:00')
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/subscriptions')
@@ -327,16 +328,15 @@ describe('SubscriptionRegisterForm', () => {
     renderForm()
     await waitForDropdownsLoaded()
 
-    await userEvent.clear(screen.getByLabelText('청약일'))
     await userEvent.click(screen.getByRole('button', { name: /등록/i }))
 
     await waitFor(() => {
       expect(screen.getByText('증권계좌를 선택해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('공모주를 선택해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('청약수량을 입력해 주세요.')).toBeInTheDocument()
       expect(screen.getByText('증거금을 입력해 주세요.')).toBeInTheDocument()
-      expect(screen.getByText('청약일을 선택해 주세요.')).toBeInTheDocument()
     })
+    // 청약일은 기본값이 이미 선택돼 있다 — 공모주 select는 없다
+    expect(screen.queryByText('공모주를 선택해 주세요.')).not.toBeInTheDocument()
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
@@ -461,18 +461,67 @@ describe('SubscriptionRegisterForm', () => {
   })
 
   describe('입력 편의', () => {
-    it('청약일은 오늘로 채워져 있다', async () => {
+    it('한국 오늘이 기간 밖이면 첫날이 기본값으로 선택돼 있다', async () => {
       mockDropdownFetches()
       renderForm()
       await waitForDropdownsLoaded()
-      expect(screen.getByLabelText('청약일')).toHaveValue(new Date().toLocaleDateString('sv-SE'))
+      // fixture 청약 기간은 2026-09-01~2026-09-02라 한국 오늘과 무관하게 첫날이 기본값
+      expect(screen.getByRole('button', { name: '2026-09-01' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: '2026-09-02' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
     })
 
-    it('공모주를 고르면 공모가·청약 기간이 보이고, 증거금은 공모가×수량×50%로 채워진다', async () => {
+    it('한국 오늘이 기간 안이면 오늘이 기본값으로 선택돼 있다', async () => {
+      const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date())
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+        if (pathStr === '/ipos/9')
+          return {
+            ...IPOS_WITH_UNDERWRITERS[0],
+            id: 9,
+            ipoName: '오늘 진행 공모주',
+            subscriptionStartDate: today,
+            subscriptionEndDate: today,
+          }
+        if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+      renderForm('/subscriptions/register?ipoId=9')
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: today })).toHaveAttribute('aria-pressed', 'true')
+      })
+    })
+
+    it('청약일 날짜 버튼을 누르면 해당 날짜가 선택되고 payload에 그 날짜가 실린다', async () => {
       mockDropdownFetches()
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
+      const second = screen.getByRole('button', { name: '2026-09-02' })
+      await userEvent.click(second)
+      expect(second).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: '2026-09-01' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      // 키보드(Enter)로도 조작할 수 있다
+      second.focus()
+      await userEvent.keyboard('{Enter}')
+      expect(second).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('공모주는 고정 텍스트로 표시되고 변경할 수 없다', async () => {
+      mockDropdownFetches()
+      renderForm()
+      await waitForDropdownsLoaded()
+      expect(screen.getByText('테스트기업 공모주')).toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: '공모주' })).not.toBeInTheDocument()
       expect(screen.getByTestId('ipo-info')).toHaveTextContent(
         '공모가 11,000원 · 청약 2026. 9. 1. ~ 2026. 9. 2.',
       )
@@ -486,22 +535,42 @@ describe('SubscriptionRegisterForm', () => {
       mockDropdownFetches()
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await fill(screen.getByLabelText('청약수량'), '10')
       await fill(screen.getByLabelText('증거금'), '70000')
       await fill(screen.getByLabelText('청약수량'), '20')
       expect(screen.getByLabelText('증거금')).toHaveDisplayValue('70,000')
     })
 
-    it('?ipoId로 들어오면 그 공모주가 미리 선택되고, 없는 id는 무시한다', async () => {
+    it('문맥(ipoId)이 없는 직접 URL은 공모주 청약 목록 안내만 보여 준다', async () => {
       mockDropdownFetches()
-      const { unmount } = renderForm('/subscriptions/register?ipoId=1')
-      await waitForDropdownsLoaded()
-      expect(screen.getByLabelText('공모주')).toHaveValue('1')
-      unmount()
+      renderForm('/subscriptions/register')
+      expect(await screen.findByText('공모주를 선택해 들어와 주세요')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: '공모주 청약 목록으로 이동' })).toHaveAttribute(
+        'href',
+        '/subscriptions',
+      )
+      expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('증권계좌')).not.toBeInTheDocument()
+    })
+
+    it('잘못된 ipoId(abc)는 오류 안내만 보여 주고 등록할 수 없다', async () => {
+      mockDropdownFetches()
+      renderForm('/subscriptions/register?ipoId=abc')
+      expect(await screen.findByRole('alert')).toHaveTextContent('공모주 주소가 올바르지 않습니다.')
+      expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
+    })
+
+    it('없는 공모주 id는 오류 안내만 보여 주고 등록할 수 없다', async () => {
+      mockDropdownFetches()
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/ipos/999') throw new ApiError(404, '공모주를 찾을 수 없습니다')
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
       renderForm('/subscriptions/register?ipoId=999')
-      await waitForDropdownsLoaded()
-      expect(screen.getByLabelText('공모주')).toHaveValue('')
+      expect(await screen.findByRole('alert')).toHaveTextContent('공모주를 찾을 수 없습니다.')
+      expect(screen.queryByRole('button', { name: '등록' })).not.toBeInTheDocument()
     })
   })
 
@@ -522,7 +591,6 @@ describe('SubscriptionRegisterForm', () => {
       mockDropdownFetches()
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await fill(screen.getByLabelText('배정수량'), '3')
       expect(screen.getByTestId('allocation-total')).toHaveTextContent('33,000원')
 
@@ -535,9 +603,8 @@ describe('SubscriptionRegisterForm', () => {
 
     it('희망가만 있는 공모주는 공모가로 노출하지 않고 증거금·총액을 계산하지 않는다', async () => {
       mockDropdownFetches()
-      renderForm()
+      renderForm('/subscriptions/register?ipoId=2')
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '2')
 
       expect(screen.getByTestId('ipo-info')).toHaveTextContent('공모가 미정')
       expect(screen.getByTestId('ipo-info')).not.toHaveTextContent('희망 공모가')
@@ -554,11 +621,12 @@ describe('SubscriptionRegisterForm', () => {
     it('배정 등록 요청에 배정일·배정단가·총액을 보내지 않는다', async () => {
       const registerAllocation = vi.fn().mockResolvedValue({ id: 9 })
       mockDropdownFetches()
-      renderForm('/subscriptions/register', { registerAllocation })
+      renderForm('/subscriptions/register?ipoId=1', { registerAllocation })
       await waitForDropdownsLoaded()
       await fillValidForm()
       await fill(screen.getByLabelText('배정수량'), '3')
-      await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
+      // 배정방식 입력 요소는 존재하지 않아야 한다
+      expect(screen.queryByLabelText('배정방식 (선택)')).not.toBeInTheDocument()
 
       vi.mocked(apiFetch).mockResolvedValueOnce({
         id: 1,
@@ -583,8 +651,8 @@ describe('SubscriptionRegisterForm', () => {
         investorId: 1,
         securitiesAccountId: 1,
         allocatedQuantity: 3,
-        allocationMethod: 'PROPORTIONAL',
       })
+      expect(request).not.toHaveProperty('allocationMethod')
       expect(request).not.toHaveProperty('allocatedAt')
       expect(request).not.toHaveProperty('allocationPrice')
       expect(request).not.toHaveProperty('allocatedAmount')
@@ -593,15 +661,108 @@ describe('SubscriptionRegisterForm', () => {
     })
   })
 
-  it('공모주 선택 필드가 증권계좌 필드보다 DOM 앞에 나타난다', async () => {
+  it('공모주 이름이 증권계좌 필드보다 DOM 앞에 나타난다', async () => {
     mockDropdownFetches()
     renderForm()
     await waitForDropdownsLoaded()
-    const ipoField = screen.getByLabelText('공모주')
+    const ipoField = screen.getByText('테스트기업 공모주')
     const accountField = screen.getByLabelText('증권계좌')
     const position = ipoField.compareDocumentPosition(accountField as Node)
     // accountField이 ipoField 뒤에 오면 FOLLOWING(4) 비트 설정
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  describe('청약일 날짜 버튼', () => {
+    const mockIpo = (id: number, start: string, end: string) => {
+      vi.mocked(apiFetch).mockImplementation(async (path: unknown) => {
+        const pathStr = String(path)
+        if (pathStr === '/investors') return INVESTORS
+        if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
+        if (pathStr === `/ipos/${id}`)
+          return {
+            ...IPOS_WITH_UNDERWRITERS[0],
+            id,
+            ipoName: `기간 테스트 ${id}`,
+            subscriptionStartDate: start,
+            subscriptionEndDate: end,
+          }
+        if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) return IPO_INSIGHT
+        throw new Error(`unexpected path: ${pathStr}`)
+      })
+    }
+
+    it('같은 날이면 버튼이 1개만 보인다', async () => {
+      mockIpo(10, '2026-11-10', '2026-11-10')
+      renderForm('/subscriptions/register?ipoId=10')
+      await waitForDropdownsLoaded()
+      expect(screen.getByRole('button', { name: '2026-11-10' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '2026-11-11' })).not.toBeInTheDocument()
+    })
+
+    it('3일 기간이면 실제 날짜 버튼 3개가 모두 보인다', async () => {
+      mockIpo(11, '2026-11-10', '2026-11-12')
+      renderForm('/subscriptions/register?ipoId=11')
+      await waitForDropdownsLoaded()
+      expect(screen.getByRole('button', { name: '2026-11-10' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '2026-11-11' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '2026-11-12' })).toBeInTheDocument()
+    })
+
+    it('청약 일정이 누락되면 안내만 보이고 등록이 차단된다', async () => {
+      mockIpo(12, '', '')
+      renderForm('/subscriptions/register?ipoId=12')
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        '청약 일정을 확인할 수 없어 등록할 수 없습니다.',
+      )
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: '2026-11-10' })).not.toBeInTheDocument()
+    })
+
+    it('청약 일정이 역전되면 안내만 보이고 등록이 차단된다', async () => {
+      mockIpo(13, '2026-11-11', '2026-11-10')
+      renderForm('/subscriptions/register?ipoId=13')
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        '청약 일정을 확인할 수 없어 등록할 수 없습니다.',
+      )
+      expect(screen.getByRole('button', { name: '등록' })).toBeDisabled()
+    })
+
+    it('둘째 날을 고르면 payload에 그 날짜가 실린다', async () => {
+      mockIpo(14, '2026-11-10', '2026-11-11')
+      renderForm('/subscriptions/register?ipoId=14')
+      await waitForDropdownsLoaded()
+      // 두 날짜 버튼 중 둘째 날을 고르면 payload에 그 날짜가 실린다
+      await userEvent.click(screen.getByRole('button', { name: '2026-11-11' }))
+      vi.mocked(apiFetch).mockResolvedValueOnce({
+        id: 1,
+        investorId: 1,
+        securitiesAccountId: 1,
+        ipoId: 14,
+        quantity: 100,
+        depositAmount: 0,
+        subscribedAt: '2026-11-11T09:00:00',
+        memo: '',
+        status: 'ACTIVE',
+        createdAt: '2026-11-11T00:00:00Z',
+        updatedAt: '2026-11-11T00:00:00Z',
+      })
+      await waitFor(() =>
+        expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
+      )
+      await fill(screen.getByLabelText('증권계좌'), '1')
+      await fill(screen.getByLabelText('청약수량'), '100')
+      await fill(screen.getByLabelText('증거금'), '0')
+      await userEvent.click(screen.getByRole('button', { name: /등록/i }))
+      await waitFor(() => {
+        expect(apiFetch).toHaveBeenCalledWith(
+          '/subscriptions',
+          expect.objectContaining({ method: 'POST' }),
+        )
+      })
+      const call = vi.mocked(apiFetch).mock.calls.find(([path]) => path === '/subscriptions')!
+      const body = JSON.parse((call[1] as RequestInit).body as string)
+      expect(body.subscribedAt).toBe('2026-11-11T09:00')
+    })
   })
 
   describe('주관사 기반 증권계좌 필터링', () => {
@@ -636,7 +797,7 @@ describe('SubscriptionRegisterForm', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    it('번호 없는 IBK 보유 등록 계좌를 매칭하고 단일 주관사 계좌를 IPO 변경 때마다 선택한다', async () => {
+    it('번호 없는 IBK 보유 등록 계좌를 매칭하고 단일 주관사 계좌를 기본 선택한다', async () => {
       const alertSpy = vi.mocked(window.alert)
       const account = {
         ...SECURITIES_ACCOUNTS[0],
@@ -647,7 +808,8 @@ describe('SubscriptionRegisterForm', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return INVESTORS
         if (pathStr === '/securities-accounts?investorId=1') return [account]
-        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+        if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
         if (pathStr === '/ipos/1/insight') {
           return {
             ...IPO_INSIGHT,
@@ -663,12 +825,13 @@ describe('SubscriptionRegisterForm', () => {
         throw new Error(`unexpected path: ${pathStr}`)
       })
 
-      renderForm()
+      const first = renderForm('/subscriptions/register?ipoId=1')
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await waitFor(() => expect(screen.getByLabelText('증권계좌')).toHaveValue('1'))
+      first.unmount()
 
-      await fill(screen.getByLabelText('공모주'), '2')
+      // 다른 공모주(별칭 주관사명)로 열면 이전 선택 없이 다시 기본 선택한다
+      renderForm('/subscriptions/register?ipoId=2')
       await waitFor(() => expect(screen.getByLabelText('증권계좌')).toHaveValue('1'))
       expect(alertSpy).not.toHaveBeenCalled()
       expect(mockNavigate).not.toHaveBeenCalled()
@@ -697,7 +860,8 @@ describe('SubscriptionRegisterForm', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return INVESTORS
         if (pathStr === '/securities-accounts?investorId=1') return [SECURITIES_ACCOUNTS[2]]
-        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+        if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
         if (pathStr === '/ipos/1/insight') {
           return new Promise((resolve) => {
             resolveInsight = resolve
@@ -741,19 +905,12 @@ describe('SubscriptionRegisterForm', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    it('IPO 미선택 시 계좌 선택 disabled·전체 계좌 없음; 선택 후 주관사 계좌만 표시', async () => {
+    it('주관사 확인 후 주관사 계좌만 표시된다', async () => {
       const alertSpy = vi.mocked(window.alert)
       mockDropdownFetches()
       renderForm()
 
       await waitForDropdownsLoaded()
-      // AC-1: IPO 미선택 시 계좌 옵션 없음, disabled
-      expect(screen.getByLabelText('증권계좌')).toBeDisabled()
-      expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
-      expect(alertSpy).not.toHaveBeenCalled()
-
-      await fill(screen.getByLabelText('공모주'), '1')
 
       // AC-2: insight 로딩/완료 중 전체 계좌 노출 없음 (loading이 빠른 mock에서 바로 필터링)
       await waitFor(() => {
@@ -771,20 +928,19 @@ describe('SubscriptionRegisterForm', () => {
       expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    it('AC-4: IPO 변경 시 기존 증권계좌 선택 즉시 초기화', async () => {
+    it('AC-4: 공모주를 고정하기 때문에 이전 계좌 선택이 다른 공모주에 새지 않는다', async () => {
       mockDropdownFetches()
-      renderForm()
+      // ipoId=2의 주관사가 다르면 계좌 목록도 그 주관사 계좌만 남는다
+      const first = renderForm('/subscriptions/register?ipoId=1')
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await waitFor(() =>
         expect(screen.getByRole('option', { name: '미래에셋증권' })).toBeInTheDocument(),
       )
       await fill(screen.getByLabelText('증권계좌'), '1')
-      // 다른 IPO로 변경
-      await fill(screen.getByLabelText('공모주'), '2')
-      await waitFor(() => {
-        expect((screen.getByLabelText('증권계좌') as HTMLSelectElement).value).toBe('')
-      })
+      first.unmount()
+      // ipoId=2 진입(페이지가 key로 폼을 새로 만든다)에는 이전 선택이 남아 있지 않다
+      renderForm('/subscriptions/register?ipoId=2')
+      await waitFor(() => expect(screen.getByLabelText('증권계좌')).toHaveValue(''))
     })
 
     it('AC-2 (pending): IPO 선택 후 insight pending 동안 disabled·옵션 없음, resolve 후 필터링', async () => {
@@ -793,7 +949,8 @@ describe('SubscriptionRegisterForm', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return INVESTORS
         if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+        if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
         if (pathStr === '/ipos/1/insight') {
           return new Promise((resolve) => {
             resolveInsight = resolve
@@ -803,7 +960,6 @@ describe('SubscriptionRegisterForm', () => {
       })
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       // pending 상태: disabled, 전체 계좌 옵션 없음
       expect(screen.getByLabelText('증권계좌')).toBeDisabled()
       expect(screen.queryByRole('option', { name: '하나은행' })).not.toBeInTheDocument()
@@ -820,7 +976,8 @@ describe('SubscriptionRegisterForm', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return INVESTORS
         if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+        if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
         if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) {
           throw new ApiError(500, '인사이트 조회 실패')
         }
@@ -828,7 +985,6 @@ describe('SubscriptionRegisterForm', () => {
       })
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await waitFor(() => {
         expect(screen.getByLabelText('증권계좌')).toBeDisabled()
         expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()
@@ -843,7 +999,8 @@ describe('SubscriptionRegisterForm', () => {
         const pathStr = String(path)
         if (pathStr === '/investors') return INVESTORS
         if (pathStr === '/securities-accounts?investorId=1') return SECURITIES_ACCOUNTS
-        if (pathStr === '/ipos') return IPOS_WITH_UNDERWRITERS
+        if (pathStr === '/ipos/1') return IPOS_WITH_UNDERWRITERS[0]
+        if (pathStr === '/ipos/2') return IPOS_WITH_UNDERWRITERS[1]
         if (pathStr.startsWith('/ipos/') && pathStr.endsWith('/insight')) {
           return { underwriters: [] }
         }
@@ -851,7 +1008,6 @@ describe('SubscriptionRegisterForm', () => {
       })
       renderForm()
       await waitForDropdownsLoaded()
-      await fill(screen.getByLabelText('공모주'), '1')
       await waitFor(() => {
         expect(screen.getByLabelText('증권계좌')).toBeDisabled()
         expect(screen.queryByRole('option', { name: '미래에셋증권' })).not.toBeInTheDocument()

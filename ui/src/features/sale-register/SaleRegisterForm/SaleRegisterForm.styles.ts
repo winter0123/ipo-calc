@@ -67,25 +67,66 @@ export const StyleScope = styled.div`
     font-size: 14px;
   }
 
-  .s-bb6837d-modeBadge {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
+  .s-bb6837d-labelLike {
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink);
+  }
+
+  .s-bb6837d-staticValue {
+    margin: 0;
     padding: var(--space-3) var(--space-4);
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
+    background-color: var(--surface-soft);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-size: 15px;
   }
 
-  .s-bb6837d-modeIcon {
-    font-size: 16px;
-    flex-shrink: 0;
+  .s-bb6837d-guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
 
-  .s-bb6837d-modeDesc {
-    font-size: 13px;
+  .s-bb6837d-guide h2 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--ink);
+  }
+
+  .s-bb6837d-guide p {
+    margin: 0;
     color: var(--ink-muted);
-    line-height: 1.5;
+    line-height: 1.6;
+  }
+
+  .s-bb6837d-guide a {
+    align-self: flex-start;
+    color: var(--link);
+    font-weight: 650;
+  }
+
+  .s-bb6837d-retryButton {
+    margin-top: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--link);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .s-bb6837d-retryButton:hover {
+    background: var(--surface-soft);
   }
 
   .s-bb6837d-submitButton {

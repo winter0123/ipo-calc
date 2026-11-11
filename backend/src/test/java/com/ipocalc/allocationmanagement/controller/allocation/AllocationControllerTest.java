@@ -261,7 +261,6 @@ class AllocationControllerTest {
     Map<String, Object> request = new LinkedHashMap<>();
     request.put("subscriptionId", subscriptionId);
     request.put("allocatedQuantity", 50);
-    request.put("allocationMethod", "균등배정");
     request.put("note", "비고");
     return request;
   }
@@ -319,7 +318,7 @@ class AllocationControllerTest {
     assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(50L);
     // 자동 배정일: IPO allotmentDate 없음 → 청약 종료일 2026-10-02 +2 KRX 영업일(10-05 휴장) = 2026-10-07 09:00
     assertThat(response.get("allocatedAt")).isEqualTo("2026-10-07T09:00:00");
-    assertThat(response.get("allocationMethod")).isEqualTo("균등배정");
+    assertThat(response).doesNotContainKey("allocationMethod");
     // 자동 총액: 확정공모가 11000 × 50주 = 550000
     assertThat(((Number) response.get("allocatedAmount")).longValue()).isEqualTo(550000L);
     assertThat(response.get("note")).isEqualTo("비고");
@@ -482,6 +481,8 @@ class AllocationControllerTest {
     assertThat(allocations).hasSize(2);
     assertThat(((Number) allocations.get(0).get("subscriptionId")).longValue()).isEqualTo(subId2);
     assertThat(((Number) allocations.get(1).get("subscriptionId")).longValue()).isEqualTo(subId1);
+    // GET 응답에 배정방식 키는 없어야 한다 (제거된 계약 회귀)
+    allocations.forEach(item -> assertThat(item).doesNotContainKey("allocationMethod"));
   }
 
   @Test
@@ -626,10 +627,10 @@ class AllocationControllerTest {
     assertThat(((Number) response.get("id")).longValue()).isEqualTo(allocationId);
     assertThat(((Number) response.get("allocatedQuantity")).longValue()).isEqualTo(80L);
     assertThat(response.get("note")).isEqualTo("수정된 비고");
-    // subscriptionId·allocatedAt·allocationMethod는 기존값 유지, 수량 변경분만 총액에 반영
+    // subscriptionId·allocatedAt은 기존값 유지, 수량 변경분만 총액에 반영
     assertThat(((Number) response.get("subscriptionId")).longValue()).isEqualTo(subscriptionId);
     assertThat(response.get("allocatedAt")).isEqualTo("2026-10-07T09:00:00");
-    assertThat(response.get("allocationMethod")).isEqualTo("균등배정");
+    assertThat(response).doesNotContainKey("allocationMethod");
     // 확정공모가 11000 × 80주 = 880000
     assertThat(((Number) response.get("allocatedAmount")).longValue()).isEqualTo(880000L);
     assertThat(response.get("status")).isEqualTo("ACTIVE");

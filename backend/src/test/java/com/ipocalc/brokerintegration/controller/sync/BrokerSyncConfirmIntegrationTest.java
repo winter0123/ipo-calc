@@ -133,13 +133,7 @@ class BrokerSyncConfirmIntegrationTest {
         idOf(
             postJson(
                 "/allocations",
-                Map.of(
-                    "subscriptionId",
-                    subscriptionId,
-                    "allocatedQuantity",
-                    100L,
-                    "allocationMethod",
-                    "균등배정")));
+                Map.of("subscriptionId", subscriptionId, "allocatedQuantity", 100L)));
   }
 
   @AfterEach

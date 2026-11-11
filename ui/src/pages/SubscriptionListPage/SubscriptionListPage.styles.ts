@@ -28,49 +28,6 @@ export const StyleScope = styled.div`
     color: var(--danger);
   }
 
-  .s-d6e906b-titleRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .s-d6e906b-buttonGroup {
-    display: flex;
-    gap: var(--space-2);
-  }
-
-  .s-d6e906b-sellButton {
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--gain);
-    color: var(--on-primary);
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 650;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .s-d6e906b-sellButton:hover {
-    background-color: var(--gain);
-  }
-
-  .s-d6e906b-registerButton {
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--primary);
-    color: var(--on-primary);
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 650;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .s-d6e906b-registerButton:hover {
-    background-color: var(--primary-hover);
-  }
-
   .s-d6e906b-dateRange {
     display: flex;
     flex-wrap: wrap;

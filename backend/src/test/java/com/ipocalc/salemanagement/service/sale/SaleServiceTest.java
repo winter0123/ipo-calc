@@ -24,6 +24,7 @@ import com.ipocalc.salemanagement.controller.sale.exception.SaleValidationExcept
 import com.ipocalc.salemanagement.domain.model.sale.Sale;
 import com.ipocalc.salemanagement.repository.sale.SaleRepository;
 import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
+import com.ipocalc.subscriptionmanagement.service.ownership.SubscriptionOwnership;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -40,10 +41,18 @@ class SaleServiceTest {
   private final AllocationService allocations = mock(AllocationService.class);
   private final SubscriptionRepository subscriptions = mock(SubscriptionRepository.class);
   private final AllocationOwnership ownership = mock(AllocationOwnership.class);
+  private final SubscriptionOwnership subscriptionOwnership = mock(SubscriptionOwnership.class);
   private final Clock clock = Clock.fixed(Instant.parse("2026-10-13T00:00:00Z"), ZoneOffset.UTC);
   private final SaleService service =
       new SaleService(
-          sales, allocs, allocations, subscriptions, ownership, mock(SecurityUtils.class), clock);
+          sales,
+          allocs,
+          allocations,
+          subscriptions,
+          ownership,
+          subscriptionOwnership,
+          mock(SecurityUtils.class),
+          clock);
 
   private static final LocalDateTime AT = LocalDateTime.of(2026, 10, 1, 9, 0);
 

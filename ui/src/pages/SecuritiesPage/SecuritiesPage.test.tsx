@@ -15,7 +15,7 @@ vi.mock('@/features/securities-manage/index.ts', () => ({
 }))
 
 describe('SecuritiesPage', () => {
-  it('증권사 계좌 관리 화면 하단에서 연동 화면으로 이동할 수 있다', () => {
+  it('증권사 관리 화면에 계좌 목록을 보여 주고 증권사 연동 CTA는 노출하지 않는다', () => {
     render(
       <MemoryRouter>
         <SecuritiesPage />
@@ -23,9 +23,6 @@ describe('SecuritiesPage', () => {
     )
 
     expect(screen.getByText('증권사 계좌 목록')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '증권사 연동' })).toHaveAttribute(
-      'href',
-      '/broker-sync',
-    )
+    expect(screen.queryByRole('link', { name: '증권사 연동' })).not.toBeInTheDocument()
   })
 })
