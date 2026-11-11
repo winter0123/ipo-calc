@@ -143,3 +143,52 @@
 
 - 열린PR0개,활성worker0개. 기존브랜치중대부분main의ancestor. nonancestor중automatic-ipo-reconciliation/ipo-schedule-reconciliation/ui-request-batch는PR501/500/499 squash병합으로반영완료. listing-open-price-backend의핵심서비스는main에동일동작(포맷차이),sync-range-ui는main에기간선택및진행상태가구현되고스타일시스템만변경됨. 구버전재병합불필요.
 - 미반영환불기본off UI3파일및Master상태/일일로그를현재브랜치에서커밋·PR·CI후병합한다. 임시.playwright-cli/및오래된운영SQL초안은포함하지않는다.
+
+## 2026-11-11 배정 방식 제거 착수
+
+- PR502 CI양쪽SUCCESS/병합261d61a8확인,main갱신후branch winter0123/remove-allocation-method생성.
+- 사용자가DB allocation_method컬럼·기존값까지제거명시승인. 다른배정값/투자이력보존,운영배포는아직미실행.
+- Run run_8a5f03c13533,DAG UI task_1f02ec7ec211→backend task_453c4a6a3d3e. UI워커ctx_eca00c5dd18a/terminal term_2aea129b-7a3c-4211-832f-72d67d3665e0,OpenCode/OpenRouter Inkling2Small무료모델probe및화면확인.
+- UI등록·통합등록·수정·관련표/스키마/가이드제거중. 완료검토후backend에API/엔티티/서비스/adminDTO/기존참조제거및V45컬럼DROP마이그레이션배정. 워커slot1/Masterslot4.
+
+- 사용자추가요청:매도등록청약선택제거,공모주/투자자/증권계좌로서버가자동연결. 기존SaleService에tuple조회존재,등록검증이기존배정찾기전allocatedQuantity요구하는공백함께보완. IPO일반진입선택/단일계좌기본/복수계좌만선택/기존배정재사용/미배정직접등록/소유권보호범위확정.
+- 같은작업공간내배정방식API·DB제거와서비스수정충돌가능해후속Task를backend선행deps로순차정의. 먼저작업완료검증후이어배정,워커slot1/Masterslot4.
+
+- 배정방식 UI Master 검증 PASS: 대상6파일64건/typecheck/lint(경고4·오류0)/build/git diff검사. 요청·응답스키마/등록·수정payload에서제거확인. UI워커release후backend task_453c4a6a3d3e 배정,DBslot1. 매도자동연결후속 task_ee1026768d14는 backend완료의존. 신규배포NOT_RUN.
+
+- 추가요청 증권사관리: 체크박스→로고→회사명→계좌번호→버튼의실제DOM순서,등록·미등록목록PC2열/모바일1열,첫계좌헤더와한줄,작은버튼·여백/접근성유지. 같은단일작업공간의매도자동연결후속deps로UI개편Task정의. 검증/구현NOT_RUN.
+
+- 최신요구 우선: 공모주청약 공통등록2버튼제거,공모주별진입만/등록IPO고정명칭/select제거,청약일실제기간날짜버튼. 후속UI Task작성. 중요: 매도 task_ee1026768d14 시작할때 기존spec의 일반진입IPO select 요구는폐기하고 최신요구(문맥없으면목록안내,공모주고정)를추가전달할것. 날짜선택은한국오늘기간내오늘/그외첫날,누락·역전이면차단,기존매도일달력보존. 구현·배포NOT_RUN.
+
+- 배정방식 backend Master 슬롯4 reset후전체검증PASS:1189 tests/실패0/오류0/skipped0,checkstyleMain/Test,spotlessJavaCheck,bootJar(2m17s),diff검사. V45 allocation_method만DROP/나머지필드보존확인. 워커release.
+- 매도자동연결 task_ee1026768d14/ctx_b84e5420ba01/term_7c503904-a059-4071-a9e9-f703ad6fcdba/OpenRouter Inkling2Small무료모델배정. 최신요구로일반IPOselect폐기·공모주고정·문맥없으면목록안내를dispatch에추가지시. 워커slot1.
+
+- 매도자동연결 Master 검증PASS:slot4 전체1197건/실패0·오류0,checkstyle/spotless/bootJar,UI72건/typecheck/lint/build. 코드검토후UI조회대기·실패상태제출차단/URL문맥변경시낡은연결정리/캡처가다른계좌연결로전환하는문제3건보완요청. 후속증권사UI는보완검토후착수. 배포NOT_RUN.
+
+- 매도3건보완ctx_53983314ba87 Master UI검증PASS:81건/typecheck/lint(기존경고4·오류0)/build/diff. 조회로딩·오류전송차단+버튼/submit방어,URL문맥초기화·허용계좌대조,다른계좌캡처자동전환금지확인. backend직전1197건검증유효(이후backend변경없음). 보완워커release후증권사관리 task_d436c4c19b15 배정.
+
+- 증권사관리 Master검증PASS:29건/typecheck/lint/build. 화면검토에서PCgrid카드동일높이빈공간발견,align-items:start등최소보완요청. 일반실제증권사·번호있는단일계좌모바일/PC증적보강및760px제약주장정정요청. 마지막등록UI task_050ccc69bce1은보완후착수. 배포NOT_RUN.
+
+- 증권사UI실증적재검토반려:375px일반미래에셋단일계좌3줄/IBK2줄,PC미래에셋2줄로한줄요청미충족. 기존설치lucide아이콘액션+accessible name/title,부가별칭title이동/자동가져오기아이콘화,단일행DOM정렬재지시. Master자체44px조건은최신한줄계약과충돌해32px수준(최소24px타겟·간격/키보드유지)허용으로수정. 다음Task는이후착수.
+
+- 사용자최신요구:보기버튼삭제,계좌번호자체버튼클릭으로평문/마스킹토글. ctx_344461cb66f5에즉시전달. 미입력클릭은번호입력폼,중복번호입력액션제거,키보드/보안API/오류처리보존. 구현·검증대기.
+
+- 사용자최신UI계약으로상시아이콘여러개요구폐기:평소계좌관리버튼1개→수정/삭제/계좌추가펼침. 미입력은텍스트이며수정으로최초번호입력. 번호클릭보기/숨김유지. ctx_344461cb66f5에전달,반응형/보안/체크등록보존. 구현검증대기·배포NOT_RUN.
+
+- 사용자추가:증권사관리자동가져오기링크/아이콘/배지/연동CTA노출제거. 전용credential조회불필요분정리,범위SecuritiesPage관련파일까지확대허용. 매도등록자동입력·실제broker서비스보존. ctx_344461cb66f5전달.
+
+- 증권사관리최종Master검증PASS:33건/typecheck/lint(기존4경고)/build/diff. 375/1280증적직접확인:단일계좌32px한줄/번호토글/계좌관리하나/PC2열모바일1열/자동가져오기·연동CTA제거. 복수계좌추가행허용,미입력은수정에서최초입력. 워커release후마지막task_050ccc69bce1배정. 새변경미커밋·배포NOT_RUN.
+
+- 사용자지적한국투자증권계좌관리2개:현재계좌별토글구조때문. 최신계약증권사당정확히1토글로정정,복수계좌수정삭제는펼침안각계좌별·계좌추가는회사당1개. 현재등록UI worker가같은tree작업중이므로그후속deps로수정Task정의.
+
+- 공모주문맥등록 Master 전체UI검증PASS:108파일948건/typecheck/lint(기존4warning)/build/diff. 공통등록2버튼제거/IPO고정·문맥없음안내/청약기간날짜버튼·한국날짜기본/미정·역전차단확인. 워커release후최종 task_5445509c261b(회사당계좌관리1개)배정. 제품미커밋·배포NOT_RUN.
+
+## 2026-11-11 요청 묶음 최종 검증 완료(미배포)
+
+- 배정방식 입력·표시·API·엔티티 제거 및 V45 allocations.allocation_method DROP 준비. 사용자 컬럼/기존값 삭제 승인 반영, 운영 마이그레이션 NOT_RUN. 배정수량·금액·날짜·투자이력 유지.
+- 매도 청약 select 제거, 공모주·투자자·계좌 기반 서버 청약/배정 자동 연결. 기존 배정 재사용, 조회대기·오류 제출 차단, 다른 문맥 연결 차단. 번호 없는 계좌 허용.
+- 등록은 공모주별 진입·이름 고정, 공통 등록2버튼/IPO select 제거. 문맥없는 URL은 목록 안내. 청약일 실제 기간 날짜 버튼·한국오늘/첫날 기본·기간미확인/역전 차단.
+- 증권사관리 체크→로고→이름→번호→계좌관리. PC2열/모바일1열, 증권사당 계좌관리1개, 펼침 내 계좌별 수정삭제·회사계좌추가1개. 번호클릭 평문/마스킹, 미입력은 수정으로 최초입력. 자동가져오기/연동CTA 제거, 매도자동입력 유지.
+- Master 검증 PASS: backend 슬롯4 전체1197건/실패0/오류0/skip0/checkstyleMain·Test/spotlessJavaCheck/bootJar(backend 이후 변경없음). 최종 UI108파일949건/typecheck/lint(기존4warning·오류0)/build/git diff검사 PASS.
+- 실제 계정 통합·운영 배포 NOT_RUN. 모바일375/PC1280 증적 검토 PASS(모의 API). 좁은 복수계좌 카드의 긴 회사명은 줄임표와 title로 표시됨.
+- 모든 워커 release·terminal 종료, watchdog 중지. branch winter0123/remove-allocation-method 미커밋. 사용자 배포 지시 전 배포하지 않음. .playwright-cli/ 및 구형 simwon-withdrawal-procedure.md 초안은 별도 보존·커밋제외.

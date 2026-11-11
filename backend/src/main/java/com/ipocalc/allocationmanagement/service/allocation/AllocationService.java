@@ -111,7 +111,6 @@ public class AllocationService {
             .subscriptionId(subscriptionId)
             .allocatedQuantity(request.getAllocatedQuantity())
             .allocatedAt(computedAllocatedAt)
-            .allocationMethod(request.getAllocationMethod())
             .allocatedAmount(computedAllocatedAmount)
             .note(request.getNote())
             .status(RecordStatus.ACTIVE)
@@ -137,15 +136,11 @@ public class AllocationService {
     if (request.getAllocatedQuantity() == null) {
       throw new AllocationValidationException("allocatedQuantity는 필수입니다.");
     }
-    validateText(request.getAllocationMethod(), request.getNote());
+    validateText(request.getNote());
   }
 
   // 텍스트 길이(DB 컬럼 255자 — 넘으면 500이 되므로 400으로 막는다)
-  private void validateText(String allocationMethod, String note) {
-    if (allocationMethod != null && allocationMethod.length() > TEXT_MAX_LENGTH) {
-      throw new AllocationValidationException(
-          "allocationMethod는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
-    }
+  private void validateText(String note) {
     if (note != null && note.length() > TEXT_MAX_LENGTH) {
       throw new AllocationValidationException("note는 " + TEXT_MAX_LENGTH + "자 이하여야 합니다.");
     }
@@ -244,10 +239,9 @@ public class AllocationService {
 
     Long updatedSubscriptionId = request.getSubscriptionId();
     Long updatedAllocatedQuantity = request.getAllocatedQuantity();
-    final String updatedAllocationMethod = request.getAllocationMethod();
     final String updatedNote = request.getNote();
 
-    validateText(updatedAllocationMethod, updatedNote);
+    validateText(updatedNote);
 
     // 같은 청약을 다시 지정하면 이동이 아니다
     boolean moving =
@@ -308,7 +302,6 @@ public class AllocationService {
         updatedSubscriptionId,
         updatedAllocatedQuantity,
         newAllocatedAt,
-        updatedAllocationMethod,
         newAllocatedAmount,
         updatedNote,
         now);

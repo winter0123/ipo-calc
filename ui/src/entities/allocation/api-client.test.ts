@@ -8,7 +8,6 @@ const ALLOCATION = {
   subscriptionId: 2,
   allocatedQuantity: 0,
   allocatedAt: TS,
-  allocationMethod: null,
   allocatedAmount: 0,
   note: null,
   status: 'ACTIVE',

@@ -80,7 +80,7 @@ const RECORDS: Record<RecordKind, object> = {
     allocatedQuantity: 5,
     allocatedAt: '2026-09-05T09:00:00',
     allocatedAmount: 50000,
-    allocationMethod: 'LOTTERY',
+    allocationMethod: 'LOTTERY', // 레거시 기존 값 — 수정 요청에 포함되면 안 됨
     note: '',
     status: 'ACTIVE',
     deletedAt: null,
@@ -266,11 +266,11 @@ describe('RecordActions', () => {
     })
   })
 
-  it('배정 수정: 배정수량과 배정방식을 PATCH로 보낸다', async () => {
+  it('배정 수정: 배정수량을 PATCH로 보내고 배정방식 키는 포함하지 않는다', async () => {
     setup('allocation')
     await userEvent.click(screen.getByRole('button', { name: '배정 수정' }))
+    expect(screen.queryByLabelText('배정방식 (선택)')).not.toBeInTheDocument()
     await fill(await screen.findByLabelText('배정수량'), '3')
-    await fill(screen.getByLabelText('배정방식 (선택)'), 'PROPORTIONAL')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(call('PATCH', 'allocation')).toBeDefined())
@@ -278,9 +278,9 @@ describe('RecordActions', () => {
     const [, data] = patchCall
     expect(data).toEqual({
       allocatedQuantity: 3,
-      allocationMethod: 'PROPORTIONAL',
       note: '',
     })
+    expect(data).not.toHaveProperty('allocationMethod')
   })
 
   it('매도 수정: price=매도단가, amount=단가×수량, fee=공모주수수료, tax=세금 및 기타로 보낸다', async () => {

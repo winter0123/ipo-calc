@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
 import { useIpos } from '@/entities/ipo/index.ts'
 import { useAllInvestmentHistory } from '@/entities/subscription/index.ts'
@@ -47,17 +47,7 @@ export default function SubscriptionListPage() {
     <StyleScope>
       {
         <div className={styles.container}>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>공모주 청약</h1>
-            <div className={styles.buttonGroup}>
-              <Link to="/subscriptions/register" className={styles.registerButton}>
-                청약 등록
-              </Link>
-              <Link to="/sales/register" className={styles.sellButton}>
-                매도 등록
-              </Link>
-            </div>
-          </div>
+          <h1 className={styles.title}>공모주 청약</h1>
           <div className={styles.dateRange}>
             <label>
               시작일

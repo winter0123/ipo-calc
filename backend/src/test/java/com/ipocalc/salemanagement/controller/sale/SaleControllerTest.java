@@ -274,8 +274,6 @@ class SaleControllerTest {
                                 subscriptionId,
                                 "allocatedQuantity",
                                 allocatedQuantity,
-                                "allocationMethod",
-                                "균등배정",
                                 "note",
                                 "배정 비고"))))
             .andReturn();
@@ -284,6 +282,80 @@ class SaleControllerTest {
         .isEqualTo(201);
     return ((Number) objectMapper.readValue(utf8Body(allocResult), Map.class).get("id"))
         .longValue();
+  }
+
+  // 청약 생성 사전 준비: 투자자/계좌/공모주를 만들고 청약만 등록한다(배정은 만들지 않는다).
+  private Long createSubscriptionAndGetId(Long investorId, Long securitiesAccountId, Long ipoId)
+      throws Exception {
+    MvcResult subResult =
+        mockMvc
+            .perform(
+                post("/subscriptions")
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            Map.of(
+                                "investorId",
+                                investorId,
+                                "securitiesAccountId",
+                                securitiesAccountId,
+                                "ipoId",
+                                ipoId,
+                                "quantity",
+                                200L,
+                                "depositAmount",
+                                1000000,
+                                "subscribedAt",
+                                "2026-10-01T09:00:00"))))
+            .andReturn();
+    assertThat(subResult.getResponse().getStatus())
+        .as("테스트 사전 준비: 청약 등록은 201이어야 합니다")
+        .isEqualTo(201);
+    return ((Number) objectMapper.readValue(utf8Body(subResult), Map.class).get("id")).longValue();
+  }
+
+  // 배정 생성 사전 준비: 이미 만든 청약에 배정만 등록한다.
+  private Long createAllocationForSubscription(Long subscriptionId, Long allocatedQuantity)
+      throws Exception {
+    MvcResult allocResult =
+        mockMvc
+            .perform(
+                post("/allocations")
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            Map.of(
+                                "subscriptionId",
+                                subscriptionId,
+                                "allocatedQuantity",
+                                allocatedQuantity,
+                                "note",
+                                "배정 비고"))))
+            .andReturn();
+    assertThat(allocResult.getResponse().getStatus())
+        .as("테스트 사전 준비: 배정 등록은 201이어야 합니다")
+        .isEqualTo(201);
+    return ((Number) objectMapper.readValue(utf8Body(allocResult), Map.class).get("id"))
+        .longValue();
+  }
+
+  // 식별자 없이 IPO·투자자·계좌 조합으로 연결을 찾는 요청(quantity 30, price 12000).
+  private Map<String, Object> tupleSaleRequest(
+      Long ipoId, Long investorId, Long securitiesAccountId) {
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("ipoId", ipoId);
+    request.put("investorId", investorId);
+    request.put("securitiesAccountId", securitiesAccountId);
+    request.put("quantity", 30L);
+    request.put("price", 12000L);
+    request.put("amount", 360000L);
+    request.put("saleDate", "2026-10-10T14:00:00");
+    request.put("fee", 1000L);
+    request.put("tax", 500L);
+    request.put("otherCost", 200L);
+    return request;
   }
 
   private Map<String, Object> validSaleRequest(Long allocationId) {
@@ -300,10 +372,15 @@ class SaleControllerTest {
   }
 
   private MvcResult registerSale(Map<String, Object> request) throws Exception {
+    return registerSale(request, session);
+  }
+
+  private MvcResult registerSale(Map<String, Object> request, MockHttpSession targetSession)
+      throws Exception {
     return mockMvc
         .perform(
             post("/sales")
-                .session(session)
+                .session(targetSession)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andReturn();
@@ -692,8 +769,6 @@ class SaleControllerTest {
                                 subscriptionId1,
                                 "allocatedQuantity",
                                 100L,
-                                "allocationMethod",
-                                "균등배정",
                                 "note",
                                 "투자자1 배정"))))
             .andReturn();
@@ -754,8 +829,6 @@ class SaleControllerTest {
                                 subscriptionId2,
                                 "allocatedQuantity",
                                 100L,
-                                "allocationMethod",
-                                "균등배정",
                                 "note",
                                 "투자자2 배정"))))
             .andReturn();
@@ -829,8 +902,6 @@ class SaleControllerTest {
                                 subscriptionId1,
                                 "allocatedQuantity",
                                 100L,
-                                "allocationMethod",
-                                "균등배정",
                                 "note",
                                 "투자자1 배정"))))
             .andReturn();
@@ -1444,5 +1515,257 @@ class SaleControllerTest {
     // Then: 404 Not Found (AC-018: 취소된 매도는 상세 조회에서도 노출하지 않음)
     assertThat(getResult.getResponse().getStatus()).isEqualTo(404);
     assertNotFoundError(getResult);
+  }
+
+  @Test
+  void registerSaleWithTupleAutoCreatesSubscriptionAndAllocationWhenNoneExists() throws Exception {
+    // Given: 청약·배정이 전혀 없는 투자자/계좌/공모주 조합 (IPO별 매도 등록 링크의 첫 등록)
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+
+    // When: POST /sales에 공모주·투자자·계좌와 배정수량을 함께 보낸다
+    Map<String, Object> request = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    request.put("allocatedQuantity", 100L);
+    MvcResult result = registerSale(request);
+
+    // Then: 201, 새 청약·배정 연결이 자동 생성되고 매도가 연결된다
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Long allocationId = ((Number) readBody(result).get("allocationId")).longValue();
+    Allocation allocation = allocationRepository.findById(allocationId).orElseThrow();
+    Subscription subscription =
+        subscriptionRepository.findById(allocation.getSubscriptionId()).orElseThrow();
+    assertThat(subscription.getIpoId()).isEqualTo(ipoId);
+    assertThat(subscription.getInvestorId()).isEqualTo(investorId);
+    assertThat(subscription.getSecuritiesAccountId()).isEqualTo(securitiesAccountId);
+    assertThat(allocation.getAllocatedQuantity()).isEqualTo(100L);
+  }
+
+  @Test
+  void registerSaleWithTupleReusesExistingSubscriptionAndCreatesOnlyAllocation() throws Exception {
+    // Given: 청약은 있지만 배정은 없는 조합
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    Long subscriptionId = createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+
+    // When: POST /sales에 같은 조합과 배정수량을 보낸다
+    Map<String, Object> request = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    request.put("allocatedQuantity", 80L);
+    MvcResult result = registerSale(request);
+
+    // Then: 201, 청약은 재사용하고 배정만 새로 만든다(중복 생성 없음)
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Long allocationId = ((Number) readBody(result).get("allocationId")).longValue();
+    Allocation allocation = allocationRepository.findById(allocationId).orElseThrow();
+    assertThat(allocation.getSubscriptionId()).isEqualTo(subscriptionId);
+    long subscriptionCount =
+        subscriptionRepository.findAll().stream()
+            .filter(s -> s.getInvestorId().equals(investorId) && s.getIpoId().equals(ipoId))
+            .count();
+    assertThat(subscriptionCount).isEqualTo(1);
+  }
+
+  @Test
+  void registerSaleWithTupleReusesExistingAllocationWithoutAllocatedQuantity() throws Exception {
+    // Given: 청약·배정이 모두 있는 조합
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    Long subscriptionId = createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+    Long allocationId = createAllocationForSubscription(subscriptionId, 100L);
+
+    // When: POST /sales에 조합만 보내고 배정수량은 보내지 않는다
+    Map<String, Object> request = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    MvcResult result = registerSale(request);
+
+    // Then: 201, 기존 배정에 연결된다(배정수량 재입력 불필요)
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    assertThat(((Number) readBody(result).get("allocationId")).longValue()).isEqualTo(allocationId);
+  }
+
+  @Test
+  void registerSaleWithTupleWithoutAllocatedQuantityAndNoAllocationReturns400() throws Exception {
+    // Given: 청약은 있지만 배정이 없는 조합
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+
+    // When: 배정수량 없이 POST /sales
+    Map<String, Object> request = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    MvcResult result = registerSale(request);
+
+    // Then: 400 VALIDATION_ERROR, 매도는 생성되지 않는다
+    assertValidationError(result);
+    assertThat(saleRepository.findAll()).isEmpty();
+  }
+
+  @Test
+  void registerSaleWithExplicitSubscriptionIdRequiresQuantityOnlyOnce() throws Exception {
+    // Given: 청약은 있지만 배정이 없는 조합
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    Long subscriptionId = createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+
+    // When: 배정수량 없이 청약 ID만 보내면 400
+    Map<String, Object> noQuantity = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    noQuantity.remove("ipoId");
+    noQuantity.remove("investorId");
+    noQuantity.remove("securitiesAccountId");
+    noQuantity.put("subscriptionId", subscriptionId);
+    assertValidationError(registerSale(noQuantity));
+
+    // When: 배정수량을 함께 보내면 201, 청약 재사용 + 배정 자동 생성
+    Map<String, Object> withQuantity = new LinkedHashMap<>(noQuantity);
+    withQuantity.put("allocatedQuantity", 50L);
+    MvcResult result = registerSale(withQuantity);
+    assertThat(result.getResponse().getStatus()).isEqualTo(201);
+    Allocation allocation =
+        allocationRepository
+            .findById(((Number) readBody(result).get("allocationId")).longValue())
+            .orElseThrow();
+    assertThat(allocation.getSubscriptionId()).isEqualTo(subscriptionId);
+  }
+
+  @Test
+  void registerSaleWithMismatchedExplicitIdsReturns400() throws Exception {
+    // Given: 청약·배정이 모두 있는 조합
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    Long subscriptionId = createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+    Long allocationId = createAllocationForSubscription(subscriptionId, 100L);
+    Long otherIpoId = createIpo();
+
+    // Then 1: allocationId + 다른 공모주 ID → 400
+    Map<String, Object> allocationWithWrongIpo = validSaleRequest(allocationId);
+    allocationWithWrongIpo.put("ipoId", otherIpoId);
+    assertValidationError(registerSale(allocationWithWrongIpo));
+
+    // Then 2: allocationId + 다른 청약 ID → 400
+    Long otherSubscriptionId =
+        createSubscriptionAndGetId(investorId, securitiesAccountId, otherIpoId);
+    Map<String, Object> allocationWithWrongSub = validSaleRequest(allocationId);
+    allocationWithWrongSub.put("subscriptionId", otherSubscriptionId);
+    assertValidationError(registerSale(allocationWithWrongSub));
+
+    // Then 3: subscriptionId + 다른 공모주 ID → 400
+    Map<String, Object> subscriptionWithWrongIpo =
+        tupleSaleRequest(otherIpoId, investorId, securitiesAccountId);
+    subscriptionWithWrongIpo.put("subscriptionId", subscriptionId);
+    subscriptionWithWrongIpo.remove("ipoId");
+    subscriptionWithWrongIpo.remove("investorId");
+    subscriptionWithWrongIpo.remove("securitiesAccountId");
+    subscriptionWithWrongIpo.put("ipoId", otherIpoId);
+    assertValidationError(registerSale(subscriptionWithWrongIpo));
+
+    // Then 4: subscriptionId + 다른 투자자 ID → 400
+    Long otherInvestorId = registerInvestorAndGetId();
+    Map<String, Object> subscriptionWithWrongInvestor = new LinkedHashMap<>();
+    subscriptionWithWrongInvestor.put("subscriptionId", subscriptionId);
+    subscriptionWithWrongInvestor.put("investorId", otherInvestorId);
+    subscriptionWithWrongInvestor.put("quantity", 30L);
+    subscriptionWithWrongInvestor.put("price", 12000L);
+    subscriptionWithWrongInvestor.put("amount", 360000L);
+    subscriptionWithWrongInvestor.put("saleDate", "2026-10-10T14:00:00");
+    subscriptionWithWrongInvestor.put("fee", 1000L);
+    subscriptionWithWrongInvestor.put("tax", 500L);
+    subscriptionWithWrongInvestor.put("otherCost", 200L);
+    assertValidationError(registerSale(subscriptionWithWrongInvestor));
+
+    // Then 5: subscriptionId + 다른 계좌 ID → 400
+    Long otherFirmId = registerFirm();
+    Long otherAccountId = registerSecuritiesAccount(investorId, otherFirmId);
+    Map<String, Object> subscriptionWithWrongAccount =
+        new LinkedHashMap<>(subscriptionWithWrongInvestor);
+    subscriptionWithWrongAccount.remove("investorId");
+    subscriptionWithWrongAccount.put("securitiesAccountId", otherAccountId);
+    assertValidationError(registerSale(subscriptionWithWrongAccount));
+
+    // Then 6: 일치하는 값으로는 201
+    Map<String, Object> matching = validSaleRequest(allocationId);
+    matching.put("ipoId", ipoId);
+    matching.put("investorId", investorId);
+    matching.put("securitiesAccountId", securitiesAccountId);
+    matching.put("subscriptionId", subscriptionId);
+    assertThat(registerSale(matching).getResponse().getStatus()).isEqualTo(201);
+  }
+
+  @Test
+  void registerSaleWithOtherAccountsSubscriptionReturns403() throws Exception {
+    // Given: 소유자 계정으로 청약을 만들고, 다른 계정으로 그 청약 ID를 사용한다
+    signupAndLogin();
+    Long investorId = registerInvestorAndGetId();
+    Long firmId = registerFirm();
+    Long securitiesAccountId = registerSecuritiesAccount(investorId, firmId);
+    Long ipoId = createIpo();
+    Long subscriptionId = createSubscriptionAndGetId(investorId, securitiesAccountId, ipoId);
+
+    long nonce = ThreadLocalRandom.current().nextLong();
+    String intruderEmail = "sale-intruder-" + nonce + "@example.com";
+    MockHttpSession intruderSession = new MockHttpSession();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, intruderSession, intruderEmail, "securePass123!", "침입자");
+
+    // When: 침입자 계정이 소유자의 청약 ID로 매도 등록을 시도한다
+    Map<String, Object> request = tupleSaleRequest(ipoId, investorId, securitiesAccountId);
+    request.put("subscriptionId", subscriptionId);
+    request.remove("ipoId");
+    request.remove("investorId");
+    request.remove("securitiesAccountId");
+    MvcResult result = registerSale(request, intruderSession);
+
+    // Then: 403 FORBIDDEN, 매도는 생성되지 않는다
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    assertError(result, "FORBIDDEN");
+    Account intruder = accountRepository.findByEmail(intruderEmail);
+    // 가입 시 자동 생성되는 본인 투자자를 지운 뒤 계정을 지운다(FK)
+    for (Investor intruderInvestor : investorRepository.findByAccountId(intruder.getId())) {
+      investorRepository.delete(intruderInvestor);
+    }
+    accountRepository.delete(intruder);
+  }
+
+  @Test
+  void registerSaleWithExplicitAllocationIdsMatchOwnershipFirst() throws Exception {
+    // Given: 소유자 계정으로 배정을 만들고, 다른 계정으로 그 배정 ID + 다른 공모주 ID를 함께 보낸다
+    signupAndLogin();
+    Long allocationId = createAllocation(100L);
+    Long otherIpoId = createIpo();
+
+    long nonce = ThreadLocalRandom.current().nextLong();
+    String intruderEmail = "sale-intruder-owner-" + nonce + "@example.com";
+    MockHttpSession intruderSession = new MockHttpSession();
+    AuthTestSupport.signupAndLogin(
+        mockMvc, objectMapper, intruderSession, intruderEmail, "securePass123!", "침입자");
+
+    // When: 침입자가 allocationId와 다른 공모주를 함께 보낸다 (소유권 전에 400이 새어 나가지 않아야 한다)
+    Map<String, Object> request = validSaleRequest(allocationId);
+    request.put("ipoId", otherIpoId);
+    MvcResult result = registerSale(request, intruderSession);
+
+    // Then: 403 FORBIDDEN
+    assertThat(result.getResponse().getStatus()).isEqualTo(403);
+    assertError(result, "FORBIDDEN");
+    Account intruder = accountRepository.findByEmail(intruderEmail);
+    // 가입 시 자동 생성되는 본인 투자자를 지운 뒤 계정을 지운다(FK)
+    for (Investor intruderInvestor : investorRepository.findByAccountId(intruder.getId())) {
+      investorRepository.delete(intruderInvestor);
+    }
+    accountRepository.delete(intruder);
   }
 }

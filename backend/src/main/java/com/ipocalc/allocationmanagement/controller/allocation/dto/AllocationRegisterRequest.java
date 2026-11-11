@@ -25,7 +25,5 @@ public class AllocationRegisterRequest {
 
   private Long allocatedQuantity;
 
-  private String allocationMethod;
-
   private String note;
 }

@@ -70,7 +70,6 @@ export const allocationSummarySchema = z.object({
   ipoName: z.string(),
   allocatedQuantity: z.number().nullable(),
   allocatedAt: z.string().nullable(),
-  allocationMethod: z.string().nullable(),
   allocatedAmount: z.number().nullable(),
   status: z.string(),
 })

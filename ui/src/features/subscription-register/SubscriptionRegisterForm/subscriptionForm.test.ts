@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest'
 import type { Ipo } from '@/entities/ipo/index.ts'
 import {
   allocationTotalFor,
+  defaultSubscribedAt,
   depositFor,
   formatDate,
   ipoPriceInfo,
+  koreanToday,
   sortIposForSubscription,
+  subscriptionPeriodDates,
 } from './subscriptionForm.ts'
 
 const ipo = (id: number, start: string, end: string, extra: Partial<Ipo> = {}): Ipo => ({
@@ -53,6 +56,51 @@ describe('subscriptionForm', () => {
     expect(allocationTotalFor(ipo(1, 'a', 'b', { fixedPrice: 11000 }), 0)).toBe(0)
     expect(allocationTotalFor(ipo(1, 'a', 'b', { upperBandPrice: 12000 }), 3)).toBeUndefined()
     expect(allocationTotalFor(undefined, 3)).toBeUndefined()
+  })
+
+  it('subscriptionPeriodDates는 기간 전체를 반환하고, 누락·역전·형식 오류면 null', () => {
+    expect(
+      subscriptionPeriodDates({
+        subscriptionStartDate: '2026-11-10',
+        subscriptionEndDate: '2026-11-12',
+      }),
+    ).toEqual(['2026-11-10', '2026-11-11', '2026-11-12'])
+    // 같은 날
+    expect(
+      subscriptionPeriodDates({
+        subscriptionStartDate: '2026-11-10',
+        subscriptionEndDate: '2026-11-10',
+      }),
+    ).toEqual(['2026-11-10'])
+    // 역전
+    expect(
+      subscriptionPeriodDates({
+        subscriptionStartDate: '2026-11-11',
+        subscriptionEndDate: '2026-11-10',
+      }),
+    ).toBeNull()
+    // 누락·형식 오류
+    expect(
+      subscriptionPeriodDates({ subscriptionStartDate: '', subscriptionEndDate: '' }),
+    ).toBeNull()
+    expect(
+      subscriptionPeriodDates({
+        subscriptionStartDate: null,
+        subscriptionEndDate: undefined,
+      }),
+    ).toBeNull()
+  })
+
+  it('defaultSubscribedAt는 한국 오늘이 기간 안이면 오늘, 아니면 첫날', () => {
+    const dates = ['2026-11-10', '2026-11-11']
+    expect(defaultSubscribedAt(dates, '2026-11-11')).toBe('2026-11-11')
+    expect(defaultSubscribedAt(dates, '2026-09-30')).toBe('2026-11-10')
+    expect(defaultSubscribedAt([], '2026-11-11')).toBe('')
+  })
+
+  it('koreanToday는 YYYY-MM-DD 형식이다', () => {
+    expect(koreanToday(new Date('2026-11-11T00:30:00+09:00'))).toBe('2026-11-11')
+    expect(koreanToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it('날짜와 가격 문구', () => {

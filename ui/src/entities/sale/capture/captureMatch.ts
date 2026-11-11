@@ -6,6 +6,8 @@ export interface MatchCandidate {
   /** 공모주 이름·회사명 후보 */
   names: (string | null | undefined)[]
   stockCode?: string | null
+  /** 청약이 연결된 증권계좌 ID(없으면 null) — 캡처를 현재 계좌 문맥에 맞출 때 쓴다 */
+  securitiesAccountId?: number | null
   /** 이미 등록된 매도(활성)의 날짜 'YYYY-MM-DD'와 수량 */
   sales: { date: string; quantity: number }[]
 }

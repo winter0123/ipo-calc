@@ -184,30 +184,37 @@ describe('AllocationEditDialog', () => {
     const updateCall = mockUpdateAllocation.mock.calls[0][1]
     expect(updateCall).toEqual({
       allocatedQuantity: 60,
-      allocationMethod: 'PROPORTIONAL',
       note: '테스트 비고',
     })
+    expect(updateCall).not.toHaveProperty('allocationMethod')
     expect(updateCall).not.toHaveProperty('allocatedAmount')
     expect(updateCall).not.toHaveProperty('allocatedAt')
     expect(updateCall).not.toHaveProperty('allocationPrice')
   })
 
-  it('배정방식을 비우려 하면 에러가 표시되고 저장되지 않는다', async () => {
+  it('배정방식 입력 요소가 없고, 기존 레코드에 allocationMethod 값이 있어도 수량·비고 수정이 저장된다', async () => {
     renderDialog()
     await waitFor(() => {
       expect(screen.getByText('500,000원')).toBeInTheDocument()
     })
 
-    const methodSelect = screen.getByLabelText('배정방식 (선택)')
-    await userEvent.selectOptions(methodSelect, '')
+    expect(screen.queryByLabelText('배정방식 (선택)')).not.toBeInTheDocument()
+
+    const quantityInput = screen.getByLabelText('배정수량')
+    await userEvent.clear(quantityInput)
+    await userEvent.type(quantityInput, '70')
 
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => {
-      expect(
-        screen.getByText('배정방식은 비울 수 없습니다. 하나를 골라 주세요.'),
-      ).toBeInTheDocument()
+      expect(mockUpdateAllocation).toHaveBeenCalledTimes(1)
     })
-    expect(mockUpdateAllocation).not.toHaveBeenCalled()
+
+    const updateCall = mockUpdateAllocation.mock.calls[0][1]
+    expect(updateCall).toEqual({
+      allocatedQuantity: 70,
+      note: '테스트 비고',
+    })
+    expect(updateCall).not.toHaveProperty('allocationMethod')
   })
 })

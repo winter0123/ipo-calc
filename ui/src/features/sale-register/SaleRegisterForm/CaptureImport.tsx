@@ -44,7 +44,7 @@ export default function CaptureImport({ f }: { f: SaleForm }) {
 
           <div role="status" aria-live="polite" className={styles.hint}>
             {c.progress && progressText(c.progress)}
-            {f.capturePending && '청약을 선택하면 캡처 값이 채워집니다.'}
+            {f.capturePending && '캡처한 종목을 이 화면에 연결하면 값이 채워집니다.'}
           </div>
           {c.error && (
             <div className={styles.formError} role="alert">
@@ -70,7 +70,7 @@ export default function CaptureImport({ f }: { f: SaleForm }) {
                           ` · 실현손익 ${won(row.record.realizedProfit)}`}
                       </span>
                       {row.registered && <em>이미 등록된 매도로 보임</em>}
-                      {row.matches.length === 0 && <em>맞는 청약 없음</em>}
+                      {row.matches.length === 0 && <em>맞는 기록 없음</em>}
                     </button>
                   </li>
                 ))}

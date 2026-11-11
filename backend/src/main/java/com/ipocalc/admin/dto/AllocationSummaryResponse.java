@@ -16,7 +16,6 @@ public class AllocationSummaryResponse {
   private String ipoName;
   private Long allocatedQuantity;
   private String allocatedAt;
-  private String allocationMethod;
   private Long allocatedAmount;
   private String status;
 }

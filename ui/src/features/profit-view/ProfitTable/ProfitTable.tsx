@@ -20,8 +20,8 @@ export default function ProfitTable({ sales }: ProfitTableProps) {
             <p className={styles.emptyHint}>
               위의 &apos;전체&apos; 버튼으로 모든 기간을 볼 수 있어요.
             </p>
-            <Link to="/sales/register" className={styles.emptyLink}>
-              매도 등록
+            <Link to="/subscriptions" className={styles.emptyLink}>
+              공모주 청약 목록
             </Link>
           </div>
         }

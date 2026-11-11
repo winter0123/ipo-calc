@@ -31,12 +31,12 @@ const renderTable = (sales: SaleProfitRow[]) =>
   )
 
 describe('ProfitTable', () => {
-  it('매도가 없으면 빈 안내와 매도 등록 링크만 보인다', () => {
+  it('매도가 없으면 빈 안내와 공모주 청약 목록 링크만 보인다', () => {
     renderTable([])
     expect(screen.getByText('이 기간에 매도 기록이 없습니다.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '공모주 청약 목록' })).toHaveAttribute(
       'href',
-      '/sales/register',
+      '/subscriptions',
     )
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })

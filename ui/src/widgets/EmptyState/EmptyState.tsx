@@ -55,8 +55,8 @@ export default function EmptyState({ onResetFilters }: EmptyStateProps) {
         전체 필터 초기화
       </Button>
       <Hint>
-        아직 기록한 적이 없다면 <Link to="/subscriptions/register">청약 등록</Link>부터 시작해
-        보세요.
+        아직 기록한 적이 없다면 <Link to="/subscriptions">공모주 청약 목록</Link>에서 공모주를 골라
+        시작해 보세요.
       </Hint>
     </EmptyPanel>
   )
