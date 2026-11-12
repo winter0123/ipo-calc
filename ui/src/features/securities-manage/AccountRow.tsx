@@ -34,7 +34,7 @@ export function AccountControls({ account }: AccountControlsProps) {
           {reveal.data ?? account.accountNumber}
         </button>
       ) : (
-        // 번호가 없으면 단순 텍스트로 표시한다(수정은 펼친 계좌관리의 수정 버튼으로).
+        // 번호가 없으면 단순 텍스트로 표시한다(번호 입력은 펼친 계좌관리의 계좌추가로 연다).
         <span className={styles.numberNoneText} title={aliasTitle ?? undefined}>
           미입력
         </span>
@@ -48,8 +48,9 @@ export function AccountControls({ account }: AccountControlsProps) {
   )
 }
 
-// 펼친 액션 패널. 계좌별 행에 그 계좌의 별칭(없으면 마스킹 번호, 둘 다 없으면 미입력)을 붙여
-// 수정·삭제 대상을 명확히 표시하고, 회사 단위 "계좌추가"는 정확히 1개만 둔다.
+// 펼친 액션 패널. 계좌번호가 있는 계좌별로 수정 버튼(대상을 별칭/번호로 표시)을 보여 주고,
+// 회사 단위 "계좌추가"는 정확히 1개만 둔다. 번호 미입력 활성 계좌가 있으면 계좌추가는 그 계좌(id 명시)를 채우는
+// 폼으로 연결되고, 없으면 새 계좌 생성 폼으로 연결된다. 삭제는 메뉴가 아니라 수정 폼의 삭제 버튼에 있다.
 // 같은 라벨이 겹치면 뒤에 순번을 붙여 이름과 대상이 항상 1:1로 대응하게 한다.
 export function AccountActionGroup({
   accounts,
@@ -57,7 +58,6 @@ export function AccountActionGroup({
   groupId,
   busy,
   onEdit,
-  onDelete,
   onAddAccount,
   onClose,
 }: {
@@ -66,7 +66,6 @@ export function AccountActionGroup({
   groupId: string
   busy: boolean
   onEdit: (account: SecuritiesAccount) => void
-  onDelete: (account: SecuritiesAccount) => void
   onAddAccount: () => void
   onClose: () => void
 }) {
@@ -78,11 +77,12 @@ export function AccountActionGroup({
       document.getElementById(toggleId)?.focus()
     }
   }
+  const numbered = accounts.filter((a) => a.accountNumber != null && a.accountNumber !== '')
   const baseLabel = (a: SecuritiesAccount) =>
     a.accountName ??
     (a.accountNumber != null && a.accountNumber !== '' ? a.accountNumber : '미입력')
   const counts = new Map<string, number>()
-  for (const a of accounts) {
+  for (const a of numbered) {
     const l = baseLabel(a)
     counts.set(l, (counts.get(l) ?? 0) + 1)
   }
@@ -94,6 +94,12 @@ export function AccountActionGroup({
     seen.set(l, n)
     return `${l} ${n}`
   }
+  // 번호 미입력 활성 계좌(가장 오래된 것)를 계좌추가의 채움 대상으로 쓴다.
+  const fillTarget =
+    accounts
+      .filter((a) => a.accountNumber == null || a.accountNumber === '')
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id)[0] ?? null
+
   return (
     <div
       id={groupId}
@@ -102,7 +108,7 @@ export function AccountActionGroup({
       className={styles.actionGroup}
       onKeyDown={onKeyDown}
     >
-      {accounts.map((a) => {
+      {numbered.map((a) => {
         const label = targetLabel(a)
         return (
           <div className={styles.actionRow} key={a.id}>
@@ -118,25 +124,23 @@ export function AccountActionGroup({
             >
               수정
             </button>
-            <button
-              type="button"
-              onClick={() => onDelete(a)}
-              disabled={busy}
-              aria-label={`${label} 삭제`}
-              title={`${label} 삭제`}
-            >
-              삭제
-            </button>
           </div>
         )
       })}
       <div className={styles.actionRow}>
+        {fillTarget && (
+          <span className={styles.actionTarget} title={`미입력 계좌 #${fillTarget.id}`}>
+            미입력 #{fillTarget.id}
+          </span>
+        )}
         <button
           type="button"
           onClick={onAddAccount}
           disabled={busy}
           aria-label={`${displayName} 계좌추가`}
-          title={`${displayName} 계좌추가`}
+          title={
+            fillTarget ? `미입력 계좌 #${fillTarget.id}에 번호 입력` : `${displayName} 계좌추가`
+          }
         >
           계좌추가
         </button>
