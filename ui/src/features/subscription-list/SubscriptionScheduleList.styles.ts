@@ -85,26 +85,12 @@ export const StyleScope = styled.div`
     white-space: nowrap;
   }
 
-  .s-ee1412e-saleAction {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 var(--space-3);
-    border-radius: var(--radius-sm);
-    background: var(--gain);
-    color: var(--on-primary);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
   .s-ee1412e-actionGroup {
     display: flex;
     gap: var(--space-2);
   }
 
-  .s-ee1412e-actionGroup .s-ee1412e-action,
-  .s-ee1412e-actionGroup .s-ee1412e-saleAction {
+  .s-ee1412e-actionGroup .s-ee1412e-action {
     flex: 1 1 0;
     min-height: 36px;
     padding: 0 var(--space-2);

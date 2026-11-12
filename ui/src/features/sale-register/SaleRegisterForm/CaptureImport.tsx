@@ -1,6 +1,7 @@
 import styles, { StyleScope } from './SaleRegisterForm.styles.ts'
 import { useCaptureImport } from './useCaptureImport.ts'
-import { won, type SaleForm } from './useSaleForm.ts'
+import { won } from './saleFormUtils.ts'
+import type { SaleFormCaptureAdapter } from './saleFormTypes.ts'
 
 const progressText = (p: NonNullable<ReturnType<typeof useCaptureImport>['progress']>) =>
   p.phase === 'loading'
@@ -8,7 +9,7 @@ const progressText = (p: NonNullable<ReturnType<typeof useCaptureImport>['progre
     : `캡처를 읽는 중... (${p.index + 1}/${p.total})`
 
 /** 한국투자증권 실현손익 캡처로 매도 폼 채우기. 이미지는 이 브라우저 밖으로 나가지 않는다. */
-export default function CaptureImport({ f }: { f: SaleForm }) {
+export default function CaptureImport({ f }: { f: SaleFormCaptureAdapter }) {
   'use no memo'
   const c = useCaptureImport(f)
   const busy = c.progress !== null

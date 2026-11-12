@@ -58,21 +58,21 @@ describe('DashboardHome', () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it('매도 미입력 배정만 매도 등록 링크로 보여 준다', () => {
+  it('매도 미입력 배정만 청약·매도 관리 링크로 보여 준다', () => {
     setup(
       [
         item({ id: 3 }),
-        item({ id: 4, allocation: { id: 1 }, remainingQuantity: 5 }),
-        item({ id: 5, allocation: { id: 2 }, remainingQuantity: 0 }),
+        item({ id: 4, ipoId: 11, allocation: { id: 1 }, remainingQuantity: 5 }),
+        item({ id: 5, ipoId: 12, allocation: { id: 2 }, remainingQuantity: 0 }),
       ],
       [],
     )
     expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/sales/register?subscriptionId=4',
+      '/ipos/11/manage',
     )
-    expect(screen.getAllByRole('link', { name: '매도 등록' })).toHaveLength(1)
+    expect(screen.getAllByRole('link', { name: '청약·매도 관리' })).toHaveLength(1)
   })
 
   it('매도 미입력 항목이 없으면 안내 문구, 투자자가 없으면 선택 안내', () => {
@@ -85,7 +85,7 @@ describe('DashboardHome', () => {
     expect(screen.getByText(/투자자를 선택하면/)).toBeInTheDocument()
   })
 
-  it('7일 안의 일정만, 청약 기간 중이면 청약 등록 링크와 함께 보여 준다', () => {
+  it('7일 안의 일정만, 청약 기간 중이면 청약·매도 관리 링크와 함께 보여 준다', () => {
     setup(
       [],
       [
@@ -100,9 +100,9 @@ describe('DashboardHome', () => {
     )
     expect(screen.getByRole('link', { name: '에이공모' })).toHaveAttribute('href', '/ipos/1')
     expect(screen.getByText(/청약 마감/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '청약 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/subscriptions/register?ipoId=1',
+      '/ipos/1/manage',
     )
     expect(screen.queryByText('멀다')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '공모주 일정 전체 보기' })).toHaveAttribute(
@@ -145,7 +145,7 @@ describe('buildUpcomingEvents', () => {
     expect(events[0].date).toBe('2026-10-15')
   })
 
-  it('청약 기간 중이어도 환불·상장 줄에는 청약 등록을 붙이지 않는다', () => {
+  it('청약 기간 중이어도 환불·상장 줄에는 청약·매도 관리를 붙이지 않는다', () => {
     const events = buildUpcomingEvents(
       [
         ipo({

@@ -133,11 +133,7 @@ export default function SaleConnectionFields({ f }: { f: SaleForm }) {
                 {connectionId != null
                   ? '이 청약은 배정 입력 전입니다. 배정수량을 입력하면 등록할 때 배정이 함께 생성됩니다. '
                   : '이 조합으로 등록된 청약·배정이 없습니다. 배정수량을 입력하면 등록할 때 청약·배정이 함께 생성됩니다. '}
-                <Link
-                  to={`/allocations/register${connectionId != null ? `?subscriptionId=${connectionId}` : ''}`}
-                >
-                  배정 등록하기
-                </Link>
+                <Link to={`/ipos/${effectiveIpoId}/manage`}>청약·매도 관리에서 배정 입력</Link>
               </p>
             </>
           )}

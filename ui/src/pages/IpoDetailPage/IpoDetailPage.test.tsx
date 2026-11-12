@@ -330,19 +330,19 @@ describe('IpoDetailPage', () => {
     })
   })
 
-  it('로그인한 경우 청약 등록 링크는 /subscriptions/register로 간다', async () => {
+  it('로그인한 경우 청약·매도 관리 링크는 /ipos/7/manage로 간다', async () => {
     stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' })
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    expect(await screen.findByRole('link', { name: '청약 등록하기' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/subscriptions/register?ipoId=7',
+      '/ipos/7/manage',
     )
   })
 
-  it('청약 기간이 끝났으면 청약 등록 링크가 보이지 않는다', async () => {
+  it('청약 기간이 끝나도 청약·매도 관리 링크는 보인다', async () => {
     stubIpoAndAccount(
       { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
       {},
@@ -351,41 +351,38 @@ describe('IpoDetailPage', () => {
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
+      'href',
+      '/ipos/7/manage',
+    )
   })
 
-  it('로그인 전에는 청약 등록 대신 로그인 링크가 보인다', async () => {
+  it('로그인 전에는 청약·매도 관리 대신 로그인 링크가 보인다', async () => {
     stubIpoAndAccount(null)
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
-    expect(await screen.findByRole('link', { name: '로그인하고 청약 등록하기' })).toHaveAttribute(
-      'href',
-      '/login',
-    )
-    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('link', { name: '로그인하고 청약·매도 관리하기' }),
+    ).toHaveAttribute('href', '/login')
+    expect(screen.queryByRole('link', { name: '청약·매도 관리' })).not.toBeInTheDocument()
   })
 
-  it('로그인한 사용자는 헤더 CTA에 청약 등록 링크 1개와 매도 등록 링크 1개가 있다', async () => {
+  it('로그인한 사용자는 헤더 CTA에 청약·매도 관리 링크 1개만 있다', async () => {
     stubIpoAndAccount({ accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' })
 
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
 
-    // 헤더 CTA 영역의 링크만 확인 (하단 nav에는 링크가 없어야 함)
-    const headerCtaLinks = screen.getAllByRole('link')
-    const registerLinks = headerCtaLinks.filter((link) => link.textContent === '청약 등록하기')
-    const saleLinks = headerCtaLinks.filter((link) => link.textContent === '매도 등록하기')
-
-    expect(registerLinks).toHaveLength(1)
-    expect(registerLinks[0]).toHaveAttribute('href', '/subscriptions/register?ipoId=7')
-
-    expect(saleLinks).toHaveLength(1)
-    expect(saleLinks[0]).toHaveAttribute('href', '/sales/register?ipoId=7')
+    const manageLinks = screen.getAllByRole('link', { name: '청약·매도 관리' })
+    expect(manageLinks).toHaveLength(1)
+    expect(manageLinks[0]).toHaveAttribute('href', '/ipos/7/manage')
+    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '매도 등록하기' })).not.toBeInTheDocument()
   })
 
-  it('청약 종료 후에는 청약 등록 링크가 없고 매도 등록 링크만 1개 남는다', async () => {
+  it('청약 종료 후에도 청약·매도 관리 링크 1개만 있다', async () => {
     stubIpoAndAccount(
       { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
       {},
@@ -394,12 +391,9 @@ describe('IpoDetailPage', () => {
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
 
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
-    expect(screen.queryByRole('link', { name: '청약 등록하기' })).not.toBeInTheDocument()
-
-    // 매도 등록 링크는 정확히 1개만 있어야 함 (헤더 CTA에만)
-    const saleLinks = screen.getAllByRole('link', { name: '매도 등록하기' })
-    expect(saleLinks).toHaveLength(1)
-    expect(saleLinks[0]).toHaveAttribute('href', '/sales/register?ipoId=7')
+    const manageLinks = screen.getAllByRole('link', { name: '청약·매도 관리' })
+    expect(manageLinks).toHaveLength(1)
+    expect(manageLinks[0]).toHaveAttribute('href', '/ipos/7/manage')
   })
 
   it('비로그인 사용자의 매도 CTA는 로그인 경로 및 from 상태를 보존한다', async () => {
@@ -410,11 +404,13 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() => expect(screen.getByText('테스트IPO')).toBeInTheDocument())
 
     // 비로그인 시 매도 CTA는 로그인 링크로 연결되고 state.from이 설정되어야 함
-    const saleLink = await screen.findByRole('link', { name: '로그인하고 매도 등록하기' })
-    expect(saleLink).toHaveAttribute('href', '/login')
+    const manageLink = await screen.findByRole('link', {
+      name: '로그인하고 청약·매도 관리하기',
+    })
+    expect(manageLink).toHaveAttribute('href', '/login')
 
     // Link 클릭으로 navigation 발생
-    await userEvent.click(saleLink)
+    await userEvent.click(manageLink)
 
     // /login 경로로 이동하고 LoginLocationProbe가 location.state를 렌더링했는지 확인
     await vi.waitFor(() => {
@@ -422,7 +418,7 @@ describe('IpoDetailPage', () => {
       const text = stateElement.textContent || ''
       expect(text).not.toBe('no-state')
       const state = JSON.parse(text)
-      expect(state).toEqual({ from: '/sales/register?ipoId=7' })
+      expect(state).toEqual({ from: '/ipos/7/manage' })
     })
   })
 })

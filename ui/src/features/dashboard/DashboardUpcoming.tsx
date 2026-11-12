@@ -34,9 +34,7 @@ export default function DashboardUpcoming() {
                   {new Date(`${e.date}T00:00:00`).toLocaleDateString('ko-KR')} · {e.kind}
                   {e.estimated && ' (예상)'} · <Link to={`/ipos/${e.ipoId}`}>{e.ipoName}</Link>
                 </span>
-                {e.canSubscribe && (
-                  <Link to={`/subscriptions/register?ipoId=${e.ipoId}`}>청약 등록</Link>
-                )}
+                {e.canSubscribe && <Link to={`/ipos/${e.ipoId}/manage`}>청약·매도 관리</Link>}
               </li>
             ))}
           </ul>

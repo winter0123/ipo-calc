@@ -197,6 +197,26 @@ export const StyleScope = styled.div`
     font-weight: 700;
     color: var(--ink);
   }
+
+  /* 통합 관리 화면 섹션(SubscriptionSection)이 쓰는 추가 요소 */
+  .s-aeddfbc-sectionMeta {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
+  .s-aeddfbc-sectionBody {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .s-aeddfbc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
 `
 
 export default styles

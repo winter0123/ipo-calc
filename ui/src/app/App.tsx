@@ -13,16 +13,12 @@ const InvestorRegisterPage = lazy(
   () => import('../pages/InvestorRegisterPage/InvestorRegisterPage.tsx'),
 )
 const DashboardPage = lazy(() => import('../pages/DashboardPage/DashboardPage.tsx'))
-const SubscriptionRegisterPage = lazy(
-  () => import('../pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx'),
+const RegisterRedirectPage = lazy(
+  () => import('../pages/RegisterRedirectPage/RegisterRedirectPage.tsx'),
 )
 const SubscriptionListPage = lazy(
   () => import('../pages/SubscriptionListPage/SubscriptionListPage.tsx'),
 )
-const AllocationRegisterPage = lazy(
-  () => import('../pages/AllocationRegisterPage/AllocationRegisterPage.tsx'),
-)
-const SaleRegisterPage = lazy(() => import('../pages/SaleRegisterPage/SaleRegisterPage.tsx'))
 const ProfitViewPage = lazy(() => import('../pages/ProfitViewPage/ProfitViewPage.tsx'))
 const InvestmentHistoryPage = lazy(
   () => import('../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx'),
@@ -34,6 +30,7 @@ const NotificationsPage = lazy(() => import('../pages/NotificationsPage/Notifica
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage.tsx'))
 const IpoCalendarPage = lazy(() => import('../pages/IpoCalendarPage/IpoCalendarPage.tsx'))
 const IpoDetailPage = lazy(() => import('../pages/IpoDetailPage/IpoDetailPage.tsx'))
+const TradeManagePage = lazy(() => import('../pages/TradeManagePage/TradeManagePage.tsx'))
 const IpoRegisterPage = lazy(() => import('../pages/IpoRegisterPage/IpoRegisterPage.tsx'))
 const MyPage = lazy(() => import('../pages/MyPage/MyPage.tsx'))
 const AdminAnnouncementsPage = lazy(
@@ -88,14 +85,17 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/my-page" element={<MyPage />} />
         <Route path="/securities" element={<SecuritiesPage />} />
-        <Route path="/subscriptions/register" element={<SubscriptionRegisterPage />} />
+        {/* 예전 등록 링크 — 문맥(ipoId/subscriptionId)을 확인해 통합 관리 화면으로 replace 이동한다 */}
+        <Route path="/subscriptions/register" element={<RegisterRedirectPage />} />
         <Route path="/subscriptions" element={<SubscriptionListPage />} />
-        <Route path="/allocations/register" element={<AllocationRegisterPage />} />
-        <Route path="/sales/register" element={<SaleRegisterPage />} />
+        <Route path="/allocations/register" element={<RegisterRedirectPage />} />
+        <Route path="/sales/register" element={<RegisterRedirectPage />} />
         <Route path="/profits/view" element={<ProfitViewPage />} />
         <Route path="/investments" element={<InvestmentHistoryPage />} />
         <Route path="/ipo-calendar" element={<IpoCalendarPage />} />
         <Route path="/ipos/:ipoId" element={<IpoDetailPage />} />
+        {/* 청약·매도 통합 관리 화면. 공개 상세(/ipos/:ipoId)의 보호는 바꾸지 않는다 — 관리 경로만 투자자 게이트 대상이다. */}
+        <Route path="/ipos/:ipoId/manage" element={<TradeManagePage />} />
         <Route path="/broker-sync" element={<BrokerSyncPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />

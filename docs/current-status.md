@@ -1,5 +1,16 @@
 # 프로젝트 현재 상황 (Master 소유)
 
+## 2026-11-13 청약·매도 통합 관리 구현·검증 완료
+
+- 브랜치 `winter0123/unified-investment-screen`, `/ipos/:ipoId/manage`의 청약·배정·분할 매도와 진입점·옛 URL 호환·전환 보호·가이드 구현 완료.
+- Master 직접 UI 전체 116파일 1096건/typecheck/lint/build PASS. 마지막 기계적 포맷 뒤 변경·신규 TS/TSX 52파일 Prettier 및 git diff --check PASS.
+- 로컬 모의API+Orca 브라우저 PASS: 3/4/3주 다른 단가 매도·잔여7/3/0·완료, 수정/삭제, 번호null계좌 등록, 기존청약 PATCH, 사후매도 자동연결, 계좌/투자자/route 경고 취소·확인, 예전 청약 링크의 투자자·계좌 보존. 무효 계좌 placeholder·직접 선택 복구와 버튼 44px 재확인.
+- 375/640/768/1024/1280px 가로 넘침 없음 PASS. 최종 증적 `docs/screenshots/unified-investment-screen/2026-11-13-sales-verified-{375,1280}.png`.
+- Run `run_941bfe50578e`의 구현·검증 태스크 정산, 워커 release·watchdog 정지. 원본 작업공간의 계좌관리 미커밋 변경은 보존했다.
+- 커밋·푸시·병합·배포 NOT_RUN. 운영·실계좌·실제 브로커 연동 NOT_RUN. 다음 사용자 지시 시 원본 계좌관리 변경과 Git 통합·배포한다.
+
+## 이전 이력
+
 갱신: 2026-11-10.
 
 ## CI 실패·의존성 보완 완료 (#496)

@@ -5,6 +5,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 import styles, { StyleScope } from './MainLayout.styles.ts'
 
 // 투자자별로 작업하는 화면. 대시보드·공모주 일정·투자자 등록·관리자 화면은 계정 단위라 제외한다.
+// /ipos/:ipoId/manage(청약·매도 관리)만 공모주 관리 경로로 추가한다 — 공개 상세(/ipos/:ipoId)는 그대로 둔다.
 const GATED_PREFIXES = [
   '/investments',
   '/subscriptions',
@@ -15,8 +16,13 @@ const GATED_PREFIXES = [
   '/securities',
 ]
 
+const MANAGE_PATH_PATTERN = /^\/ipos\/[^/]+\/manage\/?$/
+
 function isInvestorScoped(pathname: string): boolean {
-  return GATED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  return (
+    GATED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
+    MANAGE_PATH_PATTERN.test(pathname)
+  )
 }
 
 // 투자자가 2명 이상인데 아직 고르지 않았을 때 작업 화면 대신 보여 준다.
@@ -68,7 +74,7 @@ function NoInvestorGate() {
 
 // 로그인한 사용자의 본문. 선택이 필요하면 작업 화면 대신 선택 화면을 보여 준다.
 export function GatedOutlet() {
-  const { pathname, search } = useLocation()
+  const { pathname } = useLocation()
   const navigate = useNavigate()
   const { needsSelection, investors, current, isLoading } = useCurrentInvestor()
   const accountsQuery = useSecuritiesAccounts(current?.id)
@@ -76,11 +82,7 @@ export function GatedOutlet() {
   if (needsSelection) return <InvestorGate />
   const selfGuided = pathname.startsWith('/investments') || pathname === '/securities'
   if (!isLoading && investors.length === 0 && !selfGuided) return <NoInvestorGate />
-  const saleIpoId = Number(new URLSearchParams(search).get('ipoId'))
-  const saleIpoEntry =
-    pathname === '/sales/register' && Number.isInteger(saleIpoId) && saleIpoId > 0
   const needsSecuritiesAccount =
-    !saleIpoEntry &&
     pathname !== '/securities' &&
     current !== null &&
     !accountsQuery.isLoading &&
