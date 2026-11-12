@@ -246,14 +246,12 @@ public class SecuritiesAccountService {
 
     validateAccountName(request.getAccountName());
 
-    // accountNumber 처리: 미전달=무변경, 공백=400, 기존 암호문 존재=409, 유효값=검증+암호화 저장
+    // accountNumber 처리: 미전달=무변경, 공백=400(번호 지우기 미지원), 유효값=검증+암호화 교체 저장
+    // 기존 번호가 있어도 교체를 허용한다(사용자 명시 승인, 계좌 id·청약/매도 이력·연결은 유지).
     String accountNumber = request.getAccountNumber();
     if (accountNumber != null) {
       if (accountNumber.isBlank()) {
         throw new SecuritiesAccountValidationException("계좌번호는 10~16자리 숫자여야 합니다.");
-      }
-      if (account.getAccountNumber() != null && !account.getAccountNumber().isBlank()) {
-        throw new SecuritiesAccountConflictException("이미 계좌번호가 등록되어 있습니다");
       }
       String plainAccountNumber = validateAndNormalizeAccountNumber(accountNumber);
       account.setAccountNumber(

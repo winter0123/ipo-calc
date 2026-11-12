@@ -48,7 +48,7 @@ public class SecuritiesAccount {
     this.accountNumber = encryptedAccountNumber;
   }
 
-  /** 계좌번호가 없는 계좌에 암호화된 계좌번호를 최초 1회 등록한다. */
+  /** 암호화된 계좌번호를 설정하거나 교체한다. 계좌 id·연결·투자 이력은 유지된다. */
   public void setAccountNumber(String encryptedAccountNumber, LocalDateTime now) {
     this.accountNumber = encryptedAccountNumber;
     this.updatedAt = now;
@@ -70,7 +70,7 @@ public class SecuritiesAccount {
   @Comment("증권사 ID")
   private Long securitiesFirmId;
 
-  /** 계좌번호(암호화 저장). 화면에는 마스킹해서 보여 주고 수정할 수 없다. 선택 사항(null 허용). */
+  /** 계좌번호(암호화 저장). 화면에는 마스킹해서 보여 주고, 수정 시 새 번호로 교체할 수 있다. 선택 사항(null 허용). */
   @Column(name = "account_number", nullable = true, length = 255)
   @Comment("계좌번호(암호화)")
   private String accountNumber;
