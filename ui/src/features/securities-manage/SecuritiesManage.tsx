@@ -11,27 +11,34 @@ import AccountForm from './AccountForm.tsx'
 import { AccountActionGroup, AccountControls } from './AccountRow.tsx'
 import styles, { StyleScope } from './SecuritiesManage.styles.ts'
 
-type Panel = { kind: 'create'; firmId: number } | { kind: 'edit'; accountId: number } | null
+type View =
+  | { kind: 'idle' }
+  | { kind: 'menu'; firmId: number }
+  | { kind: 'create'; firmId: number }
+  | { kind: 'edit'; accountId: number }
 
 type FirmRegisterState = { pending: boolean; error: string | null }
+
+const NO_NUMBER = (a: SecuritiesAccount) => a.accountNumber == null || a.accountNumber === ''
 
 // 현재 투자자의 증권사별 계좌 목록. 등록된 증권사를 위로 올리고 계좌 등록·수정·삭제를 한다.
 // 체크박스 ON 시 계좌번호 없이 등록(존재하면 가장 오래된 활성 계좌 재사용), OFF 시
 // 단일 계좌는 확인 후 비활성화, 복수 계좌는 개별 삭제로 유도한다.
 // 증권사 카드 헤더는 체크박스 → 로고 → 회사명 → 번호들 → "계좌관리" 정확히 1개 순서.
 // 복수 계좌의 번호는 필요한 만큼 작은 줄로 접히고, 계좌별 관리 토글은 없다.
-// 펼치면 같은 카드 안에서 계좌별 수정·삭제(대상을 별칭/번호로 표시)와 회사 단위 계좌추가 1개를 제공한다.
+// 화면의 "패널"은 하나의 명확한 state(View)로 idle/menu/create/edit 상호배타를 보장한다.
+// 폼이 열린 상태에서 계좌관리를 다시 누르면 폼이 닫히고 메뉴로 전환된다(폼+메뉴 동시 노출 금지).
+// 펼친 메뉴에는 번호 입력된 계좌별 수정과 회사 단위 계좌추가 1개만 둔다(삭제는 수정 폼에 있다).
+// 계좌추가는 번호 미입력 활성 계좌가 있으면 그 계좌(가장 오래된 것)를 채우는 수정 폼으로, 없으면 새 계좌 생성 폼으로 연결된다.
 export default function SecuritiesManage({ investorId }: { investorId: number }) {
   const firms = useSecuritiesFirms()
   const accounts = useSecuritiesAccounts(investorId)
   const create = useCreateAccount()
   const del = useDeleteAccount()
-  const [panel, setPanel] = useState<Panel>(null)
+  const [view, setView] = useState<View>({ kind: 'idle' })
   const [deleting, setDeleting] = useState<SecuritiesAccount | null>(null)
   const [registering, setRegistering] = useState<Record<number, FirmRegisterState>>({})
   const [actionError, setActionError] = useState<string | null>(null)
-  // 펼쳐진 액션 그룹(한 번에 하나만, 증권사 단위): 'firm-<firmId>'
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   if (firms.isLoading || accounts.isLoading) {
     return <p role="status">증권사 목록을 불러오는 중...</p>
@@ -66,8 +73,13 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
     })
   }
 
-  const toggleExpanded = (key: string) => setExpandedKey((prev) => (prev === key ? null : key))
-  const closeExpanded = () => setExpandedKey(null)
+  // 계좌관리 토글: 메뉴만 열려 있으면 닫고, 그 외(폼 열림 포함)에는 메뉴로 전환한다.
+  // 폼과 메뉴가 동시에 보이지 않도록 항상 View 하나만 유지한다.
+  const toggleMenu = (firmId: number) =>
+    setView((prev) =>
+      prev.kind === 'menu' && prev.firmId === firmId ? { kind: 'idle' } : { kind: 'menu', firmId },
+    )
+  const closeView = () => setView({ kind: 'idle' })
 
   // 체크박스 ON: 계좌번호 없이 POST(미제공). 이미 활성 계좌가 있으면 재사용.
   // OFF: 단일 계좌만 확인 후 비활성화, 복수는 개별 삭제로 유도(체크 유지).
@@ -115,19 +127,21 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
     const checked = mine.length > 0 || checking
     const firmBusy = busy || checking
     const firmGroupId = `firm-${firm.id}`
-    const firmExpanded = expandedKey === firmGroupId
+    const firmExpanded = view.kind === 'menu' && view.firmId === firm.id
 
-    const openEdit = (a: SecuritiesAccount) => {
-      closeExpanded()
-      setPanel({ kind: 'edit', accountId: a.id })
-    }
+    const openEdit = (a: SecuritiesAccount) => setView({ kind: 'edit', accountId: a.id })
+    // 계좌추가: 번호 미입력 활성 계좌(가장 오래된 것)가 있으면 그 계좌를 채우는 수정 폼으로,
+    // 없으면 새 계좌 생성 폼으로 연결한다.
     const openAdd = () => {
-      closeExpanded()
-      setPanel({ kind: 'create', firmId: firm.id })
-    }
-    const openDelete = (a: SecuritiesAccount) => {
-      closeExpanded()
-      setDeleting(a)
+      const fillTarget =
+        mine
+          .filter(NO_NUMBER)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id)[0] ?? null
+      setView(
+        fillTarget
+          ? { kind: 'edit', accountId: fillTarget.id }
+          : { kind: 'create', firmId: firm.id },
+      )
     }
 
     return (
@@ -160,11 +174,11 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
               type="button"
               id={`${firmGroupId}-toggle`}
               className={styles.actionToggle}
-              onClick={() => toggleExpanded(firmGroupId)}
+              onClick={() => toggleMenu(firm.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape' && firmExpanded) {
                   e.stopPropagation()
-                  closeExpanded()
+                  closeView()
                 }
               }}
               disabled={firmBusy}
@@ -183,9 +197,8 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
               groupId={firmGroupId}
               busy={firmBusy}
               onEdit={openEdit}
-              onDelete={openDelete}
               onAddAccount={openAdd}
-              onClose={closeExpanded}
+              onClose={closeView}
             />
           )}
           {reg?.error && (
@@ -193,16 +206,16 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
               {reg.error}
             </div>
           )}
-          {panel?.kind === 'create' && panel.firmId === firm.id && (
+          {view.kind === 'create' && view.firmId === firm.id && (
             <AccountForm
               target={{ kind: 'create', investorId, firmId: firm.id, firmName: displayName }}
-              onDone={() => setPanel(null)}
-              onCancel={() => setPanel(null)}
+              onDone={closeView}
+              onCancel={closeView}
             />
           )}
-          {panel?.kind === 'edit' &&
+          {view.kind === 'edit' &&
             mine
-              .filter((a) => a.id === panel.accountId)
+              .filter((a) => a.id === view.accountId)
               .map((a) => (
                 <AccountForm
                   key={a.id}
@@ -213,8 +226,8 @@ export default function SecuritiesManage({ investorId }: { investorId: number })
                     accountName: a.accountName ?? '',
                     accountNumber: a.accountNumber,
                   }}
-                  onDone={() => setPanel(null)}
-                  onCancel={() => setPanel(null)}
+                  onDone={closeView}
+                  onCancel={closeView}
                 />
               ))}
         </li>

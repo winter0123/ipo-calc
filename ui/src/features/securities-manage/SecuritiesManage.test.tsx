@@ -59,6 +59,12 @@ beforeEach(() => {
     if (key === 'PATCH /securities-accounts/10') {
       return account(10, 7, 3, { accountName: '월급 계좌' })
     }
+    if (key === 'PATCH /securities-accounts/40') {
+      return account(40, 7, 3, { accountName: null, accountNumber: '1234-****-40' })
+    }
+    if (key === 'PATCH /securities-accounts/41') {
+      return account(41, 7, 3, { accountName: null, accountNumber: '1234-****-41' })
+    }
     if (key === 'PATCH /securities-accounts/50') {
       return account(50, 7, 4, { accountName: '월급 계좌' })
     }
@@ -142,19 +148,20 @@ describe('SecuritiesManage', () => {
     expect(await screen.findByRole('button', { name: '주력 계좌번호 숨기기' })).toBeEnabled()
   })
 
-  it('번호 없는 계좌는 평소 미입력 텍스트만 보이고, 펼친 계좌관리의 해당 계좌 수정이 번호 입력 폼을 연다', async () => {
+  it('번호 없는 계좌는 평소 미입력 텍스트만 보이고, 미입력 상태 메뉴에는 계좌추가만 있다', async () => {
     accounts[7] = [account(10, 7, 3, { accountNumber: null, accountName: null })]
     render(ui(7)) // 다증권 단일 계좌(번호 미입력)
     // 미입력은 버튼이 아니라 단순 텍스트다
     const none = (await screen.findAllByText('미입력')).find((el) => el.tagName === 'SPAN')
     expect(none).toBeTruthy()
-    // 접힌 상태에서는 수정/삭제/계좌추가 버튼이 없다
+    // 접힌 상태에서는 어떤 액션 버튼도 없다
     expect(screen.queryByRole('button', { name: '미입력 수정' })).not.toBeInTheDocument()
-    // 계좌관리를 펼쳐 수정을 누르면 번호 입력 폼이 열린다
+    // 계좌관리를 펼치면 계좌추가만 보이고(대상 id 명시), 수정/삭제 버튼은 없다
     await userEvent.click(screen.getByRole('button', { name: '다증권 계좌관리' }))
-    await userEvent.click(screen.getByRole('button', { name: '미입력 수정' }))
-    expect(await screen.findByRole('form', { name: '다증권 계좌 수정' })).toBeInTheDocument()
-    expect(calls('GET', '/securities-accounts/10/account-number')).toHaveLength(0)
+    const group = screen.getByRole('group', { name: '다증권 계좌 작업' })
+    expect(within(group).getByText('미입력 #10')).toBeInTheDocument()
+    expect(within(group).getByRole('button', { name: '다증권 계좌추가' })).toBeInTheDocument()
+    expect(within(group).queryByRole('button', { name: /수정|삭제/ })).not.toBeInTheDocument()
   })
 
   it('계좌 등록은 펼친 그룹의 계좌추가로 등록 요청을 보낸다', async () => {
@@ -185,19 +192,46 @@ describe('SecuritiesManage', () => {
     )
   })
 
-  it('삭제는 확인 후에만 요청하고 취소하면 요청하지 않는다', async () => {
+  it('삭제는 수정 폼의 삭제 버튼으로만 하며, 확인 후에만 요청하고 취소하면 요청하지 않는다', async () => {
     render(ui(7))
     await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
-    await userEvent.click(screen.getByRole('button', { name: '주력 삭제' }))
+    // 메뉴에는 삭제 버튼이 없다
+    const group = screen.getByRole('group', { name: '다증권 계좌 작업' })
+    expect(within(group).queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument()
+    // 수정 폼을 열어 삭제 버튼으로 시도
+    await userEvent.click(within(group).getByRole('button', { name: '주력 수정' }))
+    const form = screen.getByRole('form', { name: '다증권 계좌 수정' })
+    await userEvent.click(within(form).getByRole('button', { name: '삭제' }))
     expect(screen.getByText(/청약 이력이 없는 계좌만 해제할 수 있습니다/)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '취소' }),
+    )
     expect(calls('DELETE', '/securities-accounts/10')).toHaveLength(0)
-    await userEvent.click(screen.getByRole('button', { name: '다증권 계좌관리' }))
-    await userEvent.click(screen.getByRole('button', { name: '주력 삭제' }))
+    // 폼이 유지되고 다시 삭제를 열어 확인하면 DELETE 1회 + 폼 닫힘
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
     await userEvent.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
     )
     await waitFor(() => expect(calls('DELETE', '/securities-accounts/10')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByRole('form')).not.toBeInTheDocument())
+  })
+
+  it('삭제가 409(청약 이력)이면 서버 메시지를 보여 주고 폼은 닫히지 않는다', async () => {
+    overrides['DELETE /securities-accounts/10'] = () => {
+      throw new ApiError(409, '연결된 청약 이력이 있어 비활성화할 수 없습니다')
+    }
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    const form = screen.getByRole('form', { name: '다증권 계좌 수정' })
+    await userEvent.click(within(form).getByRole('button', { name: '삭제' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '연결된 청약 이력이 있어 비활성화할 수 없습니다',
+    )
+    expect(screen.getByRole('form', { name: '다증권 계좌 수정' })).toBeInTheDocument()
   })
 
   it('API 오류 메시지를 그대로 보여 준다', async () => {
@@ -206,11 +240,131 @@ describe('SecuritiesManage', () => {
     }
     render(ui(7))
     await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
-    await userEvent.click(screen.getByRole('button', { name: '주력 삭제' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    const form = screen.getByRole('form', { name: '다증권 계좌 수정' })
+    await userEvent.click(within(form).getByRole('button', { name: '삭제' }))
     await userEvent.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent('삭제할 수 없는 계좌입니다.')
+  })
+
+  it('미입력 활성 계좌가 있으면 계좌추가는 새 계좌를 만들지 않고 그 계좌(가장 오래된 것)를 채우는 폼으로 연결된다', async () => {
+    accounts[7] = [
+      account(40, 7, 3, {
+        accountNumber: null,
+        accountName: null,
+        createdAt: '2026-01-02T00:00:00',
+      }),
+      account(41, 7, 3, {
+        accountNumber: null,
+        accountName: null,
+        createdAt: '2026-01-01T00:00:00',
+      }),
+    ]
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    // 복수 미입력 계좌 중 가장 오래된 id(41)를 대상으로 표시한다
+    const group = screen.getByRole('group', { name: '다증권 계좌 작업' })
+    expect(within(group).getByText('미입력 #41')).toBeInTheDocument()
+    await userEvent.click(within(group).getByRole('button', { name: '다증권 계좌추가' }))
+    // 새 계좌 생성 폼이 아니라 41번 계좌의 수정(채우기) 폼이 열린다
+    const form = screen.getByRole('form', { name: '다증권 계좌 수정' })
+    expect(screen.queryByRole('form', { name: '다증권 계좌 등록' })).not.toBeInTheDocument()
+    await fill(within(form).getByLabelText('계좌번호'), '111122223333')
+    await userEvent.click(within(form).getByRole('button', { name: '저장' }))
+    // 첫 번호 입력에도 확인 다이얼로그를 거친다: 확인 전에는 PATCH도 POST도 나가지 않는다
+    expect(calls('PATCH', '/securities-accounts/41')).toHaveLength(0)
+    expect(calls('POST', '/securities-accounts')).toHaveLength(0)
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '변경' }),
+    )
+    // 확인 후 미입력 계좌(41) id로 PATCH 1회, 새 계좌 POST는 없다
+    await waitFor(() => expect(calls('PATCH', '/securities-accounts/41')).toHaveLength(1))
+    expect(calls('POST', '/securities-accounts')).toHaveLength(0)
+    const body = JSON.parse(calls('PATCH', '/securities-accounts/41')[0][1]!.body as string)
+    expect(body.accountNumber).toBe('1111-2222-3333')
+  })
+
+  it('실번호 계좌만 있으면 계좌추가는 새 계좌 생성 폼으로 연결된다', async () => {
+    render(ui(7)) // 다증권 2개 모두 번호 있음
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    const group = screen.getByRole('group', { name: '다증권 계좌 작업' })
+    expect(within(group).queryByText(/^미입력 #/)).not.toBeInTheDocument()
+    await userEvent.click(within(group).getByRole('button', { name: '다증권 계좌추가' }))
+    expect(screen.getByRole('form', { name: '다증권 계좌 등록' })).toBeInTheDocument()
+  })
+
+  it('폼이 열린 상태에서 계좌관리를 다시 누르면 폼이 닫히고 메뉴로 전환된다(폼과 메뉴는 함께 열리지 않는다)', async () => {
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    expect(screen.getByRole('form', { name: '다증권 계좌 수정' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '다증권 계좌 작업' })).not.toBeInTheDocument()
+    // 폼이 열린 상태에서 계좌관리를 다시 누르면 폼이 닫히고 메뉴가 열린다
+    await userEvent.click(screen.getByRole('button', { name: '다증권 계좌관리' }))
+    expect(screen.queryByRole('form')).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '다증권 계좌 작업' })).toBeInTheDocument()
+    // 메뉴에서 수정을 누르면 메뉴가 닫히고 폼이 열린다
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    expect(screen.queryByRole('group', { name: '다증권 계좌 작업' })).not.toBeInTheDocument()
+    expect(screen.getByRole('form', { name: '다증권 계좌 수정' })).toBeInTheDocument()
+  })
+
+  it('다른 증권사의 계좌관리를 누르면 열려 있던 폼이 닫히고 그 증권사의 메뉴로 전환된다', async () => {
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    expect(screen.getByRole('form', { name: '다증권 계좌 수정' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '가증권 계좌관리' }))
+    expect(screen.queryByRole('form')).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '가증권 계좌 작업' })).toBeInTheDocument()
+  })
+
+  it('저장하면 폼과 메뉴가 모두 닫힌다(idle로 정리)', async () => {
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    await fill(screen.getByLabelText('계좌명 (선택)'), '월급 계좌')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(1))
+    expect(screen.queryByRole('form')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '다증권 계좌 작업' })).not.toBeInTheDocument()
+  })
+
+  it('취소를 누르면 폼과 메뉴가 모두 닫힌다(idle로 정리)', async () => {
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    await userEvent.click(within(screen.getByRole('form')).getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('form')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '다증권 계좌 작업' })).not.toBeInTheDocument()
+  })
+
+  it('수정 폼에서 번호를 바꾸면 확인 다이얼로그를 거친다: 확인 전 PATCH 0회, 취소 시 입력 유지, 확인 후 1회', async () => {
+    render(ui(7))
+    await userEvent.click(await screen.findByRole('button', { name: '다증권 계좌관리' }))
+    await userEvent.click(screen.getByRole('button', { name: '주력 수정' }))
+    const form = screen.getByRole('form', { name: '다증권 계좌 수정' })
+    await fill(within(form).getByLabelText('계좌번호'), '999988887777')
+    await userEvent.click(within(form).getByRole('button', { name: '저장' }))
+    expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(0)
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveTextContent(
+      '계좌번호가 바뀌어도 기존 청약·매도 이력은 같은 계좌에 남습니다',
+    )
+    // 취소: 입력 유지, PATCH 0회 유지
+    await userEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    expect(within(form).getByLabelText('계좌번호')).toHaveValue('9999-8888-7777')
+    expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(0)
+    // 다시 저장 → 확인 → PATCH 1회
+    await userEvent.click(within(form).getByRole('button', { name: '저장' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '변경' }),
+    )
+    await waitFor(() => expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(1))
+    const body = JSON.parse(calls('PATCH', '/securities-accounts/10')[0][1]!.body as string)
+    expect(body.accountNumber).toBe('9999-8888-7777')
   })
 
   describe('행 구조(모두 한 줄 순서)', () => {
@@ -269,7 +423,7 @@ describe('SecuritiesManage', () => {
       )
       const group = screen.getByRole('group', { name: '가증권 계좌 작업' })
       expect(within(group).getByRole('button', { name: '1234-****-90 수정' })).toBeInTheDocument()
-      expect(within(group).getByRole('button', { name: '1234-****-90 삭제' })).toBeInTheDocument()
+      expect(within(group).queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument()
       expect(within(group).getByRole('button', { name: '가증권 계좌추가' })).toBeInTheDocument()
       // 다시 누르면 닫힌다
       await userEvent.click(
@@ -379,15 +533,14 @@ describe('SecuritiesManage', () => {
         return el.textContent?.trim()
       })
       expect(order).toEqual(['checkbox', 'logo', 'name', 'number', 'number', '계좌관리'])
-      // 펼친 영역: 각 계좌 대상(별칭/번호)을 명확히 한 수정·삭제 + 회사 단위 계좌추가 정확히 1개
+      // 펼친 영역: 각 계좌 대상(별칭/번호)을 명확히 한 수정 버튼 + 회사 단위 계좌추가 정확히 1개(삭제는 수정 폼에 있다)
       await userEvent.click(within(head).getByRole('button', { name: '한국투자증권 계좌관리' }))
       const group = screen.getByRole('group', { name: '한국투자증권 계좌 작업' })
       expect(within(group).getByText('주력')).toBeInTheDocument()
       expect(within(group).getByText('9999-****-88')).toBeInTheDocument()
       expect(within(group).getByRole('button', { name: '주력 수정' })).toBeInTheDocument()
-      expect(within(group).getByRole('button', { name: '주력 삭제' })).toBeInTheDocument()
       expect(within(group).getByRole('button', { name: '9999-****-88 수정' })).toBeInTheDocument()
-      expect(within(group).getByRole('button', { name: '9999-****-88 삭제' })).toBeInTheDocument()
+      expect(within(group).queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument()
       expect(within(group).getAllByRole('button', { name: '한국투자증권 계좌추가' })).toHaveLength(
         1,
       )
@@ -399,9 +552,10 @@ describe('SecuritiesManage', () => {
       expect(calls('PATCH', '/securities-accounts/50')[0][1]!.body).toBe(
         JSON.stringify({ accountName: '월급 계좌' }),
       )
-      // 다시 펼쳐 번호 계좌의 삭제 버튼은 그 계좌(51) id로 DELETE를 보낸다
+      // 다시 펼쳐 번호 계좌(51번) 수정 폼을 열어 삭제하면 그 계좌 id로 DELETE를 보낸다
       await userEvent.click(screen.getByRole('button', { name: '한국투자증권 계좌관리' }))
-      await userEvent.click(screen.getByRole('button', { name: '9999-****-88 삭제' }))
+      await userEvent.click(screen.getByRole('button', { name: '9999-****-88 수정' }))
+      await userEvent.click(screen.getByRole('button', { name: '삭제' }))
       await userEvent.click(
         within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
       )

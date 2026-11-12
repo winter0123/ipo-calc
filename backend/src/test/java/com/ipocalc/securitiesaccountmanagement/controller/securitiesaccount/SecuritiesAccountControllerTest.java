@@ -726,8 +726,8 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
-  void updateSecuritiesAccountWithExistingAccountNumberReturns409() throws Exception {
-    // Given: 인증된 계정이 소유한 증권계좌가 있고 계좌번호가 이미 등록됨 (AC-007)
+  void updateSecuritiesAccountWithExistingAccountNumberChangesNumberAndKeepsId() throws Exception {
+    // Given: 인증된 계정이 소유한 증권계좌가 있고 계좌번호가 이미 등록됨 (사용자 명시 승인으로 409 교체 제한 제거)
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
     Long firmId = registerFirm();
@@ -746,7 +746,7 @@ class SecuritiesAccountControllerTest {
             .longValue();
     createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
 
-    // When: 이미 계좌번호가 있는 계좌에 다른 계좌번호로 PATCH 요청을 보냄 (AC-007)
+    // When: 이미 계좌번호가 있는 계좌에 다른 계좌번호로 PATCH 요청을 보냄
     MvcResult result =
         updateSecuritiesAccount(
             accountId,
@@ -754,19 +754,20 @@ class SecuritiesAccountControllerTest {
                 "accountName", "새 이름",
                 "accountNumber", "000-000-000000"));
 
-    // Then: 409 Conflict + 에러 메시지 (AC-007)
-    assertThat(result.getResponse().getStatus())
-        .as("기존 계좌번호가 있을 때 다른 번호로 변경 시도 시 409 반환 (AC-007)")
-        .isEqualTo(409);
+    // Then: 200 OK + 같은 id 유지 + 새 번호가 암호화 저장되고 마스킹되어 반환됨
+    assertThat(result.getResponse().getStatus()).as("기존 계좌번호는 교체 허용(409 제거)이어야 합니다").isEqualTo(200);
     Map<String, Object> response = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(response.get("error")).isEqualTo("CONFLICT");
-    assertThat(response.get("message")).isEqualTo("이미 계좌번호가 등록되어 있습니다");
+    assertThat(((Number) response.get("id")).longValue())
+        .as("계좌 id는 변경되면 안 됩니다")
+        .isEqualTo(accountId);
+    assertThat(response.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("000000000000"));
 
-    // And: DB에 저장된 실제 계좌번호도 변경되지 않음
+    // And: DB에도 새 번호가 저장됨(id·연결 유지)
     SecuritiesAccount updated = securitiesAccountRepository.findById(accountId).orElseThrow();
+    assertThat(updated.getId()).isEqualTo(accountId);
     assertThat(accountNumberEncryptor.decrypt(updated.getAccountNumber()))
-        .as("DB의 계좌번호도 변경되면 안 됩니다")
-        .isEqualTo(ACCOUNT_NUMBER);
+        .as("DB의 계좌번호가 새 번호로 교체되어야 합니다")
+        .isEqualTo("000000000000");
   }
 
   @Test
@@ -1164,8 +1165,8 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
-  void patchAccountNumberWhenAlreadyExistsReturns409() throws Exception {
-    // Given: 이미 계좌번호가 있는 계좌
+  void patchAccountNumberWhenAlreadyExistsChangesNumberKeepingSameId() throws Exception {
+    // Given: 이미 계좌번호가 있는 계좌 (사용자 명시 승인으로 409 교체 제한 제거)
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
     Long firmId = registerFirm();
@@ -1183,17 +1184,17 @@ class SecuritiesAccountControllerTest {
         ((Number) objectMapper.readValue(utf8Body(created), Map.class).get("id")).longValue();
     createdAccounts.add(securitiesAccountRepository.findById(accountId).orElseThrow());
 
-    // When: 다른 번호로 PATCH 시도
+    // When: 다른 번호로 PATCH
     MvcResult result = updateSecuritiesAccount(accountId, Map.of("accountNumber", "555555555555"));
 
-    // Then: 409 + 기존 번호 보존
-    assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    // Then: 200 + 같은 id + 새 번호로 교체(기존 연결·이력 유지)
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
     Map<String, Object> body = objectMapper.readValue(utf8Body(result), Map.class);
-    assertThat(body.get("error")).isEqualTo("CONFLICT");
-    assertThat(body.get("message")).isEqualTo("이미 계좌번호가 등록되어 있습니다");
+    assertThat(((Number) body.get("id")).longValue()).isEqualTo(accountId);
+    assertThat(body.get("accountNumber")).isEqualTo(AccountNumberMasker.mask("555555555555"));
 
     SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
-    assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("444444444444");
+    assertThat(accountNumberEncryptor.decrypt(saved.getAccountNumber())).isEqualTo("555555555555");
   }
 
   @Test
@@ -1339,7 +1340,7 @@ class SecuritiesAccountControllerTest {
   }
 
   @Test
-  void concurrentPatchNullToNumberOneSuccessOneConflict() throws Exception {
+  void concurrentPatchNullToNumberBothSucceedUnderRowLock() throws Exception {
     // Given: accountNumber 없는 계좌
     signupAndLogin();
     Long investorId = registerInvestorAndGetId();
@@ -1398,9 +1399,9 @@ class SecuritiesAccountControllerTest {
     assertThat(endLatch.await(30, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
 
-    // Then: 하나 성공(200), 하나 409, 번호 영구 보존
-    assertThat(successCount.get()).isEqualTo(1);
-    assertThat(conflictCount.get()).isEqualTo(1);
+    // Then: 409 교체 제한 제거(사용자 명시 승인)로 둘 다 200, 행 락 아래 마지막 쓰기 결과가 남는다
+    assertThat(successCount.get()).isEqualTo(2);
+    assertThat(conflictCount.get()).isEqualTo(0);
 
     SecuritiesAccount saved = securitiesAccountRepository.findById(accountId).orElseThrow();
     String finalNumber = accountNumberEncryptor.decrypt(saved.getAccountNumber());

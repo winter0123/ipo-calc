@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fill } from '@/test/fill'
 import { apiFetch } from '@/shared/api/client.ts'
+import { ApiError } from '@/shared/api/apiError.ts'
 import AccountForm, { type AccountFormTarget } from './AccountForm.tsx'
 
 vi.mock('@/shared/api/client.ts', () => ({ apiFetch: vi.fn() }))
@@ -36,11 +37,11 @@ const UPDATED_ACCOUNT = {
   updatedAt: TS,
 }
 
-function renderForm(target: AccountFormTarget) {
+function renderForm(target: AccountFormTarget, overrides?: { onDone?: () => void }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <AccountForm target={target} onDone={vi.fn()} onCancel={vi.fn()} />
+      <AccountForm target={target} onDone={overrides?.onDone ?? vi.fn()} onCancel={vi.fn()} />
     </QueryClientProvider>,
   )
 }
@@ -97,12 +98,16 @@ describe('AccountForm', () => {
     await screen.findByLabelText('계좌번호')
     await fill(screen.getByLabelText('계좌번호'), '1234567890')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    // 첫 번호 입력에도 확인 다이얼로그를 거친다
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '변경' }),
+    )
     await waitFor(() => expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(1))
     const body = JSON.parse(calls('PATCH', '/securities-accounts/10')[0][1]!.body as string)
     expect(body.accountNumber).toBe('1234-5678-90')
   })
 
-  it('수정 모드에서 기존 번호가 있으면 입력칸 대신 마스킹 번호와 교체 불가 안내를 보여 준다', async () => {
+  it('수정 모드에서 기존 번호가 있으면 마스킹 안내와 빈 입력칸을 보여 주고, 비워두면 번호 없이 PATCH한다', async () => {
     renderForm({
       kind: 'edit',
       accountId: 10,
@@ -110,12 +115,125 @@ describe('AccountForm', () => {
       accountName: '주력',
       accountNumber: '1234-****-90',
     })
-    expect(screen.queryByLabelText('계좌번호')).not.toBeInTheDocument()
-    expect(screen.getByText('1234-****-90')).toBeInTheDocument()
-    expect(screen.getByText('이미 등록된 계좌번호입니다.')).toBeInTheDocument()
+    // 마스킹 값은 입력칸의 기본값이 아니다
+    const input = screen.getByLabelText('계좌번호')
+    expect(input).toHaveValue('')
+    expect(screen.getByText(/1234-\*\*\*\*-90/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    // 번호 변경 입력이 없으므로 확인 다이얼로그 없이 바로 저장된다
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     await waitFor(() => expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(1))
     const body = JSON.parse(calls('PATCH', '/securities-accounts/10')[0][1]!.body as string)
     expect(body).not.toHaveProperty('accountNumber')
+  })
+
+  it('수정 모드에서 새 번호를 입력하면 확인 다이얼로그를 거친다: 확인 전 PATCH 0회, 취소 시 입력 유지, 확인 후 1회', async () => {
+    renderForm({
+      kind: 'edit',
+      accountId: 10,
+      firmName: '가증권',
+      accountName: '주력',
+      accountNumber: '1234-****-90',
+    })
+    await fill(screen.getByLabelText('계좌번호'), '999988887777')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    // 확인 다이얼로그: 이력 유지 경고 문구
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveTextContent(
+      '계좌번호가 바뀌어도 기존 청약·매도 이력은 같은 계좌에 남습니다',
+    )
+    expect(dialog).toHaveTextContent('실제 계좌와 맞는지 확인')
+    // 확인 전 PATCH 0회
+    expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(0)
+    // 취소: PATCH 0회 유지, 입력값 유지
+    await userEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(0)
+    expect(screen.getByLabelText('계좌번호')).toHaveValue('9999-8888-7777')
+    // 다시 저장 → 확인 → PATCH 정확히 1회
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '변경' }),
+    )
+    await waitFor(() => expect(calls('PATCH', '/securities-accounts/10')).toHaveLength(1))
+    const body = JSON.parse(calls('PATCH', '/securities-accounts/10')[0][1]!.body as string)
+    expect(body.accountNumber).toBe('9999-8888-7777')
+    expect(body.accountName).toBe('주력')
+  })
+
+  it('수정 폼에는 삭제 버튼이 있고, 삭제 확인 후 DELETE하고 onDone을 호출한다', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (_path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return undefined
+      if (init?.method === 'PATCH') return UPDATED_ACCOUNT
+      return undefined
+    })
+    const onDone = vi.fn()
+    renderForm(
+      {
+        kind: 'edit',
+        accountId: 10,
+        firmName: '가증권',
+        accountName: '주력',
+        accountNumber: '1234-****-90',
+      },
+      { onDone },
+    )
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+    // 확인 전 DELETE 0회, 취소 시에도 DELETE 0회
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '취소' }),
+    )
+    expect(calls('DELETE', '/securities-accounts/10')).toHaveLength(0)
+    // 다시 열어서 확인하면 DELETE 1회 + onDone
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
+    )
+    await waitFor(() => expect(calls('DELETE', '/securities-accounts/10')).toHaveLength(1))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+  })
+
+  it('삭제가 409(청약 이력)이면 서버 메시지를 보여 주고 onDone을 호출하지 않는다', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (_path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        throw new ApiError(409, '연결된 청약 이력이 있어 비활성화할 수 없습니다')
+      }
+      return undefined
+    })
+    const onDone = vi.fn()
+    renderForm(
+      {
+        kind: 'edit',
+        accountId: 10,
+        firmName: '가증권',
+        accountName: '주력',
+        accountNumber: '1234-****-90',
+      },
+      { onDone },
+    )
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+    await userEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '연결된 청약 이력이 있어 비활성화할 수 없습니다',
+    )
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('미입력 채우기 폼(기존 id 편집)에도 삭제 버튼이 있다', async () => {
+    renderForm({
+      kind: 'edit',
+      accountId: 10,
+      firmName: '가증권',
+      accountName: '',
+      accountNumber: null,
+    })
+    expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument()
+  })
+
+  it('생성 폼에는 삭제 버튼이 없다', async () => {
+    renderForm({ kind: 'create', investorId: 1, firmId: 2, firmName: '가증권' })
+    expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
 })
