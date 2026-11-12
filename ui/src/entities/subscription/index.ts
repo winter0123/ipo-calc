@@ -1,7 +1,9 @@
 export {
   createSubscription,
   deleteSubscription,
+  getInvestmentHistory,
   getSubscription,
+  getSubscriptionDetail,
   updateSubscription,
 } from './api-client.ts'
 export { investmentHistoryKeys } from './queryKeys.ts'

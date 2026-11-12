@@ -177,30 +177,27 @@ describe('InvestmentHistoryDetail — 상태 문구와 다음 행동', () => {
     expect(screen.getByText('배정 전')).toBeInTheDocument()
   })
 
-  it('미배정이면 배정 입력 링크가 청약 ID로 이어진다', () => {
+  it('미배정이면 청약·매도 관리 링크가 공모주 문맥으로 이어진다', () => {
     renderDetail(ITEM_WITH_NAMES)
 
-    expect(screen.getByRole('link', { name: '배정 입력' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/allocations/register?subscriptionId=1',
+      '/ipos/10/manage',
     )
-    expect(screen.queryByRole('link', { name: '매도 등록' })).not.toBeInTheDocument()
   })
 
-  it('남은 수량이 있으면 매도 등록 링크가 보인다', () => {
+  it('남은 수량이 있으면 청약·매도 관리 링크가 보인다', () => {
     renderDetail(ALLOCATED)
 
-    expect(screen.getByRole('link', { name: '매도 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/sales/register?subscriptionId=7',
+      '/ipos/10/manage',
     )
-    expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
   })
 
   it('모두 팔았으면 이동 버튼이 없다', () => {
     renderDetail({ ...ALLOCATED, remainingQuantity: 0 })
 
-    expect(screen.queryByRole('link', { name: '매도 등록' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '배정 입력' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '청약·매도 관리' })).not.toBeInTheDocument()
   })
 })

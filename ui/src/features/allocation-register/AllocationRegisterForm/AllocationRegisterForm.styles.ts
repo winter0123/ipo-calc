@@ -105,6 +105,26 @@ export const StyleScope = styled.div`
     border-color: var(--border);
     cursor: not-allowed;
   }
+
+  /* 통합 관리 화면 섹션(AllocationSection)이 쓰는 추가 요소 */
+  .s-e642165-sectionMeta {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
+  .s-e642165-sectionBody {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .s-e642165-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
 `
 
 export default styles

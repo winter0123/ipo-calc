@@ -55,6 +55,8 @@ function setup(
             <Route path="dashboard" element={<div>대시보드 화면</div>} />
             <Route path="securities" element={<div>증권사 관리 화면</div>} />
             <Route path="my-page" element={<div>마이페이지 화면</div>} />
+            <Route path="ipos/:ipoId" element={<div>공개 상세 화면</div>} />
+            <Route path="ipos/:ipoId/manage" element={<div>청약·매도 관리 화면</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -128,5 +130,30 @@ describe('현재 투자자 선택', () => {
   it('계정 단위 화면(대시보드)은 선택 없이도 열린다', async () => {
     setup([investor(1, '홍길동'), investor(2, '김철수')], '/dashboard')
     expect(await screen.findByText('대시보드 화면')).toBeInTheDocument()
+  })
+
+  it('공개 공모주 상세는 선택 없이도 열린다(관리 경로와 달리 게이트 대상이 아니다)', async () => {
+    setup([investor(1, '홍길동'), investor(2, '김철수')], '/ipos/7')
+    expect(await screen.findByText('공개 상세 화면')).toBeInTheDocument()
+  })
+
+  it('관리 경로(/ipos/:ipoId/manage)는 투자자를 골라야 열린다', async () => {
+    // 이전 테스트에서 모듈 메모리에 남은 선택을 무효화하려고 목록에 없는 id를 심는다.
+    localStorage.setItem('currentInvestorId', '99')
+    setup([investor(1, '홍길동'), investor(2, '김철수')], '/ipos/7/manage')
+    expect(await screen.findByRole('heading', { name: '어느 투자자로 작업할까요?' })).toBeVisible()
+    expect(screen.queryByText('청약·매도 관리 화면')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '김철수' }))
+    expect(await screen.findByText('청약·매도 관리 화면')).toBeInTheDocument()
+  })
+
+  it('관리 경로도 관리 계좌가 없으면 등록 안내 팝업을 띄운다', async () => {
+    setup([investor(1, '홍길동')], '/ipos/7/manage', [])
+
+    expect(
+      await screen.findByRole('alertdialog', { name: '증권계좌를 먼저 등록해 주세요' }),
+    ).toBeVisible()
+    expect(screen.queryByText('청약·매도 관리 화면')).not.toBeInTheDocument()
   })
 })

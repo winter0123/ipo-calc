@@ -191,29 +191,10 @@ export default function SubscriptionScheduleList({
                     </>
                   )}
                 </dl>
-                {investorSelected && item.subscriptionCount === 0 && (
+                {investorSelected && (
                   <div className={styles.actionGroup}>
-                    <Link
-                      className={styles.action}
-                      to={`/subscriptions/register?ipoId=${item.ipo.id}`}
-                    >
-                      청약 등록
-                    </Link>
-                    <Link className={styles.saleAction} to={`/sales/register?ipoId=${item.ipo.id}`}>
-                      매도 등록
-                    </Link>
-                  </div>
-                )}
-                {investorSelected && item.subscriptionCount > 0 && (
-                  <div className={styles.actionGroup}>
-                    <Link
-                      className={styles.action}
-                      to={`/subscriptions/register?ipoId=${item.ipo.id}`}
-                    >
-                      청약 수정
-                    </Link>
-                    <Link className={styles.saleAction} to={`/sales/register?ipoId=${item.ipo.id}`}>
-                      매도 수정
+                    <Link className={styles.action} to={`/ipos/${item.ipo.id}/manage`}>
+                      청약·매도 관리
                     </Link>
                   </div>
                 )}
@@ -230,23 +211,6 @@ export default function SubscriptionScheduleList({
                             : ''}{' '}
                         · {formatShares(subscription.subscriptionQuantity)}
                       </p>
-                      {subscription.allocation === null && (
-                        <Link
-                          className={styles.action}
-                          to={`/allocations/register?subscriptionId=${subscription.id}`}
-                        >
-                          배정 등록
-                        </Link>
-                      )}
-                      {subscription.allocation !== null &&
-                        (subscription.remainingQuantity ?? 0) > 0 && (
-                          <Link
-                            className={styles.saleAction}
-                            to={`/sales/register?subscriptionId=${subscription.id}`}
-                          >
-                            매도 등록
-                          </Link>
-                        )}
                     </section>
                   ))}
               </li>

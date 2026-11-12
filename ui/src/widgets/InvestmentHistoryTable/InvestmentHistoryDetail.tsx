@@ -17,11 +17,15 @@ export default function InvestmentHistoryDetail({ detail, onClose }: InvestmentH
   const formattedDate = new Date(detail.subscribedAt).toLocaleDateString('ko-KR')
 
   const nextAction =
-    detail.allocation === null
-      ? { label: '배정 입력', to: `/allocations/register?subscriptionId=${detail.id}` }
-      : (detail.remainingQuantity ?? 0) > 0
-        ? { label: '매도 등록', to: `/sales/register?subscriptionId=${detail.id}` }
-        : null
+    detail.allocation === null || (detail.remainingQuantity ?? 0) > 0
+      ? {
+          label: '청약·매도 관리',
+          to:
+            detail.securitiesAccountId != null
+              ? `/ipos/${detail.ipoId}/manage?securitiesAccountId=${detail.securitiesAccountId}`
+              : `/ipos/${detail.ipoId}/manage`,
+        }
+      : null
 
   return (
     <StyleScope>

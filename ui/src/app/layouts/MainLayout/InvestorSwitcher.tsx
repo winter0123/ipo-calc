@@ -1,12 +1,20 @@
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentInvestor } from '@/entities/investor/index.ts'
+import { useUnsavedGuard } from '@/shared/navigation/unsavedGuard.ts'
+import ConfirmDialog from '@/shared/components/ConfirmDialog/ConfirmDialog.tsx'
 import styles, { StyleScope } from './MainLayout.styles.ts'
 
 // 현재 투자자 전환기. 투자자가 없으면 보이지 않고, 여러 명이면 버튼 아래 목록을 연다.
+// 미저장 입력이 있으면 전환 전에 확인을 받고, 저장이 진행 중이면 전환을 막는다.
 export default function InvestorSwitcher() {
   const { investors, current, select } = useCurrentInvestor()
+  const { isDirty, isPending } = useUnsavedGuard()
   const [open, setOpen] = useState(false)
+  // 전환 전에 확인이 필요한 투자자(미저장 입력이 있는 경우)
+  const [pendingInvestorId, setPendingInvestorId] = useState<number | null>(null)
+  // 저장이 진행 중이라 전환할 수 없는 경우 안내
+  const [blockedPending, setBlockedPending] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
@@ -48,6 +56,36 @@ export default function InvestorSwitcher() {
         }
       </StyleScope>
     )
+  }
+
+  const requestSelect = (investorId: number) => {
+    if (investorId === current?.id) {
+      setOpen(false)
+      return
+    }
+    if (isPending) {
+      // 저장·필수 재조회가 끝나기 전에는 전환할 수 없다(뒤로 가기 경고와 같은 기준).
+      setOpen(false)
+      setBlockedPending(true)
+      return
+    }
+    if (isDirty) {
+      // 미저장 입력이 있으면 현재 유지/전환 확인을 받는다. 확인 시에만 문맥을 새로 적용한다.
+      setOpen(false)
+      setPendingInvestorId(investorId)
+      return
+    }
+    select(investorId)
+    setOpen(false)
+    buttonRef.current?.focus()
+  }
+
+  const confirmSwitch = () => {
+    const target = pendingInvestorId
+    setPendingInvestorId(null)
+    if (target === null) return
+    select(target)
+    buttonRef.current?.focus()
   }
 
   return (
@@ -94,11 +132,7 @@ export default function InvestorSwitcher() {
                   type="button"
                   className={styles.investorOption}
                   aria-pressed={investor.id === current?.id}
-                  onClick={() => {
-                    select(investor.id)
-                    setOpen(false)
-                    buttonRef.current?.focus()
-                  }}
+                  onClick={() => requestSelect(investor.id)}
                 >
                   {investor.displayName}
                 </button>
@@ -107,6 +141,28 @@ export default function InvestorSwitcher() {
           )}
         </div>
       }
+      <ConfirmDialog
+        isOpen={pendingInvestorId !== null}
+        title="저장하지 않은 입력이 있습니다"
+        message="다른 투자자로 바꾸면 지금 입력한 내용이 지워집니다. 그래도 바꿀까요?"
+        confirmLabel="바꾸기"
+        cancelLabel="계속 작성"
+        onConfirm={confirmSwitch}
+        onCancel={() => {
+          setPendingInvestorId(null)
+          buttonRef.current?.focus()
+        }}
+      />
+      <ConfirmDialog
+        isOpen={blockedPending}
+        title="저장이 진행 중입니다"
+        message="저장이 끝나기 전에는 투자자를 바꿀 수 없습니다. 저장이 끝난 뒤 다시 시도해 주세요."
+        confirmLabel="확인"
+        cancelLabel="계속 작성"
+        pending
+        onConfirm={() => setBlockedPending(false)}
+        onCancel={() => setBlockedPending(false)}
+      />
     </StyleScope>
   )
 }

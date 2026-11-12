@@ -116,9 +116,9 @@ describe('SubscriptionListPage', () => {
     expect(await screen.findByRole('heading', { name: IPO.ipoName })).toBeInTheDocument()
     // 청약 전 상태는 pill로 표시되지 않음
     expect(screen.queryByText('청약 전')).not.toBeInTheDocument()
-    // 카드 내의 청약 등록 링크 (상단 버튼 그룹이 아닌 카드 액션 그룹)
+    // 카드 내의 청약·매도 관리 링크 (상단 버튼 그룹이 아닌 카드 액션 그룹)
     const card = screen.getByText('가나다 공모주').closest('li')
-    const cardActionLink = card?.querySelector('a[href="/subscriptions/register?ipoId=10"]')
+    const cardActionLink = card?.querySelector('a[href="/ipos/10/manage"]')
     expect(cardActionLink).toBeInTheDocument()
     expect(screen.queryByText('다음 달 일정')).not.toBeInTheDocument()
   })
@@ -127,9 +127,9 @@ describe('SubscriptionListPage', () => {
     mockApi([HISTORY])
     renderPage('/subscriptions?from=2026-10-01&to=2026-10-31')
     expect(await screen.findByText(/한국투자증권 · 주력 계좌/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '배정 등록' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
       'href',
-      '/allocations/register?subscriptionId=7',
+      '/ipos/10/manage',
     )
     expect(screen.getByText('청약 진행 중')).toBeInTheDocument()
   })
@@ -149,14 +149,14 @@ describe('SubscriptionListPage', () => {
 
     expect(await screen.findByRole('heading', { name: '공모주 청약' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: IPO.ipoName })).toBeInTheDocument()
-    // 문맥 없는 상단 공통 등록 링크는 삭제됐다 (카드의 문맥 있는 ?ipoId 링크만 남는다)
+    // 문맥 없는 상단 공통 등록 링크는 삭제됐다 (카드의 문맥 있는 통합 관리 링크만 남는다)
     const plainLinks = document.querySelectorAll(
       'a[href="/subscriptions/register"], a[href="/sales/register"]',
     )
     expect(plainLinks).toHaveLength(0)
-    // 카드 안의 문맥 있는 청약 등록 링크는 유지된다
+    // 카드 안의 통합 관리 링크는 유지된다
     const card = screen.getByText('가나다 공모주').closest('li')
-    expect(card?.querySelector('a[href="/subscriptions/register?ipoId=10"]')).toBeInTheDocument()
+    expect(card?.querySelector('a[href="/ipos/10/manage"]')).toBeInTheDocument()
   })
 
   it('투자자가 없을 때 선택할 투자자가 없습니다 메시지가 표시된다', async () => {

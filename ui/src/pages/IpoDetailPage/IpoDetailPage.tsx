@@ -89,29 +89,16 @@ export default function IpoDetailPage() {
     ),
   ]
 
-  // 청약 가능 여부: 청약 예정·진행 중인 경우에만 보이게 함
-  const canRegister = status.label === '청약 예정' || status.label === '청약 진행 중'
-
-  // 상단 우측 CTA 영역 (청약/매도 등록)
-  const registerCTA = canRegister
-    ? isGuest
-      ? {
-          text: '로그인하고 청약 등록하기',
-          href: '/login',
-          state: { from: `/subscriptions/register?ipoId=${id}` },
-        }
-      : { text: '청약 등록하기', href: `/subscriptions/register?ipoId=${id}` }
-    : null
-
-  const saleCTA =
+  // 통합 관리(청약·매도 관리) CTA는 항상 보인다 — 청약일이 지나도 과거 기록을 수정·사후 기록할 수 있다.
+  const manageCTA =
     isValidId && id > 0
       ? isGuest
         ? {
-            text: '로그인하고 매도 등록하기',
+            text: '로그인하고 청약·매도 관리하기',
             href: '/login',
-            state: { from: `/sales/register?ipoId=${id}` },
+            state: { from: `/ipos/${id}/manage` },
           }
-        : { text: '매도 등록하기', href: `/sales/register?ipoId=${id}` }
+        : { text: '청약·매도 관리', href: `/ipos/${id}/manage` }
       : null
 
   if (isLoading) {
@@ -153,20 +140,11 @@ export default function IpoDetailPage() {
                 <span className={styles.underwriters}>{underwriterNames.join(' · ')}</span>
               )}
             </div>
-            {/* 상단 우측 CTO 영역: 청약·매도 CTA */}
+            {/* 상단 우측 CTO 영역: 청약·매도 관리 */}
             <div className={styles.headerCTA} aria-label="상단 우측 작업">
-              {registerCTA && (
-                <Link
-                  to={registerCTA.href}
-                  state={registerCTA.state}
-                  className={styles.primaryLink}
-                >
-                  {registerCTA.text}
-                </Link>
-              )}
-              {saleCTA && (
-                <Link to={saleCTA.href} state={saleCTA.state} className={styles.salePrimaryLink}>
-                  {saleCTA.text}
+              {manageCTA && (
+                <Link to={manageCTA.href} state={manageCTA.state} className={styles.primaryLink}>
+                  {manageCTA.text}
                 </Link>
               )}
             </div>

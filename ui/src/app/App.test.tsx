@@ -22,17 +22,11 @@ vi.mock('../pages/MyPage/MyPage.tsx', () => ({ default: () => <div>MyPage</div> 
 vi.mock('../pages/SecuritiesAccountRegisterPage/SecuritiesAccountRegisterPage.tsx', () => ({
   default: () => <div>SecuritiesAccountRegisterPage</div>,
 }))
-vi.mock('../pages/SubscriptionRegisterPage/SubscriptionRegisterPage.tsx', () => ({
-  default: () => <div>SubscriptionRegisterPage</div>,
-}))
 vi.mock('../pages/SubscriptionListPage/SubscriptionListPage.tsx', () => ({
   default: () => <div>SubscriptionListPage</div>,
 }))
-vi.mock('../pages/AllocationRegisterPage/AllocationRegisterPage.tsx', () => ({
-  default: () => <div>AllocationRegisterPage</div>,
-}))
-vi.mock('../pages/SaleRegisterPage/SaleRegisterPage.tsx', () => ({
-  default: () => <div>SaleRegisterPage</div>,
+vi.mock('../pages/RegisterRedirectPage/RegisterRedirectPage.tsx', () => ({
+  default: () => <div>RegisterRedirectPage</div>,
 }))
 vi.mock('../pages/ProfitViewPage/ProfitViewPage.tsx', () => ({
   default: () => <div>ProfitViewPage</div>,
@@ -42,6 +36,9 @@ vi.mock('../pages/InvestmentHistoryPage/InvestmentHistoryPage.tsx', () => ({
 }))
 vi.mock('../pages/IpoCalendarPage/IpoCalendarPage.tsx', () => ({
   default: () => <div>IpoCalendarPage</div>,
+}))
+vi.mock('../pages/TradeManagePage/TradeManagePage.tsx', () => ({
+  default: () => <div>TradeManagePage</div>,
 }))
 
 vi.mock('../pages/SecuritiesPage/SecuritiesPage.tsx', () => ({
@@ -56,13 +53,14 @@ const ROUTES: Array<[string, string]> = [
   ['/investors/register', 'InvestorRegisterPage'],
   ['/dashboard', 'DashboardPage'],
   ['/my-page', 'MyPage'],
-  ['/subscriptions/register', 'SubscriptionRegisterPage'],
+  ['/subscriptions/register', 'RegisterRedirectPage'],
   ['/subscriptions', 'SubscriptionListPage'],
-  ['/allocations/register', 'AllocationRegisterPage'],
-  ['/sales/register', 'SaleRegisterPage'],
+  ['/allocations/register', 'RegisterRedirectPage'],
+  ['/sales/register', 'RegisterRedirectPage'],
   ['/profits/view', 'ProfitViewPage'],
   ['/investments', 'InvestmentHistoryPage'],
   ['/ipo-calendar', 'IpoCalendarPage'],
+  ['/ipos/7/manage', 'TradeManagePage'],
   ['/securities', 'SecuritiesPage'],
 ]
 

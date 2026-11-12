@@ -49,19 +49,14 @@ export default function SubscriptionCard({ item }: SubscriptionCardProps) {
           </dl>
           <div className={styles.buttonGroup}>
             <Link
-              to={`/subscriptions/register?ipoId=${item.ipoId}`}
+              to={
+                item.securitiesAccountId != null
+                  ? `/ipos/${item.ipoId}/manage?securitiesAccountId=${item.securitiesAccountId}`
+                  : `/ipos/${item.ipoId}/manage`
+              }
               className={styles.actionButton}
             >
-              청약 수정
-            </Link>
-            <Link
-              to={`/allocations/register?subscriptionId=${item.id}`}
-              className={styles.actionButton}
-            >
-              배정등록
-            </Link>
-            <Link to={`/sales/register?subscriptionId=${item.id}`} className={styles.actionButton}>
-              매도 수정
+              청약·매도 관리
             </Link>
           </div>
         </li>

@@ -11,7 +11,7 @@ import {
   type MatchCandidate,
 } from '@/entities/sale/index.ts'
 import { recognizeImages, type OcrProgress } from '@/shared/lib/ocr/recognizeImages.ts'
-import type { SaleForm } from './useSaleForm.ts'
+import type { SaleFormCaptureAdapter } from './saleFormTypes.ts'
 
 /** 캡처에서 읽은 매도 1건과 현재 투자자의 청약 매칭 결과. */
 export interface CaptureRow {
@@ -33,7 +33,7 @@ const FIELD_LABEL: Record<string, string> = {
 const UNSUPPORTED = '한국투자증권·NH투자증권 앱의 실현손익 화면 캡처만 읽을 수 있습니다.'
 
 /** 캡처 이미지 → 브라우저 안 OCR → 규칙 파서 → (1건이면 바로, 여러 건이면 고른 뒤) 매도 폼 채우기. */
-export function useCaptureImport(f: SaleForm) {
+export function useCaptureImport(f: SaleFormCaptureAdapter) {
   const { data: ipos } = useIpos()
   const [progress, setProgress] = useState<OcrProgress | null>(null)
   const [rows, setRows] = useState<CaptureRow[]>([])
