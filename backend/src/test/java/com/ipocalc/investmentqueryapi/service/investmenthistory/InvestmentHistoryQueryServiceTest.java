@@ -106,7 +106,6 @@ class InvestmentHistoryQueryServiceTest {
     // Ownership verifier가 예외 없이 통과하도록 설정
     doNothing().when(ownershipVerifier).verifyInvestorIdOwnership(anyLong());
     doNothing().when(ownershipVerifier).verifySecuritiesAccountIdOwnership(anyLong());
-    doNothing().when(ownershipVerifier).verifyIpoIdOwnership(anyLong());
     doNothing().when(ownershipVerifier).verifySubscriptionOwnership(anyLong());
 
     // Current account investor
@@ -270,19 +269,6 @@ class InvestmentHistoryQueryServiceTest {
 
     // When & Then: InvestmentQueryForbiddenException 발생
     assertThatThrownBy(() -> queryService.getHistory(null, SECURITIES_ACCOUNT_ID, null, 0, 20))
-        .isInstanceOf(InvestmentQueryForbiddenException.class)
-        .hasMessage("해당 데이터에 접근 권한이 없습니다.");
-  }
-
-  @Test
-  void getHistory_ipoId_소유권아님_403예상() {
-    // Given: 현재 계정에 속하지 않는 ipoId 지정
-    doThrow(new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다."))
-        .when(ownershipVerifier)
-        .verifyIpoIdOwnership(anyLong());
-
-    // When & Then: InvestmentQueryForbiddenException 발생
-    assertThatThrownBy(() -> queryService.getHistory(null, null, IPO_ID, 0, 20))
         .isInstanceOf(InvestmentQueryForbiddenException.class)
         .hasMessage("해당 데이터에 접근 권한이 없습니다.");
   }

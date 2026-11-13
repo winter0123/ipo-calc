@@ -56,15 +56,14 @@ public class InvestmentHistoryQueryService {
 
     final Long currentAccountId = securityUtils.getEffectiveAccountId();
 
-    // Step 1: 인증 및 소유권 검증 (모든 필터에 대해 재검증)
+    // Step 1: 인증 및 소유권 검증 (필터에 대해 재검증)
+    // ipoId는 공개 카탈로그 검색조건이므로 기존 청약 존재 여부로 권한을 판단하지 않는다.
+    // currentAccountId 강제 스코프(Repository)가 타 계정 노출을 방지한다.
     if (investorId != null) {
       ownershipVerifier.verifyInvestorIdOwnership(investorId);
     }
     if (securitiesAccountId != null) {
       ownershipVerifier.verifySecuritiesAccountIdOwnership(securitiesAccountId);
-    }
-    if (ipoId != null) {
-      ownershipVerifier.verifyIpoIdOwnership(ipoId);
     }
 
     // Step 2: 필터와 페이지네이션을 적용한 Subscription 조회

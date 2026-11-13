@@ -6,7 +6,6 @@ import com.ipocalc.investmentqueryapi.exception.InvestmentQueryNotFoundException
 import com.ipocalc.investormanagement.service.ownership.OwnershipGuard;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.ipocalc.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
-import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ public class InvestmentHistoryOwnershipVerifier {
   private final SecurityUtils securityUtils;
   private final OwnershipGuard ownershipGuard;
   private final SecuritiesAccountRepository securitiesAccountRepository;
-  private final SubscriptionRepository subscriptionRepository;
 
   /**
    * investorId 필터에 대한 소유권 재검증 investorRepository.findById(investorId)로 조회 → Investor.accountId !=
@@ -41,19 +39,6 @@ public class InvestmentHistoryOwnershipVerifier {
             .findById(securitiesAccountId)
             .orElseThrow(() -> new InvestmentQueryNotFoundException("해당 증권 계좌를 찾을 수 없습니다."));
     requireOwnedInvestor(securitiesAccount.getInvestorId());
-  }
-
-  /**
-   * ipoId 필터에 대한 소유권 재검증 existsByIpoIdAndInvestorAccountId(ipoId, currentAccountId)로 "현재 계정 소유 청약 중
-   * 해당 IPO 건이 하나라도 있는지" 확인, 없으면 403.
-   */
-  public void verifyIpoIdOwnership(Long ipoId) {
-    Long currentAccountId = securityUtils.getEffectiveAccountId();
-    boolean exists =
-        subscriptionRepository.existsByIpoIdAndInvestorAccountId(ipoId, currentAccountId);
-    if (!exists) {
-      throw new InvestmentQueryForbiddenException("해당 데이터에 접근 권한이 없습니다.");
-    }
   }
 
   /** 단건 조회 시 Subscription의 소유권 검증 Subscription의 Investor의 accountId와 비교. */

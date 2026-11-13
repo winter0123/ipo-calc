@@ -202,3 +202,11 @@
 - Master 검증 PASS: backend 슬롯4 전체1197건/실패0/오류0/skip0/checkstyleMain·Test/spotlessJavaCheck/bootJar(backend 이후 변경없음). 최종 UI108파일949건/typecheck/lint(기존4warning·오류0)/build/git diff검사 PASS.
 - 실제 계정 통합·운영 배포 NOT_RUN. 모바일375/PC1280 증적 검토 PASS(모의 API). 좁은 복수계좌 카드의 긴 회사명은 줄임표와 title로 표시됨.
 - 모든 워커 release·terminal 종료, watchdog 중지. branch winter0123/remove-allocation-method 미커밋. 사용자 배포 지시 전 배포하지 않음. .playwright-cli/ 및 구형 simwon-withdrawal-procedure.md 초안은 별도 보존·커밋제외.
+
+
+## 2026-11-13 통합 관리 신규 조회 403 수정 검증 완료
+
+- 공용 IPO 필터에 본인 청약 존재를 요구하던 권한 조건 제거. 로그인 계정 조회 범위와 투자자·계좌·단건 소유권 검사는 유지.
+- 실 Spring Security·서비스·슬롯 DB HTTP 통합 회귀 10건 추가, 테스트 전체 삭제 정리 대신 트랜잭션 롤백 적용.
+- Master 슬롯4 초기화 후 전체 재실행 PASS: backend 1204건/실패0/오류0/skip0, checkstyleMain/Test, spotlessJavaCheck, bootJar. UI TradeManagePage 31건 PASS, diff 검사 PASS.
+- main 미커밋 상태. 커밋·푸시·병합·배포 및 운영 브라우저 재현 NOT_RUN. 사용자 로컬 웹 중지 요청 유지. 사용자 infra/ 및 기타 로컬 변경 보존.

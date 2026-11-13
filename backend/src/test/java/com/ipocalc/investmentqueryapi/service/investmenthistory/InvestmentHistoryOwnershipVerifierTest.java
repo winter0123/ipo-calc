@@ -11,7 +11,6 @@ import com.ipocalc.investormanagement.domain.model.investor.Investor;
 import com.ipocalc.investormanagement.repository.investor.InvestorRepository;
 import com.ipocalc.securitiesaccountmanagement.domain.model.securitiesaccount.SecuritiesAccount;
 import com.ipocalc.securitiesaccountmanagement.repository.securitiesaccount.SecuritiesAccountRepository;
-import com.ipocalc.subscriptionmanagement.repository.subscription.SubscriptionRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -28,8 +27,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  *
  * <p>이 Epic의 보안 핵심 로직인 소유권 검증을 검증한다: 1. investorId 필터: investorRepository.findById →
  * Investor.accountId 비교 2. securitiesAccountId 필터: SecuritiesAccount → Investor(accountId) 2홉 비교 3.
- * ipoId 필터: subscriptionRepository.existsByIpoIdAndInvestorAccountId 4. 단건 조회: Subscription의
- * Investor.accountId 비교
+ * 단건 조회: Subscription의 Investor.accountId 비교
  *
  * <p>각 검증에 대해 성공/실패(403, 404) 케이스를 모두 테스트한다.
  */
@@ -44,8 +42,6 @@ class InvestmentHistoryOwnershipVerifierTest {
   @MockitoBean private InvestorRepository investorRepository;
 
   @MockitoBean private SecuritiesAccountRepository securitiesAccountRepository;
-
-  @MockitoBean private SubscriptionRepository subscriptionRepository;
 
   private static final Long CURRENT_ACCOUNT_ID = 1L;
   private static final Long OTHER_ACCOUNT_ID = 2L;
@@ -206,32 +202,6 @@ class InvestmentHistoryOwnershipVerifierTest {
             () -> ownershipVerifier.verifySecuritiesAccountIdOwnership(SECURITIES_ACCOUNT_ID))
         .isInstanceOf(InvestmentQueryNotFoundException.class)
         .hasMessage("해당 투자자를 찾을 수 없습니다.");
-  }
-
-  // ===========================================
-  // ipoId 필터 검증 테스트
-  // ===========================================
-
-  @Test
-  void verifyIpoIdOwnershipSucceedsWhenSubscriptionExistsForCurrentAccount() {
-    // Given: 현재 계정 소유 청약 중 해당 IPO 건이 존재함
-    when(subscriptionRepository.existsByIpoIdAndInvestorAccountId(IPO_ID, CURRENT_ACCOUNT_ID))
-        .thenReturn(true);
-
-    // When & Then: 예외 없이 통과
-    ownershipVerifier.verifyIpoIdOwnership(IPO_ID);
-  }
-
-  @Test
-  void verifyIpoIdOwnershipThrowsForbiddenWhenNoSubscriptionForCurrentAccount() {
-    // Given: 현재 계정 소유 청약 중 해당 IPO 건이 없음
-    when(subscriptionRepository.existsByIpoIdAndInvestorAccountId(IPO_ID, CURRENT_ACCOUNT_ID))
-        .thenReturn(false);
-
-    // When & Then: InvestmentQueryForbiddenException 발생
-    assertThatThrownBy(() -> ownershipVerifier.verifyIpoIdOwnership(IPO_ID))
-        .isInstanceOf(InvestmentQueryForbiddenException.class)
-        .hasMessage("해당 데이터에 접근 권한이 없습니다.");
   }
 
   // ===========================================
