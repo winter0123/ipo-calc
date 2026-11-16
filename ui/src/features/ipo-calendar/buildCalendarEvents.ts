@@ -26,6 +26,7 @@ export interface BarSegment {
 
 function getPriceDisplay(ipo: Ipo): string | undefined {
   const { fixedPrice, lowerBandPrice, upperBandPrice } = ipo
+  // 확정 공모가만 단일가로 표시한다. 밴드 단일값(lower==upper)은 확정가로 오인하지 않는다.
   if (fixedPrice !== null && fixedPrice > 0) {
     return formatWon(fixedPrice)
   }
@@ -33,9 +34,9 @@ function getPriceDisplay(ipo: Ipo): string | undefined {
     lowerBandPrice !== null &&
     upperBandPrice !== null &&
     lowerBandPrice > 0 &&
-    upperBandPrice > 0
+    upperBandPrice > 0 &&
+    lowerBandPrice !== upperBandPrice
   ) {
-    if (lowerBandPrice === upperBandPrice) return formatWon(lowerBandPrice)
     return `${lowerBandPrice.toLocaleString()}~${upperBandPrice.toLocaleString()}원`
   }
   return undefined

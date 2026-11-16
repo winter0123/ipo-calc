@@ -12,16 +12,18 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecuri
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 활성 자동 공모의 원공시 재점검(철회 반영)을 담당한다.
+ * 활성 자동 공모의 원공시 재점검(철회·가격·일정 반영)을 담당한다.
  *
  * <p>04:30 배치와 재기동 자동복구가 이 단계를 공유한다. 상장일 경과·90일 경과 여부와 무관하게 ACTIVE + syncSource가 있는 건을 전부 점검하며,
  * 회사(corp_code) 단위로 묶어 DS001(전체 기간, 모든 페이지) 1세트 + DS006(전체 기간) 1세트만 조회해 회사의 여러 건이 호출을 공유한다.
@@ -29,9 +31,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <ul>
  *   <li>철회 확정: DS001의 rm에 '철'이 포함된 원공시를 DS006의 같은 접수번호 상세와 매칭하고, corp_code + 원공시 접수번호 + 청약 시작일
  *       3자(레거시 행은 청약 시작일 유일 매칭)가 일치하는 ACTIVE 건만 {@code withdraw()}한다.
+ *   <li>철회가 없으면 최신 유효 지분증권 공시(발행조건확정 우선)로 확정가·청약/배정/환불 일정을 {@code persist()}로 갱신한다.
  *   <li>빈 응답·파싱 실패·API 오류는 '철회점검: ' 접두 실패로 기록하고 철회하지 않는다(일정 누락 ≠ 철회).
  *   <li>인증 오류·020(요청 제한)은 같은 키를 쓰므로 재점검 단계를 즉시 중단하고 aborted를 반환한다. 일반 건별 오류는 격리하고 계속한다.
- *   <li>별도 트랜잭션으로 철회하며, 한 건의 실패가 다음 건을 막지 않는다.
+ *   <li>별도 트랜잭션으로 철회·갱신하며, 한 건의 실패가 다음 건을 막지 않는다.
  * </ul>
  */
 @Service
@@ -74,11 +77,12 @@ public class IpoReconciliationService {
       processCorp(result, entry.getKey(), entry.getValue());
     }
     log.info(
-        "재점검 완료: totalTargets={}, succeeded={}, failed={}, withdrawn={}, aborted={}",
+        "재점검 완료: totalTargets={}, succeeded={}, failed={}, withdrawn={}, refreshed={}, aborted={}",
         result.getTotalTargets(),
         result.getSucceeded(),
         result.getFailed(),
         result.getWithdrawn(),
+        result.getRefreshed(),
         result.isAborted());
     return result;
   }
@@ -193,7 +197,113 @@ public class IpoReconciliationService {
       result.setFailed(result.getFailed() + 1);
       return;
     }
+    // 철회가 없으면 최신 유효 공시로 확정가·일정을 갱신한다(90일 신규 수집에 안 잡혀도 반영)
+    refreshFromLatestFiling(result, corpCode, row, disclosures, details);
     result.setSucceeded(result.getSucceeded() + 1);
+  }
+
+  /**
+   * 철회가 아닌 지분증권 공시 중 발행조건확정을 우선하고, 없으면 접수일·접수번호 기준 최신 건으로 가격·일정을 갱신한다.
+   * 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지 않고 경고만 남긴다.
+   */
+  private void refreshFromLatestFiling(
+      IpoReconcileResult result,
+      String corpCode,
+      Ipo row,
+      List<OpenDartDisclosureItem> disclosures,
+      List<OpenDartEquitySecurityDetail> details) {
+    OpenDartDisclosureItem filing = selectRefreshFiling(disclosures);
+    if (filing == null) {
+      return;
+    }
+    OpenDartEquitySecurityDetail detail = matchDetail(filing, details);
+    if (detail == null) {
+      log.warn(
+          "재점검 갱신: DS006 상세 없음 (corpCode={}, rceptNo={})", corpCode, filing.getRceptNo());
+      return;
+    }
+    if (detail.getSubscriptionStartDate() == null) {
+      log.warn(
+          "재점검 갱신: 청약 시작일 파싱 실패 (corpCode={}, rceptNo={}, sbd={})",
+          corpCode,
+          filing.getRceptNo(),
+          detail.getSbd());
+      return;
+    }
+    if (detail.isSubscriptionEndUnreadable()) {
+      log.warn(
+          "재점검 갱신: 청약 종료일 파싱 실패 (corpCode={}, rceptNo={}, sbd={})",
+          corpCode,
+          filing.getRceptNo(),
+          detail.getSbd());
+      return;
+    }
+    attemptRefresh(result, corpCode, row, filing, detail);
+  }
+
+  /**
+   * 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정이 있으면 그중 최신, 없으면 전체 중 최신.
+   */
+  static OpenDartDisclosureItem selectRefreshFiling(List<OpenDartDisclosureItem> disclosures) {
+    if (disclosures == null || disclosures.isEmpty()) {
+      return null;
+    }
+    List<OpenDartDisclosureItem> candidates =
+        disclosures.stream()
+            .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
+            .filter(item -> item.getRm() == null || !item.getRm().contains("철"))
+            .toList();
+    if (candidates.isEmpty()) {
+      return null;
+    }
+    Comparator<OpenDartDisclosureItem> newestFirst =
+        Comparator.comparing(
+                OpenDartDisclosureItem::getRceptDt, Comparator.nullsFirst(String::compareTo))
+            .thenComparing(
+                OpenDartDisclosureItem::getRceptNo, Comparator.nullsFirst(String::compareTo))
+            .reversed();
+    return candidates.stream()
+        .filter(OpenDartDisclosureItem::isFinalizedReport)
+        .max(newestFirst)
+        .or(() -> candidates.stream().max(newestFirst))
+        .orElse(null);
+  }
+
+  private void attemptRefresh(
+      IpoReconcileResult result,
+      String corpCode,
+      Ipo row,
+      OpenDartDisclosureItem filing,
+      OpenDartEquitySecurityDetail detail) {
+    try {
+      IpoSyncPersistence.Outcome outcome =
+          transactionTemplate.execute(
+              status ->
+                  ipoSyncPersistence.persist(
+                      corpCode,
+                      Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                      detail,
+                      filing.isFinalizedReport(),
+                      filing.isCorrectionOrFinalized()));
+      if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
+        result.setRefreshed(result.getRefreshed() + 1);
+        log.debug(
+            "재점검 갱신 완료: corpCode={}, rceptNo={}, finalized={}",
+            corpCode,
+            filing.getRceptNo(),
+            filing.isFinalizedReport());
+      } else if (outcome == IpoSyncPersistence.Outcome.HELD_UNDETERMINED
+          || outcome == IpoSyncPersistence.Outcome.BLOCKED_MULTIPLE) {
+        log.warn(
+            "재점검 갱신 보류: corpCode={}, rceptNo={}, outcome={}",
+            corpCode,
+            filing.getRceptNo(),
+            outcome);
+      }
+    } catch (Exception e) {
+      log.warn(
+          "재점검 갱신 중 예외 (corpCode={}, 클래스만): {}", corpCode, e.getClass().getSimpleName());
+    }
   }
 
   /**

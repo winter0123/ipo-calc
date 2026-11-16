@@ -258,6 +258,7 @@ class IpoReconciliationServiceTest {
             .corpName("심원")
             .reportNm("[기재정정]증권신고서(지분증권)")
             .rceptNo("20261028000200")
+            .rceptDt("20261028")
             .rm("")
             .build();
     OpenDartEquitySecurityDetail detail =
@@ -271,12 +272,134 @@ class IpoReconciliationServiceTest {
         .thenReturn(List.of(correction));
     when(equitySecuritiesClient.getEquitySecurityDetail(any(), any(), any()))
         .thenReturn(List.of(detail));
+    when(persistence.persist(
+            org.mockito.ArgumentMatchers.eq("02038432"),
+            org.mockito.ArgumentMatchers.eq("심원"),
+            org.mockito.ArgumentMatchers.eq(detail),
+            org.mockito.ArgumentMatchers.eq(false),
+            org.mockito.ArgumentMatchers.eq(true)))
+        .thenReturn(IpoSyncPersistence.Outcome.UPDATED);
 
     IpoReconcileResult result = service.reconcileActiveOfferings();
 
     assertThat(result.getSucceeded()).isEqualTo(1);
+    assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();
     assertThat(result.getFailures()).isEmpty();
+    verify(persistence)
+        .persist("02038432", "심원", detail, false, true);
+  }
+
+  @Test
+  void refreshPrefersFinalizedReportAndUpdatesFixedPricePath() {
+    Ipo row =
+        Ipo.builder()
+            .id(1L)
+            .corpCode("02038432")
+            .companyName("영광와이케이엠씨")
+            .ipoName("영광와이케이엠씨")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .fixedPrice(9_400L)
+            .status(RecordStatus.ACTIVE)
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20261001000001")
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("02038432")
+            .corpName("영광와이케이엠씨")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261001000001")
+            .rceptDt("20261001")
+            .rm("")
+            .build();
+    OpenDartDisclosureItem finalized =
+        OpenDartDisclosureItem.builder()
+            .corpCode("02038432")
+            .corpName("영광와이케이엠씨")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261020000002")
+            .rceptDt("20261020")
+            .rm("")
+            .build();
+    OpenDartDisclosureItem laterCorrection =
+        OpenDartDisclosureItem.builder()
+            .corpCode("02038432")
+            .corpName("영광와이케이엠씨")
+            .reportNm("[기재정정]증권신고서(지분증권)")
+            .rceptNo("20261025000003")
+            .rceptDt("20261025")
+            .rm("")
+            .build();
+
+    OpenDartEquitySecurityDetail originalDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261001000001")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .offerPrice(9_400L)
+            .build();
+    OpenDartEquitySecurityDetail finalizedDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261020000002")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .offerPrice(11_000L)
+            .build();
+    OpenDartEquitySecurityDetail correctionDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261025000003")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .offerPrice(11_000L)
+            .build();
+
+    when(corpDisclosureClient.searchAllByDateRange(any(), any(), any()))
+        .thenReturn(List.of(original, finalized, laterCorrection));
+    when(equitySecuritiesClient.getEquitySecurityDetail(any(), any(), any()))
+        .thenReturn(List.of(originalDetail, finalizedDetail, correctionDetail));
+    when(persistence.persist(
+            org.mockito.ArgumentMatchers.eq("02038432"),
+            org.mockito.ArgumentMatchers.eq("영광와이케이엠씨"),
+            org.mockito.ArgumentMatchers.eq(finalizedDetail),
+            org.mockito.ArgumentMatchers.eq(true),
+            org.mockito.ArgumentMatchers.eq(true)))
+        .thenReturn(IpoSyncPersistence.Outcome.UPDATED);
+
+    IpoReconcileResult result = service.reconcileActiveOfferings();
+
+    // 더 늦은 기재정정보다 발행조건확정을 선택해야 함
+    verify(persistence)
+        .persist("02038432", "영광와이케이엠씨", finalizedDetail, true, true);
+    assertThat(result.getSucceeded()).isEqualTo(1);
+    assertThat(result.getRefreshed()).isEqualTo(1);
+    assertThat(result.getFailed()).isZero();
+  }
+
+  @Test
+  void selectRefreshFilingPrefersFinalizedOverLaterCorrection() {
+    OpenDartDisclosureItem finalized =
+        OpenDartDisclosureItem.builder()
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261020000002")
+            .rceptDt("20261020")
+            .rm("")
+            .build();
+    OpenDartDisclosureItem laterCorrection =
+        OpenDartDisclosureItem.builder()
+            .reportNm("[기재정정]증권신고서(지분증권)")
+            .rceptNo("20261025000003")
+            .rceptDt("20261025")
+            .rm("")
+            .build();
+
+    OpenDartDisclosureItem selected =
+        IpoReconciliationService.selectRefreshFiling(List.of(laterCorrection, finalized));
+
+    assertThat(selected).isSameAs(finalized);
   }
 
   @Test

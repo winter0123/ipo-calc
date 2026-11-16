@@ -22,6 +22,9 @@ public class IpoReconcileResult {
   /** 철회 처리된 건수. */
   private int withdrawn;
 
+  /** 확정가·일정 등 기존 자동 공모를 최신 공시로 갱신한 건수. */
+  private int refreshed;
+
   /** 실패 상세 목록. reason은 '철회점검: ' 접두어로 구분한다. */
   private List<IpoSyncFailure> failures = new ArrayList<>();
 

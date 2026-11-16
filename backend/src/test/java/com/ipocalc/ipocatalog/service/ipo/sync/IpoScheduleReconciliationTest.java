@@ -257,7 +257,7 @@ class IpoScheduleReconciliationTest {
   }
 
   @Test
-  void persistHoldsCorrectionReportWhenSubscriptionDatesDiffer() {
+  void persistUpdatesCorrectionReportWhenSubscriptionDatesDiffer_singleActive() {
     IpoRepository repository = mock(IpoRepository.class);
     IpoSyncPersistence persistence = newPersistence(repository);
     Ipo existing =
@@ -266,18 +266,22 @@ class IpoScheduleReconciliationTest {
             .companyName("기존회사")
             .subscriptionStartDate(FIRST)
             .sourceReceiptNo("R1")
+            .lastImportedSubscriptionStartDate(FIRST)
             .build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
+    LocalDate newStart = FIRST.plusDays(30);
     var correction =
         OpenDartEquitySecurityDetail.builder()
             .rceptNo("R2")
-            .subscriptionStartDate(FIRST.plusDays(30))
+            .subscriptionStartDate(newStart)
             .build();
 
     assertThat(persistence.persist("corp", "name", correction, false, true))
-        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
-    verify(repository, never()).saveAndFlush(any());
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getSubscriptionStartDate()).isEqualTo(newStart);
+    assertThat(existing.getSourceReceiptNo()).isEqualTo("R1");
+    verify(repository).saveAndFlush(any());
   }
 
   @Test

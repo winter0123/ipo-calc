@@ -61,19 +61,9 @@ export default function IpoDetailPage() {
   }
 
   const status = getStatus(ipo)
-  const isListed = Boolean(ipo?.listingDate && dateOnly(ipo.listingDate) <= toLocalYmd())
-  const singleBandPrice =
-    ipo?.lowerBandPrice != null &&
-    ipo.lowerBandPrice > 0 &&
-    ipo.lowerBandPrice === ipo.upperBandPrice
-      ? ipo.lowerBandPrice
-      : null
+  // 확정 공모가만 표시한다. 희망가 밴드(lower==upper 포함)로 추정하지 않는다.
   const confirmedPriceForDisplay =
-    ipo?.fixedPrice != null && ipo.fixedPrice > 0
-      ? ipo.fixedPrice
-      : isListed
-        ? singleBandPrice
-        : null
+    ipo?.fixedPrice != null && ipo.fixedPrice > 0 ? ipo.fixedPrice : null
   function underwriterAbbreviation(name: string): string {
     const trimmed = name.trim()
     if (formatSecuritiesFirmName(trimmed) === 'IBK') return 'IBK'

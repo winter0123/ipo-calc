@@ -254,7 +254,7 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() => expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(5))
   })
 
-  it('상장된 IPO는 확정가 필드가 비어도 단일 가격 데이터가 있으면 확정 공모가를 표시한다', async () => {
+  it('상장된 IPO라도 확정가 필드가 비면 단일 밴드를 공모가로 표시하지 않는다', async () => {
     stubFetch(
       makeIpo({
         listingDate: '2026-09-15T09:00:00Z',
@@ -267,7 +267,7 @@ describe('IpoDetailPage', () => {
 
     const fixedPriceRow = (await screen.findByText('공모가')).parentElement
     expect(fixedPriceRow).not.toBeNull()
-    expect(await within(fixedPriceRow!).findByText('25,000원')).toBeInTheDocument()
+    expect(within(fixedPriceRow!).getByText('-')).toBeInTheDocument()
   })
 
   it('상장 전에는 단일 희망 공모가를 공모가로 표시하지 않는다', async () => {

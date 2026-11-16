@@ -290,7 +290,8 @@ public class IpoSyncService {
     // 재점검 실패를 결과에 병합 (aborted 플래그는 바꾸지 않음)
     result.getFailures().addAll(reconcile.getFailures());
     result.setFailureCount(result.getFailureCount() + reconcile.getFailed());
-    result.setUpdated(result.getUpdated() + reconcile.getWithdrawn());
+    result.setUpdated(
+        result.getUpdated() + reconcile.getWithdrawn() + reconcile.getRefreshed());
     return reconcile;
   }
 
