@@ -1128,45 +1128,48 @@ class IpoSyncServiceTest {
   void sync_selectsFinalizedReportDetailWhenCompanyIsFinalized() {
     // given: company는 발행조건확정 공시(rceptNo=FINAL),
     // DS006에는 FINAL(발행조건확정)과 LATER(정정공시, 더 큰 rceptNo) 둘 다 있음
-    OpenDartDisclosureItem company = OpenDartDisclosureItem.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .stockCode("")
-        .reportNm("[발행조건확정]증권신고서(지분증권)")
-        .rceptNo("20261101000001") // FINAL
-        .build();
-    
-    OpenDartEquitySecurityDetail finalizedDetail = OpenDartEquitySecurityDetail.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .sbd("2026년 11월 05일")
-        .stkcnt("1,000,000")
-        .slprc("11,000")
-        .rceptNo("20261101000001") // company와 같은 rceptNo
-        .build();
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261101000001") // FINAL
+            .build();
+
+    OpenDartEquitySecurityDetail finalizedDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일")
+            .stkcnt("1,000,000")
+            .slprc("11,000")
+            .rceptNo("20261101000001") // company와 같은 rceptNo
+            .build();
     finalizedDetail.parseDerivedFields();
-    
-    OpenDartEquitySecurityDetail laterDetail = OpenDartEquitySecurityDetail.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .sbd("2026년 11월 05일")
-        .stkcnt("1,000,000")
-        .slprc("9,400")
-        .rceptNo("20261115000002") // 더 큰 rceptNo (정정공시)
-        .build();
+
+    OpenDartEquitySecurityDetail laterDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일")
+            .stkcnt("1,000,000")
+            .slprc("9,400")
+            .rceptNo("20261115000002") // 더 큰 rceptNo (정정공시)
+            .build();
     laterDetail.parseDerivedFields();
-    
+
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
         .thenReturn(List.of(laterDetail, finalizedDetail)); // 순서 뒤섞여도 FINAL 선택돼야 함
-    
+
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of());
-    
+
     // when
     syncService.sync(7);
-    
+
     // then: FINAL 공시의 상세(확정공모가 11,000)가 선택되어 저장됨
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(11_000L);
@@ -1176,38 +1179,41 @@ class IpoSyncServiceTest {
   @Test
   void sync_updatesFixedPriceOnFinalizedReportForAutoSyncRecord() {
     // given: 기존 자동 동기화 레코드에 fixedPrice=9400(잘못된 값)
-    Ipo existing = Ipo.builder()
-        .syncSource("OPENDART")
-        .fixedPrice(9_400L) // 잘못 저장된 값
-        .subscriptionStartDate(FIRST)
-        .build();
+    Ipo existing =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .fixedPrice(9_400L) // 잘못 저장된 값
+            .subscriptionStartDate(FIRST)
+            .build();
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
-    
+
     // 발행조건확정 공시로 확정공모가 11000 옴
-    OpenDartDisclosureItem company = OpenDartDisclosureItem.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .stockCode("")
-        .reportNm("[발행조건확정]증권신고서(지분증권)")
-        .rceptNo("20261101000001")
-        .build();
-    OpenDartEquitySecurityDetail detail = OpenDartEquitySecurityDetail.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .sbd("2026년 11월 05일")
-        .stkcnt("1,000,000")
-        .slprc("11,000")
-        .rceptNo("20261101000001")
-        .build();
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261101000001")
+            .build();
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일")
+            .stkcnt("1,000,000")
+            .slprc("11,000")
+            .rceptNo("20261101000001")
+            .build();
     detail.parseDerivedFields();
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
-    
+
     // when
     syncService.sync(7);
-    
+
     // then: 자동 동기화 레코드는 확정공모 공시로 fixedPrice 강제 업데이트
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(11_000L);
@@ -1216,38 +1222,41 @@ class IpoSyncServiceTest {
   @Test
   void sync_protectsManualRecordFixedPriceEvenOnFinalizedReport() {
     // given: 수동 레코드(syncSource=null) fixedPrice=10000
-    Ipo manual = Ipo.builder()
-        .syncSource(null) // 수동
-        .fixedPrice(10_000L)
-        .subscriptionStartDate(FIRST)
-        .build();
+    Ipo manual =
+        Ipo.builder()
+            .syncSource(null) // 수동
+            .fixedPrice(10_000L)
+            .subscriptionStartDate(FIRST)
+            .build();
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(manual));
-    
+
     // 발행조건확정 공시로 확정공모가 12000 옴
-    OpenDartDisclosureItem company = OpenDartDisclosureItem.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .stockCode("")
-        .reportNm("[발행조건확정]증권신고서(지분증권)")
-        .rceptNo("20261101000001")
-        .build();
-    OpenDartEquitySecurityDetail detail = OpenDartEquitySecurityDetail.builder()
-        .corpCode("corp")
-        .corpName("name")
-        .sbd("2026년 11월 05일")
-        .stkcnt("1,000,000")
-        .slprc("12,000")
-        .rceptNo("20261101000001")
-        .build();
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261101000001")
+            .build();
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일")
+            .stkcnt("1,000,000")
+            .slprc("12,000")
+            .rceptNo("20261101000001")
+            .build();
     detail.parseDerivedFields();
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
-    
+
     // when
     IpoSyncResult result = syncService.sync(7);
-    
+
     // then: 수동 레코드는 SKIPPED_MANUAL로 처리되어 saveAndFlush 호출되지 않음
     // (수동 등록 레코드는 자동 동기화가 덮어쓰지 않음)
     assertThat(result.getSkippedManual()).isEqualTo(1);

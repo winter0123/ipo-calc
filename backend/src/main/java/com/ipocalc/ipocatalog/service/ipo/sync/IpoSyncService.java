@@ -525,19 +525,19 @@ public class IpoSyncService {
    * @return 선택된 DS006 상세, 철회 케이스에서 매칭 실패 시 {@code null}
    */
   private static OpenDartEquitySecurityDetail selectDetail(
-      List<OpenDartEquitySecurityDetail> details,
-      OpenDartDisclosureItem company) {
+      List<OpenDartEquitySecurityDetail> details, OpenDartDisclosureItem company) {
     // 1순위: company가 발행조건확정 공시이면, 그 rceptNo와 일치하는 DS006 상세 찾기
     if (company.isFinalizedReport() && company.getRceptNo() != null) {
-      Optional<OpenDartEquitySecurityDetail> finalizedDetail = details.stream()
-          .filter(d -> company.getRceptNo().equals(d.getRceptNo()))
-          .findFirst();
+      Optional<OpenDartEquitySecurityDetail> finalizedDetail =
+          details.stream().filter(d -> company.getRceptNo().equals(d.getRceptNo())).findFirst();
       if (finalizedDetail.isPresent()) {
         return finalizedDetail.get();
       }
       // DS006에 없으면 경고 로그 후 아래 로직으로 폴백
-      log.warn("발행조건확정 공시({})의 DS006 상세 없음, 폴백: corpCode={}",
-               company.getRceptNo(), company.getCorpCode());
+      log.warn(
+          "발행조건확정 공시({})의 DS006 상세 없음, 폴백: corpCode={}",
+          company.getRceptNo(),
+          company.getCorpCode());
     }
 
     // 2순위: 철회 공시면 철회 대상 원공시 rceptNo로 매칭
@@ -550,9 +550,10 @@ public class IpoSyncService {
 
     // 3순위: 일반 케이스 - 최신 rceptNo (기존 로직 유지)
     return details.stream()
-        .max(Comparator.comparing(
-            OpenDartEquitySecurityDetail::getRceptNo,
-            Comparator.nullsFirst(Comparator.naturalOrder())))
+        .max(
+            Comparator.comparing(
+                OpenDartEquitySecurityDetail::getRceptNo,
+                Comparator.nullsFirst(Comparator.naturalOrder())))
         .orElseThrow();
   }
 
