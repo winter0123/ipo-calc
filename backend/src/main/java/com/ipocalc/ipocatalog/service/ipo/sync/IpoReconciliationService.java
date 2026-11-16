@@ -203,8 +203,8 @@ public class IpoReconciliationService {
   }
 
   /**
-   * 철회가 아닌 지분증권 공시 중 발행조건확정을 우선하고, 없으면 접수일·접수번호 기준 최신 건으로 가격·일정을 갱신한다.
-   * 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지 않고 경고만 남긴다.
+   * 철회가 아닌 지분증권 공시 중 발행조건확정을 우선하고, 없으면 접수일·접수번호 기준 최신 건으로 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지
+   * 않고 경고만 남긴다.
    */
   private void refreshFromLatestFiling(
       IpoReconcileResult result,
@@ -218,8 +218,7 @@ public class IpoReconciliationService {
     }
     OpenDartEquitySecurityDetail detail = matchDetail(filing, details);
     if (detail == null) {
-      log.warn(
-          "재점검 갱신: DS006 상세 없음 (corpCode={}, rceptNo={})", corpCode, filing.getRceptNo());
+      log.warn("재점검 갱신: DS006 상세 없음 (corpCode={}, rceptNo={})", corpCode, filing.getRceptNo());
       return;
     }
     if (detail.getSubscriptionStartDate() == null) {
@@ -241,9 +240,7 @@ public class IpoReconciliationService {
     attemptRefresh(result, corpCode, row, filing, detail);
   }
 
-  /**
-   * 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정이 있으면 그중 최신, 없으면 전체 중 최신.
-   */
+  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정이 있으면 그중 최신, 없으면 전체 중 최신. */
   static OpenDartDisclosureItem selectRefreshFiling(List<OpenDartDisclosureItem> disclosures) {
     if (disclosures == null || disclosures.isEmpty()) {
       return null;
@@ -301,8 +298,7 @@ public class IpoReconciliationService {
             outcome);
       }
     } catch (Exception e) {
-      log.warn(
-          "재점검 갱신 중 예외 (corpCode={}, 클래스만): {}", corpCode, e.getClass().getSimpleName());
+      log.warn("재점검 갱신 중 예외 (corpCode={}, 클래스만): {}", corpCode, e.getClass().getSimpleName());
     }
   }
 

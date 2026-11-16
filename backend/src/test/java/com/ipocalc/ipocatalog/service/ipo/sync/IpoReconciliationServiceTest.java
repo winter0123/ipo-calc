@@ -286,8 +286,7 @@ class IpoReconciliationServiceTest {
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();
     assertThat(result.getFailures()).isEmpty();
-    verify(persistence)
-        .persist("02038432", "심원", detail, false, true);
+    verify(persistence).persist("02038432", "심원", detail, false, true);
   }
 
   @Test
@@ -372,8 +371,7 @@ class IpoReconciliationServiceTest {
     IpoReconcileResult result = service.reconcileActiveOfferings();
 
     // 더 늦은 기재정정보다 발행조건확정을 선택해야 함
-    verify(persistence)
-        .persist("02038432", "영광와이케이엠씨", finalizedDetail, true, true);
+    verify(persistence).persist("02038432", "영광와이케이엠씨", finalizedDetail, true, true);
     assertThat(result.getSucceeded()).isEqualTo(1);
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();

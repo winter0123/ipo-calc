@@ -163,8 +163,8 @@ public class IpoSyncPersistence {
    *
    * <ul>
    *   <li>기존 행의 source_receipt_no가 상세의 접수번호와 일치하면 같은 공모(확정).
-   *   <li>정정·발행조건확정 공시(correctionReport)이면, 호출 전 corp당 ACTIVE가 1건임이 보장되므로 청약
-   *       시작일이 달라도 같은 공모로 본다(시작일 변경 정정 반영).
+   *   <li>정정·발행조건확정 공시(correctionReport)이면, 호출 전 corp당 ACTIVE가 1건임이 보장되므로 청약 시작일이 달라도 같은 공모로 본다(시작일
+   *       변경 정정 반영).
    *   <li>기존 행이 레거시(source_receipt_no 없음)면 청약 시작일이 같을 때만 같은 공모로 본다.
    *   <li>그 외(다른 접수번호·다른 시작일·정정 근거 없음)는 구분할 수 없으므로 갱신을 보류해야 한다.
    * </ul>
