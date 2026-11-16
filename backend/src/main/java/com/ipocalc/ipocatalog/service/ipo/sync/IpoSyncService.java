@@ -15,6 +15,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -412,34 +413,20 @@ public class IpoSyncService {
       return true;
     }
 
-    // 정정/발행조건확정 공시가 있으면 여러 건 → 접수번호가 가장 큰(최신) 건을 명시적으로 선택
-    // 단, 원공시가 철회(rm에 "철" 포함)된 경우는 해당 원공시의 접수번호와 일치하는 상세를 선택해야 함
-    OpenDartEquitySecurityDetail detail;
-    if (company.getRm() != null && company.getRm().contains("철")) {
-      // 철회 대상 원공시의 접수번호로 DS006 상세에서 매칭되는 것 선택
-      detail =
-          details.stream()
-              .filter(
-                  d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
-              .findFirst()
-              .orElse(null);
-      if (detail == null) {
+    // DS006 상세 선택: company 종류에 따라 우선순위 다르게 적용
+    OpenDartEquitySecurityDetail detail = selectDetail(details, company);
+    boolean isWithdrawal = company.getRm() != null && company.getRm().contains("철");
+    if (detail == null) {
+      if (isWithdrawal) {
+        // 철회 공시인데 DS006 매칭 실패: 실패 기록
         String reason = "철회 대상 원공시(" + company.getRceptNo() + ")에 대응하는 DS006 상세 없음: 자동 변경 보류";
         recordFailure(result, corpCode, corpName, reason);
-        return true;
       }
-    } else {
-      // 일반 케이스: 최신 접수번호(정정/발행조건확정) 선택
-      detail =
-          details.stream()
-              .max(
-                  Comparator.comparing(
-                      OpenDartEquitySecurityDetail::getRceptNo,
-                      Comparator.nullsFirst(Comparator.naturalOrder())))
-              .orElseThrow();
+      // 그 외(발행조건확정인데 DS006 없음)는 selectDetail에서 이미 경고 로그 남김
+      return true;
     }
 
-    if (company.getRm() != null && company.getRm().contains("철")) {
+    if (isWithdrawal) {
       // 이미 위에서 매칭된 detail 사용, 추가 검증은 생략 (매칭 실패 시 이미 리턴됨)
       transactionTemplate.executeWithoutResult(
           status -> {
@@ -522,6 +509,51 @@ public class IpoSyncService {
         .getFailures()
         .add(IpoSyncFailure.builder().corpCode(corpCode).corpName(corpName).reason(reason).build());
     result.setFailureCount(result.getFailureCount() + 1);
+  }
+
+  /**
+   * DS006 상세 목록에서 company 종류에 따라 최적의 상세를 선택한다.
+   *
+   * <ul>
+   *   <li>company가 발행조건확정 공시이면, 그 rceptNo와 일치하는 DS006 상세를 최우선 선택한다.
+   *   <li>company가 철회 공시이면, 철회 대상 원공시 rceptNo와 일치하는 DS006 상세를 선택한다.
+   *   <li>그 외(일반 공시)는 최신 rceptNo(문자열 기준 내림차순) 상세를 선택한다.
+   * </ul>
+   *
+   * @param details DS006 상세 목록
+   * @param company DS001 공시검색 결과 한 건
+   * @return 선택된 DS006 상세, 철회 케이스에서 매칭 실패 시 {@code null}
+   */
+  private static OpenDartEquitySecurityDetail selectDetail(
+      List<OpenDartEquitySecurityDetail> details,
+      OpenDartDisclosureItem company) {
+    // 1순위: company가 발행조건확정 공시이면, 그 rceptNo와 일치하는 DS006 상세 찾기
+    if (company.isFinalizedReport() && company.getRceptNo() != null) {
+      Optional<OpenDartEquitySecurityDetail> finalizedDetail = details.stream()
+          .filter(d -> company.getRceptNo().equals(d.getRceptNo()))
+          .findFirst();
+      if (finalizedDetail.isPresent()) {
+        return finalizedDetail.get();
+      }
+      // DS006에 없으면 경고 로그 후 아래 로직으로 폴백
+      log.warn("발행조건확정 공시({})의 DS006 상세 없음, 폴백: corpCode={}",
+               company.getRceptNo(), company.getCorpCode());
+    }
+
+    // 2순위: 철회 공시면 철회 대상 원공시 rceptNo로 매칭
+    if (company.getRm() != null && company.getRm().contains("철")) {
+      return details.stream()
+          .filter(d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
+          .findFirst()
+          .orElse(null); // null이면 상위에서 실패 처리함
+    }
+
+    // 3순위: 일반 케이스 - 최신 rceptNo (기존 로직 유지)
+    return details.stream()
+        .max(Comparator.comparing(
+            OpenDartEquitySecurityDetail::getRceptNo,
+            Comparator.nullsFirst(Comparator.naturalOrder())))
+        .orElseThrow();
   }
 
   /** OpenDART 루프가 중단 없이 완료된 경우에만 ustockplus 일정을 병합한다. 병합 예외는 삼킨다. */

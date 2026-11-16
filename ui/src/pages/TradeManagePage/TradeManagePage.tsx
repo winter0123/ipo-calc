@@ -493,7 +493,8 @@ function TradeManageContent({ ipoId }: { ipoId: number }) {
               </li>
             )}
             <li>
-              공모가 <strong>{confirmedPrice != null ? formatWon(confirmedPrice) : '미정'}</strong>
+              <span className={styles.priceLabel}>공모가</span>
+              <strong>{confirmedPrice != null ? formatWon(confirmedPrice) : '미정'}</strong>
             </li>
             <li>
               청약일{' '}

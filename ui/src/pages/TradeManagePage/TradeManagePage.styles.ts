@@ -53,6 +53,11 @@ export const StyleScope = styled.div`
     font-weight: 700;
   }
 
+  .s-7b1c2d4-meta .s-7b1c2d4-priceLabel {
+    color: var(--ink-muted);
+    margin-right: var(--space-1);
+  }
+
   .s-7b1c2d4-field {
     display: flex;
     flex-direction: column;

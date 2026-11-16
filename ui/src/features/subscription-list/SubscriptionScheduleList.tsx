@@ -37,12 +37,12 @@ function UnderwriterChips({ ipoId }: { ipoId: number }) {
   )
 }
 
-const STATUS: Record<SubscriptionScheduleItem['status'], string> = {
+const STATUS_LABEL: Record<SubscriptionScheduleItem['status'], string> = {
   before: '미청약',
-  pending: '청약 진행 중',
-  partial: '일부 결과 입력',
-  allocated: '배정 받음',
-  unallocated: '미배정 · 결과 확인',
+  pending: '진행 중',
+  partial: '일부 입력',
+  allocated: '배정됨',
+  unallocated: '미배정',
   sold: '매도 완료',
 }
 
@@ -50,12 +50,7 @@ function priceLabel(item: SubscriptionScheduleItem): React.ReactNode {
   const ipo = item.ipo
 
   if (ipo.fixedPrice != null && ipo.fixedPrice > 0) {
-    return (
-      <span className={styles.priceRow}>
-        <span className={styles.priceLabel}>공모가</span>
-        <span className={styles.priceValue}>{formatWon(ipo.fixedPrice)}</span>
-      </span>
-    )
+    return <span className={styles.priceValue}>{formatWon(ipo.fixedPrice)}</span>
   }
 
   return <span className={styles.priceValue}>미정</span>
@@ -146,25 +141,28 @@ export default function SubscriptionScheduleList({
                     <UnderwriterChips ipoId={item.ipo.id} />
                     {phaseLabel(item.ipo, today)}
                   </div>
-                  <StatusPill
-                    $tone={
-                      item.status === 'allocated' || item.status === 'sold'
-                        ? 'success'
-                        : item.status === 'unallocated'
-                          ? 'warning'
-                          : item.status === 'before'
-                            ? 'info'
-                            : 'neutral'
-                    }
-                  >
-                    {investorSelected ? STATUS[item.status] : '투자자 선택 필요'}
-                    {investorSelected &&
-                      (item.status === 'allocated' || item.status === 'sold') && (
-                        <span className={styles.statusDetail}>
-                          {formatShares(item.allocatedQuantity)}
-                        </span>
-                      )}
-                  </StatusPill>
+                  {investorSelected ? (
+                    <div className={styles.actionGroup}>
+                      <span className={styles.statusBadge}>{STATUS_LABEL[item.status]}</span>
+                      <Link className={styles.manageButton} to={`/ipos/${item.ipo.id}/manage`}>
+                        관리
+                      </Link>
+                    </div>
+                  ) : (
+                    <StatusPill
+                      $tone={
+                        item.status === 'allocated' || item.status === 'sold'
+                          ? 'success'
+                          : item.status === 'unallocated'
+                            ? 'warning'
+                            : item.status === 'before'
+                              ? 'info'
+                              : 'neutral'
+                      }
+                    >
+                      투자자 선택 필요
+                    </StatusPill>
+                  )}
                 </header>
                 <dl className={styles.details}>
                   <div>
@@ -175,7 +173,9 @@ export default function SubscriptionScheduleList({
                     </dd>
                   </div>
                   <div>
-                    <dt>가격</dt>
+                    <dt>
+                      <span className={styles.srOnly}>공모가</span>
+                    </dt>
                     <dd>{priceLabel(item)}</dd>
                   </div>
                   {investorSelected && (
@@ -191,13 +191,6 @@ export default function SubscriptionScheduleList({
                     </>
                   )}
                 </dl>
-                {investorSelected && (
-                  <div className={styles.actionGroup}>
-                    <Link className={styles.action} to={`/ipos/${item.ipo.id}/manage`}>
-                      청약·매도 관리
-                    </Link>
-                  </div>
-                )}
                 {investorSelected &&
                   item.subscriptions.map((subscription) => (
                     <section className={styles.subscription} key={subscription.id}>

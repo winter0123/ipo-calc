@@ -132,12 +132,21 @@ public class Ipo {
       LocalDateTime now) {
     this.companyName = companyName;
     this.ipoName = companyName;
+    boolean isAutoSync = this.syncSource != null;
     if (offerPrice != null) {
       this.lowerBandPrice = offerPrice;
       this.upperBandPrice = offerPrice;
     }
-    if (this.fixedPrice == null && confirmedPrice != null) {
-      this.fixedPrice = confirmedPrice;
+    if (confirmedPrice != null) {
+      // 수동 레코드(syncSource == null): fixedPrice 없으면만 설정(수동 입력 보호)
+      // 자동 동기화 레코드(syncSource != null): 확정공모 공시 왔으면 무조건 업데이트
+      if (!isAutoSync) {
+        if (this.fixedPrice == null) {
+          this.fixedPrice = confirmedPrice;
+        }
+      } else {
+        this.fixedPrice = confirmedPrice;
+      }
     }
     if (shares != null) {
       this.offeringShareCount = shares;

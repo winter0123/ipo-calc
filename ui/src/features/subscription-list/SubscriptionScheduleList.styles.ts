@@ -29,12 +29,21 @@ export const StyleScope = styled.div`
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--space-3);
+    flex-wrap: wrap;
   }
   .s-ee1412e-titleGroup {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .s-ee1412e-actionGroup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
   }
   .s-ee1412e-header h2,
   .s-ee1412e-subscription p {
@@ -87,6 +96,7 @@ export const StyleScope = styled.div`
 
   .s-ee1412e-actionGroup {
     display: flex;
+    align-items: center;
     gap: var(--space-2);
   }
 
@@ -96,6 +106,34 @@ export const StyleScope = styled.div`
     padding: 0 var(--space-2);
     font-size: 13px;
     font-weight: 650;
+  }
+
+  .s-ee1412e-statusBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--info-bg);
+    color: var(--primary-deep);
+    border: 1px solid var(--info-border);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .s-ee1412e-manageButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: var(--on-primary);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
   }
   .s-ee1412e-empty {
     padding: var(--space-5);
@@ -131,18 +169,19 @@ export const StyleScope = styled.div`
     font-weight: 700;
     white-space: nowrap;
   }
-  .s-ee1412e-priceRow {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-right: var(--space-3);
-  }
-  .s-ee1412e-priceLabel {
-    color: var(--ink-muted);
-    font-size: 0.85rem;
-  }
   .s-ee1412e-priceValue {
     font-weight: 600;
+  }
+  .s-ee1412e-srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .s-ee1412e-statusDetail {
     margin-left: var(--space-2);
@@ -194,6 +233,10 @@ export const StyleScope = styled.div`
     }
     .s-ee1412e-titleGroup {
       width: 100%;
+    }
+    .s-ee1412e-actionGroup {
+      width: 100%;
+      justify-content: flex-end;
     }
     .s-ee1412e-priceRow {
       margin-right: 0;

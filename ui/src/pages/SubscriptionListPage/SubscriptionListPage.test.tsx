@@ -116,7 +116,7 @@ describe('SubscriptionListPage', () => {
     expect(await screen.findByRole('heading', { name: IPO.ipoName })).toBeInTheDocument()
     // 청약 전 상태는 pill로 표시되지 않음
     expect(screen.queryByText('청약 전')).not.toBeInTheDocument()
-    // 카드 내의 청약·매도 관리 링크 (상단 버튼 그룹이 아닌 카드 액션 그룹)
+    // 카드 내의 관리 버튼 (상단 버튼 그룹이 아닌 카드 액션 그룹)
     const card = screen.getByText('가나다 공모주').closest('li')
     const cardActionLink = card?.querySelector('a[href="/ipos/10/manage"]')
     expect(cardActionLink).toBeInTheDocument()
@@ -127,11 +127,11 @@ describe('SubscriptionListPage', () => {
     mockApi([HISTORY])
     renderPage('/subscriptions?from=2026-10-01&to=2026-10-31')
     expect(await screen.findByText(/한국투자증권 · 주력 계좌/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '청약·매도 관리' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '관리' })).toHaveAttribute(
       'href',
       '/ipos/10/manage',
     )
-    expect(screen.getByText('청약 진행 중')).toBeInTheDocument()
+    expect(screen.getByText('진행 중')).toBeInTheDocument()
   })
 
   it('기본 이번 달 기간을 URL에 저장한다', async () => {

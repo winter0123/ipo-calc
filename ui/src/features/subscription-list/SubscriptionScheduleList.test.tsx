@@ -496,7 +496,9 @@ describe('SubscriptionScheduleList 가격 표시', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    expect(result.getByText('공모가')).toBeInTheDocument()
+    // dt 요소의 "공모가" 라벨 확인
+    const priceLabels = result.getAllByText('공모가')
+    expect(priceLabels.length).toBeGreaterThanOrEqual(1)
     expect(result.getByText('15,000원')).toBeInTheDocument()
   })
 
@@ -585,7 +587,7 @@ describe('SubscriptionScheduleList 건수 제거 확인', () => {
     expect(result.queryByText(/1건 대기/)).not.toBeInTheDocument() // 대기 텍스트도 제거됨
   })
 
-  it('partial 상태 pill에 건수 텍스트 없이 상태명만 표시되고 중복되지 않는다', async () => {
+  it('partial 상태 배지(badge)에 상태명만 표시되고 중복되지 않는다', async () => {
     const { result, queryClient } = renderWithRouter(
       <SubscriptionScheduleList
         items={[
@@ -606,18 +608,16 @@ describe('SubscriptionScheduleList 건수 제거 확인', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    // "일부 결과 입력"이 정확히 1번만 표시됨 (중복된 statusDetail span 제거됨)
-    const partialTexts = result.getAllByText('일부 결과 입력')
+    // "일부 입력"이 정확히 1번만 표시됨 (statusBadge에만 표시)
+    const partialTexts = result.getAllByText('일부 입력')
     expect(partialTexts).toHaveLength(1)
-    // pill에 건수 텍스트가 없음
-    const pill = partialTexts[0].closest('[class*="sc-"]') // StatusPill is a styled component
-    expect(pill).toBeInTheDocument()
-    expect(pill).toHaveTextContent('일부 결과 입력')
-    expect(pill).not.toHaveTextContent('건 입력')
-    expect(pill).not.toHaveTextContent('건 대기')
+    // 배지가 표시됨
+    const badge = partialTexts[0].closest('.s-ee1412e-statusBadge')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveTextContent('일부 입력')
   })
 
-  it('allocated 상태 pill에 배정 수량이 표시된다', async () => {
+  it('allocated 상태에서 배정 결과에 배정 수량이 표시된다', async () => {
     const { result, queryClient } = renderWithRouter(
       <SubscriptionScheduleList
         items={[
@@ -638,9 +638,9 @@ describe('SubscriptionScheduleList 건수 제거 확인', () => {
       expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
     )
 
-    const statusDetail = result.getByText('30주', { selector: '.s-ee1412e-statusDetail' })
-    const pill = statusDetail.closest('[class*="sc-"]')
-    expect(pill).toBeInTheDocument()
-    expect(pill).toHaveTextContent('30주')
+    // 배정 결과 dd에 "30주"가 표시됨 (기존 statusDetail pill 대신)
+    expect(result.getByText('배정 결과')).toBeInTheDocument()
+    const allocatedDd = result.getByText('배정 결과').closest('div')?.querySelector('dd')
+    expect(allocatedDd).toHaveTextContent('30주')
   })
 })
