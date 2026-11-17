@@ -170,7 +170,28 @@ export default function IpoDetailPage() {
             </div>
             <div className={styles.detailItem}>
               <dt>공모가</dt>
-              <dd>{formatPrice(confirmedPriceForDisplay)}</dd>
+              <dd>
+                {confirmedPriceForDisplay != null ? (
+                  <>
+                    {formatPrice(confirmedPriceForDisplay)}
+                    {ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null &&
+                    (ipo!.lowerBandPrice !== confirmedPriceForDisplay ||
+                      ipo!.upperBandPrice !== confirmedPriceForDisplay) ? (
+                      <span className={styles.bandLabel}>
+                        (밴드 {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)})
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null ? (
+                    <>
+                      {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)}
+                    </>
+                  ) : (
+                    '-'
+                  )
+                )}
+              </dd>
             </div>
             <div className={styles.detailItem}>
               <dt>공모 주식 수</dt>

@@ -155,6 +155,14 @@ export const StyleScope = styled.div`
     word-break: break-word;
   }
 
+  /* 밴드 가격 보조 라벨 */
+  .s-66fd75d-bandLabel {
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-weight: 400;
+    margin-left: var(--space-2);
+  }
+
   .s-66fd75d-actions {
     display: flex;
     gap: var(--space-3);

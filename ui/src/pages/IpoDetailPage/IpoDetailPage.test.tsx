@@ -254,7 +254,7 @@ describe('IpoDetailPage', () => {
     await vi.waitFor(() => expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(5))
   })
 
-  it('상장된 IPO라도 확정가 필드가 비면 단일 밴드를 공모가로 표시하지 않는다', async () => {
+  it('상장된 IPO라도 확정가 필드가 비면 밴드 가격을 공모가로 표시한다', async () => {
     stubFetch(
       makeIpo({
         listingDate: '2026-09-15T09:00:00Z',
@@ -267,10 +267,12 @@ describe('IpoDetailPage', () => {
 
     const fixedPriceRow = (await screen.findByText('공모가')).parentElement
     expect(fixedPriceRow).not.toBeNull()
-    expect(within(fixedPriceRow!).getByText('-')).toBeInTheDocument()
+    expect(
+      within(fixedPriceRow!).getByText((content) => content.includes('25,000원')),
+    ).toBeInTheDocument()
   })
 
-  it('상장 전에는 단일 희망 공모가를 공모가로 표시하지 않는다', async () => {
+  it('상장 전에는 단일 희망 공모가를 밴드 가격으로 표시한다', async () => {
     stubFetch(
       makeIpo({
         listingDate: '2026-10-15T09:00:00Z',
@@ -283,7 +285,9 @@ describe('IpoDetailPage', () => {
 
     const fixedPriceRow = (await screen.findByText('공모가')).parentElement
     expect(fixedPriceRow).not.toBeNull()
-    expect(within(fixedPriceRow!).getByText('-')).toBeInTheDocument()
+    expect(
+      within(fixedPriceRow!).getByText((content) => content.includes('25,000원')),
+    ).toBeInTheDocument()
   })
 
   it('404 에러 시 "공모주를 찾을 수 없습니다."가 보인다', async () => {
