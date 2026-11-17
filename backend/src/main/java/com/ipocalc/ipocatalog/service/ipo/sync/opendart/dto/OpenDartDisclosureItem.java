@@ -62,6 +62,11 @@ public class OpenDartDisclosureItem {
     return reportNm != null && reportNm.startsWith("[발행조건확정]");
   }
 
+  /** 기재정정 공시인지 판별한다. */
+  public boolean isCorrectionReport() {
+    return reportNm != null && reportNm.startsWith("[기재정정]");
+  }
+
   /**
    * 정정·발행조건확정 접두어 제거한 정규화된 보고서명 반환.
    *

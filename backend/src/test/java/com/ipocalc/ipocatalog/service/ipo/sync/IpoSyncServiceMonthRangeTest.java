@@ -13,12 +13,15 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.repository.holiday.MarketHolidayRepository;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +37,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import static org.mockito.Mockito.mock;
+
 /** IpoSyncService syncByMonthRange 테스트. */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -44,6 +49,8 @@ class IpoSyncServiceMonthRangeTest {
   @Mock private IpoRepository ipoRepository;
   @Mock private IpoScheduleMergeService scheduleMergeService;
   @Mock private MarketHolidayRepository marketHolidayRepository;
+  @Mock private DartIpoFilingClient dartIpoFilingClient;
+  @Mock private DartOfferingTermsParser offeringTermsParser;
 
   private IpoSyncService service;
   private Clock fixedClock;
@@ -66,11 +73,13 @@ class IpoSyncServiceMonthRangeTest {
         .thenReturn(List.of());
     IpoSyncPersistence persistence =
         new IpoSyncPersistence(
-            ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock);
+            ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock, equitySecuritiesClient);
     IpoReconciliationService reconciliationService =
         new IpoReconciliationService(
             corpDisclosureClient,
             equitySecuritiesClient,
+            dartIpoFilingClient,
+            offeringTermsParser,
             ipoRepository,
             persistence,
             transactionTemplate,
@@ -79,6 +88,8 @@ class IpoSyncServiceMonthRangeTest {
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
+            dartIpoFilingClient,
+            offeringTermsParser,
             persistence,
             transactionTemplate,
             scheduleMergeService,
@@ -121,7 +132,7 @@ class IpoSyncServiceMonthRangeTest {
     // because it's before today
     verify(equitySecuritiesClient)
         .getEquitySecurityDetail(
-            eq("corp1"), eq(LocalDate.of(2026, 1, 1)), eq(LocalDate.of(2026, 1, 31)));
+            eq("corp1"), eq(LocalDate.of(2025, 12, 1)), eq(LocalDate.of(2026, 1, 31)));
     verify(scheduleMergeService).merge(LocalDate.of(2026, 10, 14));
   }
 

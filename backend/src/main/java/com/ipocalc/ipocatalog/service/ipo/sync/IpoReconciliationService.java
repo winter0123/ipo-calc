@@ -3,6 +3,9 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
@@ -17,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,12 +35,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <ul>
  *   <li>철회 확정: DS001의 rm에 '철'이 포함된 원공시를 DS006의 같은 접수번호 상세와 매칭하고, corp_code + 원공시 접수번호 + 청약 시작일
  *       3자(레거시 행은 청약 시작일 유일 매칭)가 일치하는 ACTIVE 건만 {@code withdraw()}한다.
- *   <li>철회가 없으면 최신 유효 지분증권 공시(발행조건확정 우선)로 확정가·청약/배정/환불 일정을 {@code persist()}로 갱신한다.
+ *   <li>철회가 없으면 최신 유효 지분증권 공시(접수일자·접수번호 기준 최신)로 document.xml 원문에서 검증된 가격·청약/배정/환불 일정을 반영한다.
  *   <li>빈 응답·파싱 실패·API 오류는 '철회점검: ' 접두 실패로 기록하고 철회하지 않는다(일정 누락 ≠ 철회).
  *   <li>인증 오류·020(요청 제한)은 같은 키를 쓰므로 재점검 단계를 즉시 중단하고 aborted를 반환한다. 일반 건별 오류는 격리하고 계속한다.
  *   <li>별도 트랜잭션으로 철회·갱신하며, 한 건의 실패가 다음 건을 막지 않는다.
  * </ul>
- */
+ *  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,6 +51,8 @@ public class IpoReconciliationService {
 
   private final OpenDartCorpDisclosureClient corpDisclosureClient;
   private final OpenDartEquitySecuritiesClient equitySecuritiesClient;
+  private final DartIpoFilingClient dartIpoFilingClient;
+  private final DartOfferingTermsParser offeringTermsParser;
   private final IpoRepository ipoRepository;
   private final IpoSyncPersistence ipoSyncPersistence;
   private final TransactionTemplate transactionTemplate;
@@ -197,14 +203,15 @@ public class IpoReconciliationService {
       result.setFailed(result.getFailed() + 1);
       return;
     }
-    // 철회가 없으면 최신 유효 공시로 확정가·일정을 갱신한다(90일 신규 수집에 안 잡혀도 반영)
+    // 철회가 없으면 최신 유효 공시로 document.xml 원문에서 검증된 가격·일정을 갱신한다(90일 신규 수집에 안 잡혀도 반영)
     refreshFromLatestFiling(result, corpCode, row, disclosures, details);
     result.setSucceeded(result.getSucceeded() + 1);
   }
 
   /**
-   * 철회가 아닌 지분증권 공시 중 발행조건확정을 우선하고, 없으면 접수일·접수번호 기준 최신 건으로 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지
-   * 않고 경고만 남긴다.
+   * 철회가 아닌 지분증권 공시 중 접수일자·접수번호 기준 가장 최신 건으로 document.xml 원문에서
+   * 검증된 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지 않고 경고만 남긴다.
+   * 가격 표가 없는 최신 문서는 기존 검증 가격을 덮지 않는다.
    */
   private void refreshFromLatestFiling(
       IpoReconcileResult result,
@@ -237,10 +244,32 @@ public class IpoReconciliationService {
           detail.getSbd());
       return;
     }
-    attemptRefresh(result, corpCode, row, filing, detail);
+
+    // 문서 원문 다운로드 및 가격 파싱
+    DartOfferingTerms offeringTerms = null;
+    if (filing.getRceptNo() != null) {
+      try {
+        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(filing.getRceptNo());
+        if (xmlOpt.isPresent()) {
+          String xml = xmlOpt.get();
+          if (!xml.isBlank()) {
+            offeringTerms = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
+          } else {
+            log.warn("재점검: 문서 원문 다운로드 결과 빈 값 (rceptNo={})", filing.getRceptNo());
+          }
+        } else {
+          log.warn("재점검: 문서 원문 다운로드 실패 (빈 응답) (rceptNo={})", filing.getRceptNo());
+        }
+      } catch (Exception e) {
+        log.warn("재점검: 문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", filing.getRceptNo(), e.getClass().getSimpleName());
+      }
+    }
+
+    attemptRefresh(result, corpCode, row, filing, detail, offeringTerms);
   }
 
-  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정 > 정정공시(기재정정) > 전체 중 최신 순으로 선택한다. */
+  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 접수일자·접수번호 기준 가장 최신 공시를 선택한다.
+   * 발행조건확정 우선순위는 없앤다. 원문 파서가 가격 표를 찾지 못하면 가격 필드를 변경하지 않고 실패를 기록한다. */
   static OpenDartDisclosureItem selectRefreshFiling(List<OpenDartDisclosureItem> disclosures) {
     if (disclosures == null || disclosures.isEmpty()) {
       return null;
@@ -259,14 +288,7 @@ public class IpoReconciliationService {
             .thenComparing(
                 OpenDartDisclosureItem::getRceptNo, Comparator.nullsFirst(String::compareTo))
             .reversed();
-    return candidates.stream()
-        .filter(OpenDartDisclosureItem::isFinalizedReport)
-        .max(newestFirst)
-        .or(() -> candidates.stream()
-            .filter(OpenDartDisclosureItem::isCorrectionOrFinalized)
-            .max(newestFirst))
-        .or(() -> candidates.stream().max(newestFirst))
-        .orElse(null);
+    return candidates.stream().max(newestFirst).orElse(null);
   }
 
   private void attemptRefresh(
@@ -274,7 +296,8 @@ public class IpoReconciliationService {
       String corpCode,
       Ipo row,
       OpenDartDisclosureItem filing,
-      OpenDartEquitySecurityDetail detail) {
+      OpenDartEquitySecurityDetail detail,
+      DartOfferingTerms offeringTerms) {
     try {
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
@@ -284,7 +307,8 @@ public class IpoReconciliationService {
                       Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                       detail,
                       filing.isFinalizedReport(),
-                      filing.isCorrectionOrFinalized()));
+                      filing.isCorrectionOrFinalized(),
+                      offeringTerms));
       if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
         result.setRefreshed(result.getRefreshed() + 1);
         log.debug(

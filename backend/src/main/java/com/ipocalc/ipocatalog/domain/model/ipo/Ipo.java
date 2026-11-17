@@ -1,6 +1,7 @@
 package com.ipocalc.ipocatalog.domain.model.ipo;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -112,42 +113,22 @@ public class Ipo {
   }
 
   /**
-   * OpenDART 동기화 시 공모가 변경 사항만 반영한다.
+   * OpenDART 동기화 시 가격 필드를 제외한 필드만 반영한다.
+   * 가격은 별도 메서드 {@link #applyVerifiedOfferingTerms(DartOfferingTerms, LocalDateTime)}에서 검증 후 적용한다.
    *
-   * <p>정정·발행조건확정 공시가 아니어서 전체 갱신을 보류하더라도, 밴드 가격과 공모 주식 수는 최신 공시 값으로 갱신한다. {@code source_receipt_no}는
-   * 철회 매칭 보호를 위해 건드리지 않는다. {@code fixedPrice}는 호출자가 별도로 결정해 넘기며, 확정 공시가 아니면 기존 값을 보존한다.
+   * <p>{@code source_receipt_no}는 철회 매칭 보호를 위해 건드리지 않는다.
    *
-   * @param lowerBandPrice 희망 공모가 하단
-   * @param upperBandPrice 희망 공모가 상단
-   * @param offeringShareCount 공모 주식 수
+   * @param companyName 회사명
+   * @param shares 공모 주식 수
+   * @param start 청약 시작일
+   * @param end 청약 종료일
+   * @param allotment 배정일
+   * @param refund 환불일
+   * @param source 동기화 출처
    * @param now 수정 시각
    */
-  public void syncBandAndShares(
-      Long lowerBandPrice, Long upperBandPrice, Long offeringShareCount, LocalDateTime now) {
-    if (lowerBandPrice != null) {
-      this.lowerBandPrice = lowerBandPrice;
-    }
-    if (upperBandPrice != null) {
-      this.upperBandPrice = upperBandPrice;
-    }
-    if (offeringShareCount != null) {
-      this.offeringShareCount = offeringShareCount;
-    }
-    this.updatedAt = now;
-  }
-
-  /** Deactivates the credential. */
-  public void deactivate(LocalDateTime now) {
-    this.status = RecordStatus.INACTIVE;
-    this.deletedAt = now;
-    this.updatedAt = now;
-  }
-
-  /** Applies IPO fields from an OpenDART synchronization. 청약/환불 일정은 수집 원본 추적값을 따른다. */
   public void syncFromOpenDart(
       String companyName,
-      Long offerPrice,
-      Long confirmedPrice,
       Long shares,
       LocalDate start,
       LocalDate end,
@@ -157,22 +138,6 @@ public class Ipo {
       LocalDateTime now) {
     this.companyName = companyName;
     this.ipoName = companyName;
-    boolean isAutoSync = this.syncSource != null;
-    if (offerPrice != null) {
-      this.lowerBandPrice = offerPrice;
-      this.upperBandPrice = offerPrice;
-    }
-    if (confirmedPrice != null) {
-      // 수동 레코드(syncSource == null): fixedPrice 없으면만 설정(수동 입력 보호)
-      // 자동 동기화 레코드(syncSource != null): 확정공모 공시 왔으면 무조건 업데이트
-      if (!isAutoSync) {
-        if (this.fixedPrice == null) {
-          this.fixedPrice = confirmedPrice;
-        }
-      } else {
-        this.fixedPrice = confirmedPrice;
-      }
-    }
     if (shares != null) {
       this.offeringShareCount = shares;
     }
@@ -196,6 +161,72 @@ public class Ipo {
     this.syncSource = source;
     this.lastSyncedAt = now;
     this.updatedAt = now;
+  }
+
+  /** Deactivates the credential. */
+  public void deactivate(LocalDateTime now) {
+    this.status = RecordStatus.INACTIVE;
+    this.deletedAt = now;
+    this.updatedAt = now;
+  }
+
+  /**
+   * 원문에서 검증된 공모 조건(밴드·확정가)을 적용한다.
+   * 수동 레코드(syncSource == null)에는 호출하지 않는다.
+   *
+   * @param terms 원문 파싱 결과
+   * @param now 수정 시각
+   * @return 실제 변경이 있었으면 true
+   */
+  public boolean applyVerifiedOfferingTerms(DartOfferingTerms terms, LocalDateTime now) {
+    if (this.syncSource == null) {
+      // 수동 레코드는 자동 가격 적용 안 함
+      return false;
+    }
+
+    boolean changed = false;
+
+    // 밴드가 유효하면 저장 (출처 정보 포함)
+    if (terms.hasValidBand()) {
+      if (!terms.lowerBandPrice().equals(this.lowerBandPrice)
+          || !terms.upperBandPrice().equals(this.upperBandPrice)) {
+        this.lowerBandPrice = terms.lowerBandPrice();
+        this.upperBandPrice = terms.upperBandPrice();
+        this.bandPriceSourceReceiptNo = terms.sourceReceiptNo();
+        this.bandPriceParserVersion = terms.parserVersion();
+        changed = true;
+      }
+    }
+
+    // 확정가가 유효하면 저장 (출처 정보 포함)
+    if (terms.hasConfirmedFixedPrice()) {
+      if (!terms.fixedPrice().equals(this.fixedPrice)) {
+        this.fixedPrice = terms.fixedPrice();
+        this.fixedPriceSourceReceiptNo = terms.sourceReceiptNo();
+        this.fixedPriceParserVersion = terms.parserVersion();
+        changed = true;
+      }
+    }
+
+    // 밴드 또는 확정가 하나만 유효한 경우 다른 정상 값은 지우지 않음 (기존 값 유지)
+
+    if (changed) {
+      this.lastSyncedAt = now;
+      this.updatedAt = now;
+    }
+
+    return changed;
+  }
+
+  /**
+   * 주식 수만 갱신한다 (가격 필드 변경 없음).
+   * 기존 {@link #syncBandAndShares}를 대체하며, 가격은 건드리지 않는다.
+   */
+  public void syncShareCountOnly(Long offeringShareCount, LocalDateTime now) {
+    if (offeringShareCount != null) {
+      this.offeringShareCount = offeringShareCount;
+      this.updatedAt = now;
+    }
   }
 
   /** 수집 원본(수집기 저장 시점) 규칙: 현재 값이 없거나 추적 값과 같으면 자동 정정을 허용한다. */
@@ -308,6 +339,26 @@ public class Ipo {
   @Column(name = "source_receipt_no", length = 20)
   @Comment("이 행의 데이터를 만든 최신 DS006 접수번호")
   private String sourceReceiptNo;
+
+  /** 밴드 가격 출처 공시 접수번호 (원문 파서가 검증한 경우만). */
+  @Column(name = "band_price_source_receipt_no", length = 20)
+  @Comment("밴드 가격 출처 공시 접수번호")
+  private String bandPriceSourceReceiptNo;
+
+  /** 밴드 가격 파서 버전. */
+  @Column(name = "band_price_parser_version")
+  @Comment("밴드 가격 파서 버전")
+  private Integer bandPriceParserVersion;
+
+  /** 확정가 출처 공시 접수번호 (원문 파서가 검증한 경우만). */
+  @Column(name = "fixed_price_source_receipt_no", length = 20)
+  @Comment("확정가 출처 공시 접수번호")
+  private String fixedPriceSourceReceiptNo;
+
+  /** 확정가 파서 버전. */
+  @Column(name = "fixed_price_parser_version")
+  @Comment("확정가 파서 버전")
+  private Integer fixedPriceParserVersion;
 
   /** 자동 수집이 마지막으로 반영한 청약 시작일. 출처 불명·수동 입력이면 null로 보호한다. */
   @Column(name = "last_imported_subscription_start_date")

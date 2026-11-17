@@ -167,10 +167,18 @@ public class IpoService {
     if (updatedFixedPrice != null) {
       validatePrice("fixedPrice", updatedFixedPrice);
     }
-    if (computedLowerBandPrice != null
-        && computedUpperBandPrice != null
-        && computedLowerBandPrice > computedUpperBandPrice) {
-      throw new IpoValidationException("lowerBandPrice는 upperBandPrice보다 클 수 없습니다.");
+    // 밴드 검증: 둘 다 있으면서 lower < upper, 또는 둘 다 없음
+    // 한쪽만 있으면 예외, lower >= upper도 예외
+    if (computedLowerBandPrice != null || computedUpperBandPrice != null) {
+      if (computedLowerBandPrice == null || computedUpperBandPrice == null) {
+        throw new IpoValidationException("lowerBandPrice와 upperBandPrice는 함께 설정되어야 합니다.");
+      }
+      if (computedLowerBandPrice <= 0 || computedUpperBandPrice <= 0) {
+        throw new IpoValidationException("lowerBandPrice와 upperBandPrice는 0보다 커야 합니다.");
+      }
+      if (computedLowerBandPrice >= computedUpperBandPrice) {
+        throw new IpoValidationException("lowerBandPrice는 upperBandPrice보다 작아야 합니다.");
+      }
     }
     if (updatedOfferingShareCount != null) {
       if (updatedOfferingShareCount <= 0) {
@@ -261,10 +269,18 @@ public class IpoService {
     validatePrice("upperBandPrice", request.getUpperBandPrice());
     validatePrice("fixedPrice", request.getFixedPrice());
 
-    if (request.getLowerBandPrice() != null
-        && request.getUpperBandPrice() != null
-        && request.getLowerBandPrice() > request.getUpperBandPrice()) {
-      throw new IpoValidationException("lowerBandPrice는 upperBandPrice보다 클 수 없습니다.");
+    // 밴드 검증: 둘 다 있으면서 lower < upper, 또는 둘 다 없음
+    // 한쪽만 있으면 예외, lower >= upper도 예외
+    if (request.getLowerBandPrice() != null || request.getUpperBandPrice() != null) {
+      if (request.getLowerBandPrice() == null || request.getUpperBandPrice() == null) {
+        throw new IpoValidationException("lowerBandPrice와 upperBandPrice는 함께 설정되어야 합니다.");
+      }
+      if (request.getLowerBandPrice() <= 0 || request.getUpperBandPrice() <= 0) {
+        throw new IpoValidationException("lowerBandPrice와 upperBandPrice는 0보다 커야 합니다.");
+      }
+      if (request.getLowerBandPrice() >= request.getUpperBandPrice()) {
+        throw new IpoValidationException("lowerBandPrice는 upperBandPrice보다 작아야 합니다.");
+      }
     }
 
     if (request.getOfferingShareCount() != null && request.getOfferingShareCount() <= 0) {

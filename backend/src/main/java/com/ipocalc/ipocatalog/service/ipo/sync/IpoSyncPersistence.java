@@ -3,6 +3,8 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -22,14 +24,17 @@ public class IpoSyncPersistence {
   private final IpoRepository ipoRepository;
   private final BusinessDayCalculator businessDayCalculator;
   private final Clock clock;
+  private final OpenDartEquitySecuritiesClient equitySecuritiesClient;
 
-  /** 기존 레코드를 보존하거나 자동 동기화 IPO를 만들고 갱신한다. correctionReport는 DS001의 정정/발행조건확정 공시 여부다. */
+  /** 기존 레코드를 보존하거나 자동 동기화 IPO를 만들고 갱신한다.
+   * 가격은 DS006에서 가져오지 않고, 별도 파싱된 DartOfferingTerms를 통해 검증 후 적용한다. */
   public Outcome persist(
       String corpCode,
       String corpName,
       OpenDartEquitySecurityDetail detail,
       boolean finalizedReport,
-      boolean correctionReport) {
+      boolean correctionReport,
+      DartOfferingTerms offeringTerms) {
     if (detail.getRceptNo() != null
         && ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, detail.getRceptNo())) {
       return Outcome.SKIPPED_WITHDRAWN;
@@ -37,7 +42,7 @@ public class IpoSyncPersistence {
     LocalDate startDate = detail.getSubscriptionStartDate();
     LocalDate endDate = detail.getSubscriptionEndDate();
 
-    if (endDate == null) {
+    if (endDate == null && startDate != null) {
       endDate = businessDayCalculator.nextBusinessDay(startDate);
       log.debug(
           "청약 종료일 계산 (다음 영업일): corpCode={}, startDate={}, endDate={}",
@@ -64,16 +69,15 @@ public class IpoSyncPersistence {
       }
       if (!isSameOffering(existing, detail, correctionReport)) {
         // 새 공모인지 정정 공시인지 구분할 수 없어 전체 갱신은 보류하되,
-        // 공모가(밴드)·공모 주식 수는 최신 공시 값으로 반영한다.
+        // 공모 주식 수만 최신 공시 값으로 반영한다 (가격은 건드리지 않음).
         // source_receipt_no는 철회 매칭 보호를 위해 절대 덮어쓰지 않는다.
-        log.warn("신규 공모/정정 구분 불가로 밴드 가격·주식 수만 갱신: corpCode={}", corpCode);
+        log.warn("신규 공모/정정 구분 불가로 주식 수만 갱신: corpCode={}", corpCode);
         LocalDateTime now = LocalDateTime.now(clock);
-        existing.syncBandAndShares(
-            detail.getOfferPrice(), detail.getOfferPrice(), detail.getOfferingShareCount(), now);
+        existing.syncShareCountOnly(detail.getOfferingShareCount(), now);
         ipoRepository.saveAndFlush(existing);
         return Outcome.UPDATED;
       }
-      updateExistingIpo(existing, corpName, detail, startDate, endDate, finalizedReport);
+      updateExistingIpo(existing, corpName, detail, startDate, endDate, offeringTerms);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
       return Outcome.UPDATED;
     }
@@ -95,7 +99,7 @@ public class IpoSyncPersistence {
 
     try {
       ipoRepository.saveAndFlush(
-          newIpo(corpCode, corpName, detail, startDate, endDate, finalizedReport));
+          newIpo(corpCode, corpName, detail, startDate, endDate, offeringTerms));
       log.debug("신규 IPO 생성: corpCode={}, corpName={}", corpCode, corpName);
       return Outcome.CREATED;
     } catch (DataIntegrityViolationException e) {
@@ -134,17 +138,13 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
       LocalDate endDate,
-      boolean finalizedReport) {
+      DartOfferingTerms offeringTerms) {
     LocalDateTime now = LocalDateTime.now(clock);
-    Long confirmedPrice = finalizedReport ? detail.getOfferPrice() : null;
-    return Ipo.builder()
+    Ipo ipo = Ipo.builder()
         .companyName(corpName)
         .ipoName(corpName)
         .corpCode(corpCode)
         .stockCode(null)
-        .lowerBandPrice(detail.getOfferPrice())
-        .upperBandPrice(detail.getOfferPrice())
-        .fixedPrice(confirmedPrice)
         .subscriptionStartDate(startDate)
         .subscriptionEndDate(endDate)
         .listingDate(null)
@@ -161,6 +161,13 @@ public class IpoSyncPersistence {
         .createdAt(now)
         .updatedAt(now)
         .build();
+
+    // 원문에서 검증된 가격 정보가 있으면 적용
+    if (offeringTerms != null) {
+      ipo.applyVerifiedOfferingTerms(offeringTerms, now);
+    }
+
+    return ipo;
   }
 
   /**
@@ -202,13 +209,11 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
       LocalDate endDate,
-      boolean finalizedReport) {
+      DartOfferingTerms offeringTerms) {
     LocalDateTime now = LocalDateTime.now(clock);
-    Long confirmedPrice = finalizedReport ? detail.getOfferPrice() : null;
+    // 가격 인자 없이 동기화 (일정·주식수만)
     existing.syncFromOpenDart(
         corpName,
-        detail.getOfferPrice(),
-        confirmedPrice,
         detail.getOfferingShareCount(),
         startDate,
         endDate,
@@ -216,6 +221,10 @@ public class IpoSyncPersistence {
         detail.getRefundDate(),
         SYNC_SOURCE_OPENDART,
         now);
+    // 원문에서 검증된 가격 정보가 있으면 적용
+    if (offeringTerms != null) {
+      existing.applyVerifiedOfferingTerms(offeringTerms, now);
+    }
     // 레거시 행(source_receipt_no 없음)만 이 시점에 원공시 receipt를 연결한다.
     // 이미 receipt가 있는 행은 철회 매칭 근거를 유지하기 위해 덮어쓰지 않는다
     if (existing.getSourceReceiptNo() == null && detail.getRceptNo() != null) {

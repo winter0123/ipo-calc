@@ -2,6 +2,10 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -12,6 +16,9 @@ import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
@@ -19,6 +26,8 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecurities
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
+import com.ipocalc.ipocatalog.service.ipo.sync.IpoSyncRunRecorder;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,6 +55,10 @@ class IpoSyncServiceTest {
 
   @MockitoBean private OpenDartEquitySecuritiesClient equitySecuritiesClient;
 
+  @MockitoBean private DartIpoFilingClient dartIpoFilingClient;
+
+  @MockitoBean private DartOfferingTermsParser offeringTermsParser;
+
   @MockitoBean private IpoRepository ipoRepository;
 
   @MockitoBean private BusinessDayCalculator businessDayCalculator;
@@ -53,6 +66,8 @@ class IpoSyncServiceTest {
   @MockitoBean private IpoScheduleMergeService ipoScheduleMergeService;
 
   @MockitoBean private UstockPlusCalendarClient ustockPlusCalendarClient;
+
+  @MockitoBean private IpoSyncRunRecorder recorder;
 
   // TransactionTemplate은 실제 빈 사용 (Mock으로 람다 인자 캡처 시 타입 문제 발생)
   @Autowired private TransactionTemplate transactionTemplate;
@@ -62,7 +77,6 @@ class IpoSyncServiceTest {
       Clock.fixed(Instant.parse("2026-10-15T00:00:00Z"), SEOUL);
 
   private IpoSyncService syncService;
-  private IpoSyncRunRecorder recorder;
 
   private final ArgumentCaptor<Ipo> ipoCaptor = ArgumentCaptor.forClass(Ipo.class);
 
@@ -71,20 +85,23 @@ class IpoSyncServiceTest {
     when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(List.of());
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK);
+        new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK, equitySecuritiesClient);
     IpoReconciliationService reconciliationService =
         new IpoReconciliationService(
             corpDisclosureClient,
             equitySecuritiesClient,
+            dartIpoFilingClient,
+            offeringTermsParser,
             ipoRepository,
             persistence,
             transactionTemplate,
             FIXED_CLOCK);
-    recorder = mock(IpoSyncRunRecorder.class);
     syncService =
         new IpoSyncService(
             corpDisclosureClient,
             equitySecuritiesClient,
+            dartIpoFilingClient,
+            offeringTermsParser,
             persistence,
             transactionTemplate,
             ipoScheduleMergeService,
@@ -1164,13 +1181,20 @@ class IpoSyncServiceTest {
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of());
 
+    // 원문 파싱 모킹: 발행조건확정 공시의 원문에서 밴드 10,000~11,000, 확정가 11,000 반환
+    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, 11_000L,
+        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(true))).thenReturn(terms);
+
     // when
     syncService.sync(7);
 
     // then: FINAL 공시의 상세(확정공모가 11,000)가 선택되어 저장됨
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(11_000L);
-    assertThat(ipoCaptor.getValue().getLowerBandPrice()).isEqualTo(11_000L); // 확정공모 공시의 offerPrice
+    assertThat(ipoCaptor.getValue().getLowerBandPrice()).isEqualTo(10_000L);
+    assertThat(ipoCaptor.getValue().getUpperBandPrice()).isEqualTo(11_000L);
   }
 
   @Test
@@ -1207,6 +1231,12 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+
+    // 원문 파싱 모킹: 발행조건확정 공시의 원문에서 확정가 11,000 반환
+    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, 11_000L,
+        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(true))).thenReturn(terms);
 
     // when
     syncService.sync(7);
@@ -1416,14 +1446,21 @@ class IpoSyncServiceTest {
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of());
 
+    // 원문 파싱 모킹: 기재정정 공시의 원문에서 밴드 10,000~11,000 반환 (fixedPrice는 null)
+    // correction report이므로 isFinalizedReport() = false
+    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, null,
+        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(false))).thenReturn(terms);
+
     // when
     syncService.sync(7);
 
     // then: 기재정정 공시의 상세(공모가 11,000)가 선택되어 저장됨
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     assertThat(ipoCaptor.getValue().getFixedPrice()).isNull(); // 기재정정은 확정가가 아니므로 fixedPrice null
-    assertThat(ipoCaptor.getValue().getLowerBandPrice()).isEqualTo(11_000L); // 기재정정 공시의 offerPrice
-    assertThat(ipoCaptor.getValue().getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(ipoCaptor.getValue().getLowerBandPrice()).isEqualTo(10_000L); // 밴드 하한
+    assertThat(ipoCaptor.getValue().getUpperBandPrice()).isEqualTo(11_000L); // 밴드 상한
   }
 
   @Test

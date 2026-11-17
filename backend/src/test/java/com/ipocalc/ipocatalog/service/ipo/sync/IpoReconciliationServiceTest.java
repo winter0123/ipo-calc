@@ -2,6 +2,12 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -11,18 +17,25 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 
 /** {@link IpoReconciliationService}의 호출 상한·철회 매칭 규칙을 목(mock)으로 검증한다. */
 class IpoReconciliationServiceTest {
@@ -37,6 +50,8 @@ class IpoReconciliationServiceTest {
   private IpoRepository ipoRepository;
   private IpoSyncPersistence persistence;
   private TransactionTemplate transactionTemplate;
+  private DartIpoFilingClient dartIpoFilingClient;
+  private DartOfferingTermsParser offeringTermsParser;
   private IpoReconciliationService service;
 
   @BeforeEach
@@ -45,13 +60,23 @@ class IpoReconciliationServiceTest {
     equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
     ipoRepository = mock(IpoRepository.class);
     persistence = mock(IpoSyncPersistence.class);
-    transactionTemplate =
-        new TransactionTemplate(
-            mock(org.springframework.transaction.PlatformTransactionManager.class));
+    transactionTemplate = mock(TransactionTemplate.class);
+    dartIpoFilingClient = mock(DartIpoFilingClient.class);
+    offeringTermsParser = mock(DartOfferingTermsParser.class);
+    doAnswer(invocation -> {
+      org.springframework.transaction.support.TransactionCallback<?> callback =
+          invocation.getArgument(0);
+      return callback.doInTransaction(null);
+    }).when(transactionTemplate).execute(any());
+    // 원문 다운로드/파싱 기본 모킹: 빈 응답 반환 (가격 파싱 없이 진행)
+    when(dartIpoFilingClient.downloadDocument(anyString())).thenReturn(java.util.Optional.empty());
+    when(offeringTermsParser.parse(anyString(), anyString(), anyBoolean())).thenReturn(null);
     service =
         new IpoReconciliationService(
             corpDisclosureClient,
             equitySecuritiesClient,
+            dartIpoFilingClient,
+            offeringTermsParser,
             ipoRepository,
             persistence,
             transactionTemplate,
@@ -277,7 +302,8 @@ class IpoReconciliationServiceTest {
             org.mockito.ArgumentMatchers.eq("심원"),
             org.mockito.ArgumentMatchers.eq(detail),
             org.mockito.ArgumentMatchers.eq(false),
-            org.mockito.ArgumentMatchers.eq(true)))
+            org.mockito.ArgumentMatchers.eq(true),
+            org.mockito.ArgumentMatchers.isNull()))
         .thenReturn(IpoSyncPersistence.Outcome.UPDATED);
 
     IpoReconcileResult result = service.reconcileActiveOfferings();
@@ -286,11 +312,11 @@ class IpoReconciliationServiceTest {
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();
     assertThat(result.getFailures()).isEmpty();
-    verify(persistence).persist("02038432", "심원", detail, false, true);
+    verify(persistence).persist(eq("02038432"), eq("심원"), eq(detail), eq(false), eq(true), isNull());
   }
 
   @Test
-  void refreshPrefersFinalizedReportAndUpdatesFixedPricePath() {
+  void refreshSelectsLatestFilingByDateAndUpdatesIfSameOffering() {
     Ipo row =
         Ipo.builder()
             .id(1L)
@@ -309,6 +335,8 @@ class IpoReconciliationServiceTest {
     when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(List.of(row));
 
+    // 최신 공시는 기재정정(2026-10-25), 발행조건확정(2026-10-20), 원공시(2026-10-01) 순
+    // selectRefreshFiling은 접수일자·접수번호 기준 최신 공시를 선택하므로 기재정정이 선택됨
     OpenDartDisclosureItem original =
         OpenDartDisclosureItem.builder()
             .corpCode("02038432")
@@ -360,18 +388,21 @@ class IpoReconciliationServiceTest {
         .thenReturn(List.of(original, finalized, laterCorrection));
     when(equitySecuritiesClient.getEquitySecurityDetail(any(), any(), any()))
         .thenReturn(List.of(originalDetail, finalizedDetail, correctionDetail));
+    // 최신 공시(기재정정)의 상세가 선택되어 persist 호출됨 (finalizedReport=false, correctionReport=true)
     when(persistence.persist(
             org.mockito.ArgumentMatchers.eq("02038432"),
             org.mockito.ArgumentMatchers.eq("영광와이케이엠씨"),
-            org.mockito.ArgumentMatchers.eq(finalizedDetail),
-            org.mockito.ArgumentMatchers.eq(true),
-            org.mockito.ArgumentMatchers.eq(true)))
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            org.mockito.ArgumentMatchers.anyBoolean(),
+            org.mockito.ArgumentMatchers.isNull()))
         .thenReturn(IpoSyncPersistence.Outcome.UPDATED);
 
     IpoReconcileResult result = service.reconcileActiveOfferings();
 
-    // 더 늦은 기재정정보다 발행조건확정을 선택해야 함
-    verify(persistence).persist("02038432", "영광와이케이엠씨", finalizedDetail, true, true);
+    // 접수일자 기준 최신 공시(기재정정)가 선택됨
+    verify(persistence).persist(eq("02038432"), eq("영광와이케이엠씨"),
+        any(), anyBoolean(), anyBoolean(), isNull());
     assertThat(result.getSucceeded()).isEqualTo(1);
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();

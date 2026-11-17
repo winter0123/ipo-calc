@@ -2,6 +2,9 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
@@ -33,17 +36,20 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <ul>
  *   <li>DS001 응답에서 {@code stock_code}가 있는 건은 IPO가 아니므로 건너뛴다.
  *   <li>DS006 상세를 검증한 뒤 회사별 독립 transaction 안에서 {@link IpoSyncPersistence}를 호출한다.
+ *   <li>가격은 DS006이 아닌 document.xml 원문에서 파싱한 검증된 값만 사용한다.
  *   <li>인증 오류와 요청 제한은 전체 실행을 중단하고, 그 외 회사별 오류는 실패에 기록한 뒤 계속 처리한다.
  *   <li>OpenDART 루프가 중단 없이 완료되면 ustockplus 일정을 병합한다. 병합 실패는 OpenDART 결과를 바꾸지 않는다.
  *   <li>로그에 API 키를 절대 남기지 않는다 (키는 URL 쿼리 파라미터).
  * </ul>
- */
+ *  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class IpoSyncService {
   private final OpenDartCorpDisclosureClient corpDisclosureClient;
   private final OpenDartEquitySecuritiesClient equitySecuritiesClient;
+  private final DartIpoFilingClient dartIpoFilingClient;
+  private final DartOfferingTermsParser offeringTermsParser;
   private final IpoSyncPersistence ipoSyncPersistence;
   private final TransactionTemplate transactionTemplate;
   private final IpoScheduleMergeService ipoScheduleMergeService;
@@ -364,7 +370,7 @@ public class IpoSyncService {
    * 한 회사(DS001의 한 건)에 대한 DS006 조회·검증·upsert를 처리한다. 루프를 중단해야 하면 false, 계속 진행하면 true를 반환한다.
    *
    * @param result 동기화 결과 객체
-   * @param company DS001 조회 결과의 한 건
+   * @param company DS001 공시검색 결과의 한 건
    * @param detailFetcher 회사별 DS006 상세 조회 함수
    * @return 계속 진행하면 true, 중단(인증 오류/요청 제한) 시 false
    */
@@ -448,6 +454,34 @@ public class IpoSyncService {
       return true;
     }
 
+    // 문서 원문 다운로드 및 가격 파싱 (rceptNo가 있는 경우만)
+    DartOfferingTerms offeringTerms = null;
+    if (detail.getRceptNo() != null) {
+      try {
+        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(detail.getRceptNo());
+        if (xmlOpt.isPresent()) {
+          String xml = xmlOpt.get();
+          if (!xml.isBlank()) {
+            offeringTerms = offeringTermsParser.parse(xml, detail.getRceptNo(), company.isFinalizedReport());
+          } else {
+            log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", detail.getRceptNo());
+            recordFailure(result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
+          }
+        } else {
+          log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", detail.getRceptNo());
+          recordFailure(result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
+        }
+      } catch (Exception e) {
+        log.warn("문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", detail.getRceptNo(), e.getClass().getSimpleName());
+        recordFailure(result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
+      }
+    }
+
+    // 반복 호출 방지: 최신 공시 접수번호와 저장된 출처 접수번호·파서 버전이 모두 같으면 건너뛰기
+    // (persist 내부에서 처리)
+
+    final DartOfferingTerms finalOfferingTerms = offeringTerms;
+
     // 건별 독립 트랜잭션으로 처리 (한 건 실패가 다른 건에 영향 없도록)
     transactionTemplate.executeWithoutResult(
         status -> {
@@ -458,7 +492,8 @@ public class IpoSyncService {
                     corpName,
                     detail,
                     company.isFinalizedReport(),
-                    company.isCorrectionOrFinalized());
+                    company.isCorrectionOrFinalized(),
+                    finalOfferingTerms);
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);
@@ -531,8 +566,7 @@ public class IpoSyncService {
     }
 
     // 2순위: company가 정정 공시(기재정정)이면, 그 rceptNo와 일치하는 DS006 상세 찾기
-    if (company.isCorrectionOrFinalized() && company.getRceptNo() != null) {
-      // isCorrectionOrFinalized는 발행조건확정도 포함하므로, 위에서 걸러지지 않은 정정 공시만 여기 도달
+    if (company.isCorrectionReport() && company.getRceptNo() != null) {
       Optional<OpenDartEquitySecurityDetail> correctionDetail =
           details.stream().filter(d -> company.getRceptNo().equals(d.getRceptNo())).findFirst();
       if (correctionDetail.isPresent()) {

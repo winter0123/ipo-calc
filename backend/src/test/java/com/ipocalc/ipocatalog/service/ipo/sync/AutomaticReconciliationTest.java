@@ -23,10 +23,17 @@ import com.ipocalc.ipocatalog.domain.model.ipo.IpoSyncRun;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.repository.ipo.IpoSyncRunRepository;
 import com.ipocalc.ipocatalog.service.ipo.IpoService;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+
+import static org.mockito.ArgumentMatchers.any;
+
+import static org.mockito.Mockito.mock;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusScheduleDates;
 import com.ipocalc.salemanagement.domain.model.sale.Sale;
@@ -198,6 +205,8 @@ class AutomaticReconciliationTest {
         new IpoReconciliationService(
             corpClient,
             equityClient,
+            mock(DartIpoFilingClient.class),
+            mock(DartOfferingTermsParser.class),
             ipoRepository,
             ipoSyncPersistence,
             transactionTemplate,
@@ -205,6 +214,8 @@ class AutomaticReconciliationTest {
     return new IpoSyncService(
         corpClient,
         equityClient,
+        mock(DartIpoFilingClient.class),
+        mock(DartOfferingTermsParser.class),
         ipoSyncPersistence,
         transactionTemplate,
         mergeService,
@@ -566,7 +577,7 @@ class AutomaticReconciliationTest {
     changed.parseDerivedFields();
 
     transactionTemplate.executeWithoutResult(
-        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false));
+        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false, null));
 
     // 추적값 == 현재값이면 수집 원본 정정은 허용한다
     Ipo reloaded = ipoRepository.findById(seeded.getId()).orElseThrow();
@@ -606,7 +617,7 @@ class AutomaticReconciliationTest {
     changed.parseDerivedFields();
 
     transactionTemplate.executeWithoutResult(
-        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false));
+        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false, null));
 
     // 추적값이 null인 행(출처 불명/수동)은 자동 동기화가 덮어쓰지 않는다
     Ipo reloaded = ipoRepository.findById(seeded.getId()).orElseThrow();
@@ -651,7 +662,7 @@ class AutomaticReconciliationTest {
             .build();
     changed.parseDerivedFields();
     transactionTemplate.executeWithoutResult(
-        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false));
+        status -> ipoSyncPersistence.persist(SIMWON_CORP, "심원", changed, false, false, null));
 
     Ipo afterSync = ipoRepository.findById(seeded.getId()).orElseThrow();
     assertThat(afterSync.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 20));
@@ -867,6 +878,8 @@ class AutomaticReconciliationTest {
         new IpoReconciliationService(
             corpClient,
             equityClient,
+            mock(DartIpoFilingClient.class),
+            mock(DartOfferingTermsParser.class),
             ipoRepository,
             ipoSyncPersistence,
             transactionTemplate,
@@ -874,6 +887,8 @@ class AutomaticReconciliationTest {
     return new IpoSyncService(
         corpClient,
         equityClient,
+        mock(DartIpoFilingClient.class),
+        mock(DartOfferingTermsParser.class),
         ipoSyncPersistence,
         transactionTemplate,
         mergeService,
@@ -913,6 +928,8 @@ class AutomaticReconciliationTest {
         new IpoReconciliationService(
             corpClient,
             equityClient,
+            mock(DartIpoFilingClient.class),
+            mock(DartOfferingTermsParser.class),
             ipoRepository,
             ipoSyncPersistence,
             transactionTemplate,
@@ -920,6 +937,8 @@ class AutomaticReconciliationTest {
     return new IpoSyncService(
         corpClient,
         equityClient,
+        mock(DartIpoFilingClient.class),
+        mock(DartOfferingTermsParser.class),
         ipoSyncPersistence,
         transactionTemplate,
         mergeService,
