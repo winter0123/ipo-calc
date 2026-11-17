@@ -182,14 +182,12 @@ export default function IpoDetailPage() {
                       </>
                     ) : null}
                   </>
+                ) : ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null ? (
+                  <>
+                    {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)}
+                  </>
                 ) : (
-                  ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null ? (
-                    <>
-                      {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)}
-                    </>
-                  ) : (
-                    '-'
-                  )
+                  '-'
                 )}
               </dd>
             </div>

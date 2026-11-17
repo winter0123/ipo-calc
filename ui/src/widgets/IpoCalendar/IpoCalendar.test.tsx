@@ -913,11 +913,11 @@ describe('IpoCalendar', () => {
   describe('모바일 주말 표시·스크롤·reduced motion', () => {
     const originalInnerWidth = window.innerWidth
     const originalMatchMedia = window.matchMedia
-    let scrollMockFn: any
+    let scrollMockFn: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
       scrollMockFn = vi.fn()
-      const proto = (globalThis as any).HTMLElement?.prototype
+      const proto = HTMLElement.prototype as unknown as { scrollIntoView?: unknown }
       if (proto)
         Object.defineProperty(proto, 'scrollIntoView', {
           value: scrollMockFn,
@@ -926,8 +926,8 @@ describe('IpoCalendar', () => {
         })
     })
     afterEach(() => {
-      const proto = (globalThis as any).HTMLElement?.prototype
-      if (proto && proto.scrollIntoView === scrollMockFn) {
+      const proto = HTMLElement.prototype as unknown as { scrollIntoView?: unknown }
+      if (proto.scrollIntoView === scrollMockFn) {
         // restore by deleting mock (jsdom lacks method by default); no need to keep
         delete proto.scrollIntoView
       }
