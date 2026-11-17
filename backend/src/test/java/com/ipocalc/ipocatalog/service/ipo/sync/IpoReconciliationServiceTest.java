@@ -401,6 +401,30 @@ class IpoReconciliationServiceTest {
   }
 
   @Test
+  void selectRefreshFilingPrefersCorrectionOverLaterRegular() {
+    // 발행조건확정이 없고 정정공시가 있는 경우: 정정공시가 최신 일반 공시보다 우선 선택됨
+    OpenDartDisclosureItem correction =
+        OpenDartDisclosureItem.builder()
+            .reportNm("[기재정정]증권신고서(지분증권)")
+            .rceptNo("20261020000002")
+            .rceptDt("20261020")
+            .rm("")
+            .build();
+    OpenDartDisclosureItem laterRegular =
+        OpenDartDisclosureItem.builder()
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261025000003")
+            .rceptDt("20261025")
+            .rm("")
+            .build();
+
+    OpenDartDisclosureItem selected =
+        IpoReconciliationService.selectRefreshFiling(List.of(laterRegular, correction));
+
+    assertThat(selected).isSameAs(correction);
+  }
+
+  @Test
   void emptyDs001ResponseCountsAsUnverifiedFailure_notSuccess() {
     Ipo row = activeAutoRow("02038432", LocalDate.of(2026, 11, 5), null);
     when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))

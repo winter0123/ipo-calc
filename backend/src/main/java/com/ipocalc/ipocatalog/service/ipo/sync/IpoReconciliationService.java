@@ -240,7 +240,7 @@ public class IpoReconciliationService {
     attemptRefresh(result, corpCode, row, filing, detail);
   }
 
-  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정이 있으면 그중 최신, 없으면 전체 중 최신. */
+  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 발행조건확정 > 정정공시(기재정정) > 전체 중 최신 순으로 선택한다. */
   static OpenDartDisclosureItem selectRefreshFiling(List<OpenDartDisclosureItem> disclosures) {
     if (disclosures == null || disclosures.isEmpty()) {
       return null;
@@ -262,6 +262,9 @@ public class IpoReconciliationService {
     return candidates.stream()
         .filter(OpenDartDisclosureItem::isFinalizedReport)
         .max(newestFirst)
+        .or(() -> candidates.stream()
+            .filter(OpenDartDisclosureItem::isCorrectionOrFinalized)
+            .max(newestFirst))
         .or(() -> candidates.stream().max(newestFirst))
         .orElse(null);
   }
