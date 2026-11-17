@@ -174,12 +174,12 @@ export default function IpoDetailPage() {
                 {confirmedPriceForDisplay != null ? (
                   <>
                     {formatPrice(confirmedPriceForDisplay)}
-                    {ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null &&
-                    (ipo!.lowerBandPrice !== confirmedPriceForDisplay ||
-                      ipo!.upperBandPrice !== confirmedPriceForDisplay) ? (
-                      <span className={styles.bandLabel}>
-                        (밴드 {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)})
-                      </span>
+                    {ipo!.lowerBandPrice != null && ipo!.upperBandPrice != null ? (
+                      <>
+                        <span className={styles.bandLabel}>
+                          (밴드 {formatWon(ipo!.lowerBandPrice)}~{formatWon(ipo!.upperBandPrice)})
+                        </span>
+                      </>
                     ) : null}
                   </>
                 ) : (
