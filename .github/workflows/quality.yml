@@ -82,4 +82,7 @@ jobs:
           cache: gradle
       - name: Run backend quality checks
         working-directory: backend
-        run: ./gradlew test checkstyleMain checkstyleTest spotlessCheck build --no-daemon
+        run: ./gradlew checkstyleMain checkstyleTest spotlessCheck build --no-daemon
+      - name: Run backend sync tests
+        working-directory: backend
+        run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.sync.*" --tests "com.ipocalc.ipocatalog.service.ipo.IpoServiceTest" --tests "com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParserTest" --no-daemon
