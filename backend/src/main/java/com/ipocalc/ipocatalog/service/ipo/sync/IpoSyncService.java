@@ -505,6 +505,7 @@ public class IpoSyncService {
    *
    * <ul>
    *   <li>company가 발행조건확정 공시이면, 그 rceptNo와 일치하는 DS006 상세를 최우선 선택한다.
+   *   <li>company가 정정 공시(기재정정)이면, 그 rceptNo와 일치하는 DS006 상세를 선택한다.
    *   <li>company가 철회 공시이면, 철회 대상 원공시 rceptNo와 일치하는 DS006 상세를 선택한다.
    *   <li>그 외(일반 공시)는 최신 rceptNo(문자열 기준 내림차순) 상세를 선택한다.
    * </ul>
@@ -529,7 +530,22 @@ public class IpoSyncService {
           company.getCorpCode());
     }
 
-    // 2순위: 철회 공시면 철회 대상 원공시 rceptNo로 매칭
+    // 2순위: company가 정정 공시(기재정정)이면, 그 rceptNo와 일치하는 DS006 상세 찾기
+    if (company.isCorrectionOrFinalized() && company.getRceptNo() != null) {
+      // isCorrectionOrFinalized는 발행조건확정도 포함하므로, 위에서 걸러지지 않은 정정 공시만 여기 도달
+      Optional<OpenDartEquitySecurityDetail> correctionDetail =
+          details.stream().filter(d -> company.getRceptNo().equals(d.getRceptNo())).findFirst();
+      if (correctionDetail.isPresent()) {
+        return correctionDetail.get();
+      }
+      // DS006에 없으면 경고 로그 후 아래 로직으로 폴백
+      log.warn(
+          "정정 공시({})의 DS006 상세 없음, 폴백: corpCode={}",
+          company.getRceptNo(),
+          company.getCorpCode());
+    }
+
+    // 3순위: 철회 공시면 철회 대상 원공시 rceptNo로 매칭
     if (company.getRm() != null && company.getRm().contains("철")) {
       return details.stream()
           .filter(d -> company.getRceptNo() != null && company.getRceptNo().equals(d.getRceptNo()))
@@ -537,7 +553,7 @@ public class IpoSyncService {
           .orElse(null); // null이면 상위에서 실패 처리함
     }
 
-    // 3순위: 일반 케이스 - 최신 rceptNo (기존 로직 유지)
+    // 4순위: 일반 케이스 - 최신 rceptNo (기존 로직 유지)
     return details.stream()
         .max(
             Comparator.comparing(
