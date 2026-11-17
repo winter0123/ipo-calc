@@ -2,7 +2,6 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -617,25 +616,23 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_skipsNonIpo_whenStockCodePresent() {
-    // given: stock_code가 있는 회사 (유상증자 추정)
+  void sync_processesStockCodePresentCompany_whenDS006Empty() {
+    // given: stock_code가 있어도 IPO 후보로 동기화 시도
     OpenDartDisclosureItem company = createCompany("01042650", "큐리언트", "115180");
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
 
+    // DS006 빈 응답
+    when(equitySecuritiesClient.getEquitySecurityDetail("01042650")).thenReturn(List.of());
+
     // when
     IpoSyncResult result = syncService.sync(7);
 
-    // then
+    // then: skippedNonIpo가 아니고 DS006 빈 응답으로 failure 처리
     assertThat(result.getCreated()).isEqualTo(0);
-    assertThat(result.getUpdated()).isEqualTo(0);
-    assertThat(result.getSkippedManual()).isEqualTo(0);
-    assertThat(result.getSkippedNonIpo()).isEqualTo(1);
-    assertThat(result.getFailureCount()).isEqualTo(0);
-
-    // DS006 호출되지 않아야 함
-    verify(equitySecuritiesClient, org.mockito.Mockito.never())
-        .getEquitySecurityDetail(anyString());
+    assertThat(result.getSkippedNonIpo()).isEqualTo(0);
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    assertThat(result.getFailures().get(0).getReason()).contains("DS006 상세 정보 없음");
   }
 
   @Test

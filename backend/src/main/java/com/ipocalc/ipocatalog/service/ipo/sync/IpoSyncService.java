@@ -373,18 +373,6 @@ public class IpoSyncService {
       Function<String, List<OpenDartEquitySecurityDetail>> detailFetcher) {
     String corpCode = company.getCorpCode();
     String corpName = company.getCorpName();
-    String stockCode = company.getStockCode();
-
-    // D-3: stock_code가 있으면 유상증자로 보고 건너뜀
-    if (stockCode != null && !stockCode.isBlank()) {
-      result.setSkippedNonIpo(result.getSkippedNonIpo() + 1);
-      log.debug(
-          "stock_code 존재로 건너뜀 (유상증자 추정): corpCode={}, corpName={}, stockCode={}",
-          corpCode,
-          corpName,
-          stockCode);
-      return true;
-    }
 
     // DS006 상세 조회
     List<OpenDartEquitySecurityDetail> details;
