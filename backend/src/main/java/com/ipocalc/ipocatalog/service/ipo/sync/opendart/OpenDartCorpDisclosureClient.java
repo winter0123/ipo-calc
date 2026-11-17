@@ -251,7 +251,12 @@ public class OpenDartCorpDisclosureClient {
     for (OpenDartDisclosureItem item : filtered) {
       String key = item.getCorpCode();
       OpenDartDisclosureItem existing = latestByCorpCode.get(key);
-      if (existing == null || compareRceptDtAndNo(item.getRceptDt(), item.getRceptNo(), existing.getRceptDt(), existing.getRceptNo()) > 0) {
+      if (existing == null
+            || compareRceptDtAndNo(
+                item.getRceptDt(),
+                item.getRceptNo(),
+                existing.getRceptDt(),
+                existing.getRceptNo()) > 0) {
         latestByCorpCode.put(key, item);
       }
     }
@@ -275,19 +280,20 @@ public class OpenDartCorpDisclosureClient {
    *
    * @return a가 b보다 최신이면 양수, 같으면 0, a가 이전이면 음수
    */
-  private int compareRceptDtAndNo(String aDt, String aNo, String bDt, String bNo) {
-    int dtCmp = compareRceptDt(aDt, bDt);
+  private int compareRceptDtAndNo(
+      String rceptDtA, String rceptNoA, String rceptDtB, String rceptNoB) {
+    int dtCmp = compareRceptDt(rceptDtA, rceptDtB);
     if (dtCmp != 0) {
       return dtCmp;
     }
     // 접수일자가 같으면 접수번호 비교 (숫자 비교가 아닌 문자열 비교)
-    if (aNo == null) {
-      return bNo == null ? 0 : -1;
+    if (rceptNoA == null) {
+      return rceptNoB == null ? 0 : -1;
     }
-    if (bNo == null) {
+    if (rceptNoB == null) {
       return 1;
     }
-    return aNo.compareTo(bNo);
+    return rceptNoA.compareTo(rceptNoB);
   }
 
   /**

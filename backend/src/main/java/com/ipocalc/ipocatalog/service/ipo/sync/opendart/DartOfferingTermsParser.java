@@ -15,7 +15,8 @@ public class DartOfferingTermsParser {
 
   private static final Pattern TABLE = Pattern.compile("<TABLE[^>]*>(.*?)</TABLE>", Pattern.DOTALL);
   private static final Pattern ROW = Pattern.compile("<TR[^>]*>(.*?)</TR>", Pattern.DOTALL);
-  private static final Pattern CELL = Pattern.compile("<(TD|TH|TE|TU)[^>]*>(.*?)</\\1>", Pattern.DOTALL);
+  private static final Pattern CELL =
+      Pattern.compile("<(TD|TH|TE|TU)[^>]*>(.*?)</\\1>", Pattern.DOTALL);
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern ENTITY = Pattern.compile("&(#x?[0-9a-fA-F]+|[a-zA-Z]+);");
   private static final Pattern SPACES = Pattern.compile("[\\s\\u00a0]+");
@@ -63,17 +64,22 @@ public class DartOfferingTermsParser {
 
     for (List<List<String>> table : tables) {
       // 표의 모든 행을 확인하여 어떤 표인지 식별 (헤더 행뿐만 아니라 데이터 행도 확인)
-      if (table.isEmpty()) continue;
+      if (table.isEmpty()) {
+        continue;
+      }
       StringBuilder allText = new StringBuilder();
       for (List<String> row : table) {
         for (String cell : row) {
-          if (cell != null) allText.append(cell).append(" ");
+          if (cell != null) {
+            allText.append(cell).append(" ");
+          }
         }
       }
       String tableText = allText.toString().replaceAll("\\s+", " ");
 
       // 정정 전/정정 후 표 식별
-      if (tableText.contains("정정전") || tableText.contains("정정후") || tableText.contains("정정 전") || tableText.contains("정정 후")) {
+      if (tableText.contains("정정전") || tableText.contains("정정후")
+          || tableText.contains("정정 전") || tableText.contains("정정 후")) {
         parseCorrectionTable(table, isFinalizedReport);
       }
 
@@ -83,14 +89,15 @@ public class DartOfferingTermsParser {
       }
 
       // 청약기일/배정공고일/납입기일 표 식별
-      if (tableText.contains("청약기일") || tableText.contains("청약일") ||
-          tableText.contains("배정공고") || tableText.contains("배정일") ||
-          tableText.contains("납입기일") || tableText.contains("환불일")) {
+      if (tableText.contains("청약기일") || tableText.contains("청약일")
+          || tableText.contains("배정공고") || tableText.contains("배정일")
+          || tableText.contains("납입기일") || tableText.contains("환불일")) {
         extractDatesFromTable(table, tableText);
       }
 
       // 증권수량/공모주식수 표 식별
-      if (tableText.contains("증권수량") || tableText.contains("공모주식") || tableText.contains("모집주식") || tableText.contains("주식수")) {
+      if (tableText.contains("증권수량") || tableText.contains("공모주식")
+          || tableText.contains("모집주식") || tableText.contains("주식수")) {
         offeringShareCount = extractOfferingShareCount(table);
       }
     }
@@ -158,25 +165,34 @@ public class DartOfferingTermsParser {
   }
 
   private String decodeEntity(String name, String original) {
-    return switch (name) {
-      case "amp" -> "&";
-      case "lt" -> "<";
-      case "gt" -> ">";
-      case "quot" -> "\"";
-      case "apos" -> "'";
-      case "nbsp" -> " ";
-      default -> {
-        if (name.charAt(0) != '#') yield original;
+    switch (name) {
+      case "amp":
+        return "&";
+      case "lt":
+        return "<";
+      case "gt":
+        return ">";
+      case "quot":
+        return "\"";
+      case "apos":
+        return "'";
+      case "nbsp":
+        return " ";
+      default:
+        if (name.charAt(0) != '#') {
+          return original;
+        }
         boolean hex = name.charAt(1) == 'x' || name.charAt(1) == 'X';
         int cp = Integer.parseInt(name.substring(hex ? 2 : 1), hex ? 16 : 10);
-        yield Character.isValidCodePoint(cp) ? new String(Character.toChars(cp)) : original;
-      }
-    };
+        return Character.isValidCodePoint(cp) ? new String(Character.toChars(cp)) : original;
+    }
   }
 
   /** 정정 전/정정 후 표에서 확정가 추출 (발행조건확정 공시일 때만). */
   private void parseCorrectionTable(List<List<String>> table, boolean isFinalizedReport) {
-    if (!isFinalizedReport) return;
+    if (!isFinalizedReport) {
+      return;
+    }
 
     for (List<String> row : table) {
       for (int i = 0; i < row.size(); i++) {
@@ -225,10 +241,14 @@ public class DartOfferingTermsParser {
 
   /** 셀에서 두 가격(범위) 추출: "9,400원 ~ 11,000원" 패턴. */
   private Long[] extractTwoPricesFromCell(String cell) {
-    if (cell == null) return null;
+    if (cell == null) {
+      return null;
+    }
     String cleaned = PAREN.matcher(cell).replaceAll(" ");
     Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) return null;
+    if (!tildeMatch.find()) {
+      return null;
+    }
 
     String left = cleaned.substring(0, tildeMatch.start()).trim();
     String right = cleaned.substring(tildeMatch.end()).trim();
@@ -244,11 +264,15 @@ public class DartOfferingTermsParser {
 
   /** 셀에서 단일 가격 추출. */
   private Long parsePrice(String cell) {
-    if (cell == null) return null;
+    if (cell == null) {
+      return null;
+    }
     String cleaned = PAREN.matcher(cell).replaceAll(" ");
     cleaned = WON.matcher(cleaned).replaceAll("");
     cleaned = cleaned.replaceAll(",", "").trim();
-    if (cleaned.isEmpty()) return null;
+    if (cleaned.isEmpty()) {
+      return null;
+    }
     try {
       return Long.parseLong(cleaned);
     } catch (NumberFormatException e) {
@@ -260,7 +284,9 @@ public class DartOfferingTermsParser {
   private void extractDatesFromTable(List<List<String>> table, String headerText) {
     for (List<String> row : table) {
       for (String cell : row) {
-        if (cell == null) continue;
+        if (cell == null) {
+          continue;
+        }
 
         if (headerText.contains("청약")) {
           LocalDate[] dates = parseSubscriptionDateRange(cell);
@@ -270,10 +296,14 @@ public class DartOfferingTermsParser {
           }
         } else if (headerText.contains("배정")) {
           LocalDate date = parseDate(cell);
-          if (date != null) this.allotmentDate = date;
+          if (date != null) {
+            this.allotmentDate = date;
+          }
         } else if (headerText.contains("납입") || headerText.contains("환불")) {
           LocalDate date = parseDate(cell);
-          if (date != null) this.refundDate = date;
+          if (date != null) {
+            this.refundDate = date;
+          }
         }
       }
     }
@@ -283,7 +313,9 @@ public class DartOfferingTermsParser {
   private LocalDate[] parseSubscriptionDateRange(String text) {
     String cleaned = PAREN.matcher(text).replaceAll(" ");
     Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) return null;
+    if (!tildeMatch.find()) {
+      return null;
+    }
 
     String left = cleaned.substring(0, tildeMatch.start()).trim();
     String right = cleaned.substring(tildeMatch.end()).trim();
@@ -299,16 +331,22 @@ public class DartOfferingTermsParser {
 
   /** "2026년 11월 04일" 또는 "2026.11.04" 형태 파싱. */
   private LocalDate parseDate(String text) {
-    if (text == null) return null;
+    if (text == null) {
+      return null;
+    }
     String cleaned = PAREN.matcher(text).replaceAll(" ").trim();
     List<Integer> nums = new ArrayList<>();
     Matcher m = NUMBER.matcher(cleaned);
     while (m.find() && nums.size() < 3) {
       try {
         nums.add(Integer.parseInt(m.group()));
-      } catch (NumberFormatException ignored) {}
+      } catch (NumberFormatException ignored) {
+        // ignore
+      }
     }
-    if (nums.size() != 3 || nums.get(0) < 1000) return null;
+    if (nums.size() != 3 || nums.get(0) < 1000) {
+      return null;
+    }
     try {
       return LocalDate.of(nums.get(0), nums.get(1), nums.get(2));
     } catch (Exception e) {
@@ -320,8 +358,12 @@ public class DartOfferingTermsParser {
   private LocalDate[] extractSubscriptionDatesFromText(String text) {
     // "청약기일" 근처에서 날짜 범위 찾기
     int idx = text.indexOf("청약기일");
-    if (idx < 0) idx = text.indexOf("청약일");
-    if (idx < 0) return null;
+    if (idx < 0) {
+      idx = text.indexOf("청약일");
+    }
+    if (idx < 0) {
+      return null;
+    }
 
     // 앞뒤 200자 내에서 검색
     int start = Math.max(0, idx - 50);
@@ -330,7 +372,9 @@ public class DartOfferingTermsParser {
 
     String cleaned = PAREN.matcher(snippet).replaceAll(" ");
     Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) return null;
+    if (!tildeMatch.find()) {
+      return null;
+    }
 
     String left = cleaned.substring(0, tildeMatch.start()).trim();
     String right = cleaned.substring(tildeMatch.end()).trim();
@@ -347,7 +391,9 @@ public class DartOfferingTermsParser {
   /** 원문 전체에서 특정 라벨의 날짜 찾기. */
   private LocalDate extractDateFromText(String text, String label) {
     int idx = text.indexOf(label);
-    if (idx < 0) return null;
+    if (idx < 0) {
+      return null;
+    }
     int start = Math.max(0, idx - 20);
     int end = Math.min(text.length(), idx + 100);
     String snippet = text.substring(start, end);
@@ -358,14 +404,20 @@ public class DartOfferingTermsParser {
   private Long extractOfferingShareCount(List<List<String>> table) {
     for (List<String> row : table) {
       for (String cell : row) {
-        if (cell == null) continue;
+        if (cell == null) {
+          continue;
+        }
         String cleaned = cell.replaceAll(",", "").trim();
         Matcher m = NUMBER.matcher(cleaned);
         if (m.find()) {
           try {
             long val = Long.parseLong(m.group());
-            if (val > 0) return val;
-          } catch (NumberFormatException ignored) {}
+            if (val > 0) {
+              return val;
+            }
+          } catch (NumberFormatException ignored) {
+            // ignore
+          }
         }
       }
     }

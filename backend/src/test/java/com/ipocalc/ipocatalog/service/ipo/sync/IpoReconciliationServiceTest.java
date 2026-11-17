@@ -34,9 +34,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-
 /** {@link IpoReconciliationService}의 호출 상한·철회 매칭 규칙을 목(mock)으로 검증한다. */
 class IpoReconciliationServiceTest {
 

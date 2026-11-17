@@ -253,7 +253,8 @@ public class IpoReconciliationService {
         if (xmlOpt.isPresent()) {
           String xml = xmlOpt.get();
           if (!xml.isBlank()) {
-            offeringTerms = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
+            offeringTerms =
+                offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
           } else {
             log.warn("재점검: 문서 원문 다운로드 결과 빈 값 (rceptNo={})", filing.getRceptNo());
           }
@@ -261,7 +262,10 @@ public class IpoReconciliationService {
           log.warn("재점검: 문서 원문 다운로드 실패 (빈 응답) (rceptNo={})", filing.getRceptNo());
         }
       } catch (Exception e) {
-        log.warn("재점검: 문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", filing.getRceptNo(), e.getClass().getSimpleName());
+        log.warn(
+            "재점검: 문서 원문 다운로드/파싱 실패 (rceptNo={}): {}",
+            filing.getRceptNo(),
+            e.getClass().getSimpleName());
       }
     }
 

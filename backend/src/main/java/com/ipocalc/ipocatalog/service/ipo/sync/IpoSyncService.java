@@ -2,9 +2,9 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartAuthenticationException;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
@@ -462,18 +462,34 @@ public class IpoSyncService {
         if (xmlOpt.isPresent()) {
           String xml = xmlOpt.get();
           if (!xml.isBlank()) {
-            offeringTerms = offeringTermsParser.parse(xml, detail.getRceptNo(), company.isFinalizedReport());
+            offeringTerms =
+                offeringTermsParser.parse(xml, detail.getRceptNo(), company.isFinalizedReport());
           } else {
             log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", detail.getRceptNo());
-            recordFailure(result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
+            recordFailure(
+                result,
+                corpCode,
+                corpName,
+                "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
           }
         } else {
           log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", detail.getRceptNo());
-          recordFailure(result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
+          recordFailure(
+              result,
+              corpCode,
+              corpName,
+              "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
         }
       } catch (Exception e) {
-        log.warn("문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", detail.getRceptNo(), e.getClass().getSimpleName());
-        recordFailure(result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
+        log.warn(
+            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}",
+            detail.getRceptNo(),
+            e.getClass().getSimpleName());
+        recordFailure(
+            result,
+            corpCode,
+            corpName,
+            "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
       }
     }
 
