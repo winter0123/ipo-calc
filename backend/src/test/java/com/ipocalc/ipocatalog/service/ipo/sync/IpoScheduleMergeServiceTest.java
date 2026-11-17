@@ -59,6 +59,12 @@ class IpoScheduleMergeServiceTest {
             ipoRepository,
             transactionTemplate,
             Clock.fixed(TODAY.atStartOfDay(SEOUL).toInstant(), SEOUL));
+
+    // 청약일 기준 ±90일 조회를 위한 기본 모킹 (전체 범위를 커버)
+    when(ipoRepository.findMinSubscriptionStartDateByStatusAndDeletedAtIsNull(STATUS_ACTIVE))
+        .thenReturn(Optional.of(LocalDate.of(2026, 8, 1)));
+    when(ipoRepository.findMaxSubscriptionStartDateByStatusAndDeletedAtIsNull(STATUS_ACTIVE))
+        .thenReturn(Optional.of(LocalDate.of(2026, 12, 1)));
   }
 
   private UstockPlusScheduleDates createSchedule(
@@ -134,7 +140,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -170,7 +176,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -205,7 +211,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -234,7 +240,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -268,7 +274,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -298,7 +304,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -326,7 +332,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -362,7 +368,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 20),
                 LocalDate.of(2026, 11, 10),
                 LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -387,7 +393,7 @@ class IpoScheduleMergeServiceTest {
         List.of(
             createSchedule(
                 "250030", "진코스텍", null, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -419,7 +425,7 @@ class IpoScheduleMergeServiceTest {
     when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
             STATUS_ACTIVE))
         .thenReturn(List.of());
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(
             List.of(
                 createSchedule(
@@ -473,7 +479,7 @@ class IpoScheduleMergeServiceTest {
                 LocalDate.of(2026, 11, 25),
                 LocalDate.of(2026, 11, 15),
                 LocalDate.of(2026, 11, 17)));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(schedules);
 
     // when
@@ -489,7 +495,7 @@ class IpoScheduleMergeServiceTest {
   @Test
   void merge_returnsZeroWhenClientReturnsEmpty() {
     // given: ustockplus 빈 리스트 반환
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of());
 
     // when
@@ -540,7 +546,7 @@ class IpoScheduleMergeServiceTest {
     when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
             STATUS_ACTIVE))
         .thenReturn(List.of(existing));
-    when(ustockPlusCalendarClient.fetchScheduleDates(TODAY.minusDays(60), TODAY.plusDays(60)))
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(
             List.of(
                 createSchedule(

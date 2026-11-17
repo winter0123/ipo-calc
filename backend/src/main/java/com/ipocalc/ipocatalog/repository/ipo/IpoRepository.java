@@ -86,4 +86,10 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
     return findByStatusAndStockCodeIsNotNullAndListingDateBeforeAndListingOpenPriceIsNullAndDeletedAtIsNull(
         RecordStatus.ACTIVE, today);
   }
+
+  /** ACTIVE 공모주의 청약 시작일 최소값을 조회한다. */
+  Optional<LocalDate> findMinSubscriptionStartDateByStatusAndDeletedAtIsNull(RecordStatus status);
+
+  /** ACTIVE 공모주의 청약 시작일 최대값을 조회한다. */
+  Optional<LocalDate> findMaxSubscriptionStartDateByStatusAndDeletedAtIsNull(RecordStatus status);
 }
