@@ -63,10 +63,15 @@ public class IpoSyncPersistence {
         return Outcome.SKIPPED_MANUAL;
       }
       if (!isSameOffering(existing, detail, correctionReport)) {
-        // 새 공모인지 정정 공시인지 구분할 수 없으면 가격·주식수·회사명·접수번호를 포함한
-        // 기존 값을 전부 보존하고 갱신을 보류한다. 다른 공모로 receipt를 덮어쓰면 철회 매칭이 망가진다
-        log.warn("신규 공모/정정 구분 불가로 기존 자동 공모 갱신 보류: corpCode={}", corpCode);
-        return Outcome.HELD_UNDETERMINED;
+        // 새 공모인지 정정 공시인지 구분할 수 없어 전체 갱신은 보류하되,
+        // 공모가(밴드)·공모 주식 수는 최신 공시 값으로 반영한다.
+        // source_receipt_no는 철회 매칭 보호를 위해 절대 덮어쓰지 않는다.
+        log.warn("신규 공모/정정 구분 불가로 밴드 가격·주식 수만 갱신: corpCode={}", corpCode);
+        LocalDateTime now = LocalDateTime.now(clock);
+        existing.syncBandAndShares(
+            detail.getOfferPrice(), detail.getOfferPrice(), detail.getOfferingShareCount(), now);
+        ipoRepository.saveAndFlush(existing);
+        return Outcome.UPDATED;
       }
       updateExistingIpo(existing, corpName, detail, startDate, endDate, finalizedReport);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);

@@ -526,6 +526,31 @@ describe('SubscriptionScheduleList 가격 표시', () => {
 
     expect(result.getByText('미정')).toBeInTheDocument()
   })
+
+  it('확정가 없으면 밴드 범위(하단~상단 원)로 표시된다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '밴드 공모주',
+              fixedPrice: null,
+              lowerBandPrice: 9000,
+              upperBandPrice: 11000,
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('9,000원~11,000원')).toBeInTheDocument()
+  })
 })
 
 describe('SubscriptionScheduleList 건수 제거 확인', () => {
