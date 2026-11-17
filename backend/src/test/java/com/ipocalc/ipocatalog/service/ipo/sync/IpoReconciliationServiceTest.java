@@ -18,12 +18,12 @@ import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -309,7 +309,8 @@ class IpoReconciliationServiceTest {
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();
     assertThat(result.getFailures()).isEmpty();
-    verify(persistence).persist(eq("02038432"), eq("심원"), eq(detail), eq(false), eq(true), isNull());
+    verify(persistence)
+        .persist(eq("02038432"), eq("심원"), eq(detail), eq(false), eq(true), isNull());
   }
 
   @Test
