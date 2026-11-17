@@ -1262,4 +1262,175 @@ class IpoSyncServiceTest {
     assertThat(result.getSkippedManual()).isEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());
   }
+
+  @Test
+  void sync_updatesBandPriceEvenWhenDifferentReceiptNotSameOffering() {
+    // given: 기존 자동 동기화 레코드(source_receipt_no=OLD, fixedPrice=9400, 밴드 10000)
+    Ipo existing =
+        Ipo.builder()
+            .id(1L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .corpCode("corp")
+            .lowerBandPrice(10_000L)
+            .upperBandPrice(10_000L)
+            .fixedPrice(9_400L)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .sourceReceiptNo("OLD-RECEIPT")
+            .syncSource("OPENDART")
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+
+    // 새 공시: 다른 접수번호, 일반 공시(정정 아님), 밴드 가격이 11000으로 변경
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("1,000,000")
+            .slprc("11,000")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 전체 갱신은 보류되지만 밴드 가격·주식 수는 갱신되고, source_receipt_no·fixedPrice는 미변경
+    assertThat(result.getUpdated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo saved = ipoCaptor.getValue();
+    assertThat(saved.getLowerBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getOfferingShareCount()).isEqualTo(1_000_000L);
+    assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
+    assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 일반 공시이므로 fixedPrice 미변경
+  }
+
+  @Test
+  void sync_doesNotUpdateFixedPriceWhenNotFinalizedReport() {
+    // given: 기존 자동 동기화 레코드, 일반 공시
+    Ipo existing =
+        Ipo.builder()
+            .id(1L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .corpCode("corp")
+            .lowerBandPrice(10_000L)
+            .upperBandPrice(10_000L)
+            .fixedPrice(null)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .sourceReceiptNo("OLD-RECEIPT")
+            .syncSource("OPENDART")
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+
+    // general disclosure(정정 아님), confirmedPrice는 null이어야 함
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("1,000,000")
+            .slprc("11,000")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 일반 공시이므로 fixedPrice는 null 유지
+    assertThat(result.getUpdated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getFixedPrice()).isNull();
+  }
+
+  @Test
+  void sync_updatesFixedPriceWhenFinalizedReportAndDifferentReceipt() {
+    // given: 기존 자동 동기화 레코드, 발행조건확정 공시
+    Ipo existing =
+        Ipo.builder()
+            .id(1L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .corpCode("corp")
+            .lowerBandPrice(10_000L)
+            .upperBandPrice(10_000L)
+            .fixedPrice(9_400L)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .sourceReceiptNo("OLD-RECEIPT")
+            .syncSource("OPENDART")
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+
+    // 발행조건확정 공시: confirmedPrice 설정되어야 함
+    OpenDartDisclosureItem company =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .stockCode("")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("1,000,000")
+            .slprc("11,000")
+            .rceptNo("NEW-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(company));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+
+    // when
+    IpoSyncResult result = syncService.sync(7);
+
+    // then: 발행조건확정 공시이므로 fixedPrice 갱신, 밴드 가격도 갱신, source_receipt_no 미변경
+    assertThat(result.getUpdated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo saved = ipoCaptor.getValue();
+    assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
+  }
 }

@@ -111,6 +111,31 @@ public class Ipo {
     this.updatedAt = now;
   }
 
+  /**
+   * OpenDART 동기화 시 공모가 변경 사항만 반영한다.
+   *
+   * <p>정정·발행조건확정 공시가 아니어서 전체 갱신을 보류하더라도, 밴드 가격과 공모 주식 수는 최신 공시 값으로 갱신한다. {@code source_receipt_no}는
+   * 철회 매칭 보호를 위해 건드리지 않는다. {@code fixedPrice}는 호출자가 별도로 결정해 넘기며, 확정 공시가 아니면 기존 값을 보존한다.
+   *
+   * @param lowerBandPrice 희망 공모가 하단
+   * @param upperBandPrice 희망 공모가 상단
+   * @param offeringShareCount 공모 주식 수
+   * @param now 수정 시각
+   */
+  public void syncBandAndShares(
+      Long lowerBandPrice, Long upperBandPrice, Long offeringShareCount, LocalDateTime now) {
+    if (lowerBandPrice != null) {
+      this.lowerBandPrice = lowerBandPrice;
+    }
+    if (upperBandPrice != null) {
+      this.upperBandPrice = upperBandPrice;
+    }
+    if (offeringShareCount != null) {
+      this.offeringShareCount = offeringShareCount;
+    }
+    this.updatedAt = now;
+  }
+
   /** Deactivates the credential. */
   public void deactivate(LocalDateTime now) {
     this.status = RecordStatus.INACTIVE;

@@ -53,6 +53,14 @@ function priceLabel(item: SubscriptionScheduleItem): React.ReactNode {
     return <span className={styles.priceValue}>{formatWon(ipo.fixedPrice)}</span>
   }
 
+  if (ipo.lowerBandPrice != null && ipo.upperBandPrice != null) {
+    return (
+      <span className={styles.priceValue}>
+        {formatWon(ipo.lowerBandPrice)}~{formatWon(ipo.upperBandPrice)}
+      </span>
+    )
+  }
+
   return <span className={styles.priceValue}>미정</span>
 }
 

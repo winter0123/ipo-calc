@@ -165,7 +165,7 @@ class IpoScheduleReconciliationTest {
   }
 
   @Test
-  void persistHoldsPriceSharesCompanyNameAndReceiptWhenOfferingCannotBeDistinguished() {
+  void persistUpdatesBandAndSharesWhenDifferentReceiptNotSameOffering() {
     IpoRepository repository = mock(IpoRepository.class);
     IpoSyncPersistence persistence = newPersistence(repository);
     Ipo existing =
@@ -189,12 +189,14 @@ class IpoScheduleReconciliationTest {
             .build();
 
     assertThat(persistence.persist("corp", "새회사", detail, false, false))
-        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
-    verify(repository, never()).saveAndFlush(any());
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    // 전체 갱신은 보류되지만 밴드 가격·주식 수는 갱신되어 saveAndFlush 호출됨
+    verify(repository).saveAndFlush(existing);
+    // 회사명·확정가·접수번호는 미변경 (보호)
     assertThat(existing.getCompanyName()).isEqualTo("기존회사");
     assertThat(existing.getFixedPrice()).isEqualTo(1_000_000L);
-    assertThat(existing.getOfferingShareCount()).isEqualTo(100L);
-    assertThat(existing.getSourceReceiptNo()).isEqualTo("R1");
+    assertThat(existing.getOfferingShareCount()).isEqualTo(9_999L); // 갱신됨
+    assertThat(existing.getSourceReceiptNo()).isEqualTo("R1"); // 미변경 (철회 매칭 보호)
   }
 
   @Test
