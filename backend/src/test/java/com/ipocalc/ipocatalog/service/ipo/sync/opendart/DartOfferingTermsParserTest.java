@@ -10,15 +10,14 @@ class DartOfferingTermsParserTest {
 
   private final DartOfferingTermsParser parser = new DartOfferingTermsParser();
 
-  /** 영광와이케이엠씨 축약 픽스처:
-   * - 정정 전 희망공모가: 9,400원 ~ 11,000원
-   * - 정정 후 모집가액: 11,000원
-   * - 일반 표 단일값: 9,400원
-   * - 청약일: 2026-11-04 ~ 2026-11-05
+  /**
+   * 영광와이케이엠씨 축약 픽스처: 정정 전 희망공모가 9,400원 ~ 11,000원, 정정 후 모집가액 11,000원, 일반 표 단일값 9,400원, 청약일
+   * 2026-11-04 ~ 2026-11-05.
    */
   @Test
   void parse_ykmcFinalizedOfferingTerms() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>정정전</TH><TH>정정후</TH></TR>
           <TR><TD>희망공모가</TD><TD>9,400원 ~ 11,000원</TD></TR>
@@ -48,7 +47,8 @@ class DartOfferingTermsParserTest {
   /** 일반 증권신고서: 희망가 범위만 존재. */
   @Test
   void parse_regularReportWithBand() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>희망공모가</TH></TR>
           <TR><TD>15,000원 ~ 18,000원</TD></TR>
@@ -67,7 +67,8 @@ class DartOfferingTermsParserTest {
   /** 단일 가격만 있는 일반 문서: 밴드와 확정가 모두 null. */
   @Test
   void parse_singlePriceOnly() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>모집가액</TH></TR>
           <TR><TD>10,000원</TD></TR>
@@ -86,7 +87,8 @@ class DartOfferingTermsParserTest {
   /** 가격 범위가 역전되거나 숫자가 깨진 문서: 예외 없이 가격 필드 null. */
   @Test
   void parse_invalidPriceRange() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>희망공모가</TH></TR>
           <TR><TD>20,000원 ~ 15,000원</TD></TR>
@@ -106,7 +108,8 @@ class DartOfferingTermsParserTest {
   /** 발행조건확정이 아닌 문서의 단일 가격: fixedPrice == null. */
   @Test
   void parse_nonFinalizedSinglePrice() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>정정전</TH><TH>정정후</TH></TR>
           <TR><TD>모집가액</TD><TD>9,500원</TD></TR>
@@ -122,7 +125,8 @@ class DartOfferingTermsParserTest {
   /** 발행조건확정 공시에서 정정 후 단일 가격 추출. */
   @Test
   void parse_finalizedReportWithSingleFixedPrice() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>정정전</TH><TH>정정후</TH></TR>
           <TR><TD>희망공모가</TD><TD>9,400원 ~ 11,000원</TD></TR>
@@ -142,7 +146,8 @@ class DartOfferingTermsParserTest {
   /** 청약기일 파싱. */
   @Test
   void parse_subscriptionDates() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>청약기일</TH></TR>
           <TR><TD>2026년 11월 04일 ~ 2026년 11월 05일</TD></TR>
@@ -158,7 +163,8 @@ class DartOfferingTermsParserTest {
   /** 주식수량 파싱. */
   @Test
   void parse_offeringShareCount() {
-    String xml = """
+    String xml =
+        """
         <TABLE>
           <TR><TH>증권수량</TH></TR>
           <TR><TD>2,200,000</TD></TR>
