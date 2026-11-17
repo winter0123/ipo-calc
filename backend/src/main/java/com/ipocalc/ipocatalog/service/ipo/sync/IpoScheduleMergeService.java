@@ -64,14 +64,15 @@ public class IpoScheduleMergeService {
   private final Clock clock;
 
   /**
-   * 오늘 기준 과거 30일 ~ 미래 59일(총 89일) ustockplus 일정을 조회해 기존 IPO 레코드에 병합한다.
+   * 오늘 기준 과거 60일 ~ 미래 60일(총 120일) ustockplus 일정을 조회해 기존 IPO 레코드에 병합한다.
+   * 청약일이 과거인 공모주의 상장정보도 포함되도록 조회 범위를 넓혔다.
    *
    * @param today 기준일 (보통 {@code LocalDate.now()})
    * @return 병합으로 갱신된 IPO 건수
    */
   public int merge(LocalDate today) {
-    LocalDate startDate = today.minusDays(30);
-    LocalDate endDate = today.plusDays(59);
+    LocalDate startDate = today.minusDays(60);
+    LocalDate endDate = today.plusDays(60);
 
     List<UstockPlusScheduleDates> scheduleDates;
     try {
