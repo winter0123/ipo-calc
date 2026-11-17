@@ -101,8 +101,9 @@ public class IpoSyncService {
   }
 
   private IpoSyncResult doSyncByMonthRange(YearMonth fromMonth, YearMonth toMonth) {
-    // 전체 기간의 마지막 날까지로 DS006 조회 기간 설정 (fromMonth 1일 ~ toMonth 말일 또는 오늘)
-    LocalDate rangeStart = fromMonth.atDay(1);
+    // DS006 조회 기간: 전월 1일 ~ toMonth 말일 또는 오늘
+    // 정정 공시의 원공시 접수일이 이전 달에 있을 수 있어 범위를 한 달 앞당김
+    LocalDate rangeStart = fromMonth.atDay(1).minusMonths(1);
     LocalDate rangeEnd = toMonth.atEndOfMonth();
     LocalDate today = LocalDate.now(clock);
     if (rangeEnd.isAfter(today)) {
