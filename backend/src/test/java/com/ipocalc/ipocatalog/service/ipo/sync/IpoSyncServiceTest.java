@@ -2,12 +2,9 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,8 +23,6 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecurities
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
-import com.ipocalc.ipocatalog.service.ipo.sync.IpoSyncRunRecorder;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -85,7 +80,8 @@ class IpoSyncServiceTest {
     when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(List.of());
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(ipoRepository, businessDayCalculator, FIXED_CLOCK, equitySecuritiesClient);
+        new IpoSyncPersistence(
+            ipoRepository, businessDayCalculator, FIXED_CLOCK, equitySecuritiesClient);
     IpoReconciliationService reconciliationService =
         new IpoReconciliationService(
             corpDisclosureClient,
@@ -1182,9 +1178,20 @@ class IpoSyncServiceTest {
         .thenReturn(List.of());
 
     // 원문 파싱 모킹: 발행조건확정 공시의 원문에서 밴드 10,000~11,000, 확정가 11,000 반환
-    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
-    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, 11_000L,
-        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(dartIpoFilingClient.downloadDocument("20261101000001"))
+        .thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms =
+        new DartOfferingTerms(
+            "20261101000001",
+            1,
+            10_000L,
+            11_000L,
+            11_000L,
+            LocalDate.of(2026, 11, 5),
+            LocalDate.of(2026, 11, 6),
+            null,
+            null,
+            1_000_000L);
     when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(true))).thenReturn(terms);
 
     // when
@@ -1233,9 +1240,20 @@ class IpoSyncServiceTest {
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
 
     // 원문 파싱 모킹: 발행조건확정 공시의 원문에서 확정가 11,000 반환
-    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
-    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, 11_000L,
-        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(dartIpoFilingClient.downloadDocument("20261101000001"))
+        .thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms =
+        new DartOfferingTerms(
+            "20261101000001",
+            1,
+            10_000L,
+            11_000L,
+            11_000L,
+            LocalDate.of(2026, 11, 5),
+            LocalDate.of(2026, 11, 6),
+            null,
+            null,
+            1_000_000L);
     when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(true))).thenReturn(terms);
 
     // when
@@ -1448,9 +1466,20 @@ class IpoSyncServiceTest {
 
     // 원문 파싱 모킹: 기재정정 공시의 원문에서 밴드 10,000~11,000 반환 (fixedPrice는 null)
     // correction report이므로 isFinalizedReport() = false
-    when(dartIpoFilingClient.downloadDocument("20261101000001")).thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
-    DartOfferingTerms terms = new DartOfferingTerms("20261101000001", 1, 10_000L, 11_000L, null,
-        LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 6), null, null, 1_000_000L);
+    when(dartIpoFilingClient.downloadDocument("20261101000001"))
+        .thenReturn(java.util.Optional.of("<xml>dummy</xml>"));
+    DartOfferingTerms terms =
+        new DartOfferingTerms(
+            "20261101000001",
+            1,
+            10_000L,
+            11_000L,
+            null,
+            LocalDate.of(2026, 11, 5),
+            LocalDate.of(2026, 11, 6),
+            null,
+            null,
+            1_000_000L);
     when(offeringTermsParser.parse(anyString(), eq("20261101000001"), eq(false))).thenReturn(terms);
 
     // when

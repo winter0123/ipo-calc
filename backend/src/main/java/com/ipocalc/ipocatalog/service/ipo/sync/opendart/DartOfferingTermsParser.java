@@ -1,6 +1,5 @@
 package com.ipocalc.ipocatalog.service.ipo.sync.opendart;
 
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,8 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * DART document.xml 원문에서 공모 조건(희망공모가 범위, 확정공모가, 청약일정, 주식수)을 파싱한다.
- * 형식 이상, 숫자 파싱 실패, 날짜 역전은 예외를 던지지 않고 해당 필드를 null로 둔다.
+ * DART document.xml 원문에서 공모 조건(희망공모가 범위, 확정공모가, 청약일정, 주식수)을 파싱한다. 형식 이상, 숫자 파싱 실패, 날짜 역전은 예외를 던지지
+ * 않고 해당 필드를 null로 둔다.
  */
 public class DartOfferingTermsParser {
 
@@ -78,8 +77,10 @@ public class DartOfferingTermsParser {
       String tableText = allText.toString().replaceAll("\\s+", " ");
 
       // 정정 전/정정 후 표 식별
-      if (tableText.contains("정정전") || tableText.contains("정정후")
-          || tableText.contains("정정 전") || tableText.contains("정정 후")) {
+      if (tableText.contains("정정전")
+          || tableText.contains("정정후")
+          || tableText.contains("정정 전")
+          || tableText.contains("정정 후")) {
         parseCorrectionTable(table, isFinalizedReport);
       }
 
@@ -89,15 +90,20 @@ public class DartOfferingTermsParser {
       }
 
       // 청약기일/배정공고일/납입기일 표 식별
-      if (tableText.contains("청약기일") || tableText.contains("청약일")
-          || tableText.contains("배정공고") || tableText.contains("배정일")
-          || tableText.contains("납입기일") || tableText.contains("환불일")) {
+      if (tableText.contains("청약기일")
+          || tableText.contains("청약일")
+          || tableText.contains("배정공고")
+          || tableText.contains("배정일")
+          || tableText.contains("납입기일")
+          || tableText.contains("환불일")) {
         extractDatesFromTable(table, tableText);
       }
 
       // 증권수량/공모주식수 표 식별
-      if (tableText.contains("증권수량") || tableText.contains("공모주식")
-          || tableText.contains("모집주식") || tableText.contains("주식수")) {
+      if (tableText.contains("증권수량")
+          || tableText.contains("공모주식")
+          || tableText.contains("모집주식")
+          || tableText.contains("주식수")) {
         offeringShareCount = extractOfferingShareCount(table);
       }
     }
@@ -130,8 +136,7 @@ public class DartOfferingTermsParser {
         subscriptionEndDate,
         allotmentDate,
         refundDate,
-        offeringShareCount
-    );
+        offeringShareCount);
   }
 
   private List<List<List<String>>> parseTables(String xml) {
@@ -257,7 +262,7 @@ public class DartOfferingTermsParser {
     Long rightPrice = parsePrice(right);
 
     if (leftPrice != null && rightPrice != null) {
-      return new Long[]{leftPrice, rightPrice};
+      return new Long[] {leftPrice, rightPrice};
     }
     return null;
   }
@@ -324,7 +329,7 @@ public class DartOfferingTermsParser {
     LocalDate end = parseDate(right);
 
     if (start != null && end != null) {
-      return new LocalDate[]{start, end};
+      return new LocalDate[] {start, end};
     }
     return null;
   }
@@ -383,7 +388,7 @@ public class DartOfferingTermsParser {
     LocalDate endDate = parseDate(right);
 
     if (startDate != null && endDate != null) {
-      return new LocalDate[]{startDate, endDate};
+      return new LocalDate[] {startDate, endDate};
     }
     return null;
   }

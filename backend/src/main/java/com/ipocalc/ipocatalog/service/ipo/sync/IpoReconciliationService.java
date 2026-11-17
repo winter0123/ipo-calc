@@ -40,7 +40,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>인증 오류·020(요청 제한)은 같은 키를 쓰므로 재점검 단계를 즉시 중단하고 aborted를 반환한다. 일반 건별 오류는 격리하고 계속한다.
  *   <li>별도 트랜잭션으로 철회·갱신하며, 한 건의 실패가 다음 건을 막지 않는다.
  * </ul>
- *  */
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -209,9 +209,8 @@ public class IpoReconciliationService {
   }
 
   /**
-   * 철회가 아닌 지분증권 공시 중 접수일자·접수번호 기준 가장 최신 건으로 document.xml 원문에서
-   * 검증된 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인 성공을 되돌리지 않고 경고만 남긴다.
-   * 가격 표가 없는 최신 문서는 기존 검증 가격을 덮지 않는다.
+   * 철회가 아닌 지분증권 공시 중 접수일자·접수번호 기준 가장 최신 건으로 document.xml 원문에서 검증된 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인
+   * 성공을 되돌리지 않고 경고만 남긴다. 가격 표가 없는 최신 문서는 기존 검증 가격을 덮지 않는다.
    */
   private void refreshFromLatestFiling(
       IpoReconcileResult result,
@@ -272,8 +271,10 @@ public class IpoReconciliationService {
     attemptRefresh(result, corpCode, row, filing, detail, offeringTerms);
   }
 
-  /** 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 접수일자·접수번호 기준 가장 최신 공시를 선택한다.
-   * 발행조건확정 우선순위는 없앤다. 원문 파서가 가격 표를 찾지 못하면 가격 필드를 변경하지 않고 실패를 기록한다. */
+  /**
+   * 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 접수일자·접수번호 기준 가장 최신 공시를 선택한다. 발행조건확정 우선순위는 없앤다. 원문 파서가
+   * 가격 표를 찾지 못하면 가격 필드를 변경하지 않고 실패를 기록한다.
+   */
   static OpenDartDisclosureItem selectRefreshFiling(List<OpenDartDisclosureItem> disclosures) {
     if (disclosures == null || disclosures.isEmpty()) {
       return null;

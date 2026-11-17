@@ -24,16 +24,11 @@ import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.repository.ipo.IpoSyncRunRepository;
 import com.ipocalc.ipocatalog.service.ipo.IpoService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
-
-import static org.mockito.ArgumentMatchers.any;
-
-import static org.mockito.Mockito.mock;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusCalendarClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusScheduleDates;
 import com.ipocalc.salemanagement.domain.model.sale.Sale;

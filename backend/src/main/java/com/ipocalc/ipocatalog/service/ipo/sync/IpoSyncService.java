@@ -41,7 +41,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   <li>OpenDART 루프가 중단 없이 완료되면 ustockplus 일정을 병합한다. 병합 실패는 OpenDART 결과를 바꾸지 않는다.
  *   <li>로그에 API 키를 절대 남기지 않는다 (키는 URL 쿼리 파라미터).
  * </ul>
- *  */
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -467,29 +467,18 @@ public class IpoSyncService {
           } else {
             log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", detail.getRceptNo());
             recordFailure(
-                result,
-                corpCode,
-                corpName,
-                "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
+                result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
           }
         } else {
           log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", detail.getRceptNo());
           recordFailure(
-              result,
-              corpCode,
-              corpName,
-              "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
+              result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
         }
       } catch (Exception e) {
         log.warn(
-            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}",
-            detail.getRceptNo(),
-            e.getClass().getSimpleName());
+            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", detail.getRceptNo(), e.getClass().getSimpleName());
         recordFailure(
-            result,
-            corpCode,
-            corpName,
-            "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
+            result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
       }
     }
 
@@ -590,9 +579,7 @@ public class IpoSyncService {
       }
       // DS006에 없으면 경고 로그 후 아래 로직으로 폴백
       log.warn(
-          "정정 공시({})의 DS006 상세 없음, 폴백: corpCode={}",
-          company.getRceptNo(),
-          company.getCorpCode());
+          "정정 공시({})의 DS006 상세 없음, 폴백: corpCode={}", company.getRceptNo(), company.getCorpCode());
     }
 
     // 3순위: 철회 공시면 철회 대상 원공시 rceptNo로 매칭

@@ -26,8 +26,10 @@ public class IpoSyncPersistence {
   private final Clock clock;
   private final OpenDartEquitySecuritiesClient equitySecuritiesClient;
 
-  /** 기존 레코드를 보존하거나 자동 동기화 IPO를 만들고 갱신한다.
-   * 가격은 DS006에서 가져오지 않고, 별도 파싱된 DartOfferingTerms를 통해 검증 후 적용한다. */
+  /**
+   * 기존 레코드를 보존하거나 자동 동기화 IPO를 만들고 갱신한다. 가격은 DS006에서 가져오지 않고, 별도 파싱된 DartOfferingTerms를 통해 검증 후
+   * 적용한다.
+   */
   public Outcome persist(
       String corpCode,
       String corpName,
@@ -140,27 +142,28 @@ public class IpoSyncPersistence {
       LocalDate endDate,
       DartOfferingTerms offeringTerms) {
     LocalDateTime now = LocalDateTime.now(clock);
-    Ipo ipo = Ipo.builder()
-        .companyName(corpName)
-        .ipoName(corpName)
-        .corpCode(corpCode)
-        .stockCode(null)
-        .subscriptionStartDate(startDate)
-        .subscriptionEndDate(endDate)
-        .listingDate(null)
-        .allotmentDate(detail.getAllotmentDate())
-        .refundDate(detail.getRefundDate())
-        .offeringShareCount(detail.getOfferingShareCount())
-        .status(RecordStatus.ACTIVE)
-        .syncSource(SYNC_SOURCE_OPENDART)
-        .sourceReceiptNo(detail.getRceptNo())
-        .lastImportedSubscriptionStartDate(startDate)
-        .lastImportedSubscriptionEndDate(endDate)
-        .lastImportedRefundDate(detail.getRefundDate())
-        .lastSyncedAt(now)
-        .createdAt(now)
-        .updatedAt(now)
-        .build();
+    Ipo ipo =
+        Ipo.builder()
+            .companyName(corpName)
+            .ipoName(corpName)
+            .corpCode(corpCode)
+            .stockCode(null)
+            .subscriptionStartDate(startDate)
+            .subscriptionEndDate(endDate)
+            .listingDate(null)
+            .allotmentDate(detail.getAllotmentDate())
+            .refundDate(detail.getRefundDate())
+            .offeringShareCount(detail.getOfferingShareCount())
+            .status(RecordStatus.ACTIVE)
+            .syncSource(SYNC_SOURCE_OPENDART)
+            .sourceReceiptNo(detail.getRceptNo())
+            .lastImportedSubscriptionStartDate(startDate)
+            .lastImportedSubscriptionEndDate(endDate)
+            .lastImportedRefundDate(detail.getRefundDate())
+            .lastSyncedAt(now)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
 
     // 원문에서 검증된 가격 정보가 있으면 적용
     if (offeringTerms != null) {

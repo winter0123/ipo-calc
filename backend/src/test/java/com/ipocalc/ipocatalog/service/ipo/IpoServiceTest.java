@@ -125,10 +125,10 @@ class IpoServiceTest {
   void update_lowerBandAboveStoredUpperBand_isRejected() {
     // 기존 upperBandPrice(2000)보다 큰 lowerBandPrice 설정 시도
     existing(START, END);
-    
+
     // 밴드 둘 다 설정된 상태에서 lower > upper인 경우
     assertInvalid(
-        IpoUpdateRequest.builder().lowerBandPrice(2_001L).upperBandPrice(2_000L).build(), 
+        IpoUpdateRequest.builder().lowerBandPrice(2_001L).upperBandPrice(2_000L).build(),
         "작아야 합니다");
   }
 
@@ -136,11 +136,10 @@ class IpoServiceTest {
   void update_upperBandBelowStoredLowerBand_isRejected() {
     // 기존 lowerBandPrice(1000)보다 작은 upperBandPrice 설정 시도
     existing(START, END);
-    
+
     // 밴드 둘 다 설정된 상태에서 upper < lower인 경우
     assertInvalid(
-        IpoUpdateRequest.builder().lowerBandPrice(1_000L).upperBandPrice(999L).build(), 
-        "작아야 합니다");
+        IpoUpdateRequest.builder().lowerBandPrice(1_000L).upperBandPrice(999L).build(), "작아야 합니다");
   }
 
   @Test

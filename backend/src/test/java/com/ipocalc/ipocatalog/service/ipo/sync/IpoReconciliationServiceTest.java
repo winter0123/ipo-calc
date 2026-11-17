@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
@@ -18,7 +17,6 @@ import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
@@ -29,7 +27,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -60,11 +57,14 @@ class IpoReconciliationServiceTest {
     transactionTemplate = mock(TransactionTemplate.class);
     dartIpoFilingClient = mock(DartIpoFilingClient.class);
     offeringTermsParser = mock(DartOfferingTermsParser.class);
-    doAnswer(invocation -> {
-      org.springframework.transaction.support.TransactionCallback<?> callback =
-          invocation.getArgument(0);
-      return callback.doInTransaction(null);
-    }).when(transactionTemplate).execute(any());
+    doAnswer(
+            invocation -> {
+              org.springframework.transaction.support.TransactionCallback<?> callback =
+                  invocation.getArgument(0);
+              return callback.doInTransaction(null);
+            })
+        .when(transactionTemplate)
+        .execute(any());
     // 원문 다운로드/파싱 기본 모킹: 빈 응답 반환 (가격 파싱 없이 진행)
     when(dartIpoFilingClient.downloadDocument(anyString())).thenReturn(java.util.Optional.empty());
     when(offeringTermsParser.parse(anyString(), anyString(), anyBoolean())).thenReturn(null);
@@ -399,8 +399,8 @@ class IpoReconciliationServiceTest {
     IpoReconcileResult result = service.reconcileActiveOfferings();
 
     // 접수일자 기준 최신 공시(기재정정)가 선택됨
-    verify(persistence).persist(eq("02038432"), eq("영광와이케이엠씨"),
-        any(), anyBoolean(), anyBoolean(), isNull());
+    verify(persistence)
+        .persist(eq("02038432"), eq("영광와이케이엠씨"), any(), anyBoolean(), anyBoolean(), isNull());
     assertThat(result.getSucceeded()).isEqualTo(1);
     assertThat(result.getRefreshed()).isEqualTo(1);
     assertThat(result.getFailed()).isZero();

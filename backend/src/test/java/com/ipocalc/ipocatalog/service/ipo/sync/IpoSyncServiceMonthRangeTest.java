@@ -21,7 +21,6 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureCl
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
-import com.ipocalc.ipocatalog.service.ipo.sync.BusinessDayCalculator;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,8 +35,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import static org.mockito.Mockito.mock;
 
 /** IpoSyncService syncByMonthRange 테스트. */
 @ExtendWith(MockitoExtension.class)
@@ -73,7 +70,10 @@ class IpoSyncServiceMonthRangeTest {
         .thenReturn(List.of());
     IpoSyncPersistence persistence =
         new IpoSyncPersistence(
-            ipoRepository, new BusinessDayCalculator(marketHolidayRepository), fixedClock, equitySecuritiesClient);
+            ipoRepository,
+            new BusinessDayCalculator(marketHolidayRepository),
+            fixedClock,
+            equitySecuritiesClient);
     IpoReconciliationService reconciliationService =
         new IpoReconciliationService(
             corpDisclosureClient,

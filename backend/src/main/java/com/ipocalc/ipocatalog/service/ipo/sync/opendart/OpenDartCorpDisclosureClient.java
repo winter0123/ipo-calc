@@ -239,8 +239,10 @@ public class OpenDartCorpDisclosureClient {
     throw new OpenDartApiException(status, message);
   }
 
-  /** 지분증권 증권신고서만 필터링하고, 같은 corp_code의 정정/발행조건확정 공시를 최신 1건으로 디듀프.
-   * 정렬 순서: rcept_dt 오름차순 → rcept_no 오름차순. 가장 큰 항목이 최신이다. */
+  /**
+   * 지분증권 증권신고서만 필터링하고, 같은 corp_code의 정정/발행조건확정 공시를 최신 1건으로 디듀프. 정렬 순서: rcept_dt 오름차순 → rcept_no
+   * 오름차순. 가장 큰 항목이 최신이다.
+   */
   private List<OpenDartDisclosureItem> filterAndDeduplicate(List<OpenDartDisclosureItem> items) {
     // 1단계: "증권신고서(지분증권)" 포함 항목만 필터링 (정정/확정 공시도 정규화 후 포함)
     List<OpenDartDisclosureItem> filtered =
@@ -252,11 +254,12 @@ public class OpenDartCorpDisclosureClient {
       String key = item.getCorpCode();
       OpenDartDisclosureItem existing = latestByCorpCode.get(key);
       if (existing == null
-            || compareRceptDtAndNo(
-                item.getRceptDt(),
-                item.getRceptNo(),
-                existing.getRceptDt(),
-                existing.getRceptNo()) > 0) {
+          || compareRceptDtAndNo(
+                  item.getRceptDt(),
+                  item.getRceptNo(),
+                  existing.getRceptDt(),
+                  existing.getRceptNo())
+              > 0) {
         latestByCorpCode.put(key, item);
       }
     }

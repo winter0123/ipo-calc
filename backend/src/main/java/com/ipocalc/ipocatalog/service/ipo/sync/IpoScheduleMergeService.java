@@ -64,8 +64,8 @@ public class IpoScheduleMergeService {
   private final Clock clock;
 
   /**
-   * ACTIVE 공모주의 청약 시작일 기준 앞뒤 90일씩(총 180일) ustockplus 일정을 조회해 기존 IPO 레코드에 병합한다.
-   * 청약일이 과거인 공모주의 상장정보도 포함되도록 조회 범위를 청약일 기준으로 잡는다.
+   * ACTIVE 공모주의 청약 시작일 기준 앞뒤 90일씩(총 180일) ustockplus 일정을 조회해 기존 IPO 레코드에 병합한다. 청약일이 과거인 공모주의 상장정보도
+   * 포함되도록 조회 범위를 청약일 기준으로 잡는다.
    *
    * @param today 기준일 (보통 {@code LocalDate.now()})
    * @return 병합으로 갱신된 IPO 건수

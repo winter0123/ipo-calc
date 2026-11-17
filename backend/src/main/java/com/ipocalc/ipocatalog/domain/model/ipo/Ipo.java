@@ -113,8 +113,8 @@ public class Ipo {
   }
 
   /**
-   * OpenDART 동기화 시 가격 필드를 제외한 필드만 반영한다.
-   * 가격은 별도 메서드 {@link #applyVerifiedOfferingTerms(DartOfferingTerms, LocalDateTime)}에서 검증 후 적용한다.
+   * OpenDART 동기화 시 가격 필드를 제외한 필드만 반영한다. 가격은 별도 메서드 {@link
+   * #applyVerifiedOfferingTerms(DartOfferingTerms, LocalDateTime)}에서 검증 후 적용한다.
    *
    * <p>{@code source_receipt_no}는 철회 매칭 보호를 위해 건드리지 않는다.
    *
@@ -171,8 +171,7 @@ public class Ipo {
   }
 
   /**
-   * 원문에서 검증된 공모 조건(밴드·확정가)을 적용한다.
-   * 수동 레코드(syncSource == null)에는 호출하지 않는다.
+   * 원문에서 검증된 공모 조건(밴드·확정가)을 적용한다. 수동 레코드(syncSource == null)에는 호출하지 않는다.
    *
    * @param terms 원문 파싱 결과
    * @param now 수정 시각
@@ -218,10 +217,7 @@ public class Ipo {
     return changed;
   }
 
-  /**
-   * 주식 수만 갱신한다 (가격 필드 변경 없음).
-   * 기존 {@link #syncBandAndShares}를 대체하며, 가격은 건드리지 않는다.
-   */
+  /** 주식 수만 갱신한다 (가격 필드 변경 없음). 기존 {@link #syncBandAndShares}를 대체하며, 가격은 건드리지 않는다. */
   public void syncShareCountOnly(Long offeringShareCount, LocalDateTime now) {
     if (offeringShareCount != null) {
       this.offeringShareCount = offeringShareCount;

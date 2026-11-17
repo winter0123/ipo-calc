@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import java.time.Clock;
@@ -72,9 +71,14 @@ class IpoScheduleReconciliationTest {
   @Test
   void persistBlocksMultipleActiveRowsForSameCorp() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
     Ipo first = Ipo.builder().syncSource("OPENDART").subscriptionStartDate(FIRST).build();
     Ipo second = Ipo.builder().syncSource("OPENDART").subscriptionStartDate(FIRST).build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
@@ -90,7 +94,8 @@ class IpoScheduleReconciliationTest {
   }
 
   private void merge(Ipo ipo, LocalDate listing) {
-    ipo.mergeSupplementalSchedule(null, null, null, listing, "OPENDART+USTOCKPLUS", FIRST.atStartOfDay());
+    ipo.mergeSupplementalSchedule(
+        null, null, null, listing, "OPENDART+USTOCKPLUS", FIRST.atStartOfDay());
   }
 
   private void mergeSchedule(Ipo ipo, LocalDate allotment, LocalDate refund, LocalDate listing) {
@@ -101,9 +106,14 @@ class IpoScheduleReconciliationTest {
   @Test
   void withdrawalMatchesOfferingAndBlocksSameReceipt() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
     Ipo ipo = Ipo.builder().syncSource("OPENDART").subscriptionStartDate(FIRST).build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(ipo));
@@ -145,9 +155,14 @@ class IpoScheduleReconciliationTest {
   @Test
   void withdrawIsIdempotentWhenAlreadyWithdrawn() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
     Ipo ipo = Ipo.builder().syncSource("OPENDART").subscriptionStartDate(FIRST).build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(ipo));
@@ -167,9 +182,14 @@ class IpoScheduleReconciliationTest {
   @Test
   void persistSkipsManualRecord() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
     Ipo manual = Ipo.builder().subscriptionStartDate(FIRST).build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(manual));
@@ -187,17 +207,24 @@ class IpoScheduleReconciliationTest {
   @Test
   void persistSkipsIfStartDateMatchesExistingManual() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
-    Ipo manual = Ipo.builder()
-        .subscriptionStartDate(FIRST)
-        .subscriptionEndDate(FIRST.plusDays(1))
-        .ipoName("기존공모")
-        .build();
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
+    Ipo manual =
+        Ipo.builder()
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .ipoName("기존공모")
+            .build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of());
-    when(repository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(FIRST, RecordStatus.ACTIVE))
+    when(repository.findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
+            FIRST, RecordStatus.ACTIVE))
         .thenReturn(List.of(manual));
     var detail =
         OpenDartEquitySecurityDetail.builder()
@@ -212,17 +239,23 @@ class IpoScheduleReconciliationTest {
   @Test
   void correctionUpdatesExistingAutoRecord() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
-    Ipo existing = Ipo.builder()
-        .syncSource("OPENDART")
-        .subscriptionStartDate(FIRST)
-        .subscriptionEndDate(FIRST.plusDays(1))
-        .lastImportedSubscriptionStartDate(FIRST)
-        .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
-        .sourceReceiptNo("old-receipt")
-        .build();
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
+    Ipo existing =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .sourceReceiptNo("old-receipt")
+            .build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     var correction =
@@ -244,18 +277,24 @@ class IpoScheduleReconciliationTest {
   @Test
   void undeterminedOfferingUpdatesShareCountOnly() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
-    Ipo existing = Ipo.builder()
-        .syncSource("OPENDART")
-        .subscriptionStartDate(FIRST)
-        .subscriptionEndDate(FIRST.plusDays(1))
-        .lastImportedSubscriptionStartDate(FIRST)
-        .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
-        .sourceReceiptNo("receipt1")
-        .offeringShareCount(500_000L)
-        .build();
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
+    Ipo existing =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .sourceReceiptNo("receipt1")
+            .offeringShareCount(500_000L)
+            .build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     // 다른 접수번호, 정정 공시 아님 -> 구분 불가
@@ -276,16 +315,22 @@ class IpoScheduleReconciliationTest {
   @Test
   void correctionWithoutSourceReceiptUpdatesLegacyRecord() {
     IpoRepository repository = mock(IpoRepository.class);
-    OpenDartEquitySecuritiesClient equitySecuritiesClient = mock(OpenDartEquitySecuritiesClient.class);
+    OpenDartEquitySecuritiesClient equitySecuritiesClient =
+        mock(OpenDartEquitySecuritiesClient.class);
     IpoSyncPersistence persistence =
-        new IpoSyncPersistence(repository, mock(BusinessDayCalculator.class), Clock.systemUTC(), equitySecuritiesClient);
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            equitySecuritiesClient);
     // 레거시 행 (sourceReceiptNo 없음)
-    Ipo legacy = Ipo.builder()
-        .syncSource("OPENDART")
-        .subscriptionStartDate(FIRST)
-        .subscriptionEndDate(FIRST.plusDays(1))
-        .sourceReceiptNo(null)
-        .build();
+    Ipo legacy =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .sourceReceiptNo(null)
+            .build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(legacy));
     var correction =
