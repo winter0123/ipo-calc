@@ -1,505 +1,146 @@
-# AGENTS.md — Orca 멀티 에이전트 개발 공통 헌법
+# AGENTS.md — Orca 멀티 에이전트 공통 운영 규칙
 
-> 이 문서는 Orca로 여러 AI 에이전트를 운영하며 소프트웨어를 개발하는 모든 프로젝트에서 재사용하는 공통 규칙이다. 프로젝트 고유 기술 스택, 경로, 모델 ID, 현재 진행 상황, 특정 CLI의 관찰 결과는 이 파일에 누적하지 않고 `docs/project-agent-guide.md`에 둔다. 해당 파일이 있으면 작업 시작 전에 이 문서 다음으로 읽는다. 문서 기록과 응답은 항상 한국어로 한다.
+> 모든 프로젝트에 재사용하는 공통 규칙. 프로젝트별 스택·경로·모델 ID·CLI 관찰 결과·현재 진행 상황은 `docs/project-agent-guide.md`에 둔다. **대화·문서·보고는 한국어**로 한다. 실제 도구 버전과 저장소 상태가 이 문서의 예시보다 우선한다.
 
-## 1. 읽는 순서와 적용 범위
+## 1. 우선순위·시작/재개
 
-모든 코디네이터와 워커는 작업 전에 다음 순서로 확인한다.
+작업 시작 시 순서대로 읽는다: (1) 루트 `AGENTS.md` → (2) `docs/project-agent-guide.md`(있으면) → (3) 제품 계획서·`docs/roadmap.md` → (4) `docs/current-status.md`·현재 Epic `handoff`·관련 `work-log` → (5) 변경 대상 코드·테스트·설정·호출부.
 
-1. 저장소 루트의 `AGENTS.md`
-2. `docs/project-agent-guide.md` — 존재할 때만, 프로젝트 전용 규칙
-3. 제품 작업 계획서와 `docs/roadmap.md`
-4. `docs/current-status.md`, 현재 Epic의 `handoff.md`, 관련 `work-log.md`
-5. 수정 대상 코드·테스트·설정·사용처
+- 제품 요구사항의 근거는 계획서와 `docs/spec/`, 실행 우선순위는 `roadmap`, 세션 현황은 `current-status`다. 서로 충돌하면 추측하지 말고 확인한다.
+- 새 프로젝트는 사용자와 Master/워커 CLI, Git/PR·브랜치·승인 정책, 무료 모델/비용 경계, 역할별 worktree를 결정한 후 `docs/project-agent-guide.md`, roadmap, status, setup-history 및 아래 문서 구조를 만든다. **제품 계획·로드맵 없이 구현을 시작하지 않는다.**
+- 세션 재개 시 `current-status` → 현재 handoff → 관련 work-log를 확인하고 Run·작업공간·미확인 메시지·활성 워커를 재검증한다.
+- 사용자 질문에는 먼저 답한 후 작업한다. 확인하지 않은 사실·명령 결과·테스트 성공을 주장하지 않는다.
 
-이 문서는 제품 요구사항이나 상세 설계를 대신하지 않는다. 요구사항은 작업 계획서와 spec, 현재 실행 순서는 roadmap, 세션 현황은 current-status를 각각 진실 소스로 삼는다.
+## 2. 권한과 공통 원칙
 
-## 2. 새 프로젝트 부트스트랩
+1. 변경 전 관련 코드·테스트·사용처·설정을 실제로 읽어 목적, 현재 동작, 범위·비범위를 명확히 한다. 파일명만 보고 고치지 않는다.
+2. 단일 목적의 작고 되돌릴 수 있는 변경을 우선한다. 무관한 리팩터링·의존성 추가·정리는 하지 않는다.
+3. **사람의 명시적 승인 없이** 요구사항·주요 아키텍처·보안 정책 변경, 중요 데이터 삭제, 운영 DB/인프라 변경, 시크릿 노출, 파괴적 Git 조작, 승인 밖 PR 병합, 유료 서비스/모델 전환을 하지 않는다.
+4. 사실·권한·도구·검증 조건이 불충분하거나 결정이 필요한 경우 `BLOCKED`로 멈추고 Orca gate/질문을 사용한다. 작업 전 사용자 변경사항을 보존한다.
+5. 결과 판정은 `PASS` / `FAIL` / `NOT_RUN` / `BLOCKED`로 구분한다. 실행하지 않은 검증을 PASS로 보고하지 않는다.
 
-새 저장소에 이 문서를 도입할 때 코딩 전에 아래를 확정한다.
+## 3. 표준 개발 파이프라인
 
-1. 사용자와 Master Lead(상시 코디네이터) 및 워커 실행 CLI를 정한다.
-2. `docs/project-agent-guide.md`를 만들고 스택, 패키지 매니저, 역할별 작업공간, 모델·비용 정책, Git/PR 정책을 기록한다.
-3. `docs/research/`, `docs/spec/`, `docs/architecture/`, `docs/breakdown-research/`, `docs/breakdown/`, `docs/work-plan/`, `docs/work-log/`, `docs/handoff/`, `docs/screenshots/`와 프로젝트 공통 문서를 만든다.
-4. `docs/current-status.md`와 `docs/setup-history.md`를 빈 템플릿으로 만들고, 일일 로그가 필요하면 프로젝트 안내서에 저장 위치·파일명·형식을 정의한다.
-5. 무료 모델·외부 도구·MCP의 사용 가능 여부와 비용 경계를 확인한다. 모델명이나 CLI 옵션은 기억으로 추측하지 않는다.
-6. GitHub Issue 병행 운영, 기능 단위 병합 권한, 기본 브랜치, 사용자 승인 게이트를 정한다.
-7. 구현 전에 제품 작업 계획서와 `docs/roadmap.md`를 작성한다.
+`요구사항 → 조사 → 기획/Acceptance Criteria(AC) → 아키텍처·DB/API 설계 → Master 승인 → Epic 세부기능(SF) 재분해 → 테스트 작성/실패 확인(가능할 때) → 최소 구현 → 테스트·QA·리뷰·보안 → 커밋/PR/병합 확인 → 문서·상태 갱신`
 
-## 3. 30초 재개 카드
+- **Phase 0 필수 산출물:** `docs/research/[epic].md`, `docs/spec/[epic].md`, `docs/architecture/[epic].md`. 내용 검토 및 **Master 승인 후** `docs/breakdown/[epic].md`를 작성하고 구현한다.
+- roadmap은 Epic 수준의 기능·우선순위 근거·의존성·병렬성·대략적 범위를 기록한다. Epic은 구현 직전에 보통 **3~8개 SF**로 재분해한다. SF마다 범위/비범위, AC, 선행 조건, 수정 대상, 테스트·검증 방법을 명시한다. **breakdown 없이 구현 금지.**
+- 금융·개인정보·세금·수수료·외부 API 등은 최신 근거와 필요한 사람 결정을 문서화한 뒤 구현한다.
+- 선행 SF 결과를 이어 쓴다면 텍스트 지시만 하지 말고 Orca task `--deps`로 순서를 인코딩한다.
 
-컨텍스트 압축이나 새 세션 뒤에는 본문 전체보다 먼저 다음을 확인한다.
+## 4. 에이전트 구조·책임
 
-1. Master Lead만 상시 존재하며, 워커는 목적이 있을 때만 만든다.
-2. 구현 전에는 조사 → 기획/Acceptance Criteria → 아키텍처/DB·API 설계 → Master 승인 순서를 지킨다.
-3. Epic은 구현 직전에 다시 세부 기능(SF)으로 분해한다. `docs/breakdown/[epic-slug].md` 없이는 구현을 시작하지 않는다.
-4. 독립 작업은 병렬이 기본이지만, 배정 전에 작업·모델·작업공간이 실제로 준비됐는지 확인한다. 준비된 독립 작업이 둘 이상이면 유효한 모델/작업공간 슬롯 안에서 한 배정 주기에 함께 시작한다. 모델 확인·전환이나 worktree 복구 비용이 작업 병렬 이득보다 큰 슬롯은 억지로 채우지 말고 이유와 재평가 시점을 기록한다.
-5. planning은 backend/frontend 구현 Epic보다 최소 1~2 Epic 앞선 조사·재분해·설계를 유지한다. Monitor 알림, 상태 확인, 사용자 상태 질문 때는 기다리는 워커만 보지 않고 세 기본 작업공간을 모두 점검한다.
-6. 워커의 완료 보고는 증거가 아니다. Master가 diff·테스트·빌드·문서를 직접 검증한다.
-7. 모든 검증 결과는 `PASS` / `FAIL` / `NOT_RUN` / `BLOCKED` 중 하나로 기록한다.
-8. 세션 종료 전 `current-status.md`와 프로젝트 안내서에 정의된 일일 로그를 갱신하고, 사용하지 않는 워커 터미널을 정리한다.
-9. 사용자 질문에는 먼저 사용자의 언어로 답한 뒤 작업한다. 이 저장소의 기본 산출 언어는 한국어다.
+**기본: Master Lead 1명(depth 0) + 필요할 때만 생성하는 워커 N명(depth 1).** 워커의 재위임 금지. 상시 팀장 계층은 기본 사용하지 않는다. 별도 승인된 예외 운영은 프로젝트 안내서에 적고 depth 한도를 확인한다.
 
-## 4. 공통 개발 원칙
+- **Master:** 요구사항/승인/분배/비용/병합/최종 검증/상태 관리. 제품 코드·테스트·research/spec/architecture/breakdown은 직접 수정하지 않고 워커에게 위임한다. Master 직접 갱신 문서는 원칙적으로 `docs/current-status.md`와 프로젝트 정의 일일 로그다.
+- **A(Research·Planning·Architecture):** 공식 근거 조사, 시나리오·AC·엣지 케이스, API/DB·데이터 흐름·위험, Epic/SF 설계. 승인 뒤 해제.
+- **B(Test·Implementation·QA·UI Vision):** 테스트 우선 구현, 실제 검증, 화면·반응형·키보드 접근성·주요 흐름 확인. 병합 후 정리.
+- **C(Git Manager·Review·Security):** Issue/PR 상태·충돌·권한·민감정보·범위·회귀 확인. 이벤트별로 생성/해제.
+- **한 SF = 한 워커**가 기본. 워커에게 대화형 모호한 지시 대신 자기완결적 `spec`(목적, 범위/비범위, 근거 파일, 편집 허용 파일, AC, 검증 명령, 완료 보고)을 제공한다. `docs/worker-spec-template.md`가 있으면 따른다.
+- 워커 완료 문구는 증거가 아니다. **Master가 직접** 명령을 실행해 테스트·lint·build 결과를 확인하고 diff·문서·보안·병합 상태를 검토한다.
 
-### 4.1 추측 금지와 수정 전 읽기
+## 5. 병렬 처리와 worktree
 
-요구사항, API, DB 스키마, 라이브러리 API, 기존 동작, 테스트 결과, 도구 기능을 지어내지 않는다. 정보가 없으면 조사하고, 안전하게 확인할 수 없으면 `BLOCKED`로 전환한다.
+- 기본 worktree는 역할별 `backend`, `frontend`, `planning` 등 3개를 유지한다(정확한 이름·경로·한도는 프로젝트 안내서). **하나의 worktree에는 동시에 하나의 코드 수정 워커만** 두는 것을 기본으로 한다. 독립 브랜치가 필요하면 임시 `<역할>-2` 등 별도 worktree를 만든다.
+- `ready` 작업·선행 의존성·파일 소유권·실제 모델 가용성·작업공간/터미널 준비 상태를 함께 확인한다. 서로 독립인 준비 작업이 2개 이상이면 유효한 슬롯에서 같은 배정 주기에 병렬 시작한다. 실효 슬롯 = `min(독립 ready 작업 수, 사용 가능한 모델·작업공간 슬롯 수)`.
+- 비용·모델 확인·worktree 준비 부담이 병렬 이득보다 크면 무리하게 슬롯을 채우지 않는다. 준비된 작업을 배정하지 못한 이유와 재평가 조건을 work-log에 기록한다.
+- **planning 선행:** backend/frontend가 Epic N 구현 중이면 가능한 한 N+1~N+2의 조사·spec·설계·breakdown을 앞당긴다. 단 승인 게이트를 우회하지 않는다. 모든 기본 작업공간의 다음 큐를 `current-status`에 유지한다.
+- 같은 파일·브랜치에서 선행 변경을 이어 받는 작업이나 사용자 판단 의존 작업은 순차 처리. 공유 worktree가 불가피하면 편집 파일을 배타적으로 배정하고, staging/commit/checkout/rebase는 통합 책임자만 순차 실행한다.
+- worktree당 체크아웃 브랜치는 하나. 사용 중인 트리에서 다른 워커 작업용 브랜치를 전환하지 않는다. `--no-parent`는 독립 작업에만 사용한다. `terminal create`, `worker-start`에서 동일한 worktree를 지정하고 `terminal show`로 확인한다. **셸 `cd`만으로 Orca terminal 소속을 변경하지 않는다.**
+- 병합을 실제 확인하기 전 워커/브랜치/worktree를 제거하지 않는다. 완료 후 worker release·terminal close를 수행하고 **임시** worktree만 삭제한다. 기본 worktree는 유지한다.
 
-코드 수정 전에는 관련 소스·테스트·설정·사용처·의존성을 읽고, 현재 동작·목표·변경 범위를 확정한다. 파일명만 보고 수정하지 않는다.
+## 6. Orca 오케스트레이션 프로토콜
 
-### 4.2 작고 검증 가능한 변경
+> 아래 명령은 사용 패턴 예시이며 **설치된 CLI의 help/skills/실제 JSON 출력으로 옵션을 검증**한다. 존재하지 않는 옵션이나 모델 ID를 추측하지 않는다.
 
-단일 목적, 최소 파일 변경, 되돌릴 수 있는 커밋을 선호한다. 현재 작업과 무관한 리팩터링·의존성 추가·코드 정리는 하지 않는다. 테스트를 실행하지 않았으면 통과라고 보고하지 않는다.
-
-### 4.3 인간의 권한
-
-명시적 승인 없이는 다음을 하지 않는다.
-
-- 제품 요구사항·주요 아키텍처·보안 정책의 변경
-- 중요 데이터 삭제, 운영 DB 마이그레이션, 운영 인프라 변경
-- 시크릿 노출, 파괴적 push, 승인 범위를 벗어난 PR 병합
-- 무료 전용 정책을 깨는 유료 서비스·모델 사용
-
-제품·보안·비용·데이터에 중대한 영향이 있는 판단은 `BLOCKED`로 전환하고, Orca gate 또는 사용자 질문으로 결정을 받는다.
-
-## 5. 표준 개발 흐름
-
-```text
-요구사항 확인
-  → 조사
-  → 기획·Acceptance Criteria
-  → 아키텍처·DB/API 설계
-  → Master 승인
-  → Epic 재분해(SF)
-  → 테스트 계획·테스트 작성
-  → 최소 구현
-  → 검증·QA·리뷰·보안 검토
-  → 커밋·PR·병합 확인·문서 갱신
-```
-
-### 5.1 로드맵과 Epic 재분해
-
-구현 전 `docs/roadmap.md`에는 기능 목록, 우선순위 근거, 의존관계, 병렬 가능성, 대략적 범위가 있어야 한다. 로드맵은 Epic 단위이며, 구현 가능한 작업 목록이 아니다.
-
-Epic 착수 직전 A그룹이 `breakdown-research`와 `breakdown` 문서를 작성해 3~8개 내외의 SF로 쪼갠다. 각 SF에는 범위, 비범위, Acceptance Criteria, 선행 SF, 테스트·검증 방법이 있어야 한다. 같은 브랜치에서 앞 SF의 코드를 이어 쓰면 `--deps`로 순서를 강제한다.
-
-```bash
-orca orchestration task-create --task-title "세부기능 1: <작업>" --spec "<완료 조건>" --parent <epic_task_id> --json
-orca orchestration task-create --task-title "세부기능 2: <작업>" --spec "<완료 조건>" --parent <epic_task_id> --deps '["<세부기능1_task_id>"]' --json
-```
-
-### 5.2 Phase 0 산출물과 승인 게이트
-
-기능 구현 전에 아래 문서가 실제로 존재하고 내용이 검토돼야 한다.
-
-```text
-docs/research/[epic-slug].md
-  → docs/spec/[epic-slug].md
-  → docs/architecture/[epic-slug].md
-  → Master 승인
-  → docs/breakdown/[epic-slug].md
-  → 구현
-```
-
-금융·개인정보·세금·수수료·외부 API처럼 최신 사실이나 사용자 결정이 필요한 영역은 조사 결과와 사람 결정을 문서에 남기기 전에는 코드에 고정하지 않는다.
-
-## 6. 역할과 워커 생명주기
-
-| 그룹 | 역할 | 주된 산출물 | 생성·해제 기준 |
-|---|---|---|---|
-| A | Research, Planning, Architecture | research/spec/architecture/breakdown 문서 | 문서 작업 때 생성, Master 승인 직후 해제 |
-| B | Test, Implementation, QA, UI Vision | 테스트·코드·QA 증적 | 승인된 SF 구현 때 생성, 검증·병합 뒤 정리 |
-| C | Git Manager, Review, Security | 이슈·PR·리뷰·보안 결과 | 상태 전이·리뷰 이벤트 때 생성, 처리 직후 해제 |
-
-Master Lead는 요구사항 이해, 범위 통제, 워커 조율, 결과 검증, 사용자 승인 요청을 맡는다. Master가 모든 조사·설계·구현을 혼자 수행하는 구조로 바꾸지 않는다.
-
-### 6.0 기본 구조 — 코디네이터 1명(depth 0) + 병렬 워커(depth 1)
-
-> **적용 시점**: 2026-09-28 세션은 아래 6.0.2의 팀장 계층으로 끝까지 진행한다. 이 절의 구조는 **다음 세션부터** 적용한다.
-
-**설계 원칙: claude/codex 토큰은 무료 모델이 못 믿을 두 지점 — 요구사항 정의와 검증 — 에만 쓴다. 대기·정지 감지 같은 기계적인 일은 셸이 한다.**
-
-- **구조**: Master(claude/codex 코디네이터, depth 0) → 워커(OpenCode + OpenRouter 무료 모델, depth 1) N개. 상시 팀장 세션을 두지 않는다. 동시에 살아있는 claude/codex 세션은 Master 하나뿐이다.
-- **작업공간**: 역할 고정 worktree 3~5개(7.2절). **한 트리에 워커는 하나만** 붙인다 — 두 워커가 같은 트리를 고치면 중간 충돌이 난다. 병렬 처리량은 팀장 계층이 아니라 이 작업공간 분리에서 나온다(2026-09-28 실측).
-- **워커 배정**: 한 SF = 한 워커. 단 같은 패키지에서 앞 SF 코드를 이어 쓰는 후속 SF는 앞 SF가 병합된 뒤 **같은 워커 터미널에 이어 시킬 수 있다**(조건은 `docs/worker-spec-template.md`의 "이어 쓰기 세션"). 워커에게는 대화가 아니라 **자기완결적 spec**을 던진다(`docs/worker-spec-template.md`). 무료 모델은 범위·사실관계에서 실수하므로, 좋은 spec 한 장이 나중의 교정 라운드보다 훨씬 싸다.
-- **의존성**: 세션 시작 때 `task-create --deps`로 로드맵 의존성을 한 번에 DAG로 정의한다. 선행 task가 `completed`가 되면 후속 task가 자동으로 `ready`가 되므로, "이제 시작해도 된다"를 매번 말로 전달하지 않는다.
-- **대기**: 워커 시작 receipt의 `next`를 따라 Orca 자동 알림에 제어를 넘긴다. 소비형 `check --wait`를 백그라운드에 남긴 채 턴을 끝내지 않는다. 메시지를 먼저 handled로 바꿔 코디네이터의 완료 알림을 놓칠 수 있다. 셸 대기가 필요하면 `check --peek --wait`만 사용하고, 코디네이터가 깨어났을 때 직접 `check`로 처리한다.
-- **감시**: `scripts/orca-worker-watchdog.py --start --loop 30 --run <run_id> --coordinator-terminal <handle>`로 저장소당 백그라운드 프로세스 하나만 실행한다. 감시용 터미널을 만들지 않는다. Master는 상태 파일(`/tmp/orca-worker-status.txt`) 요약을 보고, 새 이상 상태와 완료 후 검토 필요 알림은 Orca Run으로 받는다. 재배정과 완료 판정은 Master가 한다.
-- **검증**: 테스트·lint·build 명령은 Master가 **직접 실행**한다(결정적 출력이라 싸다). 통과했을 때만 diff를 읽는다. 워커의 "다 통과했습니다" 같은 산문은 증거로 쓰지 않는다 — 2026-09-28에 워커가 자기가 만든 회귀를 "기존 문제"라고 주장한 사례가 있다.
-- **병합**: Master가 검증 후 병합한다. 가능하면 2~3개를 묶어 한 번의 검증 패스에서 처리한다.
-- **depth 한도**: Master(0) → 워커(1). 워커가 또 다른 워커를 만들지 않는다.
-- **Master가 직접 파일을 고치지 않는 범위**: 제품 코드·테스트·research/spec/architecture/breakdown은 워커가 만든다. Master가 직접 쓰는 문서는 `docs/current-status.md`와 `docs/daily-log/`뿐이다.
-
-### 6.0.2 팀장(Lead) 계층 — 2026-09-28 실험, 기본 구조에서는 쓰지 않음
-
-Nested worker depth 한도가 2 이상인 프로젝트는 역할별 고정 작업공간마다 **상시 팀장 세션**(depth 1)을 두고 팀장이 워커(depth 2)를 관리하게 할 수 있다. 2026-09-28에 하루 동안 실제로 운영해본 결과는 다음과 같다.
-
-- **좋았던 점**: Epic 10·11·15가 한 세션에 완료되고 PR 7개(#156~#165)가 병합됐다. 팀장들이 자기 워커의 실수(회귀, 버그, 문서 사실 오류)를 스스로 잡아냈다.
-- **비쌌던 점**: claude/codex 세션 4개(Master+팀장 3)가 동시에 Pro 토큰을 태웠고, 그중 상당수 턴이 "아직 아무것도 없음, 계속 대기"였다. 팀장의 1차 검증은 Master가 병합 전에 어차피 재검증하므로 중복이었다. 세션 초반에는 팀장 2명이 규칙을 어기고 직접 코드·문서를 고쳐 Master가 개입해야 했다.
-- **결론**: 마감이 촉박하고 여러 도메인을 동시에 밀어야 할 때만 쓴다. 평시에는 6.0의 단일 코디네이터 구조가 더 싸고 덜 깨진다. 이 계층을 쓰기로 했다면 아래 규칙을 그대로 따른다.
-
-- **생성**: Master가 각 고정 작업공간에 팀장을 한 번 생성한 뒤 세션 내내 유지한다. 팀장의 터미널 제목·역할 이름은 작업공간과 딱 떨어지게 짓는다(예: "backend 팀장", "frontend 팀장", "planning 팀장").
-- **모델**: 팀장은 Master와 동일한 코딩 에이전트·모델을 쓰는 터미널로 연다(무료 모델이 아니어도 된다 — 팀장은 판단·검증을 반복 수행하는 역할이라 품질이 우선). 팀장이 직접 생성하는 depth 2 워커는 이 프로젝트의 무료 모델 정책(9장)과 모델 다양화 원칙을 그대로 따른다.
-- **임무**: 팀장은 자기 작업공간 안에서 필요한 Task를 만들고, 실제 구현을 맡을 워커를 `orchestration worker-start`로 직접 생성·배정한다. 워커의 `worker_done`을 팀장이 직접 `check --wait`로 기다리고, diff·테스트를 1차로 검증한다(Master가 지금까지 해온 것과 동일한 검증 기준). 워커가 429/timeout 등으로 조용히 멈추면 팀장이 직접 감지·재배정한다(project-agent-guide.md 6.1.1절).
-- **팀장은 파일을 직접 고치지 않는다 (예외 없음)**: 팀장은 자기 손으로 Edit/Write 도구를 써서 코드·테스트·문서를 수정하지 않는다. 분량이 적어 보이거나 "이 정도는 내가 하는 게 빠르다"는 판단이 들어도 예외를 두지 않는다 — 반드시 depth 2 워커를 만들어 그 워커가 파일을 고치게 하고, 팀장은 조사·판단·diff 검증만 한다. (2026-09-28 실제 사고 사례: 팀장이 "단일 문서 수정은 직접 해도 된다"는 예외를 근거로 프로덕션 코드·문서를 직접 고친 일이 있었다 — 이 예외는 폐기됐다.) 필요하면 depth 2 워커를 동시에 여러 개 만들어 병렬로 돌려도 된다. 금지되는 것은 워커 개수가 아니라 **워커가 또 다른 워커를 만드는 depth 3 위임**뿐이다.
-- **권한 경계**: 팀장은 검증이 끝난 결과를 직접 commit하고 PR을 생성한다(git 작업 자체는 팀장이 해도 된다 — 위 금지는 코드/문서 내용 수정에 한정). main으로의 최종 병합은 Master가 팀장의 PR을 한 번 더 확인한 뒤 수행한다(팀장은 병합하지 않는다) — 이중 검증 체계. 이 경계는 프로젝트별로 명시적으로 재확인할 수 있으나, 별도 합의가 없으면 이 기본값을 따른다.
-- **보고**: 팀장은 담당 SF 하나가 검증·병합될 때마다 Master의 Run에 요약 보고를 보낸다(`orca orchestration send --to run:<master-run-id>` 또는 동등한 주소). Master는 팀장의 요약 보고만 받으며, 팀장 밑의 개별 워커 dispatch에는 직접 개입하지 않는다(팀장이 응답 없어 복구가 필요한 경우는 예외).
-- **감시 방식**: 이 구조에서도 8.4절의 단일 백그라운드 watchdog을 사용하고, Master와 팀장 모두 터미널 원문 대신 `/tmp/orca-worker-status.txt` 요약을 본다. `worker-list`의 `liveness: live`는 프로세스 생존만 의미한다. Master가 멈춘 워커를 먼저 발견하면 해당 팀장에게 dispatch id와 오류를 알려주며, 재배정은 팀장이 한다.
-- **Master의 역할 변화**: 이 구조에서 Master는 워커에게 바로 일을 시키지 않고, 항상 팀장에게 위임한다. Master가 직접 만들고 유지하는 것은 팀장 3개뿐이다.
-- **depth 한도 준수**: Master(0) → 팀장(1) → 팀장의 워커(2)까지만 허용한다. 팀장의 워커가 또 다른 워커를 만드는 추가 위임(depth 3)은 하지 않는다.
-- **세션별 실제 정보**: 팀장의 터미널 handle·dispatch id·담당 Epic/SF는 세션마다 바뀌므로 `docs/current-status.md`에 기록한다. 팀장에게 줄 초기 프롬프트는 `docs/prompt-backend.md`/`prompt-frontend.md`/`prompt-planning.md`에 있다.
-
-### 6.0.3 오케스트레이션 3원칙 (2026-09-28 채택, 두 구조 모두에 적용)
-
-아래 세 가지는 단일 코디네이터 구조(6.0)와 팀장 계층(6.0.2) 어디에서나 동일하게 적용한다 — 실제로 발견된 비효율(수동 의존성 안내, 유휴 시간, 막힘 지점이 프롬프트 문장에만 존재)을 구조로 해결한다.
-
-1. **의존성은 프롬프트 문장이 아니라 `task-create --deps`로 인코딩한다.** "Epic 10 전체 완료 전엔 대기해라" 같은 지시를 텍스트로만 주지 않는다. Master(또는 팀장)가 선행 Epic/SF의 task id를 `--deps '["<task_id>"]'`로 걸어 후속 task를 만들면, 선행 task가 `completed`로 바뀌는 순간 후속 task가 자동으로 `pending` → `ready`로 전환된다(`task-update --status completed`). Master나 팀장이 "됐다, 이제 시작해도 된다"를 수동으로 알려줄 필요가 없다.
-2. **다음 일은 backlog에서 당겨온다(pull).** 워커 하나가 끝나 작업공간이 비면 `orca orchestration task-list --status ready --run <run_id> --json`으로 착수 가능한 task를 확인하고 곧바로 다음 워커를 배정한다. 1번의 DAG 덕분에 "이제 시작해도 되는 일" 목록이 항상 최신이므로, 매번 새 지시를 손으로 써 내려줄 필요가 없다. 팀장 계층을 쓸 때는 팀장이 같은 방식으로 자기 역할에 맞는 `ready` task를 스스로 집어간다.
-3. **사용자 승인·판단이 필요한 막힘 지점은 `gate-create`로 명시화한다.** "불명확하면 물어봐라"를 프롬프트 문장으로만 두지 않는다. 유료 모델/서비스 전환, 파괴적 git 작업, 요구사항 모호로 진행이 막히는 시점에 `orca orchestration gate-create --task <task_id> --question "<질문>" --options '[...]'`로 Decision Gate를 만들어 명시적으로 블로킹 상태를 기록한다. Master는 `gate-list`로 열린 게이트를 훑어 사용자에게 전달하고, 사용자 결정을 `gate-resolve`로 반영한다.
-
-### 6.1 역할별 지시사항
-
-- **Research**: 기존 코드, 공식 문서, 외부 API, 데이터·기술 제약을 조사한다. 원칙적으로 코드를 수정하지 않으며 `research` 문서를 남긴다.
-- **Planning/Architecture**: 사용자 시나리오, AC, 엣지 케이스, API·데이터 흐름, DB 영향, 리스크, SF 순서를 명확히 한다.
-- **Test**: AC를 관찰 가능한 테스트로 바꾸고, 가능한 경우 구현 전에 실패를 확인한다.
-- **Implementation**: 승인된 범위만 최소 구현한다. 기존 패턴을 재사용하고 work-log에 사실만 남긴다.
-- **QA**: 단위·통합·E2E, 타입·정적 검사·빌드, 회귀 범위를 실제 명령 결과로 확인한다.
-- **Review/Security**: 권한, 민감정보 로그, 입력 검증, 계획-구현 불일치, 테스트 누락, 스코프 밖 변경을 검토한다.
-- **Git Manager**: 티켓·브랜치·PR·병합 상태를 진실 소스와 대조한다. GitHub Issue를 쓰는 프로젝트에서는 Orca 상태와 이슈 상태를 함께 갱신한다.
-- **UI Vision**: 실제 화면, 반응형, 접근성, 핵심 사용자 흐름을 캡처·브라우저 검증한다.
-
-## 7. 병렬화와 작업공간 규칙
-
-### 7.1 병렬화 판단
-
-기본 작업공간 셋(예: backend, frontend, planning)은 순서대로 하나씩 쓰는 큐가 아니라 병렬 처리 용량이다. Master는 새 작업을 배정할 때 한 작업공간만 습관적으로 선택하지 말고, 세 역할 전체의 준비된 작업을 먼저 확인한다. 서로 독립적인 조사·기획·구현·테스트·리뷰 작업이 둘 이상이면 역할별 동시 워커 한도와 실제 여유까지 한 번에 배정한다. 단, 모델 가용성·동일 모델 중복 금지·작업공간 준비·예상 조율 비용을 포함해 실효 슬롯을 계산한다. 설정/모델 선택이 확인되지 않은 슬롯까지 수만 맞춰 배정하지 않는다.
-
-배정 직전에는 다음 절차를 따른다.
-
-1. `ready` 상태의 작업을 역할별로 나열하고, 각 작업의 선행 의존성·수정 파일·필요 브랜치를 확인한다.
-2. 서로 다른 파일을 다루며 선행 조건이 없는 작업은 같은 배정 주기에 묶는다. 단, 각 작업에 실제로 배정할 수 있는 서로 다른 무료 모델과 준비된 worktree/터미널이 확인된 경우에 시작한다. 같은 브랜치의 여러 문서를 여러 워커가 편집하면 파일 소유권을 명시하고, 독립 PR·브랜치가 필요할 때만 하위 worktree를 만든다.
-3. `orca orchestration worker-list --json`으로 활성 워커와 모델을 확인하고 프로젝트 안내서의 역할별 한도 및 준비 비용을 반영해 실효 슬롯 수를 계산한다. `min(독립 준비 작업 수, 실효 슬롯 수)`만큼 배정하며, 빈 슬롯을 채우기 위한 모델 전환이나 worktree 생성의 비용이 작업 이득보다 크면 시작하지 않는다.
-4. 워커가 끝나거나 중지되어 슬롯이 비면, 다른 워커가 모두 끝날 때까지 기다리지 않는다. 의존성과 충돌을 다시 확인한 뒤 다음 준비 작업으로 즉시 보충한다.
-
-독립 준비 작업이 둘 이상인데 일부만 배정하려면 의존성·파일 충돌·상위 결정 대기·무료 모델/작업공간 미준비·예상 조율 비용 중 이유와 다음 재평가 시점을 work-log에 기록한다. 단일 작업을 여러 워커에게 중복 배정하거나 같은 파일을 동시에 수정해 겉보기 병렬성을 만드는 것은 금지한다.
-
-같은 worktree를 여러 워커가 공유할 때는 각 워커의 수정 파일을 태스크에 명시하고, 워커는 배정 파일의 편집·검증만 한다. `git add`, `git commit`, 브랜치 전환, rebase는 공유 작업공간에서 동시에 수행하지 않는다. Master 또는 지정된 Git Manager 한 명을 통합 책임자로 정해, 모든 산출물을 검증한 뒤 순차로 stage·commit한다. 워커별 독립 커밋이 필요하면 해당 워커에 별도 worktree를 배정한다.
-
-### 7.1.1 planning 선행 큐와 세 작업공간 점검
-
-planning은 backend/frontend의 완료를 기다리는 후속 작업공간이 아니다. backend 또는 frontend가 Epic N을 구현 중이면, planning은 의존성을 해치지 않는 범위에서 최소 Epic N+1을, 가능하면 Epic N+2까지 조사·spec 보강·breakdown·엣지 케이스 검토 상태로 준비한다. 이 선행 기준은 Phase 0 승인과 SF 의존성 게이트를 생략하라는 뜻이 아니다. 다음 구현 워커가 이전 Epic 완료 직후 즉시 배정될 수 있도록 필요한 결정을 미리 끝내라는 뜻이다.
-
-세 작업공간의 다음 작업 큐는 `current-status.md`의 다음 단계 후보에 최신으로 유지한다. planning의 신규 Epic 문서가 모두 준비됐더라도 비워 두지 않는다. 다음 Epic 관점의 기존 spec·architecture 드리프트 점검, breakdown 재검토, 사용자 가이드·QA 증적처럼 충돌 없는 기획 산출물로 큐를 채운다. 정말 시작 가능한 작업이 없을 때만 그 이유와 재평가 조건을 기록한다.
-
-다음은 순차가 필수다.
-
-- 같은 파일 또는 같은 문서를 여러 워커가 쓰는 경우
-- 같은 브랜치에서 뒤 SF가 앞 SF의 코드를 이어 쓰는 경우
-- 한 결정이 내려져야 후속 작업 범위가 확정되는 경우
-
-워커 생성 직전에는 실제 활성 수를 확인한다.
-
-```bash
-orca orchestration worker-list --json
-```
-
-### 7.2 역할별 고정 작업공간
-
-프로젝트는 기본적으로 backend, frontend, planning처럼 역할별 고정 작업공간을 유지하고, 독립 브랜치가 필요할 때만 `<역할>-2`, `<역할>-3` 임시 작업공간을 추가한다. 고정 작업공간의 정확한 이름·경로·한도는 프로젝트 안내서에 둔다.
-
-한 Git worktree에는 한 브랜치만 체크아웃한다. 이미 워커가 작업 중인 작업공간에서 다른 작업용 `git checkout -b`를 실행하지 않는다. 다른 브랜치가 필요하면 별도 worktree를 만든다.
-
-관련 작업공간을 만들 때는 프로젝트의 부모 관계 정책을 따른다. `--no-parent`는 독립 작업에만 사용하며, 역할별 하위 작업공간에 무심코 사용하지 않는다.
-
-```bash
-orca worktree create --repo id:<repoId> --name <역할>-2 --base-branch origin/main --json
-orca worktree list --json
-orca worktree set --worktree path:<새-작업공간-절대경로> --parent-worktree path:<부모-작업공간-절대경로> --json
-orca terminal create --worktree path:<새-작업공간-절대경로> --title "<제목>" --json
-orca terminal show --terminal <handle> --json
-orca orchestration worker-start --task <task_id> --worktree path:<새-작업공간-절대경로> --agent <agent> --model <model> --json
-```
-
-터미널을 만든 뒤 셸에서 `cd`만 바꿔 Orca 소속을 바꾸려 하지 않는다. `terminal create`와 `worker-start` 모두에 같은 `--worktree path:<...>`를 넣고, `terminal show`로 실제 경로를 확인한다.
-
-### 7.3 작업공간 정리
-
-병합 확인 전에는 브랜치·작업공간·워커를 삭제하지 않는다. 병합 후에는 해당 SF의 워커 터미널을 같은 턴에서 닫는다. 고정 작업공간은 유지하고 임시 작업공간만 실제 종료 여부를 확인한 뒤 제거한다.
-
-```bash
-gh pr view <PR번호> --json state,mergedAt
-orca orchestration worker-release --dispatch <dispatch_id> --json
-orca terminal close --terminal <handle> --json
-orca worktree rm --worktree path:<임시-작업공간-절대경로> --force --json
-```
-
-`worktree rm`은 기본 작업공간이 아닌 임시 `<역할>-N`에만 쓴다. 제거 결과는 `orca worktree list --json`과 실제 디렉터리 상태로 다시 확인한다.
-
-## 8. Orca 오케스트레이션 실행 기준
-
-명령 옵션은 설치된 Orca 버전에서 확인하고, 존재하지 않는 옵션을 추측하지 않는다.
+### 6.1 시작·의존성·분배
 
 ```bash
 orca skills list
-orca skills installed --json
-orca skills get <skill-name>
-orca orchestration run-create --objective "<목표>" --from <코디네이터-핸들> --json
-orca orchestration task-create --task-title "<제목>" --spec "<구체적 지시와 완료 조건>" --json
-orca orchestration task-list --ready --brief
-```
-
-### 8.1 워커 생성과 모델 지정
-
-모델 선택은 상속에 의존하지 않고 다음 둘 중 하나로 명시한다. 새 에이전트를 Orca가 시작하는 경로는 `worker-start --agent <agent> --model <model>`을 사용한다. 반대로 `terminal create --command '<agent> --model <model>'`로 모델을 고정한 기존 터미널을 배정하는 경로는 `worker-start --terminal <handle>`과 같은 worktree만 사용한다. `--terminal`과 `--agent`·`--model`을 함께 주지 않으며, 기존 터미널은 모델과 worktree가 맞는지 먼저 확인한다.
-
-OpenCode에서는 시작 뒤 모델 선택 UI에서 OpenRouter 무료 모델을 바꿀 수 있다. 이 방식을 쓰면 워커를 배정하기 전에 `opencode models`로 후보를 확인하고, 터미널에서 모델을 선택한 뒤 화면의 `Build · <모델명> OpenRouter` 줄을 읽어 실제 모델을 검증한다. 모델이 확인되기 전에는 해당 터미널에 작업을 배정하지 않는다. 동시 워커는 서로 다른 모델을 사용한다. 기존 워커의 모델을 바꿀 때는 UI로 변경한 뒤 Build 줄과 watchdog 상태 파일의 모델명을 함께 대조한다.
-
-```bash
-orca orchestration worker-start --task <task_id> --worktree <selector> --agent <agent> --model <model> --json
-orca orchestration worker-show --dispatch <dispatch_id> --json
+orca orchestration run-create --objective "<목표>" --from <master-handle> --json
+orca orchestration task-create --task-title "<SF>" --spec "<완료 조건>" --parent <epic-task-id> --deps '["<선행-task-id>"]' --json
+orca orchestration task-list --status ready --run <run-id> --json
 orca orchestration worker-list --json
-orca orchestration worker-release --dispatch <dispatch_id> --json
-orca orchestration worker-stop --dispatch <dispatch_id> --json
-orca orchestration worker-abandon --dispatch <dispatch_id> --json
-orca orchestration task-update --id <task_id> --status completed --result '<결과 JSON>' --json
+orca orchestration worker-start --task <task-id> --worktree path:<절대경로> --agent <agent> --model <model> --json
 ```
 
-프로젝트가 claude/codex 같은 에이전트를 터미널의 `--command`로 먼저 띄운 뒤 `--terminal`로 배정하는 방식이라면, 그 구체 절차는 프로젝트 안내서를 따른다. 한 worker가 어느 터미널·모델·작업공간에서 동작하는지 파일·명령 결과로 검증해야 한다.
+- 모델·작업공간을 실제 확인하기 전 배정하지 않는다. 기존 모델 고정 터미널을 배정하는 경우 `worker-start --terminal <handle>`을 사용하며 `--terminal`과 `--agent/--model`을 혼용하지 않는다.
+- 필요하면 `dispatch ... --dry-run --return-preamble`로 메시지 검토 후 `--inject`한다. 워커에게는 task/dispatch ID, 범위, 파일 소유권, 테스트, 완료 형식을 명확히 전달한다.
+- 의존성은 `task-create --deps` DAG로 표현하고, 완료 시 `task-update --status completed` 등 실제 상태를 확인한다. **빈 슬롯은 `ready` backlog에서 즉시 보충(pull)** 한다.
+- 결정이 필요한 막힘은 `gate-create --task ... --question ... --options ...`로 등록하고, 사용자 결정을 `gate-resolve`로 반영한 뒤 워커에게 전달한다.
 
-### 8.2 배분과 워커 메시지
+### 6.2 완료 수집·메시지
 
-`--spec`에는 목적, 범위/비범위, 읽을 파일, 수정 가능한 파일, 검증 명령, 완료 조건, 보고 형식을 구체적으로 적는다. 무료 모델에 짧고 모호한 지시를 주지 않는다.
-
-```bash
-orca orchestration dispatch --task <task_id> --to <worker-핸들> --from <코디네이터-핸들> --dry-run --return-preamble --json
-orca orchestration dispatch --task <task_id> --to <worker-핸들> --from <코디네이터-핸들> --inject --json
-orca orchestration send --from <핸들> --type worker_done --subject "완료: <작업>" \
-  --body "<무엇을 했고 / 무엇을 확인했고 / 무엇이 남았는지>" \
-  --task-id <task_id> --dispatch-id <dispatch_id> --outcome succeeded --json
-```
-
-완료 보고에는 task ID, dispatch ID, 성공/실패, 3문장 요약을 넣는다. 실패는 `Failed: <이유>`로 즉시 알린다. 사람 결정이 필요할 때 로컬 TUI 질문 창을 쓰지 않고 `orchestration ask` 또는 gate를 사용한다.
-
-### 8.3 완료 수집과 ACK
-
-Run을 재개할 때마다 `run-use --id <run_id>`로 다시 바인딩한다. 먼저 오래된 미확인 배치를 확인하고, 워커를 배정하기 전에 Run의 `coordinator_handle`을 기록한다. Orca terminal 밖의 셸 · exec에서 `check`를 실행하면 매번 `--terminal <coordinator_handle>`을 명시한다. `orca status --json`의 `caller`가 `null`이면 Orca terminal 안에서 실행 중인 것이 아니므로 handle 생략을 허용하지 않는다. 실제 coordinator terminal 안에서 실행할 때만 `--terminal`을 생략한다.
-
-완료는 현재 Dispatch의 `worker_done`으로 수집한다. 워커 시작 후에는 Orca 자동 알림에 제어를 넘기며, 소비형 대기 명령을 백그라운드에 남기지 않는다. 메시지에서 Task ID·Dispatch ID·outcome을 현재 작업과 대조하고 반복 알림을 새 완료로 취급하지 않는다. `worker_done`이 오면 즉시 직접 검증하고 terminal의 재사용·보존·release를 결정한다. 현재 Orca의 일반 `check`는 반환한 배치를 handled로 처리하므로 별도 ACK가 필요 없다. 구버전이 delivery ID와 ACK를 명시한 경우에만 해당 ID를 ACK한다.
+- 새/재개 세션은 `run-use --id <run-id>`로 Run을 바인딩하고 기존 미확인 inbox와 `coordinator_handle`을 확인한다.
+- Orca terminal 밖의 셸에서 `check` 실행 시 반드시 `--terminal <master-handle>` 지정. `orca status --json`에서 `caller:null`이면 terminal 내부가 아니다.
+- 완료 이벤트는 **현재 Dispatch의 `worker_done`** 으로 확인한다. task ID, dispatch ID, outcome 중복 여부를 대조한다. 일반 `check`는 반환 배치를 handled로 만들므로 수동 ACK는 구버전에서 명시된 경우만 쓴다.
+- 소비형 `check --wait`를 백그라운드에 남긴 채 작업을 끝내지 않는다(완료 알림을 미리 소비할 수 있음). 불가피한 셸 대기는 `check --peek --wait`; 이후 Master가 직접 `check`로 처리한다. 기본은 Orca 자동 알림을 사용한다.
+- 워커 화면에 완료 표시가 있어도 `worker_done`/Task 정산이 없으면 완료가 아니다. `worker-read`로 확인하고 기존 dispatch에 lifecycle 보고를 요청한다. **같은 작업을 새로 중복 dispatch하지 않는다.**
+- 완료 보고는 task/dispatch ID, 성공·실패, 변경·검증·잔여 문제 요약을 포함. 실패 즉시 `Failed: <이유>`로 보고한다.
 
 ```bash
-orca orchestration check --terminal <코디네이터-핸들> --peek --json
-orca orchestration check --terminal <코디네이터-핸들> --json
-# 셸에서 관측 대기가 꼭 필요할 때만: --peek --wait --timeout-ms 3600000
-orca orchestration check --terminal <코디네이터-핸들> --ack <deliveryId> --json
+orca orchestration check --terminal <master-handle> --peek --json
+orca orchestration check --terminal <master-handle> --json
 orca orchestration task-list --json
+orca orchestration worker-read --dispatch <dispatch-id> --limit 50 --json
 ```
 
-`worker_done`은 Task/Dispatch를 자동 정산한다. `task-list`와 `worker-list`에서 그 상태를 확인하고 보고된 ID·outcome이 메시지와 맞는지 검증한다. worker가 화면에 완료를 출력했는데 inbox 메시지가 없고 Task가 `dispatched`이면 아직 완료 응답을 받지 못한 상태다. 해당 Dispatch의 `worker-read`로 정확한 작업 상태를 확인하고 `orchestration send --to dispatch:<dispatch_id>`로 lifecycle 보고를 요청한다. worker가 idle 화면에서 보고를 누락했다면 활성 Dispatch를 새로 만들지 말고 기존 terminal에 inbox 확인 및 `worker_done` 전송만 요청한다. 확정된 `worker_done` 없이 Task를 성공으로 간주하지 않는다.
+### 6.3 watchdog·정지 복구
 
-### 8.4 정지·토큰 초과·재시도
-
-`dispatched` 상태가 계속된다고 워커가 실제 동작 중인 것은 아니다. **`worker-list`의 `liveness: live`도 프로세스 생존만 의미한다** — OpenRouter 429로 화면에 에러만 뜬 채 멈춰도 `live`로 나온다(2026-09-28 실사고). 실제 정지 판정은 터미널 텍스트를 봐야 가능하다.
-
-그 텍스트 확인은 셸 watchdog에 맡긴다. 감시용 터미널은 만들지 않는다.
-
-    scripts/orca-worker-watchdog.py --start --loop 30 --run <run_id> --coordinator-terminal <handle> --inbox-interval 300
-    scripts/orca-worker-watchdog.py --status
-    scripts/orca-worker-watchdog.py --stop
-
-#### 통합 watchdog 알림
-
-저장소의 모든 worktree는 같은 잠금 파일을 사용하므로 프로세스는 하나만 실행된다. --start 재실행은 같은 PID를 돌려주며, 다른 Run/코디네이터로 바꾸려면 --stop 후 새 인자로 시작한다. --status는 PID, Run, 스캔 신선도, 전달 대기/실패를 보여준다.
-
-30초마다 Orca Dispatch 상태와 현재 터미널 화면(--screen), OpenCode 하위 세션을 검사한다. 상태 파일 전체를 검사하며 마지막 5줄 제한은 알림에 적용하지 않는다. 누적 출력 속의 과거 오류와 복구된 하위 세션의 오류는 현재 오류로 재알림하지 않는다.
-
-- ERROR/STALL/PERM/UNKNOWN: 오류·무출력·권한 대기·관측 실패.
-- REPORT_MISSING: OpenCode 응답 종료 화면이 지속되지만 Dispatch는 열려 있음. 완료 판정 없이 보고 누락/추가 작업 여부를 확인한다.
-- REVIEW/FAILED: 관측하던 Dispatch가 Orca에서 정산됨. 코디네이터가 검증하거나 실패를 처리해야 한다.
-
-상태 변화는 즉시 지정 Run으로 높은 우선순위 status 메시지를 보낸다. escalation은 활성 워커 전용이므로 watchdog이 사용하지 않는다. 전달 실패는 outbox에 보존해 재시도하고 같은 사건은 반복 전달하지 않는다. 300초마다 inbox를 --peek로 보조 확인하며 소비/ACK하지 않는다. watchdog 자신의 메시지는 다시 알리지 않는다.
-
-Orca 알림을 받은 코디네이터는 직접 check로 메시지를 처리하고 대상만 bounded read한다. 소비형 check --wait를 백그라운드에 남기지 않는다. macOS 알림은 보조 수단이며, 모델 세션이 중지되거나 사용량 제한 상태이면 즉시 작업이 실행된다고 보장하지 않는다. 미처리 사건은 Orca inbox와 outbox에 남는다. watchdog은 워커 중지·재배정·Task 완료 정산을 하지 않는다.
-
-유휴 작업공간을 찾을 때도 세 작업공간의 터미널을 일일이 읽지 말고 watchdog 상태 파일과 `task-list --status ready`를 먼저 본다. 워커별 점검은 상태 요약이나 메시지에 이상 징후가 있거나, 완료 여부를 판정할 때만 수행한다.
+- 저장소당 **watchdog 백그라운드 프로세스 1개**만 사용한다. 별도의 감시 터미널을 상주시킬 필요가 없다. 상태파일 요약과 `ready` backlog를 우선 보고 이상 워커만 bounded read한다.
 
 ```bash
-orca terminal read --terminal <worker-핸들> --limit 50 --json
-orca orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
-orca terminal list --worktree <selector> --json
-orca diagnostics memory --json
+scripts/orca-worker-watchdog.py --start --loop 30 --run <run-id> --coordinator-terminal <master-handle> --inbox-interval 300
+scripts/orca-worker-watchdog.py --status
+scripts/orca-worker-watchdog.py --stop
+orca terminal read --terminal <worker-handle> --limit 50 --json
 ```
 
-세 기본 작업공간에는 각각 `orca terminal list --worktree path:<작업공간-절대경로> --json`을 실행한다. 활성 워커는 마지막 트랜스크립트와 파일 변경까지 확인하고, 비어 있는 작업공간은 7.1의 준비 작업·선행 planning 큐를 다시 계산해 같은 턴에 배정하거나 예외 사유를 기록한다.
+- watchdog은 터미널 화면/Dispatch를 관측해 ERROR·STALL·PERM·UNKNOWN·REPORT_MISSING·REVIEW·FAILED를 알리고 전달 실패는 outbox에 보관한다. **watchdog은 워커 종료·재배정·Task 완료를 결정하지 않는다.** 알림을 받은 Master가 `check` 및 실제 상태·diff를 확인한다.
+- `worker-list`의 `liveness: live`는 프로세스 존재만 뜻한다. 429/5xx/504/무출력 오류와 종료 여부는 터미널 출력·하위 세션·파일 변경으로 확인한다. watchdog 오류 탐지는 새로운 실사고에 맞춰 selftest와 함께 보완한다.
+- 단지 `dispatched`, `live`, 파일 변경 없음만으로 중단하지 않는다. 명확한 종료/최종 응답 미보고 증거가 있을 때만 `git status --short`로 부분 작업을 확인하고 stop/abandon/재배정을 판단한다. **기존 파일 삭제 금지.**
+- 무료 모델 전환은 새 후보 모델을 실제로 검증한 다음 terminal 화면의 Build·모델명과 watchdog 표시를 대조한다. 재시도는 가능한 `worker-start --retry-of <dispatch>`로 이어 작업·부분 변경을 명시한다.
+- 명확한 컨텍스트 초과에서만 `/compact` 후 같은 Task를 재주입한다. 동일 범위 3회 이상 복구 실패하면 SF를 줄이거나 `BLOCKED` 처리한다. `orca orchestration reset`은 로컬 전체 DB 삭제 위험 때문에 **사용 금지**.
 
-watchdog의 감지 규칙은 실제로 놓친 사고에서 늘려 간다. 2026-09-30에는 ① 504 `Timeout Occurred`·`server_error` 문구가 ERROR 목록에 없었고, ② 스피너 재그리기로 `lastOutputAt`이 계속 갱신돼 무출력 정지에 도달하지 못했다. 그래서 ERROR 패턴에 504 계열을 추가하고, 하단 상태줄의 `esc interrupt` 문구가 stall 기준 시간 이상 보이지 않으면 STALL로 판정한다. 새 사고가 나면 그 문구를 selftest와 함께 추가한다.
+## 7. 무료 모델·비용
 
-워커가 live로 관측되거나 단지 파일 변경이 없다는 이유만으로 중단·abandon·재시도하지 않는다. `exited` 등 프로세스 종료의 명확한 증거나 최종 worker turn의 완료 미보고를 확인한 뒤 복구한다. 복구 전 `git status --short`로 부분 작업을 확인하고 삭제하지 않는다. 이후 `worker-abandon`/`worker-stop`을 근거에 맞게 선택하고, 다른 무료 모델을 한 요청씩 시험한 다음 새 터미널의 Build 줄을 검증하고 `worker-start --retry-of <이전 dispatch>`로 재개한다. 재개 spec에는 작업공간·부분 작업·재개 지시를 덧붙인다. 종료 증거가 없으면 재시도하지 말고 관측을 계속하거나 사용자에게 상태를 보고한다.
+- 기본은 읽기 전용 도구와 무료 모델. **OpenRouter 무료 모델은 OpenCode를 통해서만** 사용한다. 정확한 ID·역할별 정책·현재 가용성은 `docs/project-agent-guide.md`에 기록한다.
+- `opencode models`로 실제 ID를 확인하고, 한 요청 스모크 테스트 및 터미널 `Build · <모델명>` 표시로 사용 모델을 검증한 후 배정한다. 잘못된 ID가 다른 모델로 폴백될 수 있으므로 지정 이름만 믿지 않는다.
+- 동시 활성 워커에 **같은 모델을 중복 배정하지 않는다.** 모델 변경은 사유·이전/신규 모델·영향 task를 work-log에 기록한다. 워커 동작 중 변경은 실제 UI/상태를 재검증한다.
+- 일시 429/5xx와 일일 무료 한도 소진, 모델 비호환을 구분한다. `free-models-per-day-high-balance` 같은 일일 한도 오류는 같은 모델을 무작정 재시도하지 않고, 허용된 다른 무료 공급자(예: OpenCode Zen 무료 모델)를 후보별 검증한다. 사용자가 제외한 모델/경로는 자동 전환하지 않는다.
+- **유료 서비스·모델 전환은 사전 명시 승인 필수.**
 
-오류·무응답이 보이면 먼저 파일 변경과 마지막 트랜스크립트를 확인한다. 컨텍스트 초과가 명확할 때만 `/compact` 후 같은 태스크를 재주입한다. 같은 범위에서 세 번 이상 재개 실패하면 더 작은 SF로 분해하거나 `BLOCKED`로 전환한다. 이미 생성된 파일은 원인 확인 전 삭제하지 않는다.
+## 8. Git·검증·완료 조건
 
-```bash
-orca terminal send --terminal <worker-핸들> --text "/compact" --enter --json
-orca orchestration dispatch --task <task_id> --to <worker-핸들> --from <코디네이터-핸들> --inject --json
-```
+- Git 작업 전/병합 전 `git status --short --branch`, `git log --oneline -10`, `git diff --stat`, `git diff --check`를 확인한다. 기존 미커밋 변경은 사용자 작업으로 간주한다.
+- 승인 없이 `git reset --hard`, `git clean -fd`, `git checkout -- <file>`, 강제 push 등 파괴적 작업 금지. PR/원격 push·merge·rebase 정책은 프로젝트 안내서를 따른다.
+- Epic/SF 티켓은 부모-자식 및 `--deps`로 연결한다. 티켓은 하나의 검증 가능한 목표·AC를 가진다. GitHub Issue를 병행하면 Orca와 GitHub 양쪽 상태를 동기화한다. 완료 티켓은 삭제하지 않고 close한다.
+- 변경은 관련 티켓만 커밋(`feat:`/`fix:`/`test:` 등), PR에는 목적·변경·검증·주의사항·잔여 작업을 적는다. **실제 병합 확인 후** 워커/임시 작업공간을 정리한다.
+- 서로 다른 에이전트가 같은 파일을 수정한 경우 임의 덮어쓰기 금지. `docs/agent-conflicts.md`에 파일·양측 변경·충돌·결정 필요 사항을 기록하고 해결한다.
+- AC에서 테스트를 도출하고 가능하면 구현 전에 실패를 확인한다. 기존 도구와 패턴을 사용한다. 프론트는 사용자 행동·표시·빈/로딩/오류 상태·반응형·접근성, 백엔드는 비즈니스 규칙·입력 검증·권한·트랜잭션·예외를 우선 검증한다.
+- Controller는 검증/매핑/호출, Service는 유스케이스/트랜잭션, Domain은 불변식, DTO는 외부 계약을 담당하는 기존 구조를 존중한다. 로그에 민감정보를 남기지 않고 테넌트·권한 경계를 검증한다.
+- **완료 정의:** 명확한 범위/AC, 승인된 설계·breakdown, 구현+테스트, 실제 테스트/정적검사/lint/build/`git diff --check` 결과, QA·리뷰·보안 확인, 최신 문서/상태, 해결되지 않은 BLOCKED 없음, Git/PR 병합 정책 충족. 프로젝트에 명령이 없거나 실행 불가하면 `NOT_RUN`/`BLOCKED`와 이유를 기록한다.
 
-### 8.5 사람 승인 게이트
-
-```bash
-orca orchestration gate-create --task <task_id> --question "<결정할 질문>" --options '["옵션1","옵션2"]' --json
-orca orchestration gate-list --status pending --json
-orca orchestration gate-resolve --id <gate_id> --resolution "<선택>" --json
-```
-
-게이트 해결 뒤에는 결정 내용을 실행 워커에 다시 전달하고, 반영 결과를 리뷰한다.
-
-`orca orchestration reset`은 로컬 오케스트레이션 DB 전체를 지울 수 있으므로 사용하지 않는다. 개별 태스크·워커·터미널만 명시적으로 정리한다.
-
-## 9. 무료 모델과 비용 운영
-
-기본값은 무료 모델과 읽기 전용 도구다. OpenRouter 무료 모델은 반드시 OpenCode 경로로만 실행한다. 정확한 모델 ID, 가용성, 역할별 기본 배정은 프로젝트 안내서에 기록한다.
-
-- 모델은 실행 직전에 현재 무료 여부와 도구 호출 가능 여부를 확인한다.
-- OpenCode는 작업을 배정하기 전에 후보 모델을 실제 터미널에서 선택하고 Build 줄로 검증한다. 실행 중 모델 변경은 UI에서 수행하고, 변경 직후 Build 줄과 watchdog 모델명을 확인한다. 동시에 살아 있는 워커 두 개에 같은 모델을 배정하지 않는다.
-- 일일 무료 한도·일시 장애·역할 부적합을 구분한다. 단순 429/5xx와 영구 비호환을 같은 실패로 기록하지 않는다.
-- 모델을 바꾸면 이전 모델, 새 모델, 사유, 영향 작업을 work-log에 남긴다.
-- **OpenRouter 일일 한도 소진**(`Rate limit exceeded: free-models-per-day-high-balance`)은 시간이 지나도 풀리지 않으므로 재시도하지 않고 OpenCode Zen 무료 모델(`opencode models`의 `opencode/*-free` 등)로 전환한다. 전환 전에 후보마다 한 요청(`opencode run --model <id> "OK만 답해"`)으로 실제 작동을 확인한다 — Zen 모델도 `Endpoint is unavailable`로 죽어 있을 수 있다.
-- **사용자가 모델 계열이나 경로를 제외하라고 지시하면 그 지시가 위 자동 전환보다 우선한다**(예: 2026-09-30 "오늘은 네모트론 라인은 빼고"). 지시가 이전 결정과 달라져도 최신 지시를 따르고 work-log에 남긴다.
-- **잘못된 모델 ID는 오류 없이 다른 모델(Laguna 등)로 폴백된다.** `opencode models`로 ID를 확인하고, 터미널을 띄운 뒤 `Build · <모델명>` 줄이 지정한 모델인지 확인한 다음 worker-start 한다. 같은 시간대에 같은 모델을 두 워커에 배정하지 않는다.
-- 한 프로젝트에서 검증된 모델 목록도 시간이 지나면 오래될 수 있다. 최신 카탈로그를 확인한 뒤 사용한다.
-- 유료 모델·서비스 전환은 사용자 명시 승인 없이는 하지 않는다.
-
-예시 확인 명령:
-
-```bash
-opencode models
-opencode models openrouter
-curl -s "https://openrouter.ai/api/v1/models"
-```
-
-## 10. 문서 규칙과 이어하기
-
-### 10.1 문서 구조
+## 9. 문서와 보고
 
 ```text
 docs/
-├── roadmap.md
-├── current-status.md
-├── setup-history.md
-├── project-agent-guide.md
-├── research/[epic-slug].md
-├── spec/[epic-slug].md
-├── architecture/[epic-slug].md
-├── breakdown-research/[epic-slug].md
-├── breakdown/[epic-slug].md
-├── work-plan/[epic-slug].md
-├── work-log/[epic-slug].md
-├── handoff/[epic-slug].md
-└── screenshots/[epic-slug]/YYYY-MM-DD-[description].png
+  project-agent-guide.md    # 프로젝트별 스택·경로·모델/비용·Git 정책·실제 명령
+  roadmap.md                # Epic 우선순위·의존성
+  current-status.md         # 최신 세션 스냅샷(덮어쓰기)
+  setup-history.md          # 설치·이관·복구 기록(시크릿 제외)
+  research/[epic].md        # 근거·제약·미해결 질문
+  spec/[epic].md            # 요구사항·시나리오·AC·엣지 케이스
+  architecture/[epic].md    # API/DB·모듈·데이터 흐름·리스크
+  breakdown-research/[epic].md
+  breakdown/[epic].md       # SF 범위·의존성·AC·티켓
+  work-plan/[epic].md       # 파일·테스트·완료 조건
+  work-log/[epic].md        # 실행 명령·결과·결정·다음 단계(append-only)
+  handoff/[epic].md         # 남은 작업·재현·변경 파일·주의사항
+  screenshots/[epic]/YYYY-MM-DD-[description].png
 ```
 
-같은 Epic의 slug는 문서·브랜치·티켓에서 일관되게 쓴다.
-
-| 문서 | 반드시 담을 내용 |
-|---|---|
-| research | 질문, 근거, 발견, 제약, 미해결 질문 |
-| spec | 사용자 목표, 시나리오, 기능 요구사항, 엣지 케이스, AC |
-| architecture | 데이터 흐름, API·DB·모듈 경계, 의존성, 리스크 |
-| breakdown | SF 범위·순서·의존성·AC·대응 티켓 |
-| work-plan | 목표·범위·비범위·관련 파일·테스트·완료 조건·리스크 |
-| work-log | 실제 실행한 작업·명령·결과·문제·다음 단계 |
-| handoff | 현재 상태·남은 작업·재현법·수정 파일·주의사항 |
-
-`work-log` 파일은 append-only다. 기존 내용을 덮어쓰지 않는다. `current-status`는 최신 스냅샷이므로 매번 덮어쓴다. 일일 로그의 사용 여부·저장 위치·파일명·형식은 프로젝트 안내서에 따른다. `setup-history`에는 새 설치·마이그레이션 이력과 재현 가능한 복구 절차를 남기며, 시크릿은 쓰지 않는다.
-
-### 10.2 세션 종료 규칙
-
-세션 종료 전에는 활성 Epic·SF·브랜치·작업공간·블로커·다음 3~5개 작업을 `current-status.md`에 반영한다. 프로젝트 안내서가 일일 로그를 정의하면 그 형식에 맞춰 갱신한다. 컨텍스트 압축 뒤에는 30초 카드 → current-status → handoff → 관련 work-log 순으로 복구한다.
-
-## 11. 티켓·Git·PR 규칙
-
-### 11.1 티켓
-
-티켓은 하나의 명확한 완료 목표, 범위, 변경 대상, AC를 가진다. Epic과 SF는 부모-자식 관계로 연결하고, 의존 SF는 `--deps`로 표현한다. 완료된 티켓은 삭제하지 않고 close해 이력을 보존한다.
-
-```text
-PLANNED → IN_PROGRESS → READY_FOR_REVIEW → CHANGES_REQUIRED → APPROVED → COMPLETED
-```
-
-GitHub Issue 병행 여부는 프로젝트 안내서에 명시한다. 사용하기로 했으면 Orca 티켓 상태만 바꾸고 끝내지 않으며 Git Manager가 GitHub 상태도 확인한다.
-
-### 11.2 Git 안전 규칙
-
-작업 전과 병합 전에는 다음을 확인한다.
-
-```bash
-git status --short --branch
-git log --oneline -10
-git diff --stat
-git diff --check
-```
-
-승인 없이 `git reset --hard`, `git clean -fd`, `git checkout -- <file>`를 실행하지 않는다. 기존 미커밋 변경은 사용자 작업으로 간주한다. 원격 push·merge·rebase의 세부 승인 정책은 프로젝트 안내서를 따른다.
-
-커밋은 현재 티켓의 변경만 포함하며, 커밋과 PR에 티켓을 연결한다.
-
-```text
-feat: <기능> (#<issue>)
-fix: <문제> (#<issue>)
-test: <검증 추가> (#<issue>)
-```
-
-### 11.3 PR과 충돌
-
-PR에는 목적, 주요 변경, 테스트 결과, 주의사항, 남은 작업을 기록한다. 병합 뒤에는 실제 병합 여부를 확인하고 해당 워커를 정리한다.
-
-두 에이전트가 같은 파일을 수정하면 작업을 멈추고, 파일·각 변경·선택 방향·사용자 확인 필요 여부를 `docs/agent-conflicts.md`에 기록한다. 임의로 다른 워커의 변경을 덮어쓰지 않는다.
-
-## 12. 구현·테스트·QA 기준
-
-### 12.1 테스트 우선 흐름
-
-```text
-Acceptance Criteria → 테스트 작성 → 실패 확인 → 최소 구현 → 테스트 통과 → 리팩터링 → 전체 검증
-```
-
-프론트엔드는 핵심 사용자 행동·상태 변화·데이터 표시·접근성을, 백엔드는 업무 규칙·입력 검증·상태 전이·권한·예외·트랜잭션을 우선 검증한다. 기존 테스트 구조·도구를 먼저 읽고 재사용한다.
-
-### 12.2 프론트엔드 공통 기준
-
-프로젝트가 채택한 프레임워크·상태 관리·패키지 매니저·린터·포매터를 따른다. 서버 상태와 클라이언트 UI 상태를 구분하고, 실제 설치 버전의 공식 API를 우선한다. 모든 신규 화면은 처음부터 반응형·키보드 접근성·오류·로딩·빈 상태를 고려한다. 정확한 구조·브레이크포인트·검증 명령은 프로젝트 안내서에 둔다.
-
-### 12.3 백엔드 공통 기준
-
-Controller는 요청 검증·응답 매핑·서비스 호출에 집중하고, Service는 유스케이스·업무 규칙·트랜잭션 경계를 담당한다. Entity/Domain은 상태와 불변식을 지키며, DTO로 외부 계약을 분리한다. 민감정보를 로그에 남기지 않고 모든 조회·변경에 테넌트/권한 경계를 적용한다. 사용 DB의 문법과 마이그레이션 규칙은 프로젝트 안내서를 따른다.
-
-### 12.4 검증과 완료 정의
-
-실제로 존재하는 검증 명령만 실행한다. 완료 전에 최소한 관련 테스트, 타입/정적 검사, lint/format, build, `git diff --check`, 보안·권한 검토를 확인한다. 프로젝트별 명령은 안내서에 적는다.
-
-어떤 SF도 아래를 만족하기 전 완료 처리하지 않는다.
-
-- 요구사항·범위·AC가 명확함
-- 필요한 조사·설계·테스트 계획이 완료됨
-- 구현과 필요한 테스트가 존재하고 실제 검증을 통과함
-- QA·리뷰·보안 검토가 완료됨
-- 문서·handoff·상태가 최신이며 남은 BLOCKED가 없음
-- PR 병합 정책을 충족하고, 병합 후 워커 정리가 확인됨
-
-## 13. BLOCKED와 보고
-
-다음 상황에서는 임의로 진행하지 않는다: 요구사항 충돌, 필요한 정보·권한 부족, 파괴적 변경 승인 필요, 운영 데이터 영향, 사용자 변경과 충돌, 테스트 환경 부재, 동일 실패 반복, API·보안 영향 검증 불가.
-
-BLOCKED 보고에는 원인, 시도한 작업, 실패 명령·오류, 영향 범위, 가능한 선택지, 사용자 결정 사항을 포함한다. 외부 알림을 설정한 프로젝트는 프로젝트 안내서의 알림 절차를 따른다.
-
-## 14. 프로젝트 전용 안내서의 책임
-
-`docs/project-agent-guide.md`에는 다음처럼 재사용하면 안 되는 정보를 둔다.
-
-- 제품명·도메인·작업 계획서 경로·현재 roadmap 상태
-- 실제 저장소·작업공간 경로, 브랜치명, Issue 라벨·병합 예외
-- 언어·프레임워크·패키지 매니저·정확한 테스트/빌드 명령
-- claude/codex, OpenRouter, OpenCode의 모델 ID·게이트웨이·무료 할당량·관찰 기록
-- 이 프로젝트에서 검증한 오류 회피법, 알림·사용자 가이드 운영
-
-공통 규칙을 바꿀 때는 이 문서를 먼저, 프로젝트 고유 사실을 바꿀 때는 프로젝트 안내서를 먼저 갱신한다.
+- 동일 Epic slug를 문서/브랜치/티켓에 일관되게 쓴다. 프로젝트에 없는 선택적 문서는 작업 필요 시 만든다.
+- 세션 종료 전 `current-status.md`에 Epic/SF, 브랜치, worktree, 활성 워커/dispatch, blocker, 다음 3~5개 작업을 반영한다. 프로젝트에서 일일 로그를 정의했다면 함께 갱신한다. work-log는 추가만 하고 이전 기록을 지우지 않는다.
+- 상태/검증 보고는 실행한 명령과 실제 출력에 근거한다. `BLOCKED` 보고에는 이유, 시도·오류, 영향, 선택지, 사용자에게 필요한 결정을 적는다.
+- 프로젝트 고유 정보(실제 경로·스택·테스트 명령·모델 IDs·free quota·알림 설정·CLI 사고기록)는 **이 공통 파일에 누적하지 말고** `docs/project-agent-guide.md`에 둔다.

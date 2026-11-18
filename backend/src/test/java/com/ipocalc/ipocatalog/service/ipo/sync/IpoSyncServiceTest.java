@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -308,9 +309,10 @@ class IpoSyncServiceTest {
     assertThat(saved.getCompanyName()).isEqualTo("옵토닉스");
     assertThat(saved.getIpoName()).isEqualTo("옵토닉스");
     assertThat(saved.getStockCode()).isNull();
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getFixedPrice()).isNull(); // 동기화가 절대 설정하지 않음
+    // DS006의 slprc는 가격 근거로 쓰지 않는다. 원문 파싱 결과가 없으면 가격은 null이다.
+    assertThat(saved.getLowerBandPrice()).isNull();
+    assertThat(saved.getUpperBandPrice()).isNull();
+    assertThat(saved.getFixedPrice()).isNull();
     assertThat(saved.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 5));
     assertThat(saved.getSubscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 6));
     assertThat(saved.getOfferingShareCount()).isEqualTo(2_200_000L);
@@ -425,7 +427,15 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     OpenDartEquitySecurityDetail detail =
-        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "12,000");
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("01658035")
+            .corpName("옵토닉스")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("2,200,000")
+            .slprc("12,000")
+            .rceptNo("FINAL-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(
             "01658035", RecordStatus.ACTIVE))
@@ -435,6 +445,12 @@ class IpoSyncServiceTest {
         .thenReturn(List.of());
     when(businessDayCalculator.nextBusinessDay(LocalDate.of(2026, 11, 5)))
         .thenReturn(LocalDate.of(2026, 11, 6));
+    when(dartIpoFilingClient.downloadDocument("FINAL-RECEIPT"))
+        .thenReturn(Optional.of("<xml>final</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("FINAL-RECEIPT"), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "FINAL-RECEIPT", 1, null, null, 12_000L, null, null, null, null, null));
 
     IpoSyncResult result = syncService.sync(7);
 
@@ -449,15 +465,29 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     OpenDartEquitySecurityDetail detail =
-        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "2,200,000", "12,000");
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("01658035")
+            .corpName("옵토닉스")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("2,200,000")
+            .slprc("12,000")
+            .rceptNo("FINAL-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
+    when(dartIpoFilingClient.downloadDocument("FINAL-RECEIPT"))
+        .thenReturn(Optional.of("<xml>final</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("FINAL-RECEIPT"), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "FINAL-RECEIPT", 1, null, null, 12_000L, null, null, null, null, null));
     Ipo existing =
         Ipo.builder()
             .id(1L)
             .companyName("옵토닉스")
             .ipoName("옵토닉스")
             .corpCode("01658035")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(null)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -484,8 +514,22 @@ class IpoSyncServiceTest {
         .thenReturn(List.of(company));
 
     OpenDartEquitySecurityDetail detail =
-        createDetail("01658035", "옵토닉스", "2026년 11월 05일 ~ 2026년 11월 06일", "3,000,000", "12,000");
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("01658035")
+            .corpName("옵토닉스")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .stkcnt("3,000,000")
+            .slprc("12,000")
+            .rceptNo("UPDATE-RECEIPT")
+            .build();
+    detail.parseDerivedFields();
     when(equitySecuritiesClient.getEquitySecurityDetail("01658035")).thenReturn(List.of(detail));
+    when(dartIpoFilingClient.downloadDocument("UPDATE-RECEIPT"))
+        .thenReturn(Optional.of("<xml>update</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("UPDATE-RECEIPT"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "UPDATE-RECEIPT", 1, 10_000L, 12_000L, null, null, null, null, null, null));
 
     // 기존 레코드: 수동 입력으로 fixedPrice=11000, listingDate 설정됨
     Ipo existing =
@@ -494,7 +538,7 @@ class IpoSyncServiceTest {
             .companyName("옵토닉스")
             .ipoName("옵토닉스")
             .corpCode("01658035")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(11_000L) // 수동 입력값 (보존되어야 함)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -522,8 +566,8 @@ class IpoSyncServiceTest {
 
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
-    // 가격 밴드 갱신됨
-    assertThat(saved.getLowerBandPrice()).isEqualTo(12_000L);
+    // 원문에서 검증된 밴드로 갱신됨
+    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getUpperBandPrice()).isEqualTo(12_000L);
     // fixedPrice 보존됨 (동기화가 덮어쓰지 않음)
     assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
@@ -554,7 +598,7 @@ class IpoSyncServiceTest {
             .companyName("옵토닉스")
             .ipoName("옵토닉스")
             .corpCode("01658035")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(11_000L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -604,7 +648,7 @@ class IpoSyncServiceTest {
             .companyName("옵토닉스")
             .ipoName("옵토닉스")
             .corpCode("99999999") // 다른 corpCode
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
             .subscriptionEndDate(LocalDate.of(2026, 11, 6))
@@ -1016,12 +1060,19 @@ class IpoSyncServiceTest {
             .slprc("12,000")
             .build();
     newer.parseDerivedFields();
+    when(dartIpoFilingClient.downloadDocument("20261001000002"))
+        .thenReturn(Optional.of("<xml>newer</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261001000002"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261001000002", 1, 10_000L, 12_000L, null, null, null, null, null, null));
 
     syncOne(newer, older);
 
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     assertThat(ipoCaptor.getValue().getSubscriptionStartDate())
         .isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(ipoCaptor.getValue().getLowerBandPrice()).isEqualTo(10_000L);
     assertThat(ipoCaptor.getValue().getUpperBandPrice()).isEqualTo(12_000L);
   }
 
@@ -1309,16 +1360,15 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesBandPriceEvenWhenDifferentReceiptNotSameOffering() {
-    // given: 기존 자동 동기화 레코드(source_receipt_no=OLD, fixedPrice=9400, 밴드 10000)
+  void sync_updatesOnlyShareCountWhenDifferentReceiptNotSameOffering() {
+    // given: 기존 자동 동기화 레코드(source_receipt_no=OLD, fixedPrice=9400, 밴드 9000~10000)
     Ipo existing =
         Ipo.builder()
             .id(1L)
             .corpCode("corp")
             .companyName("name")
             .ipoName("name")
-            .corpCode("corp")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(9_400L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -1330,7 +1380,7 @@ class IpoSyncServiceTest {
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
 
-    // 새 공시: 다른 접수번호, 일반 공시(정정 아님), 밴드 가격이 11000으로 변경
+    // 새 공시: 다른 접수번호, 일반 공시(정정 아님)
     OpenDartDisclosureItem company =
         OpenDartDisclosureItem.builder()
             .corpCode("corp")
@@ -1352,16 +1402,23 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+    // 파서가 다른 가격을 돌려줘도 신규 공모/정정 구분 불가 상태에서는 가격을 덮어쓰지 않는다.
+    when(dartIpoFilingClient.downloadDocument("NEW-RECEIPT"))
+        .thenReturn(Optional.of("<xml>new</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("NEW-RECEIPT"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "NEW-RECEIPT", 1, 11_000L, 12_000L, 12_000L, null, null, null, null, null));
 
     // when
     IpoSyncResult result = syncService.sync(7);
 
-    // then: 전체 갱신은 보류되지만 밴드 가격·주식 수는 갱신되고, source_receipt_no·fixedPrice는 미변경
+    // then: 전체 갱신은 보류되어 주식 수만 갱신되고, 가격·source_receipt_no는 미변경
     assertThat(result.getUpdated()).isEqualTo(1);
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
-    assertThat(saved.getLowerBandPrice()).isEqualTo(11_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getOfferingShareCount()).isEqualTo(1_000_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 일반 공시이므로 fixedPrice 미변경
@@ -1377,7 +1434,7 @@ class IpoSyncServiceTest {
             .companyName("name")
             .ipoName("name")
             .corpCode("corp")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(null)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -1502,7 +1559,7 @@ class IpoSyncServiceTest {
             .companyName("name")
             .ipoName("name")
             .corpCode("corp")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(9_400L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -1536,6 +1593,12 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+    when(dartIpoFilingClient.downloadDocument("NEW-RECEIPT"))
+        .thenReturn(Optional.of("<xml>correction</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("NEW-RECEIPT"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "NEW-RECEIPT", 1, 10_000L, 11_000L, null, null, null, null, null, null));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -1545,7 +1608,7 @@ class IpoSyncServiceTest {
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 기재정정은 확정가가 아니므로 기존 fixedPrice 유지
-    assertThat(saved.getLowerBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }
@@ -1560,7 +1623,7 @@ class IpoSyncServiceTest {
             .companyName("name")
             .ipoName("name")
             .corpCode("corp")
-            .lowerBandPrice(10_000L)
+            .lowerBandPrice(9_000L)
             .upperBandPrice(10_000L)
             .fixedPrice(9_400L)
             .subscriptionStartDate(LocalDate.of(2026, 11, 5))
@@ -1594,6 +1657,12 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(company));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(detail));
+    when(dartIpoFilingClient.downloadDocument("NEW-RECEIPT"))
+        .thenReturn(Optional.of("<xml>finalized</xml>"));
+    when(offeringTermsParser.parse(anyString(), eq("NEW-RECEIPT"), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "NEW-RECEIPT", 1, 10_000L, 11_000L, 11_000L, null, null, null, null, null));
 
     // when
     IpoSyncResult result = syncService.sync(7);
@@ -1603,7 +1672,7 @@ class IpoSyncServiceTest {
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
     assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
-    assertThat(saved.getLowerBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }

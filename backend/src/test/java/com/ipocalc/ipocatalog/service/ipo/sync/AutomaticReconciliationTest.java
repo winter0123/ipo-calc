@@ -76,6 +76,7 @@ class AutomaticReconciliationTest {
 
   private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
   private static final String SIMWON_CORP = "02038432";
+  private static final String SIMWON_ORIGINAL_RECEIPT = "20261012000149";
   private static final String LEGACY_CORP = "08213333";
   private static final String DUPLICATE_CORP = "99990002";
   private static final String MISMATCH_CORP = "99990003";
@@ -209,14 +210,21 @@ class AutomaticReconciliationTest {
     return new IpoSyncService(
         corpClient,
         equityClient,
-        mock(DartIpoFilingClient.class),
-        mock(DartOfferingTermsParser.class),
+        filingClientWithSimwonOriginalDocument(),
+        new DartOfferingTermsParser(),
         ipoSyncPersistence,
         transactionTemplate,
         mergeService,
         reconciliationService,
         new IpoSyncRunRecorder(ipoSyncRunRepository, clock, transactionTemplate),
         clock);
+  }
+
+  private DartIpoFilingClient filingClientWithSimwonOriginalDocument() {
+    DartIpoFilingClient filingClient = mock(DartIpoFilingClient.class);
+    when(filingClient.downloadDocument(SIMWON_ORIGINAL_RECEIPT))
+        .thenReturn(Optional.of("<DOCUMENT/>"));
+    return filingClient;
   }
 
   private void serverExpectAllDs006(MockRestServiceServer server, String matcher, String fixture)
@@ -268,7 +276,7 @@ class AutomaticReconciliationTest {
             .ipoName(ipoName)
             .corpCode(corpCode)
             .stockCode(null)
-            .lowerBandPrice(15_000L)
+            .lowerBandPrice(14_000L)
             .upperBandPrice(15_000L)
             .fixedPrice(15_000L)
             .subscriptionStartDate(start)
@@ -315,7 +323,7 @@ class AutomaticReconciliationTest {
     Ipo reloaded = ipoRepository.findById(seeded.getId()).orElseThrow();
     assertThat(reloaded.getStatus()).isEqualTo(RecordStatus.INACTIVE);
     assertThat(reloaded.getDeletedAt()).isNotNull();
-    assertThat(reloaded.getWithdrawnReceiptNo()).isEqualTo("20261012000149");
+    assertThat(reloaded.getWithdrawnReceiptNo()).isEqualTo(SIMWON_ORIGINAL_RECEIPT);
     // 철회는 공모 자체만 비활성화하고 이력(Subscription/Allocation/Sale)은 보존한다
     assertThat(reloaded.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 5));
     assertThat(reloaded.getSubscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 6));
@@ -882,8 +890,8 @@ class AutomaticReconciliationTest {
     return new IpoSyncService(
         corpClient,
         equityClient,
-        mock(DartIpoFilingClient.class),
-        mock(DartOfferingTermsParser.class),
+        filingClientWithSimwonOriginalDocument(),
+        new DartOfferingTermsParser(),
         ipoSyncPersistence,
         transactionTemplate,
         mergeService,
