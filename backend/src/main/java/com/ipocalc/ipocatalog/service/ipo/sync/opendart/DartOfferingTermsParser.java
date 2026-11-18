@@ -5,11 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Component;
 
 /**
  * DART document.xml 원문에서 공모 조건(희망공모가 범위, 확정공모가, 청약일정, 주식수)을 파싱한다. 형식 이상, 숫자 파싱 실패, 날짜 역전은 예외를 던지지
  * 않고 해당 필드를 null로 둔다.
+ *
+ * <p>파싱 상태는 호출마다 새로 만들어 지역에 보관하므로 싱글턴 빈으로 공유해도 안전하다.
  */
+@Component
 public class DartOfferingTermsParser {
 
   private static final Pattern TABLE = Pattern.compile("<TABLE[^>]*>(.*?)</TABLE>", Pattern.DOTALL);
@@ -24,15 +28,17 @@ public class DartOfferingTermsParser {
   private static final Pattern TILDE = Pattern.compile("[~∼〜～]");
   private static final Pattern WON = Pattern.compile("원");
 
-  // 파싱 중 임시 저장용 필드
-  private Long lowerBandPrice;
-  private Long upperBandPrice;
-  private Long fixedPrice;
-  private LocalDate subscriptionStartDate;
-  private LocalDate subscriptionEndDate;
-  private LocalDate allotmentDate;
-  private LocalDate refundDate;
-  private Long offeringShareCount;
+  /** 한 번의 파싱 동안만 쓰는 가변 상태. */
+  private static final class ParseState {
+    private Long lowerBandPrice;
+    private Long upperBandPrice;
+    private Long fixedPrice;
+    private LocalDate subscriptionStartDate;
+    private LocalDate subscriptionEndDate;
+    private LocalDate allotmentDate;
+    private LocalDate refundDate;
+    private Long offeringShareCount;
+  }
 
   /**
    * document.xml 원문을 파싱하여 DartOfferingTerms를 반환한다.
@@ -43,15 +49,7 @@ public class DartOfferingTermsParser {
    * @return 파싱된 공모 조건 (필드 파싱 실패 시 null)
    */
   public DartOfferingTerms parse(String xml, String sourceReceiptNo, boolean isFinalizedReport) {
-    // 필드 초기화
-    this.lowerBandPrice = null;
-    this.upperBandPrice = null;
-    this.fixedPrice = null;
-    this.subscriptionStartDate = null;
-    this.subscriptionEndDate = null;
-    this.allotmentDate = null;
-    this.refundDate = null;
-    this.offeringShareCount = null;
+    ParseState state = new ParseState();
 
     String s = xml == null ? "" : xml;
     List<List<List<String>>> tables = parseTables(s);
@@ -81,12 +79,12 @@ public class DartOfferingTermsParser {
           || tableText.contains("정정후")
           || tableText.contains("정정 전")
           || tableText.contains("정정 후")) {
-        parseCorrectionTable(table, isFinalizedReport);
+        parseCorrectionTable(table, isFinalizedReport, state);
       }
 
       // 희망공모가/모집가액 표 식별
       if (tableText.contains("희망공모가") || tableText.contains("모집가액") || tableText.contains("매출가액")) {
-        extractBandPrice(table);
+        extractBandPrice(table, state);
       }
 
       // 청약기일/배정공고일/납입기일 표 식별
@@ -96,7 +94,7 @@ public class DartOfferingTermsParser {
           || tableText.contains("배정일")
           || tableText.contains("납입기일")
           || tableText.contains("환불일")) {
-        extractDatesFromTable(table, tableText);
+        extractDatesFromTable(table, tableText, state);
       }
 
       // 증권수량/공모주식수 표 식별
@@ -104,39 +102,39 @@ public class DartOfferingTermsParser {
           || tableText.contains("공모주식")
           || tableText.contains("모집주식")
           || tableText.contains("주식수")) {
-        offeringShareCount = extractOfferingShareCount(table);
+        state.offeringShareCount = extractOfferingShareCount(table);
       }
     }
 
     // 일반적인 청약기일 파싱 (sbd 필드와 유사한 패턴)
     // 원문 전체에서 청약기일 패턴 찾기
-    if (subscriptionStartDate == null) {
+    if (state.subscriptionStartDate == null) {
       LocalDate[] dates = extractSubscriptionDatesFromText(s);
       if (dates != null) {
-        subscriptionStartDate = dates[0];
-        subscriptionEndDate = dates[1];
+        state.subscriptionStartDate = dates[0];
+        state.subscriptionEndDate = dates[1];
       }
     }
 
     // 배정공고일, 납입기일 원문 전체에서 찾기
-    if (allotmentDate == null) {
-      allotmentDate = extractDateFromText(s, "배정공고일");
+    if (state.allotmentDate == null) {
+      state.allotmentDate = extractDateFromText(s, "배정공고일");
     }
-    if (refundDate == null) {
-      refundDate = extractDateFromText(s, "납입기일");
+    if (state.refundDate == null) {
+      state.refundDate = extractDateFromText(s, "납입기일");
     }
 
     return new DartOfferingTerms(
         sourceReceiptNo,
         DartOfferingTerms.PARSER_VERSION,
-        lowerBandPrice,
-        upperBandPrice,
-        fixedPrice,
-        subscriptionStartDate,
-        subscriptionEndDate,
-        allotmentDate,
-        refundDate,
-        offeringShareCount);
+        state.lowerBandPrice,
+        state.upperBandPrice,
+        state.fixedPrice,
+        state.subscriptionStartDate,
+        state.subscriptionEndDate,
+        state.allotmentDate,
+        state.refundDate,
+        state.offeringShareCount);
   }
 
   private List<List<List<String>>> parseTables(String xml) {
@@ -194,7 +192,8 @@ public class DartOfferingTermsParser {
   }
 
   /** 정정 전/정정 후 표에서 확정가 추출 (발행조건확정 공시일 때만). */
-  private void parseCorrectionTable(List<List<String>> table, boolean isFinalizedReport) {
+  private void parseCorrectionTable(
+      List<List<String>> table, boolean isFinalizedReport, ParseState state) {
     if (!isFinalizedReport) {
       return;
     }
@@ -207,7 +206,7 @@ public class DartOfferingTermsParser {
           String priceCell = (i + 1 < row.size()) ? row.get(i + 1) : null;
           Long price = parsePrice(priceCell != null ? priceCell : cell);
           if (price != null && price > 0) {
-            this.fixedPrice = price;
+            state.fixedPrice = price;
             return;
           }
         }
@@ -216,14 +215,14 @@ public class DartOfferingTermsParser {
   }
 
   /** 표에서 두 개의 가격(밴드) 추출. */
-  private void extractBandPrice(List<List<String>> table) {
+  private void extractBandPrice(List<List<String>> table, ParseState state) {
     for (List<String> row : table) {
       for (String cell : row) {
         // "9,400원 ~ 11,000원" 패턴 먼저 시도
         Long[] rangePrices = extractTwoPricesFromCell(cell);
         if (rangePrices != null && rangePrices[0] != null && rangePrices[1] != null) {
-          this.lowerBandPrice = Math.min(rangePrices[0], rangePrices[1]);
-          this.upperBandPrice = Math.max(rangePrices[0], rangePrices[1]);
+          state.lowerBandPrice = Math.min(rangePrices[0], rangePrices[1]);
+          state.upperBandPrice = Math.max(rangePrices[0], rangePrices[1]);
           return;
         }
       }
@@ -239,8 +238,8 @@ public class DartOfferingTermsParser {
       }
     }
     if (prices.size() >= 2) {
-      this.lowerBandPrice = Math.min(prices.get(0), prices.get(1));
-      this.upperBandPrice = Math.max(prices.get(0), prices.get(1));
+      state.lowerBandPrice = Math.min(prices.get(0), prices.get(1));
+      state.upperBandPrice = Math.max(prices.get(0), prices.get(1));
     }
   }
 
@@ -286,7 +285,8 @@ public class DartOfferingTermsParser {
   }
 
   /** 표에서 날짜 추출. */
-  private void extractDatesFromTable(List<List<String>> table, String headerText) {
+  private void extractDatesFromTable(
+      List<List<String>> table, String headerText, ParseState state) {
     for (List<String> row : table) {
       for (String cell : row) {
         if (cell == null) {
@@ -296,18 +296,18 @@ public class DartOfferingTermsParser {
         if (headerText.contains("청약")) {
           LocalDate[] dates = parseSubscriptionDateRange(cell);
           if (dates != null) {
-            this.subscriptionStartDate = dates[0];
-            this.subscriptionEndDate = dates[1];
+            state.subscriptionStartDate = dates[0];
+            state.subscriptionEndDate = dates[1];
           }
         } else if (headerText.contains("배정")) {
           LocalDate date = parseDate(cell);
           if (date != null) {
-            this.allotmentDate = date;
+            state.allotmentDate = date;
           }
         } else if (headerText.contains("납입") || headerText.contains("환불")) {
           LocalDate date = parseDate(cell);
           if (date != null) {
-            this.refundDate = date;
+            state.refundDate = date;
           }
         }
       }
