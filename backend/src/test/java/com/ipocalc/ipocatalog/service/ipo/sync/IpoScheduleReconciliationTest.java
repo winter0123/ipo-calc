@@ -10,9 +10,14 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -542,4 +547,166 @@ class IpoScheduleReconciliationTest {
     assertThat(created.getValue().getLastImportedOfferingShareCount()).isEqualTo(2_200_000L);
     assertThat(created.getValue().getLastVerifiedShareReceiptNo()).isEqualTo("20261008000649");
   }
+
+  @Test
+  void ykmcRealHtmlExcerptLinksOriginalAndPersistsFixedPriceWithoutDs006() throws Exception {
+    String originalReceipt = "20261008000649";
+    String finalizedReceipt = "20261103000312";
+    String html =
+        Files.readString(
+            Path.of(
+                "src/test/resources/dart/ykmc-20261103000312-offering-summary.html"));
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("ykmc")
+            .rceptNo(originalReceipt)
+            .rceptDt("20261008")
+            .reportNm("증권신고서(지분증권)")
+            .build();
+    OpenDartDisclosureItem finalized =
+        OpenDartDisclosureItem.builder()
+            .corpCode("ykmc")
+            .rceptNo(finalizedReceipt)
+            .rceptDt("20261103")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .build();
+
+    assertThat(DartFilingOrigin.originalSubmissionDate(html))
+        .isEqualTo(LocalDate.of(2026, 10, 8));
+    String verifiedOriginal =
+        DartFilingOrigin.resolveOriginalReceipt(finalized, List.of(original, finalized), html);
+    assertThat(verifiedOriginal).isEqualTo(originalReceipt);
+    DartOfferingTerms terms = new DartOfferingTermsParser().parse(html, finalizedReceipt, true);
+    assertThat(terms.fixedPrice()).isEqualTo(11_000L);
+
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo existing =
+        Ipo.builder()
+            .id(507L)
+            .corpCode("ykmc")
+            .companyName("영광와이케이엠씨")
+            .ipoName("영광와이케이엠씨")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .lowerBandPrice(9_400L)
+            .upperBandPrice(11_000L)
+            .bandPriceSourceReceiptNo(originalReceipt)
+            .bandPriceParserVersion(2)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 4))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 5))
+            .lastImportedSubscriptionStartDate(LocalDate.of(2026, 11, 4))
+            .lastImportedSubscriptionEndDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("ykmc", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "ykmc", "영광와이케이엠씨", finalizedReceipt, verifiedOriginal, null, terms, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getId()).isEqualTo(507L);
+    assertThat(existing.getSourceReceiptNo()).isEqualTo(originalReceipt);
+    assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(existing.getFixedPriceSourceReceiptNo()).isEqualTo(finalizedReceipt);
+    assertThat(existing.getLowerBandPrice()).isEqualTo(9_400L);
+    assertThat(existing.getBandPriceSourceReceiptNo()).isEqualTo(originalReceipt);
+    verify(repository).saveAndFlush(existing);
+  }
+
+  @Test
+  void dartSubscriptionOnlyCorrectionDoesNotBlockUstockPlusRefundCorrection() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo existing =
+        Ipo.builder()
+            .corpCode("corp")
+            .companyName("기업")
+            .ipoName("기업")
+            .syncSource("OPENDART+USTOCKPLUS")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .refundDate(FIRST.plusDays(5))
+            .lastImportedRefundDate(FIRST.plusDays(5))
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    DartOfferingTerms subscriptionOnly =
+        new DartOfferingTerms(
+            "20261103000312", 2, null, null, null,
+            FIRST.plusDays(2), FIRST.plusDays(3), null, null, null);
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261103000312", "20261008000649", null,
+                subscriptionOnly, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261103000312");
+    assertThat(existing.getLastVerifiedRefundReceiptNo()).isNull();
+    assertThat(
+            existing.mergeSupplementalSchedule(
+                null, null, FIRST.plusDays(6), null,
+                "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
+        .isTrue();
+    assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(6));
+  }
+
+  @Test
+  void explicitDartRefundDateBlocksLaterUstockPlusRefundOverwrite() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo existing =
+        Ipo.builder()
+            .corpCode("corp")
+            .companyName("기업")
+            .ipoName("기업")
+            .syncSource("OPENDART+USTOCKPLUS")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .refundDate(FIRST.plusDays(5))
+            .lastImportedRefundDate(FIRST.plusDays(5))
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    DartOfferingTerms verifiedRefund =
+        new DartOfferingTerms(
+            "20261103000312", 2, null, null, null,
+            FIRST.plusDays(2), FIRST.plusDays(3), null, FIRST.plusDays(4), null);
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261103000312", "20261008000649", null,
+                verifiedRefund, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(4));
+    assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo("20261103000312");
+    assertThat(
+            existing.mergeSupplementalSchedule(
+                null, null, FIRST.plusDays(6), null,
+                "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
+        .isFalse();
+    assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(4));
+  }
+
 }
