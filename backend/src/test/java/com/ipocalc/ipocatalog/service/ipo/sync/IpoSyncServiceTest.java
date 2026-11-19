@@ -1747,4 +1747,71 @@ class IpoSyncServiceTest {
     assertThat(existing.getLowerBandPrice()).isEqualTo(9_400L);
     assertThat(existing.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
   }
+
+  @Test
+  void sync_createsIpoFromOriginalDs001XmlEvenWhenDs006IsEmpty() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of());
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원신고 공모개요</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649",
+                2,
+                9_400L,
+                11_000L,
+                null,
+                LocalDate.of(2026, 11, 4),
+                LocalDate.of(2026, 11, 5),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isEqualTo(1);
+    assertThat(result.getFailureCount()).isZero();
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo created = ipoCaptor.getValue();
+    assertThat(created.getSourceReceiptNo()).isEqualTo("20261008000649");
+    assertThat(created.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 4));
+    assertThat(created.getLowerBandPrice()).isEqualTo(9_400L);
+    assertThat(created.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
+  }
+
+  @Test
+  void sync_doesNotCreateIpoFromOriginalXmlWithMissingSubscriptionDates() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of());
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원신고</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649", 2, 9_400L, 11_000L, null, null, null, null, null, null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isZero();
+    assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+  }
+
 }
