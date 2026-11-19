@@ -276,13 +276,22 @@ public class IpoSyncPersistence {
     }
     var existing =
         ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
-    if (existing.size() != 1
-        || existing.get(0).getSyncSource() == null
-        || !detail.getSubscriptionStartDate().equals(existing.get(0).getSubscriptionStartDate())) {
+    if (existing.size() != 1 || existing.get(0).getSyncSource() == null) {
       return false;
     }
-    existing.get(0).withdraw(detail.getRceptNo(), LocalDateTime.now(clock));
-    ipoRepository.saveAndFlush(existing.get(0));
+    Ipo target = existing.get(0);
+    boolean sameStart = detail.getSubscriptionStartDate().equals(target.getSubscriptionStartDate());
+    boolean verifiedOriginal =
+        detail.getRceptNo().equals(target.getSourceReceiptNo())
+            && target.getLastImportedSubscriptionStartDate() != null
+            && target.getLastImportedSubscriptionStartDate().equals(target.getSubscriptionStartDate());
+    // 자동 정정으로 청약일이 바뀌어도 원공시 접수번호가 일치하면 철회를 인정한다.
+    // 반면 수동으로 날짜가 바뀌어 추적값이 사라졌으면 임의로 철회하지 않는다.
+    if (!sameStart && !verifiedOriginal) {
+      return false;
+    }
+    target.withdraw(detail.getRceptNo(), LocalDateTime.now(clock));
+    ipoRepository.saveAndFlush(target);
     return true;
   }
 
