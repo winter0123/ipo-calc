@@ -306,6 +306,10 @@ public class IpoReconciliationService {
       try {
         Optional<String> xml = dartIpoFilingClient.downloadDocument(item.getRceptNo());
         if (xml.isPresent() && !xml.get().isBlank()) {
+          if (!originalReceipt.equals(
+              DartFilingOrigin.resolveOriginalReceipt(item, disclosures, xml.get()))) {
+            continue;
+          }
           DartOfferingTerms terms =
               offeringTermsParser.parse(xml.get(), item.getRceptNo(), item.isFinalizedReport());
           if (terms != null && terms.hasValidBand()) {
