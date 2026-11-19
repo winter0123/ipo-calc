@@ -171,4 +171,20 @@ class IpoVerifiedOfferingTermsTest {
     assertThat(ipo.getSubscriptionStartDate()).isEqualTo(java.time.LocalDate.of(2026, 11, 7));
   }
 
+
+  @Test
+  void automaticSyncDoesNotOverwriteEditedDisplayNames() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .companyName("관리자가 바꾼 회사명")
+            .ipoName("관리자가 바꾼 종목명")
+            .build();
+
+    ipo.syncFromOpenDart("DART 신규 회사명", null, null, null, null, null, "OPENDART", NOW);
+
+    assertThat(ipo.getCompanyName()).isEqualTo("관리자가 바꾼 회사명");
+    assertThat(ipo.getIpoName()).isEqualTo("관리자가 바꾼 종목명");
+  }
+
 }
