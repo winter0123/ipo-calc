@@ -224,6 +224,9 @@ class AutomaticReconciliationTest {
     DartIpoFilingClient filingClient = mock(DartIpoFilingClient.class);
     when(filingClient.downloadDocument(SIMWON_ORIGINAL_RECEIPT))
         .thenReturn(Optional.of("<DOCUMENT/>"));
+    // 신규 수집은 DS006 원공시가 아니라 최신 DS001 기재정정 원문을 조회한다.
+    when(filingClient.downloadDocument("20261028000200"))
+        .thenReturn(Optional.of("<DOCUMENT/>"));
     return filingClient;
   }
 
