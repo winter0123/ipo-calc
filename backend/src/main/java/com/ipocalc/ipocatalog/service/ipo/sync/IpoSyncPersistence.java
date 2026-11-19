@@ -404,13 +404,17 @@ public class IpoSyncPersistence {
     LocalDateTime now = LocalDateTime.now(clock);
     // 과거 접수번호가 다시 도착한 경우 일정·주식 수는 후퇴시키지 않는다.
     boolean currentSchedule = existing.mayApplyVerifiedSchedule(detail.getRceptNo());
+    // DS006의 pymd는 원문에서 검증된 환불일을 덮어쓸 근거가 아니다.
+    // 접수번호가 동일하더라도 원문 확인 출처가 남아 있으면 보존한다.
+    LocalDate ds006Refund =
+        existing.getLastVerifiedRefundReceiptNo() == null ? detail.getRefundDate() : null;
     existing.syncFromOpenDart(
         corpName,
         null,
         currentSchedule ? startDate : null,
         currentSchedule ? endDate : null,
         currentSchedule && existing.getAllotmentDate() == null ? detail.getAllotmentDate() : null,
-        currentSchedule ? detail.getRefundDate() : null,
+        currentSchedule ? ds006Refund : null,
         SYNC_SOURCE_OPENDART,
         now);
     if (currentSchedule) {
