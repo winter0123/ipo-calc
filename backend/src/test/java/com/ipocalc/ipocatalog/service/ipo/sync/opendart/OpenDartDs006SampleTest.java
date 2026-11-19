@@ -39,17 +39,14 @@ class OpenDartDs006SampleTest {
             new OpenDartApiProperties("test-api-key", "https://opendart.fss.or.kr"),
             new RequestThrottle(0));
     List<OpenDartEquitySecurityDetail> result =
-        client.getEquitySecurityDetail(
-            corp, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 19));
+        client.getEquitySecurityDetail(corp, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 11, 19));
     server.verify();
     return result;
   }
 
   @Test
-  void optonicsFullGroupResponseMergesSameReceiptWithoutMisreadingOtherGroups()
-      throws Exception {
-    var detail =
-        parseFixture("01658035", "ds006-user-optonics-20260929000347.json").get(0);
+  void optonicsFullGroupResponseMergesSameReceiptWithoutMisreadingOtherGroups() throws Exception {
+    var detail = parseFixture("01658035", "ds006-user-optonics-20260929000347.json").get(0);
     assertThat(detail.getRceptNo()).isEqualTo("20260929000347");
     assertThat(detail.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 5));
     assertThat(detail.getSubscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 6));

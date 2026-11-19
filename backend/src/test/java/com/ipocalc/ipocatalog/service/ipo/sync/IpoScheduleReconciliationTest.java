@@ -419,10 +419,7 @@ class IpoScheduleReconciliationTest {
         .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
 
     Ipo anotherRound =
-        Ipo.builder()
-            .syncSource("OPENDART")
-            .sourceReceiptNo("20260929000347")
-            .build();
+        Ipo.builder().syncSource("OPENDART").sourceReceiptNo("20260929000347").build();
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(anotherRound));
     assertThat(
@@ -431,5 +428,4 @@ class IpoScheduleReconciliationTest {
         .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
     verify(repository, never()).saveAndFlush(any());
   }
-
 }

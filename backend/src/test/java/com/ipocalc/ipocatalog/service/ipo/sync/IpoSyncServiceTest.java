@@ -1719,8 +1719,7 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of(latest));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(oldDetail));
     when(dartIpoFilingClient.downloadDocument("20261103000312"))
-        .thenReturn(Optional.of(
-            "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
     when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
         .thenReturn(
             List.of(

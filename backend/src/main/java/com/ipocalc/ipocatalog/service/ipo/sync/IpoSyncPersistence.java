@@ -112,11 +112,7 @@ public class IpoSyncPersistence {
     }
   }
 
-
-  /**
-   * DS001 원문과 원신고 접수번호를 검증한 동기화 경로다.
-   * DS006가 오래되었거나 누락되어도 원문 가격은 반영하고, 오래된 상세의 일정은 반영하지 않는다.
-   */
+  /** DS001 원문과 원신고 접수번호를 검증한 동기화 경로다. DS006가 오래되었거나 누락되어도 원문 가격은 반영하고, 오래된 상세의 일정은 반영하지 않는다. */
   public Outcome persistVerifiedFiling(
       String corpCode,
       String corpName,
@@ -146,10 +142,14 @@ public class IpoSyncPersistence {
         latestTerms.subscriptionStartDate() != null
             && latestTerms.subscriptionEndDate() != null
             && !latestTerms.subscriptionEndDate().isBefore(latestTerms.subscriptionStartDate());
-    LocalDate start = validRawSchedule ? latestTerms.subscriptionStartDate()
-        : currentDetail ? detail.getSubscriptionStartDate() : null;
-    LocalDate end = validRawSchedule ? latestTerms.subscriptionEndDate()
-        : currentDetail ? detail.getSubscriptionEndDate() : null;
+    LocalDate start =
+        validRawSchedule
+            ? latestTerms.subscriptionStartDate()
+            : currentDetail ? detail.getSubscriptionStartDate() : null;
+    LocalDate end =
+        validRawSchedule
+            ? latestTerms.subscriptionEndDate()
+            : currentDetail ? detail.getSubscriptionEndDate() : null;
     if (currentDetail && detail.isSubscriptionEndUnreadable() && !validRawSchedule) {
       start = null;
     }
@@ -160,10 +160,12 @@ public class IpoSyncPersistence {
       start = null;
     }
     LocalDate allotment =
-        latestTerms.allotmentDate() != null ? latestTerms.allotmentDate()
+        latestTerms.allotmentDate() != null
+            ? latestTerms.allotmentDate()
             : currentDetail ? detail.getAllotmentDate() : null;
     LocalDate refund =
-        latestTerms.refundDate() != null ? latestTerms.refundDate()
+        latestTerms.refundDate() != null
+            ? latestTerms.refundDate()
             : currentDetail ? detail.getRefundDate() : null;
     Long shares = currentDetail ? detail.getOfferingShareCount() : null;
 
@@ -210,9 +212,10 @@ public class IpoSyncPersistence {
                 verifiedStart, RecordStatus.ACTIVE)
             .stream()
             .anyMatch(
-                ipo -> ipo.getIpoName() != null
-                    && IpoScheduleMergeService.normalizeName(ipo.getIpoName())
-                        .equals(normalizedName));
+                ipo ->
+                    ipo.getIpoName() != null
+                        && IpoScheduleMergeService.normalizeName(ipo.getIpoName())
+                            .equals(normalizedName));
     if (duplicate) {
       return Outcome.SKIPPED_MANUAL;
     }

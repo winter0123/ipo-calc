@@ -237,42 +237,47 @@ public class IpoReconciliationService {
             offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
       }
     } catch (Exception e) {
-      log.warn("재점검 원문 조회 실패: corpCode={}, rceptNo={}, error={}",
-          corpCode, filing.getRceptNo(), e.getClass().getSimpleName());
+      log.warn(
+          "재점검 원문 조회 실패: corpCode={}, rceptNo={}, error={}",
+          corpCode,
+          filing.getRceptNo(),
+          e.getClass().getSimpleName());
     }
 
     String original = DartFilingOrigin.resolveOriginalReceipt(filing, disclosures, xml);
-    if (offeringTerms != null
-        && original != null
-        && original.equals(row.getSourceReceiptNo())) {
-      DartOfferingTerms earlierBand =
-          findEarlierBand(disclosures, filing, original);
+    if (offeringTerms != null && original != null && original.equals(row.getSourceReceiptNo())) {
+      DartOfferingTerms earlierBand = findEarlierBand(disclosures, filing, original);
       try {
         DartOfferingTerms verifiedTerms = offeringTerms;
         IpoSyncPersistence.Outcome outcome =
-            transactionTemplate.execute(status -> ipoSyncPersistence.persistVerifiedFiling(
-                corpCode,
-                Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
-                filing.getRceptNo(),
-                original,
-                detail,
-                verifiedTerms,
-                earlierBand));
+            transactionTemplate.execute(
+                status ->
+                    ipoSyncPersistence.persistVerifiedFiling(
+                        corpCode,
+                        Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                        filing.getRceptNo(),
+                        original,
+                        detail,
+                        verifiedTerms,
+                        earlierBand));
         if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
           result.setRefreshed(result.getRefreshed() + 1);
           return true;
         }
-        log.warn("재점검 원문 검증 보류: corpCode={}, receipt={}, outcome={}",
-            corpCode, filing.getRceptNo(), outcome);
+        log.warn(
+            "재점검 원문 검증 보류: corpCode={}, receipt={}, outcome={}",
+            corpCode,
+            filing.getRceptNo(),
+            outcome);
       } catch (Exception e) {
-        log.warn("재점검 원문 저장 실패: corpCode={}, error={}",
-            corpCode, e.getClass().getSimpleName());
+        log.warn("재점검 원문 저장 실패: corpCode={}, error={}", corpCode, e.getClass().getSimpleName());
       }
       return false;
     }
 
     // 최초제출일을 검증하지 못한 경우엔 과거부터 동작하던 정확한 DS006 매칭만 허용한다.
-    if (detail == null || detail.getSubscriptionStartDate() == null
+    if (detail == null
+        || detail.getSubscriptionStartDate() == null
         || detail.isSubscriptionEndUnreadable()) {
       return false;
     }
@@ -286,13 +291,14 @@ public class IpoReconciliationService {
     if (disclosures == null) {
       return null;
     }
-    for (OpenDartDisclosureItem item : disclosures.stream()
-        .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
-        .filter(item -> item.getRceptNo() != null)
-        .filter(item -> item.getRceptNo().compareTo(originalReceipt) >= 0)
-        .filter(item -> item.getRceptNo().compareTo(latest.getRceptNo()) < 0)
-        .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptNo).reversed())
-        .toList()) {
+    for (OpenDartDisclosureItem item :
+        disclosures.stream()
+            .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
+            .filter(item -> item.getRceptNo() != null)
+            .filter(item -> item.getRceptNo().compareTo(originalReceipt) >= 0)
+            .filter(item -> item.getRceptNo().compareTo(latest.getRceptNo()) < 0)
+            .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptNo).reversed())
+            .toList()) {
       // 같은 회사의 다른 원신고까지 넘어가지 않는다.
       if (!item.isCorrectionOrFinalized() && !originalReceipt.equals(item.getRceptNo())) {
         break;
@@ -307,8 +313,10 @@ public class IpoReconciliationService {
           }
         }
       } catch (Exception e) {
-        log.warn("이전 희망가 근거 조회 실패: rceptNo={}, error={}",
-            item.getRceptNo(), e.getClass().getSimpleName());
+        log.warn(
+            "이전 희망가 근거 조회 실패: rceptNo={}, error={}",
+            item.getRceptNo(),
+            e.getClass().getSimpleName());
       }
     }
     return null;

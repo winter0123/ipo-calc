@@ -443,8 +443,7 @@ public class IpoSyncService {
 
     // 과거 DS006 상세가 폴백된 경우 최신 원문의 최초제출일을 확인한 뒤 갱신한다.
     // 이 경로가 증명되지 않으면 기존 저장 규칙에 따라 보수적으로 보류한다.
-    if (company.getRceptNo() != null
-        && !company.getRceptNo().equals(detail.getRceptNo())) {
+    if (company.getRceptNo() != null && !company.getRceptNo().equals(detail.getRceptNo())) {
       if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
         return true;
       }
@@ -545,13 +544,11 @@ public class IpoSyncService {
   }
 
   /**
-   * 최신 DS001 정정 원문이 최초제출일을 명시하면 DS006 일치 여부와 독립적으로 검증된 조건을 저장한다.
-   * 기존 수집기는 회사별 최신 공시만 반환하므로 원신고 날짜부터 DS001을 다시 조회한다.
+   * 최신 DS001 정정 원문이 최초제출일을 명시하면 DS006 일치 여부와 독립적으로 검증된 조건을 저장한다. 기존 수집기는 회사별 최신 공시만 반환하므로 원신고 날짜부터
+   * DS001을 다시 조회한다.
    */
   private boolean tryVerifiedFilingWithoutCurrentDetail(
-      IpoSyncResult result,
-      OpenDartDisclosureItem filing,
-      OpenDartEquitySecurityDetail fallback) {
+      IpoSyncResult result, OpenDartDisclosureItem filing, OpenDartEquitySecurityDetail fallback) {
     if (filing.getRceptNo() == null || !filing.isCorrectionOrFinalized()) {
       return false;
     }
@@ -572,8 +569,8 @@ public class IpoSyncService {
               filing.getCorpCode(), firstSubmission, LocalDate.now(clock));
       String original = DartFilingOrigin.resolveOriginalReceipt(filing, historical, xml);
       if (original == null) {
-        recordFailure(result, filing.getCorpCode(), filing.getCorpName(),
-            "최초제출일과 원공시 접수번호 연결 불가: 저장 보류");
+        recordFailure(
+            result, filing.getCorpCode(), filing.getCorpName(), "최초제출일과 원공시 접수번호 연결 불가: 저장 보류");
         return true;
       }
       latest = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
@@ -609,14 +606,15 @@ public class IpoSyncService {
       final DartOfferingTerms band = historicalBand;
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
-              status -> ipoSyncPersistence.persistVerifiedFiling(
-                  filing.getCorpCode(),
-                  filing.getCorpName(),
-                  filing.getRceptNo(),
-                  original,
-                  fallback,
-                  latest,
-                  band));
+              status ->
+                  ipoSyncPersistence.persistVerifiedFiling(
+                      filing.getCorpCode(),
+                      filing.getCorpName(),
+                      filing.getRceptNo(),
+                      original,
+                      fallback,
+                      latest,
+                      band));
       if (outcome == null) {
         recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
         return true;
@@ -625,11 +623,10 @@ public class IpoSyncService {
         case CREATED -> result.setCreated(result.getCreated() + 1);
         case UPDATED -> result.setUpdated(result.getUpdated() + 1);
         case SKIPPED_MANUAL -> result.setSkippedManual(result.getSkippedManual() + 1);
-        case SKIPPED_WITHDRAWN ->
-            log.debug("철회된 원공시 자동 재생성 방지: corpCode={}", filing.getCorpCode());
+        case SKIPPED_WITHDRAWN -> log.debug("철회된 원공시 자동 재생성 방지: corpCode={}", filing.getCorpCode());
         case BLOCKED_MULTIPLE, HELD_UNDETERMINED ->
-            recordFailure(result, filing.getCorpCode(), filing.getCorpName(),
-                "원공시 회차 또는 일정 근거 부족: 자동 저장 보류");
+            recordFailure(
+                result, filing.getCorpCode(), filing.getCorpName(), "원공시 회차 또는 일정 근거 부족: 자동 저장 보류");
         default -> throw new IllegalStateException("Unexpected IPO sync outcome: " + outcome);
       }
       return true;
@@ -641,12 +638,15 @@ public class IpoSyncService {
         abort(result, "요청 제한 초과(020)", false);
         return true;
       }
-      recordFailure(result, filing.getCorpCode(), filing.getCorpName(),
+      recordFailure(
+          result,
+          filing.getCorpCode(),
+          filing.getCorpName(),
           "정정 원문 검증 API 오류 (" + safeStatus(e) + ")");
       return true;
     } catch (Exception e) {
-      log.warn("정정 원문 검증 보류: corpCode={}, error={}",
-          filing.getCorpCode(), e.getClass().getSimpleName());
+      log.warn(
+          "정정 원문 검증 보류: corpCode={}, error={}", filing.getCorpCode(), e.getClass().getSimpleName());
       return false;
     }
   }

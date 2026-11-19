@@ -19,8 +19,7 @@ public final class DartFilingOrigin {
               + "\\s*(?:월|[./-])\\s*(\\d{1,2})\\s*일?");
   private static final Pattern COMPACT_SUBMISSION =
       Pattern.compile(
-          "(?:정정대상\\s*공시서류(?:의)?\\s*최초\\s*제출일)"
-              + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
+          "(?:정정대상\\s*공시서류(?:의)?\\s*최초\\s*제출일)" + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
 
   private DartFilingOrigin() {}
 
@@ -43,8 +42,9 @@ public final class DartFilingOrigin {
             .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
             .filter(item -> !item.isCorrectionOrFinalized())
             .filter(item -> day.equals(item.getRceptDt()))
-            .filter(item -> filing.getCorpCode() != null
-                && filing.getCorpCode().equals(item.getCorpCode()))
+            .filter(
+                item ->
+                    filing.getCorpCode() != null && filing.getCorpCode().equals(item.getCorpCode()))
             .toList();
     // 원공시가 같은 날 복수 건이면 회차가 불명확하다.
     return originals.size() == 1 ? originals.get(0).getRceptNo() : null;
