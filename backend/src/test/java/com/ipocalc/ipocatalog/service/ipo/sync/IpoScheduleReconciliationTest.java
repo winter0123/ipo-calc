@@ -428,4 +428,64 @@ class IpoScheduleReconciliationTest {
         .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
     verify(repository, never()).saveAndFlush(any());
   }
+
+  @Test
+  void trackedCorrectedDateCanWithdrawOriginalReceiptWithoutLosingHistory() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo corrected =
+        Ipo.builder()
+            .id(47L)
+            .corpCode("corp")
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(FIRST.plusDays(2))
+            .lastImportedSubscriptionStartDate(FIRST.plusDays(2))
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(corrected));
+    var original =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261008000649")
+            .subscriptionStartDate(FIRST)
+            .build();
+
+    assertThat(persistence.withdraw("corp", original)).isTrue();
+    assertThat(corrected.getId()).isEqualTo(47L);
+    assertThat(corrected.getStatus()).isEqualTo(RecordStatus.INACTIVE);
+    verify(repository).saveAndFlush(corrected);
+  }
+
+  @Test
+  void manualDateCorrectionNeverAuthorizesWithdrawalByReceiptAlone() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo modified =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(FIRST.plusDays(2))
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(modified));
+    var original =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo("20261008000649")
+            .subscriptionStartDate(FIRST)
+            .build();
+
+    assertThat(persistence.withdraw("corp", original)).isFalse();
+    verify(repository, never()).saveAndFlush(any());
+  }
+
 }
