@@ -1360,7 +1360,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesOnlyShareCountWhenDifferentReceiptNotSameOffering() {
+  void sync_holdsAllFieldsWhenDifferentReceiptNotSameOffering() {
     // given: 기존 자동 동기화 레코드(source_receipt_no=OLD, fixedPrice=9400, 밴드 9000~10000)
     Ipo existing =
         Ipo.builder()
@@ -1414,12 +1414,13 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 전체 갱신은 보류되어 주식 수만 갱신되고, 가격·source_receipt_no는 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
     assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
     assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getOfferingShareCount()).isEqualTo(1_000_000L);
+    assertThat(saved.getOfferingShareCount()).isNull();
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 일반 공시이므로 fixedPrice 미변경
   }
@@ -1473,9 +1474,10 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 일반 공시이므로 fixedPrice는 null 유지
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getFixedPrice()).isNull();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    assertThat(existing.getFixedPrice()).isNull();
   }
 
   @Test
@@ -1550,7 +1552,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesBandPriceWhenCorrectionReportAndDifferentReceipt() {
+  void sync_holdsBandPriceWhenCorrectionReportAndDifferentReceipt() {
     // given: 기존 자동 동기화 레코드, 기재정정 공시
     Ipo existing =
         Ipo.builder()
@@ -1604,17 +1606,18 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 기재정정 공시이므로 밴드 가격 갱신, fixedPrice는 기존 값 유지(확정가 아님), source_receipt_no 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 기재정정은 확정가가 아니므로 기존 fixedPrice 유지
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }
 
   @Test
-  void sync_updatesFixedPriceWhenFinalizedReportAndDifferentReceipt() {
+  void sync_holdsFixedPriceWhenFinalizedReportAndDifferentReceipt() {
     // given: 기존 자동 동기화 레코드, 발행조건확정 공시
     Ipo existing =
         Ipo.builder()
@@ -1668,12 +1671,13 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 발행조건확정 공시이므로 fixedPrice 갱신, 밴드 가격도 갱신, source_receipt_no 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
-    assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
+    assertThat(saved.getFixedPrice()).isEqualTo(9_400L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }
 }
