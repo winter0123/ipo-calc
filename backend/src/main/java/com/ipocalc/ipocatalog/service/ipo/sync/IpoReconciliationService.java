@@ -250,6 +250,17 @@ public class IpoReconciliationService {
     }
 
     String original = DartFilingOrigin.resolveOriginalReceipt(filing, disclosures, xml);
+    // 같은 회사의 더 늦은 재추진 공시가 기존 IPO보다 최신일 수 있다.
+    // 원신고가 명확히 다른 회차라면 그 건을 건너뛰고 기존 회차의 최신 공시를 확인한다.
+    if (original != null
+        && row.getSourceReceiptNo() != null
+        && !original.equals(row.getSourceReceiptNo())) {
+      List<OpenDartDisclosureItem> earlier =
+          disclosures.stream()
+              .filter(item -> !filing.getRceptNo().equals(item.getRceptNo()))
+              .toList();
+      return refreshFromLatestFiling(result, corpCode, row, earlier, details);
+    }
     if (offeringTerms != null && original != null && original.equals(row.getSourceReceiptNo())) {
       DartOfferingTerms earlierBand = findEarlierBand(disclosures, filing, original);
       try {
