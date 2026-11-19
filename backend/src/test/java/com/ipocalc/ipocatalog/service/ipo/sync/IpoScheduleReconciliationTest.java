@@ -510,4 +510,38 @@ class IpoScheduleReconciliationTest {
     assertThat(ipo.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261103000312");
   }
 
+
+  @Test
+  void verifiedXmlShareCountCreatesNewIpoWithoutDs006() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    DartOfferingTerms original =
+        new DartOfferingTerms(
+            "20261008000649",
+            2,
+            9_400L,
+            11_000L,
+            null,
+            FIRST,
+            FIRST.plusDays(1),
+            null,
+            null,
+            2_200_000L);
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261008000649", "20261008000649", null, original, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.CREATED);
+    org.mockito.ArgumentCaptor<Ipo> created = org.mockito.ArgumentCaptor.forClass(Ipo.class);
+    verify(repository).saveAndFlush(created.capture());
+    assertThat(created.getValue().getOfferingShareCount()).isEqualTo(2_200_000L);
+    assertThat(created.getValue().getLastImportedOfferingShareCount()).isEqualTo(2_200_000L);
+    assertThat(created.getValue().getLastVerifiedShareReceiptNo()).isEqualTo("20261008000649");
+  }
+
 }
