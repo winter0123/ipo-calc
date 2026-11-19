@@ -76,4 +76,30 @@ class IpoVerifiedOfferingTermsTest {
         manual.applyVerifiedOfferingTerms(terms("20261103000312", 2, null, null, 11_000L), NOW);
     assertThat(manualChanged).isFalse();
   }
+
+  @Test
+  void manualPriceEditClearsOnlyItsProvenanceAndBlocksLaterAutomaticOverwrite() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .lowerBandPrice(9_400L)
+            .upperBandPrice(11_000L)
+            .bandPriceSourceReceiptNo("20261008000649")
+            .bandPriceParserVersion(2)
+            .fixedPrice(11_000L)
+            .fixedPriceSourceReceiptNo("20261103000312")
+            .fixedPriceParserVersion(2)
+            .build();
+    ipo.updateDetails(
+        "기업", "기업", null, null, null, null, 9_400L, 11_000L, 12_000L, null, null, NOW);
+
+    assertThat(ipo.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
+    assertThat(ipo.getFixedPriceSourceReceiptNo()).isNull();
+    assertThat(ipo.getFixedPriceParserVersion()).isNull();
+
+    ipo.applyVerifiedOfferingTerms(
+        terms("20261110000001", 2, null, null, 13_000L), NOW);
+    assertThat(ipo.getFixedPrice()).isEqualTo(12_000L);
+  }
+
 }
