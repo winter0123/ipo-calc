@@ -112,6 +112,18 @@ public class Ipo {
     this.ipoName = ipoName;
     this.stockCode = stockCode;
     this.roundLabel = roundLabel;
+    if (!java.util.Objects.equals(this.subscriptionStartDate, start)) {
+      this.lastImportedSubscriptionStartDate = null;
+    }
+    if (!java.util.Objects.equals(this.subscriptionEndDate, end)) {
+      this.lastImportedSubscriptionEndDate = null;
+    }
+    if (!java.util.Objects.equals(this.listingDate, listing)) {
+      this.lastImportedListingDate = null;
+    }
+    if (!java.util.Objects.equals(this.offeringShareCount, shares)) {
+      this.lastImportedOfferingShareCount = null;
+    }
     this.subscriptionStartDate = start;
     this.subscriptionEndDate = end;
     this.lowerBandPrice = lower;
@@ -148,8 +160,12 @@ public class Ipo {
       LocalDateTime now) {
     this.companyName = companyName;
     this.ipoName = companyName;
-    if (shares != null) {
+    if (shares != null
+        && (this.offeringShareCount == null
+            || (this.lastImportedOfferingShareCount != null
+                && this.lastImportedOfferingShareCount.equals(this.offeringShareCount)))) {
       this.offeringShareCount = shares;
+      this.lastImportedOfferingShareCount = shares;
     }
     if (start != null
         && canAutoOverwrite(this.subscriptionStartDate, this.lastImportedSubscriptionStartDate)) {
@@ -405,6 +421,49 @@ public class Ipo {
   /** 자동 수집이 마지막으로 반영한 청약 종료일. 출처 불명·수동 입력이면 null로 보호한다. */
   @Column(name = "last_imported_subscription_end_date")
   private LocalDate lastImportedSubscriptionEndDate;
+
+  /** 자동 수집이 마지막으로 확인한 주식 수. 수동 변경 및 기존 출처 불명 값은 보존한다. */
+  @Column(name = "last_imported_offering_share_count")
+  private Long lastImportedOfferingShareCount;
+
+  /** 확인된 원문 일정에 적용된 최신 공시 접수번호. */
+  @Column(name = "last_verified_schedule_receipt_no", length = 20)
+  private String lastVerifiedScheduleReceiptNo;
+
+  /** 확인된 DS006 수량에 적용된 최신 공시 접수번호. */
+  @Column(name = "last_verified_share_receipt_no", length = 20)
+  private String lastVerifiedShareReceiptNo;
+
+  /** 검증된 공시 접수번호가 이전 원문보다 새로울 때만 일정 갱신을 허용한다. */
+  public boolean mayApplyVerifiedSchedule(String incomingReceipt) {
+    return incomingReceipt != null
+        && !incomingReceipt.isBlank()
+        && (lastVerifiedScheduleReceiptNo == null
+            || incomingReceipt.compareTo(lastVerifiedScheduleReceiptNo) >= 0);
+  }
+
+  /** 유효한 일정 원문을 처리한 접수번호를 기록한다. 원본 공시 식별자와 분리한다. */
+  public void recordVerifiedScheduleReceipt(String incomingReceipt) {
+    if (mayApplyVerifiedSchedule(incomingReceipt)) {
+      this.lastVerifiedScheduleReceiptNo = incomingReceipt;
+    }
+  }
+
+  /** 접수번호별 최신성 및 수동값 보존 규칙을 동시에 적용하여 공모주식 수를 기록한다. */
+  public void applyVerifiedShareCount(Long shares, String incomingReceipt) {
+    if (shares == null || shares <= 0 || incomingReceipt == null || incomingReceipt.isBlank()
+        || (lastVerifiedShareReceiptNo != null
+            && incomingReceipt.compareTo(lastVerifiedShareReceiptNo) < 0)) {
+      return;
+    }
+    if (offeringShareCount == null
+        || (lastImportedOfferingShareCount != null
+            && lastImportedOfferingShareCount.equals(offeringShareCount))) {
+      offeringShareCount = shares;
+      lastImportedOfferingShareCount = shares;
+      lastVerifiedShareReceiptNo = incomingReceipt;
+    }
+  }
 
   /** 자동 수집이 마지막으로 반영한 환불일. 출처 불명·수동 입력이면 null로 보호한다. */
   @Column(name = "last_imported_refund_date")
