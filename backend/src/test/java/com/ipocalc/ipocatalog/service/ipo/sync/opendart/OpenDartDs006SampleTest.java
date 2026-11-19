@@ -10,12 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
-import org.hamcrest.Matchers;
 
 /** 사용자가 제공한 실제 형식의 DS006 그룹 응답 회귀 테스트. */
 class OpenDartDs006SampleTest {
