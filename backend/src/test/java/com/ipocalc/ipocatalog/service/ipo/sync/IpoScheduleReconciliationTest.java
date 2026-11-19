@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import java.time.Clock;
@@ -344,4 +345,91 @@ class IpoScheduleReconciliationTest {
     // 레거시 행은 receipt 연결됨
     assertThat(legacy.getSourceReceiptNo()).isNull();
   }
+
+  @Test
+  void verifiedLatestFilingWithoutDs006UpdatesOnlyProvenTermsAndKeepsIpoId() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    Ipo existing =
+        Ipo.builder()
+            .id(42L)
+            .corpCode("corp")
+            .companyName("기업")
+            .ipoName("기업")
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .lowerBandPrice(9_400L)
+            .upperBandPrice(11_000L)
+            .bandPriceSourceReceiptNo("20261008000649")
+            .bandPriceParserVersion(2)
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    DartOfferingTerms finalized =
+        new DartOfferingTerms(
+            "20261103000312",
+            2,
+            null,
+            null,
+            11_000L,
+            FIRST.plusDays(2),
+            FIRST.plusDays(3),
+            null,
+            null,
+            null);
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261103000312", "20261008000649", null, finalized, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getId()).isEqualTo(42L);
+    assertThat(existing.getSubscriptionStartDate()).isEqualTo(FIRST.plusDays(2));
+    assertThat(existing.getSubscriptionEndDate()).isEqualTo(FIRST.plusDays(3));
+    assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(existing.getFixedPriceSourceReceiptNo()).isEqualTo("20261103000312");
+    assertThat(existing.getLowerBandPrice()).isEqualTo(9_400L);
+    assertThat(existing.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
+    verify(repository).saveAndFlush(existing);
+  }
+
+  @Test
+  void missingDatesOrDifferentOriginalReceiptNeverCreatesOrMutatesIpo() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    DartOfferingTerms noDates =
+        new DartOfferingTerms(
+            "20261103000312", 2, null, null, 11_000L, null, null, null, null, null);
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261103000312", "20261008000649", null, noDates, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
+
+    Ipo anotherRound =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20260929000347")
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(anotherRound));
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", "20261103000312", "20261008000649", null, noDates, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
+    verify(repository, never()).saveAndFlush(any());
+  }
+
 }
