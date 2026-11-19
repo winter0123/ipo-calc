@@ -17,6 +17,7 @@ import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
@@ -468,4 +469,63 @@ class IpoReconciliationServiceTest {
     assertThat(result.getFailures())
         .anySatisfy(failure -> assertThat(failure.getReason()).contains("확인 불가"));
   }
+
+  @Test
+  void newerUnrelatedOfferingDoesNotHideOriginalRoundRefresh() {
+    String oldReceipt = "20261012000149";
+    String newReceipt = "20261110000111";
+    Ipo originalRow = activeAutoRow("02038432", LocalDate.of(2026, 11, 5), oldReceipt);
+    when(ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of(originalRow));
+    OpenDartDisclosureItem repromotion =
+        OpenDartDisclosureItem.builder()
+            .corpCode("02038432")
+            .corpName("심원")
+            .reportNm("증권신고서(지분증권)")
+            .rceptDt("20261110")
+            .rceptNo(newReceipt)
+            .build();
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("02038432")
+            .corpName("심원")
+            .reportNm("증권신고서(지분증권)")
+            .rceptDt("20261012")
+            .rceptNo(oldReceipt)
+            .build();
+    OpenDartEquitySecurityDetail oldDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("02038432")
+            .rceptNo(oldReceipt)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .build();
+    when(corpDisclosureClient.searchAllByDateRange(any(), any(), any()))
+        .thenReturn(List.of(repromotion, original));
+    when(equitySecuritiesClient.getEquitySecurityDetail(any(), any(), any()))
+        .thenReturn(List.of(oldDetail));
+    when(dartIpoFilingClient.downloadDocument(oldReceipt))
+        .thenReturn(java.util.Optional.of("<TABLE>verified original</TABLE>"));
+    DartOfferingTerms verified =
+        new DartOfferingTerms(
+            oldReceipt, 2, 9_400L, 11_000L, null, null, null, null, null, null);
+    when(offeringTermsParser.parse(anyString(), eq(oldReceipt), eq(false)))
+        .thenReturn(verified);
+    when(persistence.persistVerifiedFiling(
+            eq("02038432"),
+            eq("심원"),
+            eq(oldReceipt),
+            eq(oldReceipt),
+            eq(oldDetail),
+            eq(verified),
+            isNull()))
+        .thenReturn(IpoSyncPersistence.Outcome.UPDATED);
+
+    IpoReconcileResult result = service.reconcileActiveOfferings();
+
+    assertThat(result.getSucceeded()).isEqualTo(1);
+    assertThat(result.getRefreshed()).isEqualTo(1);
+    verify(dartIpoFilingClient).downloadDocument(newReceipt);
+    verify(dartIpoFilingClient).downloadDocument(oldReceipt);
+  }
+
 }
