@@ -501,6 +501,7 @@ class IpoScheduleReconciliationTest {
             .refundDate(FIRST)
             .lastImportedRefundDate(FIRST)
             .lastVerifiedScheduleReceiptNo("20261103000312")
+            .lastVerifiedRefundReceiptNo("20261103000312")
             .build();
     ipo.mergeSupplementalSchedule(
         null,
