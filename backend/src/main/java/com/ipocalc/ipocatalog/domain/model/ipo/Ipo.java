@@ -185,10 +185,17 @@ public class Ipo {
 
     boolean changed = false;
 
-    // 밴드가 유효하면 저장 (출처 정보 포함)
-    if (terms.hasValidBand()) {
+    // 가격 항목마다 최신 출처를 별도로 확인한다.
+    if (terms.hasValidBand()
+        && isVerifiedSourceCurrent(
+            terms.sourceReceiptNo(),
+            terms.parserVersion(),
+            this.bandPriceSourceReceiptNo,
+            this.bandPriceParserVersion)) {
       if (!terms.lowerBandPrice().equals(this.lowerBandPrice)
-          || !terms.upperBandPrice().equals(this.upperBandPrice)) {
+          || !terms.upperBandPrice().equals(this.upperBandPrice)
+          || !java.util.Objects.equals(terms.sourceReceiptNo(), this.bandPriceSourceReceiptNo)
+          || !java.util.Objects.equals(terms.parserVersion(), this.bandPriceParserVersion)) {
         this.lowerBandPrice = terms.lowerBandPrice();
         this.upperBandPrice = terms.upperBandPrice();
         this.bandPriceSourceReceiptNo = terms.sourceReceiptNo();
@@ -197,9 +204,15 @@ public class Ipo {
       }
     }
 
-    // 확정가가 유효하면 저장 (출처 정보 포함)
-    if (terms.hasConfirmedFixedPrice()) {
-      if (!terms.fixedPrice().equals(this.fixedPrice)) {
+    if (terms.hasConfirmedFixedPrice()
+        && isVerifiedSourceCurrent(
+            terms.sourceReceiptNo(),
+            terms.parserVersion(),
+            this.fixedPriceSourceReceiptNo,
+            this.fixedPriceParserVersion)) {
+      if (!terms.fixedPrice().equals(this.fixedPrice)
+          || !java.util.Objects.equals(terms.sourceReceiptNo(), this.fixedPriceSourceReceiptNo)
+          || !java.util.Objects.equals(terms.parserVersion(), this.fixedPriceParserVersion)) {
         this.fixedPrice = terms.fixedPrice();
         this.fixedPriceSourceReceiptNo = terms.sourceReceiptNo();
         this.fixedPriceParserVersion = terms.parserVersion();
@@ -215,6 +228,22 @@ public class Ipo {
     }
 
     return changed;
+  }
+
+  /**
+   * 접수번호가 명확한 원문만 기존 자동 가격을 갱신한다.
+   * 출처 없는 기존 수동 가능 가격은 변경하지 않고, 같은 접수번호의 새 파서 버전만 허용한다.
+   */
+  private static boolean isVerifiedSourceCurrent(
+      String incomingReceipt, int incomingVersion, String storedReceipt, Integer storedVersion) {
+    if (incomingReceipt == null || incomingReceipt.isBlank()) {
+      return false;
+    }
+    if (storedReceipt == null || storedReceipt.isBlank()) {
+      return false;
+    }
+    int order = incomingReceipt.compareTo(storedReceipt);
+    return order > 0 || (order == 0 && (storedVersion == null || incomingVersion >= storedVersion));
   }
 
   /** 주식 수만 갱신한다 (가격 필드 변경 없음). 기존 {@link #syncBandAndShares}를 대체하며, 가격은 건드리지 않는다. */
