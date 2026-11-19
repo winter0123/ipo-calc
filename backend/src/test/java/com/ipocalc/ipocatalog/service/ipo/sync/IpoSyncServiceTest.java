@@ -1716,10 +1716,8 @@ class IpoSyncServiceTest {
             .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
             .build();
     oldDetail.parseDerivedFields();
-    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
-        .thenReturn(List.of(latest));
-    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
-        .thenReturn(List.of(oldDetail));
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of(latest));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(oldDetail));
     when(dartIpoFilingClient.downloadDocument("20261103000312"))
         .thenReturn(Optional.of("<xml>confirmed</xml>"));
     when(offeringTermsParser.parse(anyString(), eq("20261103000312"), eq(true)))
@@ -1737,5 +1735,4 @@ class IpoSyncServiceTest {
     assertThat(existing.getLowerBandPrice()).isEqualTo(9_400L);
     assertThat(existing.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
   }
-
 }
