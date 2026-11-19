@@ -1719,7 +1719,20 @@ class IpoSyncServiceTest {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of(latest));
     when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(oldDetail));
     when(dartIpoFilingClient.downloadDocument("20261103000312"))
-        .thenReturn(Optional.of("<xml>confirmed</xml>"));
+        .thenReturn(Optional.of(
+            "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+    when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
+        .thenReturn(
+            List.of(
+                OpenDartDisclosureItem.builder()
+                    .corpCode("corp")
+                    .reportNm("증권신고서(지분증권)")
+                    .rceptDt("20261008")
+                    .rceptNo("20261008000649")
+                    .build(),
+                latest));
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원공시 희망가</DOCUMENT>"));
     when(offeringTermsParser.parse(anyString(), eq("20261103000312"), eq(true)))
         .thenReturn(
             new DartOfferingTerms(
@@ -1728,7 +1741,7 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     verify(dartIpoFilingClient).downloadDocument("20261103000312");
-    verify(dartIpoFilingClient, never()).downloadDocument("20261008000649");
+    verify(dartIpoFilingClient).downloadDocument("20261008000649");
     assertThat(result.getUpdated()).isEqualTo(1);
     assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
     assertThat(existing.getFixedPriceSourceReceiptNo()).isEqualTo("20261103000312");
