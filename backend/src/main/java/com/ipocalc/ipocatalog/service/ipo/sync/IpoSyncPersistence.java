@@ -112,6 +112,134 @@ public class IpoSyncPersistence {
     }
   }
 
+
+  /**
+   * DS001 원문과 원신고 접수번호를 검증한 동기화 경로다.
+   * DS006가 오래되었거나 누락되어도 원문 가격은 반영하고, 오래된 상세의 일정은 반영하지 않는다.
+   */
+  public Outcome persistVerifiedFiling(
+      String corpCode,
+      String corpName,
+      String filingReceipt,
+      String originalReceipt,
+      OpenDartEquitySecurityDetail detail,
+      DartOfferingTerms latestTerms,
+      DartOfferingTerms historicalBand) {
+    if (filingReceipt == null
+        || originalReceipt == null
+        || latestTerms == null
+        || !filingReceipt.equals(latestTerms.sourceReceiptNo())) {
+      return Outcome.HELD_UNDETERMINED;
+    }
+    if (ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, originalReceipt)
+        || ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, filingReceipt)) {
+      return Outcome.SKIPPED_WITHDRAWN;
+    }
+    var active =
+        ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(corpCode, RecordStatus.ACTIVE);
+    if (active.size() > 1) {
+      return Outcome.BLOCKED_MULTIPLE;
+    }
+    // 같은 접수번호의 DS006만 최신 일정의 보조 근거로 사용한다.
+    boolean currentDetail = detail != null && filingReceipt.equals(detail.getRceptNo());
+    boolean validRawSchedule =
+        latestTerms.subscriptionStartDate() != null
+            && latestTerms.subscriptionEndDate() != null
+            && !latestTerms.subscriptionEndDate().isBefore(latestTerms.subscriptionStartDate());
+    LocalDate start = validRawSchedule ? latestTerms.subscriptionStartDate()
+        : currentDetail ? detail.getSubscriptionStartDate() : null;
+    LocalDate end = validRawSchedule ? latestTerms.subscriptionEndDate()
+        : currentDetail ? detail.getSubscriptionEndDate() : null;
+    if (currentDetail && detail.isSubscriptionEndUnreadable() && !validRawSchedule) {
+      start = null;
+    }
+    if (start != null && end == null && currentDetail) {
+      end = businessDayCalculator.nextBusinessDay(start);
+    }
+    if (start != null && end != null && end.isBefore(start)) {
+      start = null;
+    }
+    LocalDate allotment =
+        latestTerms.allotmentDate() != null ? latestTerms.allotmentDate()
+            : currentDetail ? detail.getAllotmentDate() : null;
+    LocalDate refund =
+        latestTerms.refundDate() != null ? latestTerms.refundDate()
+            : currentDetail ? detail.getRefundDate() : null;
+    Long shares = currentDetail ? detail.getOfferingShareCount() : null;
+
+    if (!active.isEmpty()) {
+      Ipo existing = active.get(0);
+      if (existing.getSyncSource() == null) {
+        return Outcome.SKIPPED_MANUAL;
+      }
+      if (!originalReceipt.equals(existing.getSourceReceiptNo())) {
+        return Outcome.HELD_UNDETERMINED;
+      }
+      // 일정 출처를 독립 보존하는 컬럼이 없으므로 이미 검증한 더 최신 가격 공시보다
+      // 오래된 공시는 일정까지 통째로 건너뛰어 회귀를 방지한다.
+      if (isOlderThanVerifiedPrice(filingReceipt, existing)) {
+        return Outcome.HELD_UNDETERMINED;
+      }
+      LocalDateTime now = LocalDateTime.now(clock);
+      existing.syncFromOpenDart(
+          corpName, shares, start, end, allotment, refund, SYNC_SOURCE_OPENDART, now);
+      existing.applyVerifiedOfferingTerms(latestTerms, now);
+      ipoRepository.saveAndFlush(existing);
+      return Outcome.UPDATED;
+    }
+
+    // 신규 IPO는 원신고가 검증됐더라도 유효한 청약 시작/종료일 없이는 생성하지 않는다.
+    if (start == null || end == null) {
+      return Outcome.HELD_UNDETERMINED;
+    }
+    String normalizedName = IpoScheduleMergeService.normalizeName(corpName);
+    boolean duplicate =
+        ipoRepository
+            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(start, RecordStatus.ACTIVE)
+            .stream()
+            .anyMatch(
+                ipo -> ipo.getIpoName() != null
+                    && IpoScheduleMergeService.normalizeName(ipo.getIpoName())
+                        .equals(normalizedName));
+    if (duplicate) {
+      return Outcome.SKIPPED_MANUAL;
+    }
+    LocalDateTime now = LocalDateTime.now(clock);
+    Ipo ipo =
+        Ipo.builder()
+            .companyName(corpName)
+            .ipoName(corpName)
+            .corpCode(corpCode)
+            .subscriptionStartDate(start)
+            .subscriptionEndDate(end)
+            .allotmentDate(allotment)
+            .refundDate(refund)
+            .offeringShareCount(shares)
+            .status(RecordStatus.ACTIVE)
+            .syncSource(SYNC_SOURCE_OPENDART)
+            .sourceReceiptNo(originalReceipt)
+            .lastImportedSubscriptionStartDate(start)
+            .lastImportedSubscriptionEndDate(end)
+            .lastImportedRefundDate(refund)
+            .lastSyncedAt(now)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
+    if (historicalBand != null && historicalBand.hasValidBand()) {
+      ipo.applyVerifiedOfferingTerms(historicalBand, now);
+    }
+    ipo.applyVerifiedOfferingTerms(latestTerms, now);
+    ipoRepository.saveAndFlush(ipo);
+    return Outcome.CREATED;
+  }
+
+  private static boolean isOlderThanVerifiedPrice(String receipt, Ipo ipo) {
+    return (ipo.getBandPriceSourceReceiptNo() != null
+            && receipt.compareTo(ipo.getBandPriceSourceReceiptNo()) < 0)
+        || (ipo.getFixedPriceSourceReceiptNo() != null
+            && receipt.compareTo(ipo.getFixedPriceSourceReceiptNo()) < 0);
+  }
+
   /** 공시 접수번호와 청약 시작일로 확인한 활성 자동 공모만 철회한다. 이미 철회된 경우 멱등하게 true 반환. */
   public boolean withdraw(String corpCode, OpenDartEquitySecurityDetail detail) {
     if (detail.getRceptNo() == null || detail.getSubscriptionStartDate() == null) {
