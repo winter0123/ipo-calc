@@ -1813,4 +1813,49 @@ class IpoSyncServiceTest {
     assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());
   }
+
+  @Test
+  void sync_usesVerifiedOriginalXmlWhenMatchingDs006HasUnreadableSubscriptionDate() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    OpenDartEquitySecurityDetail invalidDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .rceptNo("20261008000649")
+            .sbd("-")
+            .build();
+    invalidDetail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
+        .thenReturn(List.of(invalidDetail));
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>청약일정</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649",
+                2,
+                9_400L,
+                11_000L,
+                null,
+                LocalDate.of(2026, 11, 4),
+                LocalDate.of(2026, 11, 5),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getSubscriptionStartDate())
+        .isEqualTo(LocalDate.of(2026, 11, 4));
+  }
+
 }
