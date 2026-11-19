@@ -185,7 +185,7 @@ public class IpoSyncPersistence {
       LocalDateTime now = LocalDateTime.now(clock);
       existing.syncFromOpenDart(
           corpName,
-          shares,
+          existing.getOfferingShareCount() == null ? shares : null,
           start,
           end,
           existing.getAllotmentDate() == null ? allotment : null,
