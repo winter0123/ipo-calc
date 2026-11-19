@@ -160,6 +160,11 @@ class AutomaticReconciliationTest {
             .build();
     if (ds001FullCorpFixture != null) {
       expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
+      // 철회 후 최신 정정의 최초제출일을 검증할 때 동일 원신고 이력을 한 번 더 조회한다.
+      if ("ds001-simwon.json".equals(ds001FullCorpFixture)
+          && ds001RecentFixture != null) {
+        expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
+      }
     }
     if (ds001RecentFixture != null) {
       expectGet(ds001Server, not(containsString("corp_code=")), ds001RecentFixture);
@@ -225,7 +230,10 @@ class AutomaticReconciliationTest {
     when(filingClient.downloadDocument(SIMWON_ORIGINAL_RECEIPT))
         .thenReturn(Optional.of("<DOCUMENT/>"));
     // 신규 수집은 DS006 원공시가 아니라 최신 DS001 기재정정 원문을 조회한다.
-    when(filingClient.downloadDocument("20261028000200")).thenReturn(Optional.of("<DOCUMENT/>"));
+    when(filingClient.downloadDocument("20261028000200"))
+        .thenReturn(
+            Optional.of(
+                "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 12일</DOCUMENT>"));
     return filingClient;
   }
 
