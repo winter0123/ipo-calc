@@ -863,6 +863,10 @@ class AutomaticReconciliationTest {
             .build();
     if (ds001FullCorpFixture != null) {
       expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
+      // 철회 후 최신 정정의 원공시 확인을 위해 회사별 이력을 추가 조회한다.
+      if ("ds001-simwon.json".equals(ds001FullCorpFixture) && ds001RecentFixture != null) {
+        expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
+      }
     }
     if (ds001RecentFixture != null) {
       expectGet(ds001Server, not(containsString("corp_code=")), ds001RecentFixture);
