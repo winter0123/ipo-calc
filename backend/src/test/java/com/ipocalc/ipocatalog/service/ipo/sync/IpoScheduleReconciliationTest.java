@@ -867,7 +867,8 @@ class IpoScheduleReconciliationTest {
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     OpenDartEquitySecurityDetail newerDetail =
-        OpenDartEquitySecurityDetail.builder().rceptNo(newerReceipt).pymd("2026년 11월 10일").build();
+        OpenDartEquitySecurityDetail.builder().rceptNo(newerReceipt).sbd("2026년 11월 12일 ~ 2026년 11월 13일")
+            .pymd("2026년 11월 10일").build();
     newerDetail.parseDerivedFields();
     DartOfferingTerms newerWithoutRefund =
         new DartOfferingTerms(
@@ -933,7 +934,8 @@ class IpoScheduleReconciliationTest {
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     OpenDartEquitySecurityDetail detail =
-        OpenDartEquitySecurityDetail.builder().rceptNo(ds006Receipt).pymd("2026년 11월 10일").build();
+        OpenDartEquitySecurityDetail.builder().rceptNo(ds006Receipt).sbd("2026년 11월 12일 ~ 2026년 11월 13일")
+            .pymd("2026년 11월 10일").build();
     detail.parseDerivedFields();
     DartOfferingTerms missingRefund =
         new DartOfferingTerms(
