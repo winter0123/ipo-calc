@@ -719,4 +719,155 @@ class IpoScheduleReconciliationTest {
         .isFalse();
     assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(4));
   }
+
+  @Test
+  void newerDs006RefundCannotReplaceOlderVerifiedDartRefundOrItsReceipt() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    LocalDate dartRefund = LocalDate.of(2026, 11, 9);
+    LocalDate ds006Refund = LocalDate.of(2026, 11, 10);
+    String originalReceipt = "20261008000649";
+    String firstVerifiedReceipt = "20261030000616";
+    String newerReceipt = "20261103000312";
+    Ipo existing =
+        Ipo.builder()
+            .id(507L)
+            .corpCode("corp")
+            .companyName("기업")
+            .ipoName("기업")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .refundDate(dartRefund)
+            .lastImportedRefundDate(dartRefund)
+            .lastVerifiedScheduleReceiptNo(firstVerifiedReceipt)
+            .lastVerifiedRefundReceiptNo(firstVerifiedReceipt)
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    OpenDartEquitySecurityDetail newerDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo(newerReceipt)
+            .pymd("2026년 11월 10일")
+            .build();
+    newerDetail.parseDerivedFields();
+    DartOfferingTerms newerWithoutRefund =
+        new DartOfferingTerms(
+            newerReceipt,
+            2,
+            null,
+            null,
+            null,
+            FIRST.plusDays(2),
+            FIRST.plusDays(3),
+            null,
+            null,
+            null);
+
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", newerReceipt, originalReceipt, newerDetail, newerWithoutRefund, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getRefundDate()).isEqualTo(dartRefund);
+    assertThat(existing.getLastImportedRefundDate()).isEqualTo(dartRefund);
+    assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo(firstVerifiedReceipt);
+    assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo(newerReceipt);
+    assertThat(existing.getId()).isEqualTo(507L);
+    assertThat(
+            existing.mergeSupplementalSchedule(
+                null,
+                null,
+                ds006Refund,
+                null,
+                "OPENDART+USTOCKPLUS",
+                FIRST.atStartOfDay()))
+        .isFalse();
+    assertThat(existing.getRefundDate()).isEqualTo(dartRefund);
+  }
+
+  @Test
+  void newerExplicitDartRefundUpdatesDateAndReceiptAtomicallyAfterDs006Fallback() {
+    IpoRepository repository = mock(IpoRepository.class);
+    IpoSyncPersistence persistence =
+        new IpoSyncPersistence(
+            repository,
+            mock(BusinessDayCalculator.class),
+            Clock.systemUTC(),
+            mock(OpenDartEquitySecuritiesClient.class));
+    String originalReceipt = "20261008000649";
+    String oldReceipt = "20261030000616";
+    String ds006Receipt = "20261103000312";
+    String latestReceipt = "20261104000123";
+    LocalDate oldRefund = LocalDate.of(2026, 11, 9);
+    LocalDate latestRefund = LocalDate.of(2026, 11, 12);
+    Ipo existing =
+        Ipo.builder()
+            .id(507L)
+            .corpCode("corp")
+            .companyName("기업")
+            .ipoName("기업")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .subscriptionStartDate(FIRST)
+            .subscriptionEndDate(FIRST.plusDays(1))
+            .lastImportedSubscriptionStartDate(FIRST)
+            .lastImportedSubscriptionEndDate(FIRST.plusDays(1))
+            .refundDate(oldRefund)
+            .lastImportedRefundDate(oldRefund)
+            .lastVerifiedScheduleReceiptNo(oldReceipt)
+            .lastVerifiedRefundReceiptNo(oldReceipt)
+            .build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    OpenDartEquitySecurityDetail detail =
+        OpenDartEquitySecurityDetail.builder()
+            .rceptNo(ds006Receipt)
+            .pymd("2026년 11월 10일")
+            .build();
+    detail.parseDerivedFields();
+    DartOfferingTerms missingRefund =
+        new DartOfferingTerms(
+            ds006Receipt, 2, null, null, null, FIRST.plusDays(2), FIRST.plusDays(3), null, null, null);
+    persistence.persistVerifiedFiling(
+        "corp", "기업", ds006Receipt, originalReceipt, detail, missingRefund, null);
+
+    DartOfferingTerms correctedRefund =
+        new DartOfferingTerms(
+            latestReceipt,
+            2,
+            null,
+            null,
+            null,
+            FIRST.plusDays(4),
+            FIRST.plusDays(5),
+            null,
+            latestRefund,
+            null);
+    assertThat(
+            persistence.persistVerifiedFiling(
+                "corp", "기업", latestReceipt, originalReceipt, null, correctedRefund, null))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(existing.getRefundDate()).isEqualTo(latestRefund);
+    assertThat(existing.getLastImportedRefundDate()).isEqualTo(latestRefund);
+    assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo(latestReceipt);
+    assertThat(existing.getId()).isEqualTo(507L);
+
+    // Older filings and another run of the same newer filing must not roll back the record.
+    persistence.persistVerifiedFiling(
+        "corp", "기업", ds006Receipt, originalReceipt, detail, missingRefund, null);
+    persistence.persistVerifiedFiling(
+        "corp", "기업", latestReceipt, originalReceipt, null, correctedRefund, null);
+    assertThat(existing.getRefundDate()).isEqualTo(latestRefund);
+    assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo(latestReceipt);
+    assertThat(existing.getSourceReceiptNo()).isEqualTo(originalReceipt);
+  }
+
 }
