@@ -454,31 +454,35 @@ public class IpoSyncService {
       return true;
     }
 
-    // 문서 원문 다운로드 및 가격 파싱 (rceptNo가 있는 경우만)
+    // 원문은 DS006 대체 상세가 아닌, 선택한 DS001 공시의 접수번호로 읽는다.
     DartOfferingTerms offeringTerms = null;
-    if (detail.getRceptNo() != null) {
+    String documentReceiptNo = company.getRceptNo();
+    if (documentReceiptNo == null) {
+      documentReceiptNo = detail.getRceptNo();
+    }
+    if (documentReceiptNo != null) {
       try {
-        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(detail.getRceptNo());
+        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(documentReceiptNo);
         if (xmlOpt.isPresent()) {
           String xml = xmlOpt.get();
           if (!xml.isBlank()) {
             offeringTerms =
-                offeringTermsParser.parse(xml, detail.getRceptNo(), company.isFinalizedReport());
+                offeringTermsParser.parse(xml, documentReceiptNo, company.isFinalizedReport());
           } else {
-            log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", detail.getRceptNo());
+            log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", documentReceiptNo);
             recordFailure(
-                result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
+                result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + documentReceiptNo + ")");
           }
         } else {
-          log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", detail.getRceptNo());
+          log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", documentReceiptNo);
           recordFailure(
-              result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
+              result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + documentReceiptNo + ")");
         }
       } catch (Exception e) {
         log.warn(
-            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", detail.getRceptNo(), e.getClass().getSimpleName());
+            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", documentReceiptNo, e.getClass().getSimpleName());
         recordFailure(
-            result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
+            result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + documentReceiptNo + ")");
       }
     }
 
