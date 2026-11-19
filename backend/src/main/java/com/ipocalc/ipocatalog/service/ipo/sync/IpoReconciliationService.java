@@ -3,6 +3,7 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
@@ -197,13 +198,16 @@ public class IpoReconciliationService {
       return;
     }
     if (!hasVerifiableConfirmation(row, disclosures, details)) {
-      // 빈 DS001/DS006 응답이거나 대상 공모와 연결되는 유효 공시가 없으면 철회가 없어도
-      // 확인되지 않은 상태이므로 실패로 기록하고 다음 실행이 재시도하게 한다
+      // DS006가 없어도 원신고와 정정 원문의 최초제출일이 연결되면 검증된 조건만 갱신할 수 있다.
+      if (refreshFromLatestFiling(result, corpCode, row, disclosures, details)) {
+        result.setSucceeded(result.getSucceeded() + 1);
+        return;
+      }
       recordFailure(result, row, "철회점검: 대상 공모 확인 불가 (빈 응답 또는 매칭 없음)");
       result.setFailed(result.getFailed() + 1);
       return;
     }
-    // 철회가 없으면 최신 유효 공시로 document.xml 원문에서 검증된 가격·일정을 갱신한다(90일 신규 수집에 안 잡혀도 반영)
+    // 기존 DS006 확인 경로도 유지한다.
     refreshFromLatestFiling(result, corpCode, row, disclosures, details);
     result.setSucceeded(result.getSucceeded() + 1);
   }
@@ -212,63 +216,101 @@ public class IpoReconciliationService {
    * 철회가 아닌 지분증권 공시 중 접수일자·접수번호 기준 가장 최신 건으로 document.xml 원문에서 검증된 가격·일정을 갱신한다. 상세 매칭 실패·파싱 실패는 확인
    * 성공을 되돌리지 않고 경고만 남긴다. 가격 표가 없는 최신 문서는 기존 검증 가격을 덮지 않는다.
    */
-  private void refreshFromLatestFiling(
+  private boolean refreshFromLatestFiling(
       IpoReconcileResult result,
       String corpCode,
       Ipo row,
       List<OpenDartDisclosureItem> disclosures,
       List<OpenDartEquitySecurityDetail> details) {
     OpenDartDisclosureItem filing = selectRefreshFiling(disclosures);
-    if (filing == null) {
-      return;
+    if (filing == null || filing.getRceptNo() == null) {
+      return false;
     }
     OpenDartEquitySecurityDetail detail = matchDetail(filing, details);
-    if (detail == null) {
-      log.warn("재점검 갱신: DS006 상세 없음 (corpCode={}, rceptNo={})", corpCode, filing.getRceptNo());
-      return;
-    }
-    if (detail.getSubscriptionStartDate() == null) {
-      log.warn(
-          "재점검 갱신: 청약 시작일 파싱 실패 (corpCode={}, rceptNo={}, sbd={})",
-          corpCode,
-          filing.getRceptNo(),
-          detail.getSbd());
-      return;
-    }
-    if (detail.isSubscriptionEndUnreadable()) {
-      log.warn(
-          "재점검 갱신: 청약 종료일 파싱 실패 (corpCode={}, rceptNo={}, sbd={})",
-          corpCode,
-          filing.getRceptNo(),
-          detail.getSbd());
-      return;
+    DartOfferingTerms offeringTerms = null;
+    String xml = null;
+    try {
+      Optional<String> downloaded = dartIpoFilingClient.downloadDocument(filing.getRceptNo());
+      if (downloaded.isPresent() && !downloaded.get().isBlank()) {
+        xml = downloaded.get();
+        offeringTerms = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
+      }
+    } catch (Exception e) {
+      log.warn("재점검 원문 조회 실패: corpCode={}, rceptNo={}, error={}",
+          corpCode, filing.getRceptNo(), e.getClass().getSimpleName());
     }
 
-    // 문서 원문 다운로드 및 가격 파싱
-    DartOfferingTerms offeringTerms = null;
-    if (filing.getRceptNo() != null) {
+    String original = DartFilingOrigin.resolveOriginalReceipt(filing, disclosures, xml);
+    if (offeringTerms != null
+        && original != null
+        && original.equals(row.getSourceReceiptNo())) {
+      DartOfferingTerms earlierBand =
+          findEarlierBand(disclosures, filing, original);
       try {
-        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(filing.getRceptNo());
-        if (xmlOpt.isPresent()) {
-          String xml = xmlOpt.get();
-          if (!xml.isBlank()) {
-            offeringTerms =
-                offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
-          } else {
-            log.warn("재점검: 문서 원문 다운로드 결과 빈 값 (rceptNo={})", filing.getRceptNo());
+        DartOfferingTerms verifiedTerms = offeringTerms;
+        IpoSyncPersistence.Outcome outcome =
+            transactionTemplate.execute(status -> ipoSyncPersistence.persistVerifiedFiling(
+                corpCode,
+                Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                filing.getRceptNo(),
+                original,
+                detail,
+                verifiedTerms,
+                earlierBand));
+        if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
+          result.setRefreshed(result.getRefreshed() + 1);
+          return true;
+        }
+        log.warn("재점검 원문 검증 보류: corpCode={}, receipt={}, outcome={}",
+            corpCode, filing.getRceptNo(), outcome);
+      } catch (Exception e) {
+        log.warn("재점검 원문 저장 실패: corpCode={}, error={}",
+            corpCode, e.getClass().getSimpleName());
+      }
+      return false;
+    }
+
+    // 최초제출일을 검증하지 못한 경우엔 과거부터 동작하던 정확한 DS006 매칭만 허용한다.
+    if (detail == null || detail.getSubscriptionStartDate() == null
+        || detail.isSubscriptionEndUnreadable()) {
+      return false;
+    }
+    return attemptRefresh(result, corpCode, row, filing, detail, offeringTerms);
+  }
+
+  private DartOfferingTerms findEarlierBand(
+      List<OpenDartDisclosureItem> disclosures,
+      OpenDartDisclosureItem latest,
+      String originalReceipt) {
+    if (disclosures == null) {
+      return null;
+    }
+    for (OpenDartDisclosureItem item : disclosures.stream()
+        .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
+        .filter(item -> item.getRceptNo() != null)
+        .filter(item -> item.getRceptNo().compareTo(originalReceipt) >= 0)
+        .filter(item -> item.getRceptNo().compareTo(latest.getRceptNo()) < 0)
+        .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptNo).reversed())
+        .toList()) {
+      // 같은 회사의 다른 원신고까지 넘어가지 않는다.
+      if (!item.isCorrectionOrFinalized() && !originalReceipt.equals(item.getRceptNo())) {
+        break;
+      }
+      try {
+        Optional<String> xml = dartIpoFilingClient.downloadDocument(item.getRceptNo());
+        if (xml.isPresent() && !xml.get().isBlank()) {
+          DartOfferingTerms terms =
+              offeringTermsParser.parse(xml.get(), item.getRceptNo(), item.isFinalizedReport());
+          if (terms != null && terms.hasValidBand()) {
+            return terms;
           }
-        } else {
-          log.warn("재점검: 문서 원문 다운로드 실패 (빈 응답) (rceptNo={})", filing.getRceptNo());
         }
       } catch (Exception e) {
-        log.warn(
-            "재점검: 문서 원문 다운로드/파싱 실패 (rceptNo={}): {}",
-            filing.getRceptNo(),
-            e.getClass().getSimpleName());
+        log.warn("이전 희망가 근거 조회 실패: rceptNo={}, error={}",
+            item.getRceptNo(), e.getClass().getSimpleName());
       }
     }
-
-    attemptRefresh(result, corpCode, row, filing, detail, offeringTerms);
+    return null;
   }
 
   /**
@@ -296,7 +338,7 @@ public class IpoReconciliationService {
     return candidates.stream().min(newestFirst).orElse(null);
   }
 
-  private void attemptRefresh(
+  private boolean attemptRefresh(
       IpoReconcileResult result,
       String corpCode,
       Ipo row,
@@ -321,6 +363,7 @@ public class IpoReconciliationService {
             corpCode,
             filing.getRceptNo(),
             filing.isFinalizedReport());
+        return true;
       } else if (outcome == IpoSyncPersistence.Outcome.HELD_UNDETERMINED
           || outcome == IpoSyncPersistence.Outcome.BLOCKED_MULTIPLE) {
         log.warn(
@@ -332,6 +375,7 @@ public class IpoReconciliationService {
     } catch (Exception e) {
       log.warn("재점검 갱신 중 예외 (corpCode={}, 클래스만): {}", corpCode, e.getClass().getSimpleName());
     }
+    return false;
   }
 
   /**
