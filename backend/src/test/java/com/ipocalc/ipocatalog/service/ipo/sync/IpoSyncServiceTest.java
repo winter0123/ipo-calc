@@ -1813,5 +1813,4 @@ class IpoSyncServiceTest {
     assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());
   }
-
 }
