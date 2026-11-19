@@ -1680,6 +1680,7 @@ class IpoSyncServiceTest {
     assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }
+
   @Test
   void sync_downloadsSelectedDs001FilingWhenDs006FallbackHasOlderReceipt() {
     Ipo existing =
@@ -1722,8 +1723,9 @@ class IpoSyncServiceTest {
     when(dartIpoFilingClient.downloadDocument("20261103000312"))
         .thenReturn(Optional.of("<xml>confirmed</xml>"));
     when(offeringTermsParser.parse(anyString(), eq("20261103000312"), eq(true)))
-        .thenReturn(new DartOfferingTerms(
-            "20261103000312", 2, null, null, 11_000L, null, null, null, null, null));
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261103000312", 2, null, null, 11_000L, null, null, null, null, null));
 
     IpoSyncResult result = syncService.sync(7);
 
