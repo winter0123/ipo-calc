@@ -718,11 +718,13 @@ class AutomaticReconciliationTest {
     IpoSyncResult secondResult = second.sync(90);
 
     assertThat(firstResult.getFailureCount())
-        .as("first day failures: %s",
+        .as(
+            "first day failures: %s",
             firstResult.getFailures().stream().map(IpoSyncFailure::getReason).toList())
         .isZero();
     assertThat(secondResult.getFailureCount())
-        .as("second day failures: %s",
+        .as(
+            "second day failures: %s",
             secondResult.getFailures().stream().map(IpoSyncFailure::getReason).toList())
         .isZero();
 
