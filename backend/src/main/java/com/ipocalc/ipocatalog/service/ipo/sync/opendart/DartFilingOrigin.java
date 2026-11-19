@@ -14,12 +14,12 @@ public final class DartFilingOrigin {
   private static final Pattern WHITE = Pattern.compile("[\\s\\u00a0]+");
   private static final Pattern FIRST_SUBMISSION =
       Pattern.compile(
-          "(?:정정대상\\s*공시서류(?:의)?\\s*최초\\s*제출일|정정대상\\s*서류의?\\s*최초\\s*제출일)"
+          "(?:정정\\s*대상\\s*(?:공시\\s*서류|신고서|서류)(?:의)?\\s*최초\\s*제출\\s*일)"
               + "[^0-9]{0,100}(\\d{4})\\s*(?:년|[./-])\\s*(\\d{1,2})"
               + "\\s*(?:월|[./-])\\s*(\\d{1,2})\\s*일?");
   private static final Pattern COMPACT_SUBMISSION =
       Pattern.compile(
-          "(?:정정대상\\s*공시서류(?:의)?\\s*최초\\s*제출일)" + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
+          "(?:정정\\s*대상\\s*(?:공시\\s*서류|신고서|서류)(?:의)?\\s*최초\\s*제출\\s*일)" + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
 
   private DartFilingOrigin() {}
 
