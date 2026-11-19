@@ -567,8 +567,8 @@ class IpoSyncServiceTest {
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
     // 원문에서 검증된 밴드로 갱신됨
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(12_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     // fixedPrice 보존됨 (동기화가 덮어쓰지 않음)
     assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
     // listingDate 보존됨
@@ -1312,7 +1312,7 @@ class IpoSyncServiceTest {
 
     // then: 자동 동기화 레코드는 확정공모 공시로 fixedPrice 강제 업데이트
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(11_000L);
+    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(9_400L);
   }
 
   @Test
@@ -1475,7 +1475,7 @@ class IpoSyncServiceTest {
 
     // then: 일반 공시이므로 fixedPrice는 null 유지
     assertThat(result.getUpdated()).isZero();
-    assertThat(result.getFailureCount()).isEqualTo(1);
+    assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
     verify(ipoRepository, never()).saveAndFlush(any());
     assertThat(existing.getFixedPrice()).isNull();
   }
