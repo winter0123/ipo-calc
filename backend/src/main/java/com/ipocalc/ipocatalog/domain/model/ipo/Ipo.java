@@ -191,7 +191,8 @@ public class Ipo {
             terms.sourceReceiptNo(),
             terms.parserVersion(),
             this.bandPriceSourceReceiptNo,
-            this.bandPriceParserVersion)) {
+            this.bandPriceParserVersion,
+            this.lowerBandPrice == null && this.upperBandPrice == null)) {
       if (!terms.lowerBandPrice().equals(this.lowerBandPrice)
           || !terms.upperBandPrice().equals(this.upperBandPrice)
           || !java.util.Objects.equals(terms.sourceReceiptNo(), this.bandPriceSourceReceiptNo)
@@ -209,7 +210,8 @@ public class Ipo {
             terms.sourceReceiptNo(),
             terms.parserVersion(),
             this.fixedPriceSourceReceiptNo,
-            this.fixedPriceParserVersion)) {
+            this.fixedPriceParserVersion,
+            this.fixedPrice == null)) {
       if (!terms.fixedPrice().equals(this.fixedPrice)
           || !java.util.Objects.equals(terms.sourceReceiptNo(), this.fixedPriceSourceReceiptNo)
           || !java.util.Objects.equals(terms.parserVersion(), this.fixedPriceParserVersion)) {
@@ -235,12 +237,16 @@ public class Ipo {
    * 출처 없는 기존 수동 가능 가격은 변경하지 않고, 같은 접수번호의 새 파서 버전만 허용한다.
    */
   private static boolean isVerifiedSourceCurrent(
-      String incomingReceipt, int incomingVersion, String storedReceipt, Integer storedVersion) {
+      String incomingReceipt,
+      int incomingVersion,
+      String storedReceipt,
+      Integer storedVersion,
+      boolean emptyUntrackedValue) {
     if (incomingReceipt == null || incomingReceipt.isBlank()) {
       return false;
     }
     if (storedReceipt == null || storedReceipt.isBlank()) {
-      return false;
+      return emptyUntrackedValue;
     }
     int order = incomingReceipt.compareTo(storedReceipt);
     return order > 0 || (order == 0 && (storedVersion == null || incomingVersion >= storedVersion));
