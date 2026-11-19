@@ -757,8 +757,7 @@ class IpoScheduleReconciliationTest {
     OpenDartEquitySecurityDetail detail =
         OpenDartEquitySecurityDetail.builder()
             .rceptNo(originalReceipt)
-            .subscriptionStartDate(FIRST)
-            .subscriptionEndDate(FIRST.plusDays(1))
+            .sbd("2026년 11월 10일 ~ 2026년 11월 11일")
             .pymd("2026년 11월 10일")
             .build();
     detail.parseDerivedFields();
@@ -817,8 +816,7 @@ class IpoScheduleReconciliationTest {
     OpenDartEquitySecurityDetail detail =
         OpenDartEquitySecurityDetail.builder()
             .rceptNo(originalReceipt)
-            .subscriptionStartDate(FIRST)
-            .subscriptionEndDate(FIRST.plusDays(1))
+            .sbd("2026년 11월 10일 ~ 2026년 11월 11일")
             .pymd("2026년 11월 10일")
             .build();
     detail.parseDerivedFields();
