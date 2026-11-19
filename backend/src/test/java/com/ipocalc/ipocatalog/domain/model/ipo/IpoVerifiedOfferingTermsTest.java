@@ -100,4 +100,75 @@ class IpoVerifiedOfferingTermsTest {
     ipo.applyVerifiedOfferingTerms(terms("20261110000001", 2, null, null, 13_000L), NOW);
     assertThat(ipo.getFixedPrice()).isEqualTo(12_000L);
   }
+
+  @Test
+  void verifiedSharesRejectOlderReceiptsAndManualOverrides() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .offeringShareCount(1_000_000L)
+            .lastImportedOfferingShareCount(1_000_000L)
+            .lastVerifiedShareReceiptNo("20261103000312")
+            .build();
+    ipo.applyVerifiedShareCount(1_200_000L, "20261104000123");
+    assertThat(ipo.getOfferingShareCount()).isEqualTo(1_200_000L);
+    ipo.applyVerifiedShareCount(900_000L, "20261030000616");
+    assertThat(ipo.getOfferingShareCount()).isEqualTo(1_200_000L);
+
+    ipo.updateDetails(
+        "기업", "기업", null, null, null, null, null, null, null, null, 1_300_000L, NOW);
+    assertThat(ipo.getLastImportedOfferingShareCount()).isNull();
+    ipo.applyVerifiedShareCount(1_500_000L, "20261105000123");
+    assertThat(ipo.getOfferingShareCount()).isEqualTo(1_300_000L);
+  }
+
+  @Test
+  void receiptChronologyGuardsVerifiedScheduleWithoutBlockingSameReceipt() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .lastVerifiedScheduleReceiptNo("20261103000312")
+            .build();
+    assertThat(ipo.mayApplyVerifiedSchedule("20261030000616")).isFalse();
+    assertThat(ipo.mayApplyVerifiedSchedule("20261103000312")).isTrue();
+    assertThat(ipo.mayApplyVerifiedSchedule("20261104000123")).isTrue();
+    ipo.recordVerifiedScheduleReceipt("20261104000123");
+    ipo.recordVerifiedScheduleReceipt("20261030000616");
+    assertThat(ipo.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261104000123");
+  }
+
+  @Test
+  void manuallyEditedSubscriptionDateInvalidatesAutoOverwriteProvenance() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .subscriptionStartDate(java.time.LocalDate.of(2026, 11, 5))
+            .lastImportedSubscriptionStartDate(java.time.LocalDate.of(2026, 11, 5))
+            .build();
+    ipo.updateDetails(
+        "기업",
+        "기업",
+        null,
+        null,
+        java.time.LocalDate.of(2026, 11, 7),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        NOW);
+    assertThat(ipo.getLastImportedSubscriptionStartDate()).isNull();
+    ipo.syncFromOpenDart(
+        "기업",
+        null,
+        java.time.LocalDate.of(2026, 11, 9),
+        null,
+        null,
+        null,
+        "OPENDART",
+        NOW);
+    assertThat(ipo.getSubscriptionStartDate()).isEqualTo(java.time.LocalDate.of(2026, 11, 7));
+  }
+
 }
