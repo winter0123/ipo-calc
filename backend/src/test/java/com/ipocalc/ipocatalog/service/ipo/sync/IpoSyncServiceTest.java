@@ -1897,18 +1897,18 @@ class IpoSyncServiceTest {
     when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
         .thenReturn(List.of(matchingDetail));
     when(dartIpoFilingClient.downloadDocument(finalizedReceipt))
-        .thenReturn(Optional.of(
-            "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
     when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
-        .thenReturn(List.of(
-            OpenDartDisclosureItem.builder()
-                .corpCode("corp")
-                .corpName("name")
-                .reportNm("증권신고서(지분증권)")
-                .rceptDt("20261008")
-                .rceptNo(originalReceipt)
-                .build(),
-            finalized));
+        .thenReturn(
+            List.of(
+                OpenDartDisclosureItem.builder()
+                    .corpCode("corp")
+                    .corpName("name")
+                    .reportNm("증권신고서(지분증권)")
+                    .rceptDt("20261008")
+                    .rceptNo(originalReceipt)
+                    .build(),
+                finalized));
     when(dartIpoFilingClient.downloadDocument(originalReceipt))
         .thenReturn(Optional.of("<DOCUMENT>원신고 희망공모가</DOCUMENT>"));
     when(offeringTermsParser.parse(anyString(), eq(finalizedReceipt), eq(true)))
@@ -1935,5 +1935,4 @@ class IpoSyncServiceTest {
     assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo(finalizedReceipt);
     verify(dartIpoFilingClient).downloadDocument(finalizedReceipt);
   }
-
 }
