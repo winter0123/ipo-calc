@@ -167,7 +167,11 @@ public class IpoSyncPersistence {
         latestTerms.refundDate() != null
             ? latestTerms.refundDate()
             : currentDetail ? detail.getRefundDate() : null;
-    Long shares = currentDetail ? detail.getOfferingShareCount() : null;
+    // 엄격한 XML 수량 파서의 값이 있으면 최신 공시 원문을 우선한다.
+    Long shares =
+        latestTerms.offeringShareCount() != null
+            ? latestTerms.offeringShareCount()
+            : currentDetail ? detail.getOfferingShareCount() : null;
 
     if (!active.isEmpty()) {
       Ipo existing = active.get(0);
@@ -197,7 +201,7 @@ public class IpoSyncPersistence {
           && (start != null || end != null || allotment != null || refund != null)) {
         existing.recordVerifiedScheduleReceipt(filingReceipt);
       }
-      if (currentDetail) {
+      if (shares != null) {
         existing.applyVerifiedShareCount(shares, filingReceipt);
       }
       if (historicalBand != null && historicalBand.hasValidBand()) {
@@ -239,7 +243,7 @@ public class IpoSyncPersistence {
             .refundDate(refund)
             .offeringShareCount(shares)
             .lastImportedOfferingShareCount(shares)
-            .lastVerifiedShareReceiptNo(currentDetail && shares != null ? filingReceipt : null)
+            .lastVerifiedShareReceiptNo(shares != null ? filingReceipt : null)
             .lastVerifiedScheduleReceiptNo(filingReceipt)
             .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
