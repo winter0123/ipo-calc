@@ -174,7 +174,12 @@ public class IpoReconciliationService {
         }
         continue;
       }
-      if (!row.getSubscriptionStartDate().equals(detail.getSubscriptionStartDate())) {
+      boolean sameStart = row.getSubscriptionStartDate().equals(detail.getSubscriptionStartDate());
+      boolean verifiedOriginalAfterCorrection =
+          disclosure.getRceptNo().equals(row.getSourceReceiptNo())
+              && row.getLastImportedSubscriptionStartDate() != null
+              && row.getLastImportedSubscriptionStartDate().equals(row.getSubscriptionStartDate());
+      if (!sameStart && !verifiedOriginalAfterCorrection) {
         recordFailure(
             result, row, "철회점검: 청약 시작일 불일치 (rcept_no=" + disclosure.getRceptNo() + "): 자동 철회 보류");
         anyFailure = true;
