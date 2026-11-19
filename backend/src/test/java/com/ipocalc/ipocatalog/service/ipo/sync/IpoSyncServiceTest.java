@@ -357,7 +357,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesExistingIpo_dartDatesOverrideOldValues_butDashKeepsExisting() {
+  void sync_preservesUntrackedAllotmentAndRefundWhenDartHasPartialSchedule() {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
     // 배정일은 DART가 값을 주고, 환불일은 "-"라 읽을 수 없음
@@ -383,7 +383,7 @@ class IpoSyncServiceTest {
     syncService.sync(7);
 
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 9));
     assertThat(ipoCaptor.getValue().getRefundDate()).isEqualTo(LocalDate.of(2026, 11, 11));
   }
 
@@ -573,8 +573,8 @@ class IpoSyncServiceTest {
     assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
     // listingDate 보존됨
     assertThat(saved.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 20));
-    // 수량 갱신됨
-    assertThat(saved.getOfferingShareCount()).isEqualTo(3_000_000L);
+    // 출처가 추적되지 않은 기존 수량은 수동 변경 가능 값으로 보존한다
+    assertThat(saved.getOfferingShareCount()).isEqualTo(2_200_000L);
     // lastSyncedAt 갱신됨
     assertThat(saved.getLastSyncedAt()).isNotNull();
     // syncSource 유지
