@@ -456,7 +456,10 @@ public class Ipo {
 
   /** 접수번호별 최신성 및 수동값 보존 규칙을 동시에 적용하여 공모주식 수를 기록한다. */
   public void applyVerifiedShareCount(Long shares, String incomingReceipt) {
-    if (shares == null || shares <= 0 || incomingReceipt == null || incomingReceipt.isBlank()
+    if (shares == null
+        || shares <= 0
+        || incomingReceipt == null
+        || incomingReceipt.isBlank()
         || (lastVerifiedShareReceiptNo != null
             && incomingReceipt.compareTo(lastVerifiedShareReceiptNo) < 0)) {
       return;

@@ -193,7 +193,8 @@ public class IpoSyncPersistence {
           currentSchedule ? refund : null,
           SYNC_SOURCE_OPENDART,
           now);
-      if (currentSchedule && (start != null || end != null || allotment != null || refund != null)) {
+      if (currentSchedule
+          && (start != null || end != null || allotment != null || refund != null)) {
         existing.recordVerifiedScheduleReceipt(filingReceipt);
       }
       if (currentDetail) {
@@ -284,7 +285,9 @@ public class IpoSyncPersistence {
     boolean verifiedOriginal =
         detail.getRceptNo().equals(target.getSourceReceiptNo())
             && target.getLastImportedSubscriptionStartDate() != null
-            && target.getLastImportedSubscriptionStartDate().equals(target.getSubscriptionStartDate());
+            && target
+                .getLastImportedSubscriptionStartDate()
+                .equals(target.getSubscriptionStartDate());
     // 자동 정정으로 청약일이 바뀌어도 원공시 접수번호가 일치하면 철회를 인정한다.
     // 반면 수동으로 날짜가 바뀌어 추적값이 사라졌으면 임의로 철회하지 않는다.
     if (!sameStart && !verifiedOriginal) {

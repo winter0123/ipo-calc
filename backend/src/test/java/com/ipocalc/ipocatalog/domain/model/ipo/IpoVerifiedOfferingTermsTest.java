@@ -115,8 +115,7 @@ class IpoVerifiedOfferingTermsTest {
     ipo.applyVerifiedShareCount(900_000L, "20261030000616");
     assertThat(ipo.getOfferingShareCount()).isEqualTo(1_200_000L);
 
-    ipo.updateDetails(
-        "기업", "기업", null, null, null, null, null, null, null, null, 1_300_000L, NOW);
+    ipo.updateDetails("기업", "기업", null, null, null, null, null, null, null, null, 1_300_000L, NOW);
     assertThat(ipo.getLastImportedOfferingShareCount()).isNull();
     ipo.applyVerifiedShareCount(1_500_000L, "20261105000123");
     assertThat(ipo.getOfferingShareCount()).isEqualTo(1_300_000L);
@@ -160,17 +159,9 @@ class IpoVerifiedOfferingTermsTest {
         NOW);
     assertThat(ipo.getLastImportedSubscriptionStartDate()).isNull();
     ipo.syncFromOpenDart(
-        "기업",
-        null,
-        java.time.LocalDate.of(2026, 11, 9),
-        null,
-        null,
-        null,
-        "OPENDART",
-        NOW);
+        "기업", null, java.time.LocalDate.of(2026, 11, 9), null, null, null, "OPENDART", NOW);
     assertThat(ipo.getSubscriptionStartDate()).isEqualTo(java.time.LocalDate.of(2026, 11, 7));
   }
-
 
   @Test
   void automaticSyncDoesNotOverwriteEditedDisplayNames() {
@@ -186,5 +177,4 @@ class IpoVerifiedOfferingTermsTest {
     assertThat(ipo.getCompanyName()).isEqualTo("관리자가 바꾼 회사명");
     assertThat(ipo.getIpoName()).isEqualTo("관리자가 바꾼 종목명");
   }
-
 }

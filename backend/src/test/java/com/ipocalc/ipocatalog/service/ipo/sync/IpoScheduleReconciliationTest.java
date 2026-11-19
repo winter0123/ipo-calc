@@ -487,5 +487,4 @@ class IpoScheduleReconciliationTest {
     assertThat(persistence.withdraw("corp", original)).isFalse();
     verify(repository, never()).saveAndFlush(any());
   }
-
 }
