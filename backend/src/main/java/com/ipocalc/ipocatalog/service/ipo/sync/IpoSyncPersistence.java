@@ -182,7 +182,17 @@ public class IpoSyncPersistence {
       }
       LocalDateTime now = LocalDateTime.now(clock);
       existing.syncFromOpenDart(
-          corpName, shares, start, end, allotment, refund, SYNC_SOURCE_OPENDART, now);
+          corpName,
+          shares,
+          start,
+          end,
+          existing.getAllotmentDate() == null ? allotment : null,
+          refund,
+          SYNC_SOURCE_OPENDART,
+          now);
+      if (historicalBand != null && historicalBand.hasValidBand()) {
+        existing.applyVerifiedOfferingTerms(historicalBand, now);
+      }
       existing.applyVerifiedOfferingTerms(latestTerms, now);
       ipoRepository.saveAndFlush(existing);
       return Outcome.UPDATED;
@@ -193,9 +203,10 @@ public class IpoSyncPersistence {
       return Outcome.HELD_UNDETERMINED;
     }
     String normalizedName = IpoScheduleMergeService.normalizeName(corpName);
+    final LocalDate verifiedStart = start;
     boolean duplicate =
         ipoRepository
-            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(start, RecordStatus.ACTIVE)
+            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(verifiedStart, RecordStatus.ACTIVE)
             .stream()
             .anyMatch(
                 ipo -> ipo.getIpoName() != null
