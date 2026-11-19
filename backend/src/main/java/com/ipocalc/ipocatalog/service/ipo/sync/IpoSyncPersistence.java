@@ -188,13 +188,19 @@ public class IpoSyncPersistence {
       }
       LocalDateTime now = LocalDateTime.now(clock);
       boolean currentSchedule = existing.mayApplyVerifiedSchedule(filingReceipt);
+      // 과거 DART 원문으로 검증된 환불일은 후속 DS006 보완값으로 변경하지 않는다.
+      // 더 최신 DART 원문이 환불일을 명시하면 해당 값과 접수번호를 함께 반영한다.
+      LocalDate refundCandidate =
+          latestTerms.refundDate() != null || existing.getLastVerifiedRefundReceiptNo() == null
+              ? refund
+              : null;
       existing.syncFromOpenDart(
           corpName,
           null,
           currentSchedule ? start : null,
           currentSchedule ? end : null,
           currentSchedule && existing.getAllotmentDate() == null ? allotment : null,
-          currentSchedule ? refund : null,
+          currentSchedule ? refundCandidate : null,
           SYNC_SOURCE_OPENDART,
           now);
       if (currentSchedule
