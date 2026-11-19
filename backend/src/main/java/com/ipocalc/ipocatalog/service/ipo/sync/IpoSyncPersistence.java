@@ -183,15 +183,22 @@ public class IpoSyncPersistence {
         return Outcome.HELD_UNDETERMINED;
       }
       LocalDateTime now = LocalDateTime.now(clock);
+      boolean currentSchedule = existing.mayApplyVerifiedSchedule(filingReceipt);
       existing.syncFromOpenDart(
           corpName,
-          existing.getOfferingShareCount() == null ? shares : null,
-          start,
-          end,
-          existing.getAllotmentDate() == null ? allotment : null,
-          refund,
+          null,
+          currentSchedule ? start : null,
+          currentSchedule ? end : null,
+          currentSchedule && existing.getAllotmentDate() == null ? allotment : null,
+          currentSchedule ? refund : null,
           SYNC_SOURCE_OPENDART,
           now);
+      if (currentSchedule && (start != null || end != null || allotment != null || refund != null)) {
+        existing.recordVerifiedScheduleReceipt(filingReceipt);
+      }
+      if (currentDetail) {
+        existing.applyVerifiedShareCount(shares, filingReceipt);
+      }
       if (historicalBand != null && historicalBand.hasValidBand()) {
         existing.applyVerifiedOfferingTerms(historicalBand, now);
       }
@@ -230,6 +237,9 @@ public class IpoSyncPersistence {
             .allotmentDate(allotment)
             .refundDate(refund)
             .offeringShareCount(shares)
+            .lastImportedOfferingShareCount(shares)
+            .lastVerifiedShareReceiptNo(currentDetail && shares != null ? filingReceipt : null)
+            .lastVerifiedScheduleReceiptNo(filingReceipt)
             .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
             .sourceReceiptNo(originalReceipt)
@@ -300,6 +310,9 @@ public class IpoSyncPersistence {
             .allotmentDate(detail.getAllotmentDate())
             .refundDate(detail.getRefundDate())
             .offeringShareCount(detail.getOfferingShareCount())
+            .lastImportedOfferingShareCount(detail.getOfferingShareCount())
+            .lastVerifiedShareReceiptNo(detail.getRceptNo())
+            .lastVerifiedScheduleReceiptNo(detail.getRceptNo())
             .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
             .sourceReceiptNo(detail.getRceptNo())
@@ -358,16 +371,21 @@ public class IpoSyncPersistence {
       LocalDate endDate,
       DartOfferingTerms offeringTerms) {
     LocalDateTime now = LocalDateTime.now(clock);
-    // 가격 인자 없이 동기화 (일정·주식수만)
+    // 과거 접수번호가 다시 도착한 경우 일정·주식 수는 후퇴시키지 않는다.
+    boolean currentSchedule = existing.mayApplyVerifiedSchedule(detail.getRceptNo());
     existing.syncFromOpenDart(
         corpName,
-        detail.getOfferingShareCount(),
-        startDate,
-        endDate,
-        detail.getAllotmentDate(),
-        detail.getRefundDate(),
+        null,
+        currentSchedule ? startDate : null,
+        currentSchedule ? endDate : null,
+        currentSchedule && existing.getAllotmentDate() == null ? detail.getAllotmentDate() : null,
+        currentSchedule ? detail.getRefundDate() : null,
         SYNC_SOURCE_OPENDART,
         now);
+    if (currentSchedule) {
+      existing.recordVerifiedScheduleReceipt(detail.getRceptNo());
+    }
+    existing.applyVerifiedShareCount(detail.getOfferingShareCount(), detail.getRceptNo());
     // 원문에서 검증된 가격 정보가 있으면 적용
     if (offeringTerms != null) {
       existing.applyVerifiedOfferingTerms(offeringTerms, now);
