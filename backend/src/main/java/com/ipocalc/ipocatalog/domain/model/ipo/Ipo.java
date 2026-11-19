@@ -61,7 +61,10 @@ public class Ipo {
       this.allotmentDate = allotment;
       changed = true;
     }
-    if (canAutoOverwrite(this.refundDate, this.lastImportedRefundDate) && refund != null) {
+    // 공시 원문으로 검증된 환불일은 ustockplus 보완 값으로 다시 덮어쓰지 않는다.
+    if (refund != null
+        && (this.refundDate == null || this.lastVerifiedScheduleReceiptNo == null)
+        && canAutoOverwrite(this.refundDate, this.lastImportedRefundDate)) {
       if (!refund.equals(this.refundDate)) {
         this.refundDate = refund;
         this.lastImportedRefundDate = refund;
