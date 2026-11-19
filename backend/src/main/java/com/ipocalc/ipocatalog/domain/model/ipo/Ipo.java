@@ -98,6 +98,16 @@ public class Ipo {
       LocalDate listing,
       Long shares,
       LocalDateTime now) {
+    // 관리자가 가격을 수동 변경하면 과거 자동 출처를 제거해 이후 자동 갱신으로 덮어쓰지 않는다.
+    if (!java.util.Objects.equals(this.lowerBandPrice, lower)
+        || !java.util.Objects.equals(this.upperBandPrice, upper)) {
+      this.bandPriceSourceReceiptNo = null;
+      this.bandPriceParserVersion = null;
+    }
+    if (!java.util.Objects.equals(this.fixedPrice, fixed)) {
+      this.fixedPriceSourceReceiptNo = null;
+      this.fixedPriceParserVersion = null;
+    }
     this.companyName = companyName;
     this.ipoName = ipoName;
     this.stockCode = stockCode;
