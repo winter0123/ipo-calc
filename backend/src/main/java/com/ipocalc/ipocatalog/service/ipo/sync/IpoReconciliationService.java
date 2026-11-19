@@ -293,7 +293,7 @@ public class IpoReconciliationService {
             .thenComparing(
                 OpenDartDisclosureItem::getRceptNo, Comparator.nullsFirst(String::compareTo))
             .reversed();
-    return candidates.stream().max(newestFirst).orElse(null);
+    return candidates.stream().min(newestFirst).orElse(null);
   }
 
   private void attemptRefresh(
