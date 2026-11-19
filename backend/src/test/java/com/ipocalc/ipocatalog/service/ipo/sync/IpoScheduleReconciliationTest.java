@@ -729,8 +729,10 @@ class IpoScheduleReconciliationTest {
             mock(BusinessDayCalculator.class),
             Clock.systemUTC(),
             mock(OpenDartEquitySecuritiesClient.class));
-    String originalReceipt = "20261008000649";
-    String verifiedReceipt = "20261103000312";
+    // Exactly the same receipt must be eligible for schedule refresh, otherwise
+    // an older-receipt guard could mask the provenance bug.
+    String originalReceipt = "20261103000312";
+    String verifiedReceipt = originalReceipt;
     LocalDate dartRefund = LocalDate.of(2026, 11, 9);
     LocalDate ds006Refund = LocalDate.of(2026, 11, 10);
     Ipo existing =
@@ -761,6 +763,7 @@ class IpoScheduleReconciliationTest {
             .build();
     detail.parseDerivedFields();
     assertThat(detail.getRefundDate()).isEqualTo(ds006Refund);
+    assertThat(existing.mayApplyVerifiedSchedule(detail.getRceptNo())).isTrue();
 
     // The original receipt still matches the offering, but its DS006 pymd
     // must not replace a refund verified from a later DART document.
