@@ -43,6 +43,14 @@ public class IpoSyncPersistence {
     }
     LocalDate startDate = detail.getSubscriptionStartDate();
     LocalDate endDate = detail.getSubscriptionEndDate();
+    if (startDate == null || detail.isSubscriptionEndUnreadable()) {
+      log.warn("청약일 검증 불가로 자동 저장 보류: corpCode={}", corpCode);
+      return Outcome.HELD_UNDETERMINED;
+    }
+    if (endDate != null && endDate.isBefore(startDate)) {
+      log.warn("청약일 순서 오류로 자동 저장 보류: corpCode={}", corpCode);
+      return Outcome.HELD_UNDETERMINED;
+    }
 
     if (endDate == null && startDate != null) {
       endDate = businessDayCalculator.nextBusinessDay(startDate);
@@ -70,14 +78,9 @@ public class IpoSyncPersistence {
         return Outcome.SKIPPED_MANUAL;
       }
       if (!isSameOffering(existing, detail, correctionReport)) {
-        // 새 공모인지 정정 공시인지 구분할 수 없어 전체 갱신은 보류하되,
-        // 공모 주식 수만 최신 공시 값으로 반영한다 (가격은 건드리지 않음).
-        // source_receipt_no는 철회 매칭 보호를 위해 절대 덮어쓰지 않는다.
-        log.warn("신규 공모/정정 구분 불가로 주식 수만 갱신: corpCode={}", corpCode);
-        LocalDateTime now = LocalDateTime.now(clock);
-        existing.syncShareCountOnly(detail.getOfferingShareCount(), now);
-        ipoRepository.saveAndFlush(existing);
-        return Outcome.UPDATED;
+        // 동일 회차 근거가 없으면 가격뿐 아니라 일정·주식 수도 모두 보존한다.
+        log.warn("신규 공모/정정 구분 불가로 자동 갱신 보류: corpCode={}", corpCode);
+        return Outcome.HELD_UNDETERMINED;
       }
       updateExistingIpo(existing, corpName, detail, startDate, endDate, offeringTerms);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
@@ -191,10 +194,8 @@ public class IpoSyncPersistence {
         && existing.getSourceReceiptNo().equals(detail.getRceptNo())) {
       return true;
     }
-    // corp당 ACTIVE 1건 경로에서만 persist가 여기까지 오므로, 정정·확정 공시는 시작일 변경도 같은 공모
-    if (correctionReport) {
-      return true;
-    }
+    // 정정 유형이라는 사실이나 회사당 활성 행 하나만으로는 동일 회차가 증명되지 않는다.
+    // 접수번호가 다른 정정은 근거 연결이 확인되기 전까지 보류한다.
     boolean sameStart =
         existing.getSubscriptionStartDate() != null
             && detail.getSubscriptionStartDate() != null
