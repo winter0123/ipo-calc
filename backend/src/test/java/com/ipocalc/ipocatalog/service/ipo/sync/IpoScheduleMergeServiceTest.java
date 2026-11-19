@@ -2,13 +2,15 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
@@ -22,26 +24,24 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** {@link IpoScheduleMergeService} 단위 테스트. */
-@SpringBootTest
-@ActiveProfiles("test")
-@ContextConfiguration(classes = IpoCalcApplication.class)
+/** {@link IpoScheduleMergeService} 단위 테스트. DB 없이 동작. */
+@ExtendWith(MockitoExtension.class)
 class IpoScheduleMergeServiceTest {
 
-  @MockitoBean private UstockPlusCalendarClient ustockPlusCalendarClient;
+  @Mock private UstockPlusCalendarClient ustockPlusCalendarClient;
 
-  @MockitoBean private IpoRepository ipoRepository;
+  @Mock private IpoRepository ipoRepository;
 
-  @Autowired private TransactionTemplate transactionTemplate;
+  @Mock private TransactionTemplate transactionTemplate;
 
   private IpoScheduleMergeService mergeService;
 
@@ -60,11 +60,15 @@ class IpoScheduleMergeServiceTest {
             transactionTemplate,
             Clock.fixed(TODAY.atStartOfDay(SEOUL).toInstant(), SEOUL));
 
-    // 청약일 기준 ±90일 조회를 위한 기본 모킹 (전체 범위를 커버)
-    when(ipoRepository.findMinSubscriptionStartDateByStatusAndDeletedAtIsNull(STATUS_ACTIVE))
-        .thenReturn(Optional.of(LocalDate.of(2026, 8, 1)));
-    when(ipoRepository.findMaxSubscriptionStartDateByStatusAndDeletedAtIsNull(STATUS_ACTIVE))
-        .thenReturn(Optional.of(LocalDate.of(2026, 12, 1)));
+    // TransactionTemplate.execute()가 람다를 바로 실행하도록 설정 (mock TransactionStatus 전달)
+    lenient()
+        .when(transactionTemplate.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionCallback<?> callback = invocation.getArgument(0);
+              TransactionStatus status = mock(TransactionStatus.class);
+              return callback.doInTransaction(status);
+            });
   }
 
   private UstockPlusScheduleDates createSchedule(
@@ -494,7 +498,17 @@ class IpoScheduleMergeServiceTest {
 
   @Test
   void merge_returnsZeroWhenClientReturnsEmpty() {
-    // given: ustockplus 빈 리스트 반환
+    // given: ustockplus 빈 리스트 반환 (repository 호출 전 조기 반환)
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+                anyString(), any(RecordStatus.class)))
+        .thenReturn(Optional.empty());
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+                any(RecordStatus.class)))
+        .thenReturn(List.of());
     when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of());
 
@@ -507,8 +521,18 @@ class IpoScheduleMergeServiceTest {
 
   @Test
   void merge_returnsZeroWhenClientThrowsException() {
-    // given: ustockplus 호출 시 예외
-    when(ustockPlusCalendarClient.fetchScheduleDates(any(), any()))
+    // given: ustockplus 호출 시 예외 (repository 호출 전 조기 반환)
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+                anyString(), any(RecordStatus.class)))
+        .thenReturn(Optional.empty());
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+                any(RecordStatus.class)))
+        .thenReturn(List.of());
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
         .thenThrow(new RuntimeException("네트워크 오류"));
 
     // when
@@ -520,7 +544,22 @@ class IpoScheduleMergeServiceTest {
 
   @Test
   void normalizeName_removesCorpPrefixAndWhitespaceAndLowercases() {
-    // given/when/then
+    // given/when/then - static method test, no mocking needed
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+                anyString(), any(RecordStatus.class)))
+        .thenReturn(Optional.empty());
+    lenient()
+        .when(
+            ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+                any(RecordStatus.class)))
+        .thenReturn(List.of());
+    lenient()
+        .when(
+            ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
+        .thenReturn(List.of());
+
     assertThat(IpoScheduleMergeService.normalizeName("(주)진코스텍")).isEqualTo("진코스텍");
     assertThat(IpoScheduleMergeService.normalizeName("㈜진코스텍")).isEqualTo("진코스텍");
     assertThat(IpoScheduleMergeService.normalizeName("주식회사 진코스텍")).isEqualTo("진코스텍");
@@ -559,5 +598,90 @@ class IpoScheduleMergeServiceTest {
     assertThat(mergeService.merge(TODAY)).isEqualTo(1);
     assertThat(existing.getStockCode()).isEqualTo("250030");
     org.mockito.Mockito.verify(ipoRepository).saveAndFlush(existing);
+  }
+
+  /**
+   * Integration-style test using real {@link UstockPlusCalendarClient} with {@link
+   * MockRestServiceServer}. Verifies: - Exact query params (startDate=2026-09-15,
+   * endDate=2026-12-13) with fixed TODAY - TO_BE_LISTED fixture date gets saved as listingDate on
+   * the Ipo entity - saveAndFlush is called with the merged entity
+   */
+  @Test
+  void merge_integrationWithRealClient_verifiesQueryParamsAndListingDateSaved() {
+    // given: real client with mocked HTTP
+    com.ipocalc.ipocatalog.service.support.HttpClientSupport.RequestThrottle throttle =
+        new com.ipocalc.ipocatalog.service.support.HttpClientSupport.RequestThrottle(0);
+    com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusApiProperties props =
+        new com.ipocalc.ipocatalog.service.ipo.sync.ustockplus.UstockPlusApiProperties(
+            "https://api.ustockplus.com");
+    org.springframework.web.client.RestClient.Builder builder =
+        org.springframework.web.client.RestClient.builder();
+    org.springframework.test.web.client.MockRestServiceServer server =
+        org.springframework.test.web.client.MockRestServiceServer.bindTo(builder).build();
+
+    UstockPlusCalendarClient realClient = new UstockPlusCalendarClient(builder, props, throttle);
+
+    // Use real client in service
+    IpoScheduleMergeService serviceWithRealClient =
+        new IpoScheduleMergeService(
+            realClient,
+            ipoRepository,
+            transactionTemplate,
+            Clock.fixed(TODAY.atStartOfDay(SEOUL).toInstant(), SEOUL));
+
+    Ipo existing = createAutoSyncIpo(1L, "01658035", "진코스텍", "250030", null, null, null);
+    when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("250030", STATUS_ACTIVE))
+        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+            STATUS_ACTIVE))
+        .thenReturn(List.of());
+
+    // Mock HTTP response with TO_BE_LISTED fixture
+    String item =
+        """
+            {"stockCode":"250030","stockName":"진코스텍","isAvail":true,"logoUrl":"",
+             "calendarStockType":"TO_BE_LISTED",
+             "startDate":"2026-11-20","endDate":"2026-11-20",
+             "extraInfo":{"finalOfferPrice":1}}""";
+    String body = "{\"ipoCalendarResponses\":[" + item + "]}";
+
+    server
+        .expect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo(
+                org.hamcrest.Matchers.containsString("/v2/ipo/calendars")))
+        .andExpect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam(
+                "startDate", "2026-09-15"))
+        .andExpect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam(
+                "endDate", "2026-12-13"))
+        .andExpect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.header(
+                "Origin", "https://ustock.naver.com"))
+        .andExpect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.header(
+                "Referer", "https://ustock.naver.com/service/ipo"))
+        .andExpect(
+            org.springframework.test.web.client.match.MockRestRequestMatchers.header(
+                "x-app-device", "WEB"))
+        .andRespond(
+            org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(
+                body, org.springframework.http.MediaType.APPLICATION_JSON));
+
+    // when
+    int merged = serviceWithRealClient.merge(TODAY);
+
+    // then
+    assertThat(merged).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo saved = ipoCaptor.getValue();
+    assertThat(saved.getStockCode()).isEqualTo("250030");
+    // TO_BE_LISTED fixture date (2026-11-20) should be saved as listingDate
+    assertThat(saved.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 20));
+    assertThat(saved.getAllotmentDate()).isNull();
+    assertThat(saved.getRefundDate()).isNull();
+    assertThat(saved.getSyncSource()).isEqualTo("OPENDART+USTOCKPLUS");
+
+    server.verify();
   }
 }
