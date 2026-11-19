@@ -230,9 +230,7 @@ class AutomaticReconciliationTest {
         .thenReturn(Optional.of("<DOCUMENT/>"));
     // 신규 수집은 DS006 원공시가 아니라 최신 DS001 기재정정 원문을 조회한다.
     when(filingClient.downloadDocument("20261028000200"))
-        .thenReturn(
-            Optional.of(
-                "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 12일</DOCUMENT>"));
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 12일</DOCUMENT>"));
     return filingClient;
   }
 
