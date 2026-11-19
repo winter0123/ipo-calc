@@ -201,6 +201,11 @@ public class IpoSyncPersistence {
           && (start != null || end != null || allotment != null || refund != null)) {
         existing.recordVerifiedScheduleReceipt(filingReceipt);
       }
+      // 확정 공시 원문에 환불일이 있는 경우만 환불일 자체의 검증 출처로 인정한다.
+      // DS006에서 보완한 날짜 또는 다른 일정만 있는 공시는 uStockPlus를 막지 않는다.
+      if (currentSchedule && latestTerms.refundDate() != null) {
+        existing.recordVerifiedRefundReceipt(filingReceipt, latestTerms.refundDate());
+      }
       if (shares != null) {
         existing.applyVerifiedShareCount(shares, filingReceipt);
       }
@@ -245,6 +250,11 @@ public class IpoSyncPersistence {
             .lastImportedOfferingShareCount(shares)
             .lastVerifiedShareReceiptNo(shares != null ? filingReceipt : null)
             .lastVerifiedScheduleReceiptNo(filingReceipt)
+            .lastVerifiedRefundReceiptNo(
+                latestTerms.refundDate() != null
+                        && latestTerms.refundDate().equals(refund)
+                    ? filingReceipt
+                    : null)
             .status(RecordStatus.ACTIVE)
             .syncSource(SYNC_SOURCE_OPENDART)
             .sourceReceiptNo(originalReceipt)
