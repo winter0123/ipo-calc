@@ -506,10 +506,8 @@ class IpoReconciliationServiceTest {
     when(dartIpoFilingClient.downloadDocument(oldReceipt))
         .thenReturn(java.util.Optional.of("<TABLE>verified original</TABLE>"));
     DartOfferingTerms verified =
-        new DartOfferingTerms(
-            oldReceipt, 2, 9_400L, 11_000L, null, null, null, null, null, null);
-    when(offeringTermsParser.parse(anyString(), eq(oldReceipt), eq(false)))
-        .thenReturn(verified);
+        new DartOfferingTerms(oldReceipt, 2, 9_400L, 11_000L, null, null, null, null, null, null);
+    when(offeringTermsParser.parse(anyString(), eq(oldReceipt), eq(false))).thenReturn(verified);
     when(persistence.persistVerifiedFiling(
             eq("02038432"),
             eq("심원"),
@@ -527,5 +525,4 @@ class IpoReconciliationServiceTest {
     verify(dartIpoFilingClient).downloadDocument(newReceipt);
     verify(dartIpoFilingClient).downloadDocument(oldReceipt);
   }
-
 }

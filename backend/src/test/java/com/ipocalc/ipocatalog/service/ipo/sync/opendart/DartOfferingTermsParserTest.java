@@ -576,5 +576,4 @@ class DartOfferingTermsParserTest {
     DartOfferingTerms terms = parser.parse(xml, "20260929000347", false);
     assertThat(terms.offeringShareCount()).isNull();
   }
-
 }

@@ -457,5 +457,4 @@ public class DartOfferingTermsParser {
       candidates.add(count);
     }
   }
-
 }

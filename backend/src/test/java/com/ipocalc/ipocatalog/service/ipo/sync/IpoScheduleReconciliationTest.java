@@ -510,7 +510,6 @@ class IpoScheduleReconciliationTest {
     assertThat(ipo.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261103000312");
   }
 
-
   @Test
   void verifiedXmlShareCountCreatesNewIpoWithoutDs006() {
     IpoRepository repository = mock(IpoRepository.class);
@@ -543,5 +542,4 @@ class IpoScheduleReconciliationTest {
     assertThat(created.getValue().getLastImportedOfferingShareCount()).isEqualTo(2_200_000L);
     assertThat(created.getValue().getLastVerifiedShareReceiptNo()).isEqualTo("20261008000649");
   }
-
 }
