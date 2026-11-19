@@ -1832,8 +1832,7 @@ class IpoSyncServiceTest {
     invalidDetail.parseDerivedFields();
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(original));
-    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
-        .thenReturn(List.of(invalidDetail));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(invalidDetail));
     when(dartIpoFilingClient.downloadDocument("20261008000649"))
         .thenReturn(Optional.of("<DOCUMENT>청약일정</DOCUMENT>"));
     when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
@@ -1857,5 +1856,4 @@ class IpoSyncServiceTest {
     assertThat(ipoCaptor.getValue().getSubscriptionStartDate())
         .isEqualTo(LocalDate.of(2026, 11, 4));
   }
-
 }
