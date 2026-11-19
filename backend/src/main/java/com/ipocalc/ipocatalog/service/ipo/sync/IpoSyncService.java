@@ -405,7 +405,7 @@ public class IpoSyncService {
 
     if (details == null || details.isEmpty()) {
       if (tryVerifiedFilingWithoutCurrentDetail(result, company, null)) {
-        return true;
+        return !result.isAborted();
       }
       recordFailure(result, corpCode, corpName, "DS006 상세 정보 없음 (빈 응답)");
       log.warn("DS006 빈 응답: corpCode={}, corpName={}", corpCode, corpName);
@@ -423,7 +423,7 @@ public class IpoSyncService {
       }
       // 상세가 없더라도 정정 원문에서 원공시 근거를 확보할 수 있다.
       if (!isWithdrawal && tryVerifiedFilingWithoutCurrentDetail(result, company, null)) {
-        return true;
+        return !result.isAborted();
       }
       return true;
     }
@@ -445,7 +445,7 @@ public class IpoSyncService {
     // 이 경로가 증명되지 않으면 기존 저장 규칙에 따라 보수적으로 보류한다.
     if (company.getRceptNo() != null && !company.getRceptNo().equals(detail.getRceptNo())) {
       if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
-        return true;
+        return !result.isAborted();
       }
       recordFailure(result, corpCode, corpName, "DS001/DS006 접수번호 불일치, 원공시 연결 불가: 저장 보류");
       return true;
@@ -549,7 +549,7 @@ public class IpoSyncService {
    */
   private boolean tryVerifiedFilingWithoutCurrentDetail(
       IpoSyncResult result, OpenDartDisclosureItem filing, OpenDartEquitySecurityDetail fallback) {
-    if (filing.getRceptNo() == null || !filing.isCorrectionOrFinalized()) {
+    if (filing.getRceptNo() == null || !filing.isEquitySecuritiesReport()) {
       return false;
     }
     String xml;
@@ -560,14 +560,22 @@ public class IpoSyncService {
         return false;
       }
       xml = doc.get();
-      LocalDate firstSubmission = DartFilingOrigin.originalSubmissionDate(xml);
-      if (firstSubmission == null) {
-        return false;
+      List<OpenDartDisclosureItem> historical;
+      String original;
+      if (filing.isCorrectionOrFinalized()) {
+        LocalDate firstSubmission = DartFilingOrigin.originalSubmissionDate(xml);
+        if (firstSubmission == null) {
+          return false;
+        }
+        historical =
+            corpDisclosureClient.searchAllByDateRange(
+                filing.getCorpCode(), firstSubmission, LocalDate.now(clock));
+        original = DartFilingOrigin.resolveOriginalReceipt(filing, historical, xml);
+      } else {
+        // 원신고는 그 자체가 회차 식별 근거이므로 추가 DS001 조회가 필요 없다.
+        historical = List.of(filing);
+        original = filing.getRceptNo();
       }
-      List<OpenDartDisclosureItem> historical =
-          corpDisclosureClient.searchAllByDateRange(
-              filing.getCorpCode(), firstSubmission, LocalDate.now(clock));
-      String original = DartFilingOrigin.resolveOriginalReceipt(filing, historical, xml);
       if (original == null) {
         recordFailure(
             result, filing.getCorpCode(), filing.getCorpName(), "최초제출일과 원공시 접수번호 연결 불가: 저장 보류");
