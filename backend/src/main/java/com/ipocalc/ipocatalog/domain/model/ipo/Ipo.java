@@ -158,8 +158,13 @@ public class Ipo {
       LocalDate refund,
       String source,
       LocalDateTime now) {
-    this.companyName = companyName;
-    this.ipoName = companyName;
+    // 이름 수정 여부를 추적하는 별도 출처가 없으므로 기존 이름은 보존한다.
+    if (this.companyName == null || this.companyName.isBlank()) {
+      this.companyName = companyName;
+    }
+    if (this.ipoName == null || this.ipoName.isBlank()) {
+      this.ipoName = companyName;
+    }
     if (shares != null
         && (this.offeringShareCount == null
             || (this.lastImportedOfferingShareCount != null
