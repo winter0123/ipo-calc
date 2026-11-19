@@ -206,7 +206,8 @@ public class IpoSyncPersistence {
     final LocalDate verifiedStart = start;
     boolean duplicate =
         ipoRepository
-            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(verifiedStart, RecordStatus.ACTIVE)
+            .findBySubscriptionStartDateAndStatusAndDeletedAtIsNull(
+                verifiedStart, RecordStatus.ACTIVE)
             .stream()
             .anyMatch(
                 ipo -> ipo.getIpoName() != null
