@@ -35,6 +35,7 @@ public class Ipo {
     }
     if (refundDate != null) {
       this.lastImportedRefundDate = null;
+      this.lastVerifiedRefundReceiptNo = null;
     }
     if (subscriptionEndDate != null) {
       this.lastImportedSubscriptionEndDate = null;
@@ -61,9 +62,10 @@ public class Ipo {
       this.allotmentDate = allotment;
       changed = true;
     }
-    // 공시 원문으로 검증된 환불일은 ustockplus 보완 값으로 다시 덮어쓰지 않는다.
+    // 환불일 자체를 DART 원문에서 검증했을 때만 uStockPlus의 정정을 막는다.
+    // 청약일 등 다른 일정의 최신 접수번호는 환불일 출처를 증명하지 않는다.
     if (refund != null
-        && (this.refundDate == null || this.lastVerifiedScheduleReceiptNo == null)
+        && (this.refundDate == null || this.lastVerifiedRefundReceiptNo == null)
         && canAutoOverwrite(this.refundDate, this.lastImportedRefundDate)) {
       if (!refund.equals(this.refundDate)) {
         this.refundDate = refund;
@@ -437,6 +439,24 @@ public class Ipo {
   /** 확인된 원문 일정에 적용된 최신 공시 접수번호. */
   @Column(name = "last_verified_schedule_receipt_no", length = 20)
   private String lastVerifiedScheduleReceiptNo;
+
+  /** DART 원문에서 환불일을 실제로 검증하고 반영한 접수번호. 청약일 출처와 독립적이다. */
+  @Column(name = "last_verified_refund_receipt_no", length = 20)
+  private String lastVerifiedRefundReceiptNo;
+
+  /** DART가 확인한 환불일이 실제 저장되었을 때만 환불일 출처를 남긴다. */
+  public void recordVerifiedRefundReceipt(String receipt, LocalDate verifiedRefund) {
+    if (receipt == null
+        || receipt.isBlank()
+        || verifiedRefund == null
+        || !verifiedRefund.equals(refundDate)
+        || !verifiedRefund.equals(lastImportedRefundDate)
+        || (lastVerifiedRefundReceiptNo != null
+            && receipt.compareTo(lastVerifiedRefundReceiptNo) < 0)) {
+      return;
+    }
+    lastVerifiedRefundReceiptNo = receipt;
+  }
 
   /** 확인된 DS006 수량에 적용된 최신 공시 접수번호. */
   @Column(name = "last_verified_share_receipt_no", length = 20)
