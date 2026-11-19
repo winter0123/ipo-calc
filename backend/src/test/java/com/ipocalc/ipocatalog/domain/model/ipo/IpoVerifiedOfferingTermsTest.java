@@ -22,10 +22,12 @@ class IpoVerifiedOfferingTermsTest {
   @Test
   void newAutoIpoAcceptsFirstVerifiedBandAndFixedPrice() {
     Ipo ipo = newAutoIpo();
-    assertThat(ipo.applyVerifiedOfferingTerms(
-        terms("20261030000616", 2, 9_400L, 11_000L, null), NOW)).isTrue();
-    assertThat(ipo.applyVerifiedOfferingTerms(
-        terms("20261103000312", 2, null, null, 11_000L), NOW)).isTrue();
+    boolean bandChanged =
+        ipo.applyVerifiedOfferingTerms(terms("20261030000616", 2, 9_400L, 11_000L, null), NOW);
+    boolean fixedChanged =
+        ipo.applyVerifiedOfferingTerms(terms("20261103000312", 2, null, null, 11_000L), NOW);
+    assertThat(bandChanged).isTrue();
+    assertThat(fixedChanged).isTrue();
     assertThat(ipo.getLowerBandPrice()).isEqualTo(9_400L);
     assertThat(ipo.getUpperBandPrice()).isEqualTo(11_000L);
     assertThat(ipo.getBandPriceSourceReceiptNo()).isEqualTo("20261030000616");
@@ -36,13 +38,12 @@ class IpoVerifiedOfferingTermsTest {
   @Test
   void staleFilingNeverRevertsVerifiedBandOrFixedPrice() {
     Ipo ipo = newAutoIpo();
-    ipo.applyVerifiedOfferingTerms(
-        terms("20261030000616", 2, 9_400L, 11_000L, null), NOW);
-    ipo.applyVerifiedOfferingTerms(
-        terms("20261103000312", 2, null, null, 11_000L), NOW);
+    ipo.applyVerifiedOfferingTerms(terms("20261030000616", 2, 9_400L, 11_000L, null), NOW);
+    ipo.applyVerifiedOfferingTerms(terms("20261103000312", 2, null, null, 11_000L), NOW);
+    boolean staleChanged =
+        ipo.applyVerifiedOfferingTerms(terms("20261008000649", 2, 8_000L, 9_000L, 8_500L), NOW);
 
-    assertThat(ipo.applyVerifiedOfferingTerms(
-        terms("20261008000649", 2, 8_000L, 9_000L, 8_500L), NOW)).isFalse();
+    assertThat(staleChanged).isFalse();
     assertThat(ipo.getLowerBandPrice()).isEqualTo(9_400L);
     assertThat(ipo.getFixedPrice()).isEqualTo(11_000L);
   }
@@ -50,26 +51,31 @@ class IpoVerifiedOfferingTermsTest {
   @Test
   void newerVerifiedSourceIsStoredEvenWhenPriceUnchanged() {
     Ipo ipo = newAutoIpo();
-    ipo.applyVerifiedOfferingTerms(
-        terms("20261008000649", 1, 9_400L, 11_000L, null), NOW);
-    assertThat(ipo.applyVerifiedOfferingTerms(
-        terms("20261030000616", 2, 9_400L, 11_000L, null), NOW)).isTrue();
+    ipo.applyVerifiedOfferingTerms(terms("20261008000649", 1, 9_400L, 11_000L, null), NOW);
+    boolean changed =
+        ipo.applyVerifiedOfferingTerms(terms("20261030000616", 2, 9_400L, 11_000L, null), NOW);
+    assertThat(changed).isTrue();
     assertThat(ipo.getBandPriceSourceReceiptNo()).isEqualTo("20261030000616");
     assertThat(ipo.getBandPriceParserVersion()).isEqualTo(2);
-    assertThat(ipo.applyVerifiedOfferingTerms(
-        terms("20261030000616", 1, 8_000L, 9_000L, null), NOW)).isFalse();
+    boolean staleParserChanged =
+        ipo.applyVerifiedOfferingTerms(terms("20261030000616", 1, 8_000L, 9_000L, null), NOW);
+    assertThat(staleParserChanged).isFalse();
   }
 
   @Test
   void untrackedExistingPriceAndManualIpoAreProtected() {
     Ipo importedWithUnknownPrice =
         Ipo.builder().syncSource("OPENDART").fixedPrice(9_400L).build();
-    assertThat(importedWithUnknownPrice.applyVerifiedOfferingTerms(
-        terms("20261103000312", 2, null, null, 11_000L), NOW)).isFalse();
+    boolean unknownChanged =
+        importedWithUnknownPrice.applyVerifiedOfferingTerms(
+            terms("20261103000312", 2, null, null, 11_000L), NOW);
+    assertThat(unknownChanged).isFalse();
     assertThat(importedWithUnknownPrice.getFixedPrice()).isEqualTo(9_400L);
 
     Ipo manual = Ipo.builder().fixedPrice(9_400L).build();
-    assertThat(manual.applyVerifiedOfferingTerms(
-        terms("20261103000312", 2, null, null, 11_000L), NOW)).isFalse();
+    boolean manualChanged =
+        manual.applyVerifiedOfferingTerms(
+            terms("20261103000312", 2, null, null, 11_000L), NOW);
+    assertThat(manualChanged).isFalse();
   }
 }
