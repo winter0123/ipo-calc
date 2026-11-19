@@ -232,10 +232,7 @@ public class Ipo {
     return changed;
   }
 
-  /**
-   * 접수번호가 명확한 원문만 기존 자동 가격을 갱신한다.
-   * 출처 없는 기존 수동 가능 가격은 변경하지 않고, 같은 접수번호의 새 파서 버전만 허용한다.
-   */
+  /** 접수번호가 명확한 원문만 기존 자동 가격을 갱신한다. 출처 없는 기존 수동 가능 가격은 변경하지 않고, 같은 접수번호의 새 파서 버전만 허용한다. */
   private static boolean isVerifiedSourceCurrent(
       String incomingReceipt,
       int incomingVersion,
