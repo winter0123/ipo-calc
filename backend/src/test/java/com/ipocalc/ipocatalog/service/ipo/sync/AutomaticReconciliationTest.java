@@ -161,8 +161,7 @@ class AutomaticReconciliationTest {
     if (ds001FullCorpFixture != null) {
       expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
       // 철회 후 최신 정정의 최초제출일을 검증할 때 동일 원신고 이력을 한 번 더 조회한다.
-      if ("ds001-simwon.json".equals(ds001FullCorpFixture)
-          && ds001RecentFixture != null) {
+      if ("ds001-simwon.json".equals(ds001FullCorpFixture) && ds001RecentFixture != null) {
         expectGet(ds001Server, ds001FullCorpMatcher, ds001FullCorpFixture);
       }
     }
