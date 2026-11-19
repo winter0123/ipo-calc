@@ -233,7 +233,8 @@ public class IpoReconciliationService {
       Optional<String> downloaded = dartIpoFilingClient.downloadDocument(filing.getRceptNo());
       if (downloaded.isPresent() && !downloaded.get().isBlank()) {
         xml = downloaded.get();
-        offeringTerms = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
+        offeringTerms =
+            offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
       }
     } catch (Exception e) {
       log.warn("재점검 원문 조회 실패: corpCode={}, rceptNo={}, error={}",
