@@ -1856,4 +1856,84 @@ class IpoSyncServiceTest {
     assertThat(ipoCaptor.getValue().getSubscriptionStartDate())
         .isEqualTo(LocalDate.of(2026, 11, 4));
   }
+
+  @Test
+  void sync_updatesSameRoundCorrectionWhenLatestDs006ReceiptMatches() {
+    String originalReceipt = "20261008000649";
+    String finalizedReceipt = "20261103000312";
+    Ipo existing =
+        Ipo.builder()
+            .id(7L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .lastImportedSubscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .lastImportedSubscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    OpenDartDisclosureItem finalized =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo(finalizedReceipt)
+            .build();
+    OpenDartEquitySecurityDetail matchingDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo(finalizedReceipt)
+            .sbd("2026년 11월 07일 ~ 2026년 11월 08일")
+            .build();
+    matchingDetail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(finalized));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
+        .thenReturn(List.of(matchingDetail));
+    when(dartIpoFilingClient.downloadDocument(finalizedReceipt))
+        .thenReturn(Optional.of(
+            "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+    when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
+        .thenReturn(List.of(
+            OpenDartDisclosureItem.builder()
+                .corpCode("corp")
+                .corpName("name")
+                .reportNm("증권신고서(지분증권)")
+                .rceptDt("20261008")
+                .rceptNo(originalReceipt)
+                .build(),
+            finalized));
+    when(dartIpoFilingClient.downloadDocument(originalReceipt))
+        .thenReturn(Optional.of("<DOCUMENT>원신고 희망공모가</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq(finalizedReceipt), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                finalizedReceipt,
+                2,
+                null,
+                null,
+                11_000L,
+                LocalDate.of(2026, 11, 7),
+                LocalDate.of(2026, 11, 8),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getUpdated()).isEqualTo(1);
+    assertThat(existing.getId()).isEqualTo(7L);
+    assertThat(existing.getSourceReceiptNo()).isEqualTo(originalReceipt);
+    assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(existing.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 7));
+    assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo(finalizedReceipt);
+    verify(dartIpoFilingClient).downloadDocument(finalizedReceipt);
+  }
+
 }
