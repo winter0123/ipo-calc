@@ -237,7 +237,7 @@ class IpoScheduleReconciliationTest {
   }
 
   @Test
-  void correctionUpdatesExistingAutoRecord() {
+  void correctionWithoutLinkedOriginalReceiptIsHeld() {
     IpoRepository repository = mock(IpoRepository.class);
     OpenDartEquitySecuritiesClient equitySecuritiesClient =
         mock(OpenDartEquitySecuritiesClient.class);
@@ -266,16 +266,16 @@ class IpoScheduleReconciliationTest {
             .offeringShareCount(1_000_000L)
             .build();
     assertThat(persistence.persist("corp", "회사", correction, true, true, null))
-        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
-    assertThat(existing.getSubscriptionStartDate()).isEqualTo(FIRST.plusDays(2));
-    assertThat(existing.getSubscriptionEndDate()).isEqualTo(FIRST.plusDays(3));
-    assertThat(existing.getOfferingShareCount()).isEqualTo(1_000_000L);
+        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
+    assertThat(existing.getSubscriptionStartDate()).isEqualTo(FIRST);
+    assertThat(existing.getSubscriptionEndDate()).isEqualTo(FIRST.plusDays(1));
+    assertThat(existing.getOfferingShareCount()).isNull();
     // sourceReceiptNo는 덮어쓰지 않음
     assertThat(existing.getSourceReceiptNo()).isEqualTo("old-receipt");
   }
 
   @Test
-  void undeterminedOfferingUpdatesShareCountOnly() {
+  void undeterminedOfferingHoldsShareCount() {
     IpoRepository repository = mock(IpoRepository.class);
     OpenDartEquitySecuritiesClient equitySecuritiesClient =
         mock(OpenDartEquitySecuritiesClient.class);
@@ -306,14 +306,14 @@ class IpoScheduleReconciliationTest {
             .offeringShareCount(800_000L)
             .build();
     assertThat(persistence.persist("corp", "회사", detail, false, false, null))
-        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
     // 주식 수만 갱신됨
-    assertThat(existing.getOfferingShareCount()).isEqualTo(800_000L);
+    assertThat(existing.getOfferingShareCount()).isEqualTo(500_000L);
     // 가격 필드는 변경되지 않음 (기존 값 유지)
   }
 
   @Test
-  void correctionWithoutSourceReceiptUpdatesLegacyRecord() {
+  void correctionWithoutSourceReceiptIsHeldForLegacyRecord() {
     IpoRepository repository = mock(IpoRepository.class);
     OpenDartEquitySecuritiesClient equitySecuritiesClient =
         mock(OpenDartEquitySecuritiesClient.class);
@@ -340,8 +340,8 @@ class IpoScheduleReconciliationTest {
             .subscriptionEndDate(FIRST.plusDays(3))
             .build();
     assertThat(persistence.persist("corp", "회사", correction, true, true, null))
-        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
     // 레거시 행은 receipt 연결됨
-    assertThat(legacy.getSourceReceiptNo()).isEqualTo("new-receipt");
+    assertThat(legacy.getSourceReceiptNo()).isNull();
   }
 }
