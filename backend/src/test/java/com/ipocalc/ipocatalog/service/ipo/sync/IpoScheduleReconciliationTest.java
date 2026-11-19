@@ -487,4 +487,27 @@ class IpoScheduleReconciliationTest {
     assertThat(persistence.withdraw("corp", original)).isFalse();
     verify(repository, never()).saveAndFlush(any());
   }
+
+  @Test
+  void supplementalCalendarCannotRevertVerifiedDartRefundButMayUpdateListing() {
+    Ipo ipo =
+        Ipo.builder()
+            .syncSource("OPENDART")
+            .refundDate(FIRST)
+            .lastImportedRefundDate(FIRST)
+            .lastVerifiedScheduleReceiptNo("20261103000312")
+            .build();
+    ipo.mergeSupplementalSchedule(
+        null,
+        null,
+        FIRST.plusDays(1),
+        FIRST.plusDays(8),
+        "OPENDART+USTOCKPLUS",
+        FIRST.atStartOfDay());
+
+    assertThat(ipo.getRefundDate()).isEqualTo(FIRST);
+    assertThat(ipo.getListingDate()).isEqualTo(FIRST.plusDays(8));
+    assertThat(ipo.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261103000312");
+  }
+
 }
