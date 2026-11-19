@@ -453,6 +453,9 @@ public class IpoSyncService {
 
     // subscriptionStartDate가 null이면 실패 처리
     if (detail.getSubscriptionStartDate() == null) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
@@ -460,12 +463,18 @@ public class IpoSyncService {
 
     // 끝일 구분자는 있는데 못 읽은 경우: 다음 영업일로 조용히 채우지 않고 실패 기록
     if (detail.isSubscriptionEndUnreadable()) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 종료일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
     if (detail.getSubscriptionEndDate() != null
         && detail.getSubscriptionEndDate().isBefore(detail.getSubscriptionStartDate())) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일이 시작일보다 앞섬: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
