@@ -97,9 +97,7 @@ class IpoVerifiedOfferingTermsTest {
     assertThat(ipo.getFixedPriceSourceReceiptNo()).isNull();
     assertThat(ipo.getFixedPriceParserVersion()).isNull();
 
-    ipo.applyVerifiedOfferingTerms(
-        terms("20261110000001", 2, null, null, 13_000L), NOW);
+    ipo.applyVerifiedOfferingTerms(terms("20261110000001", 2, null, null, 13_000L), NOW);
     assertThat(ipo.getFixedPrice()).isEqualTo(12_000L);
   }
-
 }
