@@ -754,10 +754,7 @@ class IpoScheduleReconciliationTest {
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     OpenDartEquitySecurityDetail newerDetail =
-        OpenDartEquitySecurityDetail.builder()
-            .rceptNo(newerReceipt)
-            .pymd("2026년 11월 10일")
-            .build();
+        OpenDartEquitySecurityDetail.builder().rceptNo(newerReceipt).pymd("2026년 11월 10일").build();
     newerDetail.parseDerivedFields();
     DartOfferingTerms newerWithoutRefund =
         new DartOfferingTerms(
@@ -783,12 +780,7 @@ class IpoScheduleReconciliationTest {
     assertThat(existing.getId()).isEqualTo(507L);
     assertThat(
             existing.mergeSupplementalSchedule(
-                null,
-                null,
-                ds006Refund,
-                null,
-                "OPENDART+USTOCKPLUS",
-                FIRST.atStartOfDay()))
+                null, null, ds006Refund, null, "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
         .isFalse();
     assertThat(existing.getRefundDate()).isEqualTo(dartRefund);
   }
@@ -828,14 +820,20 @@ class IpoScheduleReconciliationTest {
     when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
     OpenDartEquitySecurityDetail detail =
-        OpenDartEquitySecurityDetail.builder()
-            .rceptNo(ds006Receipt)
-            .pymd("2026년 11월 10일")
-            .build();
+        OpenDartEquitySecurityDetail.builder().rceptNo(ds006Receipt).pymd("2026년 11월 10일").build();
     detail.parseDerivedFields();
     DartOfferingTerms missingRefund =
         new DartOfferingTerms(
-            ds006Receipt, 2, null, null, null, FIRST.plusDays(2), FIRST.plusDays(3), null, null, null);
+            ds006Receipt,
+            2,
+            null,
+            null,
+            null,
+            FIRST.plusDays(2),
+            FIRST.plusDays(3),
+            null,
+            null,
+            null);
     persistence.persistVerifiedFiling(
         "corp", "기업", ds006Receipt, originalReceipt, detail, missingRefund, null);
 
@@ -869,5 +867,4 @@ class IpoScheduleReconciliationTest {
     assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo(latestReceipt);
     assertThat(existing.getSourceReceiptNo()).isEqualTo(originalReceipt);
   }
-
 }
