@@ -441,10 +441,17 @@ public class IpoSyncService {
       return true;
     }
 
+    // DS006 상세가 최신 접수번호와 일치해도 정정 공시의 원신고는 별도로 확인한다.
+    // 이 검증을 생략하면 기존 IPO 원공시와 다른 접수번호를 영구적으로 갱신하지 못한다.
+    boolean attemptedCorrection = company.isCorrectionOrFinalized();
+    if (attemptedCorrection && tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+      return !result.isAborted();
+    }
+
     // 과거 DS006 상세가 폴백된 경우 최신 원문의 최초제출일을 확인한 뒤 갱신한다.
     // 이 경로가 증명되지 않으면 기존 저장 규칙에 따라 보수적으로 보류한다.
     if (company.getRceptNo() != null && !company.getRceptNo().equals(detail.getRceptNo())) {
-      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+      if (!attemptedCorrection && tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
         return !result.isAborted();
       }
       recordFailure(result, corpCode, corpName, "DS001/DS006 접수번호 불일치, 원공시 연결 불가: 저장 보류");
