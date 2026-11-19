@@ -706,7 +706,7 @@ class AutomaticReconciliationTest {
             "corp_code=" + SIMWON_CORP,
             "ds001-simwon.json",
             dayOne);
-    first.sync(90);
+    IpoSyncResult firstResult = first.sync(90);
     IpoSyncService second =
         newSyncServiceWithClock(
             "ds001-simwon.json",
@@ -715,7 +715,16 @@ class AutomaticReconciliationTest {
             "corp_code=" + SIMWON_CORP,
             "ds001-simwon.json",
             dayTwo);
-    second.sync(90);
+    IpoSyncResult secondResult = second.sync(90);
+
+    assertThat(firstResult.getFailureCount())
+        .as("first day failures: %s",
+            firstResult.getFailures().stream().map(IpoSyncFailure::getReason).toList())
+        .isZero();
+    assertThat(secondResult.getFailureCount())
+        .as("second day failures: %s",
+            secondResult.getFailures().stream().map(IpoSyncFailure::getReason).toList())
+        .isZero();
 
     assertThat(
             ipoSyncRunRepository.countByRunTypeAndStatus(
