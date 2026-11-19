@@ -15,7 +15,7 @@ public record DartOfferingTerms(
     LocalDate refundDate,
     Long offeringShareCount) {
 
-  public static final int PARSER_VERSION = 1;
+  public static final int PARSER_VERSION = 2;
 
   /** 밴드가 유효한지 확인: 두 값이 모두 있고 0 < lower < upper일 때만 true. */
   public boolean hasValidBand() {

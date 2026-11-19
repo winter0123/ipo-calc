@@ -2,9 +2,12 @@ package com.ipocalc.ipocatalog.service.ipo.sync.opendart;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,13 +29,26 @@ public class DartOfferingTermsParser {
   private static final Pattern NUMBER = Pattern.compile("\\d+");
   private static final Pattern PAREN = Pattern.compile("\\([^)]*\\)|（[^）]*）");
   private static final Pattern TILDE = Pattern.compile("[~∼〜～]");
-  private static final Pattern WON = Pattern.compile("원");
+  private static final Pattern BREAK = Pattern.compile("<BR\\s*/?>", Pattern.CASE_INSENSITIVE);
+  private static final String AMOUNT = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)";
+  private static final String BAND_LABEL = "(?:희망\\s*공모\\s*가(?:격|액)?|공모\\s*희망\\s*가(?:격|액)?)";
+  private static final String FIXED_LABEL =
+      "(?:확정\\s*공모\\s*가(?:격|액)?|(?:주당\\s*|단위당\\s*)?" + "(?:모집(?:[(（]매출[)）])?|매출)\\s*가액)";
+  private static final String RANGE = "(" + AMOUNT + ")\\s*원?\\s*[~∼〜～]\\s*(" + AMOUNT + ")\\s*원?";
+  private static final Pattern BAND_HEADER = Pattern.compile(BAND_LABEL);
+  private static final Pattern INLINE_BAND =
+      Pattern.compile(BAND_LABEL + "(?:\\s*인)?\\s*[:：]?\\s*" + RANGE + "(?![0-9,])");
+  private static final Pattern BAND_VALUE = Pattern.compile(RANGE);
+  private static final Pattern FIXED_HEADER = Pattern.compile(FIXED_LABEL);
+  private static final Pattern FIXED_VALUE = Pattern.compile("(" + AMOUNT + ")\\s*원?");
+  private static final Pattern INLINE_FIXED =
+      Pattern.compile(
+          FIXED_LABEL + "\\s*[:：]\\s*(" + AMOUNT + ")\\s*원" + "(?=\\s*(?:$|[-•]\\s*[^0-9~∼〜～]))");
 
   /** 한 번의 파싱 동안만 쓰는 가변 상태. */
   private static final class ParseState {
     private Long lowerBandPrice;
     private Long upperBandPrice;
-    private Long fixedPrice;
     private LocalDate subscriptionStartDate;
     private LocalDate subscriptionEndDate;
     private LocalDate allotmentDate;
@@ -54,36 +70,21 @@ public class DartOfferingTermsParser {
     String s = xml == null ? "" : xml;
     List<List<List<String>>> tables = parseTables(s);
 
-    // 1. 정정 전/정정 후 헤더를 가진 표 찾기 (발행조건확정 공시에서 확정가 추출용)
-    // 2. 희망공모가/모집가액 문맥에서 밴드(두 가격) 또는 단일 확정가 찾기
-    // 3. 청약기일, 배정공고일, 납입기일 표에서 일정 읽기
-    // 4. 증권수량 표에서 공모주식수 읽기
-
+    Set<Long> fixedPrices = new HashSet<>();
     for (List<List<String>> table : tables) {
-      // 표의 모든 행을 확인하여 어떤 표인지 식별 (헤더 행뿐만 아니라 데이터 행도 확인)
       if (table.isEmpty()) {
         continue;
       }
       StringBuilder allText = new StringBuilder();
       for (List<String> row : table) {
         for (String cell : row) {
-          if (cell != null) {
-            allText.append(cell).append(" ");
-          }
+          allText.append(cell).append(" ");
         }
       }
-      String tableText = allText.toString().replaceAll("\\s+", " ");
-
-      // 정정 전/정정 후 표 식별
-      if (tableText.contains("정정전")
-          || tableText.contains("정정후")
-          || tableText.contains("정정 전")
-          || tableText.contains("정정 후")) {
-        parseCorrectionTable(table, isFinalizedReport, state);
-      }
-
-      // 희망공모가/모집가액 표 식별
-      if (tableText.contains("희망공모가") || tableText.contains("모집가액") || tableText.contains("매출가액")) {
+      String tableText = SPACES.matcher(allText).replaceAll(" ");
+      if (isFinalizedReport) {
+        collectFixedPrices(table, fixedPrices);
+      } else {
         extractBandPrice(table, state);
       }
 
@@ -129,7 +130,7 @@ public class DartOfferingTermsParser {
         DartOfferingTerms.PARSER_VERSION,
         state.lowerBandPrice,
         state.upperBandPrice,
-        state.fixedPrice,
+        fixedPrices.size() == 1 ? fixedPrices.iterator().next() : null,
         state.subscriptionStartDate,
         state.subscriptionEndDate,
         state.allotmentDate,
@@ -157,14 +158,20 @@ public class DartOfferingTermsParser {
   }
 
   private String cleanText(String raw) {
-    String plain = TAG.matcher(raw).replaceAll("");
+    String plain =
+        TAG.matcher(BREAK.matcher(SPACES.matcher(raw).replaceAll(" ")).replaceAll("\n"))
+            .replaceAll("");
     Matcher m = ENTITY.matcher(plain);
     StringBuilder sb = new StringBuilder();
     while (m.find()) {
       m.appendReplacement(sb, Matcher.quoteReplacement(decodeEntity(m.group(1), m.group())));
     }
     m.appendTail(sb);
-    return SPACES.matcher(sb).replaceAll(" ").trim();
+    return sb.toString()
+        .lines()
+        .map(line -> SPACES.matcher(line).replaceAll(" ").trim())
+        .collect(Collectors.joining("\n"))
+        .trim();
   }
 
   private String decodeEntity(String name, String original) {
@@ -191,95 +198,102 @@ public class DartOfferingTermsParser {
     }
   }
 
-  /** 정정 전/정정 후 표에서 확정가 추출 (발행조건확정 공시일 때만). */
-  private void parseCorrectionTable(
-      List<List<String>> table, boolean isFinalizedReport, ParseState state) {
-    if (!isFinalizedReport) {
-      return;
-    }
-
+  /** 표마다 정정 후 열을 찾아 주당 확정가 후보를 수집한다. */
+  private void collectFixedPrices(List<List<String>> table, Set<Long> fixedPrices) {
+    int afterColumn = -1;
+    int labelColumn = -1;
     for (List<String> row : table) {
-      for (int i = 0; i < row.size(); i++) {
-        String cell = row.get(i);
-        if (cell != null && (cell.contains("모집") || cell.contains("매출")) && cell.contains("가액")) {
-          // 같은 행 또는 다음 셀에서 단일 가격 찾기
-          String priceCell = (i + 1 < row.size()) ? row.get(i + 1) : null;
-          Long price = parsePrice(priceCell != null ? priceCell : cell);
-          if (price != null && price > 0) {
-            state.fixedPrice = price;
-            return;
-          }
+      int nextAfterColumn = -1;
+      int nextLabelColumn = -1;
+      for (int column = 0; column < row.size(); column++) {
+        String cell = SPACES.matcher(row.get(column)).replaceAll("");
+        if (cell.equals("정정후")) {
+          nextAfterColumn = column;
+        } else if (cell.equals("항목") || cell.equals("항목명")) {
+          nextLabelColumn = column;
+        }
+      }
+      if (nextAfterColumn >= 0) {
+        afterColumn = nextAfterColumn;
+        labelColumn = nextLabelColumn;
+        continue;
+      }
+      if (afterColumn < 0 || afterColumn >= row.size()) {
+        continue;
+      }
+      String after = row.get(afterColumn);
+      if (labelColumn >= 0
+          && labelColumn < row.size()
+          && FIXED_HEADER.matcher(row.get(labelColumn)).matches()) {
+        Matcher value = FIXED_VALUE.matcher(after);
+        if (value.matches()) {
+          addFixedPrice(value.group(1), fixedPrices);
+        }
+      }
+      for (String line : after.lines().toList()) {
+        Matcher inlinePrice = INLINE_FIXED.matcher(line);
+        while (inlinePrice.find()) {
+          addFixedPrice(inlinePrice.group(1), fixedPrices);
         }
       }
     }
   }
 
-  /** 표에서 두 개의 가격(밴드) 추출. */
+  private void addFixedPrice(String amount, Set<Long> fixedPrices) {
+    Long price = parseAmount(amount);
+    if (price != null && price > 0) {
+      fixedPrices.add(price);
+    }
+  }
+
+  /** 희망공모가가 명시된 셀이나 그 행·열에서만 범위를 읽는다. */
   private void extractBandPrice(List<List<String>> table, ParseState state) {
-    for (List<String> row : table) {
-      for (String cell : row) {
-        // "9,400원 ~ 11,000원" 패턴 먼저 시도
-        Long[] rangePrices = extractTwoPricesFromCell(cell);
-        if (rangePrices != null && rangePrices[0] != null && rangePrices[1] != null) {
-          state.lowerBandPrice = Math.min(rangePrices[0], rangePrices[1]);
-          state.upperBandPrice = Math.max(rangePrices[0], rangePrices[1]);
+    if (state.lowerBandPrice != null) {
+      return;
+    }
+    for (int index = 0; index < table.size(); index++) {
+      List<String> row = table.get(index);
+      for (int column = 0; column < row.size(); column++) {
+        String cell = row.get(column);
+        Matcher inline = INLINE_BAND.matcher(cell);
+        if (inline.find() && applyBand(inline, state)) {
+          return;
+        }
+        if (!BAND_HEADER.matcher(cell).matches()) {
+          continue;
+        }
+        if (column + 1 < row.size() && applyBandValue(row.get(column + 1), state)) {
+          return;
+        }
+        if (index + 1 < table.size()
+            && column < table.get(index + 1).size()
+            && applyBandValue(table.get(index + 1).get(column), state)) {
           return;
         }
       }
     }
-    // 범위 패턴이 없으면 단일 가격들을 수집해서 두 개가 있으면 밴드로 사용
-    List<Long> prices = new ArrayList<>();
-    for (List<String> row : table) {
-      for (String cell : row) {
-        Long price = parsePrice(cell);
-        if (price != null && price > 0) {
-          prices.add(price);
-        }
-      }
-    }
-    if (prices.size() >= 2) {
-      state.lowerBandPrice = Math.min(prices.get(0), prices.get(1));
-      state.upperBandPrice = Math.max(prices.get(0), prices.get(1));
-    }
   }
 
-  /** 셀에서 두 가격(범위) 추출: "9,400원 ~ 11,000원" 패턴. */
-  private Long[] extractTwoPricesFromCell(String cell) {
-    if (cell == null) {
-      return null;
-    }
-    String cleaned = PAREN.matcher(cell).replaceAll(" ");
-    Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) {
-      return null;
-    }
-
-    String left = cleaned.substring(0, tildeMatch.start()).trim();
-    String right = cleaned.substring(tildeMatch.end()).trim();
-
-    Long leftPrice = parsePrice(left);
-    Long rightPrice = parsePrice(right);
-
-    if (leftPrice != null && rightPrice != null) {
-      return new Long[] {leftPrice, rightPrice};
-    }
-    return null;
+  private boolean applyBandValue(String cell, ParseState state) {
+    Matcher value = BAND_VALUE.matcher(cell);
+    return value.matches() && applyBand(value, state);
   }
 
-  /** 셀에서 단일 가격 추출. */
-  private Long parsePrice(String cell) {
-    if (cell == null) {
-      return null;
+  private boolean applyBand(Matcher value, ParseState state) {
+    Long low = parseAmount(value.group(1));
+    Long high = parseAmount(value.group(2));
+    if (low == null || high == null || low <= 0 || low >= high) {
+      return false;
     }
-    String cleaned = PAREN.matcher(cell).replaceAll(" ");
-    cleaned = WON.matcher(cleaned).replaceAll("");
-    cleaned = cleaned.replaceAll(",", "").trim();
-    if (cleaned.isEmpty()) {
-      return null;
-    }
+    state.lowerBandPrice = low;
+    state.upperBandPrice = high;
+    return true;
+  }
+
+  private Long parseAmount(String amount) {
     try {
-      return Long.parseLong(cleaned);
-    } catch (NumberFormatException e) {
+      return Long.valueOf(amount.replace(",", ""));
+    } catch (NumberFormatException ignored) {
       return null;
     }
   }
