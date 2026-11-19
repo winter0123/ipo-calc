@@ -555,8 +555,7 @@ class IpoScheduleReconciliationTest {
     String finalizedReceipt = "20261103000312";
     String html =
         Files.readString(
-            Path.of(
-                "src/test/resources/dart/ykmc-20261103000312-offering-summary.html"));
+            Path.of("src/test/resources/dart/ykmc-20261103000312-offering-summary.html"));
     OpenDartDisclosureItem original =
         OpenDartDisclosureItem.builder()
             .corpCode("ykmc")
@@ -572,8 +571,7 @@ class IpoScheduleReconciliationTest {
             .reportNm("[발행조건확정]증권신고서(지분증권)")
             .build();
 
-    assertThat(DartFilingOrigin.originalSubmissionDate(html))
-        .isEqualTo(LocalDate.of(2026, 10, 8));
+    assertThat(DartFilingOrigin.originalSubmissionDate(html)).isEqualTo(LocalDate.of(2026, 10, 8));
     String verifiedOriginal =
         DartFilingOrigin.resolveOriginalReceipt(finalized, List.of(original, finalized), html);
     assertThat(verifiedOriginal).isEqualTo(originalReceipt);
@@ -647,20 +645,26 @@ class IpoScheduleReconciliationTest {
         .thenReturn(List.of(existing));
     DartOfferingTerms subscriptionOnly =
         new DartOfferingTerms(
-            "20261103000312", 2, null, null, null,
-            FIRST.plusDays(2), FIRST.plusDays(3), null, null, null);
+            "20261103000312",
+            2,
+            null,
+            null,
+            null,
+            FIRST.plusDays(2),
+            FIRST.plusDays(3),
+            null,
+            null,
+            null);
 
     assertThat(
             persistence.persistVerifiedFiling(
-                "corp", "기업", "20261103000312", "20261008000649", null,
-                subscriptionOnly, null))
+                "corp", "기업", "20261103000312", "20261008000649", null, subscriptionOnly, null))
         .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
     assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo("20261103000312");
     assertThat(existing.getLastVerifiedRefundReceiptNo()).isNull();
     assertThat(
             existing.mergeSupplementalSchedule(
-                null, null, FIRST.plusDays(6), null,
-                "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
+                null, null, FIRST.plusDays(6), null, "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
         .isTrue();
     assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(6));
   }
@@ -692,22 +696,27 @@ class IpoScheduleReconciliationTest {
         .thenReturn(List.of(existing));
     DartOfferingTerms verifiedRefund =
         new DartOfferingTerms(
-            "20261103000312", 2, null, null, null,
-            FIRST.plusDays(2), FIRST.plusDays(3), null, FIRST.plusDays(4), null);
+            "20261103000312",
+            2,
+            null,
+            null,
+            null,
+            FIRST.plusDays(2),
+            FIRST.plusDays(3),
+            null,
+            FIRST.plusDays(4),
+            null);
 
     assertThat(
             persistence.persistVerifiedFiling(
-                "corp", "기업", "20261103000312", "20261008000649", null,
-                verifiedRefund, null))
+                "corp", "기업", "20261103000312", "20261008000649", null, verifiedRefund, null))
         .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
     assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(4));
     assertThat(existing.getLastVerifiedRefundReceiptNo()).isEqualTo("20261103000312");
     assertThat(
             existing.mergeSupplementalSchedule(
-                null, null, FIRST.plusDays(6), null,
-                "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
+                null, null, FIRST.plusDays(6), null, "OPENDART+USTOCKPLUS", FIRST.atStartOfDay()))
         .isFalse();
     assertThat(existing.getRefundDate()).isEqualTo(FIRST.plusDays(4));
   }
-
 }

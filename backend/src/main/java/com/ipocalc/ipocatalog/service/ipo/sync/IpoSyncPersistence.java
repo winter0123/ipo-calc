@@ -251,8 +251,7 @@ public class IpoSyncPersistence {
             .lastVerifiedShareReceiptNo(shares != null ? filingReceipt : null)
             .lastVerifiedScheduleReceiptNo(filingReceipt)
             .lastVerifiedRefundReceiptNo(
-                latestTerms.refundDate() != null
-                        && latestTerms.refundDate().equals(refund)
+                latestTerms.refundDate() != null && latestTerms.refundDate().equals(refund)
                     ? filingReceipt
                     : null)
             .status(RecordStatus.ACTIVE)

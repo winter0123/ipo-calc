@@ -19,7 +19,8 @@ public final class DartFilingOrigin {
               + "\\s*(?:월|[./-])\\s*(\\d{1,2})\\s*일?");
   private static final Pattern COMPACT_SUBMISSION =
       Pattern.compile(
-          "(?:정정\\s*대상\\s*(?:공시\\s*서류|신고서|서류)(?:의)?\\s*최초\\s*제출\\s*일)" + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
+          "(?:정정\\s*대상\\s*(?:공시\\s*서류|신고서|서류)(?:의)?\\s*최초\\s*제출\\s*일)"
+              + "[^0-9]{0,100}(\\d{4})(\\d{2})(\\d{2})");
 
   private DartFilingOrigin() {}
 
