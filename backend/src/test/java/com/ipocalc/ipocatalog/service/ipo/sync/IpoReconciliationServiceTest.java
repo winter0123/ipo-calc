@@ -407,7 +407,7 @@ class IpoReconciliationServiceTest {
   }
 
   @Test
-  void selectRefreshFilingPrefersFinalizedOverLaterCorrection() {
+  void selectRefreshFilingSelectsLaterCorrectionOverFinalized() {
     OpenDartDisclosureItem finalized =
         OpenDartDisclosureItem.builder()
             .reportNm("[발행조건확정]증권신고서(지분증권)")
@@ -426,11 +426,11 @@ class IpoReconciliationServiceTest {
     OpenDartDisclosureItem selected =
         IpoReconciliationService.selectRefreshFiling(List.of(laterCorrection, finalized));
 
-    assertThat(selected).isSameAs(finalized);
+    assertThat(selected).isSameAs(laterCorrection);
   }
 
   @Test
-  void selectRefreshFilingPrefersCorrectionOverLaterRegular() {
+  void selectRefreshFilingSelectsLaterRegularOverCorrection() {
     // 발행조건확정이 없고 정정공시가 있는 경우: 정정공시가 최신 일반 공시보다 우선 선택됨
     OpenDartDisclosureItem correction =
         OpenDartDisclosureItem.builder()
@@ -450,7 +450,7 @@ class IpoReconciliationServiceTest {
     OpenDartDisclosureItem selected =
         IpoReconciliationService.selectRefreshFiling(List.of(laterRegular, correction));
 
-    assertThat(selected).isSameAs(correction);
+    assertThat(selected).isSameAs(laterRegular);
   }
 
   @Test
