@@ -601,6 +601,10 @@ public class IpoSyncService {
           }
           Optional<String> earlierXml = dartIpoFilingClient.downloadDocument(item.getRceptNo());
           if (earlierXml.isPresent() && !earlierXml.get().isBlank()) {
+            if (!original.equals(
+                DartFilingOrigin.resolveOriginalReceipt(item, historical, earlierXml.get()))) {
+              continue;
+            }
             DartOfferingTerms candidate =
                 offeringTermsParser.parse(
                     earlierXml.get(), item.getRceptNo(), item.isFinalizedReport());
