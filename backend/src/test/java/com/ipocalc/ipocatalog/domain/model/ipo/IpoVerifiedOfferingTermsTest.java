@@ -64,8 +64,7 @@ class IpoVerifiedOfferingTermsTest {
 
   @Test
   void untrackedExistingPriceAndManualIpoAreProtected() {
-    Ipo importedWithUnknownPrice =
-        Ipo.builder().syncSource("OPENDART").fixedPrice(9_400L).build();
+    Ipo importedWithUnknownPrice = Ipo.builder().syncSource("OPENDART").fixedPrice(9_400L).build();
     boolean unknownChanged =
         importedWithUnknownPrice.applyVerifiedOfferingTerms(
             terms("20261103000312", 2, null, null, 11_000L), NOW);
@@ -74,8 +73,7 @@ class IpoVerifiedOfferingTermsTest {
 
     Ipo manual = Ipo.builder().fixedPrice(9_400L).build();
     boolean manualChanged =
-        manual.applyVerifiedOfferingTerms(
-            terms("20261103000312", 2, null, null, 11_000L), NOW);
+        manual.applyVerifiedOfferingTerms(terms("20261103000312", 2, null, null, 11_000L), NOW);
     assertThat(manualChanged).isFalse();
   }
 }
