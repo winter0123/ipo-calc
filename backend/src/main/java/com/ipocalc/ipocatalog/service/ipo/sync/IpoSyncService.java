@@ -1,5 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.accountauthentication.util.validation.StockCodes;
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
@@ -592,6 +593,19 @@ public class IpoSyncService {
         // 원신고는 그 자체가 회차 식별 근거이므로 추가 DS001 조회가 필요 없다.
         historical = List.of(filing);
         original = filing.getRceptNo();
+      }
+      long distinctCodes =
+          historical.stream()
+              .map(OpenDartDisclosureItem::getStockCode)
+              .map(StockCodes::normalize)
+              .filter(code -> code != null && code.matches("[0-9A-Z]{6}"))
+              .distinct()
+              .count();
+      if (distinctCodes > 1) {
+        recordFailure(
+            result, filing.getCorpCode(), filing.getCorpName(),
+            "동일 corp_code의 DART 종목코드 충돌: 자동 저장 보류");
+        return true;
       }
       if (original == null) {
         recordFailure(
