@@ -125,8 +125,7 @@ public class IpoSyncPersistence {
     }
     try {
       ipoRepository.saveAndFlush(
-          newIpo(corpCode, corpName, detail, startDate, endDate, offeringTerms,
-              verifiedStockCode));
+          newIpo(corpCode, corpName, detail, startDate, endDate, offeringTerms, verifiedStockCode));
       log.debug("신규 IPO 생성: corpCode={}, corpName={}", corpCode, corpName);
       return Outcome.CREATED;
     } catch (DataIntegrityViolationException e) {
@@ -143,8 +142,15 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       DartOfferingTerms latestTerms,
       DartOfferingTerms historicalBand) {
-    return persistVerifiedFiling(corpCode, corpName, filingReceipt, originalReceipt,
-        detail, latestTerms, historicalBand, null);
+    return persistVerifiedFiling(
+        corpCode,
+        corpName,
+        filingReceipt,
+        originalReceipt,
+        detail,
+        latestTerms,
+        historicalBand,
+        null);
   }
 
   /** 검증된 원공시 회차와 DART 종목코드를 기존 IPO에 반영한다. */
@@ -485,14 +491,18 @@ public class IpoSyncPersistence {
     if (stockCode == null) {
       return false;
     }
-    if (target != null && target.getStockCode() != null
+    if (target != null
+        && target.getStockCode() != null
         && !stockCode.equals(StockCodes.normalize(target.getStockCode()))) {
-      log.warn("DART 종목코드 불일치: ipoId={}, existing={}, supplied={}",
-          target.getId(), target.getStockCode(), stockCode);
+      log.warn(
+          "DART 종목코드 불일치: ipoId={}, existing={}, supplied={}",
+          target.getId(),
+          target.getStockCode(),
+          stockCode);
       return true;
     }
-    var occupied = ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
-        stockCode, RecordStatus.ACTIVE);
+    var occupied =
+        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(stockCode, RecordStatus.ACTIVE);
     if (occupied.isPresent()
         && (target == null || !occupied.get().getId().equals(target.getId()))) {
       log.warn("DART 종목코드가 다른 활성 IPO에 연결됨: stockCode={}", stockCode);

@@ -14,8 +14,8 @@ final class DartStockCodeResolver {
   private DartStockCodeResolver() {}
 
   /**
-   * 공시 이력에 유일한 코드가 있으면 최신 공시의 코드가 비어 있어도 사용한다. 서로 다른 코드가
-   * 나타나면 자동 코드 연결만 보류한다. 이력이 비어 있는 최근 공모에 한해 기업개황을 보조 조회한다.
+   * 공시 이력에 유일한 코드가 있으면 최신 공시의 코드가 비어 있어도 사용한다. 서로 다른 코드가 나타나면 자동 코드 연결만 보류한다. 이력이 비어 있는 최근 공모에 한해
+   * 기업개황을 보조 조회한다.
    */
   static String resolve(
       OpenDartCorpDisclosureClient client,
@@ -26,8 +26,9 @@ final class DartStockCodeResolver {
       String existingStockCode) {
     List<String> codes =
         history.stream()
-            .filter(item -> filing.getCorpCode() != null
-                && filing.getCorpCode().equals(item.getCorpCode()))
+            .filter(
+                item ->
+                    filing.getCorpCode() != null && filing.getCorpCode().equals(item.getCorpCode()))
             .map(OpenDartDisclosureItem::getStockCode)
             .map(DartStockCodeResolver::validatedCode)
             .filter(code -> code != null)
@@ -46,12 +47,14 @@ final class DartStockCodeResolver {
       return codes.get(0);
     }
     LocalDate today = LocalDate.now(clock);
-    if (existingStockCode != null || subscriptionStart == null
+    if (existingStockCode != null
+        || subscriptionStart == null
         || subscriptionStart.isBefore(today.minusDays(120))
         || subscriptionStart.isAfter(today.plusDays(59))) {
       return null;
     }
-    return client.getCompanyOverview(filing.getCorpCode())
+    return client
+        .getCompanyOverview(filing.getCorpCode())
         .map(overview -> validatedCode(overview.stockCode()))
         .orElse(null);
   }

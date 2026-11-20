@@ -106,39 +106,63 @@ class IpoSyncServiceMonthRangeTest {
     String corp = "01025617";
     String originalReceipt = "20261008000649";
     String finalReceipt = "20261012000163";
-    OpenDartDisclosureItem latest = OpenDartDisclosureItem.builder()
-        .corpCode(corp).corpName("하나에어로")
-        .reportNm("[발행조건확정]증권신고서(지분증권)")
-        .rceptDt("20261012").rceptNo(finalReceipt).stockCode("").build();
-    OpenDartDisclosureItem original = OpenDartDisclosureItem.builder()
-        .corpCode(corp).corpName("하나에어로")
-        .reportNm("증권신고서(지분증권)")
-        .rceptDt("20261008").rceptNo(originalReceipt).stockCode("271160").build();
-    Ipo existing = Ipo.builder().id(111L).corpCode(corp).ipoName("하나에어로")
-        .companyName("하나에어로").syncSource("OPENDART")
-        .sourceReceiptNo(originalReceipt).status(RecordStatus.ACTIVE)
-        .subscriptionStartDate(LocalDate.of(2026, 10, 13))
-        .subscriptionEndDate(LocalDate.of(2026, 10, 14)).build();
+    OpenDartDisclosureItem latest =
+        OpenDartDisclosureItem.builder()
+            .corpCode(corp)
+            .corpName("하나에어로")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptDt("20261012")
+            .rceptNo(finalReceipt)
+            .stockCode("")
+            .build();
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode(corp)
+            .corpName("하나에어로")
+            .reportNm("증권신고서(지분증권)")
+            .rceptDt("20261008")
+            .rceptNo(originalReceipt)
+            .stockCode("271160")
+            .build();
+    Ipo existing =
+        Ipo.builder()
+            .id(111L)
+            .corpCode(corp)
+            .ipoName("하나에어로")
+            .companyName("하나에어로")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .status(RecordStatus.ACTIVE)
+            .subscriptionStartDate(LocalDate.of(2026, 10, 13))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 14))
+            .build();
 
     when(corpDisclosureClient.searchByDateRange(any(LocalDate.class), any(LocalDate.class)))
         .thenReturn(List.of(latest));
     when(corpDisclosureClient.searchAllByDateRange(eq(corp), any(), any()))
         .thenReturn(List.of(original, latest));
     when(equitySecuritiesClient.getEquitySecurityDetail(
-        eq(corp), any(LocalDate.class), any(LocalDate.class))).thenReturn(List.of());
+            eq(corp), any(LocalDate.class), any(LocalDate.class)))
+        .thenReturn(List.of());
     when(dartIpoFilingClient.downloadDocument(finalReceipt))
-        .thenReturn(Optional.of(
-            "<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
     when(offeringTermsParser.parse(anyString(), eq(finalReceipt), eq(true)))
-        .thenReturn(new DartOfferingTerms(
-            finalReceipt, 2, null, null, 5_700L,
-            LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 14),
-            null, null, null));
+        .thenReturn(
+            new DartOfferingTerms(
+                finalReceipt,
+                2,
+                null,
+                null,
+                5_700L,
+                LocalDate.of(2026, 10, 13),
+                LocalDate.of(2026, 10, 14),
+                null,
+                null,
+                null));
     when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(corp, RecordStatus.ACTIVE))
         .thenReturn(List.of(existing));
 
-    IpoSyncResult result = service.syncByMonthRange(
-        YearMonth.of(2026, 10), YearMonth.of(2026, 10));
+    IpoSyncResult result = service.syncByMonthRange(YearMonth.of(2026, 10), YearMonth.of(2026, 10));
 
     assertThat(result.isAborted()).isFalse();
     assertThat(existing.getId()).isEqualTo(111L);

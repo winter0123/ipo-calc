@@ -531,11 +531,19 @@ public class IpoSyncService {
             IpoSyncPersistence.Outcome outcome =
                 company.getStockCode() == null || company.getStockCode().isBlank()
                     ? ipoSyncPersistence.persist(
-                        corpCode, corpName, detail, company.isFinalizedReport(),
-                        company.isCorrectionOrFinalized(), finalOfferingTerms)
+                        corpCode,
+                        corpName,
+                        detail,
+                        company.isFinalizedReport(),
+                        company.isCorrectionOrFinalized(),
+                        finalOfferingTerms)
                     : ipoSyncPersistence.persist(
-                        corpCode, corpName, detail, company.isFinalizedReport(),
-                        company.isCorrectionOrFinalized(), finalOfferingTerms,
+                        corpCode,
+                        corpName,
+                        detail,
+                        company.isFinalizedReport(),
+                        company.isCorrectionOrFinalized(),
+                        finalOfferingTerms,
                         company.getStockCode());
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
@@ -645,11 +653,22 @@ public class IpoSyncService {
               status ->
                   verifiedStockCode == null
                       ? ipoSyncPersistence.persistVerifiedFiling(
-                          filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
-                          original, fallback, latest, band)
+                          filing.getCorpCode(),
+                          filing.getCorpName(),
+                          filing.getRceptNo(),
+                          original,
+                          fallback,
+                          latest,
+                          band)
                       : ipoSyncPersistence.persistVerifiedFiling(
-                          filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
-                          original, fallback, latest, band, verifiedStockCode));
+                          filing.getCorpCode(),
+                          filing.getCorpName(),
+                          filing.getRceptNo(),
+                          original,
+                          fallback,
+                          latest,
+                          band,
+                          verifiedStockCode));
       if (outcome == null) {
         recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
         return true;

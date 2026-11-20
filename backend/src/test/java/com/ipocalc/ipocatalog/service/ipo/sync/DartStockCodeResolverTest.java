@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartCorpDisclosureClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
@@ -37,9 +36,9 @@ class DartStockCodeResolverTest {
     OpenDartDisclosureItem latest = filing("20261109000163", "");
     OpenDartDisclosureItem original = filing("20261008000649", "A271160");
 
-    String code = DartStockCodeResolver.resolve(
-        client, CLOCK, latest, List.of(original, latest),
-        LocalDate.of(2026, 11, 10), null);
+    String code =
+        DartStockCodeResolver.resolve(
+            client, CLOCK, latest, List.of(original, latest), LocalDate.of(2026, 11, 10), null);
 
     assertThat(code).isEqualTo("271160");
     verify(client, never()).getCompanyOverview("01025617");
@@ -48,11 +47,14 @@ class DartStockCodeResolverTest {
   @Test
   void conflictingHistoricalCodesDoNotAssignEitherCode() {
     OpenDartDisclosureItem latest = filing("20261109000163", "");
-    String code = DartStockCodeResolver.resolve(
-        client, CLOCK, latest,
-        List.of(filing("20261008000649", "271160"),
-            filing("20261101000001", "999999"), latest),
-        LocalDate.of(2026, 11, 10), null);
+    String code =
+        DartStockCodeResolver.resolve(
+            client,
+            CLOCK,
+            latest,
+            List.of(filing("20261008000649", "271160"), filing("20261101000001", "999999"), latest),
+            LocalDate.of(2026, 11, 10),
+            null);
 
     assertThat(code).isNull();
     verify(client, never()).getCompanyOverview("01025617");
@@ -61,11 +63,17 @@ class DartStockCodeResolverTest {
   @Test
   void olderCompanyFromDifferentCorpCodeCannotContaminateCode() {
     OpenDartDisclosureItem latest = filing("20261109000163", "");
-    OpenDartDisclosureItem unrelated = OpenDartDisclosureItem.builder()
-        .corpCode("00000001").stockCode("999999").build();
+    OpenDartDisclosureItem unrelated =
+        OpenDartDisclosureItem.builder().corpCode("00000001").stockCode("999999").build();
 
-    assertThat(DartStockCodeResolver.resolve(
-        client, CLOCK, latest, List.of(unrelated, filing("20261008000649", "271160")),
-        LocalDate.of(2026, 11, 10), null)).isEqualTo("271160");
+    assertThat(
+            DartStockCodeResolver.resolve(
+                client,
+                CLOCK,
+                latest,
+                List.of(unrelated, filing("20261008000649", "271160")),
+                LocalDate.of(2026, 11, 10),
+                null))
+        .isEqualTo("271160");
   }
 }
