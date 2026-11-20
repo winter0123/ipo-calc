@@ -38,7 +38,7 @@ class DartStockCodeResolverTest {
 
     String code =
         DartStockCodeResolver.resolve(
-            client, CLOCK, latest, List.of(original, latest), LocalDate.of(2026, 11, 10), null);
+            client, CLOCK, latest, List.of(original, latest), LocalDate.of(2026, 11, 10), null, false);
 
     assertThat(code).isEqualTo("271160");
     verify(client, never()).getCompanyOverview("01025617");
