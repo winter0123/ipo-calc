@@ -28,7 +28,10 @@ public class DartOfferingTermsParser {
   private static final Pattern SPACES = Pattern.compile("[\\s\\u00a0]+");
   private static final Pattern NUMBER = Pattern.compile("\\d+");
   private static final Pattern PAREN = Pattern.compile("\\([^)]*\\)|（[^）]*）");
-  private static final Pattern TILDE = Pattern.compile("[~∼〜～]");
+  private static final Pattern SUBSCRIPTION_LABEL = Pattern.compile("청약(?:기일|일|기간)");
+  private static final String DATE = "\\d{4}\\s*[년./-]\\s*\\d{1,2}\\s*[월./-]\\s*\\d{1,2}\\s*일?";
+  private static final Pattern SUBSCRIPTION_RANGE =
+      Pattern.compile("(" + DATE + ")\\s*[~∼〜～]\\s*(" + DATE + ")");
   private static final Pattern BREAK = Pattern.compile("<BR\\s*/?>", Pattern.CASE_INSENSITIVE);
   private static final String AMOUNT = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)";
   private static final String BAND_LABEL = "(?:희망\\s*공모\\s*가(?:격|액)?|공모\\s*희망\\s*가(?:격|액)?)";
@@ -45,12 +48,12 @@ public class DartOfferingTermsParser {
       Pattern.compile(
           FIXED_LABEL + "\\s*[:：]\\s*(" + AMOUNT + ")\\s*원" + "(?=\\s*(?:$|[-•]\\s*[^0-9~∼〜～]))");
 
+  private record SubscriptionDates(LocalDate start, LocalDate end) {}
+
   /** 한 번의 파싱 동안만 쓰는 가변 상태. */
   private static final class ParseState {
     private Long lowerBandPrice;
     private Long upperBandPrice;
-    private LocalDate subscriptionStartDate;
-    private LocalDate subscriptionEndDate;
     private LocalDate allotmentDate;
     private LocalDate refundDate;
     private Long offeringShareCount;
@@ -72,6 +75,7 @@ public class DartOfferingTermsParser {
 
     Set<Long> fixedPrices = new HashSet<>();
     Set<Long> verifiedShareCounts = new HashSet<>();
+    Set<SubscriptionDates> subscriptionDates = new HashSet<>();
     for (List<List<String>> table : tables) {
       if (table.isEmpty()) {
         continue;
@@ -89,13 +93,14 @@ public class DartOfferingTermsParser {
         extractBandPrice(table, state);
       }
 
-      // 청약기일/배정공고일/납입기일 표 식별
-      if (tableText.contains("청약기일")
-          || tableText.contains("청약일")
-          || tableText.contains("배정공고")
-          || tableText.contains("배정일")
-          || tableText.contains("납입기일")
-          || tableText.contains("환불일")) {
+      collectSubscriptionDates(table, subscriptionDates);
+
+      // 배정공고일/납입기일 표 식별
+      if (!tableText.contains("청약")
+          && (tableText.contains("배정공고")
+              || tableText.contains("배정일")
+              || tableText.contains("납입기일")
+              || tableText.contains("환불일"))) {
         extractDatesFromTable(table, tableText, state);
       }
 
@@ -111,16 +116,6 @@ public class DartOfferingTermsParser {
       }
     }
 
-    // 일반적인 청약기일 파싱 (sbd 필드와 유사한 패턴)
-    // 원문 전체에서 청약기일 패턴 찾기
-    if (state.subscriptionStartDate == null) {
-      LocalDate[] dates = extractSubscriptionDatesFromText(s);
-      if (dates != null) {
-        state.subscriptionStartDate = dates[0];
-        state.subscriptionEndDate = dates[1];
-      }
-    }
-
     // 배정공고일, 납입기일 원문 전체에서 찾기
     if (state.allotmentDate == null) {
       state.allotmentDate = extractDateFromText(s, "배정공고일");
@@ -132,14 +127,17 @@ public class DartOfferingTermsParser {
     state.offeringShareCount =
         verifiedShareCounts.size() == 1 ? verifiedShareCounts.iterator().next() : null;
 
+    SubscriptionDates schedule =
+        subscriptionDates.size() == 1 ? subscriptionDates.iterator().next() : null;
+
     return new DartOfferingTerms(
         sourceReceiptNo,
         DartOfferingTerms.PARSER_VERSION,
         state.lowerBandPrice,
         state.upperBandPrice,
         fixedPrices.size() == 1 ? fixedPrices.iterator().next() : null,
-        state.subscriptionStartDate,
-        state.subscriptionEndDate,
+        schedule == null ? null : schedule.start(),
+        schedule == null ? null : schedule.end(),
         state.allotmentDate,
         state.refundDate,
         state.offeringShareCount);
@@ -314,13 +312,7 @@ public class DartOfferingTermsParser {
           continue;
         }
 
-        if (headerText.contains("청약")) {
-          LocalDate[] dates = parseSubscriptionDateRange(cell);
-          if (dates != null) {
-            state.subscriptionStartDate = dates[0];
-            state.subscriptionEndDate = dates[1];
-          }
-        } else if (headerText.contains("배정")) {
+        if (headerText.contains("배정")) {
           LocalDate date = parseDate(cell);
           if (date != null) {
             state.allotmentDate = date;
@@ -335,24 +327,37 @@ public class DartOfferingTermsParser {
     }
   }
 
-  /** "2026년 11월 04일 ~ 2026년 11월 05일" 형태 파싱. */
-  private LocalDate[] parseSubscriptionDateRange(String text) {
-    String cleaned = PAREN.matcher(text).replaceAll(" ");
-    Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) {
-      return null;
+  /** 청약기일 라벨에 대응하는 셀에서만 날짜 범위를 수집한다. */
+  private void collectSubscriptionDates(
+      List<List<String>> table, Set<SubscriptionDates> candidates) {
+    for (int rowIndex = 0; rowIndex < table.size(); rowIndex++) {
+      List<String> row = table.get(rowIndex);
+      List<String> nextRow = rowIndex + 1 < table.size() ? table.get(rowIndex + 1) : List.of();
+      for (int column = 0; column < row.size(); column++) {
+        String label = SPACES.matcher(row.get(column)).replaceAll("");
+        if (!SUBSCRIPTION_LABEL.matcher(label).matches()) {
+          continue;
+        }
+        if (row.size() == 2 && column == 0) {
+          addSubscriptionDates(row.get(1), candidates);
+        }
+        if (nextRow.size() == row.size()) {
+          addSubscriptionDates(nextRow.get(column), candidates);
+        }
+      }
     }
+  }
 
-    String left = cleaned.substring(0, tildeMatch.start()).trim();
-    String right = cleaned.substring(tildeMatch.end()).trim();
-
-    LocalDate start = parseDate(left);
-    LocalDate end = parseDate(right);
-
-    if (start != null && end != null) {
-      return new LocalDate[] {start, end};
+  private void addSubscriptionDates(String value, Set<SubscriptionDates> candidates) {
+    Matcher range = SUBSCRIPTION_RANGE.matcher(PAREN.matcher(value).replaceAll(" ").trim());
+    if (!range.matches()) {
+      return;
     }
-    return null;
+    LocalDate start = parseDate(range.group(1));
+    LocalDate end = parseDate(range.group(2));
+    if (start != null && end != null && !end.isBefore(start)) {
+      candidates.add(new SubscriptionDates(start, end));
+    }
   }
 
   /** "2026년 11월 04일" 또는 "2026.11.04" 형태 파싱. */
@@ -378,40 +383,6 @@ public class DartOfferingTermsParser {
     } catch (Exception e) {
       return null;
     }
-  }
-
-  /** 원문 전체에서 청약기일 패턴 찾기. */
-  private LocalDate[] extractSubscriptionDatesFromText(String text) {
-    // "청약기일" 근처에서 날짜 범위 찾기
-    int idx = text.indexOf("청약기일");
-    if (idx < 0) {
-      idx = text.indexOf("청약일");
-    }
-    if (idx < 0) {
-      return null;
-    }
-
-    // 앞뒤 200자 내에서 검색
-    int start = Math.max(0, idx - 50);
-    int end = Math.min(text.length(), idx + 200);
-    String snippet = text.substring(start, end);
-
-    String cleaned = PAREN.matcher(snippet).replaceAll(" ");
-    Matcher tildeMatch = TILDE.matcher(cleaned);
-    if (!tildeMatch.find()) {
-      return null;
-    }
-
-    String left = cleaned.substring(0, tildeMatch.start()).trim();
-    String right = cleaned.substring(tildeMatch.end()).trim();
-
-    LocalDate startDate = parseDate(left);
-    LocalDate endDate = parseDate(right);
-
-    if (startDate != null && endDate != null) {
-      return new LocalDate[] {startDate, endDate};
-    }
-    return null;
   }
 
   /** 원문 전체에서 특정 라벨의 날짜 찾기. */
