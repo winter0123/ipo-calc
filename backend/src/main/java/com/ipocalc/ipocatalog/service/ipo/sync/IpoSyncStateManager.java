@@ -148,6 +148,9 @@ public class IpoSyncStateManager {
                       .failed(accum.getFailed() + monthResult.getFailureCount())
                       .scheduleMerged(accum.getScheduleMerged() + monthResult.getScheduleMerged())
                       .listingBackfilled(accum.getListingBackfilled())
+                      .rightsListingBackfilled(accum.getRightsListingBackfilled())
+                      .rightsListingReviewRequired(accum.getRightsListingReviewRequired())
+                      .rightsListingFailures(accum.getRightsListingFailures())
                       .listingFailedRanges(accum.getListingFailedRanges())
                       .listingFailedStocks(accum.getListingFailedStocks())
                       .listingConflicts(accum.getListingConflicts())
@@ -175,6 +178,9 @@ public class IpoSyncStateManager {
                   .failed(accum.getFailed() + backfill.failureCount())
                   .scheduleMerged(accum.getScheduleMerged())
                   .listingBackfilled(accum.getListingBackfilled() + backfill.listingBackfilled())
+                  .rightsListingBackfilled(accum.getRightsListingBackfilled())
+                  .rightsListingReviewRequired(accum.getRightsListingReviewRequired())
+                  .rightsListingFailures(accum.getRightsListingFailures())
                   .listingFailedRanges(backfill.failedRanges())
                   .listingFailedStocks(backfill.failedStocks())
                   .listingConflicts(backfill.listingConflicts())
@@ -193,6 +199,33 @@ public class IpoSyncStateManager {
               .error(current.getError())
               .build();
         });
+  }
+
+  /** 수동 월별 실행에서 유상 신주 발행실적보고서 결과를 상태에 반영한다. */
+  public void recordRightsIssueListingBackfill(DartRightsIssueListingService.Result rights) {
+    currentStatus.updateAndGet(current -> {
+      if (current == null || !State.RUNNING.name().equals(current.getState())) {
+        return current;
+      }
+      var a = current.getResult();
+      var b = IpoSyncStatusResponse.SyncResult.builder()
+          .created(a.getCreated()).updated(a.getUpdated()).skipped(a.getSkipped())
+          .failed(a.getFailed() + rights.failures())
+          .scheduleMerged(a.getScheduleMerged())
+          .listingBackfilled(a.getListingBackfilled())
+          .listingFailedRanges(a.getListingFailedRanges())
+          .listingFailedStocks(a.getListingFailedStocks())
+          .listingConflicts(a.getListingConflicts())
+          .rightsListingBackfilled(a.getRightsListingBackfilled() + rights.saved())
+          .rightsListingReviewRequired(a.getRightsListingReviewRequired() + rights.reviewRequired())
+          .rightsListingFailures(a.getRightsListingFailures() + rights.failures())
+          .detailSaved(a.getDetailSaved()).aborted(a.isAborted()).build();
+      return IpoSyncStatusResponse.builder()
+          .state(current.getState()).fromMonth(current.getFromMonth())
+          .toMonth(current.getToMonth()).monthsDone(current.getMonthsDone())
+          .monthsTotal(current.getMonthsTotal()).startedAt(current.getStartedAt())
+          .finishedAt(current.getFinishedAt()).result(b).error(current.getError()).build();
+    });
   }
 
   /** 기본 실행 완료 시 호출. */
