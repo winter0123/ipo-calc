@@ -118,10 +118,39 @@ describe('IpoSyncNowPanel', () => {
     )
     await vi.advanceTimersByTimeAsync(3000)
     expect(screen.getByRole('status')).toHaveTextContent(
-      '완료: 새로 등록 3건 · 갱신 2건 · 상세 4건 · 실패 1건',
+      '완료: 새로 등록 3건 · 갱신 2건 · 상세 4건 · 상장일 보완 0건 · 실패 1건',
     )
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['ipos'] })
     expect(runButton()).toBeEnabled()
+  })
+
+  it('실패한 과거 상장일 조회 구간과 재실행 버튼을 보여준다', async () => {
+    vi.mocked(getIpoSyncStatus).mockResolvedValue(
+      status({
+        state: 'DONE',
+        result: {
+          ...RESULT,
+          listingBackfilled: 48,
+          listingFailedRanges: [
+            { startDate: '2026-03-31', endDate: '2026-06-28' },
+            { startDate: '2026-10-01', endDate: '2026-10-31' },
+          ],
+        },
+      }),
+    )
+    vi.mocked(syncIposNow).mockResolvedValue(status({ state: 'RUNNING', result: RESULT }))
+    renderPanel()
+    expect(await screen.findByRole('status')).toHaveTextContent('상장일 보완 48건')
+    expect(screen.getByRole('status')).toHaveTextContent('2026-03-31~2026-06-28')
+    await userEvent.click(
+      screen.getByRole('button', { name: '실패한 상장일 조회 기간 다시 가져오기' }),
+    )
+    await vi.waitFor(() =>
+      expect(syncIposNow).toHaveBeenCalledWith({
+        fromMonth: '2026-03',
+        toMonth: '2026-10',
+      }),
+    )
   })
 
   it('화면을 열었을 때 이미 실행 중이면 진행 상황을 이어서 보여 준다', async () => {
