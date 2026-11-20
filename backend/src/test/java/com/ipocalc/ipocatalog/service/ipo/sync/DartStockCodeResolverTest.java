@@ -71,7 +71,8 @@ class DartStockCodeResolverTest {
             latest,
             List.of(filing("20261008000649", "271160"), filing("20261101000001", "999999"), latest),
             LocalDate.of(2026, 11, 10),
-            null);
+            null,
+            false);
 
     assertThat(code).isNull();
     verify(client, never()).getCompanyOverview("01025617");
@@ -90,7 +91,8 @@ class DartStockCodeResolverTest {
                 latest,
                 List.of(unrelated, filing("20261008000649", "271160")),
                 LocalDate.of(2026, 11, 10),
-                null))
+                null,
+                false))
         .isEqualTo("271160");
   }
 }
