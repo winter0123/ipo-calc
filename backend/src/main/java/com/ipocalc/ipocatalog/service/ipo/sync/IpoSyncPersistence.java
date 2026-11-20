@@ -97,11 +97,10 @@ public class IpoSyncPersistence {
         log.warn("신규 공모/정정 구분 불가로 자동 갱신 보류: corpCode={}", corpCode);
         return Outcome.HELD_UNDETERMINED;
       }
-      if (stockCodeConflicts(existing, verifiedStockCode)) {
-        return Outcome.HELD_UNDETERMINED;
-      }
-      updateExistingIpo(existing, corpName, detail, startDate, endDate, offeringTerms,
-          verifiedStockCode);
+      String attachableStockCode =
+          stockCodeConflicts(existing, verifiedStockCode) ? null : verifiedStockCode;
+      updateExistingIpo(
+          existing, corpName, detail, startDate, endDate, offeringTerms, attachableStockCode);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
       return Outcome.UPDATED;
     }
@@ -221,9 +220,6 @@ public class IpoSyncPersistence {
       }
       // 일정 출처를 독립 보존하는 컬럼이 없으므로 이미 검증한 더 최신 가격 공시보다
       // 오래된 공시는 일정까지 통째로 건너뛰어 회귀를 방지한다.
-      if (stockCodeConflicts(existing, verifiedStockCode)) {
-        return Outcome.HELD_UNDETERMINED;
-      }
       if (isOlderThanVerifiedPrice(filingReceipt, existing)) {
         return Outcome.HELD_UNDETERMINED;
       }
@@ -260,7 +256,9 @@ public class IpoSyncPersistence {
         existing.applyVerifiedOfferingTerms(historicalBand, now);
       }
       existing.applyVerifiedOfferingTerms(latestTerms, now);
-      existing.fillMissingStockCode(verifiedStockCode);
+      if (!stockCodeConflicts(existing, verifiedStockCode)) {
+        existing.fillMissingStockCode(verifiedStockCode);
+      }
       ipoRepository.saveAndFlush(existing);
       return Outcome.UPDATED;
     }
@@ -482,7 +480,7 @@ public class IpoSyncPersistence {
     ipoRepository.saveAndFlush(existing);
   }
 
-  /** 충돌 시 해당 공모의 어떤 필드도 자동 갱신하지 않는다. */
+  /** 종목코드가 충돌하면 코드 변경만 보류하고 검증된 공모 조건의 갱신은 계속한다. */
   private boolean stockCodeConflicts(Ipo target, String stockCode) {
     if (stockCode == null) {
       return false;
