@@ -266,17 +266,18 @@ public class IpoReconciliationService {
       DartOfferingTerms earlierBand = findEarlierBand(disclosures, filing, original);
       try {
         DartOfferingTerms verifiedTerms = offeringTerms;
+        String verifiedStockCode = resolveDartStockCode(row, filing, disclosures);
         IpoSyncPersistence.Outcome outcome =
             transactionTemplate.execute(
                 status ->
-                    resolveDartStockCode(row, filing, disclosures) == null
+                    verifiedStockCode == null
                         ? ipoSyncPersistence.persistVerifiedFiling(
                             corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                             filing.getRceptNo(), original, detail, verifiedTerms, earlierBand)
                         : ipoSyncPersistence.persistVerifiedFiling(
                             corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                             filing.getRceptNo(), original, detail, verifiedTerms, earlierBand,
-                            resolveDartStockCode(row, filing, disclosures)));
+                            verifiedStockCode));
         if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
           result.setRefreshed(result.getRefreshed() + 1);
           return true;
@@ -411,10 +412,11 @@ public class IpoReconciliationService {
       OpenDartEquitySecurityDetail detail,
       DartOfferingTerms offeringTerms) {
     try {
+      String verifiedStockCode = resolveDartStockCode(row, filing, List.of(filing));
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
-                  resolveDartStockCode(row, filing, List.of(filing)) == null
+                  verifiedStockCode == null
                       ? ipoSyncPersistence.persist(
                           corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                           detail, filing.isFinalizedReport(), filing.isCorrectionOrFinalized(),
@@ -422,7 +424,7 @@ public class IpoReconciliationService {
                       : ipoSyncPersistence.persist(
                           corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                           detail, filing.isFinalizedReport(), filing.isCorrectionOrFinalized(),
-                          offeringTerms, resolveDartStockCode(row, filing, List.of(filing))));
+                          offeringTerms, verifiedStockCode));
       if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
         result.setRefreshed(result.getRefreshed() + 1);
         log.debug(
