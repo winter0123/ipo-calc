@@ -60,8 +60,8 @@ class IpoHistoricalListingServiceTest {
     LocalDate thirdStart = secondEnd.plusDays(1);
     LocalDate end = LocalDate.of(2026, 10, 31);
     Ipo row = ipo(111L, "271160", LocalDate.of(2026, 9, 25), null);
-    when(client.fetchListingDatesStrict(thirdStart, thirdStart.plusDays(89)))
-        .thenReturn(List.of(item("271160", LocalDate.of(2026, 9, 30))));
+    when(client.fetchListingDatesStrict(thirdStart.plusDays(90), end))
+        .thenReturn(List.of(item("271160", LocalDate.of(2026, 10, 15))));
     when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(row));
 
@@ -72,7 +72,7 @@ class IpoHistoricalListingServiceTest {
     verify(client).fetchListingDatesStrict(thirdStart, thirdStart.plusDays(89));
     verify(client).fetchListingDatesStrict(thirdStart.plusDays(90), end);
     assertThat(result.listingBackfilled()).isEqualTo(1);
-    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 10, 15));
     assertThat(result.failedRanges()).isEmpty();
   }
 
@@ -103,8 +103,7 @@ class IpoHistoricalListingServiceTest {
   @Test
   void neverUpdatesManualOrAlreadyListedOrPreSubscriptionListing() {
     LocalDate day = LocalDate.of(2026, 9, 30);
-    Ipo manual = ipo(1L, "111111", day.minusDays(5), null);
-    manual = Ipo.builder().id(1L).stockCode("111111")
+    Ipo manual = Ipo.builder().id(1L).stockCode("111111")
         .status(RecordStatus.ACTIVE).subscriptionEndDate(day.minusDays(5)).build();
     Ipo listed = ipo(2L, "222222", day.minusDays(5), day.minusDays(1));
     Ipo impossible = ipo(3L, "333333", day.plusDays(1), null);
