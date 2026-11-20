@@ -3,6 +3,8 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -121,6 +123,30 @@ class IpoSyncStateManagerTest {
     assertThat(status.getResult().getScheduleMerged()).isEqualTo(4);
     assertThat(status.getResult().getDetailSaved()).isEqualTo(7);
     assertThat(status.getError()).isNull();
+  }
+
+  @Test
+  void backfillShowsFailedStockAndConflictInCompletedStatus() {
+    manager.startRangeSync("2026-03", "2026-04", 2);
+    LocalDate start = LocalDate.of(2026, 3, 1);
+    LocalDate end = LocalDate.of(2026, 4, 30);
+    var window = new IpoHistoricalListingService.FailedRange(start, end);
+    var saveFailure = new IpoHistoricalListingService.FailedStock(
+        "271160", LocalDate.of(2026, 3, 30), start, end);
+    var conflict = new IpoHistoricalListingService.ListingConflict(
+        "222222", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 2), start, end);
+    var backfill = new IpoHistoricalListingService.Result(
+        1, List.of(window), List.of(saveFailure), List.of(conflict));
+
+    manager.recordListingBackfill(backfill);
+    manager.completeRangeSync();
+
+    var result = manager.getStatus().getResult();
+    assertThat(result.getFailed()).isEqualTo(2);
+    assertThat(result.getListingBackfilled()).isEqualTo(1);
+    assertThat(result.getListingFailedRanges()).containsExactly(window);
+    assertThat(result.getListingFailedStocks()).containsExactly(saveFailure);
+    assertThat(result.getListingConflicts()).containsExactly(conflict);
   }
 
   @Test
