@@ -3,6 +3,7 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -140,6 +141,75 @@ class IpoHistoricalListingServiceTest {
     assertThat(manual.getListingDate()).isNull();
     assertThat(listed.getListingDate()).isEqualTo(day.minusDays(1));
     assertThat(impossible.getListingDate()).isNull();
+  }
+
+  @Test
+  void databaseSaveFailureReportsStockCodeAndRetryWindow() {
+    LocalDate start = LocalDate.of(2026, 3, 1);
+    LocalDate end = LocalDate.of(2026, 3, 31);
+    LocalDate listing = LocalDate.of(2026, 3, 30);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 3, 20), null);
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", listing)));
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+    org.mockito.Mockito.doThrow(new IllegalStateException("database unavailable"))
+        .when(repo).saveAndFlush(row);
+
+    var result = service.backfill(start, end);
+
+    assertThat(result.listingBackfilled()).isZero();
+    assertThat(result.failedRanges())
+        .containsExactly(new IpoHistoricalListingService.FailedRange(start, end));
+    assertThat(result.failedStocks())
+        .containsExactly(new IpoHistoricalListingService.FailedStock(
+            "271160", listing, start, end));
+    assertThat(result.listingConflicts()).isEmpty();
+  }
+
+  @Test
+  void retryWithDifferentDateMarksPreviouslyImportedDateForReview() {
+    LocalDate start = LocalDate.of(2026, 3, 1);
+    LocalDate end = LocalDate.of(2026, 4, 30);
+    LocalDate firstDate = LocalDate.of(2026, 3, 30);
+    LocalDate revisedDate = LocalDate.of(2026, 4, 2);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 3, 20), null);
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", firstDate)))
+        .thenReturn(List.of(item("271160", revisedDate)));
+
+    var first = service.backfill(start, end);
+    var retry = service.backfill(start, end);
+
+    assertThat(first.listingBackfilled()).isEqualTo(1);
+    assertThat(retry.listingBackfilled()).isZero();
+    assertThat(retry.listingConflicts())
+        .containsExactly(new IpoHistoricalListingService.ListingConflict(
+            "271160", firstDate, revisedDate, start, end));
+    assertThat(row.getListingDate()).isEqualTo(firstDate);
+    assertThat(row.getLastImportedListingDate()).isEqualTo(firstDate);
+    verify(repo, times(1)).saveAndFlush(row);
+  }
+
+  @Test
+  void manuallyEditedListingNeverBecomesAutomaticConflict() {
+    LocalDate start = LocalDate.of(2026, 3, 1);
+    LocalDate end = LocalDate.of(2026, 4, 30);
+    LocalDate manualDate = LocalDate.of(2026, 3, 28);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 3, 20), manualDate);
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", LocalDate.of(2026, 4, 2))));
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+
+    var result = service.backfill(start, end);
+
+    assertThat(result.listingBackfilled()).isZero();
+    assertThat(result.listingConflicts()).isEmpty();
+    assertThat(row.getListingDate()).isEqualTo(manualDate);
+    verify(repo, never()).saveAndFlush(row);
   }
 
   @Test
