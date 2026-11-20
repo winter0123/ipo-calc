@@ -140,7 +140,9 @@ describe('IpoSyncNowPanel', () => {
     )
     vi.mocked(syncIposNow).mockResolvedValue(status({ state: 'RUNNING', result: RESULT }))
     renderPanel()
-    expect(await screen.findByRole('status')).toHaveTextContent('상장일 보완 48건')
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('상장일 보완 48건'),
+    )
     expect(screen.getByRole('status')).toHaveTextContent('2026-03-31~2026-06-28')
     await userEvent.click(
       screen.getByRole('button', { name: '실패한 상장일 조회 기간 다시 가져오기' }),
