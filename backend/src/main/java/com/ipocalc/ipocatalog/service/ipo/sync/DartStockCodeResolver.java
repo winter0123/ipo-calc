@@ -53,10 +53,10 @@ final class DartStockCodeResolver {
         || subscriptionStart.isAfter(today.plusDays(59))) {
       return null;
     }
-    return client
-        .getCompanyOverview(filing.getCorpCode())
-        .map(overview -> validatedCode(overview.stockCode()))
-        .orElse(null);
+    var overview = client.getCompanyOverview(filing.getCorpCode());
+    return overview == null
+        ? null
+        : overview.map(value -> validatedCode(value.stockCode())).orElse(null);
   }
 
   private static String validatedCode(String raw) {
