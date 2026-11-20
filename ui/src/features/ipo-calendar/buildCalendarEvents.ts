@@ -86,8 +86,8 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
       events.push({
         ipoId: ipo.id,
         type: 'LISTING',
-        estimated: ipo.listingDateEvidenceType === 'ESTIMATED_DART',
-        confirmed: ipo.listingDateEvidenceType === 'CONFIRMED_KRX',
+        ...(ipo.listingDateEvidenceType === 'ESTIMATED_DART' ? { estimated: true } : {}),
+        ...(ipo.listingDateEvidenceType === 'CONFIRMED_KRX' ? { confirmed: true } : {}),
         companyName: ipo.companyName,
         ipoName: ipo.ipoName,
         startDate: listingDate,
