@@ -1,8 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync.opendart;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -31,7 +29,7 @@ public class DartRightsIssueListingParser {
   public record Evidence(
       LocalDate listingDate, String originalReceipt, LocalDate paymentDate, Long issuedShares) {}
 
-  /** 확실한 단일 상장일을 포함하는 보고서만 반환한다. */
+  /** 상충 여부를 놓치지 않도록 보고서 내 모든 명시적 유상 신주 상장일을 반환한다. */
   public List<Evidence> parse(String xml) {
     if (xml == null || xml.isBlank()) {
       return List.of();
@@ -61,10 +59,9 @@ public class DartRightsIssueListingParser {
         }
       }
     }
-    // 보고서에서 명확히 한 날짜만 확인할 때 자동 매칭 후보가 된다.
-    return dates.size() == 1
-        ? List.of(new Evidence(dates.get(0), original, payment, shares))
-        : List.of();
+    return dates.stream()
+        .map(date -> new Evidence(date, original, payment, shares))
+        .toList();
   }
 
   private static List<List<String>> rows(String xml) {
