@@ -49,6 +49,9 @@ export default function IpoSyncNowPanel() {
     fallback: ERROR_FALLBACK,
   })
   const text = statusText(status)
+  const failedWindows = status?.result?.listingFailedRanges ?? []
+  const retryStart = failedWindows[0]?.startDate.slice(0, 7)
+  const retryEnd = failedWindows[failedWindows.length - 1]?.endDate.slice(0, 7)
 
   return (
     <StyleScope>
@@ -103,6 +106,20 @@ export default function IpoSyncNowPanel() {
           <div role="status" aria-live="polite" className={styles.status}>
             {text}
           </div>
+          {status?.state === 'DONE' && failedWindows.length > 0 && retryStart && retryEnd && (
+            <button
+              type="button"
+              className={styles.button}
+              disabled={isRunning}
+              onClick={() => {
+                setFromMonth(retryStart)
+                setToMonth(retryEnd)
+                start.mutate({ fromMonth: retryStart, toMonth: retryEnd })
+              }}
+            >
+              실패한 상장일 조회 기간 다시 가져오기
+            </button>
+          )}
           {errorMessage && (
             <div role="alert" className={styles.error}>
               {errorMessage}
