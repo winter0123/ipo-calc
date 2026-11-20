@@ -95,6 +95,7 @@ class IpoManualSyncServiceTest {
             sync,
             detail,
             historical,
+            rights,
             new OpenDartApiProperties(" ", "http://x"),
             stateManager,
             executor);
