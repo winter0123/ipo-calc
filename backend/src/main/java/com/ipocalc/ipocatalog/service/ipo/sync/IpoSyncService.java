@@ -35,7 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * IpoSyncPersistence}에 위임하고, OpenDART 루프가 중단 없이 끝나면 ustockplus 일정을 병합한다. 주요 규칙:
  *
  * <ul>
- *   <li>DS001 응답에서 {@code stock_code}가 있는 건은 IPO가 아니므로 건너뛴다.
+ *   <li>DS001의 {@code stock_code}는 동일 공모 확인 후 IPO에 저장하여 상장일 병합에 활용한다.
  *   <li>DS006 상세를 검증한 뒤 회사별 독립 transaction 안에서 {@link IpoSyncPersistence}를 호출한다.
  *   <li>가격은 DS006이 아닌 document.xml 원문에서 파싱한 검증된 값만 사용한다.
  *   <li>인증 오류와 요청 제한은 전체 실행을 중단하고, 그 외 회사별 오류는 실패에 기록한 뒤 계속 처리한다.
@@ -535,7 +535,8 @@ public class IpoSyncService {
                     detail,
                     company.isFinalizedReport(),
                     company.isCorrectionOrFinalized(),
-                    finalOfferingTerms);
+                    finalOfferingTerms,
+                    company.getStockCode());
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);
@@ -642,7 +643,8 @@ public class IpoSyncService {
                       original,
                       fallback,
                       latest,
-                      band));
+                      band,
+                      filing.getStockCode()));
       if (outcome == null) {
         recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
         return true;
