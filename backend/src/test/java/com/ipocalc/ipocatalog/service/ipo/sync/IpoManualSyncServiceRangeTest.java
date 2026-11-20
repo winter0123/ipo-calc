@@ -3,8 +3,8 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -73,13 +73,15 @@ class IpoManualSyncServiceRangeTest {
     var req = new IpoSyncRangeRequest();
     req.setFromMonth("2026-09");
     req.setToMonth("2026-10");
-    when(ipoSyncService.syncMonthWithoutSchedule(any())).thenReturn(
-        IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
-    var backfill = new IpoHistoricalListingService.Result(3, java.util.List.of(
-        new IpoHistoricalListingService.FailedRange(
-            LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
-    when(historicalListingService.backfill(
-        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)))
+    when(ipoSyncService.syncMonthWithoutSchedule(any()))
+        .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
+    var backfill =
+        new IpoHistoricalListingService.Result(
+            3,
+            java.util.List.of(
+                new IpoHistoricalListingService.FailedRange(
+                    LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
+    when(historicalListingService.backfill(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)))
         .thenReturn(backfill);
 
     service.syncRange(req);
@@ -87,8 +89,7 @@ class IpoManualSyncServiceRangeTest {
     verify(ipoSyncService).syncMonthWithoutSchedule(YearMonth.of(2026, 9));
     verify(ipoSyncService).syncMonthWithoutSchedule(YearMonth.of(2026, 10));
     verify(ipoSyncService, times(2)).syncMonthWithoutSchedule(any());
-    verify(historicalListingService).backfill(
-        LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31));
+    verify(historicalListingService).backfill(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31));
     verify(syncStateManager).recordListingBackfill(backfill);
     verify(syncStateManager).completeRangeSync();
   }
