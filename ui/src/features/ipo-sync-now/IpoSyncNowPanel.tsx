@@ -27,6 +27,7 @@ function statusText(s: IpoSyncStatus | undefined): string {
     return `진행 중: ${s.monthsDone ?? 0}/${s.monthsTotal ?? 1}개월 · 새로 등록 ${r.created}건 · 상세 ${r.detailSaved}건`
   }
   const listingCount = r.listingBackfilled ?? 0
+  const rights = ` · 유상 신주 상장예정일 보완 ${r.rightsListingBackfilled ?? 0}건 · 확인 필요 ${r.rightsListingReviewRequired ?? 0}건 · 조회/저장 실패 ${r.rightsListingFailures ?? 0}건`
   const windows = r.listingFailedRanges ?? []
   const failures = windows.length
     ? ` · 상장일 조회/저장 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)`
@@ -39,7 +40,7 @@ function statusText(s: IpoSyncStatus | undefined): string {
   const needsReview = conflicts.length
     ? ` · 상장일 확인 필요 ${conflicts.length}건: ${conflicts.map((item) => `${item.stockCode}(${item.existingDate ?? '없음'} → ${item.candidateDate}, ${item.startDate}~${item.endDate})`).join(', ')} — 자동 덮어쓰기 보류`
     : ''
-  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건 · 실패 ${r.failed}건${failures}${stockFailures}${needsReview}`
+  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건${rights} · 실패 ${r.failed}건${failures}${stockFailures}${needsReview}`
 }
 
 export default function IpoSyncNowPanel() {
