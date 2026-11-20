@@ -25,6 +25,7 @@ class IpoManualSyncServiceTest {
 
   private IpoSyncService sync;
   private IpoDetailSyncService detail;
+  private IpoHistoricalListingService historical;
   private OpenDartApiProperties props;
   private IpoSyncStateManager stateManager;
   private Executor executor;
@@ -34,6 +35,7 @@ class IpoManualSyncServiceTest {
   void setUp() {
     sync = mock(IpoSyncService.class);
     detail = mock(IpoDetailSyncService.class);
+    historical = mock(IpoHistoricalListingService.class);
     props = new OpenDartApiProperties("dummy", "http://localhost");
     stateManager = mock(IpoSyncStateManager.class);
     executor = mock(Executor.class);
@@ -44,7 +46,7 @@ class IpoManualSyncServiceTest {
             })
         .when(executor)
         .execute(any(Runnable.class));
-    service = new IpoManualSyncService(sync, detail, props, stateManager, executor);
+    service = new IpoManualSyncService(sync, detail, historical, props, stateManager, executor);
     ReflectionTestUtils.setField(service, "daysBack", 90);
     when(sync.runExclusively(any())).thenAnswer(i -> ((Supplier<?>) i.getArgument(0)).get());
   }
@@ -87,7 +89,7 @@ class IpoManualSyncServiceTest {
   void missingKeyThrowsBeforeAnyCall() {
     service =
         new IpoManualSyncService(
-            sync, detail, new OpenDartApiProperties(" ", "http://x"), stateManager, executor);
+            sync, detail, historical, new OpenDartApiProperties(" ", "http://x"), stateManager, executor);
 
     assertThatThrownBy(() -> service.syncNow()).isInstanceOf(OpenDartKeyMissingException.class);
     verify(sync, never()).sync(any(Integer.class));
