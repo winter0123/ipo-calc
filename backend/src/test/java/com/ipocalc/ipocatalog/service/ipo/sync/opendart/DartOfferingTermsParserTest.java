@@ -258,6 +258,57 @@ class DartOfferingTermsParserTest {
     assertThat(terms.subscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 5));
   }
 
+  @Test
+  void parse_subscriptionDatesIgnoreBookBuildingInTablesThatMentionSubscriptions() {
+    String xml =
+        """
+        <TABLE>
+          <TR><TH>청약기일</TH><TH>수요예측기간</TH></TR>
+          <TR><TU>2026년 11월 04일 ~ 2026년 11월 05일</TU><TD>2026.10.27 ~ 2026.11.02</TD></TR>
+        </TABLE>
+        <TABLE>
+          <TR><TH>수요예측기간</TH><TD>2026.10.27 ~ 2026.11.02</TD></TR>
+          <TR><TD>청약일 전 확정공고</TD></TR>
+        </TABLE>
+        """;
+
+    DartOfferingTerms terms = parser.parse(xml, "20261030000616", false);
+
+    assertThat(terms.subscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 4));
+    assertThat(terms.subscriptionEndDate()).isEqualTo(LocalDate.of(2026, 11, 5));
+  }
+
+  @Test
+  void parse_subscriptionDatesAbsentWhenOnlyBookBuildingDatesArePresent() {
+    String xml =
+        """
+        <TABLE>
+          <TR><TH>청약기일</TH><TD>미정</TD></TR>
+          <TR><TH>수요예측기간</TH><TD>2026.10.27 ~ 2026.11.02</TD></TR>
+        </TABLE>
+        <P>청약기일 전 수요예측기간 2026.10.27 ~ 2026.11.02</P>
+        """;
+
+    DartOfferingTerms terms = parser.parse(xml, "20261030000616", false);
+
+    assertThat(terms.subscriptionStartDate()).isNull();
+    assertThat(terms.subscriptionEndDate()).isNull();
+  }
+
+  @Test
+  void parse_subscriptionDatesAbsentWhenExplicitSchedulesConflict() {
+    String xml =
+        """
+        <TABLE><TR><TH>청약일</TH><TD>2026.11.04 ~ 2026.11.05</TD></TR></TABLE>
+        <TABLE><TR><TH>청약기일</TH><TD>2026.11.06 ~ 2026.11.09</TD></TR></TABLE>
+        """;
+
+    DartOfferingTerms terms = parser.parse(xml, "20261030000616", false);
+
+    assertThat(terms.subscriptionStartDate()).isNull();
+    assertThat(terms.subscriptionEndDate()).isNull();
+  }
+
   /** 주식수량 파싱. */
   @Test
   void parse_offeringShareCount() {
