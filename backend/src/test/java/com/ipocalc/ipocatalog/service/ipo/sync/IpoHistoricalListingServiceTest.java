@@ -195,6 +195,56 @@ class IpoHistoricalListingServiceTest {
   }
 
   @Test
+  void retryWithTwoCandidatesInSameWindowReportsConflictAgainstStoredAutomaticDate() {
+    LocalDate start = LocalDate.of(2026, 6, 1);
+    LocalDate end = LocalDate.of(2026, 6, 30);
+    LocalDate firstDate = LocalDate.of(2026, 6, 29);
+    LocalDate secondDate = LocalDate.of(2026, 6, 30);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 6, 20), null);
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", firstDate)))
+        .thenReturn(List.of(item("271160", firstDate), item("271160", secondDate)));
+
+    var first = service.backfill(start, end);
+    var retry = service.backfill(start, end);
+
+    assertThat(first.listingBackfilled()).isEqualTo(1);
+    assertThat(retry.listingBackfilled()).isZero();
+    assertThat(retry.listingConflicts())
+        .containsExactly(new IpoHistoricalListingService.ListingConflict(
+            "271160", firstDate, secondDate, start, end));
+    assertThat(retry.failureCount()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(firstDate);
+    assertThat(row.getLastImportedListingDate()).isEqualTo(firstDate);
+    verify(repo, times(1)).saveAndFlush(row);
+  }
+
+  @Test
+  void simultaneousCandidatesForNewAutomaticRowAreReportedWithoutSavingEitherDate() {
+    LocalDate start = LocalDate.of(2026, 6, 1);
+    LocalDate end = LocalDate.of(2026, 6, 30);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 6, 20), null);
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(
+            item("271160", LocalDate.of(2026, 6, 29)),
+            item("271160", LocalDate.of(2026, 6, 30))));
+
+    var result = service.backfill(start, end);
+
+    assertThat(result.listingBackfilled()).isZero();
+    assertThat(result.listingConflicts())
+        .containsExactly(new IpoHistoricalListingService.ListingConflict(
+            "271160", LocalDate.of(2026, 6, 29), LocalDate.of(2026, 6, 30),
+            start, end));
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(row);
+  }
+
+  @Test
   void manuallyEditedListingNeverBecomesAutomaticConflict() {
     LocalDate start = LocalDate.of(2026, 3, 1);
     LocalDate end = LocalDate.of(2026, 4, 30);
