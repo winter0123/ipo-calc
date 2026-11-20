@@ -74,8 +74,11 @@ public class IpoSyncScheduler {
       // 자동 재점검: 보고서가 청약 다음 달에 제출될 수 있으므로 120일간 확인한다.
       var today = java.time.LocalDate.now(clock);
       var rights = rightsIssueListingService.backfill(today.minusDays(120), today);
-      log.info("유상 신주 상장일 보완: saved={}, review={}, failures={}",
-          rights.saved(), rights.reviewRequired(), rights.failures());
+      log.info(
+          "유상 신주 상장일 보완: saved={}, review={}, failures={}",
+          rights.saved(),
+          rights.reviewRequired(),
+          rights.failures());
     }
 
     // 결과 요약 로그

@@ -6,24 +6,28 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * 증권발행실적보고서 원문에서 유상증자 신주의 상장예정일만 추출한다.
- * 신주인수권증서·무상증자 관련 날짜나 문맥이 불분명한 날짜는 사용하지 않는다.
- */
+/** 증권발행실적보고서 원문에서 유상증자 신주의 상장예정일만 추출한다. 신주인수권증서·무상증자 관련 날짜나 문맥이 불분명한 날짜는 사용하지 않는다. */
 public class DartRightsIssueListingParser {
   private static final Pattern TAG = Pattern.compile("<[^>]*>");
   private static final Pattern SPACE = Pattern.compile("[\\s\\u00a0]+");
-  private static final Pattern ROW = Pattern.compile("<TR\\b[^>]*>(.*?)</TR>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-  private static final Pattern CELL = Pattern.compile("<(?:TD|TH|TE|TU)\\b[^>]*>(.*?)</(?:TD|TH|TE|TU)>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-  private static final Pattern DATE = Pattern.compile("(20\\d{2})[.년/\\-]\\s*(\\d{1,2})[.월/\\-]\\s*(\\d{1,2})(?:일)?");
-  private static final Pattern ORIGINAL = Pattern.compile(
-      "(?:원\\s*신고서|최초\\s*신고서|기준\\s*신고서)[^0-9]{0,80}(20\\d{12})");
+  private static final Pattern ROW =
+      Pattern.compile("<TR\\b[^>]*>(.*?)</TR>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern CELL =
+      Pattern.compile(
+          "<(?:TD|TH|TE|TU)\\b[^>]*>(.*?)</(?:TD|TH|TE|TU)>",
+          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern DATE =
+      Pattern.compile("(20\\d{2})[.년/\\-]\\s*(\\d{1,2})[.월/\\-]\\s*(\\d{1,2})(?:일)?");
+  private static final Pattern ORIGINAL =
+      Pattern.compile("(?:원\\s*신고서|최초\\s*신고서|기준\\s*신고서)[^0-9]{0,80}(20\\d{12})");
   private static final Pattern SHARES = Pattern.compile("([\\d,]+)\\s*주");
-  private static final Pattern LISTING = Pattern.compile(
-      "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|예정)|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
+  private static final Pattern LISTING =
+      Pattern.compile(
+          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|예정)|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
   private static final Pattern PAID = Pattern.compile("(?:납입일|주금납입일|납입기일)");
   private static final Pattern ISSUED = Pattern.compile("(?:발행주식수|발행\\s*주식\\s*총수|신주\\s*발행\\s*수)");
-  private static final Pattern EXCLUDED = Pattern.compile("(?:무상증자|무상신주|신주인수권증서|신주인수권\\s*증서|채권|전환사채)");
+  private static final Pattern EXCLUDED =
+      Pattern.compile("(?:무상증자|무상신주|신주인수권증서|신주인수권\\s*증서|채권|전환사채)");
 
   /** 표에서 추출한 회차 증거. 원신고번호 또는 납입일·유상 신주 수로 매칭한다. */
   public record Evidence(
@@ -59,9 +63,7 @@ public class DartRightsIssueListingParser {
         }
       }
     }
-    return dates.stream()
-        .map(date -> new Evidence(date, original, payment, shares))
-        .toList();
+    return dates.stream().map(date -> new Evidence(date, original, payment, shares)).toList();
   }
 
   private static List<List<String>> rows(String xml) {
@@ -81,8 +83,10 @@ public class DartRightsIssueListingParser {
   }
 
   private static String plain(String xml) {
-    return SPACE.matcher(TAG.matcher(xml).replaceAll(" ").replace("&nbsp;", " "))
-        .replaceAll(" ").trim();
+    return SPACE
+        .matcher(TAG.matcher(xml).replaceAll(" ").replace("&nbsp;", " "))
+        .replaceAll(" ")
+        .trim();
   }
 
   private static LocalDate firstDate(List<List<String>> rows, Pattern label) {
@@ -120,8 +124,8 @@ public class DartRightsIssueListingParser {
       return null;
     }
     try {
-      return LocalDate.of(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
-          Integer.parseInt(m.group(3)));
+      return LocalDate.of(
+          Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
     } catch (RuntimeException ignored) {
       return null;
     }

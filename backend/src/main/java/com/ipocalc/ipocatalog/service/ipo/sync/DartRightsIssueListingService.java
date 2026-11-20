@@ -16,10 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * 유상증자 발행실적보고서로 누락된 신주 상장예정일만 보완한다.
- * 회사 코드만 같거나 환불일이 유사한 보고서는 절대로 자동 연결하지 않는다.
- */
+/** 유상증자 발행실적보고서로 누락된 신주 상장예정일만 보완한다. 회사 코드만 같거나 환불일이 유사한 보고서는 절대로 자동 연결하지 않는다. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,7 +38,8 @@ public class DartRightsIssueListingService {
     int review = 0;
     int failures = 0;
     for (Ipo candidate : rows) {
-      if (candidate.getListingDate() != null || candidate.getCorpCode() == null
+      if (candidate.getListingDate() != null
+          || candidate.getCorpCode() == null
           || candidate.getSubscriptionStartDate() == null
           || candidate.getSubscriptionEndDate() == null
           || candidate.getSubscriptionStartDate().isBefore(firstSubscription)
@@ -68,10 +66,11 @@ public class DartRightsIssueListingService {
           if (xml.isEmpty()) {
             continue;
           }
-          List<Evidence> sameIssue = parser.parse(xml.get()).stream()
-              .filter(e -> isSameIssue(candidate, e))
-              .filter(e -> e.listingDate().isAfter(candidate.getSubscriptionEndDate()))
-              .toList();
+          List<Evidence> sameIssue =
+              parser.parse(xml.get()).stream()
+                  .filter(e -> isSameIssue(candidate, e))
+                  .filter(e -> e.listingDate().isAfter(candidate.getSubscriptionEndDate()))
+                  .toList();
           var dates = sameIssue.stream().map(Evidence::listingDate).distinct().toList();
           if (dates.size() > 1) {
             ambiguous = true;
@@ -94,30 +93,33 @@ public class DartRightsIssueListingService {
         final LocalDate dateToSave = listing;
         final String receiptToSave = evidenceReceipt;
         Boolean changed =
-            transactionTemplate.execute(status -> {
-              var found = ipoRepository.findByIdAndDeletedAtIsNull(candidate.getId());
-              if (found.isEmpty()) {
-                return false;
-              }
-              Ipo ipo = found.get();
-              if (ipo.getSyncSource() == null || ipo.getListingDate() != null
-                  || !Objects.equals(ipo.getCorpCode(), candidate.getCorpCode())) {
-                return false;
-              }
-              boolean applied = ipo.fillMissingRightsListing(
-                  dateToSave, receiptToSave, LocalDateTime.now(clock));
-              if (applied) {
-                ipoRepository.saveAndFlush(ipo);
-              }
-              return applied;
-            });
+            transactionTemplate.execute(
+                status -> {
+                  var found = ipoRepository.findByIdAndDeletedAtIsNull(candidate.getId());
+                  if (found.isEmpty()) {
+                    return false;
+                  }
+                  Ipo ipo = found.get();
+                  if (ipo.getSyncSource() == null
+                      || ipo.getListingDate() != null
+                      || !Objects.equals(ipo.getCorpCode(), candidate.getCorpCode())) {
+                    return false;
+                  }
+                  boolean applied =
+                      ipo.fillMissingRightsListing(
+                          dateToSave, receiptToSave, LocalDateTime.now(clock));
+                  if (applied) {
+                    ipoRepository.saveAndFlush(ipo);
+                  }
+                  return applied;
+                });
         if (Boolean.TRUE.equals(changed)) {
           saved++;
         }
       } catch (RuntimeException e) {
         failures++;
-        log.warn("유상 신주 상장일 보완 실패: ipoId={}, cause={}",
-            candidate.getId(), e.getClass().getSimpleName());
+        log.warn(
+            "유상 신주 상장일 보완 실패: ipoId={}, cause={}", candidate.getId(), e.getClass().getSimpleName());
       }
     }
     return new Result(saved, review, failures);
@@ -126,8 +128,7 @@ public class DartRightsIssueListingService {
   private static boolean isSameIssue(Ipo ipo, Evidence evidence) {
     String sourceReceipt = ipo.getSourceReceiptNo();
     // 원신고번호가 있으면 그 번호가 일치해야 한다. 다른 회차 오매칭 방지.
-    if (sourceReceipt != null && !sourceReceipt.isBlank()
-        && evidence.originalReceipt() != null) {
+    if (sourceReceipt != null && !sourceReceipt.isBlank() && evidence.originalReceipt() != null) {
       return sourceReceipt.equals(evidence.originalReceipt());
     }
     // 원신고 연결이 없으면 기존 IPO에 독립적으로 검증된 납입일이 없다.

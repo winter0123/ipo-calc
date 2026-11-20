@@ -43,7 +43,8 @@ class IpoSyncSchedulerTest {
   @BeforeEach
   void setUp() {
     mockitoCloseable = MockitoAnnotations.openMocks(this);
-    scheduler = new IpoSyncScheduler(ipoSyncService, rightsIssueListingService, taskScheduler, FIXED_CLOCK);
+    scheduler =
+        new IpoSyncScheduler(ipoSyncService, rightsIssueListingService, taskScheduler, FIXED_CLOCK);
     when(rightsIssueListingService.backfill(any(), any()))
         .thenReturn(new DartRightsIssueListingService.Result(0, 0, 0));
     // daysBack 필드는 @Value로 주입되므로 리플렉션으로 설정

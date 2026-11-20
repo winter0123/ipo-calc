@@ -121,8 +121,8 @@ public class DartIpoFilingClient {
   }
 
   /**
-   * 회사별 증권발행실적보고서 전건을 반환한다. 정정 공시를 빠뜨리지 않도록 최신 1건 검색을 하지 않는다.
-   * 보고서 접수는 청약월 다음 달이 될 수 있으므로 호출자가 청약 종료 후 여유 기간을 지정한다.
+   * 회사별 증권발행실적보고서 전건을 반환한다. 정정 공시를 빠뜨리지 않도록 최신 1건 검색을 하지 않는다. 보고서 접수는 청약월 다음 달이 될 수 있으므로 호출자가 청약 종료
+   * 후 여유 기간을 지정한다.
    */
   public synchronized List<FilingRef> findIssuanceResults(
       String corpCode, LocalDate from, LocalDate to) {
