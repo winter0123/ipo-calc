@@ -29,6 +29,7 @@ public class IpoManualSyncService {
 
   private final IpoSyncService ipoSyncService;
   private final IpoDetailSyncService ipoDetailSyncService;
+  private final IpoHistoricalListingService historicalListingService;
   private final OpenDartApiProperties openDartProperties;
   private final IpoSyncStateManager syncStateManager;
   // 같은 타입의 taskScheduler와 구분하려고 빈 이름(ipoSyncExecutor)과 같은 이름으로 주입받는다
@@ -168,7 +169,7 @@ public class IpoManualSyncService {
 
     while (!current.isAfter(toMonth)) {
       // 락을 걸고 한 달 처리 (이미 runExclusively 안에서 처리됨)
-      IpoSyncResult monthResult = ipoSyncService.syncByMonthRange(current, current);
+      IpoSyncResult monthResult = ipoSyncService.syncMonthWithoutSchedule(current);
 
       // 이 달에 생성/갱신된 공모주(corpCode 있음) 수집 → 상세 동기화 대상
       // (IpoSyncResult에는 개별 IPO 목록이 없으므로, 동기화 후 repo에서
@@ -203,6 +204,16 @@ public class IpoManualSyncService {
 
       current = current.plusMonths(1);
     }
+
+    // 전 월 DART 처리가 끝난 뒤 선택 범위의 상장일을 1회만 조회한다.
+    // uStockPlus 조회 실패 구간도 상태에 기록하고, 성공 구간의 결과는 보존한다.
+    LocalDate listingEnd = toMonth.atEndOfMonth();
+    if (listingEnd.isAfter(today)) {
+      listingEnd = today;
+    }
+    IpoHistoricalListingService.Result backfill =
+        historicalListingService.backfill(fromMonth.atDay(1), listingEnd);
+    syncStateManager.recordListingBackfill(backfill);
 
     // 모든 월 완료
     syncStateManager.completeRangeSync();
