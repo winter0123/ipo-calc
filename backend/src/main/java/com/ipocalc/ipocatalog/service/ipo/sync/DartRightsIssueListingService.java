@@ -9,8 +9,6 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingPa
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -61,29 +59,40 @@ public class DartRightsIssueListingService {
       }
       try {
         var documents = filingClient.findIssuanceResults(candidate.getCorpCode(), start, end);
-        List<Evidence> matches = new ArrayList<>();
+        LocalDate listing = null;
+        String evidenceReceipt = null;
+        boolean ambiguous = false;
+        // 최신 접수부터 검사한다. 같은 회차 정정본의 새 날짜가 우선한다.
         for (var filing : documents) {
           var xml = filingClient.downloadDocument(filing.rceptNo());
           if (xml.isEmpty()) {
             continue;
           }
-          for (Evidence evidence : parser.parse(xml.get())) {
-            if (isSameIssue(candidate, evidence)
-                && evidence.listingDate().isAfter(candidate.getSubscriptionEndDate())) {
-              matches.add(evidence);
-            }
+          List<Evidence> sameIssue = parser.parse(xml.get()).stream()
+              .filter(e -> isSameIssue(candidate, e))
+              .filter(e -> e.listingDate().isAfter(candidate.getSubscriptionEndDate()))
+              .toList();
+          var dates = sameIssue.stream().map(Evidence::listingDate).distinct().toList();
+          if (dates.size() > 1) {
+            ambiguous = true;
+            break;
+          }
+          if (dates.size() == 1) {
+            listing = dates.get(0);
+            evidenceReceipt = filing.rceptNo();
+            break;
           }
         }
-        var dates = matches.stream().map(Evidence::listingDate).distinct().toList();
-        if (dates.size() > 1) {
+        if (ambiguous) {
           review++;
           log.warn("유상 신주 상장일 상충으로 보완 보류: ipoId={}", candidate.getId());
           continue;
         }
-        if (dates.size() != 1) {
+        if (listing == null || evidenceReceipt == null) {
           continue;
         }
-        LocalDate listing = dates.get(0);
+        final LocalDate dateToSave = listing;
+        final String receiptToSave = evidenceReceipt;
         Boolean changed =
             transactionTemplate.execute(status -> {
               var found = ipoRepository.findByIdAndDeletedAtIsNull(candidate.getId());
@@ -95,9 +104,8 @@ public class DartRightsIssueListingService {
                   || !Objects.equals(ipo.getCorpCode(), candidate.getCorpCode())) {
                 return false;
               }
-              boolean applied = ipo.mergeSupplementalSchedule(
-                  null, null, null, listing, "OPENDART_ISSUANCE_RESULT_ESTIMATED",
-                  LocalDateTime.now(clock));
+              boolean applied = ipo.fillMissingRightsListing(
+                  dateToSave, receiptToSave, LocalDateTime.now(clock));
               if (applied) {
                 ipoRepository.saveAndFlush(ipo);
               }
