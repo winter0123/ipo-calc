@@ -1,7 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
-import com.ipocalc.accountauthentication.util.validation.StockCodes;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
@@ -266,7 +265,10 @@ public class IpoReconciliationService {
       DartOfferingTerms earlierBand = findEarlierBand(disclosures, filing, original);
       try {
         DartOfferingTerms verifiedTerms = offeringTerms;
-        String verifiedStockCode = resolveDartStockCode(row, filing, disclosures);
+        String verifiedStockCode =
+            DartStockCodeResolver.resolve(
+                corpDisclosureClient, clock, filing, disclosures, row.getSubscriptionStartDate(),
+                row.getStockCode());
         IpoSyncPersistence.Outcome outcome =
             transactionTemplate.execute(
                 status ->
@@ -347,41 +349,6 @@ public class IpoReconciliationService {
   }
 
   /**
-   * 같은 회사의 공시 종목코드가 충돌하면 자동 추론하지 않는다.
-   * 공시 코드가 없을 때에는 최근 청약 건의 기존 company.json 조회만 사용한다.
-   */
-  private String resolveDartStockCode(
-      Ipo row, OpenDartDisclosureItem filing, List<OpenDartDisclosureItem> disclosures) {
-    var codes = disclosures.stream()
-        .filter(item -> item.getCorpCode() != null
-            && item.getCorpCode().equals(filing.getCorpCode()))
-        .map(OpenDartDisclosureItem::getStockCode)
-        .map(StockCodes::normalize)
-        .filter(code -> code != null && code.matches("[0-9A-Z]{6}"))
-        .distinct()
-        .toList();
-    if (codes.size() > 1) {
-      log.warn("동일 corp_code의 DART 종목코드 충돌, 자동 연결 보류: corpCode={}",
-          filing.getCorpCode());
-      return null;
-    }
-    if (codes.size() == 1) {
-      return codes.get(0);
-    }
-    LocalDate subscription = row.getSubscriptionStartDate();
-    LocalDate today = LocalDate.now(clock);
-    if (row.getStockCode() != null || subscription == null
-        || subscription.isBefore(today.minusDays(120))
-        || subscription.isAfter(today.plusDays(59))) {
-      return null;
-    }
-    return corpDisclosureClient.getCompanyOverview(filing.getCorpCode())
-        .map(overview -> StockCodes.normalize(overview.stockCode()))
-        .filter(code -> code != null && code.matches("[0-9A-Z]{6}"))
-        .orElse(null);
-  }
-
-  /**
    * 갱신에 쓸 DS001 공시를 고른다. 지분증권·비철회만 대상으로 하고, 접수일자·접수번호 기준 가장 최신 공시를 선택한다. 발행조건확정 우선순위는 없앤다. 원문 파서가
    * 가격 표를 찾지 못하면 가격 필드를 변경하지 않고 실패를 기록한다.
    */
@@ -414,7 +381,10 @@ public class IpoReconciliationService {
       OpenDartEquitySecurityDetail detail,
       DartOfferingTerms offeringTerms) {
     try {
-      String verifiedStockCode = resolveDartStockCode(row, filing, List.of(filing));
+      String verifiedStockCode =
+          DartStockCodeResolver.resolve(
+              corpDisclosureClient, clock, filing, List.of(filing),
+              row.getSubscriptionStartDate(), row.getStockCode());
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
