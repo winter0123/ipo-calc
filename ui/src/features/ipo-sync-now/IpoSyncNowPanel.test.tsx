@@ -153,6 +153,42 @@ describe('IpoSyncNowPanel', () => {
     )
   })
 
+  it('저장 실패 종목과 상장일 상충을 별도로 표시한다', async () => {
+    vi.mocked(getIpoSyncStatus).mockResolvedValue(
+      status({
+        state: 'DONE',
+        result: {
+          ...RESULT,
+          failed: 2,
+          listingFailedRanges: [
+            { startDate: '2026-03-01', endDate: '2026-03-31' },
+          ],
+          listingFailedStocks: [{
+            stockCode: '271160',
+            candidateDate: '2026-03-30',
+            startDate: '2026-03-01',
+            endDate: '2026-03-31',
+          }],
+          listingConflicts: [{
+            stockCode: '222222',
+            existingDate: '2026-03-30',
+            candidateDate: '2026-04-02',
+            startDate: '2026-04-01',
+            endDate: '2026-04-30',
+          }],
+        },
+      }),
+    )
+    renderPanel()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('실패 2건'),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('저장 실패 종목: 271160')
+    expect(screen.getByRole('status')).toHaveTextContent('상장일 확인 필요 1건')
+    expect(screen.getByRole('status')).toHaveTextContent('2026-03-30 → 2026-04-02')
+    expect(screen.getByRole('status')).toHaveTextContent('자동 덮어쓰기 보류')
+  })
+
   it('화면을 열었을 때 이미 실행 중이면 진행 상황을 이어서 보여 준다', async () => {
     vi.mocked(getIpoSyncStatus).mockResolvedValue(running)
     renderPanel()
