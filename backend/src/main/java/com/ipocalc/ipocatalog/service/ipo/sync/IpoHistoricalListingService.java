@@ -173,8 +173,11 @@ public class IpoHistoricalListingService {
         }
         listingConflicts.add(
             new ListingConflict(
-                candidates.stockCode(), prior, alternative,
-                candidates.startDate(), candidates.endDate()));
+                candidates.stockCode(),
+                prior,
+                alternative,
+                candidates.startDate(),
+                candidates.endDate()));
       } catch (Exception e) {
         FailedRange window = new FailedRange(candidates.startDate(), candidates.endDate());
         if (!failures.contains(window)) {
@@ -182,7 +185,9 @@ public class IpoHistoricalListingService {
         }
         log.warn(
             "상장일 상충 조회 실패: stockCode={}, start={}, end={}, error={}",
-            candidates.stockCode(), window.startDate(), window.endDate(),
+            candidates.stockCode(),
+            window.startDate(),
+            window.endDate(),
             e.getClass().getSimpleName());
       }
     }

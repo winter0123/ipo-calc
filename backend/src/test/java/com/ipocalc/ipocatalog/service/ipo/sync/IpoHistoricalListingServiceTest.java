@@ -213,8 +213,9 @@ class IpoHistoricalListingServiceTest {
     assertThat(first.listingBackfilled()).isEqualTo(1);
     assertThat(retry.listingBackfilled()).isZero();
     assertThat(retry.listingConflicts())
-        .containsExactly(new IpoHistoricalListingService.ListingConflict(
-            "271160", firstDate, secondDate, start, end));
+        .containsExactly(
+            new IpoHistoricalListingService.ListingConflict(
+                "271160", firstDate, secondDate, start, end));
     assertThat(retry.failureCount()).isEqualTo(1);
     assertThat(row.getListingDate()).isEqualTo(firstDate);
     assertThat(row.getLastImportedListingDate()).isEqualTo(firstDate);
@@ -229,17 +230,18 @@ class IpoHistoricalListingServiceTest {
     when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(row));
     when(client.fetchListingDatesStrict(start, end))
-        .thenReturn(List.of(
-            item("271160", LocalDate.of(2026, 6, 29)),
-            item("271160", LocalDate.of(2026, 6, 30))));
+        .thenReturn(
+            List.of(
+                item("271160", LocalDate.of(2026, 6, 29)),
+                item("271160", LocalDate.of(2026, 6, 30))));
 
     var result = service.backfill(start, end);
 
     assertThat(result.listingBackfilled()).isZero();
     assertThat(result.listingConflicts())
-        .containsExactly(new IpoHistoricalListingService.ListingConflict(
-            "271160", LocalDate.of(2026, 6, 29), LocalDate.of(2026, 6, 30),
-            start, end));
+        .containsExactly(
+            new IpoHistoricalListingService.ListingConflict(
+                "271160", LocalDate.of(2026, 6, 29), LocalDate.of(2026, 6, 30), start, end));
     assertThat(row.getListingDate()).isNull();
     verify(repo, never()).saveAndFlush(row);
   }
