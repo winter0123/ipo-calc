@@ -113,12 +113,16 @@ public class UstockPlusCalendarClient {
         return Collections.emptyList();
       }
       List<UstockPlusCalendarItem> items = response.ipoCalendarResponses();
-      return group(
-          listingOnly
-              ? items.stream()
-                  .filter(item -> item != null && "TO_BE_LISTED".equals(item.calendarStockType()))
-                  .toList()
-              : items);
+      if (listingOnly) {
+        // 그룹화로 서로 다른 상장일이 하나로 압축되지 않도록 원본 상장 이벤트를 유지한다.
+        return items.stream()
+            .filter(item -> item != null && "TO_BE_LISTED".equals(item.calendarStockType()))
+            .filter(item -> item.startDate() != null && item.stockCode() != null)
+            .map(item -> new UstockPlusScheduleDates(
+                item.stockCode(), item.stockName(), item.startDate(), null, null))
+            .toList();
+      }
+      return group(items);
     } catch (RestClientResponseException e) {
       if (strict) {
         throw e;
