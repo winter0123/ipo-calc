@@ -91,6 +91,7 @@ public class IpoHistoricalListingService {
     Map<String, LocalDate> uniqueDates = new HashMap<>();
     Map<String, FailedRange> sourceWindows = new HashMap<>();
     Set<String> ambiguous = new HashSet<>();
+    Map<String, ListingConflict> ambiguousCandidates = new HashMap<>();
     List<FailedRange> failures = new ArrayList<>();
     List<FailedStock> failedStocks = new ArrayList<>();
     List<ListingConflict> listingConflicts = new ArrayList<>();
@@ -116,6 +117,15 @@ public class IpoHistoricalListingService {
           sourceWindows.putIfAbsent(code, new FailedRange(cursor, rangeEnd));
           if (previous != null && !previous.equals(date)) {
             ambiguous.add(code);
+            FailedRange firstWindow = sourceWindows.get(code);
+            ambiguousCandidates.put(
+                code,
+                new ListingConflict(
+                    code,
+                    previous,
+                    date,
+                    firstWindow.startDate().isBefore(cursor) ? firstWindow.startDate() : cursor,
+                    rangeEnd));
             uniqueDates.remove(code);
             sourceWindows.remove(code);
             log.warn("동일 종목의 상장일 상충으로 보완 제외: stockCode={}", code);
@@ -130,6 +140,51 @@ public class IpoHistoricalListingService {
             e.getClass().getSimpleName());
       }
       cursor = rangeEnd.plusDays(1);
+    }
+
+    // 한 조회에서 복수 후보가 확인돼 uniqueDates에서 제외된 종목도 확인 필요로 반환한다.
+    // 자동수집 IPO에만 연결하며, 수동 입력 또는 출처 불명인 날짜는 그대로 보호한다.
+    for (ListingConflict candidates : ambiguousCandidates.values()) {
+      try {
+        var found =
+            ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+                candidates.stockCode(), RecordStatus.ACTIVE);
+        if (found.isEmpty()) {
+          continue;
+        }
+        Ipo ipo = found.get();
+        if (ipo.getSyncSource() == null || ipo.getSubscriptionEndDate() == null) {
+          continue;
+        }
+        LocalDate prior = candidates.existingDate();
+        LocalDate alternative = candidates.candidateDate();
+        if (!ipo.getSubscriptionEndDate().isBefore(prior)
+            || !ipo.getSubscriptionEndDate().isBefore(alternative)) {
+          continue;
+        }
+        LocalDate stored = ipo.getListingDate();
+        if (stored != null) {
+          if (ipo.getLastImportedListingDate() == null
+              || !stored.equals(ipo.getLastImportedListingDate())) {
+            continue;
+          }
+          alternative = stored.equals(alternative) ? prior : alternative;
+          prior = stored;
+        }
+        listingConflicts.add(
+            new ListingConflict(
+                candidates.stockCode(), prior, alternative,
+                candidates.startDate(), candidates.endDate()));
+      } catch (Exception e) {
+        FailedRange window = new FailedRange(candidates.startDate(), candidates.endDate());
+        if (!failures.contains(window)) {
+          failures.add(window);
+        }
+        log.warn(
+            "상장일 상충 조회 실패: stockCode={}, start={}, end={}, error={}",
+            candidates.stockCode(), window.startDate(), window.endDate(),
+            e.getClass().getSimpleName());
+      }
     }
 
     int updated = 0;
