@@ -272,10 +272,12 @@ public class IpoReconciliationService {
                 status ->
                     verifiedStockCode == null
                         ? ipoSyncPersistence.persistVerifiedFiling(
-                            corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                            corpCode,
+                            Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                             filing.getRceptNo(), original, detail, verifiedTerms, earlierBand)
                         : ipoSyncPersistence.persistVerifiedFiling(
-                            corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                            corpCode,
+                            Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                             filing.getRceptNo(), original, detail, verifiedTerms, earlierBand,
                             verifiedStockCode));
         if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
@@ -418,11 +420,13 @@ public class IpoReconciliationService {
               status ->
                   verifiedStockCode == null
                       ? ipoSyncPersistence.persist(
-                          corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                          corpCode,
+                            Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                           detail, filing.isFinalizedReport(), filing.isCorrectionOrFinalized(),
                           offeringTerms)
                       : ipoSyncPersistence.persist(
-                          corpCode, Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
+                          corpCode,
+                            Objects.requireNonNullElse(filing.getCorpName(), row.getCompanyName()),
                           detail, filing.isFinalizedReport(), filing.isCorrectionOrFinalized(),
                           offeringTerms, verifiedStockCode));
       if (outcome == IpoSyncPersistence.Outcome.UPDATED) {
