@@ -42,7 +42,7 @@ class IpoSyncSchedulerTest {
   @BeforeEach
   void setUp() {
     mockitoCloseable = MockitoAnnotations.openMocks(this);
-    scheduler = new IpoSyncScheduler(ipoSyncService, taskScheduler, FIXED_CLOCK);
+    scheduler = new IpoSyncScheduler(ipoSyncService, org.mockito.Mockito.mock(DartRightsIssueListingService.class), taskScheduler, FIXED_CLOCK);
     // daysBack 필드는 @Value로 주입되므로 리플렉션으로 설정
     setField(scheduler, "daysBack", 90);
     capturedRunnables.clear();
