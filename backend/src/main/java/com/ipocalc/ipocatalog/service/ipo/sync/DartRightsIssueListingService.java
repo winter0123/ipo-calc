@@ -57,6 +57,11 @@ public class DartRightsIssueListingService {
       }
       try {
         var documents = filingClient.findIssuanceResults(candidate.getCorpCode(), start, end);
+        var originalIdentity =
+            candidate.getSourceReceiptNo() == null
+                ? null
+                : filingClient.downloadDocument(candidate.getSourceReceiptNo())
+                    .map(parser::issueIdentity).orElse(null);
         LocalDate listing = null;
         String evidenceReceipt = null;
         boolean ambiguous = false;
@@ -68,7 +73,7 @@ public class DartRightsIssueListingService {
           }
           List<Evidence> sameIssue =
               parser.parse(xml.get()).stream()
-                  .filter(e -> isSameIssue(candidate, e))
+                  .filter(e -> isSameIssue(candidate, e, originalIdentity))
                   .filter(e -> e.listingDate().isAfter(candidate.getSubscriptionEndDate()))
                   .toList();
           var dates = sameIssue.stream().map(Evidence::listingDate).distinct().toList();
@@ -125,14 +130,25 @@ public class DartRightsIssueListingService {
     return new Result(saved, review, failures);
   }
 
-  private static boolean isSameIssue(Ipo ipo, Evidence evidence) {
+  private static boolean isSameIssue(
+      Ipo ipo, Evidence evidence,
+      DartRightsIssueListingParser.IssueIdentity original) {
     String sourceReceipt = ipo.getSourceReceiptNo();
-    // 원신고번호가 있으면 그 번호가 일치해야 한다. 다른 회차 오매칭 방지.
-    if (sourceReceipt != null && !sourceReceipt.isBlank() && evidence.originalReceipt() != null) {
+    if (sourceReceipt == null || sourceReceipt.isBlank()) {
+      return false;
+    }
+    // 명시된 원신고번호가 다른 회차이면 동일 회사라도 절대 연결하지 않는다.
+    if (evidence.originalReceipt() != null) {
       return sourceReceipt.equals(evidence.originalReceipt());
     }
-    // 원신고 연결이 없으면 기존 IPO에 독립적으로 검증된 납입일이 없다.
-    // 환불일을 납입일로 추정하지 않고, 유상 신주 수만으로도 자동 연결하지 않는다.
-    return false;
+    // 원신고 연결번호가 누락된 보고서는 원공시의 납입일 및 신주 수와 동시에 대조한다.
+    // 앱의 환불일은 납입일로 쓰지 않는다.
+    return original != null && original.paymentDate() != null
+        && original.issuedShares() != null
+        && evidence.paymentDate() != null && evidence.issuedShares() != null
+        && ipo.getOfferingShareCount() != null
+        && original.paymentDate().equals(evidence.paymentDate())
+        && original.issuedShares().equals(evidence.issuedShares())
+        && original.issuedShares().equals(ipo.getOfferingShareCount());
   }
 }
