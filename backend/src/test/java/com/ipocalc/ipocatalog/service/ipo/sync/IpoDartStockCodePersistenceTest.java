@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartEquitySecuritiesClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartEquitySecurityDetail;
 import java.time.Clock;
@@ -94,7 +95,7 @@ class IpoDartStockCodePersistenceTest {
   }
 
   @Test
-  void refusesStockCodeOwnedByAnotherActiveIpo() {
+  void stockCodeConflictStillUpdatesVerifiedOfferingWithoutChangingCode() {
     Ipo row = oldRow();
     Ipo other = Ipo.builder().id(222L).stockCode("271160")
         .status(RecordStatus.ACTIVE).build();
@@ -103,11 +104,55 @@ class IpoDartStockCodePersistenceTest {
     when(repository.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(other));
 
-    assertThat(persistence.persist(CORP, "하나에어로", detail(),
-        true, false, null, "271160"))
-        .isEqualTo(IpoSyncPersistence.Outcome.HELD_UNDETERMINED);
+    DartOfferingTerms terms = verifiedTerms();
+    assertThat(persistence.persistVerifiedFiling(
+        CORP, "하나에어로", RECEIPT, RECEIPT, detail(), terms, null, "271160"))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
     assertThat(row.getStockCode()).isNull();
-    verify(repository, never()).saveAndFlush(row);
+    assertThat(row.getFixedPrice()).isEqualTo(5_700L);
+    verify(repository).saveAndFlush(row);
+  }
+
+  private DartOfferingTerms verifiedTerms() {
+    return new DartOfferingTerms(
+        RECEIPT, DartOfferingTerms.PARSER_VERSION, null, null, 5_700L,
+        LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 11),
+        null, LocalDate.of(2026, 11, 18), null);
+  }
+
+  @Test
+  void conflictingExistingCodePreservesCodeButUpdatesVerifiedPrice() {
+    Ipo row = Ipo.builder().id(111L).corpCode(CORP)
+        .stockCode("999999").sourceReceiptNo(RECEIPT)
+        .subscriptionStartDate(LocalDate.of(2026, 11, 10))
+        .subscriptionEndDate(LocalDate.of(2026, 11, 11))
+        .status(RecordStatus.ACTIVE).syncSource("OPENDART").build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(CORP, RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+
+    assertThat(persistence.persistVerifiedFiling(
+        CORP, "하나에어로", RECEIPT, RECEIPT, detail(), verifiedTerms(), null, "271160"))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(row.getStockCode()).isEqualTo("999999");
+    assertThat(row.getFixedPrice()).isEqualTo(5_700L);
+    verify(repository).saveAndFlush(row);
+  }
+
+  @Test
+  void normalSyncConflictUpdatesScheduleWithoutReplacingStockCode() {
+    Ipo row = oldRow();
+    Ipo other = Ipo.builder().id(222L).stockCode("271160").build();
+    when(repository.findAllByCorpCodeAndStatusAndDeletedAtIsNull(CORP, RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+    when(repository.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(other));
+
+    assertThat(persistence.persist(
+        CORP, "하나에어로", detail(), false, false, verifiedTerms(), "271160"))
+        .isEqualTo(IpoSyncPersistence.Outcome.UPDATED);
+    assertThat(row.getStockCode()).isNull();
+    assertThat(row.getFixedPrice()).isEqualTo(5_700L);
+    verify(repository).saveAndFlush(row);
   }
 
   @Test
