@@ -57,6 +57,15 @@ public class IpoSyncStatusResponse {
     /** 선택한 과거 기간에서 신규 보완한 상장일 수. */
     private int listingBackfilled;
 
+    /** 발행실적보고서에 근거한 유상 신주 상장예정일 보완 건수. */
+    private int rightsListingBackfilled;
+
+    /** 발행실적보고서에서 회차/날짜가 명확하지 않아 보류한 수. */
+    private int rightsListingReviewRequired;
+
+    /** 유상 신주 보고서 조회·저장 실패 수. */
+    private int rightsListingFailures;
+
     /** 실패한 uStockPlus 조회 범위. 성공 구간은 이미 저장된다. */
     private List<IpoHistoricalListingService.FailedRange> listingFailedRanges;
 
