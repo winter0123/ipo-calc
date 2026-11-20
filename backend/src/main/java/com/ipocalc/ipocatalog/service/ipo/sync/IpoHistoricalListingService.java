@@ -30,11 +30,28 @@ public class IpoHistoricalListingService {
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
 
+  private enum SaveOutcome { SAVED, SKIPPED, CONFLICT }
+
   /** 실패한 조회 구간은 날짜를 보존하여 다시 조회할 수 있다. */
   public record FailedRange(LocalDate startDate, LocalDate endDate) {}
 
-  /** 부분 성공도 저장하되 실패한 구간은 별도로 보고한다. */
-  public record Result(int listingBackfilled, List<FailedRange> failedRanges) {}
+  /** 저장 오류로 복구하지 못한 종목과 원본 조회 구간. */
+  public record FailedStock(
+      String stockCode, LocalDate candidateDate, LocalDate startDate, LocalDate endDate) {}
+
+  /** 자동 보완 이력과 현재 후보가 충돌하여 수동 확인이 필요한 종목. */
+  public record ListingConflict(
+      String stockCode, LocalDate existingDate, LocalDate candidateDate,
+      LocalDate startDate, LocalDate endDate) {}
+
+  /** 부분 성공을 보존하고 조회 오류·저장 오류·상충 후보를 각각 보고한다. */
+  public record Result(
+      int listingBackfilled, List<FailedRange> failedRanges,
+      List<FailedStock> failedStocks, List<ListingConflict> listingConflicts) {
+    public Result(int listingBackfilled, List<FailedRange> failedRanges) {
+      this(listingBackfilled, failedRanges, List.of(), List.of());
+    }
+  }
 
   /** 양끝 포함 90일씩 조회한다. 다음 구간은 전 구간 종료 다음 날이므로 경계 누락·중복이 없다. */
   public Result backfill(LocalDate start, LocalDate end) {
@@ -47,8 +64,11 @@ public class IpoHistoricalListingService {
       return new Result(0, List.of());
     }
     Map<String, LocalDate> uniqueDates = new HashMap<>();
+    Map<String, FailedRange> sourceWindows = new HashMap<>();
     Set<String> ambiguous = new HashSet<>();
     List<FailedRange> failures = new ArrayList<>();
+    List<FailedStock> failedStocks = new ArrayList<>();
+    List<ListingConflict> listingConflicts = new ArrayList<>();
     for (LocalDate cursor = start; !cursor.isAfter(lastDay); ) {
       LocalDate rangeEnd = cursor.plusDays(89);
       if (rangeEnd.isAfter(lastDay)) {
@@ -68,9 +88,11 @@ public class IpoHistoricalListingService {
             continue;
           }
           LocalDate previous = uniqueDates.putIfAbsent(code, date);
+          sourceWindows.putIfAbsent(code, new FailedRange(cursor, rangeEnd));
           if (previous != null && !previous.equals(date)) {
             ambiguous.add(code);
             uniqueDates.remove(code);
+            sourceWindows.remove(code);
             log.warn("동일 종목의 상장일 상충으로 보완 제외: stockCode={}", code);
           }
         }
@@ -87,23 +109,34 @@ public class IpoHistoricalListingService {
 
     int updated = 0;
     for (Map.Entry<String, LocalDate> entry : uniqueDates.entrySet()) {
+      FailedRange window = sourceWindows.get(entry.getKey());
       try {
-        Boolean saved =
+        SaveOutcome outcome =
             transactionTemplate.execute(
                 status -> {
                   var found =
                       ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
                           entry.getKey(), RecordStatus.ACTIVE);
                   if (found.isEmpty()) {
-                    return false;
+                    return SaveOutcome.SKIPPED;
                   }
                   Ipo ipo = found.get();
                   LocalDate subscriptionEnd = ipo.getSubscriptionEndDate();
                   if (ipo.getSyncSource() == null
-                      || ipo.getListingDate() != null
                       || subscriptionEnd == null
                       || !subscriptionEnd.isBefore(entry.getValue())) {
-                    return false;
+                    return SaveOutcome.SKIPPED;
+                  }
+                  if (ipo.getListingDate() != null) {
+                    if (ipo.getListingDate().equals(entry.getValue())) {
+                      return SaveOutcome.SKIPPED;
+                    }
+                    if (ipo.getLastImportedListingDate() != null
+                        && ipo.getLastImportedListingDate().equals(ipo.getListingDate())) {
+                      return SaveOutcome.CONFLICT;
+                    }
+                    // 출처가 불명확하거나 수동으로 편집된 날짜는 보존한다.
+                    return SaveOutcome.SKIPPED;
                   }
                   boolean changed =
                       ipo.mergeSupplementalSchedule(
@@ -116,18 +149,33 @@ public class IpoHistoricalListingService {
                   if (changed) {
                     ipoRepository.saveAndFlush(ipo);
                   }
-                  return changed;
+                  return changed ? SaveOutcome.SAVED : SaveOutcome.SKIPPED;
                 });
-        if (Boolean.TRUE.equals(saved)) {
+        if (outcome == SaveOutcome.SAVED) {
           updated++;
+        } else if (outcome == SaveOutcome.CONFLICT) {
+          LocalDate existing =
+              ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+                  entry.getKey(), RecordStatus.ACTIVE)
+                  .map(Ipo::getListingDate)
+                  .orElse(null);
+          listingConflicts.add(new ListingConflict(
+              entry.getKey(), existing, entry.getValue(), window.startDate(), window.endDate()));
         }
       } catch (Exception e) {
+        failedStocks.add(new FailedStock(
+            entry.getKey(), entry.getValue(), window.startDate(), window.endDate()));
+        if (!failures.contains(window)) {
+          failures.add(window);
+        }
         log.warn(
-            "과거 상장일 보완 저장 실패: stockCode={}, error={}",
-            entry.getKey(),
+            "과거 상장일 보완 저장 실패: stockCode={}, start={}, end={}, error={}",
+            entry.getKey(), window.startDate(), window.endDate(),
             e.getClass().getSimpleName());
       }
     }
-    return new Result(updated, List.copyOf(failures));
+    return new Result(
+        updated, List.copyOf(failures), List.copyOf(failedStocks),
+        List.copyOf(listingConflicts));
   }
 }
