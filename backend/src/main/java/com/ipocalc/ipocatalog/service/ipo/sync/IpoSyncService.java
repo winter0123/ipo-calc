@@ -1,6 +1,5 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
-import com.ipocalc.accountauthentication.util.validation.StockCodes;
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
@@ -594,19 +593,6 @@ public class IpoSyncService {
         historical = List.of(filing);
         original = filing.getRceptNo();
       }
-      long distinctCodes =
-          historical.stream()
-              .map(OpenDartDisclosureItem::getStockCode)
-              .map(StockCodes::normalize)
-              .filter(code -> code != null && code.matches("[0-9A-Z]{6}"))
-              .distinct()
-              .count();
-      if (distinctCodes > 1) {
-        recordFailure(
-            result, filing.getCorpCode(), filing.getCorpName(),
-            "동일 corp_code의 DART 종목코드 충돌: 자동 저장 보류");
-        return true;
-      }
       if (original == null) {
         recordFailure(
             result, filing.getCorpCode(), filing.getCorpName(), "최초제출일과 원공시 접수번호 연결 불가: 저장 보류");
@@ -647,16 +633,23 @@ public class IpoSyncService {
         }
       }
       final DartOfferingTerms band = historicalBand;
+      LocalDate subscriptionStart =
+          latest.subscriptionStartDate() != null
+              ? latest.subscriptionStartDate()
+              : fallback != null ? fallback.getSubscriptionStartDate() : null;
+      String verifiedStockCode =
+          DartStockCodeResolver.resolve(
+              corpDisclosureClient, clock, filing, historical, subscriptionStart, null);
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
-                  filing.getStockCode() == null || filing.getStockCode().isBlank()
+                  verifiedStockCode == null
                       ? ipoSyncPersistence.persistVerifiedFiling(
                           filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
                           original, fallback, latest, band)
                       : ipoSyncPersistence.persistVerifiedFiling(
                           filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
-                          original, fallback, latest, band, filing.getStockCode()));
+                          original, fallback, latest, band, verifiedStockCode));
       if (outcome == null) {
         recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
         return true;
