@@ -28,7 +28,9 @@ function statusText(s: IpoSyncStatus | undefined): string {
   }
   const listingCount = r.listingBackfilled ?? 0
   const windows = r.listingFailedRanges ?? []
-  const failures = windows.length ? ` · 상장일 조회 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)` : ''
+  const failures = windows.length
+    ? ` · 상장일 조회 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)`
+    : ''
   return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건 · 실패 ${r.failed}건${failures}`
 }
 
@@ -86,8 +88,9 @@ export default function IpoSyncNowPanel() {
             </label>
           </div>
           <p className={styles.description}>
-            고른 기간의 공모주와 상세 정보를 DART에서 가져오고, 같은 기간의 누락된 상장일을 보완합니다. 1년이면 몇 분 걸릴 수 있습니다.
-            매일 새벽에는 최근 공모주를 자동으로 가져옵니다.
+            고른 기간의 공모주와 상세 정보를 DART에서 가져오고, 같은 기간의 누락된 상장일을
+            보완합니다. 1년이면 몇 분 걸릴 수 있습니다. 매일 새벽에는 최근 공모주를 자동으로
+            가져옵니다.
           </p>
           <button
             type="button"
