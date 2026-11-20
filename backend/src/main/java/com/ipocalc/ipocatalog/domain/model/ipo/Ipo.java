@@ -546,6 +546,8 @@ public class Ipo {
   /** 관리자 입력은 보조 일정의 자동 정정 대상에서 제외한다. */
   public void protectListingDate() {
     this.lastImportedListingDate = null;
+    this.listingDateEvidenceType = null;
+    this.listingDateEvidenceReceipt = null;
   }
 
   /** 관리자 입력(청약 시작일)은 자동 정정 대상에서 제외한다. */
