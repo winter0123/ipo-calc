@@ -38,7 +38,8 @@ public class DartRightsIssueListingService {
     int review = 0;
     int failures = 0;
     for (Ipo candidate : rows) {
-      if (candidate.getListingDate() != null
+      if ((candidate.getListingDate() != null
+              && !"ESTIMATED_DART".equals(candidate.getListingDateEvidenceType()))
           || candidate.getCorpCode() == null
           || candidate.getSubscriptionStartDate() == null
           || candidate.getSubscriptionEndDate() == null
