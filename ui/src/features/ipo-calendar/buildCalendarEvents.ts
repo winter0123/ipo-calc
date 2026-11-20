@@ -13,6 +13,7 @@ export interface CalendarEvent {
   endDate: string
   price?: string
   estimated?: boolean
+  confirmed?: boolean
 }
 
 export interface BarSegment {
@@ -85,6 +86,8 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
       events.push({
         ipoId: ipo.id,
         type: 'LISTING',
+        estimated: ipo.listingDateEvidenceType === 'ESTIMATED_DART',
+        confirmed: ipo.listingDateEvidenceType === 'CONFIRMED_KRX',
         companyName: ipo.companyName,
         ipoName: ipo.ipoName,
         startDate: listingDate,
