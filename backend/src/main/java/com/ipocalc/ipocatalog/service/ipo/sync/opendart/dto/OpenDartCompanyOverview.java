@@ -16,4 +16,11 @@ public record OpenDartCompanyOverview(
     String status,
     @JsonProperty("ceo_nm") String ceoName,
     @JsonProperty("est_dt") String establishedOn,
-    @JsonProperty("adres") String address) {}
+    @JsonProperty("adres") String address,
+    @JsonProperty("stock_code") String stockCode) {
+  /** 기존 기업개황 테스트/호출부의 4-인자 생성자 호환. */
+  public OpenDartCompanyOverview(
+      String status, String ceoName, String establishedOn, String address) {
+    this(status, ceoName, establishedOn, address, null);
+  }
+}

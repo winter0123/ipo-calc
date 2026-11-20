@@ -127,6 +127,26 @@ class IpoScheduleMergeServiceTest {
   }
 
   @Test
+  void mergeMatchesRenamedDartCompanyByVerifiedStockCode() {
+    Ipo existing = createAutoSyncIpo(111L, "01025617", "하나에어로", "271160", null, null, null);
+    when(ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull("271160", STATUS_ACTIVE))
+        .thenReturn(Optional.of(existing));
+    when(ipoRepository.findByStockCodeIsNullAndSyncSourceIsNotNullAndStatusAndDeletedAtIsNull(
+            STATUS_ACTIVE))
+        .thenReturn(List.of());
+    when(ustockPlusCalendarClient.fetchScheduleDates(any(LocalDate.class), any(LocalDate.class)))
+        .thenReturn(
+            List.of(
+                createSchedule("271160", "하나에어로다이내믹스", LocalDate.of(2026, 11, 20), null, null)));
+
+    assertThat(mergeService.merge(TODAY)).isEqualTo(1);
+    assertThat(existing.getId()).isEqualTo(111L);
+    assertThat(existing.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 20));
+    assertThat(existing.getIpoName()).isEqualTo("하나에어로");
+    verify(ipoRepository).saveAndFlush(existing);
+  }
+
+  @Test
   void merge_matchesByStockCode_andUpdatesAllThreeDates() {
     // given: 종목코드로 매칭되는 자동 동기화 레코드 존재
     Ipo existing = createAutoSyncIpo(1L, "01658035", "진코스텍", "250030", null, null, null);

@@ -45,6 +45,13 @@ public class Ipo {
     this.subscriptionEndDate = subscriptionEndDate;
   }
 
+  /** DART로 확인한 코드는 비어 있는 자동 수집 IPO에만 연결한다. 기존 값은 덮어쓰지 않는다. */
+  public void fillMissingStockCode(String verifiedStockCode) {
+    if (this.stockCode == null && verifiedStockCode != null) {
+      this.stockCode = verifiedStockCode;
+    }
+  }
+
   /** 보조 일정의 빈 필드와 수집 상장일·환불일 정정을 반영하고 수동 값은 보존한다. */
   public boolean mergeSupplementalSchedule(
       String stockCode,

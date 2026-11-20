@@ -1,6 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
+import com.ipocalc.accountauthentication.util.validation.StockCodes;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
@@ -37,6 +38,20 @@ public class IpoSyncPersistence {
       boolean finalizedReport,
       boolean correctionReport,
       DartOfferingTerms offeringTerms) {
+    return persist(
+        corpCode, corpName, detail, finalizedReport, correctionReport, offeringTerms, null);
+  }
+
+  /** DART 공시에서 검증한 종목코드를 함께 저장하는 동기화 경로. */
+  public Outcome persist(
+      String corpCode,
+      String corpName,
+      OpenDartEquitySecurityDetail detail,
+      boolean finalizedReport,
+      boolean correctionReport,
+      DartOfferingTerms offeringTerms,
+      String dartStockCode) {
+    final String verifiedStockCode = normalizedVerifiedCode(dartStockCode);
     if (detail.getRceptNo() != null
         && ipoRepository.existsByCorpCodeAndWithdrawnReceiptNo(corpCode, detail.getRceptNo())) {
       return Outcome.SKIPPED_WITHDRAWN;
@@ -82,7 +97,10 @@ public class IpoSyncPersistence {
         log.warn("신규 공모/정정 구분 불가로 자동 갱신 보류: corpCode={}", corpCode);
         return Outcome.HELD_UNDETERMINED;
       }
-      updateExistingIpo(existing, corpName, detail, startDate, endDate, offeringTerms);
+      String attachableStockCode =
+          stockCodeConflicts(existing, verifiedStockCode) ? null : verifiedStockCode;
+      updateExistingIpo(
+          existing, corpName, detail, startDate, endDate, offeringTerms, attachableStockCode);
       log.debug("자동 동기화 레코드 갱신: corpCode={}", corpCode);
       return Outcome.UPDATED;
     }
@@ -102,9 +120,12 @@ public class IpoSyncPersistence {
       return Outcome.SKIPPED_MANUAL;
     }
 
+    if (stockCodeConflicts(null, verifiedStockCode)) {
+      return Outcome.HELD_UNDETERMINED;
+    }
     try {
       ipoRepository.saveAndFlush(
-          newIpo(corpCode, corpName, detail, startDate, endDate, offeringTerms));
+          newIpo(corpCode, corpName, detail, startDate, endDate, offeringTerms, verifiedStockCode));
       log.debug("신규 IPO 생성: corpCode={}, corpName={}", corpCode, corpName);
       return Outcome.CREATED;
     } catch (DataIntegrityViolationException e) {
@@ -121,6 +142,28 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       DartOfferingTerms latestTerms,
       DartOfferingTerms historicalBand) {
+    return persistVerifiedFiling(
+        corpCode,
+        corpName,
+        filingReceipt,
+        originalReceipt,
+        detail,
+        latestTerms,
+        historicalBand,
+        null);
+  }
+
+  /** 검증된 원공시 회차와 DART 종목코드를 기존 IPO에 반영한다. */
+  public Outcome persistVerifiedFiling(
+      String corpCode,
+      String corpName,
+      String filingReceipt,
+      String originalReceipt,
+      OpenDartEquitySecurityDetail detail,
+      DartOfferingTerms latestTerms,
+      DartOfferingTerms historicalBand,
+      String dartStockCode) {
+    final String verifiedStockCode = normalizedVerifiedCode(dartStockCode);
     if (filingReceipt == null
         || originalReceipt == null
         || latestTerms == null
@@ -219,10 +262,16 @@ public class IpoSyncPersistence {
         existing.applyVerifiedOfferingTerms(historicalBand, now);
       }
       existing.applyVerifiedOfferingTerms(latestTerms, now);
+      if (!stockCodeConflicts(existing, verifiedStockCode)) {
+        existing.fillMissingStockCode(verifiedStockCode);
+      }
       ipoRepository.saveAndFlush(existing);
       return Outcome.UPDATED;
     }
 
+    if (stockCodeConflicts(null, verifiedStockCode)) {
+      return Outcome.HELD_UNDETERMINED;
+    }
     // 신규 IPO는 원신고가 검증됐더라도 유효한 청약 시작/종료일 없이는 생성하지 않는다.
     if (start == null || end == null) {
       return Outcome.HELD_UNDETERMINED;
@@ -248,6 +297,7 @@ public class IpoSyncPersistence {
             .companyName(corpName)
             .ipoName(corpName)
             .corpCode(corpCode)
+            .stockCode(verifiedStockCode)
             .subscriptionStartDate(start)
             .subscriptionEndDate(end)
             .allotmentDate(allotment)
@@ -327,14 +377,15 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
       LocalDate endDate,
-      DartOfferingTerms offeringTerms) {
+      DartOfferingTerms offeringTerms,
+      String verifiedStockCode) {
     LocalDateTime now = LocalDateTime.now(clock);
     Ipo ipo =
         Ipo.builder()
             .companyName(corpName)
             .ipoName(corpName)
             .corpCode(corpCode)
-            .stockCode(null)
+            .stockCode(verifiedStockCode)
             .subscriptionStartDate(startDate)
             .subscriptionEndDate(endDate)
             .listingDate(null)
@@ -400,7 +451,8 @@ public class IpoSyncPersistence {
       OpenDartEquitySecurityDetail detail,
       LocalDate startDate,
       LocalDate endDate,
-      DartOfferingTerms offeringTerms) {
+      DartOfferingTerms offeringTerms,
+      String verifiedStockCode) {
     LocalDateTime now = LocalDateTime.now(clock);
     // 과거 접수번호가 다시 도착한 경우 일정·주식 수는 후퇴시키지 않는다.
     boolean currentSchedule = existing.mayApplyVerifiedSchedule(detail.getRceptNo());
@@ -430,7 +482,38 @@ public class IpoSyncPersistence {
     if (existing.getSourceReceiptNo() == null && detail.getRceptNo() != null) {
       existing.recordSyncSourceReceipt(detail.getRceptNo());
     }
+    existing.fillMissingStockCode(verifiedStockCode);
     ipoRepository.saveAndFlush(existing);
+  }
+
+  /** 종목코드가 충돌하면 코드 변경만 보류하고 검증된 공모 조건의 갱신은 계속한다. */
+  private boolean stockCodeConflicts(Ipo target, String stockCode) {
+    if (stockCode == null) {
+      return false;
+    }
+    if (target != null
+        && target.getStockCode() != null
+        && !stockCode.equals(StockCodes.normalize(target.getStockCode()))) {
+      log.warn(
+          "DART 종목코드 불일치: ipoId={}, existing={}, supplied={}",
+          target.getId(),
+          target.getStockCode(),
+          stockCode);
+      return true;
+    }
+    var occupied =
+        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(stockCode, RecordStatus.ACTIVE);
+    if (occupied.isPresent()
+        && (target == null || !occupied.get().getId().equals(target.getId()))) {
+      log.warn("DART 종목코드가 다른 활성 IPO에 연결됨: stockCode={}", stockCode);
+      return true;
+    }
+    return false;
+  }
+
+  private static String normalizedVerifiedCode(String raw) {
+    String code = StockCodes.normalize(raw);
+    return code != null && code.matches("[0-9A-Z]{6}") ? code : null;
   }
 
   enum Outcome {
