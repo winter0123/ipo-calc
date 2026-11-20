@@ -30,7 +30,11 @@ public class IpoHistoricalListingService {
   private final TransactionTemplate transactionTemplate;
   private final Clock clock;
 
-  private enum SaveOutcome { SAVED, SKIPPED, CONFLICT }
+  private enum SaveOutcome {
+    SAVED,
+    SKIPPED,
+    CONFLICT
+  }
 
   /** 실패한 조회 구간은 날짜를 보존하여 다시 조회할 수 있다. */
   public record FailedRange(LocalDate startDate, LocalDate endDate) {}
@@ -41,13 +45,18 @@ public class IpoHistoricalListingService {
 
   /** 자동 보완 이력과 현재 후보가 충돌하여 수동 확인이 필요한 종목. */
   public record ListingConflict(
-      String stockCode, LocalDate existingDate, LocalDate candidateDate,
-      LocalDate startDate, LocalDate endDate) {}
+      String stockCode,
+      LocalDate existingDate,
+      LocalDate candidateDate,
+      LocalDate startDate,
+      LocalDate endDate) {}
 
   /** 부분 성공을 보존하고 조회 오류·저장 오류·상충 후보를 각각 보고한다. */
   public record Result(
-      int listingBackfilled, List<FailedRange> failedRanges,
-      List<FailedStock> failedStocks, List<ListingConflict> listingConflicts) {
+      int listingBackfilled,
+      List<FailedRange> failedRanges,
+      List<FailedStock> failedStocks,
+      List<ListingConflict> listingConflicts) {
     public Result(int listingBackfilled, List<FailedRange> failedRanges) {
       this(listingBackfilled, failedRanges, List.of(), List.of());
     }
@@ -170,27 +179,34 @@ public class IpoHistoricalListingService {
           updated++;
         } else if (outcome == SaveOutcome.CONFLICT) {
           LocalDate existing =
-              ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
-                  entry.getKey(), RecordStatus.ACTIVE)
+              ipoRepository
+                  .findByStockCodeAndStatusAndDeletedAtIsNull(entry.getKey(), RecordStatus.ACTIVE)
                   .map(Ipo::getListingDate)
                   .orElse(null);
-          listingConflicts.add(new ListingConflict(
-              entry.getKey(), existing, entry.getValue(), window.startDate(), window.endDate()));
+          listingConflicts.add(
+              new ListingConflict(
+                  entry.getKey(),
+                  existing,
+                  entry.getValue(),
+                  window.startDate(),
+                  window.endDate()));
         }
       } catch (Exception e) {
-        failedStocks.add(new FailedStock(
-            entry.getKey(), entry.getValue(), window.startDate(), window.endDate()));
+        failedStocks.add(
+            new FailedStock(
+                entry.getKey(), entry.getValue(), window.startDate(), window.endDate()));
         if (!failures.contains(window)) {
           failures.add(window);
         }
         log.warn(
             "과거 상장일 보완 저장 실패: stockCode={}, start={}, end={}, error={}",
-            entry.getKey(), window.startDate(), window.endDate(),
+            entry.getKey(),
+            window.startDate(),
+            window.endDate(),
             e.getClass().getSimpleName());
       }
     }
     return new Result(
-        updated, List.copyOf(failures), List.copyOf(failedStocks),
-        List.copyOf(listingConflicts));
+        updated, List.copyOf(failures), List.copyOf(failedStocks), List.copyOf(listingConflicts));
   }
 }

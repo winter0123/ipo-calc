@@ -160,29 +160,29 @@ describe('IpoSyncNowPanel', () => {
         result: {
           ...RESULT,
           failed: 2,
-          listingFailedRanges: [
-            { startDate: '2026-03-01', endDate: '2026-03-31' },
+          listingFailedRanges: [{ startDate: '2026-03-01', endDate: '2026-03-31' }],
+          listingFailedStocks: [
+            {
+              stockCode: '271160',
+              candidateDate: '2026-03-30',
+              startDate: '2026-03-01',
+              endDate: '2026-03-31',
+            },
           ],
-          listingFailedStocks: [{
-            stockCode: '271160',
-            candidateDate: '2026-03-30',
-            startDate: '2026-03-01',
-            endDate: '2026-03-31',
-          }],
-          listingConflicts: [{
-            stockCode: '222222',
-            existingDate: '2026-03-30',
-            candidateDate: '2026-04-02',
-            startDate: '2026-04-01',
-            endDate: '2026-04-30',
-          }],
+          listingConflicts: [
+            {
+              stockCode: '222222',
+              existingDate: '2026-03-30',
+              candidateDate: '2026-04-02',
+              startDate: '2026-04-01',
+              endDate: '2026-04-30',
+            },
+          ],
         },
       }),
     )
     renderPanel()
-    await vi.waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('실패 2건'),
-    )
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('실패 2건'))
     expect(screen.getByRole('status')).toHaveTextContent('저장 실패 종목: 271160')
     expect(screen.getByRole('status')).toHaveTextContent('상장일 확인 필요 1건')
     expect(screen.getByRole('status')).toHaveTextContent('2026-03-30 → 2026-04-02')

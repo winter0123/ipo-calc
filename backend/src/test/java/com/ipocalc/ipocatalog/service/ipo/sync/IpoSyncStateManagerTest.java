@@ -131,12 +131,15 @@ class IpoSyncStateManagerTest {
     LocalDate start = LocalDate.of(2026, 3, 1);
     LocalDate end = LocalDate.of(2026, 4, 30);
     var window = new IpoHistoricalListingService.FailedRange(start, end);
-    var saveFailure = new IpoHistoricalListingService.FailedStock(
-        "271160", LocalDate.of(2026, 3, 30), start, end);
-    var conflict = new IpoHistoricalListingService.ListingConflict(
-        "222222", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 2), start, end);
-    var backfill = new IpoHistoricalListingService.Result(
-        1, List.of(window), List.of(saveFailure), List.of(conflict));
+    var saveFailure =
+        new IpoHistoricalListingService.FailedStock(
+            "271160", LocalDate.of(2026, 3, 30), start, end);
+    var conflict =
+        new IpoHistoricalListingService.ListingConflict(
+            "222222", LocalDate.of(2026, 3, 30), LocalDate.of(2026, 4, 2), start, end);
+    var backfill =
+        new IpoHistoricalListingService.Result(
+            1, List.of(window), List.of(saveFailure), List.of(conflict));
 
     manager.recordListingBackfill(backfill);
     manager.completeRangeSync();

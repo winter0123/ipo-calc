@@ -149,12 +149,12 @@ class IpoHistoricalListingServiceTest {
     LocalDate end = LocalDate.of(2026, 3, 31);
     LocalDate listing = LocalDate.of(2026, 3, 30);
     Ipo row = ipo(111L, "271160", LocalDate.of(2026, 3, 20), null);
-    when(client.fetchListingDatesStrict(start, end))
-        .thenReturn(List.of(item("271160", listing)));
+    when(client.fetchListingDatesStrict(start, end)).thenReturn(List.of(item("271160", listing)));
     when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
         .thenReturn(Optional.of(row));
     org.mockito.Mockito.doThrow(new IllegalStateException("database unavailable"))
-        .when(repo).saveAndFlush(row);
+        .when(repo)
+        .saveAndFlush(row);
 
     var result = service.backfill(start, end);
 
@@ -162,8 +162,8 @@ class IpoHistoricalListingServiceTest {
     assertThat(result.failedRanges())
         .containsExactly(new IpoHistoricalListingService.FailedRange(start, end));
     assertThat(result.failedStocks())
-        .containsExactly(new IpoHistoricalListingService.FailedStock(
-            "271160", listing, start, end));
+        .containsExactly(
+            new IpoHistoricalListingService.FailedStock("271160", listing, start, end));
     assertThat(result.listingConflicts()).isEmpty();
   }
 
@@ -186,8 +186,9 @@ class IpoHistoricalListingServiceTest {
     assertThat(first.listingBackfilled()).isEqualTo(1);
     assertThat(retry.listingBackfilled()).isZero();
     assertThat(retry.listingConflicts())
-        .containsExactly(new IpoHistoricalListingService.ListingConflict(
-            "271160", firstDate, revisedDate, start, end));
+        .containsExactly(
+            new IpoHistoricalListingService.ListingConflict(
+                "271160", firstDate, revisedDate, start, end));
     assertThat(row.getListingDate()).isEqualTo(firstDate);
     assertThat(row.getLastImportedListingDate()).isEqualTo(firstDate);
     verify(repo, times(1)).saveAndFlush(row);

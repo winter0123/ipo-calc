@@ -61,10 +61,17 @@ export default function IpoSyncNowPanel() {
   const text = statusText(status)
   const failedWindows = status?.result?.listingFailedRanges ?? []
   const retryStart = failedWindows.length
-    ? failedWindows.map((window) => window.startDate).sort()[0].slice(0, 7)
+    ? failedWindows
+        .map((window) => window.startDate)
+        .sort()[0]
+        .slice(0, 7)
     : undefined
   const retryEnd = failedWindows.length
-    ? failedWindows.map((window) => window.endDate).sort().at(-1)?.slice(0, 7)
+    ? failedWindows
+        .map((window) => window.endDate)
+        .sort()
+        .at(-1)
+        ?.slice(0, 7)
     : undefined
 
   return (
