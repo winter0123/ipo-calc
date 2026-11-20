@@ -69,6 +69,17 @@ public class UstockPlusCalendarClient {
    * @throws IllegalArgumentException startDate가 endDate보다 늦거나 기간이 89일을 넘을 때
    */
   public List<UstockPlusScheduleDates> fetchScheduleDates(LocalDate startDate, LocalDate endDate) {
+    return fetchScheduleDatesInternal(startDate, endDate, false);
+  }
+
+  /** 과거 복구 전용: 실패한 구간을 누락 없이 보고하기 위해 외부 조회 예외를 전달한다. */
+  public List<UstockPlusScheduleDates> fetchScheduleDatesStrict(
+      LocalDate startDate, LocalDate endDate) {
+    return fetchScheduleDatesInternal(startDate, endDate, true);
+  }
+
+  private List<UstockPlusScheduleDates> fetchScheduleDatesInternal(
+      LocalDate startDate, LocalDate endDate, boolean strict) {
     if (startDate.isAfter(endDate)) {
       throw new IllegalArgumentException("startDate는 endDate보다 늦을 수 없습니다.");
     }
@@ -89,14 +100,23 @@ public class UstockPlusCalendarClient {
               .retrieve()
               .body(CalendarResponse.class);
       if (response == null || response.ipoCalendarResponses() == null) {
+        if (strict) {
+          throw new IllegalStateException("uStockPlus 일정 응답 본문 없음");
+        }
         log.warn("ustockplus 응답이 비어 있습니다 (startDate={}, endDate={})", startDate, endDate);
         return Collections.emptyList();
       }
       return group(response.ipoCalendarResponses());
     } catch (RestClientResponseException e) {
+      if (strict) {
+        throw e;
+      }
       log.warn("ustockplus 호출 실패: status={}", e.getStatusCode().value());
       return Collections.emptyList();
     } catch (RuntimeException e) {
+      if (strict) {
+        throw e;
+      }
       log.warn("ustockplus 호출 실패: {}", e.getClass().getSimpleName());
       return Collections.emptyList();
     }
