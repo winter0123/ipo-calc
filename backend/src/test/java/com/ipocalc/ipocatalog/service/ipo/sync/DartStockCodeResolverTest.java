@@ -38,7 +38,13 @@ class DartStockCodeResolverTest {
 
     String code =
         DartStockCodeResolver.resolve(
-            client, CLOCK, latest, List.of(original, latest), LocalDate.of(2026, 11, 10), null, false);
+            client,
+            CLOCK,
+            latest,
+            List.of(original, latest),
+            LocalDate.of(2026, 11, 10),
+            null,
+            false);
 
     assertThat(code).isEqualTo("271160");
     verify(client, never()).getCompanyOverview("01025617");
@@ -48,9 +54,10 @@ class DartStockCodeResolverTest {
   void doesNotFetchCompanyOverviewForNewIpoWithoutAnyFilingCode() {
     OpenDartDisclosureItem latest = filing("20261109000163", "");
 
-    assertThat(DartStockCodeResolver.resolve(
-        client, CLOCK, latest, List.of(latest),
-        LocalDate.of(2026, 11, 10), null, false)).isNull();
+    assertThat(
+            DartStockCodeResolver.resolve(
+                client, CLOCK, latest, List.of(latest), LocalDate.of(2026, 11, 10), null, false))
+        .isNull();
     verify(client, never()).getCompanyOverview("01025617");
   }
 

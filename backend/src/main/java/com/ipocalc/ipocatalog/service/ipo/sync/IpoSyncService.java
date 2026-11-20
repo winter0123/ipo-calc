@@ -648,7 +648,7 @@ public class IpoSyncService {
               : fallback != null ? fallback.getSubscriptionStartDate() : null;
       boolean noFilingCode =
           historical.stream()
-              .noneMatch(item -> item.getStockCode() != null && !item.getStockCode().isBlank())
+                  .noneMatch(item -> item.getStockCode() != null && !item.getStockCode().isBlank())
               && (filing.getStockCode() == null || filing.getStockCode().isBlank());
       boolean allowOverview =
           noFilingCode
@@ -660,7 +660,12 @@ public class IpoSyncService {
                   .anyMatch(ipo -> ipo.getSyncSource() != null && ipo.getStockCode() == null);
       String verifiedStockCode =
           DartStockCodeResolver.resolve(
-              corpDisclosureClient, clock, filing, historical, subscriptionStart, null,
+              corpDisclosureClient,
+              clock,
+              filing,
+              historical,
+              subscriptionStart,
+              null,
               allowOverview);
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
