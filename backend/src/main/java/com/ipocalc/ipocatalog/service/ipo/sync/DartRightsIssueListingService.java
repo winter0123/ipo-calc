@@ -61,8 +61,10 @@ public class DartRightsIssueListingService {
         var originalIdentity =
             candidate.getSourceReceiptNo() == null
                 ? null
-                : filingClient.downloadDocument(candidate.getSourceReceiptNo())
-                    .map(parser::issueIdentity).orElse(null);
+                : filingClient
+                    .downloadDocument(candidate.getSourceReceiptNo())
+                    .map(parser::issueIdentity)
+                    .orElse(null);
         LocalDate listing = null;
         String evidenceReceipt = null;
         boolean ambiguous = false;
@@ -132,8 +134,7 @@ public class DartRightsIssueListingService {
   }
 
   private static boolean isSameIssue(
-      Ipo ipo, Evidence evidence,
-      DartRightsIssueListingParser.IssueIdentity original) {
+      Ipo ipo, Evidence evidence, DartRightsIssueListingParser.IssueIdentity original) {
     String sourceReceipt = ipo.getSourceReceiptNo();
     if (sourceReceipt == null || sourceReceipt.isBlank()) {
       return false;
@@ -144,9 +145,11 @@ public class DartRightsIssueListingService {
     }
     // 원신고 연결번호가 누락된 보고서는 원공시의 납입일 및 신주 수와 동시에 대조한다.
     // 앱의 환불일은 납입일로 쓰지 않는다.
-    return original != null && original.paymentDate() != null
+    return original != null
+        && original.paymentDate() != null
         && original.issuedShares() != null
-        && evidence.paymentDate() != null && evidence.issuedShares() != null
+        && evidence.paymentDate() != null
+        && evidence.issuedShares() != null
         && ipo.getOfferingShareCount() != null
         && original.paymentDate().equals(evidence.paymentDate())
         && original.issuedShares().equals(evidence.issuedShares())

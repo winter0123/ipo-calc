@@ -102,9 +102,12 @@ public class Ipo {
 
   /** 검증된 증권발행실적보고서로 빈 유상 신주 상장예정일만 보완한다. 원래 청약·환불·공모가·ID와 수동 날짜는 일절 변경하지 않는다. */
   public boolean fillMissingRightsListing(LocalDate date, String receiptNo, LocalDateTime now) {
-    if (this.syncSource == null || date == null
-        || receiptNo == null || receiptNo.isBlank()
-        || this.subscriptionEndDate == null || !date.isAfter(this.subscriptionEndDate)) {
+    if (this.syncSource == null
+        || date == null
+        || receiptNo == null
+        || receiptNo.isBlank()
+        || this.subscriptionEndDate == null
+        || !date.isAfter(this.subscriptionEndDate)) {
       return false;
     }
     if (this.listingDate != null) {
@@ -116,8 +119,7 @@ public class Ipo {
         return false;
       }
     }
-    if (date.equals(this.listingDate)
-        && receiptNo.equals(this.listingDateEvidenceReceipt)) {
+    if (date.equals(this.listingDate) && receiptNo.equals(this.listingDateEvidenceReceipt)) {
       return false;
     }
     if (!date.equals(this.listingDate)) {
