@@ -529,14 +529,14 @@ public class IpoSyncService {
         status -> {
           try {
             IpoSyncPersistence.Outcome outcome =
-                ipoSyncPersistence.persist(
-                    corpCode,
-                    corpName,
-                    detail,
-                    company.isFinalizedReport(),
-                    company.isCorrectionOrFinalized(),
-                    finalOfferingTerms,
-                    company.getStockCode());
+                company.getStockCode() == null || company.getStockCode().isBlank()
+                    ? ipoSyncPersistence.persist(
+                        corpCode, corpName, detail, company.isFinalizedReport(),
+                        company.isCorrectionOrFinalized(), finalOfferingTerms)
+                    : ipoSyncPersistence.persist(
+                        corpCode, corpName, detail, company.isFinalizedReport(),
+                        company.isCorrectionOrFinalized(), finalOfferingTerms,
+                        company.getStockCode());
             switch (outcome) {
               case CREATED -> result.setCreated(result.getCreated() + 1);
               case UPDATED -> result.setUpdated(result.getUpdated() + 1);
@@ -636,15 +636,13 @@ public class IpoSyncService {
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
-                  ipoSyncPersistence.persistVerifiedFiling(
-                      filing.getCorpCode(),
-                      filing.getCorpName(),
-                      filing.getRceptNo(),
-                      original,
-                      fallback,
-                      latest,
-                      band,
-                      filing.getStockCode()));
+                  filing.getStockCode() == null || filing.getStockCode().isBlank()
+                      ? ipoSyncPersistence.persistVerifiedFiling(
+                          filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
+                          original, fallback, latest, band)
+                      : ipoSyncPersistence.persistVerifiedFiling(
+                          filing.getCorpCode(), filing.getCorpName(), filing.getRceptNo(),
+                          original, fallback, latest, band, filing.getStockCode()));
       if (outcome == null) {
         recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
         return true;
