@@ -1,0 +1,32 @@
+name: PR511 temporary Java formatter
+on:
+  push:
+    branches:
+      - fix/dart-ipo-stock-code-listing-20261120
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/dart-ipo-stock-code-listing-20261120
+          persist-credentials: true
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Format Java
+        working-directory: backend
+        run: ./gradlew spotlessApply --no-daemon
+      - name: Commit formatted Java files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/ backend/src/test/java/com/ipocalc/ipocatalog/service/ipo/sync/
+          if ! git diff --cached --quiet; then
+            git commit -m "style(ipo): apply repository Java formatter"
+            git push origin HEAD:fix/dart-ipo-stock-code-listing-20261120
+          fi
