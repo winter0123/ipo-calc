@@ -85,6 +85,11 @@ export const ipoSyncResultSchema = z.object({
   skipped: z.number(),
   failed: z.number(),
   scheduleMerged: z.number(),
+  listingBackfilled: z.number().nullish(),
+  listingFailedRanges: z.array(z.object({
+    startDate: z.string(),
+    endDate: z.string(),
+  })).nullish(),
   detailSaved: z.number(),
   aborted: z.boolean(),
 })
