@@ -35,6 +35,7 @@ public class Ipo {
     }
     if (refundDate != null) {
       this.lastImportedRefundDate = null;
+      this.lastVerifiedRefundReceiptNo = null;
     }
     if (subscriptionEndDate != null) {
       this.lastImportedSubscriptionEndDate = null;
@@ -61,7 +62,11 @@ public class Ipo {
       this.allotmentDate = allotment;
       changed = true;
     }
-    if (canAutoOverwrite(this.refundDate, this.lastImportedRefundDate) && refund != null) {
+    // 환불일 자체를 DART 원문에서 검증했을 때만 uStockPlus의 정정을 막는다.
+    // 청약일 등 다른 일정의 최신 접수번호는 환불일 출처를 증명하지 않는다.
+    if (refund != null
+        && (this.refundDate == null || this.lastVerifiedRefundReceiptNo == null)
+        && canAutoOverwrite(this.refundDate, this.lastImportedRefundDate)) {
       if (!refund.equals(this.refundDate)) {
         this.refundDate = refund;
         this.lastImportedRefundDate = refund;
@@ -98,10 +103,32 @@ public class Ipo {
       LocalDate listing,
       Long shares,
       LocalDateTime now) {
+    // 관리자가 가격을 수동 변경하면 과거 자동 출처를 제거해 이후 자동 갱신으로 덮어쓰지 않는다.
+    if (!java.util.Objects.equals(this.lowerBandPrice, lower)
+        || !java.util.Objects.equals(this.upperBandPrice, upper)) {
+      this.bandPriceSourceReceiptNo = null;
+      this.bandPriceParserVersion = null;
+    }
+    if (!java.util.Objects.equals(this.fixedPrice, fixed)) {
+      this.fixedPriceSourceReceiptNo = null;
+      this.fixedPriceParserVersion = null;
+    }
     this.companyName = companyName;
     this.ipoName = ipoName;
     this.stockCode = stockCode;
     this.roundLabel = roundLabel;
+    if (!java.util.Objects.equals(this.subscriptionStartDate, start)) {
+      this.lastImportedSubscriptionStartDate = null;
+    }
+    if (!java.util.Objects.equals(this.subscriptionEndDate, end)) {
+      this.lastImportedSubscriptionEndDate = null;
+    }
+    if (!java.util.Objects.equals(this.listingDate, listing)) {
+      this.lastImportedListingDate = null;
+    }
+    if (!java.util.Objects.equals(this.offeringShareCount, shares)) {
+      this.lastImportedOfferingShareCount = null;
+    }
     this.subscriptionStartDate = start;
     this.subscriptionEndDate = end;
     this.lowerBandPrice = lower;
@@ -136,10 +163,19 @@ public class Ipo {
       LocalDate refund,
       String source,
       LocalDateTime now) {
-    this.companyName = companyName;
-    this.ipoName = companyName;
-    if (shares != null) {
+    // 이름 수정 여부를 추적하는 별도 출처가 없으므로 기존 이름은 보존한다.
+    if (this.companyName == null || this.companyName.isBlank()) {
+      this.companyName = companyName;
+    }
+    if (this.ipoName == null || this.ipoName.isBlank()) {
+      this.ipoName = companyName;
+    }
+    if (shares != null
+        && (this.offeringShareCount == null
+            || (this.lastImportedOfferingShareCount != null
+                && this.lastImportedOfferingShareCount.equals(this.offeringShareCount)))) {
       this.offeringShareCount = shares;
+      this.lastImportedOfferingShareCount = shares;
     }
     if (start != null
         && canAutoOverwrite(this.subscriptionStartDate, this.lastImportedSubscriptionStartDate)) {
@@ -185,10 +221,18 @@ public class Ipo {
 
     boolean changed = false;
 
-    // 밴드가 유효하면 저장 (출처 정보 포함)
-    if (terms.hasValidBand()) {
+    // 가격 항목마다 최신 출처를 별도로 확인한다.
+    if (terms.hasValidBand()
+        && isVerifiedSourceCurrent(
+            terms.sourceReceiptNo(),
+            terms.parserVersion(),
+            this.bandPriceSourceReceiptNo,
+            this.bandPriceParserVersion,
+            this.lowerBandPrice == null && this.upperBandPrice == null)) {
       if (!terms.lowerBandPrice().equals(this.lowerBandPrice)
-          || !terms.upperBandPrice().equals(this.upperBandPrice)) {
+          || !terms.upperBandPrice().equals(this.upperBandPrice)
+          || !java.util.Objects.equals(terms.sourceReceiptNo(), this.bandPriceSourceReceiptNo)
+          || !java.util.Objects.equals(terms.parserVersion(), this.bandPriceParserVersion)) {
         this.lowerBandPrice = terms.lowerBandPrice();
         this.upperBandPrice = terms.upperBandPrice();
         this.bandPriceSourceReceiptNo = terms.sourceReceiptNo();
@@ -197,9 +241,16 @@ public class Ipo {
       }
     }
 
-    // 확정가가 유효하면 저장 (출처 정보 포함)
-    if (terms.hasConfirmedFixedPrice()) {
-      if (!terms.fixedPrice().equals(this.fixedPrice)) {
+    if (terms.hasConfirmedFixedPrice()
+        && isVerifiedSourceCurrent(
+            terms.sourceReceiptNo(),
+            terms.parserVersion(),
+            this.fixedPriceSourceReceiptNo,
+            this.fixedPriceParserVersion,
+            this.fixedPrice == null)) {
+      if (!terms.fixedPrice().equals(this.fixedPrice)
+          || !java.util.Objects.equals(terms.sourceReceiptNo(), this.fixedPriceSourceReceiptNo)
+          || !java.util.Objects.equals(terms.parserVersion(), this.fixedPriceParserVersion)) {
         this.fixedPrice = terms.fixedPrice();
         this.fixedPriceSourceReceiptNo = terms.sourceReceiptNo();
         this.fixedPriceParserVersion = terms.parserVersion();
@@ -215,6 +266,23 @@ public class Ipo {
     }
 
     return changed;
+  }
+
+  /** 접수번호가 명확한 원문만 기존 자동 가격을 갱신한다. 출처 없는 기존 수동 가능 가격은 변경하지 않고, 같은 접수번호의 새 파서 버전만 허용한다. */
+  private static boolean isVerifiedSourceCurrent(
+      String incomingReceipt,
+      int incomingVersion,
+      String storedReceipt,
+      Integer storedVersion,
+      boolean emptyUntrackedValue) {
+    if (incomingReceipt == null || incomingReceipt.isBlank()) {
+      return false;
+    }
+    if (storedReceipt == null || storedReceipt.isBlank()) {
+      return emptyUntrackedValue;
+    }
+    int order = incomingReceipt.compareTo(storedReceipt);
+    return order > 0 || (order == 0 && (storedVersion == null || incomingVersion >= storedVersion));
   }
 
   /** 주식 수만 갱신한다 (가격 필드 변경 없음). 기존 {@link #syncBandAndShares}를 대체하며, 가격은 건드리지 않는다. */
@@ -363,6 +431,70 @@ public class Ipo {
   /** 자동 수집이 마지막으로 반영한 청약 종료일. 출처 불명·수동 입력이면 null로 보호한다. */
   @Column(name = "last_imported_subscription_end_date")
   private LocalDate lastImportedSubscriptionEndDate;
+
+  /** 자동 수집이 마지막으로 확인한 주식 수. 수동 변경 및 기존 출처 불명 값은 보존한다. */
+  @Column(name = "last_imported_offering_share_count")
+  private Long lastImportedOfferingShareCount;
+
+  /** 확인된 원문 일정에 적용된 최신 공시 접수번호. */
+  @Column(name = "last_verified_schedule_receipt_no", length = 20)
+  private String lastVerifiedScheduleReceiptNo;
+
+  /** DART 원문에서 환불일을 실제로 검증하고 반영한 접수번호. 청약일 출처와 독립적이다. */
+  @Column(name = "last_verified_refund_receipt_no", length = 20)
+  private String lastVerifiedRefundReceiptNo;
+
+  /** DART가 확인한 환불일이 실제 저장되었을 때만 환불일 출처를 남긴다. */
+  public void recordVerifiedRefundReceipt(String receipt, LocalDate verifiedRefund) {
+    if (receipt == null
+        || receipt.isBlank()
+        || verifiedRefund == null
+        || !verifiedRefund.equals(refundDate)
+        || !verifiedRefund.equals(lastImportedRefundDate)
+        || (lastVerifiedRefundReceiptNo != null
+            && receipt.compareTo(lastVerifiedRefundReceiptNo) < 0)) {
+      return;
+    }
+    lastVerifiedRefundReceiptNo = receipt;
+  }
+
+  /** 확인된 DS006 수량에 적용된 최신 공시 접수번호. */
+  @Column(name = "last_verified_share_receipt_no", length = 20)
+  private String lastVerifiedShareReceiptNo;
+
+  /** 검증된 공시 접수번호가 이전 원문보다 새로울 때만 일정 갱신을 허용한다. */
+  public boolean mayApplyVerifiedSchedule(String incomingReceipt) {
+    return incomingReceipt != null
+        && !incomingReceipt.isBlank()
+        && (lastVerifiedScheduleReceiptNo == null
+            || incomingReceipt.compareTo(lastVerifiedScheduleReceiptNo) >= 0);
+  }
+
+  /** 유효한 일정 원문을 처리한 접수번호를 기록한다. 원본 공시 식별자와 분리한다. */
+  public void recordVerifiedScheduleReceipt(String incomingReceipt) {
+    if (mayApplyVerifiedSchedule(incomingReceipt)) {
+      this.lastVerifiedScheduleReceiptNo = incomingReceipt;
+    }
+  }
+
+  /** 접수번호별 최신성 및 수동값 보존 규칙을 동시에 적용하여 공모주식 수를 기록한다. */
+  public void applyVerifiedShareCount(Long shares, String incomingReceipt) {
+    if (shares == null
+        || shares <= 0
+        || incomingReceipt == null
+        || incomingReceipt.isBlank()
+        || (lastVerifiedShareReceiptNo != null
+            && incomingReceipt.compareTo(lastVerifiedShareReceiptNo) < 0)) {
+      return;
+    }
+    if (offeringShareCount == null
+        || (lastImportedOfferingShareCount != null
+            && lastImportedOfferingShareCount.equals(offeringShareCount))) {
+      offeringShareCount = shares;
+      lastImportedOfferingShareCount = shares;
+      lastVerifiedShareReceiptNo = incomingReceipt;
+    }
+  }
 
   /** 자동 수집이 마지막으로 반영한 환불일. 출처 불명·수동 입력이면 null로 보호한다. */
   @Column(name = "last_imported_refund_date")

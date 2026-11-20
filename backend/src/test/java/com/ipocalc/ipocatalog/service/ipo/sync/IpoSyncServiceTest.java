@@ -357,7 +357,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesExistingIpo_dartDatesOverrideOldValues_butDashKeepsExisting() {
+  void sync_preservesUntrackedAllotmentAndRefundWhenDartHasPartialSchedule() {
     when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
         .thenReturn(List.of(createCompany("01658035", "옵토닉스", "")));
     // 배정일은 DART가 값을 주고, 환불일은 "-"라 읽을 수 없음
@@ -383,7 +383,7 @@ class IpoSyncServiceTest {
     syncService.sync(7);
 
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 10));
+    assertThat(ipoCaptor.getValue().getAllotmentDate()).isEqualTo(LocalDate.of(2026, 11, 9));
     assertThat(ipoCaptor.getValue().getRefundDate()).isEqualTo(LocalDate.of(2026, 11, 11));
   }
 
@@ -567,14 +567,14 @@ class IpoSyncServiceTest {
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
     Ipo saved = ipoCaptor.getValue();
     // 원문에서 검증된 밴드로 갱신됨
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(12_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     // fixedPrice 보존됨 (동기화가 덮어쓰지 않음)
     assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
     // listingDate 보존됨
     assertThat(saved.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 20));
-    // 수량 갱신됨
-    assertThat(saved.getOfferingShareCount()).isEqualTo(3_000_000L);
+    // 출처가 추적되지 않은 기존 수량은 수동 변경 가능 값으로 보존한다
+    assertThat(saved.getOfferingShareCount()).isEqualTo(2_200_000L);
     // lastSyncedAt 갱신됨
     assertThat(saved.getLastSyncedAt()).isNotNull();
     // syncSource 유지
@@ -1312,7 +1312,7 @@ class IpoSyncServiceTest {
 
     // then: 자동 동기화 레코드는 확정공모 공시로 fixedPrice 강제 업데이트
     verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(11_000L);
+    assertThat(ipoCaptor.getValue().getFixedPrice()).isEqualTo(9_400L);
   }
 
   @Test
@@ -1360,7 +1360,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesOnlyShareCountWhenDifferentReceiptNotSameOffering() {
+  void sync_holdsAllFieldsWhenDifferentReceiptNotSameOffering() {
     // given: 기존 자동 동기화 레코드(source_receipt_no=OLD, fixedPrice=9400, 밴드 9000~10000)
     Ipo existing =
         Ipo.builder()
@@ -1414,12 +1414,13 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 전체 갱신은 보류되어 주식 수만 갱신되고, 가격·source_receipt_no는 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
     assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
     assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getOfferingShareCount()).isEqualTo(1_000_000L);
+    assertThat(saved.getOfferingShareCount()).isNull();
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 일반 공시이므로 fixedPrice 미변경
   }
@@ -1473,9 +1474,10 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 일반 공시이므로 fixedPrice는 null 유지
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    assertThat(ipoCaptor.getValue().getFixedPrice()).isNull();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    assertThat(existing.getFixedPrice()).isNull();
   }
 
   @Test
@@ -1550,7 +1552,7 @@ class IpoSyncServiceTest {
   }
 
   @Test
-  void sync_updatesBandPriceWhenCorrectionReportAndDifferentReceipt() {
+  void sync_holdsBandPriceWhenCorrectionReportAndDifferentReceipt() {
     // given: 기존 자동 동기화 레코드, 기재정정 공시
     Ipo existing =
         Ipo.builder()
@@ -1604,17 +1606,18 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 기재정정 공시이므로 밴드 가격 갱신, fixedPrice는 기존 값 유지(확정가 아님), source_receipt_no 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
     assertThat(saved.getFixedPrice()).isEqualTo(9_400L); // 기재정정은 확정가가 아니므로 기존 fixedPrice 유지
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
   }
 
   @Test
-  void sync_updatesFixedPriceWhenFinalizedReportAndDifferentReceipt() {
+  void sync_holdsFixedPriceWhenFinalizedReportAndDifferentReceipt() {
     // given: 기존 자동 동기화 레코드, 발행조건확정 공시
     Ipo existing =
         Ipo.builder()
@@ -1668,12 +1671,268 @@ class IpoSyncServiceTest {
     IpoSyncResult result = syncService.sync(7);
 
     // then: 발행조건확정 공시이므로 fixedPrice 갱신, 밴드 가격도 갱신, source_receipt_no 미변경
-    assertThat(result.getUpdated()).isEqualTo(1);
-    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
-    Ipo saved = ipoCaptor.getValue();
-    assertThat(saved.getFixedPrice()).isEqualTo(11_000L);
-    assertThat(saved.getLowerBandPrice()).isEqualTo(10_000L);
-    assertThat(saved.getUpperBandPrice()).isEqualTo(11_000L);
+    assertThat(result.getUpdated()).isZero();
+    assertThat(result.getFailureCount()).isEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+    Ipo saved = existing;
+    assertThat(saved.getFixedPrice()).isEqualTo(9_400L);
+    assertThat(saved.getLowerBandPrice()).isEqualTo(9_000L);
+    assertThat(saved.getUpperBandPrice()).isEqualTo(10_000L);
     assertThat(saved.getSourceReceiptNo()).isEqualTo("OLD-RECEIPT"); // 미변경
+  }
+
+  @Test
+  void sync_downloadsSelectedDs001FilingWhenDs006FallbackHasOlderReceipt() {
+    Ipo existing =
+        Ipo.builder()
+            .id(7L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .syncSource("OPENDART")
+            .sourceReceiptNo("20261008000649")
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .lowerBandPrice(9_400L)
+            .upperBandPrice(11_000L)
+            .bandPriceSourceReceiptNo("20261008000649")
+            .bandPriceParserVersion(2)
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    OpenDartDisclosureItem latest =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo("20261103000312")
+            .build();
+    OpenDartEquitySecurityDetail oldDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo("20261008000649")
+            .sbd("2026년 11월 05일 ~ 2026년 11월 06일")
+            .build();
+    oldDetail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7)).thenReturn(List.of(latest));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(oldDetail));
+    when(dartIpoFilingClient.downloadDocument("20261103000312"))
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+    when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
+        .thenReturn(
+            List.of(
+                OpenDartDisclosureItem.builder()
+                    .corpCode("corp")
+                    .reportNm("증권신고서(지분증권)")
+                    .rceptDt("20261008")
+                    .rceptNo("20261008000649")
+                    .build(),
+                latest));
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원공시 희망가</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261103000312"), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261103000312", 2, null, null, 11_000L, null, null, null, null, null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    verify(dartIpoFilingClient).downloadDocument("20261103000312");
+    verify(dartIpoFilingClient).downloadDocument("20261008000649");
+    assertThat(result.getUpdated()).isEqualTo(1);
+    assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(existing.getFixedPriceSourceReceiptNo()).isEqualTo("20261103000312");
+    assertThat(existing.getLowerBandPrice()).isEqualTo(9_400L);
+    assertThat(existing.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
+  }
+
+  @Test
+  void sync_createsIpoFromOriginalDs001XmlEvenWhenDs006IsEmpty() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of());
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원신고 공모개요</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649",
+                2,
+                9_400L,
+                11_000L,
+                null,
+                LocalDate.of(2026, 11, 4),
+                LocalDate.of(2026, 11, 5),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isEqualTo(1);
+    assertThat(result.getFailureCount()).isZero();
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    Ipo created = ipoCaptor.getValue();
+    assertThat(created.getSourceReceiptNo()).isEqualTo("20261008000649");
+    assertThat(created.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 4));
+    assertThat(created.getLowerBandPrice()).isEqualTo(9_400L);
+    assertThat(created.getBandPriceSourceReceiptNo()).isEqualTo("20261008000649");
+  }
+
+  @Test
+  void sync_doesNotCreateIpoFromOriginalXmlWithMissingSubscriptionDates() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of());
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>원신고</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649", 2, 9_400L, 11_000L, null, null, null, null, null, null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isZero();
+    assertThat(result.getFailureCount()).isGreaterThanOrEqualTo(1);
+    verify(ipoRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void sync_usesVerifiedOriginalXmlWhenMatchingDs006HasUnreadableSubscriptionDate() {
+    OpenDartDisclosureItem original =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("증권신고서(지분증권)")
+            .rceptNo("20261008000649")
+            .build();
+    OpenDartEquitySecurityDetail invalidDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .rceptNo("20261008000649")
+            .sbd("-")
+            .build();
+    invalidDetail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(original));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp")).thenReturn(List.of(invalidDetail));
+    when(dartIpoFilingClient.downloadDocument("20261008000649"))
+        .thenReturn(Optional.of("<DOCUMENT>청약일정</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq("20261008000649"), eq(false)))
+        .thenReturn(
+            new DartOfferingTerms(
+                "20261008000649",
+                2,
+                9_400L,
+                11_000L,
+                null,
+                LocalDate.of(2026, 11, 4),
+                LocalDate.of(2026, 11, 5),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getCreated()).isEqualTo(1);
+    verify(ipoRepository).saveAndFlush(ipoCaptor.capture());
+    assertThat(ipoCaptor.getValue().getSubscriptionStartDate())
+        .isEqualTo(LocalDate.of(2026, 11, 4));
+  }
+
+  @Test
+  void sync_updatesSameRoundCorrectionWhenLatestDs006ReceiptMatches() {
+    String originalReceipt = "20261008000649";
+    String finalizedReceipt = "20261103000312";
+    Ipo existing =
+        Ipo.builder()
+            .id(7L)
+            .corpCode("corp")
+            .companyName("name")
+            .ipoName("name")
+            .syncSource("OPENDART")
+            .sourceReceiptNo(originalReceipt)
+            .subscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .lastImportedSubscriptionStartDate(LocalDate.of(2026, 11, 5))
+            .lastImportedSubscriptionEndDate(LocalDate.of(2026, 11, 6))
+            .status(RecordStatus.ACTIVE)
+            .build();
+    when(ipoRepository.findAllByCorpCodeAndStatusAndDeletedAtIsNull("corp", RecordStatus.ACTIVE))
+        .thenReturn(List.of(existing));
+    OpenDartDisclosureItem finalized =
+        OpenDartDisclosureItem.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .reportNm("[발행조건확정]증권신고서(지분증권)")
+            .rceptNo(finalizedReceipt)
+            .build();
+    OpenDartEquitySecurityDetail matchingDetail =
+        OpenDartEquitySecurityDetail.builder()
+            .corpCode("corp")
+            .corpName("name")
+            .rceptNo(finalizedReceipt)
+            .sbd("2026년 11월 07일 ~ 2026년 11월 08일")
+            .build();
+    matchingDetail.parseDerivedFields();
+    when(corpDisclosureClient.searchRecentEquitySecuritiesCompanies(7))
+        .thenReturn(List.of(finalized));
+    when(equitySecuritiesClient.getEquitySecurityDetail("corp"))
+        .thenReturn(List.of(matchingDetail));
+    when(dartIpoFilingClient.downloadDocument(finalizedReceipt))
+        .thenReturn(Optional.of("<DOCUMENT>정정대상 공시서류의 최초 제출일: 2026년 10월 08일</DOCUMENT>"));
+    when(corpDisclosureClient.searchAllByDateRange(eq("corp"), any(), any()))
+        .thenReturn(
+            List.of(
+                OpenDartDisclosureItem.builder()
+                    .corpCode("corp")
+                    .corpName("name")
+                    .reportNm("증권신고서(지분증권)")
+                    .rceptDt("20261008")
+                    .rceptNo(originalReceipt)
+                    .build(),
+                finalized));
+    when(dartIpoFilingClient.downloadDocument(originalReceipt))
+        .thenReturn(Optional.of("<DOCUMENT>원신고 희망공모가</DOCUMENT>"));
+    when(offeringTermsParser.parse(anyString(), eq(finalizedReceipt), eq(true)))
+        .thenReturn(
+            new DartOfferingTerms(
+                finalizedReceipt,
+                2,
+                null,
+                null,
+                11_000L,
+                LocalDate.of(2026, 11, 7),
+                LocalDate.of(2026, 11, 8),
+                null,
+                null,
+                null));
+
+    IpoSyncResult result = syncService.sync(7);
+
+    assertThat(result.getUpdated()).isEqualTo(1);
+    assertThat(existing.getId()).isEqualTo(7L);
+    assertThat(existing.getSourceReceiptNo()).isEqualTo(originalReceipt);
+    assertThat(existing.getFixedPrice()).isEqualTo(11_000L);
+    assertThat(existing.getSubscriptionStartDate()).isEqualTo(LocalDate.of(2026, 11, 7));
+    assertThat(existing.getLastVerifiedScheduleReceiptNo()).isEqualTo(finalizedReceipt);
+    verify(dartIpoFilingClient).downloadDocument(finalizedReceipt);
   }
 }

@@ -2,6 +2,7 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTerms;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParser;
@@ -403,6 +404,9 @@ public class IpoSyncService {
     }
 
     if (details == null || details.isEmpty()) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, null)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "DS006 상세 정보 없음 (빈 응답)");
       log.warn("DS006 빈 응답: corpCode={}, corpName={}", corpCode, corpName);
       return true;
@@ -417,7 +421,10 @@ public class IpoSyncService {
         String reason = "철회 대상 원공시(" + company.getRceptNo() + ")에 대응하는 DS006 상세 없음: 자동 변경 보류";
         recordFailure(result, corpCode, corpName, reason);
       }
-      // 그 외(발행조건확정인데 DS006 없음)는 selectDetail에서 이미 경고 로그 남김
+      // 상세가 없더라도 정정 원문에서 원공시 근거를 확보할 수 있다.
+      if (!isWithdrawal && tryVerifiedFilingWithoutCurrentDetail(result, company, null)) {
+        return !result.isAborted();
+      }
       return true;
     }
 
@@ -434,8 +441,28 @@ public class IpoSyncService {
       return true;
     }
 
+    // DS006 상세가 최신 접수번호와 일치해도 정정 공시의 원신고는 별도로 확인한다.
+    // 이 검증을 생략하면 기존 IPO 원공시와 다른 접수번호를 영구적으로 갱신하지 못한다.
+    boolean attemptedCorrection = company.isCorrectionOrFinalized();
+    if (attemptedCorrection && tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+      return !result.isAborted();
+    }
+
+    // 과거 DS006 상세가 폴백된 경우 최신 원문의 최초제출일을 확인한 뒤 갱신한다.
+    // 이 경로가 증명되지 않으면 기존 저장 규칙에 따라 보수적으로 보류한다.
+    if (company.getRceptNo() != null && !company.getRceptNo().equals(detail.getRceptNo())) {
+      if (!attemptedCorrection && tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
+      recordFailure(result, corpCode, corpName, "DS001/DS006 접수번호 불일치, 원공시 연결 불가: 저장 보류");
+      return true;
+    }
+
     // subscriptionStartDate가 null이면 실패 처리
     if (detail.getSubscriptionStartDate() == null) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 시작일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 시작일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
@@ -443,42 +470,52 @@ public class IpoSyncService {
 
     // 끝일 구분자는 있는데 못 읽은 경우: 다음 영업일로 조용히 채우지 않고 실패 기록
     if (detail.isSubscriptionEndUnreadable()) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 종료일 파싱 실패 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일 파싱 실패: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
     if (detail.getSubscriptionEndDate() != null
         && detail.getSubscriptionEndDate().isBefore(detail.getSubscriptionStartDate())) {
+      if (tryVerifiedFilingWithoutCurrentDetail(result, company, detail)) {
+        return !result.isAborted();
+      }
       recordFailure(result, corpCode, corpName, "청약 종료일이 시작일보다 앞섬 (sbd: " + detail.getSbd() + ")");
       log.warn("청약 종료일이 시작일보다 앞섬: corpCode={}, sbd={}", corpCode, detail.getSbd());
       return true;
     }
 
-    // 문서 원문 다운로드 및 가격 파싱 (rceptNo가 있는 경우만)
+    // 원문은 DS006 대체 상세가 아닌, 선택한 DS001 공시의 접수번호로 읽는다.
     DartOfferingTerms offeringTerms = null;
-    if (detail.getRceptNo() != null) {
+    String documentReceiptNo = company.getRceptNo();
+    if (documentReceiptNo == null) {
+      documentReceiptNo = detail.getRceptNo();
+    }
+    if (documentReceiptNo != null) {
       try {
-        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(detail.getRceptNo());
+        Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(documentReceiptNo);
         if (xmlOpt.isPresent()) {
           String xml = xmlOpt.get();
           if (!xml.isBlank()) {
             offeringTerms =
-                offeringTermsParser.parse(xml, detail.getRceptNo(), company.isFinalizedReport());
+                offeringTermsParser.parse(xml, documentReceiptNo, company.isFinalizedReport());
           } else {
-            log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", detail.getRceptNo());
+            log.warn("문서 원문 다운로드 결과 빈 값: rceptNo={}", documentReceiptNo);
             recordFailure(
-                result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + detail.getRceptNo() + ")");
+                result, corpCode, corpName, "문서 원문 빈 값 (rceptNo=" + documentReceiptNo + ")");
           }
         } else {
-          log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", detail.getRceptNo());
+          log.warn("문서 원문 다운로드 실패 (빈 응답): rceptNo={}", documentReceiptNo);
           recordFailure(
-              result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + detail.getRceptNo() + ")");
+              result, corpCode, corpName, "문서 원문 다운로드 실패 (rceptNo=" + documentReceiptNo + ")");
         }
       } catch (Exception e) {
         log.warn(
-            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", detail.getRceptNo(), e.getClass().getSimpleName());
+            "문서 원문 다운로드/파싱 실패 (rceptNo={}): {}", documentReceiptNo, e.getClass().getSimpleName());
         recordFailure(
-            result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + detail.getRceptNo() + ")");
+            result, corpCode, corpName, "문서 원문 파싱 실패 (rceptNo=" + documentReceiptNo + ")");
       }
     }
 
@@ -520,6 +557,126 @@ public class IpoSyncService {
         });
 
     return true;
+  }
+
+  /**
+   * 최신 DS001 정정 원문이 최초제출일을 명시하면 DS006 일치 여부와 독립적으로 검증된 조건을 저장한다. 기존 수집기는 회사별 최신 공시만 반환하므로 원신고 날짜부터
+   * DS001을 다시 조회한다.
+   */
+  private boolean tryVerifiedFilingWithoutCurrentDetail(
+      IpoSyncResult result, OpenDartDisclosureItem filing, OpenDartEquitySecurityDetail fallback) {
+    if (filing.getRceptNo() == null || !filing.isEquitySecuritiesReport()) {
+      return false;
+    }
+    String xml;
+    DartOfferingTerms latest;
+    try {
+      Optional<String> doc = dartIpoFilingClient.downloadDocument(filing.getRceptNo());
+      if (doc.isEmpty() || doc.get().isBlank()) {
+        return false;
+      }
+      xml = doc.get();
+      List<OpenDartDisclosureItem> historical;
+      String original;
+      if (filing.isCorrectionOrFinalized()) {
+        LocalDate firstSubmission = DartFilingOrigin.originalSubmissionDate(xml);
+        if (firstSubmission == null) {
+          return false;
+        }
+        historical =
+            corpDisclosureClient.searchAllByDateRange(
+                filing.getCorpCode(), firstSubmission, LocalDate.now(clock));
+        original = DartFilingOrigin.resolveOriginalReceipt(filing, historical, xml);
+      } else {
+        // 원신고는 그 자체가 회차 식별 근거이므로 추가 DS001 조회가 필요 없다.
+        historical = List.of(filing);
+        original = filing.getRceptNo();
+      }
+      if (original == null) {
+        recordFailure(
+            result, filing.getCorpCode(), filing.getCorpName(), "최초제출일과 원공시 접수번호 연결 불가: 저장 보류");
+        return true;
+      }
+      latest = offeringTermsParser.parse(xml, filing.getRceptNo(), filing.isFinalizedReport());
+      if (latest == null) {
+        return false;
+      }
+      DartOfferingTerms historicalBand = null;
+      if (!latest.hasValidBand()) {
+        List<OpenDartDisclosureItem> earlier =
+            historical.stream()
+                .filter(item -> item.getRceptNo() != null)
+                .filter(item -> item.getRceptNo().compareTo(original) >= 0)
+                .filter(item -> item.getRceptNo().compareTo(filing.getRceptNo()) < 0)
+                .filter(OpenDartDisclosureItem::isEquitySecuritiesReport)
+                .sorted(Comparator.comparing(OpenDartDisclosureItem::getRceptNo).reversed())
+                .toList();
+        for (OpenDartDisclosureItem item : earlier) {
+          if (!item.isCorrectionOrFinalized() && !original.equals(item.getRceptNo())) {
+            break;
+          }
+          Optional<String> earlierXml = dartIpoFilingClient.downloadDocument(item.getRceptNo());
+          if (earlierXml.isPresent() && !earlierXml.get().isBlank()) {
+            if (!original.equals(
+                DartFilingOrigin.resolveOriginalReceipt(item, historical, earlierXml.get()))) {
+              continue;
+            }
+            DartOfferingTerms candidate =
+                offeringTermsParser.parse(
+                    earlierXml.get(), item.getRceptNo(), item.isFinalizedReport());
+            if (candidate != null && candidate.hasValidBand()) {
+              historicalBand = candidate;
+              break;
+            }
+          }
+        }
+      }
+      final DartOfferingTerms band = historicalBand;
+      IpoSyncPersistence.Outcome outcome =
+          transactionTemplate.execute(
+              status ->
+                  ipoSyncPersistence.persistVerifiedFiling(
+                      filing.getCorpCode(),
+                      filing.getCorpName(),
+                      filing.getRceptNo(),
+                      original,
+                      fallback,
+                      latest,
+                      band));
+      if (outcome == null) {
+        recordFailure(result, filing.getCorpCode(), filing.getCorpName(), "원문 저장 결과 없음");
+        return true;
+      }
+      switch (outcome) {
+        case CREATED -> result.setCreated(result.getCreated() + 1);
+        case UPDATED -> result.setUpdated(result.getUpdated() + 1);
+        case SKIPPED_MANUAL -> result.setSkippedManual(result.getSkippedManual() + 1);
+        case SKIPPED_WITHDRAWN -> log.debug("철회된 원공시 자동 재생성 방지: corpCode={}", filing.getCorpCode());
+        case BLOCKED_MULTIPLE, HELD_UNDETERMINED ->
+            recordFailure(
+                result, filing.getCorpCode(), filing.getCorpName(), "원공시 회차 또는 일정 근거 부족: 자동 저장 보류");
+        default -> throw new IllegalStateException("Unexpected IPO sync outcome: " + outcome);
+      }
+      return true;
+    } catch (OpenDartAuthenticationException e) {
+      abort(result, "인증 오류", false);
+      return true;
+    } catch (OpenDartApiException e) {
+      if ("020".equals(e.getStatusCode())) {
+        abort(result, "요청 제한 초과(020)", false);
+        return true;
+      }
+      recordFailure(
+          result,
+          filing.getCorpCode(),
+          filing.getCorpName(),
+          "정정 원문 검증 API 오류 (" + safeStatus(e) + ")");
+      return true;
+    } catch (Exception e) {
+      log.warn(
+          "정정 원문 검증 보류: corpCode={}, error={}", filing.getCorpCode(), e.getClass().getSimpleName());
+      return false;
+    }
   }
 
   private static void abort(IpoSyncResult result, String reason, boolean retryable) {

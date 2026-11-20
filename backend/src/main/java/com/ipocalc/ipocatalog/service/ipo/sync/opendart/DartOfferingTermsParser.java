@@ -71,6 +71,7 @@ public class DartOfferingTermsParser {
     List<List<List<String>>> tables = parseTables(s);
 
     Set<Long> fixedPrices = new HashSet<>();
+    Set<Long> verifiedShareCounts = new HashSet<>();
     for (List<List<String>> table : tables) {
       if (table.isEmpty()) {
         continue;
@@ -103,7 +104,10 @@ public class DartOfferingTermsParser {
           || tableText.contains("공모주식")
           || tableText.contains("모집주식")
           || tableText.contains("주식수")) {
-        state.offeringShareCount = extractOfferingShareCount(table);
+        Long shareCount = extractOfferingShareCount(table);
+        if (shareCount != null) {
+          verifiedShareCounts.add(shareCount);
+        }
       }
     }
 
@@ -124,6 +128,9 @@ public class DartOfferingTermsParser {
     if (state.refundDate == null) {
       state.refundDate = extractDateFromText(s, "납입기일");
     }
+
+    state.offeringShareCount =
+        verifiedShareCounts.size() == 1 ? verifiedShareCounts.iterator().next() : null;
 
     return new DartOfferingTerms(
         sourceReceiptNo,
@@ -419,27 +426,35 @@ public class DartOfferingTermsParser {
     return parseDate(snippet);
   }
 
-  /** 증권수량에서 공모주식수 추출. */
+  /** 수량 라벨과 대응 셀에서만 공모주식수를 읽는다. 총액·액면가·타 표 숫자는 제외한다. */
   private Long extractOfferingShareCount(List<List<String>> table) {
-    for (List<String> row : table) {
-      for (String cell : row) {
-        if (cell == null) {
+    Set<Long> candidates = new HashSet<>();
+    for (int rowIndex = 0; rowIndex < table.size(); rowIndex++) {
+      List<String> row = table.get(rowIndex);
+      for (int column = 0; column < row.size(); column++) {
+        String label = SPACES.matcher(row.get(column)).replaceAll("");
+        if (!label.matches("(?:증권수량|공모주식수|모집주식수|주식수|발행주식수)")) {
           continue;
         }
-        String cleaned = cell.replaceAll(",", "").trim();
-        Matcher m = NUMBER.matcher(cleaned);
-        if (m.find()) {
-          try {
-            long val = Long.parseLong(m.group());
-            if (val > 0) {
-              return val;
-            }
-          } catch (NumberFormatException ignored) {
-            // ignore
-          }
+        if (column + 1 < row.size()) {
+          addShareCount(row.get(column + 1), candidates);
+        }
+        if (rowIndex + 1 < table.size() && column < table.get(rowIndex + 1).size()) {
+          addShareCount(table.get(rowIndex + 1).get(column), candidates);
         }
       }
     }
-    return null;
+    return candidates.size() == 1 ? candidates.iterator().next() : null;
+  }
+
+  private void addShareCount(String value, Set<Long> candidates) {
+    String trimmed = SPACES.matcher(value).replaceAll("").replace("주", "");
+    if (!trimmed.matches("[0-9][0-9,]*")) {
+      return;
+    }
+    Long count = parseAmount(trimmed);
+    if (count != null && count > 0) {
+      candidates.add(count);
+    }
   }
 }

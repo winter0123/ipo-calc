@@ -533,4 +533,47 @@ class DartOfferingTermsParserTest {
     assertThat(terms.fixedPrice()).isEqualTo(11_000L);
     assertThat(terms.hasConfirmedFixedPrice()).isTrue();
   }
+
+  @Test
+  void shareCountUsesQuantityColumnAndNotParValueOrTotalAmount() {
+    String xml =
+        """
+        <TABLE>
+          <TR><TH>증권종류</TH><TH>증권수량</TH><TH>액면가액</TH><TH>모집총액</TH></TR>
+          <TR><TD>보통주</TD><TD>2,200,000</TD><TD>100</TD><TD>22,000,000,000</TD></TR>
+        </TABLE>
+        """;
+    DartOfferingTerms terms = parser.parse(xml, "20260929000347", false);
+    assertThat(terms.offeringShareCount()).isEqualTo(2_200_000L);
+  }
+
+  @Test
+  void ambiguousShareCountsAcrossTwoTablesAreNotAccepted() {
+    String xml =
+        """
+        <TABLE>
+          <TR><TH>증권수량</TH></TR>
+          <TR><TD>2,200,000</TD></TR>
+        </TABLE>
+        <TABLE>
+          <TR><TH>증권수량</TH></TR>
+          <TR><TD>1,500,000</TD></TR>
+        </TABLE>
+        """;
+    DartOfferingTerms terms = parser.parse(xml, "20260929000347", false);
+    assertThat(terms.offeringShareCount()).isNull();
+  }
+
+  @Test
+  void unrelatedAmountsMustNotBecomeOfferingShareCount() {
+    String xml =
+        """
+        <TABLE>
+          <TR><TH>모집총액</TH><TH>액면가액</TH></TR>
+          <TR><TD>22,000,000,000</TD><TD>100</TD></TR>
+        </TABLE>
+        """;
+    DartOfferingTerms terms = parser.parse(xml, "20260929000347", false);
+    assertThat(terms.offeringShareCount()).isNull();
+  }
 }
