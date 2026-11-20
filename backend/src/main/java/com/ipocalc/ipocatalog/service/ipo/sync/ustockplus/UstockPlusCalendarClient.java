@@ -69,17 +69,23 @@ public class UstockPlusCalendarClient {
    * @throws IllegalArgumentException startDate가 endDate보다 늦거나 기간이 89일을 넘을 때
    */
   public List<UstockPlusScheduleDates> fetchScheduleDates(LocalDate startDate, LocalDate endDate) {
-    return fetchScheduleDatesInternal(startDate, endDate, false);
+    return fetchScheduleDatesInternal(startDate, endDate, false, false);
   }
 
   /** 과거 복구 전용: 실패한 구간을 누락 없이 보고하기 위해 외부 조회 예외를 전달한다. */
   public List<UstockPlusScheduleDates> fetchScheduleDatesStrict(
       LocalDate startDate, LocalDate endDate) {
-    return fetchScheduleDatesInternal(startDate, endDate, true);
+    return fetchScheduleDatesInternal(startDate, endDate, true, false);
+  }
+
+  /** 과거 상장일 전용: TO_BE_LISTED 항목만 읽고 실패는 호출자에게 전달한다. */
+  public List<UstockPlusScheduleDates> fetchListingDatesStrict(
+      LocalDate startDate, LocalDate endDate) {
+    return fetchScheduleDatesInternal(startDate, endDate, true, true);
   }
 
   private List<UstockPlusScheduleDates> fetchScheduleDatesInternal(
-      LocalDate startDate, LocalDate endDate, boolean strict) {
+      LocalDate startDate, LocalDate endDate, boolean strict, boolean listingOnly) {
     if (startDate.isAfter(endDate)) {
       throw new IllegalArgumentException("startDate는 endDate보다 늦을 수 없습니다.");
     }
@@ -106,7 +112,13 @@ public class UstockPlusCalendarClient {
         log.warn("ustockplus 응답이 비어 있습니다 (startDate={}, endDate={})", startDate, endDate);
         return Collections.emptyList();
       }
-      return group(response.ipoCalendarResponses());
+      List<UstockPlusCalendarItem> items = response.ipoCalendarResponses();
+      return group(
+          listingOnly
+              ? items.stream()
+                  .filter(item -> item != null && "TO_BE_LISTED".equals(item.calendarStockType()))
+                  .toList()
+              : items);
     } catch (RestClientResponseException e) {
       if (strict) {
         throw e;
