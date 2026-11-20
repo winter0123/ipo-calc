@@ -23,7 +23,8 @@ public class DartRightsIssueListingParser {
   private static final Pattern SHARES = Pattern.compile("([\\d,]+)\\s*주");
   private static final Pattern LISTING =
       Pattern.compile(
-          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|예정)|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
+          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|예정)"
+               + "|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
   private static final Pattern PAID = Pattern.compile("(?:납입일|주금납입일|납입기일)");
   private static final Pattern ISSUED = Pattern.compile("(?:발행주식수|발행\\s*주식\\s*총수|신주\\s*발행\\s*수)");
   private static final Pattern EXCLUDED =
