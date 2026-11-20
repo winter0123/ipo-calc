@@ -30,6 +30,7 @@ public class IpoManualSyncService {
   private final IpoSyncService ipoSyncService;
   private final IpoDetailSyncService ipoDetailSyncService;
   private final IpoHistoricalListingService historicalListingService;
+  private final DartRightsIssueListingService rightsIssueListingService;
   private final OpenDartApiProperties openDartProperties;
   private final IpoSyncStateManager syncStateManager;
   // 같은 타입의 taskScheduler와 구분하려고 빈 이름(ipoSyncExecutor)과 같은 이름으로 주입받는다
@@ -214,6 +215,10 @@ public class IpoManualSyncService {
     IpoHistoricalListingService.Result backfill =
         historicalListingService.backfill(fromMonth.atDay(1), listingEnd);
     syncStateManager.recordListingBackfill(backfill);
+    // 유상증자는 uStockPlus 신규상장 목록에 없으므로 DART 발행실적보고서로 별도 보완.
+    DartRightsIssueListingService.Result rights =
+        rightsIssueListingService.backfill(fromMonth.atDay(1), listingEnd);
+    syncStateManager.recordRightsIssueListingBackfill(rights);
 
     // 모든 월 완료
     syncStateManager.completeRangeSync();
