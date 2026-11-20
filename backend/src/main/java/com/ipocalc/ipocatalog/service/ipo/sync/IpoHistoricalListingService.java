@@ -51,6 +51,21 @@ public class IpoHistoricalListingService {
     public Result(int listingBackfilled, List<FailedRange> failedRanges) {
       this(listingBackfilled, failedRanges, List.of(), List.of());
     }
+
+    /** 조회 실패는 구간별, DB 저장 실패와 상충 항목은 종목별로 센다. */
+    public int failureCount() {
+      long queryFailures =
+          failedRanges.stream()
+              .filter(
+                  window ->
+                      failedStocks.stream()
+                          .noneMatch(
+                              stock ->
+                                  window.startDate().equals(stock.startDate())
+                                      && window.endDate().equals(stock.endDate())))
+              .count();
+      return (int) queryFailures + failedStocks.size() + listingConflicts.size();
+    }
   }
 
   /** 양끝 포함 90일씩 조회한다. 다음 구간은 전 구간 종료 다음 날이므로 경계 누락·중복이 없다. */
