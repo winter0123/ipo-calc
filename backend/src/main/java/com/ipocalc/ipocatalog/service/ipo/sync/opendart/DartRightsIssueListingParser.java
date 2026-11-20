@@ -33,6 +33,15 @@ public class DartRightsIssueListingParser {
   public record Evidence(
       LocalDate listingDate, String originalReceipt, LocalDate paymentDate, Long issuedShares) {}
 
+  /** 원 증권신고서 또는 발행실적보고서의 납입일·신주 수 증거. */
+  public record IssueIdentity(LocalDate paymentDate, Long issuedShares) {}
+
+  /** 원신고 연결번호가 없는 경우에만 사용하는 보조 동일 회차 판별 근거. */
+  public IssueIdentity issueIdentity(String xml) {
+    List<List<String>> parsed = rows(xml == null ? "" : xml);
+    return new IssueIdentity(firstDate(parsed, PAID), firstShares(parsed));
+  }
+
   /** 상충 여부를 놓치지 않도록 보고서 내 모든 명시적 유상 신주 상장일을 반환한다. */
   public List<Evidence> parse(String xml) {
     if (xml == null || xml.isBlank()) {
