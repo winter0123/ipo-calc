@@ -57,6 +57,7 @@ public class IpoHistoricalListingService {
       List<FailedRange> failedRanges,
       List<FailedStock> failedStocks,
       List<ListingConflict> listingConflicts) {
+    /** 조회 구간만 추적하던 기존 회귀 테스트와 호환되는 생성자. */
     public Result(int listingBackfilled, List<FailedRange> failedRanges) {
       this(listingBackfilled, failedRanges, List.of(), List.of());
     }
