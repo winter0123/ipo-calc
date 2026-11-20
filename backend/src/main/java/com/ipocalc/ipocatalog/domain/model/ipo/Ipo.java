@@ -165,9 +165,11 @@ public class Ipo {
     this.lowerBandPrice = lower;
     this.upperBandPrice = upper;
     this.fixedPrice = fixed;
+    if (!java.util.Objects.equals(this.listingDate, listing)) {
+      this.listingDateEvidenceType = null;
+      this.listingDateEvidenceReceipt = null;
+    }
     this.listingDate = listing;
-    this.listingDateEvidenceType = null;
-    this.listingDateEvidenceReceipt = null;
     this.offeringShareCount = shares;
     this.updatedAt = now;
   }
