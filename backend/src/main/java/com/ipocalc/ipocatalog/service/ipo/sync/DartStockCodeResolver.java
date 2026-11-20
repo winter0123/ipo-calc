@@ -23,7 +23,8 @@ final class DartStockCodeResolver {
       OpenDartDisclosureItem filing,
       List<OpenDartDisclosureItem> history,
       LocalDate subscriptionStart,
-      String existingStockCode) {
+      String existingStockCode,
+      boolean allowCompanyOverview) {
     List<String> codes =
         history.stream()
             .filter(
@@ -47,7 +48,8 @@ final class DartStockCodeResolver {
       return codes.get(0);
     }
     LocalDate today = LocalDate.now(clock);
-    if (existingStockCode != null
+    if (!allowCompanyOverview
+        || existingStockCode != null
         || subscriptionStart == null
         || subscriptionStart.isBefore(today.minusDays(120))
         || subscriptionStart.isAfter(today.plusDays(59))) {
