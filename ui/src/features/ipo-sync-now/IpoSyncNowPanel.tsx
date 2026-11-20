@@ -26,7 +26,20 @@ function statusText(s: IpoSyncStatus | undefined): string {
   if (s.state === 'RUNNING') {
     return `진행 중: ${s.monthsDone ?? 0}/${s.monthsTotal ?? 1}개월 · 새로 등록 ${r.created}건 · 상세 ${r.detailSaved}건`
   }
-  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 실패 ${r.failed}건`
+  const listingCount = r.listingBackfilled ?? 0
+  const windows = r.listingFailedRanges ?? []
+  const failures = windows.length
+    ? ` · 상장일 조회/저장 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)`
+    : ''
+  const failedStocks = r.listingFailedStocks ?? []
+  const stockFailures = failedStocks.length
+    ? ` · 저장 실패 종목: ${failedStocks.map((item) => `${item.stockCode}(${item.candidateDate}, ${item.startDate}~${item.endDate})`).join(', ')}`
+    : ''
+  const conflicts = r.listingConflicts ?? []
+  const needsReview = conflicts.length
+    ? ` · 상장일 확인 필요 ${conflicts.length}건: ${conflicts.map((item) => `${item.stockCode}(${item.existingDate ?? '없음'} → ${item.candidateDate}, ${item.startDate}~${item.endDate})`).join(', ')} — 자동 덮어쓰기 보류`
+    : ''
+  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건 · 실패 ${r.failed}건${failures}${stockFailures}${needsReview}`
 }
 
 export default function IpoSyncNowPanel() {
@@ -46,6 +59,20 @@ export default function IpoSyncNowPanel() {
     fallback: ERROR_FALLBACK,
   })
   const text = statusText(status)
+  const failedWindows = status?.result?.listingFailedRanges ?? []
+  const retryStart = failedWindows.length
+    ? failedWindows
+        .map((window) => window.startDate)
+        .sort()[0]
+        .slice(0, 7)
+    : undefined
+  const retryEnd = failedWindows.length
+    ? failedWindows
+        .map((window) => window.endDate)
+        .sort()
+        .at(-1)
+        ?.slice(0, 7)
+    : undefined
 
   return (
     <StyleScope>
@@ -80,8 +107,9 @@ export default function IpoSyncNowPanel() {
             </label>
           </div>
           <p className={styles.description}>
-            고른 기간의 공모주와 상세 정보를 DART에서 가져옵니다. 1년이면 몇 분 걸릴 수 있습니다.
-            매일 새벽에는 최근 공모주를 자동으로 가져옵니다.
+            고른 기간의 공모주와 상세 정보를 DART에서 가져오고, 같은 기간의 누락된 상장일을
+            보완합니다. 1년이면 몇 분 걸릴 수 있습니다. 매일 새벽에는 최근 공모주를 자동으로
+            가져옵니다.
           </p>
           <button
             type="button"
@@ -100,6 +128,20 @@ export default function IpoSyncNowPanel() {
           <div role="status" aria-live="polite" className={styles.status}>
             {text}
           </div>
+          {status?.state === 'DONE' && failedWindows.length > 0 && retryStart && retryEnd && (
+            <button
+              type="button"
+              className={styles.button}
+              disabled={isRunning}
+              onClick={() => {
+                setFromMonth(retryStart)
+                setToMonth(retryEnd)
+                start.mutate({ fromMonth: retryStart, toMonth: retryEnd })
+              }}
+            >
+              실패한 상장일 조회 기간 다시 가져오기
+            </button>
+          )}
           {errorMessage && (
             <div role="alert" className={styles.error}>
               {errorMessage}

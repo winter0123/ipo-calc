@@ -100,6 +100,34 @@ class UstockPlusCalendarClientTest {
   }
 
   @Test
+  void historicalListingRetainsConflictingEventsAndIgnoresNonListingEntries() {
+    server
+        .expect(requestTo(Matchers.containsString("/v2/ipo/calendars")))
+        .andRespond(
+            withSuccess(
+                body(
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-02"),
+                    item("250030", "진코스텍", "TO_BE_LISTED", "2026-10-09"),
+                    item("250030", "진코스텍", "REFUND_DATE", "2026-10-10")),
+                MediaType.APPLICATION_JSON));
+
+    assertThat(client.fetchListingDatesStrict(START, END))
+        .containsExactly(
+            new UstockPlusScheduleDates("250030", "진코스텍", LocalDate.of(2026, 10, 2), null, null),
+            new UstockPlusScheduleDates("250030", "진코스텍", LocalDate.of(2026, 10, 9), null, null));
+  }
+
+  @Test
+  void historicalListingReportsFailedWindowInsteadOfTreatingItAsEmpty() {
+    server
+        .expect(requestTo(Matchers.containsString("/v2/ipo/calendars")))
+        .andRespond(withServerError());
+
+    assertThatThrownBy(() -> client.fetchListingDatesStrict(START, END))
+        .isInstanceOf(RuntimeException.class);
+  }
+
+  @Test
   void sendsRequiredHeadersAndDateQuery() {
     server
         .expect(method(HttpMethod.GET))

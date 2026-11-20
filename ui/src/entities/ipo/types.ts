@@ -85,6 +85,36 @@ export const ipoSyncResultSchema = z.object({
   skipped: z.number(),
   failed: z.number(),
   scheduleMerged: z.number(),
+  listingBackfilled: z.number().nullish(),
+  listingFailedRanges: z
+    .array(
+      z.object({
+        startDate: z.string(),
+        endDate: z.string(),
+      }),
+    )
+    .nullish(),
+  listingFailedStocks: z
+    .array(
+      z.object({
+        stockCode: z.string(),
+        candidateDate: z.string(),
+        startDate: z.string(),
+        endDate: z.string(),
+      }),
+    )
+    .nullish(),
+  listingConflicts: z
+    .array(
+      z.object({
+        stockCode: z.string(),
+        existingDate: z.string().nullable(),
+        candidateDate: z.string(),
+        startDate: z.string(),
+        endDate: z.string(),
+      }),
+    )
+    .nullish(),
   detailSaved: z.number(),
   aborted: z.boolean(),
 })
