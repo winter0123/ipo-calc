@@ -118,7 +118,7 @@ describe('IpoSyncNowPanel', () => {
     )
     await vi.advanceTimersByTimeAsync(3000)
     expect(screen.getByRole('status')).toHaveTextContent(
-      '완료: 새로 등록 3건 · 갱신 2건 · 상세 4건 · 상장일 보완 0건 · 실패 1건',
+      '완료: 새로 등록 3건 · 갱신 2건 · 상세 4건 · 상장일 보완 0건 · 유상 신주 상장예정일 보완 0건 · 확인 필요 0건 · 조회/저장 실패 0건 · 실패 1건',
     )
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['ipos'] })
     expect(runButton()).toBeEnabled()
