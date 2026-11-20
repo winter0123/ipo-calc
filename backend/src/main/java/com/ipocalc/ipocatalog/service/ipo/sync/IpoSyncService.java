@@ -1,5 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
@@ -645,9 +646,22 @@ public class IpoSyncService {
           latest.subscriptionStartDate() != null
               ? latest.subscriptionStartDate()
               : fallback != null ? fallback.getSubscriptionStartDate() : null;
+      boolean noFilingCode =
+          historical.stream()
+              .noneMatch(item -> item.getStockCode() != null && !item.getStockCode().isBlank())
+              && (filing.getStockCode() == null || filing.getStockCode().isBlank());
+      boolean allowOverview =
+          noFilingCode
+              && ipoSyncPersistence
+                  .getIpoRepository()
+                  .findAllByCorpCodeAndStatusAndDeletedAtIsNull(
+                      filing.getCorpCode(), RecordStatus.ACTIVE)
+                  .stream()
+                  .anyMatch(ipo -> ipo.getSyncSource() != null && ipo.getStockCode() == null);
       String verifiedStockCode =
           DartStockCodeResolver.resolve(
-              corpDisclosureClient, clock, filing, historical, subscriptionStart, null);
+              corpDisclosureClient, clock, filing, historical, subscriptionStart, null,
+              allowOverview);
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
