@@ -120,6 +120,51 @@ public class DartIpoFilingClient {
     return pickLatest(all, PROSPECTUS, latest).or(() -> pickLatest(all, EQUITY_REPORT, latest));
   }
 
+  /**
+   * 회사별 증권발행실적보고서 전건을 반환한다. 정정 공시를 빠뜨리지 않도록 최신 1건 검색을 하지 않는다.
+   * 보고서 접수는 청약월 다음 달이 될 수 있으므로 호출자가 청약 종료 후 여유 기간을 지정한다.
+   */
+  public synchronized List<FilingRef> findIssuanceResults(
+      String corpCode, LocalDate from, LocalDate to) {
+    if (!usable(corpCode) || from == null || to == null || from.isAfter(to)) {
+      return List.of();
+    }
+    List<FilingRef> result = new ArrayList<>();
+    for (int page = 1; page <= MAX_PAGES; page++) {
+      int pageNo = page;
+      Optional<JsonNode> json =
+          getJson(
+              b ->
+                  b.path("/api/list.json")
+                      .queryParam("corp_code", corpCode)
+                      .queryParam("bgn_de", from.format(DATE))
+                      .queryParam("end_de", to.format(DATE))
+                      .queryParam("page_no", pageNo)
+                      .queryParam("page_count", PAGE_COUNT));
+      if (json.isEmpty()) {
+        break;
+      }
+      for (JsonNode item : json.get().path("list")) {
+        toFiling(item)
+            .filter(
+                filing ->
+                    filing.reportName().contains("증권발행실적보고서")
+                        && !filing.reportName().contains("채무증권"))
+            .ifPresent(result::add);
+      }
+      if (pageNo >= json.get().path("total_page").asInt(1)) {
+        break;
+      }
+    }
+    return result.stream()
+        .distinct()
+        .sorted(
+            Comparator.comparing(FilingRef::receivedOn)
+                .thenComparing(FilingRef::rceptNo)
+                .reversed())
+        .toList();
+  }
+
   private static Optional<FilingRef> pickLatest(
       List<FilingRef> all, String keyword, Comparator<FilingRef> latest) {
     return all.stream().filter(f -> f.reportName().contains(keyword)).max(latest);
