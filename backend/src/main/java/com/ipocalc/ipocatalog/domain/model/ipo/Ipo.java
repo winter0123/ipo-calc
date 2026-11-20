@@ -41,6 +41,8 @@ public class Ipo {
       this.lastImportedSubscriptionEndDate = null;
     }
     this.listingDate = listingDate;
+    this.listingDateEvidenceType = null;
+    this.listingDateEvidenceReceipt = null;
     this.refundDate = refundDate;
     this.subscriptionEndDate = subscriptionEndDate;
   }
@@ -84,6 +86,8 @@ public class Ipo {
         && (this.listingDate == null || this.listingDate.equals(this.lastImportedListingDate))
         && !listing.equals(this.listingDate)) {
       this.listingDate = listing;
+      this.listingDateEvidenceType = null;
+      this.listingDateEvidenceReceipt = null;
       this.listingOpenPrice = null;
       this.lastImportedListingDate = listing;
       changed = true;
@@ -94,6 +98,26 @@ public class Ipo {
       this.updatedAt = now;
     }
     return changed;
+  }
+
+  /**
+   * 검증된 증권발행실적보고서로 빈 유상 신주 상장예정일만 보완한다.
+   * 원래 청약·환불·공모가·ID와 수동 날짜는 일절 변경하지 않는다.
+   */
+  public boolean fillMissingRightsListing(
+      LocalDate date, String receiptNo, LocalDateTime now) {
+    if (this.syncSource == null || this.listingDate != null || date == null
+        || receiptNo == null || receiptNo.isBlank()
+        || this.subscriptionEndDate == null || !date.isAfter(this.subscriptionEndDate)) {
+      return false;
+    }
+    this.listingDate = date;
+    this.lastImportedListingDate = date;
+    this.listingDateEvidenceType = "ESTIMATED_DART";
+    this.listingDateEvidenceReceipt = receiptNo;
+    this.lastSyncedAt = now;
+    this.updatedAt = now;
+    return true;
   }
 
   /** Updates the entity details and modification time. */
@@ -142,6 +166,8 @@ public class Ipo {
     this.upperBandPrice = upper;
     this.fixedPrice = fixed;
     this.listingDate = listing;
+    this.listingDateEvidenceType = null;
+    this.listingDateEvidenceReceipt = null;
     this.offeringShareCount = shares;
     this.updatedAt = now;
   }
@@ -325,6 +351,14 @@ public class Ipo {
   @Column(name = "stock_code", length = 255)
   @Comment("종목코드(6자리)")
   private String stockCode;
+
+  @Column(name = "listing_date_evidence_type", length = 30)
+  @Comment("상장일 증거 상태: ESTIMATED_DART 또는 CONFIRMED_KRX")
+  private String listingDateEvidenceType;
+
+  @Column(name = "listing_date_evidence_receipt", length = 20)
+  @Comment("상장예정일 근거 증권발행실적보고서 접수번호")
+  private String listingDateEvidenceReceipt;
 
   /** DART 고유번호(8자리). 공시 기반 일정 동기화에 쓴다. */
   @Column(name = "corp_code", length = 8)
