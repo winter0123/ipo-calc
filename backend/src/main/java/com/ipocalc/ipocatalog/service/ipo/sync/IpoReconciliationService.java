@@ -272,7 +272,7 @@ public class IpoReconciliationService {
                 filing,
                 disclosures,
                 row.getSubscriptionStartDate(),
-                row.getStockCode());
+                row.getStockCode(), true);
         IpoSyncPersistence.Outcome outcome =
             transactionTemplate.execute(
                 status ->
@@ -400,7 +400,7 @@ public class IpoReconciliationService {
               filing,
               List.of(filing),
               row.getSubscriptionStartDate(),
-              row.getStockCode());
+              row.getStockCode(), true);
       IpoSyncPersistence.Outcome outcome =
           transactionTemplate.execute(
               status ->
