@@ -118,8 +118,10 @@ public class UstockPlusCalendarClient {
         return items.stream()
             .filter(item -> item != null && "TO_BE_LISTED".equals(item.calendarStockType()))
             .filter(item -> item.startDate() != null && item.stockCode() != null)
-            .map(item -> new UstockPlusScheduleDates(
-                item.stockCode(), item.stockName(), item.startDate(), null, null))
+            .map(
+                item ->
+                    new UstockPlusScheduleDates(
+                        item.stockCode(), item.stockName(), item.startDate(), null, null))
             .toList();
       }
       return group(items);

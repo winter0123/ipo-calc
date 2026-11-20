@@ -89,7 +89,12 @@ class IpoManualSyncServiceTest {
   void missingKeyThrowsBeforeAnyCall() {
     service =
         new IpoManualSyncService(
-            sync, detail, historical, new OpenDartApiProperties(" ", "http://x"), stateManager, executor);
+            sync,
+            detail,
+            historical,
+            new OpenDartApiProperties(" ", "http://x"),
+            stateManager,
+            executor);
 
     assertThatThrownBy(() -> service.syncNow()).isInstanceOf(OpenDartKeyMissingException.class);
     verify(sync, never()).sync(any(Integer.class));

@@ -159,34 +159,36 @@ public class IpoSyncStateManager {
 
   /** 과거 상장일 보완 결과를 RUNNING 상태에 누적하여 완료 화면에서 보여준다. */
   public void recordListingBackfill(IpoHistoricalListingService.Result backfill) {
-    currentStatus.updateAndGet(current -> {
-      if (current == null || !State.RUNNING.name().equals(current.getState())) {
-        return current;
-      }
-      var accum = current.getResult();
-      var updated = IpoSyncStatusResponse.SyncResult.builder()
-          .created(accum.getCreated())
-          .updated(accum.getUpdated())
-          .skipped(accum.getSkipped())
-          .failed(accum.getFailed() + backfill.failedRanges().size())
-          .scheduleMerged(accum.getScheduleMerged())
-          .listingBackfilled(accum.getListingBackfilled() + backfill.listingBackfilled())
-          .listingFailedRanges(backfill.failedRanges())
-          .detailSaved(accum.getDetailSaved())
-          .aborted(accum.isAborted())
-          .build();
-      return IpoSyncStatusResponse.builder()
-          .state(current.getState())
-          .fromMonth(current.getFromMonth())
-          .toMonth(current.getToMonth())
-          .monthsDone(current.getMonthsDone())
-          .monthsTotal(current.getMonthsTotal())
-          .startedAt(current.getStartedAt())
-          .finishedAt(current.getFinishedAt())
-          .result(updated)
-          .error(current.getError())
-          .build();
-    });
+    currentStatus.updateAndGet(
+        current -> {
+          if (current == null || !State.RUNNING.name().equals(current.getState())) {
+            return current;
+          }
+          var accum = current.getResult();
+          var updated =
+              IpoSyncStatusResponse.SyncResult.builder()
+                  .created(accum.getCreated())
+                  .updated(accum.getUpdated())
+                  .skipped(accum.getSkipped())
+                  .failed(accum.getFailed() + backfill.failedRanges().size())
+                  .scheduleMerged(accum.getScheduleMerged())
+                  .listingBackfilled(accum.getListingBackfilled() + backfill.listingBackfilled())
+                  .listingFailedRanges(backfill.failedRanges())
+                  .detailSaved(accum.getDetailSaved())
+                  .aborted(accum.isAborted())
+                  .build();
+          return IpoSyncStatusResponse.builder()
+              .state(current.getState())
+              .fromMonth(current.getFromMonth())
+              .toMonth(current.getToMonth())
+              .monthsDone(current.getMonthsDone())
+              .monthsTotal(current.getMonthsTotal())
+              .startedAt(current.getStartedAt())
+              .finishedAt(current.getFinishedAt())
+              .result(updated)
+              .error(current.getError())
+              .build();
+        });
   }
 
   /** 기본 실행 완료 시 호출. */

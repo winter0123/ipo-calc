@@ -31,20 +31,35 @@ class IpoHistoricalListingServiceTest {
 
   @BeforeEach
   void init() {
-    when(tx.execute(any())).thenAnswer(invocation -> {
-      TransactionCallback<?> callback = invocation.getArgument(0);
-      return callback.doInTransaction(null);
-    });
-    service = new IpoHistoricalListingService(client, repo, tx,
-        Clock.fixed(LocalDate.of(2026, 11, 20).atStartOfDay(ZoneId.of("Asia/Seoul"))
-            .toInstant(), ZoneId.of("Asia/Seoul")));
+    when(tx.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              TransactionCallback<?> callback = invocation.getArgument(0);
+              return callback.doInTransaction(null);
+            });
+    service =
+        new IpoHistoricalListingService(
+            client,
+            repo,
+            tx,
+            Clock.fixed(
+                LocalDate.of(2026, 11, 20).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(),
+                ZoneId.of("Asia/Seoul")));
   }
 
   private Ipo ipo(Long id, String code, LocalDate end, LocalDate listed) {
-    return Ipo.builder().id(id).corpCode("01025617").ipoName("하나에어로")
-        .companyName("하나에어로").stockCode(code).syncSource("OPENDART")
-        .subscriptionStartDate(end.minusDays(1)).subscriptionEndDate(end)
-        .listingDate(listed).status(RecordStatus.ACTIVE).build();
+    return Ipo.builder()
+        .id(id)
+        .corpCode("01025617")
+        .ipoName("하나에어로")
+        .companyName("하나에어로")
+        .stockCode(code)
+        .syncSource("OPENDART")
+        .subscriptionStartDate(end.minusDays(1))
+        .subscriptionEndDate(end)
+        .listingDate(listed)
+        .status(RecordStatus.ACTIVE)
+        .build();
   }
 
   private UstockPlusScheduleDates item(String code, LocalDate listing) {
@@ -94,8 +109,7 @@ class IpoHistoricalListingServiceTest {
 
     assertThat(first.listingBackfilled()).isEqualTo(1);
     assertThat(first.failedRanges())
-        .containsExactly(new IpoHistoricalListingService.FailedRange(
-            start, start.plusDays(89)));
+        .containsExactly(new IpoHistoricalListingService.FailedRange(start, start.plusDays(89)));
     assertThat(secondRun.listingBackfilled()).isZero();
     verify(repo).saveAndFlush(row);
   }
@@ -103,8 +117,13 @@ class IpoHistoricalListingServiceTest {
   @Test
   void neverUpdatesManualOrAlreadyListedOrPreSubscriptionListing() {
     LocalDate day = LocalDate.of(2026, 9, 30);
-    Ipo manual = Ipo.builder().id(1L).stockCode("111111")
-        .status(RecordStatus.ACTIVE).subscriptionEndDate(day.minusDays(5)).build();
+    Ipo manual =
+        Ipo.builder()
+            .id(1L)
+            .stockCode("111111")
+            .status(RecordStatus.ACTIVE)
+            .subscriptionEndDate(day.minusDays(5))
+            .build();
     Ipo listed = ipo(2L, "222222", day.minusDays(5), day.minusDays(1));
     Ipo impossible = ipo(3L, "333333", day.plusDays(1), null);
     when(client.fetchListingDatesStrict(LocalDate.of(2026, 9, 1), day))
@@ -129,8 +148,7 @@ class IpoHistoricalListingServiceTest {
     LocalDate end = start.plusDays(90);
     when(client.fetchListingDatesStrict(start, start.plusDays(89)))
         .thenReturn(List.of(item("271160", start.plusDays(12))));
-    when(client.fetchListingDatesStrict(end, end))
-        .thenReturn(List.of(item("271160", end)));
+    when(client.fetchListingDatesStrict(end, end)).thenReturn(List.of(item("271160", end)));
     assertThat(service.backfill(start, end).listingBackfilled()).isZero();
     verify(repo, times(0)).saveAndFlush(any());
   }

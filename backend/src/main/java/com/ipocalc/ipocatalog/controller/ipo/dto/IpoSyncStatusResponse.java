@@ -1,8 +1,8 @@
 package com.ipocalc.ipocatalog.controller.ipo.dto;
 
+import com.ipocalc.ipocatalog.service.ipo.sync.IpoHistoricalListingService;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.ipocalc.ipocatalog.service.ipo.sync.IpoHistoricalListingService;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -53,10 +53,13 @@ public class IpoSyncStatusResponse {
     private int skipped;
     private int failed;
     private int scheduleMerged;
+
     /** 선택한 과거 기간에서 신규 보완한 상장일 수. */
     private int listingBackfilled;
+
     /** 실패한 uStockPlus 조회 범위. 성공 구간은 이미 저장된다. */
     private List<IpoHistoricalListingService.FailedRange> listingFailedRanges;
+
     private int detailSaved;
     private boolean aborted;
   }

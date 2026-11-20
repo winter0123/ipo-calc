@@ -110,13 +110,14 @@ public class IpoSyncService {
 
   /** 관리자의 한 달 DART 수집 전용. 과거 상장일은 전체 월 수집 후 별도 1회 보완한다. */
   public IpoSyncResult syncMonthWithoutSchedule(YearMonth month) {
-    return runExclusively(() -> {
-      LocalDate today = LocalDate.now(clock);
-      LocalDate start = month.atDay(1);
-      LocalDate end = month.atEndOfMonth().isAfter(today) ? today : month.atEndOfMonth();
-      LocalDate detailStart = start.minusMonths(1);
-      return doSyncForMonth(start, end, detailStart, end);
-    });
+    return runExclusively(
+        () -> {
+          LocalDate today = LocalDate.now(clock);
+          LocalDate start = month.atDay(1);
+          LocalDate end = month.atEndOfMonth().isAfter(today) ? today : month.atEndOfMonth();
+          LocalDate detailStart = start.minusMonths(1);
+          return doSyncForMonth(start, end, detailStart, end);
+        });
   }
 
   private IpoSyncResult doSyncByMonthRange(YearMonth fromMonth, YearMonth toMonth) {
