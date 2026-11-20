@@ -29,9 +29,17 @@ function statusText(s: IpoSyncStatus | undefined): string {
   const listingCount = r.listingBackfilled ?? 0
   const windows = r.listingFailedRanges ?? []
   const failures = windows.length
-    ? ` · 상장일 조회 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)`
+    ? ` · 상장일 조회/저장 실패 구간: ${windows.map((w) => `${w.startDate}~${w.endDate}`).join(', ')} (해당 날짜로 재실행 가능)`
     : ''
-  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건 · 실패 ${r.failed}건${failures}`
+  const failedStocks = r.listingFailedStocks ?? []
+  const stockFailures = failedStocks.length
+    ? ` · 저장 실패 종목: ${failedStocks.map((item) => `${item.stockCode}(${item.candidateDate}, ${item.startDate}~${item.endDate})`).join(', ')}`
+    : ''
+  const conflicts = r.listingConflicts ?? []
+  const needsReview = conflicts.length
+    ? ` · 상장일 확인 필요 ${conflicts.length}건: ${conflicts.map((item) => `${item.stockCode}(${item.existingDate ?? '없음'} → ${item.candidateDate}, ${item.startDate}~${item.endDate})`).join(', ')} — 자동 덮어쓰기 보류`
+    : ''
+  return `${r.aborted ? '중간에 중단됐습니다. ' : '완료: '}새로 등록 ${r.created}건 · 갱신 ${r.updated}건 · 상세 ${r.detailSaved}건 · 상장일 보완 ${listingCount}건 · 실패 ${r.failed}건${failures}${stockFailures}${needsReview}`
 }
 
 export default function IpoSyncNowPanel() {
