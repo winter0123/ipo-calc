@@ -645,6 +645,23 @@ class DartRightsIssueListingServiceTest {
         "실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.");
   }
 
+  @Test
+  void bonusSharesMustNotProvideRightsIssueListingEvidence() {
+    assertRejectedUnissuedEvidence("별도 무상증자 신주 1,004,418주는 미발행 처리");
+  }
+
+  @Test
+  void unrelatedRightsRoundMustNotProvideListingEvidence() {
+    assertRejectedUnissuedEvidence("다른 발행 회차 실권주 1,004,418주는 미발행 처리");
+  }
+
+  @Test
+  void bonusSectionRemarkMustNotProvideListingEvidence() {
+    assertRejectedUnissuedEvidence(
+        "Ⅸ. 무상증자 신주 처리내역</P><TABLE><TR><TD>비고</TD>"
+            + "<TD>1,004,418주는 미발행 처리</TD></TR></TABLE><P>무상증자");
+  }
+
   private void assertRejectedUnissuedEvidence(String claim) {
     Ipo row = ipo("20251105000215");
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
