@@ -96,6 +96,42 @@ class DartRightsIssueListingParserTest {
   }
 
   @Test
+  void amicozenUsesDateAfterListingLabelInsteadOfEarlierRegistrationDate() {
+    String xml =
+        "<DOCUMENT><P>등기예정일 2026년 2월 12일, "
+            + "신주 상장 및 유통개시(예정)일 2026년 2월 26일</P>"
+            + "<P>신주인수권증서 상장예정일 2026년 2월 9일</P>"
+            + "</DOCUMENT>";
+    assertThat(parser.parse(xml))
+        .extracting(DartRightsIssueListingParser.Evidence::listingDate)
+        .containsExactly(LocalDate.of(2026, 2, 26));
+  }
+
+  @Test
+  void paymentDueColumnOverridesHistoricalDatesOutsideCurrentSchedule() {
+    String xml =
+        "<DOCUMENT><P>과거 납입일 2019년 9월 16일</P>"
+            + "<P>청약 및 납입일정</P>"
+            + "<TABLE><TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
+            + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
+            + "<TD>2026년 1월 30일</TD></TR></TABLE>"
+            + "<P>이번 유상증자 신주 23,000,000주</P>"
+            + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
+    var identity = parser.issueIdentity(xml);
+    assertThat(identity.paymentDate()).isEqualTo(LocalDate.of(2026, 1, 30));
+    assertThat(identity.issuedShares()).isEqualTo(23_000_000L);
+  }
+
+  @Test
+  void missingCurrentPaymentEvidenceDoesNotUseUnrelatedPastPaymentDate() {
+    String xml =
+        "<DOCUMENT><P>2019년 9월 16일 납입일</P>"
+            + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
+    assertThat(parser.issueIdentity(xml).paymentDate()).isNull();
+    assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
+  }
+
+  @Test
   void ignoresExistingOutstandingSharesWithoutIssueSpecificLabel() {
     String xml =
         "<DOCUMENT><TABLE>"
