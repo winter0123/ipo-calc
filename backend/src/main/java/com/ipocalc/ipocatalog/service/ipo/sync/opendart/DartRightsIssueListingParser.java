@@ -63,11 +63,16 @@ public class DartRightsIssueListingParser {
 
   /** 원공시와 결과보고서에 동일한 규칙을 적용한다. 환불일이나 기존 발행주식총수는 쓰지 않는다. */
   public IssueIdentity issueIdentity(String xml) {
+    return issueIdentity(xml, false);
+  }
+
+  /** 결과보고서에는 모집수량 대신 발행실적 합계 코드만 사용한다. */
+  private IssueIdentity issueIdentity(String xml, boolean issuanceResult) {
     String document = xml == null ? "" : xml;
     List<List<String>> allRows = rows(document);
     List<String> paragraphs = paragraphs(document);
     return new IssueIdentity(
-        paymentDate(document, allRows, paragraphs), structuredShares(document));
+        paymentDate(document, allRows, paragraphs), structuredShares(document, issuanceResult));
   }
 
   /** 표뿐 아니라 P 문단의 상장·유통개시 예정일을 읽고, 무상증자·신주인수권 일정은 제외한다. */
@@ -80,7 +85,7 @@ public class DartRightsIssueListingParser {
     String original = originalMatcher.find() ? originalMatcher.group(1) : null;
     List<List<String>> allRows = rows(document);
     List<String> paragraphs = paragraphs(document);
-    IssueIdentity identity = issueIdentity(document);
+    IssueIdentity identity = issueIdentity(document, true);
     List<LocalDate> dates = new ArrayList<>();
     for (List<String> row : allRows) {
       if (row.size() >= 2 && isListingLabel(row.get(0))) {
@@ -236,7 +241,7 @@ public class DartRightsIssueListingParser {
   }
 
   // 원신고 모집수량과 결과보고서 발행수량은 문단의 숫자로 추정하지 않는다.
-  private static Long structuredShares(String document) {
+  private static Long structuredShares(String document, boolean issuanceResult) {
     List<Long> original = new ArrayList<>();
     List<Long> result = new ArrayList<>();
     Matcher cells = QUANTITY_FIELD.matcher(document);
@@ -251,7 +256,7 @@ public class DartRightsIssueListingParser {
       collectQuantity(elements.group(1), elements.group(2), original, result);
     }
     // 결과보고서는 실적 합계만 사용한다. 원신고서는 모집수량만 사용한다.
-    List<Long> candidates = result.isEmpty() ? original : result;
+    List<Long> candidates = issuanceResult ? result : original;
     List<Long> distinct = candidates.stream().distinct().toList();
     return distinct.size() == 1 && distinct.get(0) > 0 ? distinct.get(0) : null;
   }
