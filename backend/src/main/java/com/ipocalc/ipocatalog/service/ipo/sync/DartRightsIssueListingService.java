@@ -5,17 +5,17 @@ import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser.Evidence;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +66,8 @@ public class DartRightsIssueListingService {
       try {
         var documents = filingClient.findIssuanceResults(candidate.getCorpCode(), start, end);
         String sourceReceipt = candidate.getSourceReceiptNo();
-        String originalXml = sourceReceipt == null ? null : document(filingClient, documentCache, sourceReceipt);
+        String originalXml =
+            sourceReceipt == null ? null : document(filingClient, documentCache, sourceReceipt);
         var originalIdentity = originalXml == null ? null : parser.issueIdentity(originalXml);
         LocalDate sourceDate = receiptDate(sourceReceipt);
         List<DartIpoFilingClient.FilingRef> history =
@@ -78,7 +79,8 @@ public class DartRightsIssueListingService {
           disclosures.add(disclosure(candidate.getCorpCode(), filing));
         }
         // 원신고가 목록 조회 범위에 없어도 최초 접수번호를 회차 기준으로 보존한다.
-        if (sourceDate != null && disclosures.stream().noneMatch(d -> sourceReceipt.equals(d.getRceptNo()))) {
+        if (sourceDate != null
+            && disclosures.stream().noneMatch(d -> sourceReceipt.equals(d.getRceptNo()))) {
           disclosures.add(
               OpenDartDisclosureItem.builder()
                   .corpCode(candidate.getCorpCode())
@@ -96,7 +98,9 @@ public class DartRightsIssueListingService {
           if (xml == null) {
             continue;
           }
-          var finalIdentity = latestIdentity(candidate, history, disclosures, documentCache, filing.receivedOn(), originalIdentity);
+          var finalIdentity =
+              latestIdentity(
+                  candidate, history, disclosures, documentCache, filing.receivedOn(), originalIdentity);
           List<Evidence> sameIssue =
               parser.parse(xml).stream()
                   .filter(e -> isSameIssue(candidate, e, finalIdentity, xml))
@@ -176,7 +180,8 @@ public class DartRightsIssueListingService {
     }
   }
 
-  private static OpenDartDisclosureItem disclosure(String corpCode, DartIpoFilingClient.FilingRef ref) {
+  private static OpenDartDisclosureItem disclosure(
+      String corpCode, DartIpoFilingClient.FilingRef ref) {
     return OpenDartDisclosureItem.builder()
         .corpCode(corpCode)
         .rceptNo(ref.rceptNo())
