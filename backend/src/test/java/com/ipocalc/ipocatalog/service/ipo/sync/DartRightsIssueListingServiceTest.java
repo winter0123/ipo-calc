@@ -144,6 +144,79 @@ class DartRightsIssueListingServiceTest {
   }
 
   @Test
+  void rechecksExistingDartEstimateAndAppliesNewerCorrection() {
+    Ipo row = ipo(ORIGINAL);
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(Optional.of(xml(ORIGINAL, "2026.03.10")));
+    var first = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+    assertThat(first.saved()).isEqualTo(1);
+
+    String correction = "20260306000001";
+    setupReports(row,
+        new FilingRef(correction, "[기재정정]증권발행실적보고서",
+            LocalDate.of(2026, 3, 6)),
+        new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument(correction))
+        .thenReturn(Optional.of(xml(ORIGINAL, "2026.03.11")));
+    var retry = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(retry.saved()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 11));
+    assertThat(row.getListingDateEvidenceReceipt()).isEqualTo(correction);
+    assertThat(row.getFixedPrice()).isEqualTo(12345L);
+    assertThat(service.backfill(LocalDate.of(2026, 2, 1),
+        LocalDate.of(2026, 2, 28)).saved()).isZero();
+  }
+
+  @Test
+  void matchesIssueUsingNewSharesAndPaymentInsteadOfStoredOutstandingShareCount() {
+    Ipo row = ipo(ORIGINAL);
+    // 기존 DB에 38,390,259주처럼 총 발행주식수가 기록돼 있더라도 매칭 근거로 쓰지 않는다.
+    row = Ipo.builder().id(125L).corpCode("00123456").stockCode("300120")
+        .companyName("형지엘리트").ipoName("형지엘리트")
+        .sourceReceiptNo(ORIGINAL).syncSource("OPENDART")
+        .offeringShareCount(38_390_259L)
+        .subscriptionStartDate(LocalDate.of(2026, 2, 2))
+        .subscriptionEndDate(LocalDate.of(2026, 2, 4))
+        .status(RecordStatus.ACTIVE).build();
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 10)));
+    String original =
+        "<DOCUMENT><P>기발행 주식수 38,390,259주</P>"
+            + "<P>금번 유상증자 신주 23,000,000주</P>"
+            + "<P>납입일 2026.02.06</P></DOCUMENT>";
+    String result =
+        "<DOCUMENT><P>금번 유상증자 신주 23,000,000주</P>"
+            + "<P>납입일 2026.02.06</P>"
+            + "<P>주권 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>";
+    when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(result));
+
+    var backfill = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(backfill.saved()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 13));
+    assertThat(row.getOfferingShareCount()).isEqualTo(38_390_259L);
+    verify(repo).saveAndFlush(row);
+  }
+
+  @Test
+  void correctionNeverOverwritesManuallyProtectedListingDate() {
+    Ipo row = ipo(ORIGINAL);
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(Optional.of(xml(ORIGINAL, "2026.03.10")));
+    service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+    row.protectListingDate();
+
+    var retry = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(retry.saved()).isZero();
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
+    assertThat(row.getListingDateEvidenceType()).isNull();
+  }
+
+  @Test
   void contradictoryDatesInOneReportNeedReview() {
     Ipo row = ipo(ORIGINAL);
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
