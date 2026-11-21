@@ -13,7 +13,7 @@ public class DartRightsIssueListingParser {
   private static final Pattern PARAGRAPH =
       Pattern.compile("<P\\b[^>]*>(.*?)</P>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern TABLE =
-      Pattern.compile("<TABLE\\\\b[^>]*>(.*?)</TABLE>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+      Pattern.compile("<TABLE\\b[^>]*>(.*?)</TABLE>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern ROW =
       Pattern.compile("<TR\\b[^>]*>(.*?)</TR>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern CELL =
@@ -76,7 +76,7 @@ public class DartRightsIssueListingParser {
     }
     for (int i = 0; i < paragraphs.size(); i++) {
       String paragraph = paragraphs.get(i);
-      if (!isListingLabel(paragraph)) {
+      if (!LISTING.matcher(paragraph).find()) {
         continue;
       }
       int before = dates.size();
@@ -99,9 +99,7 @@ public class DartRightsIssueListingParser {
    * 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다.
    */
   private static void addListingDates(List<LocalDate> dates, String paragraph) {
-    Matcher label = LISTING.matcher(paragraph.replace(" ", ""));
-    // 공백 제거 버전과 원문 인덱스가 달라질 수 있으므로 원문에서 직접 탐색한다.
-    label = LISTING.matcher(paragraph);
+    Matcher label = LISTING.matcher(paragraph);
     while (label.find()) {
       int start = label.end();
       int nextLabel = paragraph.length();
