@@ -520,4 +520,41 @@ class DartRightsIssueListingServiceTest {
     assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
   }
 
+  @Test
+  void fullyIssuedUnsubscribedSharesMustNotSaveListing() {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(
+                LocalDate.of(2026, 2, 19),
+                1_995_582L,
+                1_995_582L,
+                LocalDate.of(2026, 3, 10))
+            + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void noResultReportsSkipsCorrectionHistoryAndDocumentDownload() {
+    Ipo row = ipo(ORIGINAL);
+    when(repo.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+    when(filings.findIssuanceResults(any(), any(), any())).thenReturn(List.of());
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result).isEqualTo(new DartRightsIssueListingService.Result(0, 0, 0));
+    verify(filings, never()).findEquityFilings(any(), any(), any());
+    verify(filings, never()).downloadDocument(any());
+  }
+
 }
