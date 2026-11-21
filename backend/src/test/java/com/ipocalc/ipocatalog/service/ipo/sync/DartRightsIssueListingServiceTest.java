@@ -188,10 +188,10 @@ class DartRightsIssueListingServiceTest {
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 10)));
     String original =
         "<DOCUMENT><P>기발행 주식수 38,390,259주</P>"
-            + "<P>금번 유상증자 신주 23,000,000주</P>"
+            + "<P>금번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
             + "<P>납입일 2026.02.06</P></DOCUMENT>";
     String result =
-        "<DOCUMENT><P>금번 유상증자 신주 23,000,000주</P>"
+        "<DOCUMENT><P>금번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU></TR></TABLE>"
             + "<P>납입일 2026.02.06</P>"
             + "<P>주권 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>";
     when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
@@ -209,9 +209,9 @@ class DartRightsIssueListingServiceTest {
   void rejectsPaymentOrNewShareMismatchEvenWhenCompanyMatches() {
     Ipo row = ipo(ORIGINAL);
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
-    String original = "<DOCUMENT><P>유상증자 신주 14,500,000주</P>" + "<P>납입일 2026.02.19</P></DOCUMENT>";
+    String original = "<DOCUMENT><P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">14,500,000</TU></TR></TABLE>" + "<P>납입일 2026.02.19</P></DOCUMENT>";
     String unrelatedIssue =
-        "<DOCUMENT><P>유상증자 신주 20,860,012주</P>"
+        "<DOCUMENT><P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"INC_SL_CNT_SUM\">20,860,012</TU></TR></TABLE>"
             + "<P>납입일 2026.02.19</P>"
             + "<P>주권 상장 및 유통 예정일 2026.03.10</P></DOCUMENT>";
     when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
@@ -246,11 +246,11 @@ class DartRightsIssueListingServiceTest {
             + "<TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
             + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
             + "<TD>2026년 1월 30일</TD></TR></TABLE>";
-    String original = "<DOCUMENT>" + paymentTable + "<P>금번 유상증자 신주 23,000,000주</P></DOCUMENT>";
+    String original = "<DOCUMENT>" + paymentTable + "<P>금번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE></DOCUMENT>";
     String result =
         "<DOCUMENT>"
             + paymentTable
-            + "<P>금번 유상증자 신주 23,000,000주</P>"
+            + "<P>금번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU></TR></TABLE>"
             + "<P>주권 상장 및 유통 예정일 2026년 2월 13일</P></DOCUMENT>";
     when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
     when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(result));
