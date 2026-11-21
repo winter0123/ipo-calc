@@ -244,11 +244,21 @@ public class DartRightsIssueListingParser {
   private static Long structuredShares(String document, boolean issuanceResult) {
     List<Long> original = new ArrayList<>();
     List<Long> result = new ArrayList<>();
-    Matcher cells = QUANTITY_FIELD.matcher(document);
-    while (cells.find()) {
-      Matcher code = QUANTITY_CODE.matcher(cells.group(2));
-      if (code.find()) {
-        collectQuantity(code.group(1), cells.group(3), original, result);
+    Matcher tables = TABLE.matcher(document);
+    while (tables.find()) {
+      Matcher rows = ROW.matcher(tables.group(1));
+      while (rows.find()) {
+        String row = rows.group(1);
+        if (EXCLUDED.matcher(plain(row)).find() || OLD_SHARES.matcher(plain(row)).find()) {
+          continue;
+        }
+        Matcher cells = QUANTITY_FIELD.matcher(row);
+        while (cells.find()) {
+          Matcher code = QUANTITY_CODE.matcher(cells.group(2));
+          if (code.find()) {
+            collectQuantity(code.group(1), cells.group(3), original, result);
+          }
+        }
       }
     }
     Matcher elements = QUANTITY_ELEMENT.matcher(document);
