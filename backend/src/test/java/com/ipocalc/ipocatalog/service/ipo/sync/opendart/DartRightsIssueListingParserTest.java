@@ -196,4 +196,26 @@ class DartRightsIssueListingParserTest {
     String xml = report(row("신주인수권증서 상장예정일", "2026.03.10") + row("무상증자 신주 상장 예정일", "2026.03.24"));
     assertThat(parser.parse(xml)).isEmpty();
   }
+  @Test
+  void rejectsUnsubscribedSharesThatWereFullyIssuedThroughPublicOffering() {
+    String xml =
+        "<DOCUMENT><P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsExplicitUnissuedSharesOnlyWhenDifferenceMatches() {
+    String xml = "<DOCUMENT><P>실권주 1,004,418주 미발행</P></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_583L)).isFalse();
+  }
+
+  @Test
+  void doesNotCombineUnrelatedUnissuedReasonAndShareQuantity() {
+    String xml =
+        "<DOCUMENT><P>다른 발행 회차의 주식은 미발행</P>"
+            + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
