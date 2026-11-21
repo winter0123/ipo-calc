@@ -5,8 +5,8 @@ import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
-import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser.Evidence;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser.Evidence;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -40,7 +40,6 @@ public class DartRightsIssueListingService {
   public Result backfill(LocalDate firstSubscription, LocalDate lastSubscription) {
     List<Ipo> rows =
         ipoRepository.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE);
-    Map<String, String> documentCache = new HashMap<>();
     int saved = 0;
     int review = 0;
     int failures = 0;
@@ -65,6 +64,11 @@ public class DartRightsIssueListingService {
       }
       try {
         var documents = filingClient.findIssuanceResults(candidate.getCorpCode(), start, end);
+        if (documents.isEmpty()) {
+          continue;
+        }
+        // 각 종목이 끝나면 XML 캐시 전체가 GC 대상이 된다.
+        Map<String, String> documentCache = new HashMap<>();
         String sourceReceipt = candidate.getSourceReceiptNo();
         String originalXml =
             sourceReceipt == null ? null : document(filingClient, documentCache, sourceReceipt);
