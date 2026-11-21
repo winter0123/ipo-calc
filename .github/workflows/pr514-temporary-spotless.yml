@@ -1,0 +1,33 @@
+name: Temporary PR514 Java formatter
+on:
+  push:
+    branches:
+      - fix/dart-corrected-rights-issue-origin-20261121
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  format:
+    if: "!contains(github.event.head_commit.message, '[spotless-formatted]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/dart-corrected-rights-issue-origin-20261121
+          persist-credentials: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Apply formatter
+        working-directory: backend
+        run: ./gradlew spotlessApply --no-daemon
+      - name: Commit formatted sources
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/DartRightsIssueListingService.java backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/opendart/DartRightsIssueListingParser.java backend/src/test/java/com/ipocalc/ipocatalog/service/ipo/sync/DartRightsIssueListingServiceTest.java backend/src/test/java/com/ipocalc/ipocatalog/service/ipo/sync/opendart/DartRightsIssueListingParserTest.java
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Spotless to PR514 sources [spotless-formatted]"
+            git push origin HEAD:fix/dart-corrected-rights-issue-origin-20261121
+          fi
