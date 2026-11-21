@@ -227,8 +227,9 @@ public class DartRightsIssueListingService {
       if (xml == null) {
         continue;
       }
-      String origin = DartFilingOrigin.resolveOriginalReceipt(
-          disclosure(ipo.getCorpCode(), filing), disclosures, xml);
+      String origin =
+          DartFilingOrigin.resolveOriginalReceipt(
+              disclosure(ipo.getCorpCode(), filing), disclosures, xml);
       if (!ipo.getSourceReceiptNo().equals(origin)) {
         continue;
       }

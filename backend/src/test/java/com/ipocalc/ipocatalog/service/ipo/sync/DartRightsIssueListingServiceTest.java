@@ -475,20 +475,27 @@ class DartRightsIssueListingServiceTest {
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
     String correctionReceipt = "20260220000001";
     when(filings.findEquityFilings(any(), any(), any()))
-        .thenReturn(List.of(
-            new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
-            new FilingRef(correctionReceipt, "[발행조건확정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
+        .thenReturn(
+            List.of(
+                new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
+                new FilingRef(
+                    correctionReceipt, "[발행조건확정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
     when(filings.downloadDocument("20251121000467"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 6), 14_500_000L)));
     when(filings.downloadDocument(correctionReceipt))
-        .thenReturn(Optional.of(
-            "<DOCUMENT><P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
-                + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)
-                + "</DOCUMENT>"));
+        .thenReturn(
+            Optional.of(
+                "<DOCUMENT><P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
+                    + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)
+                    + "</DOCUMENT>"));
     when(filings.downloadDocument(REPORT))
-        .thenReturn(Optional.of(resultDocument(
-            LocalDate.of(2026, 2, 25), 14_500_000L, 14_500_000L,
-            LocalDate.of(2026, 3, 10))));
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 25),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 10))));
     assertThat(service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)).saved())
         .isEqualTo(1);
     assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
@@ -496,23 +503,24 @@ class DartRightsIssueListingServiceTest {
 
   @Test
   void acceptsOnlyExplicitlyExplainedUnissuedShares() {
-    Ipo row = Ipo.builder()
-        .id(125L)
-        .corpCode("00123456")
-        .companyName("코이즈")
-        .ipoName("코이즈")
-        .sourceReceiptNo("20251105000215")
-        .syncSource("OPENDART")
-        .subscriptionStartDate(LocalDate.of(2026, 1, 26))
-        .subscriptionEndDate(LocalDate.of(2026, 1, 27))
-        .status(RecordStatus.ACTIVE)
-        .build();
+    Ipo row =
+        Ipo.builder()
+            .id(125L)
+            .corpCode("00123456")
+            .companyName("코이즈")
+            .ipoName("코이즈")
+            .sourceReceiptNo("20251105000215")
+            .syncSource("OPENDART")
+            .subscriptionStartDate(LocalDate.of(2026, 1, 26))
+            .subscriptionEndDate(LocalDate.of(2026, 1, 27))
+            .status(RecordStatus.ACTIVE)
+            .build();
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 5)));
     when(filings.downloadDocument("20251105000215"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 1, 29), 3_000_000L)));
-    String result = resultDocument(
-        LocalDate.of(2026, 1, 29), 1_995_582L, 1_995_582L,
-        LocalDate.of(2026, 2, 10));
+    String result =
+        resultDocument(
+            LocalDate.of(2026, 1, 29), 1_995_582L, 1_995_582L, LocalDate.of(2026, 2, 10));
     when(filings.downloadDocument(REPORT))
         .thenReturn(Optional.of(result + "<P>실권주 1,004,418주 미발행</P>"));
     assertThat(service.backfill(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)).saved())
@@ -527,11 +535,7 @@ class DartRightsIssueListingServiceTest {
     when(filings.downloadDocument("20251105000215"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
     String report =
-        resultDocument(
-                LocalDate.of(2026, 2, 19),
-                1_995_582L,
-                1_995_582L,
-                LocalDate.of(2026, 3, 10))
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
             + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P>";
     when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
 
@@ -564,11 +568,7 @@ class DartRightsIssueListingServiceTest {
     when(filings.downloadDocument("20251105000215"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
     String report =
-        resultDocument(
-                LocalDate.of(2026, 2, 19),
-                1_995_582L,
-                1_995_582L,
-                LocalDate.of(2026, 3, 10))
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
             + "<P>실권주 1,004,417주 미발행</P>";
     when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
 
@@ -593,14 +593,8 @@ class DartRightsIssueListingServiceTest {
     when(filings.findEquityFilings(any(), any(), any()))
         .thenReturn(
             List.of(
-                new FilingRef(
-                    "20251121000467",
-                    "증권신고서(지분증권)",
-                    LocalDate.of(2025, 11, 21)),
-                new FilingRef(
-                    correction,
-                    "[기재정정]증권신고서(지분증권)",
-                    LocalDate.of(2026, 2, 20))));
+                new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
+                new FilingRef(correction, "[기재정정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
     when(filings.downloadDocument("20251121000467"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 14_500_000L)));
     when(filings.downloadDocument(correction))
@@ -635,14 +629,12 @@ class DartRightsIssueListingServiceTest {
 
   @Test
   void crossSentenceUnissuedClaimDoesNotSaveListing() {
-    assertRejectedUnissuedEvidence(
-        "실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.");
+    assertRejectedUnissuedEvidence("실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.");
   }
 
   @Test
   void cancelledUnissuedPlanDoesNotSaveListing() {
-    assertRejectedUnissuedEvidence(
-        "실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.");
+    assertRejectedUnissuedEvidence("실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.");
   }
 
   @Test
@@ -668,12 +660,10 @@ class DartRightsIssueListingServiceTest {
     when(filings.downloadDocument("20251105000215"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
     String report =
-        resultDocument(
-                LocalDate.of(2026, 2, 19),
-                1_995_582L,
-                1_995_582L,
-                LocalDate.of(2026, 3, 10))
-            + "<P>" + claim + "</P>";
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
+            + "<P>"
+            + claim
+            + "</P>";
     when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
 
     var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
@@ -684,5 +674,4 @@ class DartRightsIssueListingServiceTest {
     assertThat(row.getListingDateEvidenceReceipt()).isNull();
     verify(repo, never()).saveAndFlush(any());
   }
-
 }

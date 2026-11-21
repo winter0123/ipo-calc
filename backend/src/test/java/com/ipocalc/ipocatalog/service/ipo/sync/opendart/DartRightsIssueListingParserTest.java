@@ -199,8 +199,7 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void rejectsUnsubscribedSharesThatWereFullyIssuedThroughPublicOffering() {
-    String xml =
-        "<DOCUMENT><P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+    String xml = "<DOCUMENT><P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
@@ -214,36 +213,31 @@ class DartRightsIssueListingParserTest {
   @Test
   void doesNotCombineUnrelatedUnissuedReasonAndShareQuantity() {
     String xml =
-        "<DOCUMENT><P>다른 발행 회차의 주식은 미발행</P>"
-            + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+        "<DOCUMENT><P>다른 발행 회차의 주식은 미발행</P>" + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
   @Test
   void rejectsUnissuedClaimAboutDifferentSharesInSameParagraph() {
-    String xml =
-        "<P>실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.</P>";
+    String xml = "<P>실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.</P>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
   @Test
   void rejectsCancelledUnissuedPlan() {
-    String xml =
-        "<P>실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.</P>";
+    String xml = "<P>실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.</P>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
   @Test
   void acceptsConfirmedUnissuedQuantityInSingleCell() {
-    String xml =
-        "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String xml = "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
   }
 
   @Test
   void rejectsQuantityAndUnissuedClaimInDifferentCells() {
-    String xml =
-        "<TABLE><TR><TD>실권주 1,004,418주</TD><TD>단주는 미발행</TD></TR></TABLE>";
+    String xml = "<TABLE><TR><TD>실권주 1,004,418주</TD><TD>단주는 미발행</TD></TR></TABLE>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
@@ -256,8 +250,7 @@ class DartRightsIssueListingParserTest {
   @Test
   void rejectsBonusSectionRemarkCellWithMatchingQuantity() {
     String xml =
-        "<P>Ⅸ. 무상증자 신주 처리내역</P>"
-            + "<TABLE><TR><TD>비고</TD><TD>1,004,418주는 미발행 처리</TD></TR></TABLE>";
+        "<P>Ⅸ. 무상증자 신주 처리내역</P>" + "<TABLE><TR><TD>비고</TD><TD>1,004,418주는 미발행 처리</TD></TR></TABLE>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
@@ -273,10 +266,7 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void rejectsUnrelatedRightsIssueRoundWithSameQuantity() {
-    String xml =
-        "<P>별도 발행 건 유상증자</P>"
-            + "<P>다른 발행 회차 실권주 1,004,418주는 미발행 처리</P>";
+    String xml = "<P>별도 발행 건 유상증자</P>" + "<P>다른 발행 회차 실권주 1,004,418주는 미발행 처리</P>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
-
 }

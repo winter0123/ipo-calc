@@ -131,8 +131,7 @@ public class DartRightsIssueListingParser {
       Matcher cells = CELL.matcher(tables.group(1));
       while (cells.find()) {
         String claim = plain(cells.group(1));
-        if (eligibleRightsClaim(claim)
-            && containsConfirmedUnissued(cells.group(1), difference)) {
+        if (eligibleRightsClaim(claim) && containsConfirmedUnissued(cells.group(1), difference)) {
           return true;
         }
       }
@@ -172,9 +171,7 @@ public class DartRightsIssueListingParser {
     if (context.matches("(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
       return false;
     }
-    return context.isEmpty()
-        || context.contains("실권주 처리내역")
-        || context.contains("유상증자");
+    return context.isEmpty() || context.contains("실권주 처리내역") || context.contains("유상증자");
   }
 
   private static boolean eligibleRightsClaim(String claim) {
