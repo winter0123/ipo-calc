@@ -115,28 +115,49 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
-  /** 실권주 등 미발행 사유와 미발행 수량이 공시에 명시된 경우에만 발행량 감소를 허용한다. */
+  /** 미발행이 명시된 수량만 인정한다. 실권주가 일반공모로 발행된 경우는 제외한다. */
   public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
     if (xml == null || issued <= 0 || planned <= issued) {
       return false;
     }
-    String plainText = plain(xml);
-    if (!Pattern.compile("실권주|미청약|미발행").matcher(plainText).find()) {
+    long difference = planned - issued;
+    // 표/문단 단위로 검증하여 다른 문단의 '미발행' 문구와 수량이 섞이지 않게 한다.
+    Matcher paragraphs = PARAGRAPH.matcher(xml);
+    while (paragraphs.find()) {
+      if (explicitlyUnissued(plain(paragraphs.group(1)), difference)) {
+        return true;
+      }
+    }
+    Matcher rows = ROW.matcher(xml);
+    while (rows.find()) {
+      if (explicitlyUnissued(plain(rows.group(1)), difference)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean explicitlyUnissued(String text, long difference) {
+    if (Pattern.compile("전량\\s*발행|모두\\s*발행|전부\\s*발행|일반공모.{0,15}발행")
+        .matcher(text)
+        .find()) {
       return false;
     }
-    long difference = planned - issued;
-    Pattern unissued = Pattern.compile(
-        "(?:실권주|미청약|미발행)[^\\d]{0,90}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
-            + "|([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주[^\\d]{0,50}(?:실권주|미청약|미발행)");
-    Matcher matcher = unissued.matcher(plainText);
+    Pattern unissued =
+        Pattern.compile(
+            "(?:미발행|발행하지\\s*않|발행되지\\s*않|발행\\s*취소)"
+                + "[^0-9]{0,60}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
+                + "|([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
+                + "[^0-9]{0,60}(?:미발행|발행하지\\s*않|발행되지\\s*않|발행\\s*취소)");
+    Matcher matcher = unissued.matcher(text);
     while (matcher.find()) {
-      String value = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+      String number = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
       try {
-        if (Long.parseLong(value.replace(",", "")) == difference) {
+        if (Long.parseLong(number.replace(",", "")) == difference) {
           return true;
         }
       } catch (NumberFormatException ignored) {
-        // 잘못된 수량은 자동 매칭하지 않는다.
+        // 숫자가 잘못된 경우는 자동 매칭하지 않는다.
       }
     }
     return false;
