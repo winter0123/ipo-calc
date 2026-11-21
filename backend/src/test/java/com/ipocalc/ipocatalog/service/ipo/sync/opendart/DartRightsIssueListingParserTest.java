@@ -75,7 +75,7 @@ class DartRightsIssueListingParserTest {
             + "<P>납입일 2026.02.06</P></DOCUMENT>";
     String raon =
         "<DOCUMENT><P>기발행 주식수 20,860,012주</P>"
-            + "<P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"INC_CNT_TOT\">14,500,000</TU></TR></TABLE>"
+            + "<P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">14,500,000</TU></TR></TABLE>"
             + "<P>주금 납입일 2026년 2월 20일</P></DOCUMENT>";
     assertThat(parser.issueIdentity(hyungji).issuedShares()).isEqualTo(23_000_000L);
     assertThat(parser.issueIdentity(raon).issuedShares()).isEqualTo(14_500_000L);
@@ -135,7 +135,10 @@ class DartRightsIssueListingParserTest {
         + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
         + "<TU AUNIT=\"INC_SL_CNT_SUM\">22,000,000</TU>"
         + "</TR></TABLE></DOCUMENT>";
-    assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
+    assertThat(parser.parse(xml.replace("</DOCUMENT>",
+        "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
+        .extracting(DartRightsIssueListingParser.Evidence::issuedShares)
+        .containsExactly((Long) null);
   }
 
   @Test
@@ -144,7 +147,10 @@ class DartRightsIssueListingParserTest {
         + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
         + "<TU AUNIT=\"INC_SL_CNT_SUM\">23,000,000</TU>"
         + "</TR></TABLE></DOCUMENT>";
-    assertThat(parser.issueIdentity(xml).issuedShares()).isEqualTo(23_000_000L);
+    assertThat(parser.parse(xml.replace("</DOCUMENT>",
+        "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
+        .extracting(DartRightsIssueListingParser.Evidence::issuedShares)
+        .containsExactly(23_000_000L);
   }
 
   @Test
