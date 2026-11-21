@@ -138,7 +138,9 @@ public class DartRightsIssueListingParser {
   }
 
   private static boolean explicitlyUnissued(String text, long difference) {
-    if (Pattern.compile("전량\\s*발행|모두\\s*발행|전부\\s*발행|일반공모.{0,15}발행")
+    if (Pattern.compile(
+            "전량\\s*발행|모두\\s*발행|전부\\s*발행|일반공모.{0,15}발행"
+                + "|미발행하지\\s*않|미발행이\\s*아니|미발행\\s*없|미발행\\s*수량\\s*없")
         .matcher(text)
         .find()) {
       return false;
