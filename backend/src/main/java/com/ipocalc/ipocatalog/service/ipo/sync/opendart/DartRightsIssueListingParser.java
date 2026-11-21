@@ -115,31 +115,74 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
-  /** 수량과 확정된 미발행 처리가 같은 문장 또는 같은 표 셀에 명시된 경우만 인정한다. */
+  /** 현재 유상증자 회차의 확정된 미발행 수량만 인정한다. */
   public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
     if (xml == null || issued <= 0 || planned <= issued) {
       return false;
     }
     long difference = planned - issued;
-    // 표는 행 전체를 합치지 않고 개별 셀 안에서만 수량과 처리를 연결한다.
+    // 제목과 표의 위치를 보존한다. 다른 발행 건의 표를 본 건의 근거로 쓰지 않는다.
     Matcher tables = TABLE.matcher(xml);
     while (tables.find()) {
+      String context = sectionContext(xml, tables.start());
+      if (!eligibleRightsContext(context)) {
+        continue;
+      }
       Matcher cells = CELL.matcher(tables.group(1));
       while (cells.find()) {
-        if (containsConfirmedUnissued(cells.group(1), difference)) {
+        String claim = plain(cells.group(1));
+        if (eligibleRightsClaim(claim)
+            && containsConfirmedUnissued(cells.group(1), difference)) {
           return true;
         }
       }
     }
-    // 표 밖 문단만 검사하여 표의 서로 다른 셀을 합치는 일을 방지한다.
     String outsideTables = TABLE.matcher(xml).replaceAll(" ");
     Matcher paragraphs = PARAGRAPH.matcher(outsideTables);
     while (paragraphs.find()) {
-      if (containsConfirmedUnissued(paragraphs.group(1), difference)) {
+      String claim = plain(paragraphs.group(1));
+      if (eligibleRightsContext(sectionContext(outsideTables, paragraphs.start()))
+          && eligibleRightsClaim(claim)
+          && containsConfirmedUnissued(paragraphs.group(1), difference)) {
         return true;
       }
     }
     return false;
+  }
+
+  private static String sectionContext(String document, int position) {
+    // 마지막 절 제목 이후만 사용한다. 먼 앞쪽 유상증자 문구를 다른 회차에 전파하지 않는다.
+    String prefix = document.substring(0, position);
+    Matcher headings =
+        Pattern.compile(
+                "<(?:TITLE|H[1-6]|SECTION|P)\\b[^>]*>(.*?)</(?:TITLE|H[1-6]|SECTION|P)>",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+            .matcher(prefix);
+    String context = "";
+    while (headings.find()) {
+      String heading = plain(headings.group(1));
+      if (heading.matches("(?s).*(?:실권주\\s*처리내역|무상증자|유상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
+        context = heading;
+      }
+    }
+    return context;
+  }
+
+  private static boolean eligibleRightsContext(String context) {
+    if (context.matches("(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
+      return false;
+    }
+    return context.isEmpty()
+        || context.contains("실권주 처리내역")
+        || context.contains("유상증자");
+  }
+
+  private static boolean eligibleRightsClaim(String claim) {
+    if (claim.matches("(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
+      return false;
+    }
+    // 별도 회차와 구분할 수 있는 실권주 처리 근거만 채택한다.
+    return claim.contains("실권주");
   }
 
   private static boolean containsConfirmedUnissued(String fragment, long difference) {
