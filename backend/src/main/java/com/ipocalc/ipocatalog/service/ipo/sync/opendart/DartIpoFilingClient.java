@@ -165,6 +165,42 @@ public class DartIpoFilingClient {
         .toList();
   }
 
+  /** 원신고와 정정·발행조건확정 신고서 이력을 접수일 오름차순으로 반환한다. */
+  public synchronized List<FilingRef> findEquityFilings(
+      String corpCode, LocalDate from, LocalDate to) {
+    if (!usable(corpCode) || from == null || to == null || from.isAfter(to)) {
+      return List.of();
+    }
+    List<FilingRef> result = new ArrayList<>();
+    for (int page = 1; page <= MAX_PAGES; page++) {
+      int pageNo = page;
+      Optional<JsonNode> json =
+          getJson(
+              b ->
+                  b.path("/api/list.json")
+                      .queryParam("corp_code", corpCode)
+                      .queryParam("bgn_de", from.format(DATE))
+                      .queryParam("end_de", to.format(DATE))
+                      .queryParam("page_no", pageNo)
+                      .queryParam("page_count", PAGE_COUNT));
+      if (json.isEmpty()) {
+        break;
+      }
+      for (JsonNode item : json.get().path("list")) {
+        toFiling(item)
+            .filter(f -> f.reportName().contains(EQUITY_REPORT))
+            .ifPresent(result::add);
+      }
+      if (pageNo >= json.get().path("total_page").asInt(1)) {
+        break;
+      }
+    }
+    return result.stream()
+        .distinct()
+        .sorted(Comparator.comparing(FilingRef::receivedOn).thenComparing(FilingRef::rceptNo))
+        .toList();
+  }
+
   private static Optional<FilingRef> pickLatest(
       List<FilingRef> all, String keyword, Comparator<FilingRef> latest) {
     return all.stream().filter(f -> f.reportName().contains(keyword)).max(latest);
