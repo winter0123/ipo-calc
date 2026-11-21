@@ -246,11 +246,10 @@ class DartRightsIssueListingServiceTest {
             + "<TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
             + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
             + "<TD>2026년 1월 30일</TD></TR></TABLE>";
-    String original =
-        "<DOCUMENT>" + paymentTable
-            + "<P>금번 유상증자 신주 23,000,000주</P></DOCUMENT>";
+    String original = "<DOCUMENT>" + paymentTable + "<P>금번 유상증자 신주 23,000,000주</P></DOCUMENT>";
     String result =
-        "<DOCUMENT>" + paymentTable
+        "<DOCUMENT>"
+            + paymentTable
             + "<P>금번 유상증자 신주 23,000,000주</P>"
             + "<P>주권 상장 및 유통 예정일 2026년 2월 13일</P></DOCUMENT>";
     when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
