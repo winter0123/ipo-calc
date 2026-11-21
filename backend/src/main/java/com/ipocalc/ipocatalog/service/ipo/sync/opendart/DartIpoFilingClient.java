@@ -187,9 +187,7 @@ public class DartIpoFilingClient {
         break;
       }
       for (JsonNode item : json.get().path("list")) {
-        toFiling(item)
-            .filter(f -> f.reportName().contains(EQUITY_REPORT))
-            .ifPresent(result::add);
+        toFiling(item).filter(f -> f.reportName().contains(EQUITY_REPORT)).ifPresent(result::add);
       }
       if (pageNo >= json.get().path("total_page").asInt(1)) {
         break;
