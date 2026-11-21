@@ -495,7 +495,17 @@ class DartRightsIssueListingServiceTest {
 
   @Test
   void acceptsOnlyExplicitlyExplainedUnissuedShares() {
-    Ipo row = ipo("20251105000215");
+    Ipo row = Ipo.builder()
+        .id(125L)
+        .corpCode("00123456")
+        .companyName("코이즈")
+        .ipoName("코이즈")
+        .sourceReceiptNo("20251105000215")
+        .syncSource("OPENDART")
+        .subscriptionStartDate(LocalDate.of(2026, 1, 26))
+        .subscriptionEndDate(LocalDate.of(2026, 1, 27))
+        .status(RecordStatus.ACTIVE)
+        .build();
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 5)));
     when(filings.downloadDocument("20251105000215"))
         .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 1, 29), 3_000_000L)));
@@ -504,7 +514,7 @@ class DartRightsIssueListingServiceTest {
         LocalDate.of(2026, 2, 10));
     when(filings.downloadDocument(REPORT))
         .thenReturn(Optional.of(result + "<P>실권주 1,004,418주 미발행</P>"));
-    assertThat(service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)).saved())
+    assertThat(service.backfill(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)).saved())
         .isEqualTo(1);
     assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
   }
