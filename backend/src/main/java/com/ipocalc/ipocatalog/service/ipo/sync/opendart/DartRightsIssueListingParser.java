@@ -115,51 +115,52 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
-  /** 미발행이 명시된 수량만 인정한다. 실권주가 일반공모로 발행된 경우는 제외한다. */
+  /** 수량과 확정된 미발행 처리가 같은 문장 또는 같은 표 셀에 명시된 경우만 인정한다. */
   public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
     if (xml == null || issued <= 0 || planned <= issued) {
       return false;
     }
     long difference = planned - issued;
-    // 표/문단 단위로 검증하여 다른 문단의 '미발행' 문구와 수량이 섞이지 않게 한다.
-    Matcher paragraphs = PARAGRAPH.matcher(xml);
-    while (paragraphs.find()) {
-      if (explicitlyUnissued(plain(paragraphs.group(1)), difference)) {
-        return true;
+    // 표는 행 전체를 합치지 않고 개별 셀 안에서만 수량과 처리를 연결한다.
+    Matcher tables = TABLE.matcher(xml);
+    while (tables.find()) {
+      Matcher cells = CELL.matcher(tables.group(1));
+      while (cells.find()) {
+        if (containsConfirmedUnissued(cells.group(1), difference)) {
+          return true;
+        }
       }
     }
-    Matcher rows = ROW.matcher(xml);
-    while (rows.find()) {
-      if (explicitlyUnissued(plain(rows.group(1)), difference)) {
+    // 표 밖 문단만 검사하여 표의 서로 다른 셀을 합치는 일을 방지한다.
+    String outsideTables = TABLE.matcher(xml).replaceAll(" ");
+    Matcher paragraphs = PARAGRAPH.matcher(outsideTables);
+    while (paragraphs.find()) {
+      if (containsConfirmedUnissued(paragraphs.group(1), difference)) {
         return true;
       }
     }
     return false;
   }
 
-  private static boolean explicitlyUnissued(String text, long difference) {
-    if (Pattern.compile(
-            "전량\\s*발행|모두\\s*발행|전부\\s*발행|일반공모.{0,15}발행"
-                + "|미발행하지\\s*않|미발행이\\s*아니|미발행\\s*없|미발행\\s*수량\\s*없")
-        .matcher(text)
-        .find()) {
-      return false;
-    }
-    Pattern unissued =
-        Pattern.compile(
-            "(?:미발행|발행하지\\s*않|발행되지\\s*않|발행\\s*취소)"
-                + "[^0-9]{0,60}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
-                + "|([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
-                + "[^0-9]{0,60}(?:미발행|발행하지\\s*않|발행되지\\s*않|발행\\s*취소)");
-    Matcher matcher = unissued.matcher(text);
-    while (matcher.find()) {
-      String number = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-      try {
-        if (Long.parseLong(number.replace(",", "")) == difference) {
-          return true;
+  private static boolean containsConfirmedUnissued(String fragment, long difference) {
+    String text = plain(fragment);
+    // 문장 경계를 넘는 수량과 미발행 문구는 결합하지 않는다.
+    for (String sentence : text.split("[.!?。]+")) {
+      Pattern confirmed =
+          Pattern.compile(
+              "([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주(?:는|가|를|의)?"
+                  + "\\s*(?:미발행(?:\\s*처리(?:\\s*하였(?:습니)?다|\\s*됨|\\s*완료)?)?"
+                  + "|발행하지\\s*않았(?:습니)?다|발행되지\\s*않았(?:습니)?다)"
+                  + "\\s*(?:입니다|되었습니다|하였습니다|함|됨|완료)?\\s*$");
+      Matcher matcher = confirmed.matcher(sentence.trim());
+      while (matcher.find()) {
+        try {
+          if (Long.parseLong(matcher.group(1).replace(",", "")) == difference) {
+            return true;
+          }
+        } catch (NumberFormatException ignored) {
+          // 잘못된 수량은 자동 연결하지 않는다.
         }
-      } catch (NumberFormatException ignored) {
-        // 숫자가 잘못된 경우는 자동 매칭하지 않는다.
       }
     }
     return false;
