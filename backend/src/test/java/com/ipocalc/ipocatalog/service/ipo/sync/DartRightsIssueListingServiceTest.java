@@ -358,7 +358,7 @@ class DartRightsIssueListingServiceTest {
     when(repo.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(rows);
     LocalDate from = LocalDate.of(2026, 1, 1);
-    LocalDate to = LocalDate.of(2026, 3, 31);
+    LocalDate to = LocalDate.of(2026, 2, 28);
     assertThat(service.backfill(from, to))
         .isEqualTo(new DartRightsIssueListingService.Result(6, 0, 0));
     for (int i = 0; i < cases.size(); i++) {
