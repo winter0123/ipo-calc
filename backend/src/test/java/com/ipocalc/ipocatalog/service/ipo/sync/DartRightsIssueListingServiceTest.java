@@ -231,9 +231,9 @@ class DartRightsIssueListingServiceTest {
     when(filings.downloadDocument(ORIGINAL))
         .thenReturn(Optional.of("<DOCUMENT><P>2019년 9월 16일 납입일</P></DOCUMENT>"));
     when(filings.downloadDocument(REPORT))
-        .thenReturn(Optional.of(
-            "<DOCUMENT><P>주권 상장 및 유통 예정일 2026.03.10</P>"
-                + "<P>납입일 2026.02.19</P></DOCUMENT>"));
+        .thenReturn(
+            Optional.of(
+                "<DOCUMENT><P>주권 상장 및 유통 예정일 2026.03.10</P>" + "<P>납입일 2026.02.19</P></DOCUMENT>"));
 
     var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
 

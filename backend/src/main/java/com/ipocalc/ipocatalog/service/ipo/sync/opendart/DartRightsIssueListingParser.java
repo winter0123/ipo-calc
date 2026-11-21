@@ -52,7 +52,8 @@ public class DartRightsIssueListingParser {
     String document = xml == null ? "" : xml;
     List<List<String>> allRows = rows(document);
     List<String> paragraphs = paragraphs(document);
-    return new IssueIdentity(paymentDate(document, allRows, paragraphs), firstShares(allRows, paragraphs));
+    return new IssueIdentity(
+        paymentDate(document, allRows, paragraphs), firstShares(allRows, paragraphs));
   }
 
   /** 표뿐 아니라 P 문단의 상장·유통개시 예정일을 읽고, 무상증자·신주인수권 일정은 제외한다. */
@@ -94,10 +95,7 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
-  /**
-   * 동일 문단에 등기예정일과 상장예정일이 있으면 상장 표제 뒤의 날짜만 추출한다.
-   * 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다.
-   */
+  /** 동일 문단에 등기예정일과 상장예정일이 있으면 상장 표제 뒤의 날짜만 추출한다. 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다. */
   private static void addListingDates(List<LocalDate> dates, String paragraph) {
     Matcher label = LISTING.matcher(paragraph);
     while (label.find()) {
@@ -121,10 +119,7 @@ public class DartRightsIssueListingParser {
     }
   }
 
-  /**
-   * '청약 및 납입일정' 표에서 납입기일 열을 우선 읽는다. 종전 발행내역의
-   * 납입일(예: 2019년)은 현재 회차 증거로 채택하지 않는다.
-   */
+  /** '청약 및 납입일정' 표에서 납입기일 열을 우선 읽는다. 종전 발행내역의 납입일(예: 2019년)은 현재 회차 증거로 채택하지 않는다. */
   private static LocalDate paymentDate(
       String document, List<List<String>> allRows, List<String> paragraphs) {
     Matcher tables = TABLE.matcher(document);

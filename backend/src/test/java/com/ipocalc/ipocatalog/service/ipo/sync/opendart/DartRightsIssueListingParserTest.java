@@ -124,9 +124,7 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void missingCurrentPaymentEvidenceDoesNotUseUnrelatedPastPaymentDate() {
-    String xml =
-        "<DOCUMENT><P>2019년 9월 16일 납입일</P>"
-            + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
+    String xml = "<DOCUMENT><P>2019년 9월 16일 납입일</P>" + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
     assertThat(parser.issueIdentity(xml).paymentDate()).isNull();
     assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
   }
