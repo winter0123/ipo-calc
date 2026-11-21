@@ -557,4 +557,80 @@ class DartRightsIssueListingServiceTest {
     verify(filings, never()).downloadDocument(any());
   }
 
+  @Test
+  void oneShareDifferenceInUnissuedCountRequiresReview() {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(
+                LocalDate.of(2026, 2, 19),
+                1_995_582L,
+                1_995_582L,
+                LocalDate.of(2026, 3, 10))
+            + "<P>실권주 1,004,417주 미발행</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void multipleReportsReuseOriginalAndCorrectionXmlWithinCandidate() {
+    Ipo row = ipo("20251121000467");
+    String newest = "20260306000001";
+    String older = "20260305000001";
+    String correction = "20260220000001";
+    setupReports(
+        row,
+        new FilingRef(newest, "증권발행실적보고서", LocalDate.of(2026, 3, 6)),
+        new FilingRef(older, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.findEquityFilings(any(), any(), any()))
+        .thenReturn(
+            List.of(
+                new FilingRef(
+                    "20251121000467",
+                    "증권신고서(지분증권)",
+                    LocalDate.of(2025, 11, 21)),
+                new FilingRef(
+                    correction,
+                    "[기재정정]증권신고서(지분증권)",
+                    LocalDate.of(2026, 2, 20))));
+    when(filings.downloadDocument("20251121000467"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 14_500_000L)));
+    when(filings.downloadDocument(correction))
+        .thenReturn(
+            Optional.of(
+                "<P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
+                    + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)));
+    when(filings.downloadDocument(newest))
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 24),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 11))));
+    when(filings.downloadDocument(older))
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 25),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 10))));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
+    verify(filings, times(1)).downloadDocument("20251121000467");
+    verify(filings, times(1)).downloadDocument(correction);
+  }
+
 }
