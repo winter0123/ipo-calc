@@ -218,4 +218,32 @@ class DartRightsIssueListingParserTest {
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
+  @Test
+  void rejectsUnissuedClaimAboutDifferentSharesInSameParagraph() {
+    String xml =
+        "<P>실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsCancelledUnissuedPlan() {
+    String xml =
+        "<P>실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsConfirmedUnissuedQuantityInSingleCell() {
+    String xml =
+        "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void rejectsQuantityAndUnissuedClaimInDifferentCells() {
+    String xml =
+        "<TABLE><TR><TD>실권주 1,004,418주</TD><TD>단주는 미발행</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
