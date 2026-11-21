@@ -24,7 +24,21 @@ public class DartRightsIssueListingParser {
       Pattern.compile("(20\\d{2})[.년/\\-]\\s*(\\d{1,2})[.월/\\-]\\s*(\\d{1,2})(?:일)?");
   private static final Pattern ORIGINAL =
       Pattern.compile("(?:원\\s*신고서|최초\\s*신고서|기준\\s*신고서)[^0-9]{0,80}(20\\d{12})");
-  private static final Pattern SHARES = Pattern.compile("([\\d,]+)\\s*주");
+  private static final Pattern QUANTITY_FIELD =
+      Pattern.compile(
+          "<(TD|TH|TE|TU)\\b([^>]*?)>(.*?)</\\1\\s*>",
+          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern QUANTITY_CODE =
+      Pattern.compile(
+          "\\b(?:AUNIT|ACODE|AID|ID|NAME)\\s*=\\s*['\"]"
+              + "(STK_CNT|INC_CNT_TOT|INC_SL_CNT_SUM)['\"]",
+          Pattern.CASE_INSENSITIVE);
+  private static final Pattern QUANTITY_ELEMENT =
+      Pattern.compile(
+          "<(STK_CNT|INC_CNT_TOT|INC_SL_CNT_SUM)\\b[^>]*>(.*?)</\\1\\s*>",
+          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern QUANTITY_VALUE =
+      Pattern.compile("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\s*주)?");
   private static final Pattern LISTING =
       Pattern.compile(
           "(?:신주|주권).{0,35}?(?:상장|유통).{0,30}?(?:예정일|개시일|상장일|예정)"
@@ -53,7 +67,7 @@ public class DartRightsIssueListingParser {
     List<List<String>> allRows = rows(document);
     List<String> paragraphs = paragraphs(document);
     return new IssueIdentity(
-        paymentDate(document, allRows, paragraphs), firstShares(allRows, paragraphs));
+        paymentDate(document, allRows, paragraphs), structuredShares(document));
   }
 
   /** 표뿐 아니라 P 문단의 상장·유통개시 예정일을 읽고, 무상증자·신주인수권 일정은 제외한다. */
@@ -221,104 +235,49 @@ public class DartRightsIssueListingParser {
     return result;
   }
 
-  private static LocalDate firstDate(List<List<String>> rows, List<String> paragraphs) {
-    LocalDate payment = firstRowDate(rows, PAID);
-    if (payment != null) {
-      return payment;
-    }
-    for (int i = 0; i < paragraphs.size(); i++) {
-      String paragraph = paragraphs.get(i);
-      if (!PAID.matcher(paragraph).find()) {
-        continue;
-      }
-      payment = parseDate(paragraph);
-      if (payment == null && i + 1 < paragraphs.size()) {
-        payment = parseDate(paragraphs.get(i + 1));
-      }
-      if (payment != null) {
-        return payment;
+  // 원신고 모집수량과 결과보고서 발행수량은 문단의 숫자로 추정하지 않는다.
+  private static Long structuredShares(String document) {
+    List<Long> original = new ArrayList<>();
+    List<Long> result = new ArrayList<>();
+    Matcher cells = QUANTITY_FIELD.matcher(document);
+    while (cells.find()) {
+      Matcher code = QUANTITY_CODE.matcher(cells.group(2));
+      if (code.find()) {
+        collectQuantity(code.group(1), cells.group(3), original, result);
       }
     }
-    return null;
+    Matcher elements = QUANTITY_ELEMENT.matcher(document);
+    while (elements.find()) {
+      collectQuantity(elements.group(1), elements.group(2), original, result);
+    }
+    // 결과보고서는 실적 합계만 사용한다. 원신고서는 모집수량만 사용한다.
+    List<Long> candidates = result.isEmpty() ? original : result;
+    List<Long> distinct = candidates.stream().distinct().toList();
+    return distinct.size() == 1 && distinct.get(0) > 0 ? distinct.get(0) : null;
   }
 
-  private static LocalDate firstRowDate(List<List<String>> rows, Pattern label) {
-    for (List<String> row : rows) {
-      if (row.size() >= 2 && label.matcher(row.get(0)).find()) {
-        LocalDate value = parseDate(row.get(1));
-        if (value != null) {
-          return value;
-        }
-      }
+  private static void collectQuantity(
+      String code, String raw, List<Long> original, List<Long> result) {
+    String value = plain(raw);
+    if (!QUANTITY_VALUE.matcher(value).matches()) {
+      return;
     }
-    return null;
-  }
-
-  private static Long firstShares(List<List<String>> rows, List<String> paragraphs) {
-    for (List<String> row : rows) {
-      if (row.size() >= 2 && isNewRightsSharesLabel(row.get(0))) {
-        Long shares = null;
-        boolean conflicting = false;
-        for (int i = 1; i < row.size(); i++) {
-          Long value = extractShares(row.get(i));
-          if (value == null) {
-            continue;
-          }
-          if (shares != null && !shares.equals(value)) {
-            conflicting = true;
-            break;
-          }
-          shares = value;
-        }
-        if (!conflicting && shares != null) {
-          return shares;
-        }
+    try {
+      long quantity = Long.parseLong(value.replace(",", "").replace("주", "").trim());
+      if ("STK_CNT".equalsIgnoreCase(code)) {
+        original.add(quantity);
+      } else {
+        result.add(quantity);
       }
+    } catch (NumberFormatException ignored) {
+      // 유효하지 않은 수량은 회차 증거로 사용하지 않는다.
     }
-    for (int i = 0; i < paragraphs.size(); i++) {
-      String paragraph = paragraphs.get(i);
-      if (!isNewRightsSharesLabel(paragraph)) {
-        continue;
-      }
-      // 같은 문단에 기존 주식수도 함께 있으면 수치 위치가 불분명해 사용하지 않는다.
-      if (OLD_SHARES.matcher(paragraph).find()) {
-        continue;
-      }
-      Long shares = extractShares(paragraph);
-      if (shares == null && i + 1 < paragraphs.size()) {
-        String following = paragraphs.get(i + 1);
-        if (!OLD_SHARES.matcher(following).find()) {
-          shares = extractShares(following);
-        }
-      }
-      if (shares != null) {
-        return shares;
-      }
-    }
-    return null;
   }
 
   private static boolean isNewRightsSharesLabel(String label) {
     return ISSUED.matcher(label.replace(" ", "")).find()
         && !OLD_SHARES.matcher(label).find()
         && !EXCLUDED.matcher(label).find();
-  }
-
-  private static Long extractShares(String text) {
-    Matcher shares = SHARES.matcher(text);
-    if (!shares.find() || shares.find()) {
-      // 서로 다른 두 수치가 있는 문단은 임의의 첫 주식수를 선택하지 않는다.
-      return null;
-    }
-    Matcher single = SHARES.matcher(text);
-    if (!single.find()) {
-      return null;
-    }
-    try {
-      return Long.parseLong(single.group(1).replace(",", ""));
-    } catch (NumberFormatException ignored) {
-      return null;
-    }
   }
 
   private static List<List<String>> rows(String xml) {
