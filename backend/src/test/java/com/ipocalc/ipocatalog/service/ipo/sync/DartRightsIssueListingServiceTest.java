@@ -633,4 +633,39 @@ class DartRightsIssueListingServiceTest {
     verify(filings, times(1)).downloadDocument(correction);
   }
 
+  @Test
+  void crossSentenceUnissuedClaimDoesNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.");
+  }
+
+  @Test
+  void cancelledUnissuedPlanDoesNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.");
+  }
+
+  private void assertRejectedUnissuedEvidence(String claim) {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(
+                LocalDate.of(2026, 2, 19),
+                1_995_582L,
+                1_995_582L,
+                LocalDate.of(2026, 3, 10))
+            + "<P>" + claim + "</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    assertThat(row.getListingDateEvidenceReceipt()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
 }
