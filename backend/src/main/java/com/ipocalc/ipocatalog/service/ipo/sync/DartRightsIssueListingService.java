@@ -96,6 +96,14 @@ public class DartRightsIssueListingService {
           continue;
         }
         if (listing == null || evidenceReceipt == null) {
+          if (!documents.isEmpty()) {
+            review++;
+            log.warn(
+                "유상 신주 상장일 회차 연결/증거 확인 필요: ipoId={}, corpCode={}, reports={}",
+                candidate.getId(),
+                candidate.getCorpCode(),
+                documents.size());
+          }
           continue;
         }
         final LocalDate dateToSave = listing;
