@@ -256,15 +256,20 @@ public class DartRightsIssueListingService {
       return false;
     }
     // 명시적 회차 번호가 없는 실적보고서는 최신 확정 조건의 날짜와 수량을 모두 요구한다.
-    if (latest == null || latest.paymentDate() == null || latest.issuedShares() == null
-        || evidence.paymentDate() == null || evidence.issuedShares() == null
+    if (latest == null
+        || latest.paymentDate() == null
+        || latest.issuedShares() == null
+        || evidence.paymentDate() == null
+        || evidence.issuedShares() == null
         || !latest.paymentDate().equals(evidence.paymentDate())) {
       // 원신고번호가 명시된 기존 보고서에는 수량 정보가 없을 수 있다.
       return source.equals(evidence.originalReceipt())
-          && (latest == null || latest.paymentDate() == null
+          && (latest == null
+              || latest.paymentDate() == null
               || evidence.paymentDate() == null
               || latest.paymentDate().equals(evidence.paymentDate()))
-          && (latest == null || latest.issuedShares() == null
+          && (latest == null
+              || latest.issuedShares() == null
               || evidence.issuedShares() == null
               || latest.issuedShares().equals(evidence.issuedShares()));
     }
