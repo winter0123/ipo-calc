@@ -68,14 +68,16 @@ class DartRightsIssueListingParserTest {
   }
 
   @Test
-  void extractsOnlyNewPaidSharesAndPaymentDateFromParagraphs() {
+  void extractsCodedNewPaidSharesAndPaymentDateDespiteNarrativeNoise() {
     String hyungji =
         "<DOCUMENT><P>발행주식총수 38,390,259주</P>"
-            + "<P>이번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
+            + "<P>이번 유상증자 신주 1주</P>"
+            + "<TABLE><TR><TU ACODE=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
             + "<P>납입일 2026.02.06</P></DOCUMENT>";
     String raon =
         "<DOCUMENT><P>기발행 주식수 20,860,012주</P>"
-            + "<P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">14,500,000</TU></TR></TABLE>"
+            + "<P>유상증자 신주 1주</P>"
+            + "<TABLE><TR><TU ACODE=\"STK_CNT\">14,500,000</TU></TR></TABLE>"
             + "<P>주금 납입일 2026년 2월 20일</P></DOCUMENT>";
     assertThat(parser.issueIdentity(hyungji).issuedShares()).isEqualTo(23_000_000L);
     assertThat(parser.issueIdentity(raon).issuedShares()).isEqualTo(14_500_000L);
@@ -115,7 +117,8 @@ class DartRightsIssueListingParserTest {
             + "<TABLE><TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
             + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
             + "<TD>2026년 1월 30일</TD></TR></TABLE>"
-            + "<P>이번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
+            + "<P>이번 유상증자 신주 1주</P>"
+            + "<TABLE><TR><TU ACODE=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
             + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
     var identity = parser.issueIdentity(xml);
     assertThat(identity.paymentDate()).isEqualTo(LocalDate.of(2026, 1, 30));
@@ -132,8 +135,8 @@ class DartRightsIssueListingParserTest {
   @Test
   void structuredQuantityDisagreementRequiresReview() {
     String xml = "<DOCUMENT><TABLE><TR>"
-        + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
-        + "<TU AUNIT=\"INC_SL_CNT_SUM\">22,000,000</TU>"
+        + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
+        + "<TU ACODE=\"INC_SL_CNT_SUM\">22,000,000</TU>"
         + "</TR></TABLE></DOCUMENT>";
     assertThat(parser.parse(xml.replace("</DOCUMENT>",
         "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
@@ -144,8 +147,8 @@ class DartRightsIssueListingParserTest {
   @Test
   void duplicatedResultTotalsAgreeWithoutDoubleCounting() {
     String xml = "<DOCUMENT><TABLE><TR>"
-        + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
-        + "<TU AUNIT=\"INC_SL_CNT_SUM\">23,000,000</TU>"
+        + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
+        + "<TU ACODE=\"INC_SL_CNT_SUM\">23,000,000</TU>"
         + "</TR></TABLE></DOCUMENT>";
     assertThat(parser.parse(xml.replace("</DOCUMENT>",
         "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
