@@ -25,7 +25,7 @@ public class DartRightsIssueListingParser {
   private static final Pattern SHARES = Pattern.compile("([\\d,]+)\\s*주");
   private static final Pattern LISTING =
       Pattern.compile(
-          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|예정)"
+          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|상장일|예정|일)"
               + "|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
   private static final Pattern PAID = Pattern.compile("(?:납입일|주금납입일|납입기일)");
   private static final Pattern ISSUED =
@@ -155,8 +155,20 @@ public class DartRightsIssueListingParser {
   private static Long firstShares(List<List<String>> rows, List<String> paragraphs) {
     for (List<String> row : rows) {
       if (row.size() >= 2 && isNewRightsSharesLabel(row.get(0))) {
-        Long shares = extractShares(row.get(1));
-        if (shares != null) {
+        Long shares = null;
+        boolean conflicting = false;
+        for (int i = 1; i < row.size(); i++) {
+          Long value = extractShares(row.get(i));
+          if (value == null) {
+            continue;
+          }
+          if (shares != null && !shares.equals(value)) {
+            conflicting = true;
+            break;
+          }
+          shares = value;
+        }
+        if (!conflicting && shares != null) {
           return shares;
         }
       }
