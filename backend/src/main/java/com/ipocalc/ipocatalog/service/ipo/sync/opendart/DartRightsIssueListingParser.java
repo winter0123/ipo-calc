@@ -12,6 +12,8 @@ public class DartRightsIssueListingParser {
   private static final Pattern SPACE = Pattern.compile("[\\s\\u00a0]+");
   private static final Pattern PARAGRAPH =
       Pattern.compile("<P\\b[^>]*>(.*?)</P>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern TABLE =
+      Pattern.compile("<TABLE\\\\b[^>]*>(.*?)</TABLE>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern ROW =
       Pattern.compile("<TR\\b[^>]*>(.*?)</TR>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern CELL =
@@ -50,7 +52,7 @@ public class DartRightsIssueListingParser {
     String document = xml == null ? "" : xml;
     List<List<String>> allRows = rows(document);
     List<String> paragraphs = paragraphs(document);
-    return new IssueIdentity(firstDate(allRows, paragraphs), firstShares(allRows, paragraphs));
+    return new IssueIdentity(paymentDate(document, allRows, paragraphs), firstShares(allRows, paragraphs));
   }
 
   /** 표뿐 아니라 P 문단의 상장·유통개시 예정일을 읽고, 무상증자·신주인수권 일정은 제외한다. */
@@ -78,7 +80,7 @@ public class DartRightsIssueListingParser {
         continue;
       }
       int before = dates.size();
-      addDate(dates, paragraph);
+      addListingDates(dates, paragraph);
       // 보고서의 <P>상장예정일</P><P>2026.03.10</P> 형태도 지원한다.
       if (dates.size() == before && i + 1 < paragraphs.size()) {
         String following = paragraphs.get(i + 1);
@@ -90,6 +92,97 @@ public class DartRightsIssueListingParser {
     return dates.stream()
         .map(date -> new Evidence(date, original, identity.paymentDate(), identity.issuedShares()))
         .toList();
+  }
+
+  /**
+   * 동일 문단에 등기예정일과 상장예정일이 있으면 상장 표제 뒤의 날짜만 추출한다.
+   * 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다.
+   */
+  private static void addListingDates(List<LocalDate> dates, String paragraph) {
+    Matcher label = LISTING.matcher(paragraph.replace(" ", ""));
+    // 공백 제거 버전과 원문 인덱스가 달라질 수 있으므로 원문에서 직접 탐색한다.
+    label = LISTING.matcher(paragraph);
+    while (label.find()) {
+      int start = label.end();
+      int nextLabel = paragraph.length();
+      Matcher later = LISTING.matcher(paragraph);
+      if (later.find(start)) {
+        nextLabel = later.start();
+      }
+      String prefix = paragraph.substring(Math.max(0, label.start() - 24), label.start());
+      String tail = paragraph.substring(start, nextLabel);
+      Matcher excluded = EXCLUDED.matcher(tail);
+      if (excluded.find()) {
+        tail = tail.substring(0, excluded.start());
+      }
+      // 신주인수권증서·무상증자 표제의 날짜는 유상 신주 날짜가 아니다.
+      if (EXCLUDED.matcher(prefix).find()) {
+        continue;
+      }
+      addDate(dates, tail);
+    }
+  }
+
+  /**
+   * '청약 및 납입일정' 표에서 납입기일 열을 우선 읽는다. 종전 발행내역의
+   * 납입일(예: 2019년)은 현재 회차 증거로 채택하지 않는다.
+   */
+  private static LocalDate paymentDate(
+      String document, List<List<String>> allRows, List<String> paragraphs) {
+    Matcher tables = TABLE.matcher(document);
+    while (tables.find()) {
+      String tableText = tables.group(1);
+      int leadStart = Math.max(0, tables.start() - 240);
+      String context = plain(document.substring(leadStart, tables.start()));
+      if (!(context.contains("청약") && context.contains("납입"))
+          && !(plain(tableText).contains("청약") && plain(tableText).contains("납입"))) {
+        continue;
+      }
+      List<List<String>> tableRows = rows(tableText);
+      for (int headerIndex = 0; headerIndex < tableRows.size(); headerIndex++) {
+        List<String> header = tableRows.get(headerIndex);
+        for (int col = 0; col < header.size(); col++) {
+          String name = header.get(col).replace(" ", "");
+          if (!PAID.matcher(name).find()) {
+            continue;
+          }
+          // 납입기일이 TH 헤더인 경우 대응하는 세로 열의 값을 사용한다.
+          for (int next = headerIndex + 1; next < tableRows.size(); next++) {
+            List<String> values = tableRows.get(next);
+            if (col < values.size()) {
+              LocalDate date = parseDate(values.get(col));
+              if (date != null) {
+                return date;
+              }
+            }
+          }
+        }
+      }
+    }
+    // 명시적 현재 발행 일정에 국한된 행만 읽는다.
+    for (List<String> row : allRows) {
+      if (row.size() >= 2 && PAID.matcher(row.get(0)).find()) {
+        LocalDate date = parseDate(row.get(1));
+        if (date != null) {
+          return date;
+        }
+      }
+    }
+    // 문단은 첫 출현 일자를 쓰지 않고 청약/납입 문맥으로 좁힌다.
+    for (int i = 0; i < paragraphs.size(); i++) {
+      String p = paragraphs.get(i);
+      if (!PAID.matcher(p).find() || !p.contains("청약")) {
+        continue;
+      }
+      LocalDate date = parseDate(p.substring(p.indexOf("납입")));
+      if (date == null && i + 1 < paragraphs.size()) {
+        date = parseDate(paragraphs.get(i + 1));
+      }
+      if (date != null) {
+        return date;
+      }
+    }
+    return null;
   }
 
   private static boolean isListingLabel(String text) {
