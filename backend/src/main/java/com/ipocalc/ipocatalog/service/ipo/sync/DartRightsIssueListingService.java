@@ -109,7 +109,8 @@ public class DartRightsIssueListingService {
                   }
                   Ipo ipo = found.get();
                   if (ipo.getSyncSource() == null
-                      || ipo.getListingDate() != null
+                      || (ipo.getListingDate() != null
+                          && !"ESTIMATED_DART".equals(ipo.getListingDateEvidenceType()))
                       || !Objects.equals(ipo.getCorpCode(), candidate.getCorpCode())) {
                     return false;
                   }
@@ -139,6 +140,18 @@ public class DartRightsIssueListingService {
     if (sourceReceipt == null || sourceReceipt.isBlank()) {
       return false;
     }
+    // 원공시와 결과보고서 양쪽의 이번 유상 신주 수/납입일을 비교한다.
+    // DB offeringShareCount는 기존 발행주식총수일 수 있으므로 매칭 증거로 사용하지 않는다.
+    if (original != null) {
+      if (original.paymentDate() != null && evidence.paymentDate() != null
+          && !original.paymentDate().equals(evidence.paymentDate())) {
+        return false;
+      }
+      if (original.issuedShares() != null && evidence.issuedShares() != null
+          && !original.issuedShares().equals(evidence.issuedShares())) {
+        return false;
+      }
+    }
     // 명시된 원신고번호가 다른 회차이면 동일 회사라도 절대 연결하지 않는다.
     if (evidence.originalReceipt() != null) {
       return sourceReceipt.equals(evidence.originalReceipt());
@@ -150,9 +163,7 @@ public class DartRightsIssueListingService {
         && original.issuedShares() != null
         && evidence.paymentDate() != null
         && evidence.issuedShares() != null
-        && ipo.getOfferingShareCount() != null
         && original.paymentDate().equals(evidence.paymentDate())
-        && original.issuedShares().equals(evidence.issuedShares())
-        && original.issuedShares().equals(ipo.getOfferingShareCount());
+        && original.issuedShares().equals(evidence.issuedShares());
   }
 }
