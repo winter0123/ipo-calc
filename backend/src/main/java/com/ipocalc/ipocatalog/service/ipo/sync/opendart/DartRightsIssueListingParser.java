@@ -27,7 +27,7 @@ public class DartRightsIssueListingParser {
   private static final Pattern SHARES = Pattern.compile("([\\d,]+)\\s*주");
   private static final Pattern LISTING =
       Pattern.compile(
-          "(?:신주|주권).{0,35}(?:상장|유통).{0,30}(?:예정일|개시일|상장일|예정|일)"
+          "(?:신주|주권).{0,35}?(?:상장|유통).{0,30}?(?:예정일|개시일|상장일|예정)"
               + "|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
   private static final Pattern PAID = Pattern.compile("(?:납입일|주금납입일|납입기일)");
   private static final Pattern ISSUED =
@@ -83,7 +83,9 @@ public class DartRightsIssueListingParser {
       int before = dates.size();
       addListingDates(dates, paragraph);
       // 보고서의 <P>상장예정일</P><P>2026.03.10</P> 형태도 지원한다.
-      if (dates.size() == before && i + 1 < paragraphs.size()) {
+      if (dates.size() == before
+          && !EXCLUDED.matcher(paragraph).find()
+          && i + 1 < paragraphs.size()) {
         String following = paragraphs.get(i + 1);
         if (!EXCLUDED.matcher(following).find() && !LISTING.matcher(following).find()) {
           addDate(dates, following);
@@ -112,7 +114,7 @@ public class DartRightsIssueListingParser {
         tail = tail.substring(0, excluded.start());
       }
       // 신주인수권증서·무상증자 표제의 날짜는 유상 신주 날짜가 아니다.
-      if (EXCLUDED.matcher(prefix).find()) {
+      if (EXCLUDED.matcher(prefix).find() || EXCLUDED.matcher(label.group()).find()) {
         continue;
       }
       addDate(dates, tail);
