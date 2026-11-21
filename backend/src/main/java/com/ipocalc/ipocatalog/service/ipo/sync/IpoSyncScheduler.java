@@ -33,6 +33,7 @@ public class IpoSyncScheduler {
       List.of(Duration.ofMinutes(5), Duration.ofMinutes(10), Duration.ofMinutes(20));
 
   private final IpoSyncService ipoSyncService;
+  private final DartRightsIssueListingService rightsIssueListingService;
   private final TaskScheduler taskScheduler;
   private final Clock clock;
 
@@ -67,6 +68,17 @@ public class IpoSyncScheduler {
       log.error("IPO 동기화 중 예외 발생 (attempt={}): {}", attempt, e.getClass().getSimpleName());
       scheduleRetryIfNeeded(attempt);
       return;
+    }
+
+    if (!result.isAborted()) {
+      // 자동 재점검: 보고서가 청약 다음 달에 제출될 수 있으므로 120일간 확인한다.
+      var today = java.time.LocalDate.now(clock);
+      var rights = rightsIssueListingService.backfill(today.minusDays(120), today);
+      log.info(
+          "유상 신주 상장일 보완: saved={}, review={}, failures={}",
+          rights.saved(),
+          rights.reviewRequired(),
+          rights.failures());
     }
 
     // 결과 요약 로그

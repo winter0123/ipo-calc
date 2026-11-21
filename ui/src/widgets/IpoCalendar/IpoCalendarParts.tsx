@@ -73,6 +73,12 @@ export const SelectedDayDetail = forwardRef<
                       {EVENT_TYPE_LABELS[event.type]}
                     </span>
                     <span className={styles.eventCompany}>{event.companyName}</span>
+                    {event.type === 'LISTING' && event.estimated && (
+                      <span className={styles.eventIpo}> (DART 상장예정)</span>
+                    )}
+                    {event.type === 'LISTING' && event.confirmed && (
+                      <span className={styles.eventIpo}> (상장 확정)</span>
+                    )}
                     {event.type === 'REFUND' && event.estimated && (
                       <span className={styles.eventIpo}> (예상)</span>
                     )}

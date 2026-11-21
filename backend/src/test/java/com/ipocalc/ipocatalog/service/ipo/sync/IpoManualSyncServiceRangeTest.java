@@ -35,6 +35,7 @@ class IpoManualSyncServiceRangeTest {
   @Mock private IpoSyncService ipoSyncService;
   @Mock private IpoDetailSyncService ipoDetailSyncService;
   @Mock private IpoHistoricalListingService historicalListingService;
+  @Mock private DartRightsIssueListingService rightsIssueListingService;
   @Mock private OpenDartApiProperties openDartProperties;
   @Mock private IpoSyncStateManager syncStateManager;
   @Mock private Executor syncExecutor;
@@ -61,6 +62,7 @@ class IpoManualSyncServiceRangeTest {
             ipoSyncService,
             ipoDetailSyncService,
             historicalListingService,
+            rightsIssueListingService,
             openDartProperties,
             syncStateManager,
             syncExecutor);

@@ -14,6 +14,8 @@ export const ipoSchema = z.object({
   subscriptionStartDate: z.string(),
   subscriptionEndDate: z.string(),
   listingDate: z.string().nullable(),
+  listingDateEvidenceType: z.enum(['ESTIMATED_DART', 'CONFIRMED_KRX']).nullish(),
+  listingDateEvidenceReceipt: z.string().nullish(),
   refundDate: z.string().nullish(),
   refundDateEstimated: z.boolean().nullish(),
   offeringShareCount: z.number().nullable(),
@@ -86,6 +88,9 @@ export const ipoSyncResultSchema = z.object({
   failed: z.number(),
   scheduleMerged: z.number(),
   listingBackfilled: z.number().nullish(),
+  rightsListingBackfilled: z.number().nullish(),
+  rightsListingReviewRequired: z.number().nullish(),
+  rightsListingFailures: z.number().nullish(),
   listingFailedRanges: z
     .array(
       z.object({

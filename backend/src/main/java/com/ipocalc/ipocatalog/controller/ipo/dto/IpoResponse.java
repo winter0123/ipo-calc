@@ -41,6 +41,10 @@ public class IpoResponse {
 
   private LocalDate listingDate;
 
+  private String listingDateEvidenceType;
+
+  private String listingDateEvidenceReceipt;
+
   private Long offeringShareCount;
 
   private String status;
@@ -68,6 +72,8 @@ public class IpoResponse {
         .subscriptionStartDate(ipo.getSubscriptionStartDate())
         .subscriptionEndDate(ipo.getSubscriptionEndDate())
         .listingDate(ipo.getListingDate())
+        .listingDateEvidenceType(ipo.getListingDateEvidenceType())
+        .listingDateEvidenceReceipt(ipo.getListingDateEvidenceReceipt())
         .offeringShareCount(ipo.getOfferingShareCount())
         .status(ipo.getStatus().name())
         .refundDate(ipo.getRefundDate())
