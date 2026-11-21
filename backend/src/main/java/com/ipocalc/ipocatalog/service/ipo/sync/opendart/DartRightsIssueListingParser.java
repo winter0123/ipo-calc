@@ -29,7 +29,7 @@ public class DartRightsIssueListingParser {
               + "|(?:상장|유통).{0,24}(?:신주|주권).{0,25}(?:예정일|개시일)");
   private static final Pattern PAID = Pattern.compile("(?:납입일|주금납입일|납입기일)");
   private static final Pattern ISSUED =
-      Pattern.compile("(?:유상증자.{0,16}(?:신주|발행주식)|신주\\s*발행\\s*(?:주식)?\\s*수|금번\\s*발행\\s*주식\\s*수|발행할\\s*신주)");
+      Pattern.compile("(?:유상증자.{0,20}(?:신주|발행.{0,8}주식)|신주\\s*발행\\s*(?:주식)?\\s*수|금번\\s*발행\\s*주식\\s*수|발행할\\s*신주|신주\\s*(?:의)?\\s*(?:종류.{0,6})?수)");
   private static final Pattern OLD_SHARES =
       Pattern.compile("(?:기발행|기존\\s*발행|현재\\s*발행|발행주식총수|총발행주식수)");
   private static final Pattern EXCLUDED =
