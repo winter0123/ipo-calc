@@ -196,6 +196,7 @@ class DartRightsIssueListingParserTest {
     String xml = report(row("신주인수권증서 상장예정일", "2026.03.10") + row("무상증자 신주 상장 예정일", "2026.03.24"));
     assertThat(parser.parse(xml)).isEmpty();
   }
+
   @Test
   void rejectsUnsubscribedSharesThatWereFullyIssuedThroughPublicOffering() {
     String xml =
