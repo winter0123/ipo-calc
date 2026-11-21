@@ -50,6 +50,63 @@ class DartRightsIssueListingParserTest {
     assertThat(evidence.get(0).originalReceipt()).isEqualTo("20260201000001");
   }
 
+  @ParameterizedTest(name = "{0}: P 문단의 유상 신주 상장일")
+  @MethodSource("sixHistoricalIssueDates")
+  void readsListingFromParagraphOutsideTables(
+      String company, String date, LocalDate expected) {
+    String xml =
+        report(
+            row("발행주식총수", "38,390,259주")
+                + row("기발행주식수", "20,860,012주"))
+        .replace("</DOCUMENT>",
+            "<P>유상증자에 따른 신주 상장 및 유통개시 예정일: " + date + "</P>"
+                + "<P>신주인수권증서 상장예정일: 2026.02.09</P>"
+                + "<P>무상증자 신주 상장 예정일: 2026.03.24</P></DOCUMENT>");
+    assertThat(parser.parse(xml))
+        .extracting(DartRightsIssueListingParser.Evidence::listingDate)
+        .containsExactly(expected);
+  }
+
+  @Test
+  void extractsOnlyNewPaidSharesAndPaymentDateFromParagraphs() {
+    String hyungji =
+        "<DOCUMENT><P>발행주식총수 38,390,259주</P>"
+            + "<P>이번 유상증자 신주 23,000,000주</P>"
+            + "<P>납입일 2026.02.06</P></DOCUMENT>";
+    String raon =
+        "<DOCUMENT><P>기발행 주식수 20,860,012주</P>"
+            + "<P>유상증자 신주 14,500,000주</P>"
+            + "<P>주금 납입일 2026년 2월 20일</P></DOCUMENT>";
+    assertThat(parser.issueIdentity(hyungji).issuedShares()).isEqualTo(23_000_000L);
+    assertThat(parser.issueIdentity(raon).issuedShares()).isEqualTo(14_500_000L);
+    assertThat(parser.issueIdentity(hyungji).paymentDate())
+        .isEqualTo(LocalDate.of(2026, 2, 6));
+    assertThat(parser.issueIdentity(raon).paymentDate())
+        .isEqualTo(LocalDate.of(2026, 2, 20));
+  }
+
+  @Test
+  void listingLabelAndDateInAdjacentParagraphsArePaired() {
+    String xml =
+        "<DOCUMENT><P>유상증자 신주 상장 및 유통 예정일</P>"
+            + "<P>2026.02.13</P>"
+            + "<P>무상증자 신주 상장 예정일</P><P>2026.03.24</P>"
+            + "</DOCUMENT>";
+    assertThat(parser.parse(xml))
+        .extracting(DartRightsIssueListingParser.Evidence::listingDate)
+        .containsExactly(LocalDate.of(2026, 2, 13));
+  }
+
+  @Test
+  void ignoresExistingOutstandingSharesWithoutIssueSpecificLabel() {
+    String xml =
+        "<DOCUMENT><TABLE>"
+            + row("발행주식총수", "38,390,259주")
+            + row("기발행주식수", "20,860,012주")
+            + "</TABLE></DOCUMENT>";
+    assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
+  }
+
   @Test
   void raonPeopleBonusDateIsNotPaidRightsListingDate() {
     String xml =
