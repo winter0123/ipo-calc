@@ -160,8 +160,11 @@ public class DartRightsIssueListingParser {
     String context = "";
     while (headings.find()) {
       String heading = plain(headings.group(1));
-      if (heading.matches(
-          "(?s).*(?:실권주\\s*처리내역|무상증자\\s*(?:신주\\s*)?처리내역|유상증자\\s*(?:신주\\s*)?처리내역|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
+      String sectionPattern =
+          "(?s).*(?:실권주\\s*처리내역|무상증자\\s*(?:신주\\s*)?처리내역"
+              + "|유상증자\\s*(?:신주\\s*)?처리내역|다른\\s*발행\\s*회차"
+              + "|별도\\s*발행\\s*건).*";
+      if (heading.matches(sectionPattern)) {
         context = heading;
       }
     }
