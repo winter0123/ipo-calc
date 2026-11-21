@@ -1,0 +1,32 @@
+name: Temporary PR513 Parser Format
+on:
+  push:
+    branches:
+      - fix/dart-rights-issue-listing-20261121
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/dart-rights-issue-listing-20261121
+          persist-credentials: true
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Spotless format
+        working-directory: backend
+        run: ./gradlew spotlessApply --no-daemon
+      - name: Commit format
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/opendart/DartRightsIssueListingParser.java backend/src/main/java/com/ipocalc/ipocatalog/service/ipo/sync/DartRightsIssueListingService.java backend/src/test/java/com/ipocalc/ipocatalog/service/ipo/sync/opendart/DartRightsIssueListingParserTest.java backend/src/test/java/com/ipocalc/ipocatalog/service/ipo/sync/DartRightsIssueListingServiceTest.java
+          if ! git diff --cached --quiet; then
+            git commit -m "style(dart): format payment schedule and listing evidence fixes"
+            git push origin HEAD:fix/dart-rights-issue-listing-20261121
+          fi
