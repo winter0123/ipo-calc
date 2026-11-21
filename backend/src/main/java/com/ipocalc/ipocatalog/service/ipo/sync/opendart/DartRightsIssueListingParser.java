@@ -115,6 +115,33 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
+  /** 실권주 등 미발행 사유와 미발행 수량이 공시에 명시된 경우에만 발행량 감소를 허용한다. */
+  public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
+    if (xml == null || issued <= 0 || planned <= issued) {
+      return false;
+    }
+    String plainText = plain(xml);
+    if (!Pattern.compile("실권주|미청약|미발행").matcher(plainText).find()) {
+      return false;
+    }
+    long difference = planned - issued;
+    Pattern unissued = Pattern.compile(
+        "(?:실권주|미청약|미발행)[^\\d]{0,90}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주"
+            + "|([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주[^\\d]{0,50}(?:실권주|미청약|미발행)");
+    Matcher matcher = unissued.matcher(plainText);
+    while (matcher.find()) {
+      String value = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+      try {
+        if (Long.parseLong(value.replace(",", "")) == difference) {
+          return true;
+        }
+      } catch (NumberFormatException ignored) {
+        // 잘못된 수량은 자동 매칭하지 않는다.
+      }
+    }
+    return false;
+  }
+
   /** 동일 문단에 등기예정일과 상장예정일이 있으면 상장 표제 뒤의 날짜만 추출한다. 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다. */
   private static void addListingDates(List<LocalDate> dates, String paragraph) {
     Matcher label = LISTING.matcher(paragraph);
