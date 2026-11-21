@@ -225,6 +225,47 @@ class DartRightsIssueListingServiceTest {
   }
 
   @Test
+  void hyungjiUsesPaymentDueTableAndIgnoresOld2019Date() {
+    Ipo row =
+        Ipo.builder()
+            .id(125L)
+            .corpCode("00123456")
+            .companyName("형지엘리트")
+            .ipoName("형지엘리트")
+            .sourceReceiptNo(ORIGINAL)
+            .syncSource("OPENDART")
+            .offeringShareCount(38_390_259L)
+            .subscriptionStartDate(LocalDate.of(2026, 1, 26))
+            .subscriptionEndDate(LocalDate.of(2026, 1, 28))
+            .status(RecordStatus.ACTIVE)
+            .build();
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 10)));
+    String paymentTable =
+        "<P>과거 납입일 2019년 9월 16일</P>"
+            + "<P>청약 및 납입일정</P><TABLE>"
+            + "<TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
+            + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
+            + "<TD>2026년 1월 30일</TD></TR></TABLE>";
+    String original =
+        "<DOCUMENT>" + paymentTable
+            + "<P>금번 유상증자 신주 23,000,000주</P></DOCUMENT>";
+    String result =
+        "<DOCUMENT>" + paymentTable
+            + "<P>금번 유상증자 신주 23,000,000주</P>"
+            + "<P>주권 상장 및 유통 예정일 2026년 2월 13일</P></DOCUMENT>";
+    when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(result));
+
+    var backfill = service.backfill(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+    assertThat(backfill.saved()).isEqualTo(1);
+    assertThat(backfill.reviewRequired()).isZero();
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 13));
+    assertThat(row.getOfferingShareCount()).isEqualTo(38_390_259L);
+    verify(repo).saveAndFlush(row);
+  }
+
+  @Test
   void unresolvedFilingRoundIsReportedForManualReviewRatherThanSilentZero() {
     Ipo row = ipo(ORIGINAL);
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
