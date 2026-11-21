@@ -71,11 +71,11 @@ class DartRightsIssueListingParserTest {
   void extractsOnlyNewPaidSharesAndPaymentDateFromParagraphs() {
     String hyungji =
         "<DOCUMENT><P>발행주식총수 38,390,259주</P>"
-            + "<P>이번 유상증자 신주 23,000,000주</P>"
+            + "<P>이번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
             + "<P>납입일 2026.02.06</P></DOCUMENT>";
     String raon =
         "<DOCUMENT><P>기발행 주식수 20,860,012주</P>"
-            + "<P>유상증자 신주 14,500,000주</P>"
+            + "<P>유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"INC_CNT_TOT\">14,500,000</TU></TR></TABLE>"
             + "<P>주금 납입일 2026년 2월 20일</P></DOCUMENT>";
     assertThat(parser.issueIdentity(hyungji).issuedShares()).isEqualTo(23_000_000L);
     assertThat(parser.issueIdentity(raon).issuedShares()).isEqualTo(14_500_000L);
@@ -115,7 +115,7 @@ class DartRightsIssueListingParserTest {
             + "<TABLE><TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
             + "<TR><TD>유상증자</TD><TD>2026년 1월 28일</TD>"
             + "<TD>2026년 1월 30일</TD></TR></TABLE>"
-            + "<P>이번 유상증자 신주 23,000,000주</P>"
+            + "<P>이번 유상증자 신주 1주</P><TABLE><TR><TU AUNIT=\"STK_CNT\">23,000,000</TU></TR></TABLE>"
             + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
     var identity = parser.issueIdentity(xml);
     assertThat(identity.paymentDate()).isEqualTo(LocalDate.of(2026, 1, 30));
@@ -127,6 +127,29 @@ class DartRightsIssueListingParserTest {
     String xml = "<DOCUMENT><P>2019년 9월 16일 납입일</P>" + "<P>발행주식총수 38,390,259주</P></DOCUMENT>";
     assertThat(parser.issueIdentity(xml).paymentDate()).isNull();
     assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
+  }
+
+  @Test
+  void structuredQuantityDisagreementRequiresReview() {
+    String xml = "<DOCUMENT><TABLE><TR>"
+        + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
+        + "<TU AUNIT=\"INC_SL_CNT_SUM\">22,000,000</TU>"
+        + "</TR></TABLE></DOCUMENT>";
+    assertThat(parser.issueIdentity(xml).issuedShares()).isNull();
+  }
+
+  @Test
+  void duplicatedResultTotalsAgreeWithoutDoubleCounting() {
+    String xml = "<DOCUMENT><TABLE><TR>"
+        + "<TU AUNIT=\"INC_CNT_TOT\">23,000,000</TU>"
+        + "<TU AUNIT=\"INC_SL_CNT_SUM\">23,000,000</TU>"
+        + "</TR></TABLE></DOCUMENT>";
+    assertThat(parser.issueIdentity(xml).issuedShares()).isEqualTo(23_000_000L);
+  }
+
+  @Test
+  void narrativeAloneIsNotQuantityEvidence() {
+    assertThat(parser.issueIdentity("<P>이번 유상증자 신주 1주</P>").issuedShares()).isNull();
   }
 
   @Test
