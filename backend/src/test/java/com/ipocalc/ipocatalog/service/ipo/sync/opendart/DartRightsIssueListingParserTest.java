@@ -52,16 +52,16 @@ class DartRightsIssueListingParserTest {
 
   @ParameterizedTest(name = "{0}: P 문단의 유상 신주 상장일")
   @MethodSource("sixHistoricalIssueDates")
-  void readsListingFromParagraphOutsideTables(
-      String company, String date, LocalDate expected) {
+  void readsListingFromParagraphOutsideTables(String company, String date, LocalDate expected) {
     String xml =
-        report(
-            row("발행주식총수", "38,390,259주")
-                + row("기발행주식수", "20,860,012주"))
-        .replace("</DOCUMENT>",
-            "<P>유상증자에 따른 신주 상장 및 유통개시 예정일: " + date + "</P>"
-                + "<P>신주인수권증서 상장예정일: 2026.02.09</P>"
-                + "<P>무상증자 신주 상장 예정일: 2026.03.24</P></DOCUMENT>");
+        report(row("발행주식총수", "38,390,259주") + row("기발행주식수", "20,860,012주"))
+            .replace(
+                "</DOCUMENT>",
+                "<P>유상증자에 따른 신주 상장 및 유통개시 예정일: "
+                    + date
+                    + "</P>"
+                    + "<P>신주인수권증서 상장예정일: 2026.02.09</P>"
+                    + "<P>무상증자 신주 상장 예정일: 2026.03.24</P></DOCUMENT>");
     assertThat(parser.parse(xml))
         .extracting(DartRightsIssueListingParser.Evidence::listingDate)
         .containsExactly(expected);
@@ -79,10 +79,8 @@ class DartRightsIssueListingParserTest {
             + "<P>주금 납입일 2026년 2월 20일</P></DOCUMENT>";
     assertThat(parser.issueIdentity(hyungji).issuedShares()).isEqualTo(23_000_000L);
     assertThat(parser.issueIdentity(raon).issuedShares()).isEqualTo(14_500_000L);
-    assertThat(parser.issueIdentity(hyungji).paymentDate())
-        .isEqualTo(LocalDate.of(2026, 2, 6));
-    assertThat(parser.issueIdentity(raon).paymentDate())
-        .isEqualTo(LocalDate.of(2026, 2, 20));
+    assertThat(parser.issueIdentity(hyungji).paymentDate()).isEqualTo(LocalDate.of(2026, 2, 6));
+    assertThat(parser.issueIdentity(raon).paymentDate()).isEqualTo(LocalDate.of(2026, 2, 20));
   }
 
   @Test

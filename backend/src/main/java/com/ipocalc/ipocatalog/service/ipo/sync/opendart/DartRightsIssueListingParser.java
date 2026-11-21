@@ -93,8 +93,7 @@ public class DartRightsIssueListingParser {
   }
 
   private static boolean isListingLabel(String text) {
-    return LISTING.matcher(text.replace(" ", "")).find()
-        && !EXCLUDED.matcher(text).find();
+    return LISTING.matcher(text.replace(" ", "")).find() && !EXCLUDED.matcher(text).find();
   }
 
   private static void addDate(List<LocalDate> dates, String text) {

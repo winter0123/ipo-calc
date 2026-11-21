@@ -143,11 +143,13 @@ public class DartRightsIssueListingService {
     // 원공시와 결과보고서 양쪽의 이번 유상 신주 수/납입일을 비교한다.
     // DB offeringShareCount는 기존 발행주식총수일 수 있으므로 매칭 증거로 사용하지 않는다.
     if (original != null) {
-      if (original.paymentDate() != null && evidence.paymentDate() != null
+      if (original.paymentDate() != null
+          && evidence.paymentDate() != null
           && !original.paymentDate().equals(evidence.paymentDate())) {
         return false;
       }
-      if (original.issuedShares() != null && evidence.issuedShares() != null
+      if (original.issuedShares() != null
+          && evidence.issuedShares() != null
           && !original.issuedShares().equals(evidence.issuedShares())) {
         return false;
       }
