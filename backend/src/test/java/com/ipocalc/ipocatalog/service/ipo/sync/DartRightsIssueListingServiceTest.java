@@ -225,6 +225,26 @@ class DartRightsIssueListingServiceTest {
   }
 
   @Test
+  void unresolvedFilingRoundIsReportedForManualReviewRatherThanSilentZero() {
+    Ipo row = ipo(ORIGINAL);
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument(ORIGINAL))
+        .thenReturn(Optional.of("<DOCUMENT><P>2019년 9월 16일 납입일</P></DOCUMENT>"));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(Optional.of(
+            "<DOCUMENT><P>주권 상장 및 유통 예정일 2026.03.10</P>"
+                + "<P>납입일 2026.02.19</P></DOCUMENT>"));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(result.failures()).isZero();
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
   void correctionNeverOverwritesManuallyProtectedListingDate() {
     Ipo row = ipo(ORIGINAL);
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
