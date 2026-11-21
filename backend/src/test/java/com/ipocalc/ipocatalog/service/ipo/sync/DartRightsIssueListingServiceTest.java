@@ -468,4 +468,45 @@ class DartRightsIssueListingServiceTest {
     assertThat(result.reviewRequired()).isEqualTo(1);
     verify(repo, never()).saveAndFlush(any());
   }
+  @Test
+  void correctedOriginalReceiptMatchesLatestPaymentAndShares() {
+    Ipo row = ipo("20251121000467");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    String correctionReceipt = "20260220000001";
+    when(filings.findEquityFilings(any(), any(), any()))
+        .thenReturn(List.of(
+            new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
+            new FilingRef(correctionReceipt, "[발행조건확정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
+    when(filings.downloadDocument("20251121000467"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 6), 14_500_000L)));
+    when(filings.downloadDocument(correctionReceipt))
+        .thenReturn(Optional.of(
+            "<DOCUMENT><P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
+                + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)
+                + "</DOCUMENT>"));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(Optional.of(resultDocument(
+            LocalDate.of(2026, 2, 25), 14_500_000L, 14_500_000L,
+            LocalDate.of(2026, 3, 10))));
+    assertThat(service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)).saved())
+        .isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
+  }
+
+  @Test
+  void acceptsOnlyExplicitlyExplainedUnissuedShares() {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 2, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 1, 29), 3_000_000L)));
+    String result = resultDocument(
+        LocalDate.of(2026, 1, 29), 1_995_582L, 1_995_582L,
+        LocalDate.of(2026, 2, 10));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(Optional.of(result + "<P>실권주 1,004,418주 미발행</P>"));
+    assertThat(service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)).saved())
+        .isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+  }
+
 }
