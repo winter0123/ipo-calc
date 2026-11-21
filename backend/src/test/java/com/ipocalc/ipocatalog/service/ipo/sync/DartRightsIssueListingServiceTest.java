@@ -280,53 +280,59 @@ class DartRightsIssueListingServiceTest {
   }
 
   // 실제 공시에서 확인한 값과 필드 구조를 재현한 축약 XML. 원본 ZIP 자체는 아니다.
-  private record HistoricalIssue(
-      String name, LocalDate payment, long shares, LocalDate listing) {}
+  private record HistoricalIssue(String name, LocalDate payment, long shares, LocalDate listing) {}
 
   private static String quantityTable(String code, long shares) {
-    return "<TABLE><TR><TD>보통주</TD><TU ACODE=\""
-        + code + "\">" + shares + "</TU></TR></TABLE>";
+    return "<TABLE><TR><TD>보통주</TD><TU ACODE=\"" + code + "\">" + shares + "</TU></TR></TABLE>";
   }
 
   private static String scheduleTable(LocalDate payment) {
     return "<P>청약 및 납입일정</P><TABLE>"
         + "<TR><TH>구분</TH><TH>청약일</TH><TH>납입기일</TH></TR>"
-        + "<TR><TD>유상증자</TD><TD>" + payment.minusDays(2) + "</TD>"
-        + "<TD>" + payment + "</TD></TR></TABLE>";
+        + "<TR><TD>유상증자</TD><TD>"
+        + payment.minusDays(2)
+        + "</TD>"
+        + "<TD>"
+        + payment
+        + "</TD></TR></TABLE>";
   }
 
   private static String originalDocument(LocalDate payment, long shares) {
     return "<DOCUMENT><P>기발행 주식수 38,390,259주</P>"
         + "<P>금번 유상증자 신주 1주</P>"
         + quantityTable("STK_CNT", shares)
-        + scheduleTable(payment) + "</DOCUMENT>";
+        + scheduleTable(payment)
+        + "</DOCUMENT>";
   }
 
   private static String resultDocument(
       LocalDate payment, long shares, long secondTotal, LocalDate listing) {
-    return "<DOCUMENT>" + scheduleTable(payment)
+    return "<DOCUMENT>"
+        + scheduleTable(payment)
         + quantityTable("INC_CNT_TOT", shares)
         + quantityTable("INC_SL_CNT_SUM", secondTotal)
         + "<P>등기예정일 2026년 2월 12일, 신주 상장 및 유통개시(예정)일 "
-        + listing + "</P>"
+        + listing
+        + "</P>"
         + "<P>무상증자 신주 상장 예정일 2026년 3월 24일</P></DOCUMENT>";
   }
 
   @Test
   void restoresSixHistoricalRowsUsingStructuredDisclosureFieldsAndRerunIsIdempotent() {
-    List<HistoricalIssue> cases = List.of(
-        new HistoricalIssue("형지엘리트", LocalDate.of(2026, 1, 30),
-            23_000_000L, LocalDate.of(2026, 2, 13)),
-        new HistoricalIssue("아이씨에이치", LocalDate.of(2026, 2, 10),
-            8_000_000L, LocalDate.of(2026, 2, 25)),
-        new HistoricalIssue("아미코젠", LocalDate.of(2026, 2, 11),
-            14_925_374L, LocalDate.of(2026, 2, 26)),
-        new HistoricalIssue("라온피플", LocalDate.of(2026, 2, 25),
-            14_500_000L, LocalDate.of(2026, 3, 10)),
-        new HistoricalIssue("비보존제약", LocalDate.of(2026, 3, 4),
-            10_615_000L, LocalDate.of(2026, 3, 19)),
-        new HistoricalIssue("대한광통신", LocalDate.of(2026, 3, 6),
-            23_500_000L, LocalDate.of(2026, 3, 19)));
+    List<HistoricalIssue> cases =
+        List.of(
+            new HistoricalIssue(
+                "형지엘리트", LocalDate.of(2026, 1, 30), 23_000_000L, LocalDate.of(2026, 2, 13)),
+            new HistoricalIssue(
+                "아이씨에이치", LocalDate.of(2026, 2, 10), 8_000_000L, LocalDate.of(2026, 2, 25)),
+            new HistoricalIssue(
+                "아미코젠", LocalDate.of(2026, 2, 11), 14_925_374L, LocalDate.of(2026, 2, 26)),
+            new HistoricalIssue(
+                "라온피플", LocalDate.of(2026, 2, 25), 14_500_000L, LocalDate.of(2026, 3, 10)),
+            new HistoricalIssue(
+                "비보존제약", LocalDate.of(2026, 3, 4), 10_615_000L, LocalDate.of(2026, 3, 19)),
+            new HistoricalIssue(
+                "대한광통신", LocalDate.of(2026, 3, 6), 23_500_000L, LocalDate.of(2026, 3, 19)));
     List<Ipo> rows = new ArrayList<>();
     List<String> receipts = new ArrayList<>();
     for (int i = 0; i < cases.size(); i++) {
@@ -336,24 +342,35 @@ class DartRightsIssueListingServiceTest {
       String original = "2026010100000" + i;
       String report = "2026030700000" + i;
       LocalDate end = c.payment().minusDays(2);
-      Ipo row = Ipo.builder()
-          .id(id).corpCode(corp).companyName(c.name()).ipoName(c.name())
-          .sourceReceiptNo(original).syncSource("OPENDART")
-          .subscriptionStartDate(end.minusDays(5)).subscriptionEndDate(end)
-          .refundDate(c.payment().plusDays(1)).fixedPrice(12345L)
-          .status(RecordStatus.ACTIVE).build();
+      Ipo row =
+          Ipo.builder()
+              .id(id)
+              .corpCode(corp)
+              .companyName(c.name())
+              .ipoName(c.name())
+              .sourceReceiptNo(original)
+              .syncSource("OPENDART")
+              .subscriptionStartDate(end.minusDays(5))
+              .subscriptionEndDate(end)
+              .refundDate(c.payment().plusDays(1))
+              .fixedPrice(12345L)
+              .status(RecordStatus.ACTIVE)
+              .build();
       rows.add(row);
       receipts.add(report);
       when(repo.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(row));
       when(filings.findIssuanceResults(
-          corp, end.minusDays(5), end.plusDays(120).isAfter(LocalDate.of(2026, 6, 1))
-              ? LocalDate.of(2026, 6, 1) : end.plusDays(120)))
+              corp,
+              end.minusDays(5),
+              end.plusDays(120).isAfter(LocalDate.of(2026, 6, 1))
+                  ? LocalDate.of(2026, 6, 1)
+                  : end.plusDays(120)))
           .thenReturn(List.of(new FilingRef(report, "증권발행실적보고서", c.payment())));
       when(filings.downloadDocument(original))
           .thenReturn(Optional.of(originalDocument(c.payment(), c.shares())));
       when(filings.downloadDocument(report))
-          .thenReturn(Optional.of(resultDocument(
-              c.payment(), c.shares(), c.shares(), c.listing())));
+          .thenReturn(
+              Optional.of(resultDocument(c.payment(), c.shares(), c.shares(), c.listing())));
     }
     when(repo.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(rows);

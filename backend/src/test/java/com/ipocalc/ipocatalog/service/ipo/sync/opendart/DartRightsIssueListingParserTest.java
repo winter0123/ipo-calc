@@ -134,24 +134,26 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void structuredQuantityDisagreementRequiresReview() {
-    String xml = "<DOCUMENT><TABLE><TR>"
-        + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
-        + "<TU ACODE=\"INC_SL_CNT_SUM\">22,000,000</TU>"
-        + "</TR></TABLE></DOCUMENT>";
-    assertThat(parser.parse(xml.replace("</DOCUMENT>",
-        "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
+    String xml =
+        "<DOCUMENT><TABLE><TR>"
+            + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
+            + "<TU ACODE=\"INC_SL_CNT_SUM\">22,000,000</TU>"
+            + "</TR></TABLE></DOCUMENT>";
+    assertThat(
+            parser.parse(xml.replace("</DOCUMENT>", "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
         .extracting(DartRightsIssueListingParser.Evidence::issuedShares)
         .containsExactly((Long) null);
   }
 
   @Test
   void duplicatedResultTotalsAgreeWithoutDoubleCounting() {
-    String xml = "<DOCUMENT><TABLE><TR>"
-        + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
-        + "<TU ACODE=\"INC_SL_CNT_SUM\">23,000,000</TU>"
-        + "</TR></TABLE></DOCUMENT>";
-    assertThat(parser.parse(xml.replace("</DOCUMENT>",
-        "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
+    String xml =
+        "<DOCUMENT><TABLE><TR>"
+            + "<TU ACODE=\"INC_CNT_TOT\">23,000,000</TU>"
+            + "<TU ACODE=\"INC_SL_CNT_SUM\">23,000,000</TU>"
+            + "</TR></TABLE></DOCUMENT>";
+    assertThat(
+            parser.parse(xml.replace("</DOCUMENT>", "<P>신주 상장 및 유통 예정일 2026.02.13</P></DOCUMENT>")))
         .extracting(DartRightsIssueListingParser.Evidence::issuedShares)
         .containsExactly(23_000_000L);
   }

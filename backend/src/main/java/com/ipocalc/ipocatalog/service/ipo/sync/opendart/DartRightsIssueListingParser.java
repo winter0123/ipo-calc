@@ -26,8 +26,7 @@ public class DartRightsIssueListingParser {
       Pattern.compile("(?:원\\s*신고서|최초\\s*신고서|기준\\s*신고서)[^0-9]{0,80}(20\\d{12})");
   private static final Pattern QUANTITY_FIELD =
       Pattern.compile(
-          "<(TD|TH|TE|TU)\\b([^>]*?)>(.*?)</\\1\\s*>",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "<(TD|TH|TE|TU)\\b([^>]*?)>(.*?)</\\1\\s*>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern QUANTITY_CODE =
       Pattern.compile(
           "\\b(?:AUNIT|ACODE|AID|ID|NAME)\\s*=\\s*['\"]"
