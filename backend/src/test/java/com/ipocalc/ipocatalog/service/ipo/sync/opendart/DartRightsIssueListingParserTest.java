@@ -247,4 +247,36 @@ class DartRightsIssueListingParserTest {
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
+  @Test
+  void rejectsBonusSharesEvenWhenUnissuedQuantityMatches() {
+    String xml = "<P>별도 무상증자 신주 1,004,418주는 미발행 처리</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsBonusSectionRemarkCellWithMatchingQuantity() {
+    String xml =
+        "<P>Ⅸ. 무상증자 신주 처리내역</P>"
+            + "<TABLE><TR><TD>비고</TD><TD>1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsRightsIssueUnissuedRemarkBelowRelevantHeading() {
+    String xml =
+        "<P>Ⅷ. 실권주 처리내역</P>"
+            + "<P>신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void rejectsUnrelatedRightsIssueRoundWithSameQuantity() {
+    String xml =
+        "<P>별도 발행 건 유상증자</P>"
+            + "<P>다른 발행 회차 실권주 1,004,418주는 미발행 처리</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
