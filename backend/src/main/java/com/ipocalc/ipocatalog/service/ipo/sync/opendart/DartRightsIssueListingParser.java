@@ -164,7 +164,22 @@ public class DartRightsIssueListingParser {
     // 문단은 첫 출현 일자를 쓰지 않고 청약/납입 문맥으로 좁힌다.
     for (int i = 0; i < paragraphs.size(); i++) {
       String p = paragraphs.get(i);
-      if (!PAID.matcher(p).find() || !p.contains("청약")) {
+      if (!PAID.matcher(p).find()) {
+        continue;
+      }
+      boolean currentIssue = p.contains("청약") || p.contains("유상증자");
+      if (!currentIssue) {
+        for (int nearby = Math.max(0, i - 3); nearby < i; nearby++) {
+          if (isNewRightsSharesLabel(paragraphs.get(nearby))
+              && (paragraphs.get(nearby).contains("유상증자")
+                  || paragraphs.get(nearby).contains("금번")
+                  || paragraphs.get(nearby).contains("이번"))) {
+            currentIssue = true;
+            break;
+          }
+        }
+      }
+      if (!currentIssue) {
         continue;
       }
       LocalDate date = parseDate(p.substring(p.indexOf("납입")));
