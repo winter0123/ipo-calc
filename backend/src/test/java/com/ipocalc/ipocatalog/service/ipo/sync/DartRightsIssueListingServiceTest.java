@@ -468,6 +468,7 @@ class DartRightsIssueListingServiceTest {
     assertThat(result.reviewRequired()).isEqualTo(1);
     verify(repo, never()).saveAndFlush(any());
   }
+
   @Test
   void correctedOriginalReceiptMatchesLatestPaymentAndShares() {
     Ipo row = ipo("20251121000467");
