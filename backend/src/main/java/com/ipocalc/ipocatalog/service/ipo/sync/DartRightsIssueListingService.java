@@ -100,7 +100,12 @@ public class DartRightsIssueListingService {
           }
           var finalIdentity =
               latestIdentity(
-                  candidate, history, disclosures, documentCache, filing.receivedOn(), originalIdentity);
+                  candidate,
+                  history,
+                  disclosures,
+                  documentCache,
+                  filing.receivedOn(),
+                  originalIdentity);
           List<Evidence> sameIssue =
               parser.parse(xml).stream()
                   .filter(e -> isSameIssue(candidate, e, finalIdentity, xml))
