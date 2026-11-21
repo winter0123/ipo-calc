@@ -201,6 +201,27 @@ class DartRightsIssueListingServiceTest {
   }
 
   @Test
+  void rejectsPaymentOrNewShareMismatchEvenWhenCompanyMatches() {
+    Ipo row = ipo(ORIGINAL);
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    String original =
+        "<DOCUMENT><P>유상증자 신주 14,500,000주</P>"
+            + "<P>납입일 2026.02.19</P></DOCUMENT>";
+    String unrelatedIssue =
+        "<DOCUMENT><P>유상증자 신주 20,860,012주</P>"
+            + "<P>납입일 2026.02.19</P>"
+            + "<P>주권 상장 및 유통 예정일 2026.03.10</P></DOCUMENT>";
+    when(filings.downloadDocument(ORIGINAL)).thenReturn(Optional.of(original));
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(unrelatedIssue));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
   void correctionNeverOverwritesManuallyProtectedListingDate() {
     Ipo row = ipo(ORIGINAL);
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
