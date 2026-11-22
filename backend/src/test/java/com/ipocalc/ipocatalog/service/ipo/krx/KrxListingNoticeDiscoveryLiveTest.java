@@ -36,8 +36,20 @@ class KrxListingNoticeDiscoveryLiveTest {
     var officialNoticeClient = new KrxListingNoticeClient(RestClient.builder());
     var parser = new KrxListingNoticeParser();
     for (Case c : cases) {
-      var search = discovery.find(
+      var publicationSearch = discovery.find(
           c.stockCode(), c.publishedAt().minusDays(1), c.publishedAt().plusDays(1));
+      var search = publicationSearch.disclosures().stream()
+              .anyMatch(item -> c.receiptNo().equals(item.receiptNo()))
+          ? publicationSearch
+          : discovery.findViaStockIssue(
+              c.stockCode(), c.publishedAt().minusDays(1), c.publishedAt().plusDays(1));
+      System.out.printf("KIND_DISCOVERY_PATH stock=%s detail=%s fallback=%s%n",
+          c.stockCode(),
+          publicationSearch.disclosures().stream()
+              .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo).toList(),
+          search == publicationSearch ? "NOT_NEEDED"
+              : search.disclosures().stream()
+                  .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo).toList());
       var found = search.disclosures().stream()
           .filter(item -> c.receiptNo().equals(item.receiptNo()))
           .findFirst().orElseThrow(() -> new AssertionError(
