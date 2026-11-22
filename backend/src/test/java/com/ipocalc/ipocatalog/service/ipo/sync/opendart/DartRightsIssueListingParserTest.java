@@ -196,4 +196,221 @@ class DartRightsIssueListingParserTest {
     String xml = report(row("신주인수권증서 상장예정일", "2026.03.10") + row("무상증자 신주 상장 예정일", "2026.03.24"));
     assertThat(parser.parse(xml)).isEmpty();
   }
+
+  @Test
+  void rejectsUnsubscribedSharesThatWereFullyIssuedThroughPublicOffering() {
+    String xml = "<DOCUMENT><P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsExplicitUnissuedSharesOnlyWhenDifferenceMatches() {
+    String xml =
+        "<DOCUMENT><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P>실권주 1,004,418주 미발행</P></SECTION-2></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_583L)).isFalse();
+  }
+
+  @Test
+  void doesNotCombineUnrelatedUnissuedReasonAndShareQuantity() {
+    String xml =
+        "<DOCUMENT><P>다른 발행 회차의 주식은 미발행</P>" + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P></DOCUMENT>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsUnissuedClaimAboutDifferentSharesInSameParagraph() {
+    String xml = "<P>실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsCancelledUnissuedPlan() {
+    String xml = "<P>실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsConfirmedUnissuedQuantityInSingleCell() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void rejectsQuantityAndUnissuedClaimInDifferentCells() {
+    String xml = "<TABLE><TR><TD>실권주 1,004,418주</TD><TD>단주는 미발행</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsBonusSharesEvenWhenUnissuedQuantityMatches() {
+    String xml = "<P>별도 무상증자 신주 1,004,418주는 미발행 처리</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void rejectsBonusSectionRemarkCellWithMatchingQuantity() {
+    String xml =
+        "<P>Ⅸ. 무상증자 신주 처리내역</P>" + "<TABLE><TR><TD>비고</TD><TD>1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void acceptsRightsIssueUnissuedRemarkBelowRelevantHeading() {
+    String xml =
+        "<P>Ⅷ. 실권주 처리내역</P>"
+            + "<P>신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void rejectsUnrelatedRightsIssueRoundWithSameQuantity() {
+    String xml = "<P>별도 발행 건 유상증자</P>" + "<P>다른 발행 회차 실권주 1,004,418주는 미발행 처리</P>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void closedRightsSectionDoesNotAuthorizeFollowingBonusSection() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void secondRightsRoundCannotInheritFirstRoundContext() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>제2차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void validRightsSectionStillAcceptsKoizRemark() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void closedRightsSectionCannotAuthorizeUnlabelledTable() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void koizNumberedSubscriptionParagraphDoesNotOverrideSectionTitle() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P><SPAN>2. 신주인수권증서 청약 및 초과청약 배정</SPAN></P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void tenthRightsIssueRoundDoesNotAuthorizeUnissuedShares() {
+    String xml =
+        "<SECTION-2><TITLE>제10차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void separateIssuanceParentRejectsNestedRightsSection() {
+    String xml =
+        "<SECTION-2><TITLE>별도 발행 건</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void koizUntitledTopLevelContainerAllowsTitledRightsSection() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P>2. 신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void untitledNestedSectionCannotInheritRightsTitle() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<SECTION-3><TABLE><TR>"
+            + "<TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void closedRightsSectionInUntitledContainerCannotAuthorizeLaterTable() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "</SECTION-2><TABLE><TR>"
+            + "<TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void namedBonusParentCannotBeBypassedByNestedRightsSection() {
+    String xml =
+        "<SECTION-1><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void directAtocCaptionCannotOverrideBonusSection() {
+    assertCaptionCannotOverrideSection("Ⅸ. 무상증자", false);
+  }
+
+  @Test
+  void groupedAtocCaptionCannotOverrideBonusSection() {
+    assertCaptionCannotOverrideSection("Ⅸ. 무상증자", true);
+  }
+
+  @Test
+  void directAtocCaptionCannotOverrideTenthRightsRound() {
+    assertCaptionCannotOverrideSection("제10차 유상증자", false);
+  }
+
+  @Test
+  void groupedAtocCaptionCannotOverrideTenthRightsRound() {
+    assertCaptionCannotOverrideSection("제10차 유상증자", true);
+  }
+
+  private void assertCaptionCannotOverrideSection(String heading, boolean grouped) {
+    String caption = "<TITLE ATOC=\"N\">실권주 처리내역</TITLE>";
+    String table = "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String body = grouped ? "<TABLE-GROUP>" + caption + table + "</TABLE-GROUP>" : caption + table;
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>" + heading + "</TITLE>" + body + "</SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
 }

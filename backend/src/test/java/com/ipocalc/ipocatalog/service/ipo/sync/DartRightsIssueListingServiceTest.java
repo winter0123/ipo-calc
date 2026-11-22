@@ -468,4 +468,301 @@ class DartRightsIssueListingServiceTest {
     assertThat(result.reviewRequired()).isEqualTo(1);
     verify(repo, never()).saveAndFlush(any());
   }
+
+  @Test
+  void correctedOriginalReceiptMatchesLatestPaymentAndShares() {
+    Ipo row = ipo("20251121000467");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    String correctionReceipt = "20260220000001";
+    when(filings.findEquityFilings(any(), any(), any()))
+        .thenReturn(
+            List.of(
+                new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
+                new FilingRef(
+                    correctionReceipt, "[발행조건확정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
+    when(filings.downloadDocument("20251121000467"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 6), 14_500_000L)));
+    when(filings.downloadDocument(correctionReceipt))
+        .thenReturn(
+            Optional.of(
+                "<DOCUMENT><P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
+                    + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)
+                    + "</DOCUMENT>"));
+    when(filings.downloadDocument(REPORT))
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 25),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 10))));
+    assertThat(service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)).saved())
+        .isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
+  }
+
+  @Test
+  void acceptsOnlyExplicitlyExplainedUnissuedShares() {
+    Ipo row =
+        Ipo.builder()
+            .id(125L)
+            .corpCode("00123456")
+            .companyName("코이즈")
+            .ipoName("코이즈")
+            .sourceReceiptNo("20251105000215")
+            .syncSource("OPENDART")
+            .subscriptionStartDate(LocalDate.of(2026, 1, 26))
+            .subscriptionEndDate(LocalDate.of(2026, 1, 27))
+            .status(RecordStatus.ACTIVE)
+            .build();
+    setupReports(row, new FilingRef("20260129000503", "증권발행실적보고서", LocalDate.of(2026, 2, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 1, 29), 3_000_000L)));
+    String result =
+        resultDocument(
+            LocalDate.of(2026, 1, 29), 1_995_582L, 1_995_582L, LocalDate.of(2026, 2, 10));
+    when(filings.downloadDocument("20260129000503"))
+        .thenReturn(
+            Optional.of(
+                result
+                    + "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+                    + "<P>2. 신주인수권증서 청약 및 초과청약 배정</P>"
+                    + "<TABLE><TR><TD>비고</TD>"
+                    + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+                    + "</TR></TABLE></SECTION-2></SECTION-1>"));
+    assertThat(service.backfill(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)).saved())
+        .isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    assertThat(row.getListingDateEvidenceReceipt()).isEqualTo("20260129000503");
+  }
+
+  @Test
+  void fullyIssuedUnsubscribedSharesMustNotSaveListing() {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
+            + "<P>실권주 1,004,418주는 일반공모로 전량 발행하였습니다</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void noResultReportsSkipsCorrectionHistoryAndDocumentDownload() {
+    Ipo row = ipo(ORIGINAL);
+    when(repo.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
+        .thenReturn(List.of(row));
+    when(filings.findIssuanceResults(any(), any(), any())).thenReturn(List.of());
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result).isEqualTo(new DartRightsIssueListingService.Result(0, 0, 0));
+    verify(filings, never()).findEquityFilings(any(), any(), any());
+    verify(filings, never()).downloadDocument(any());
+  }
+
+  @Test
+  void oneShareDifferenceInUnissuedCountRequiresReview() {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
+            + "<P>실권주 1,004,417주 미발행</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void multipleReportsReuseOriginalAndCorrectionXmlWithinCandidate() {
+    Ipo row = ipo("20251121000467");
+    String newest = "20260306000001";
+    String older = "20260305000001";
+    String correction = "20260220000001";
+    setupReports(
+        row,
+        new FilingRef(newest, "증권발행실적보고서", LocalDate.of(2026, 3, 6)),
+        new FilingRef(older, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.findEquityFilings(any(), any(), any()))
+        .thenReturn(
+            List.of(
+                new FilingRef("20251121000467", "증권신고서(지분증권)", LocalDate.of(2025, 11, 21)),
+                new FilingRef(correction, "[기재정정]증권신고서(지분증권)", LocalDate.of(2026, 2, 20))));
+    when(filings.downloadDocument("20251121000467"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 14_500_000L)));
+    when(filings.downloadDocument(correction))
+        .thenReturn(
+            Optional.of(
+                "<P>정정 대상 공시서류의 최초 제출일 2025.11.21</P>"
+                    + originalDocument(LocalDate.of(2026, 2, 25), 14_500_000L)));
+    when(filings.downloadDocument(newest))
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 24),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 11))));
+    when(filings.downloadDocument(older))
+        .thenReturn(
+            Optional.of(
+                resultDocument(
+                    LocalDate.of(2026, 2, 25),
+                    14_500_000L,
+                    14_500_000L,
+                    LocalDate.of(2026, 3, 10))));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 3, 10));
+    verify(filings, times(1)).downloadDocument("20251121000467");
+    verify(filings, times(1)).downloadDocument(correction);
+  }
+
+  @Test
+  void crossSentenceUnissuedClaimDoesNotSaveListing() {
+    assertRejectedUnissuedEvidence("실권주 1,004,418주는 인수단에 배정하였습니다. 단주는 미발행입니다.");
+  }
+
+  @Test
+  void cancelledUnissuedPlanDoesNotSaveListing() {
+    assertRejectedUnissuedEvidence("실권주 1,004,418주는 미발행할 예정이었으나 인수단에 배정하였습니다.");
+  }
+
+  @Test
+  void bonusSharesMustNotProvideRightsIssueListingEvidence() {
+    assertRejectedUnissuedEvidence("별도 무상증자 신주 1,004,418주는 미발행 처리");
+  }
+
+  @Test
+  void unrelatedRightsRoundMustNotProvideListingEvidence() {
+    assertRejectedUnissuedEvidence("다른 발행 회차 실권주 1,004,418주는 미발행 처리");
+  }
+
+  @Test
+  void bonusSectionRemarkMustNotProvideListingEvidence() {
+    assertRejectedUnissuedEvidence(
+        "Ⅸ. 무상증자 신주 처리내역</P><TABLE><TR><TD>비고</TD>"
+            + "<TD>1,004,418주는 미발행 처리</TD></TR></TABLE><P>무상증자");
+  }
+
+  @Test
+  void closedRightsSectionThenBonusSectionMustNotSave() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2><P>");
+  }
+
+  @Test
+  void nestedSecondRightsRoundMustNotSave() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>제2차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2><P>");
+  }
+
+  @Test
+  void untitledPlainParagraphMustNotSaveListing() {
+    assertRejectedUnissuedEvidence("실권주 1,004,418주 미발행");
+  }
+
+  @Test
+  void untitledNestedSectionMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<SECTION-3><TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
+  @Test
+  void tenthRightsRoundMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>제10차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
+  @Test
+  void separateIssuanceParentMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>별도 발행 건</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
+  @Test
+  void directBonusCaptionMustNotSaveListing() {
+    assertRejectedCaption("Ⅸ. 무상증자", false);
+  }
+
+  @Test
+  void groupedBonusCaptionMustNotSaveListing() {
+    assertRejectedCaption("Ⅸ. 무상증자", true);
+  }
+
+  @Test
+  void directTenthRoundCaptionMustNotSaveListing() {
+    assertRejectedCaption("제10차 유상증자", false);
+  }
+
+  @Test
+  void groupedTenthRoundCaptionMustNotSaveListing() {
+    assertRejectedCaption("제10차 유상증자", true);
+  }
+
+  private void assertRejectedCaption(String heading, boolean grouped) {
+    String caption = "<TITLE ATOC=\"N\">실권주 처리내역</TITLE>";
+    String table = "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String content =
+        grouped ? "<TABLE-GROUP>" + caption + table + "</TABLE-GROUP>" : caption + table;
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>"
+            + heading
+            + "</TITLE>"
+            + content
+            + "</SECTION-2></SECTION-1><P>");
+  }
+
+  private void assertRejectedUnissuedEvidence(String claim) {
+    Ipo row = ipo("20251105000215");
+    setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
+    when(filings.downloadDocument("20251105000215"))
+        .thenReturn(Optional.of(originalDocument(LocalDate.of(2026, 2, 19), 3_000_000L)));
+    String report =
+        resultDocument(LocalDate.of(2026, 2, 19), 1_995_582L, 1_995_582L, LocalDate.of(2026, 3, 10))
+            + "<P>"
+            + claim
+            + "</P>";
+    when(filings.downloadDocument(REPORT)).thenReturn(Optional.of(report));
+
+    var result = service.backfill(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28));
+
+    assertThat(result.saved()).isZero();
+    assertThat(result.reviewRequired()).isEqualTo(1);
+    assertThat(row.getListingDate()).isNull();
+    assertThat(row.getListingDateEvidenceReceipt()).isNull();
+    verify(repo, never()).saveAndFlush(any());
+  }
 }

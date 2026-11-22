@@ -3,13 +3,19 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartFilingOrigin;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser.Evidence;
+import com.ipocalc.ipocatalog.service.ipo.sync.opendart.dto.OpenDartDisclosureItem;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,25 +64,55 @@ public class DartRightsIssueListingService {
       }
       try {
         var documents = filingClient.findIssuanceResults(candidate.getCorpCode(), start, end);
-        var originalIdentity =
-            candidate.getSourceReceiptNo() == null
-                ? null
-                : filingClient
-                    .downloadDocument(candidate.getSourceReceiptNo())
-                    .map(parser::issueIdentity)
-                    .orElse(null);
+        if (documents.isEmpty()) {
+          continue;
+        }
+        // 각 종목이 끝나면 XML 캐시 전체가 GC 대상이 된다.
+        Map<String, String> documentCache = new HashMap<>();
+        String sourceReceipt = candidate.getSourceReceiptNo();
+        String originalXml =
+            sourceReceipt == null ? null : document(filingClient, documentCache, sourceReceipt);
+        var originalIdentity = originalXml == null ? null : parser.issueIdentity(originalXml);
+        LocalDate sourceDate = receiptDate(sourceReceipt);
+        List<DartIpoFilingClient.FilingRef> history =
+            sourceDate == null
+                ? List.of()
+                : filingClient.findEquityFilings(candidate.getCorpCode(), sourceDate, end);
+        List<OpenDartDisclosureItem> disclosures = new ArrayList<>();
+        for (var filing : history) {
+          disclosures.add(disclosure(candidate.getCorpCode(), filing));
+        }
+        // 원신고가 목록 조회 범위에 없어도 최초 접수번호를 회차 기준으로 보존한다.
+        if (sourceDate != null
+            && disclosures.stream().noneMatch(d -> sourceReceipt.equals(d.getRceptNo()))) {
+          disclosures.add(
+              OpenDartDisclosureItem.builder()
+                  .corpCode(candidate.getCorpCode())
+                  .rceptNo(sourceReceipt)
+                  .rceptDt(sourceDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+                  .reportNm("증권신고서(지분증권)")
+                  .build());
+        }
         LocalDate listing = null;
         String evidenceReceipt = null;
         boolean ambiguous = false;
         // 최신 접수부터 검사한다. 같은 회차 정정본의 새 날짜가 우선한다.
         for (var filing : documents) {
-          var xml = filingClient.downloadDocument(filing.rceptNo());
-          if (xml.isEmpty()) {
+          String xml = document(filingClient, documentCache, filing.rceptNo());
+          if (xml == null) {
             continue;
           }
+          var finalIdentity =
+              latestIdentity(
+                  candidate,
+                  history,
+                  disclosures,
+                  documentCache,
+                  filing.receivedOn(),
+                  originalIdentity);
           List<Evidence> sameIssue =
-              parser.parse(xml.get()).stream()
-                  .filter(e -> isSameIssue(candidate, e, originalIdentity))
+              parser.parse(xml).stream()
+                  .filter(e -> isSameIssue(candidate, e, finalIdentity, xml))
                   .filter(e -> e.listingDate().isAfter(candidate.getSubscriptionEndDate()))
                   .toList();
           var dates = sameIssue.stream().map(Evidence::listingDate).distinct().toList();
@@ -142,38 +178,106 @@ public class DartRightsIssueListingService {
     return new Result(saved, review, failures);
   }
 
-  private static boolean isSameIssue(
-      Ipo ipo, Evidence evidence, DartRightsIssueListingParser.IssueIdentity original) {
-    String sourceReceipt = ipo.getSourceReceiptNo();
-    if (sourceReceipt == null || sourceReceipt.isBlank()) {
+  private static LocalDate receiptDate(String receipt) {
+    if (receipt == null || !receipt.matches("\\d{14}")) {
+      return null;
+    }
+    try {
+      return LocalDate.parse(receipt.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE);
+    } catch (RuntimeException ignored) {
+      return null;
+    }
+  }
+
+  private static OpenDartDisclosureItem disclosure(
+      String corpCode, DartIpoFilingClient.FilingRef ref) {
+    return OpenDartDisclosureItem.builder()
+        .corpCode(corpCode)
+        .rceptNo(ref.rceptNo())
+        .rceptDt(ref.receivedOn().format(DateTimeFormatter.BASIC_ISO_DATE))
+        .reportNm(ref.reportName())
+        .build();
+  }
+
+  private static String document(
+      DartIpoFilingClient client, Map<String, String> cache, String receipt) {
+    if (cache.containsKey(receipt)) {
+      return cache.get(receipt);
+    }
+    String xml = client.downloadDocument(receipt).orElse(null);
+    cache.put(receipt, xml);
+    return xml;
+  }
+
+  private DartRightsIssueListingParser.IssueIdentity latestIdentity(
+      Ipo ipo,
+      List<DartIpoFilingClient.FilingRef> history,
+      List<OpenDartDisclosureItem> disclosures,
+      Map<String, String> cache,
+      LocalDate reportDate,
+      DartRightsIssueListingParser.IssueIdentity original) {
+    LocalDate payment = original == null ? null : original.paymentDate();
+    Long shares = original == null ? null : original.issuedShares();
+    for (var filing : history) {
+      if (filing.receivedOn().isAfter(reportDate)
+          || filing.rceptNo().equals(ipo.getSourceReceiptNo())) {
+        continue;
+      }
+      String xml = document(filingClient, cache, filing.rceptNo());
+      if (xml == null) {
+        continue;
+      }
+      String origin =
+          DartFilingOrigin.resolveOriginalReceipt(
+              disclosure(ipo.getCorpCode(), filing), disclosures, xml);
+      if (!ipo.getSourceReceiptNo().equals(origin)) {
+        continue;
+      }
+      var identity = parser.issueIdentity(xml);
+      if (identity.paymentDate() != null) {
+        payment = identity.paymentDate();
+      }
+      if (identity.issuedShares() != null) {
+        shares = identity.issuedShares();
+      }
+    }
+    return new DartRightsIssueListingParser.IssueIdentity(payment, shares);
+  }
+
+  private boolean isSameIssue(
+      Ipo ipo,
+      Evidence evidence,
+      DartRightsIssueListingParser.IssueIdentity latest,
+      String reportXml) {
+    String source = ipo.getSourceReceiptNo();
+    if (source == null || source.isBlank()) {
       return false;
     }
-    // 원공시와 결과보고서 양쪽의 이번 유상 신주 수/납입일을 비교한다.
-    // DB offeringShareCount는 기존 발행주식총수일 수 있으므로 매칭 증거로 사용하지 않는다.
-    if (original != null) {
-      if (original.paymentDate() != null
-          && evidence.paymentDate() != null
-          && !original.paymentDate().equals(evidence.paymentDate())) {
-        return false;
-      }
-      if (original.issuedShares() != null
-          && evidence.issuedShares() != null
-          && !original.issuedShares().equals(evidence.issuedShares())) {
-        return false;
-      }
+    if (evidence.originalReceipt() != null && !source.equals(evidence.originalReceipt())) {
+      return false;
     }
-    // 명시된 원신고번호가 다른 회차이면 동일 회사라도 절대 연결하지 않는다.
-    if (evidence.originalReceipt() != null) {
-      return sourceReceipt.equals(evidence.originalReceipt());
+    // 명시적 회차 번호가 없는 실적보고서는 최신 확정 조건의 날짜와 수량을 모두 요구한다.
+    if (latest == null
+        || latest.paymentDate() == null
+        || latest.issuedShares() == null
+        || evidence.paymentDate() == null
+        || evidence.issuedShares() == null
+        || !latest.paymentDate().equals(evidence.paymentDate())) {
+      // 원신고번호가 명시된 기존 보고서에는 수량 정보가 없을 수 있다.
+      return source.equals(evidence.originalReceipt())
+          && (latest == null
+              || latest.paymentDate() == null
+              || evidence.paymentDate() == null
+              || latest.paymentDate().equals(evidence.paymentDate()))
+          && (latest == null
+              || latest.issuedShares() == null
+              || evidence.issuedShares() == null
+              || latest.issuedShares().equals(evidence.issuedShares()));
     }
-    // 원신고 연결번호가 누락된 보고서는 원공시의 납입일 및 신주 수와 동시에 대조한다.
-    // 앱의 환불일은 납입일로 쓰지 않는다.
-    return original != null
-        && original.paymentDate() != null
-        && original.issuedShares() != null
-        && evidence.paymentDate() != null
-        && evidence.issuedShares() != null
-        && original.paymentDate().equals(evidence.paymentDate())
-        && original.issuedShares().equals(evidence.issuedShares());
+    if (latest.issuedShares().equals(evidence.issuedShares())) {
+      return true;
+    }
+    return parser.hasVerifiedUnissuedShares(
+        reportXml, latest.issuedShares(), evidence.issuedShares());
   }
 }

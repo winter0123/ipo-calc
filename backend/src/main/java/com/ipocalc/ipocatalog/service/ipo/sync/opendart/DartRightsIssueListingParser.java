@@ -115,6 +115,136 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
+  /** 문서의 실제 절 경계 안에서 현재 유상증자 실권주 처리 근거만 인정한다. */
+  public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
+    if (xml == null || issued <= 0 || planned <= issued) {
+      return false;
+    }
+    long difference = planned - issued;
+    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(xml).find();
+    Pattern tokens =
+        Pattern.compile(
+            "(?is)</?SECTION-[1-3]\\b[^>]*>|<TITLE\\b[^>]*>.*?</TITLE>"
+                + "|<TABLE\\b[^>]*>.*?</TABLE>|<P\\b[^>]*>.*?</P>");
+    Matcher matcher = tokens.matcher(xml);
+    List<Section> sections = new ArrayList<>();
+    String legacyTitle = "";
+    while (matcher.find()) {
+      String token = matcher.group();
+      if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
+        sections.add(new Section(Integer.parseInt(token.substring(9, 10)), ""));
+      } else if (token.matches("(?is)</SECTION-[1-3]\\s*>")) {
+        if (!sections.isEmpty()) {
+          sections.remove(sections.size() - 1);
+        }
+      } else if (token.matches("(?is)<TITLE\\b.*")) {
+        // ATOC=N identifies a table caption, not a section heading.
+        boolean caption =
+            token.matches("(?is)<TITLE\\b[^>]*\\bATOC\\s*=\\s*['\\\"]?N(?:['\\\"]|\\s|>).*");
+        if (!caption) {
+          String title = plain(token);
+          if (structured && !sections.isEmpty()) {
+            sections.set(
+                sections.size() - 1, new Section(sections.get(sections.size() - 1).level(), title));
+          } else if (!structured) {
+            legacyTitle = title;
+          }
+        }
+      } else if (!structured
+          && token.matches("(?is)<P\\b.*")
+          && isLegacySectionHeading(plain(token))) {
+        legacyTitle = plain(token);
+      } else if (eligibleRightsContext(sectionContext(sections, legacyTitle, structured))) {
+        if (token.matches("(?is)<TABLE\\b.*")) {
+          Matcher cells = CELL.matcher(token);
+          while (cells.find()) {
+            String claim = plain(cells.group(1));
+            if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
+              return true;
+            }
+          }
+        } else if (token.matches("(?is)<P\\b.*")) {
+          String claim = plain(token);
+          if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean isLegacySectionHeading(String text) {
+    return text.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\\s+.*")
+        || text.matches("(?s)^제\\s*\\d+\\s*차\\s+.*");
+  }
+
+  private record Section(int level, String title) {}
+
+  private static String sectionContext(
+      List<Section> sections, String legacyTitle, boolean structured) {
+    if (structured) {
+      if (sections.isEmpty()) {
+        return "UNKNOWN";
+      }
+      List<String> titles = new ArrayList<>();
+      for (int i = 0; i < sections.size(); i++) {
+        Section section = sections.get(i);
+        if (section.title().isBlank()) {
+          // Only the outermost SECTION-1 can be an untitled document container.
+          if (i != 0 || section.level() != 1 || sections.size() == 1) {
+            return "UNKNOWN";
+          }
+        } else {
+          titles.add(section.title());
+        }
+      }
+      return titles.isEmpty() ? "UNKNOWN" : String.join(" / ", titles);
+    }
+    return legacyTitle.isBlank() ? "UNKNOWN" : legacyTitle;
+  }
+
+  private static boolean eligibleRightsContext(String context) {
+    if (context.equals("UNKNOWN")
+        || context.matches(
+            "(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건" + "|제\\s*\\d+\\s*차\\s*유상증자).*")) {
+      return false;
+    }
+    return context.contains("실권주 처리내역");
+  }
+
+  private static boolean eligibleRightsClaim(String claim) {
+    if (claim.matches("(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건).*")) {
+      return false;
+    }
+    // 별도 회차와 구분할 수 있는 실권주 처리 근거만 채택한다.
+    return claim.contains("실권주");
+  }
+
+  private static boolean containsConfirmedUnissued(String fragment, long difference) {
+    String text = plain(fragment);
+    // 문장 경계를 넘는 수량과 미발행 문구는 결합하지 않는다.
+    for (String sentence : text.split("[.!?。]+")) {
+      Pattern confirmed =
+          Pattern.compile(
+              "([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*주(?:는|가|를|의)?"
+                  + "\\s*(?:미발행(?:\\s*처리(?:\\s*하였(?:습니)?다|\\s*됨|\\s*완료)?)?"
+                  + "|발행하지\\s*않았(?:습니)?다|발행되지\\s*않았(?:습니)?다)"
+                  + "\\s*(?:입니다|되었습니다|하였습니다|함|됨|완료)?\\s*$");
+      Matcher matcher = confirmed.matcher(sentence.trim());
+      while (matcher.find()) {
+        try {
+          if (Long.parseLong(matcher.group(1).replace(",", "")) == difference) {
+            return true;
+          }
+        } catch (NumberFormatException ignored) {
+          // 잘못된 수량은 자동 연결하지 않는다.
+        }
+      }
+    }
+    return false;
+  }
+
   /** 동일 문단에 등기예정일과 상장예정일이 있으면 상장 표제 뒤의 날짜만 추출한다. 다음 일정 표제가 시작되기 전에 있는 첫 날짜만 사용한다. */
   private static void addListingDates(List<LocalDate> dates, String paragraph) {
     Matcher label = LISTING.matcher(paragraph);
