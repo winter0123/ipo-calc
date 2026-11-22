@@ -734,13 +734,15 @@ class DartRightsIssueListingServiceTest {
 
   private void assertRejectedCaption(String heading, boolean grouped) {
     String caption = "<TITLE ATOC=\"N\">실권주 처리내역</TITLE>";
-    String table =
-        "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String table = "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
     String content =
         grouped ? "<TABLE-GROUP>" + caption + table + "</TABLE-GROUP>" : caption + table;
     assertRejectedUnissuedEvidence(
-        "</P><SECTION-1><SECTION-2><TITLE>" + heading + "</TITLE>"
-            + content + "</SECTION-2></SECTION-1><P>");
+        "</P><SECTION-1><SECTION-2><TITLE>"
+            + heading
+            + "</TITLE>"
+            + content
+            + "</SECTION-2></SECTION-1><P>");
   }
 
   private void assertRejectedUnissuedEvidence(String claim) {
