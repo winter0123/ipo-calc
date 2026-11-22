@@ -44,8 +44,8 @@ public class KrxListingNoticeDiscoveryClient {
   private static final Pattern RECEIPT =
       Pattern.compile("openDisclsViewer\\(\\s*['\"](\\d{14})['\"]");
   private static final Pattern CONTENT_OPTION =
-      Pattern.compile("<option\\b[^>]*value\\s*=\\s*['\"](\\d{14})\\|([YN])['\"]",
-          Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "<option\\b[^>]*value\\s*=\\s*['\"](\\d{14})\\|([YN])['\"]", Pattern.CASE_INSENSITIVE);
   private static final Pattern DOCUMENT_URL =
       Pattern.compile(
           "https://kind\\.krx\\.co\\.kr/external/\\d{4}/\\d{2}/\\d{2}/"
@@ -109,8 +109,10 @@ public class KrxListingNoticeDiscoveryClient {
       for (Disclosure item : current) {
         if (!item.publishedAt().isBefore(from)
             && !item.publishedAt().isAfter(to)
-            && (item.title().contains("추가상장") || item.title().contains("신규상장")
-                || item.title().contains("상장취소") || item.title().contains("상장정정"))) {
+            && (item.title().contains("추가상장")
+                || item.title().contains("신규상장")
+                || item.title().contains("상장취소")
+                || item.title().contains("상장정정"))) {
           unique.putIfAbsent(item.receiptNo(), item);
         }
       }
@@ -124,15 +126,15 @@ public class KrxListingNoticeDiscoveryClient {
   /**
    * KIND 주식발행현황을 상장일 기준으로 월별 조회하고 접수일로 필터링한다.
    *
-   * <p>상장일은 아직 알 수 없으므로 게시일 전후 두 달을 탐색한다. 이 결과는 반드시 원문에서
-   * 종목코드와 발행 회차를 재검증해야 하며 회사 코드만으로는 적용하지 않는다.
+   * <p>상장일은 아직 알 수 없으므로 게시일 전후 두 달을 탐색한다. 이 결과는 반드시 원문에서 종목코드와 발행 회차를 재검증해야 하며 회사 코드만으로는 적용하지 않는다.
    */
   public SearchResult findViaStockIssue(
       String stockCode, LocalDate fromPublication, LocalDate toPublication) {
     if (stockCode == null || !SHORT_CODE.matcher(stockCode).matches()) {
       throw new IllegalArgumentException("KIND 조회에는 정확한 6자리 종목코드가 필요합니다");
     }
-    if (fromPublication == null || toPublication == null
+    if (fromPublication == null
+        || toPublication == null
         || fromPublication.isAfter(toPublication)
         || fromPublication.plusMonths(1).isBefore(toPublication)) {
       throw new IllegalArgumentException("KIND 공고 게시일 범위는 최대 한 달입니다");
@@ -143,7 +145,8 @@ public class KrxListingNoticeDiscoveryClient {
     Map<String, Disclosure> unique = new LinkedHashMap<>();
     int pagesRead = 0;
     for (LocalDate month = searchStart.withDayOfMonth(1);
-        !month.isAfter(searchEnd); month = month.plusMonths(1)) {
+        !month.isAfter(searchEnd);
+        month = month.plusMonths(1)) {
       LocalDate windowStart = month.isBefore(searchStart) ? searchStart : month;
       LocalDate monthEnd = month.withDayOfMonth(month.lengthOfMonth());
       LocalDate windowEnd = monthEnd.isAfter(searchEnd) ? searchEnd : monthEnd;
@@ -162,15 +165,21 @@ public class KrxListingNoticeDiscoveryClient {
         query.put("marketType", "all");
         query.put("listingType", "2");
         query.put("isurCd", issuerCode);
-        for (String field : List.of(
-            "searchCorpName", "comAbbrv", "repIsuSrtCd", "repIsuCd",
-            "bzProcsNo", "paxreq", "outsvcno")) {
+        for (String field :
+            List.of(
+                "searchCorpName",
+                "comAbbrv",
+                "repIsuSrtCd",
+                "repIsuCd",
+                "bzProcsNo",
+                "paxreq",
+                "outsvcno")) {
           query.put(field, "");
         }
         query.put("fromDate", windowStart.format(DATE));
         query.put("toDate", windowEnd.format(DATE));
-        List<Disclosure> current = parseStockIssuePage(
-            transport.request("/corpgeneral/stockissuelist.do", query, true));
+        List<Disclosure> current =
+            parseStockIssuePage(transport.request("/corpgeneral/stockissuelist.do", query, true));
         pagesRead++;
         String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
         if (!current.isEmpty() && !fingerprints.add(fingerprint)) {
@@ -206,9 +215,9 @@ public class KrxListingNoticeDiscoveryClient {
     if (!body.find()) {
       throw new IllegalStateException("KIND 주식발행현황 tbody 구조가 변경됐습니다");
     }
-    Matcher rows = Pattern.compile(
-        "(<tr\\b[^>]*>)(.*?)</tr>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
-        .matcher(body.group(1));
+    Matcher rows =
+        Pattern.compile("(<tr\\b[^>]*>)(.*?)</tr>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+            .matcher(body.group(1));
     List<Disclosure> result = new ArrayList<>();
     while (rows.find()) {
       Matcher cells = CELL.matcher(rows.group(2));
@@ -219,21 +228,22 @@ public class KrxListingNoticeDiscoveryClient {
       if (data.size() < 6) {
         continue;
       }
-      Matcher receipt = Pattern.compile("fnDetailView\\(\\s*['\"](\\d{14})['\"]")
-          .matcher(rows.group(1));
+      Matcher receipt =
+          Pattern.compile("fnDetailView\\(\\s*['\"](\\d{14})['\"]").matcher(rows.group(1));
       if (!receipt.find()) {
         throw new IllegalStateException("KIND 증자현황 공고 접수번호가 없습니다");
       }
       String no = receipt.group(1);
-      Matcher issuer = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
-          .matcher(data.get(0));
-      result.add(new Disclosure(
-          no,
-          LocalDate.parse(no.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE),
-          plain(data.get(0)),
-          plain(data.get(2)) + " " + plain(data.get(5)),
-          "",
-          issuer.find() ? issuer.group(1) : ""));
+      Matcher issuer =
+          Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)").matcher(data.get(0));
+      result.add(
+          new Disclosure(
+              no,
+              LocalDate.parse(no.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE),
+              plain(data.get(0)),
+              plain(data.get(2)) + " " + plain(data.get(5)),
+              "",
+              issuer.find() ? issuer.group(1) : ""));
     }
     return result;
   }
@@ -241,8 +251,8 @@ public class KrxListingNoticeDiscoveryClient {
   /**
    * 공식 KIND 공시 상세검색의 종목코드를 회사 내부 식별코드(isurCd)로 변환한다.
    *
-   * <p>isurCd는 5자리 KIND 회사코드이지 주식 종목코드 6자리의 앞 5자리가 아니다.
-   * 다른 공시 제목으로 검색해도 종목코드 필터가 적용되는지 확인한 후 후보를 탐색한다.
+   * <p>isurCd는 5자리 KIND 회사코드이지 주식 종목코드 6자리의 앞 5자리가 아니다. 다른 공시 제목으로 검색해도 종목코드 필터가 적용되는지 확인한 후 후보를
+   * 탐색한다.
    */
   private String resolveIssuerCode(String stockCode, LocalDate publicationEnd) {
     for (int offset = 0; offset <= 6; offset++) {
@@ -253,11 +263,12 @@ public class KrxListingNoticeDiscoveryClient {
       }
       var query = detailedSearchForm(stockCode, month, end, 1, "");
       var found = parsePage(transport.request("/disclosure/details.do", query, true));
-      List<String> issuerCodes = found.stream()
-          .map(Disclosure::issuerCode)
-          .filter(code -> code != null && code.matches("\\d{5}"))
-          .distinct()
-          .toList();
+      List<String> issuerCodes =
+          found.stream()
+              .map(Disclosure::issuerCode)
+              .filter(code -> code != null && code.matches("\\d{5}"))
+              .distinct()
+              .toList();
       if (issuerCodes.size() > 1) {
         throw new IllegalStateException("KIND 종목코드 조회가 여러 회사 식별자로 반환됐습니다");
       }
@@ -265,8 +276,7 @@ public class KrxListingNoticeDiscoveryClient {
         return issuerCodes.get(0);
       }
     }
-    throw new IllegalStateException(
-        "KIND 종목코드에 대응하는 공식 회사 식별자를 찾을 수 없습니다");
+    throw new IllegalStateException("KIND 종목코드에 대응하는 공식 회사 식별자를 찾을 수 없습니다");
   }
 
   private static Map<String, String> detailedSearchForm(
@@ -282,16 +292,29 @@ public class KrxListingNoticeDiscoveryClient {
     query.put("reportNm", titleFilter);
     query.put("lastReport", "");
     query.put("bfrDsclsType", "on");
-    for (String field : List.of(
-        "searchCodeType", "allRepIsuSrtCd", "oldSearchCorpName", "disclosureType",
-        "disTypevalue", "reportCd", "searchCorpName", "business", "marketType",
-        "kosdaqSegment", "settlementMonth", "securities", "submitOblgNm",
-        "enterprise", "reportNmTemp", "reportNmPop")) {
+    for (String field :
+        List.of(
+            "searchCodeType",
+            "allRepIsuSrtCd",
+            "oldSearchCorpName",
+            "disclosureType",
+            "disTypevalue",
+            "reportCd",
+            "searchCorpName",
+            "business",
+            "marketType",
+            "kosdaqSegment",
+            "settlementMonth",
+            "securities",
+            "submitOblgNm",
+            "enterprise",
+            "reportNmTemp",
+            "reportNmPop")) {
       query.put(field, "");
     }
-    for (String category : List.of(
-        "01", "02", "03", "04", "05", "06", "07", "08",
-        "09", "10", "11", "13", "14", "20")) {
+    for (String category :
+        List.of(
+            "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "13", "14", "20")) {
       query.put("disclosureType" + category, "");
       query.put("pDisclosureType" + category, "");
     }
@@ -305,9 +328,18 @@ public class KrxListingNoticeDiscoveryClient {
     if (receiptNo == null || !receiptNo.matches("\\d{14}")) {
       throw new IllegalArgumentException("KIND 공고 접수번호가 유효하지 않습니다");
     }
-    Map<String, String> shell = Map.of(
-        "method", "search", "acptno", receiptNo, "docno", "",
-        "viewerhost", "", "viewerport", "");
+    Map<String, String> shell =
+        Map.of(
+            "method",
+            "search",
+            "acptno",
+            receiptNo,
+            "docno",
+            "",
+            "viewerhost",
+            "",
+            "viewerport",
+            "");
     String html = transport.request("/common/disclsviewer.do", shell, false);
     Matcher options = CONTENT_OPTION.matcher(html);
     List<String> current = new ArrayList<>();
@@ -324,16 +356,25 @@ public class KrxListingNoticeDiscoveryClient {
       throw new IllegalStateException("KIND 공고 본문 선택 옵션이 없습니다");
     }
     for (String contentId : current) {
-      String resolved = transport.request(
-          "/common/disclsviewer.do",
-          Map.of("method", "searchContents", "docNo", contentId), true);
+      String resolved =
+          transport.request(
+              "/common/disclsviewer.do",
+              Map.of("method", "searchContents", "docNo", contentId),
+              true);
       Matcher match = DOCUMENT_URL.matcher(resolved);
       if (match.find()) {
         String url = match.group();
         KrxListingNoticeClient.validateNoticeUrl(url);
-        if (!url.contains("/" + receiptNo.substring(0, 4) + "/"
-            + receiptNo.substring(4, 6) + "/" + receiptNo.substring(6, 8) + "/"
-            + receiptNo.substring(8) + "/")) {
+        if (!url.contains(
+            "/"
+                + receiptNo.substring(0, 4)
+                + "/"
+                + receiptNo.substring(4, 6)
+                + "/"
+                + receiptNo.substring(6, 8)
+                + "/"
+                + receiptNo.substring(8)
+                + "/")) {
           throw new IllegalStateException("KIND 공고 접수번호와 원문 경로가 다릅니다");
         }
         return url;
@@ -372,8 +413,8 @@ public class KrxListingNoticeDiscoveryClient {
       String no = receipt.group(1);
       String title = plain(data.get(3));
       String issuer = "";
-      Matcher company = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
-          .matcher(data.get(2));
+      Matcher company =
+          Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)").matcher(data.get(2));
       if (company.find()) {
         issuer = company.group(1);
       }
@@ -382,10 +423,15 @@ public class KrxListingNoticeDiscoveryClient {
       if (alt.find()) {
         market = alt.group(1);
       }
-      results.add(new Disclosure(
-          no, LocalDate.parse(no.substring(0, 4) + "-" + no.substring(4, 6) + "-"
-              + no.substring(6, 8)),
-          plain(data.get(2)), title, market, issuer));
+      results.add(
+          new Disclosure(
+              no,
+              LocalDate.parse(
+                  no.substring(0, 4) + "-" + no.substring(4, 6) + "-" + no.substring(6, 8)),
+              plain(data.get(2)),
+              title,
+              market,
+              issuer));
     }
     return results;
   }
@@ -395,10 +441,11 @@ public class KrxListingNoticeDiscoveryClient {
   }
 
   private static final class KindHttpTransport implements Transport {
-    private final HttpClient client = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(5))
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build();
+    private final HttpClient client =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build();
 
     @Override
     public String request(String path, Map<String, String> parameters, boolean post) {
@@ -407,20 +454,28 @@ public class KrxListingNoticeDiscoveryClient {
           && !path.equals("/common/disclsviewer.do")) {
         throw new IllegalArgumentException("허용되지 않은 KIND 경로입니다");
       }
-      String form = parameters.entrySet().stream()
-          .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
-              + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-          .reduce((left, right) -> left + "&" + right)
-          .orElse("");
+      String form =
+          parameters.entrySet().stream()
+              .map(
+                  e ->
+                      URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                          + "="
+                          + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+              .reduce((left, right) -> left + "&" + right)
+              .orElse("");
       String url = HOST + path + (post ? "" : "?" + form);
-      HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
-          .timeout(Duration.ofSeconds(15))
-          .header("User-Agent", "Mozilla/5.0")
-          .header("Referer", HOST + "/");
-      HttpRequest request = post
-          ? builder.header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-              .POST(HttpRequest.BodyPublishers.ofString(form)).build()
-          : builder.GET().build();
+      HttpRequest.Builder builder =
+          HttpRequest.newBuilder(URI.create(url))
+              .timeout(Duration.ofSeconds(15))
+              .header("User-Agent", "Mozilla/5.0")
+              .header("Referer", HOST + "/");
+      HttpRequest request =
+          post
+              ? builder
+                  .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                  .POST(HttpRequest.BodyPublishers.ofString(form))
+                  .build()
+              : builder.GET().build();
       try {
         HttpResponse<InputStream> response =
             client.send(request, HttpResponse.BodyHandlers.ofInputStream());

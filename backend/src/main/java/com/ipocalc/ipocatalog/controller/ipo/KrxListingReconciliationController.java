@@ -46,8 +46,8 @@ public class KrxListingReconciliationController {
   /** KIND 자동 처리 상태와 직전 종목별 실패 사유를 관리자 화면에 제공한다. */
   @GetMapping("/krx-listing/auto-status")
   public ResponseEntity<AutoStatus> autoStatus() {
-    return ResponseEntity.ok(new AutoStatus(
-        autoSyncService.isAutoApplyEnabled(), autoSyncService.latestReport()));
+    return ResponseEntity.ok(
+        new AutoStatus(autoSyncService.isAutoApplyEnabled(), autoSyncService.latestReport()));
   }
 
   /** 과거 미확인 공고를 저장 없이 조회·대조한다. */
@@ -57,7 +57,5 @@ public class KrxListingReconciliationController {
   }
 
   /** KIND 자동 반영 여부 및 마지막 점검 결과. */
-  public record AutoStatus(
-      boolean autoApplyEnabled, KrxListingAutoSyncService.Report lastReport) {}
-
+  public record AutoStatus(boolean autoApplyEnabled, KrxListingAutoSyncService.Report lastReport) {}
 }

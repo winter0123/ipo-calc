@@ -184,8 +184,8 @@ class KrxListingReconciliationServiceIntegrationTest {
   void krxOfficialDateCanCorrectDifferentDartPlannedDate() throws Exception {
     stubNotice(KOIZ);
     String url = KOIZ.url();
-    String changedHtml = readResource("/krx/notices/" + KOIZ.file())
-        .replace("2026-02-10", "2026-02-12");
+    String changedHtml =
+        readResource("/krx/notices/" + KOIZ.file()).replace("2026-02-10", "2026-02-12");
     when(noticeClient.fetch(url)).thenReturn(changedHtml);
     Ipo saved = createIpo(KOIZ);
 
@@ -207,8 +207,8 @@ class KrxListingReconciliationServiceIntegrationTest {
   void futureOfficialListingCanBePublishedBeforeTradingDay() throws Exception {
     stubNotice(KOIZ);
     String url = KOIZ.url();
-    String changedHtml = readResource("/krx/notices/" + KOIZ.file())
-        .replace("2026-02-10", "2027-03-11");
+    String changedHtml =
+        readResource("/krx/notices/" + KOIZ.file()).replace("2026-02-10", "2027-03-11");
     when(noticeClient.fetch(url)).thenReturn(changedHtml);
     Ipo saved = createIpo(KOIZ);
 
@@ -217,19 +217,17 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(preview.expired()).isFalse();
     assertThat(preview.applyAllowed()).isTrue();
     assertThat(preview.expectedKrxListingDate()).isEqualTo(LocalDate.of(2027, 3, 11));
-    assertThat(service.apply(saved.getId(), request(preview, url)).status())
-        .isEqualTo("APPLIED");
+    assertThat(service.apply(saved.getId(), request(preview, url)).status()).isEqualTo("APPLIED");
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
         .isEqualTo(LocalDate.of(2027, 3, 11));
   }
 
   @Test
-  void sameListingDayAndQuantitiesButDifferentIssuanceRoundCannotBeConfirmed()
-      throws Exception {
+  void sameListingDayAndQuantitiesButDifferentIssuanceRoundCannotBeConfirmed() throws Exception {
     stubNotice(KOIZ);
     String url = KOIZ.url();
-    String differentRound = readResource("/krx/notices/" + KOIZ.file())
-        .replace("제16회('26.01.30)", "제17회('26.02.15)");
+    String differentRound =
+        readResource("/krx/notices/" + KOIZ.file()).replace("제16회('26.01.30)", "제17회('26.02.15)");
     assertThat(differentRound).isNotEqualTo(readResource("/krx/notices/" + KOIZ.file()));
     when(noticeClient.fetch(url)).thenReturn(differentRound);
     Ipo saved = createIpo(KOIZ);
@@ -240,12 +238,11 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(preview.issuedSharesMatch()).isTrue();
     assertThat(preview.issuePriceMatch()).isTrue();
     assertThat(preview.applyAllowed()).isFalse();
-    assertThat(preview.reasons())
-        .contains("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
+    assertThat(preview.reasons()).contains("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
     assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, url)))
         .isInstanceOf(ResponseStatusException.class);
-    assertThat(ipoRepository.findById(saved.getId()).orElseThrow()
-        .getListingDateEvidenceType()).isEqualTo("ESTIMATED_DART");
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDateEvidenceType())
+        .isEqualTo("ESTIMATED_DART");
   }
 
   @Test

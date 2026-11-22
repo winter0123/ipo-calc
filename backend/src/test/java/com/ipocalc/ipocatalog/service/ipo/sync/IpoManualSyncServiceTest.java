@@ -52,8 +52,8 @@ class IpoManualSyncServiceTest {
         .when(executor)
         .execute(any(Runnable.class));
     service =
-        new IpoManualSyncService(sync, detail, historical, rights,
-            kind, props, stateManager, executor);
+        new IpoManualSyncService(
+            sync, detail, historical, rights, kind, props, stateManager, executor);
     ReflectionTestUtils.setField(service, "daysBack", 90);
     when(sync.runExclusively(any())).thenAnswer(i -> ((Supplier<?>) i.getArgument(0)).get());
   }

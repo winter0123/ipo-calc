@@ -87,8 +87,7 @@ public class IpoSyncScheduler {
         try {
           log.info("KIND 자동 대조: {}", krxListingAutoSyncService.reconcileRecent().counts());
         } catch (RuntimeException ex) {
-          log.warn("KIND 자동 대조 실패(기존 DART 저장은 유지): {}",
-              ex.getClass().getSimpleName());
+          log.warn("KIND 자동 대조 실패(기존 DART 저장은 유지): {}", ex.getClass().getSimpleName());
         }
       }
     }

@@ -242,12 +242,13 @@ public class IpoManualSyncService {
     // 외부 KIND 장애가 나도 앞서 완료한 DART 월별 동기화 결과는 보존한다.
     if (krxListingAutoSyncService.isAutoApplyEnabled()) {
       try {
-        log.info("KIND 월별 자동 대조: {}",
+        log.info(
+            "KIND 월별 자동 대조: {}",
             krxListingAutoSyncService
-                .reconcileSubscriptionMonths(fromMonth, toMonth, false).counts());
+                .reconcileSubscriptionMonths(fromMonth, toMonth, false)
+                .counts());
       } catch (RuntimeException ex) {
-        log.warn("KIND 월별 대조 실패(DART 처리 결과 보존): {}",
-            ex.getClass().getSimpleName());
+        log.warn("KIND 월별 대조 실패(DART 처리 결과 보존): {}", ex.getClass().getSimpleName());
       }
     }
 

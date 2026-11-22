@@ -40,21 +40,17 @@ class KrxListingAutoSyncServiceTest {
     discovery = mock(KrxListingNoticeDiscoveryClient.class);
     reconciliation = mock(KrxListingReconciliationService.class);
     repository = mock(IpoRepository.class);
-    Clock clock = Clock.fixed(
-        Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul"));
+    Clock clock = Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul"));
     service = new KrxListingAutoSyncService(discovery, reconciliation, repository, clock);
-    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
-        .thenReturn(List.of(ipo()));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(ipo()));
   }
 
   @Test
   void pastPreviewFindsSameOfficialReceiptInMultipleWindowsButNeverWrites() {
     Ipo prior = ipo();
     when(prior.getListingDate()).thenReturn(LocalDate.of(2026, 10, 20));
-    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
-        .thenReturn(List.of(prior));
-    when(discovery.find(eq("121850"), any(), any()))
-        .thenReturn(result(disclosure(RECEIPT)));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(prior));
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
 
@@ -71,21 +67,18 @@ class KrxListingAutoSyncServiceTest {
   @Test
   void scheduledLookupAppliesExactlyOneMatchingRoundAndCountsDateCorrection() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
-    when(discovery.find(eq("121850"), any(), any()))
-        .thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
     var applied = mock(KrxListingReconciliationService.KrxListingApplyResult.class);
     when(applied.status()).thenReturn("APPLIED");
-    when(reconciliation.apply(eq(7L), any(KrxListingApplyRequest.class)))
-        .thenReturn(applied);
+    when(reconciliation.apply(eq(7L), any(KrxListingApplyRequest.class))).thenReturn(applied);
 
     var report = service.reconcileRecent();
 
     assertThat(report.dryRun()).isFalse();
     assertThat(report.counts().get(OutcomeType.DATE_CORRECTED)).isEqualTo(1);
-    assertThat(report.rows().get(0).proposedListingDate())
-        .isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(report.rows().get(0).proposedListingDate()).isEqualTo(LocalDate.of(2026, 11, 25));
     verify(reconciliation).apply(eq(7L), any(KrxListingApplyRequest.class));
   }
 
@@ -122,8 +115,7 @@ class KrxListingAutoSyncServiceTest {
 
   @Test
   void sameConfirmedNoticeReturnsAlreadyAppliedWithoutMutation() {
-    when(discovery.find(eq("121850"), any(), any()))
-        .thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(true));
 

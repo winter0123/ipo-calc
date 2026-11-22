@@ -16,18 +16,20 @@ class KrxListingNoticeDiscoveryClientTest {
 
   @Test
   void findsOfficialReceiptWithoutProvidingNoticeUrl() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          assertThat(path).isEqualTo("/disclosure/details.do");
-          assertThat(post).isTrue();
-          assertThat(params).containsEntry("repIsuSrtCd", "A121850")
-              .containsEntry("lastReport", "")
-              .containsEntry("reportNm", "")
-              .containsEntry("fromDate", "2026-02-05")
-              .containsEntry("toDate", "2026-02-05")
-              .containsEntry("pageIndex", "1");
-          return page(List.of(RECEIPT));
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              assertThat(path).isEqualTo("/disclosure/details.do");
+              assertThat(post).isTrue();
+              assertThat(params)
+                  .containsEntry("repIsuSrtCd", "A121850")
+                  .containsEntry("lastReport", "")
+                  .containsEntry("reportNm", "")
+                  .containsEntry("fromDate", "2026-02-05")
+                  .containsEntry("toDate", "2026-02-05")
+                  .containsEntry("pageIndex", "1");
+              return page(List.of(RECEIPT));
+            });
 
     var result = client.find("121850", DAY, DAY);
 
@@ -46,19 +48,23 @@ class KrxListingNoticeDiscoveryClientTest {
       first.add("20260205" + String.format("%06d", i));
     }
     List<String> second = List.of(first.get(99), RECEIPT);
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          calls.incrementAndGet();
-          return "1".equals(params.get("pageIndex")) ? page(first) : page(second);
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              calls.incrementAndGet();
+              return "1".equals(params.get("pageIndex")) ? page(first) : page(second);
+            });
 
     var result = client.find("121850", DAY, DAY);
 
     assertThat(result.pagesRead()).isEqualTo(2);
     assertThat(calls).hasValue(2);
     assertThat(result.disclosures()).hasSize(101);
-    assertThat(result.disclosures().stream().map(
-        KrxListingNoticeDiscoveryClient.Disclosure::receiptNo).distinct().count())
+    assertThat(
+            result.disclosures().stream()
+                .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
+                .distinct()
+                .count())
         .isEqualTo(101);
   }
 
@@ -68,13 +74,14 @@ class KrxListingNoticeDiscoveryClientTest {
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          if ("2".equals(params.get("pageIndex"))) {
-            throw new IllegalStateException("KIND 조회 HTTP 429");
-          }
-          return page(first);
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("2".equals(params.get("pageIndex"))) {
+                throw new IllegalStateException("KIND 조회 HTTP 429");
+              }
+              return page(first);
+            });
 
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
         .isInstanceOf(IllegalStateException.class)
@@ -87,8 +94,7 @@ class KrxListingNoticeDiscoveryClientTest {
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> page(first));
+    var client = new KrxListingNoticeDiscoveryClient((path, params, post) -> page(first));
 
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
         .isInstanceOf(IllegalStateException.class)
@@ -97,30 +103,30 @@ class KrxListingNoticeDiscoveryClientTest {
 
   @Test
   void missingTableIsFailureButCompleteEmptyPageIsNoNotice() {
-    var broken = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> "<html><body>접속 제한</body></html>");
-    assertThatThrownBy(() -> broken.find("121850", DAY, DAY))
-        .hasMessageContaining("테이블 구조");
+    var broken =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> "<html><body>접속 제한</body></html>");
+    assertThatThrownBy(() -> broken.find("121850", DAY, DAY)).hasMessageContaining("테이블 구조");
 
-    var empty = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> page(List.of()));
+    var empty = new KrxListingNoticeDiscoveryClient((path, params, post) -> page(List.of()));
     assertThat(empty.find("121850", DAY, DAY).disclosures()).isEmpty();
   }
 
   @Test
   void resolvesDiscoveredReceiptThroughOfficialViewer() {
     List<String> requests = new ArrayList<>();
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          requests.add(params.get("method"));
-          if ("search".equals(params.get("method"))) {
-            assertThat(params).containsEntry("acptno", RECEIPT);
-            return "<select><option value='20260205002638|Y'>추가상장</option></select>";
-          }
-          assertThat(params).containsEntry("docNo", "20260205002638");
-          return "https://kind.krx.co.kr/external/2026/02/05/001019/"
-              + "20260205002638/70791.htm";
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              requests.add(params.get("method"));
+              if ("search".equals(params.get("method"))) {
+                assertThat(params).containsEntry("acptno", RECEIPT);
+                return "<select><option value='20260205002638|Y'>추가상장</option></select>";
+              }
+              assertThat(params).containsEntry("docNo", "20260205002638");
+              return "https://kind.krx.co.kr/external/2026/02/05/001019/"
+                  + "20260205002638/70791.htm";
+            });
 
     String url = client.resolveAdditionalListingUrl(RECEIPT);
 
@@ -130,21 +136,24 @@ class KrxListingNoticeDiscoveryClientTest {
 
   @Test
   void refusesReceiptAndDocumentPathMismatch() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> "search".equals(params.get("method"))
-            ? "<option value='20260205002638|Y'>추가상장</option>"
-            : "https://kind.krx.co.kr/external/2026/02/05/000999/"
-                + "20260205002638/70791.htm");
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                "search".equals(params.get("method"))
+                    ? "<option value='20260205002638|Y'>추가상장</option>"
+                    : "https://kind.krx.co.kr/external/2026/02/05/000999/"
+                        + "20260205002638/70791.htm");
     assertThatThrownBy(() -> client.resolveAdditionalListingUrl(RECEIPT))
         .hasMessageContaining("접수번호와 원문 경로");
   }
 
   @Test
   void refusesInvalidStockCodeAndInvalidDateRangeBeforeNetwork() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          throw new AssertionError("request must not be sent");
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              throw new AssertionError("request must not be sent");
+            });
     assertThatThrownBy(() -> client.find("코이즈", DAY, DAY))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> client.find("121850", DAY.plusDays(1), DAY))
@@ -156,22 +165,25 @@ class KrxListingNoticeDiscoveryClientTest {
   @Test
   void stockIssuanceFallbackSearchesByListingWindowButFiltersByPublicationDay() {
     AtomicInteger queriedMonths = new AtomicInteger();
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          if ("/disclosure/details.do".equals(path)) {
-            assertThat(params).containsEntry("repIsuSrtCd", "A121850")
-                .containsEntry("reportNm", "");
-            return page(List.of(RECEIPT)).replace("12185", "27957");
-          }
-          assertThat(path).isEqualTo("/corpgeneral/stockissuelist.do");
-          assertThat(params).containsEntry("isurCd", "27957")
-              .containsEntry("listingType", "2")
-              .containsEntry("marketType", "all");
-          queriedMonths.incrementAndGet();
-          return "2026-02-01".equals(params.get("fromDate"))
-              ? stockIssuePage(List.of(RECEIPT, "20260101000001"))
-              : stockIssuePage(List.of());
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("/disclosure/details.do".equals(path)) {
+                assertThat(params)
+                    .containsEntry("repIsuSrtCd", "A121850")
+                    .containsEntry("reportNm", "");
+                return page(List.of(RECEIPT)).replace("12185", "27957");
+              }
+              assertThat(path).isEqualTo("/corpgeneral/stockissuelist.do");
+              assertThat(params)
+                  .containsEntry("isurCd", "27957")
+                  .containsEntry("listingType", "2")
+                  .containsEntry("marketType", "all");
+              queriedMonths.incrementAndGet();
+              return "2026-02-01".equals(params.get("fromDate"))
+                  ? stockIssuePage(List.of(RECEIPT, "20260101000001"))
+                  : stockIssuePage(List.of());
+            });
 
     var result = client.findViaStockIssue("121850", DAY, DAY);
 
@@ -187,31 +199,33 @@ class KrxListingNoticeDiscoveryClientTest {
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          if ("/disclosure/details.do".equals(path)) {
-            return page(List.of(RECEIPT)).replace("12185", "27957");
-          }
-          assertThat(params).containsEntry("isurCd", "27957");
-          if ("2026-02-01".equals(params.get("fromDate"))) {
-            if ("2".equals(params.get("pageIndex"))) {
-              throw new IllegalStateException("KIND page 2 timed out");
-            }
-            return stockIssuePage(first);
-          }
-          return stockIssuePage(List.of());
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("/disclosure/details.do".equals(path)) {
+                return page(List.of(RECEIPT)).replace("12185", "27957");
+              }
+              assertThat(params).containsEntry("isurCd", "27957");
+              if ("2026-02-01".equals(params.get("fromDate"))) {
+                if ("2".equals(params.get("pageIndex"))) {
+                  throw new IllegalStateException("KIND page 2 timed out");
+                }
+                return stockIssuePage(first);
+              }
+              return stockIssuePage(List.of());
+            });
     assertThatThrownBy(() -> client.findViaStockIssue("121850", DAY, DAY))
         .hasMessageContaining("page 2 timed out");
   }
 
   @Test
   void unknownKindIssuerCodeIsFetchFailureNotNoNotices() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> {
-          assertThat(path).isEqualTo("/disclosure/details.do");
-          return page(List.of());
-        });
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              assertThat(path).isEqualTo("/disclosure/details.do");
+              return page(List.of());
+            });
 
     assertThatThrownBy(() -> client.findViaStockIssue("121850", DAY, DAY))
         .hasMessageContaining("회사 식별자를 찾을 수 없습니다");
@@ -231,8 +245,7 @@ class KrxListingNoticeDiscoveryClientTest {
   }
 
   private static String page(List<String> receipts) {
-    StringBuilder html = new StringBuilder(
-        "<html><table class='list type-00 mt10'><tbody>");
+    StringBuilder html = new StringBuilder("<html><table class='list type-00 mt10'><tbody>");
     for (String receipt : receipts) {
       html.append("<tr><td>1</td><td>09:00</td>")
           .append("<td><a onclick=\"companysummary_open('12185')\">코이즈</a></td>")
