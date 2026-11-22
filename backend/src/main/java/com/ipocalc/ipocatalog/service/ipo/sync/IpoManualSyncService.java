@@ -1,5 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
+
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncRangeRequest;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
@@ -32,6 +34,7 @@ public class IpoManualSyncService {
   private final IpoDetailSyncService ipoDetailSyncService;
   private final IpoHistoricalListingService historicalListingService;
   private final DartRightsIssueListingService rightsIssueListingService;
+  private final KrxListingAutoSyncService krxListingAutoSyncService;
   private final OpenDartApiProperties openDartProperties;
   private final IpoSyncStateManager syncStateManager;
   // 같은 타입의 taskScheduler와 구분하려고 빈 이름(ipoSyncExecutor)과 같은 이름으로 주입받는다
@@ -236,6 +239,19 @@ public class IpoManualSyncService {
       syncStateManager.recordListingBackfill(mergeListingResults(backfill, additionalBackfill));
     }
 
+    // 선택한 청약월만 KIND에 대조한다. 최근 공고의 게시일과 상장일은 다를 수 있다.
+    // 외부 KIND 장애가 나도 앞서 완료한 DART 월별 동기화 결과는 보존한다.
+    if (krxListingAutoSyncService.isAutoApplyEnabled()) {
+      try {
+        log.info("KIND 월별 자동 대조: {}",
+            krxListingAutoSyncService
+                .reconcileSubscriptionMonths(fromMonth, toMonth, false).counts());
+      } catch (RuntimeException ex) {
+        log.warn("KIND 월별 대조 실패(DART 처리 결과 보존): {}",
+            ex.getClass().getSimpleName());
+      }
+    }
+
     // 모든 월 완료
     syncStateManager.completeRangeSync();
     log.info("범위 동기화 전체 완료: fromMonth={}, toMonth={}", fromMonth, toMonth);
@@ -278,6 +294,13 @@ public class IpoManualSyncService {
   private IpoManualSyncResult runDefault() {
     IpoSyncResult r = ipoSyncService.sync(daysBack);
     int detail = r.isAborted() ? 0 : ipoDetailSyncService.syncRecent();
+    if (!r.isAborted() && krxListingAutoSyncService.isAutoApplyEnabled()) {
+      try {
+        krxListingAutoSyncService.reconcileRecent();
+      } catch (RuntimeException ex) {
+        log.warn("KIND 기본 수동 동기화 보완 실패: {}", ex.getClass().getSimpleName());
+      }
+    }
     log.info(
         "수동 IPO 동기화 완료: created={}, updated={}, failures={}, detail={}, aborted={}",
         r.getCreated(),
