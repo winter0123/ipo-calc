@@ -144,7 +144,8 @@ class IpoManualSyncServiceTest {
   @Test
   void rangeImportRunsRightsIssueAndSupplementalBackfillsBeforeOfficialKindCheck() {
     var month = java.time.YearMonth.of(2026, 11);
-    when(sync.syncMonthWithoutSchedule(month)).thenReturn(result(false));
+    when(sync.syncMonthWithoutSchedule(month))
+        .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
     when(historical.backfill(any(), any()))
         .thenReturn(new IpoHistoricalListingService.Result(0, java.util.List.of()));
     when(kind.isAutoApplyEnabled()).thenReturn(true);
