@@ -105,9 +105,7 @@ public class KrxListingNoticeDiscoveryClient {
       if (revisedPrefix || hasRevisionWord(normalized)) {
         return ListingType.REVISION;
       }
-      return normalized.startsWith("추가상장")
-          ? ListingType.ADDITIONAL
-          : ListingType.NEW_LISTING;
+      return normalized.startsWith("추가상장") ? ListingType.ADDITIONAL : ListingType.NEW_LISTING;
     }
     // 추가상장/신규상장 없는 독립 상장 철회·취소·변경·정정 제목을 보존한다.
     if (normalized.matches("^상장(?:일정|예정일|일)?(?:정정|취소|철회|변경).*")) {

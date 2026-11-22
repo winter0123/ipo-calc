@@ -108,16 +108,16 @@ public class KrxListingAutoSyncService {
             .filter(
                 ipo ->
                     ("ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
-                        && ipo.getListingDate() != null
-                        && ipo.getListingDate().isBefore(today()))
+                            && ipo.getListingDate() != null
+                            && ipo.getListingDate().isBefore(today()))
                         || (ipo.getSyncSource() != null
                             && ipo.getSubscriptionEndDate() != null
                             && ipo.getSubscriptionEndDate().isBefore(today())
                             && ipo.getListingDateEvidenceType() == null
                             && (ipo.getListingDate() == null
                                 || (ipo.getLastImportedListingDate() != null
-                                    && ipo.getListingDate().equals(
-                                        ipo.getLastImportedListingDate())))))
+                                    && ipo.getListingDate()
+                                        .equals(ipo.getLastImportedListingDate())))))
             .toList();
     return run(targets, null, today(), true);
   }
@@ -162,8 +162,7 @@ public class KrxListingAutoSyncService {
                         && ipo.getListingDateEvidenceType() == null
                         && (ipo.getListingDate() == null
                             || (ipo.getLastImportedListingDate() != null
-                                && ipo.getListingDate().equals(
-                                    ipo.getLastImportedListingDate())))))
+                                && ipo.getListingDate().equals(ipo.getLastImportedListingDate())))))
         .toList();
   }
 
@@ -388,9 +387,7 @@ public class KrxListingAutoSyncService {
             ipo.getSourceReceiptNo());
     return outcome(
         ipo,
-        "NO_OP".equals(result.status())
-            ? OutcomeType.ALREADY_APPLIED
-            : OutcomeType.NEW_CONFIRMED,
+        "NO_OP".equals(result.status()) ? OutcomeType.ALREADY_APPLIED : OutcomeType.NEW_CONFIRMED,
         chosen.receipt(),
         preview.listingDate(),
         "공식 신규상장 보통주 종목코드와 매매개시일 확정");
