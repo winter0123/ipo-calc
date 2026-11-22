@@ -120,20 +120,21 @@ class IpoManualSyncServiceRangeTest {
   void rangeSyncForCurrentMonthSkipsNextMonthAdditionalBackfill() {
     // given
     var req = new IpoSyncRangeRequest();
-    req.setFromMonth("2026-11");
-    req.setToMonth("2026-11");
+    YearMonth currentMonth = YearMonth.now();
+    req.setFromMonth(currentMonth.toString());
+    req.setToMonth(currentMonth.toString());
     when(ipoSyncService.syncMonthWithoutSchedule(any()))
         .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
     var backfill = new IpoHistoricalListingService.Result(0, java.util.List.of());
-    LocalDate listingEnd = LocalDate.of(2026, 11, 22);
-    when(historicalListingService.backfill(LocalDate.of(2026, 11, 1), listingEnd))
+    LocalDate listingEnd = LocalDate.now();
+    when(historicalListingService.backfill(currentMonth.atDay(1), listingEnd))
         .thenReturn(backfill);
 
     // when
     service.syncRange(req);
 
     // then
-    verify(historicalListingService).backfill(LocalDate.of(2026, 11, 1), listingEnd);
+    verify(historicalListingService).backfill(currentMonth.atDay(1), listingEnd);
     verify(historicalListingService, never()).backfill(any(), any(), any(), any());
     verify(syncStateManager).recordListingBackfill(backfill);
     verify(syncStateManager).completeRangeSync();
