@@ -38,23 +38,18 @@ class KrxNewListingNoticeParserTest {
   @Test
   void htmlHeadTitleAloneIsNotTheOfficialBodyTitle() {
     String misleading =
-        NOTICE.replace(
-            "<html><body>신규상장",
-            "<html><head><title>신규상장</title></head><body>감사보고서");
-    assertThatThrownBy(() -> parser.parse(misleading))
-        .isInstanceOf(IllegalArgumentException.class);
+        NOTICE.replace("<html><body>신규상장", "<html><head><title>신규상장</title></head><body>감사보고서");
+    assertThatThrownBy(() -> parser.parse(misleading)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void hiddenNewListingWordsNeverAuthorizeOtherDocument() {
-    String unrelated =
-        NOTICE.replace("<html><body>신규상장", "<html><body>감사보고서");
+    String unrelated = NOTICE.replace("<html><body>신규상장", "<html><body>감사보고서");
     String hiddenOnly =
         "<STYLE>.PGBRK { content: '신규상장'; }</STYLE>"
             + "<script>var text = '신규상장';</script>"
             + unrelated;
-    assertThatThrownBy(() -> parser.parse(hiddenOnly))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> parser.parse(hiddenOnly)).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> parser.parse(unrelated.replace("감사보고서", "추가상장")))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -75,14 +70,12 @@ class KrxNewListingNoticeParserTest {
             "<tr><td>3.액면가(원)",
             "<tr><td>보통주</td><td>KR7493410005</td>"
                 + "<td>A493410</td><td>45,845,239</td></tr><tr><td>3.액면가(원)");
-    assertThatThrownBy(() -> parser.parse(duplicate))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> parser.parse(duplicate)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void newListingUrlAllowsOnlyOfficialHttps70760Document() {
-    String url =
-        "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
+    String url = "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
     KrxListingNoticeClient.validateNewListingUrl(url);
     assertThatThrownBy(() -> KrxListingNoticeClient.validateNoticeUrl(url))
         .isInstanceOf(IllegalArgumentException.class);
@@ -94,23 +87,17 @@ class KrxNewListingNoticeParserTest {
     assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(url + "?redirect=1"))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () ->
-                KrxListingNoticeClient.validateNewListingUrl(
-                    url.replace("https://", "http://")))
+            () -> KrxListingNoticeClient.validateNewListingUrl(url.replace("https://", "http://")))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void refusesMissingOrRepeatedListingDate() {
-    assertThatThrownBy(
-            () -> parser.parse(NOTICE.replace("10.상장일(매매개시일)", "10.참고일")))
+    assertThatThrownBy(() -> parser.parse(NOTICE.replace("10.상장일(매매개시일)", "10.참고일")))
         .isInstanceOf(IllegalArgumentException.class);
     String duplicate =
         NOTICE.replace(
-            "</table>",
-            "<tr><td>10.상장일(매매개시일)</td>"
-                + "<td>2026년 11월 13일</td></tr></table>");
-    assertThatThrownBy(() -> parser.parse(duplicate))
-        .isInstanceOf(IllegalArgumentException.class);
+            "</table>", "<tr><td>10.상장일(매매개시일)</td>" + "<td>2026년 11월 13일</td></tr></table>");
+    assertThatThrownBy(() -> parser.parse(duplicate)).isInstanceOf(IllegalArgumentException.class);
   }
 }

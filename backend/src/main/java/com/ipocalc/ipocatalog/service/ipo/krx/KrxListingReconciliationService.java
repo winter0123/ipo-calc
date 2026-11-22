@@ -148,7 +148,8 @@ public class KrxListingReconciliationService {
               }
               String receipt = current.getSourceReceiptNo();
               if (ipoRepository.countSameConfirmedNewKrxCandidate(
-                      ipoId, stockCode, receipt, expectedDate, url) == 1) {
+                      ipoId, stockCode, receipt, expectedDate, url)
+                  == 1) {
                 return "NO_OP";
               }
               int updated;

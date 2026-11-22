@@ -8,10 +8,8 @@ import java.util.regex.Pattern;
 public class KrxNewListingNoticeParser {
   private static final Pattern INVISIBLE =
       Pattern.compile(
-          "<(?:style|script)\\b[^>]*>[\\s\\S]*?</(?:style|script)\\s*>",
-          Pattern.CASE_INSENSITIVE);
-  private static final Pattern HTML_COMMENT =
-      Pattern.compile("<!--[\\s\\S]*?-->");
+          "<(?:style|script)\\b[^>]*>[\\s\\S]*?</(?:style|script)\\s*>", Pattern.CASE_INSENSITIVE);
+  private static final Pattern HTML_COMMENT = Pattern.compile("<!--[\\s\\S]*?-->");
   private static final Pattern BODY =
       Pattern.compile("<body\\b[^>]*>(.*?)</body\\s*>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
@@ -21,8 +19,7 @@ public class KrxNewListingNoticeParser {
   private static final Pattern COMMON_STOCK =
       Pattern.compile("보통주\\s+KR[0-9A-Z]{10}\\s+A([0-9][0-9A-Z]{5})\\s+[0-9,]+");
   private static final Pattern LISTING_DATE =
-      Pattern.compile(
-          "10\\.\\s*상장일\\s*\\(매매개시일\\)\\s*(20\\d{2})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일");
+      Pattern.compile("10\\.\\s*상장일\\s*\\(매매개시일\\)\\s*(20\\d{2})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일");
 
   /** 신규상장 공고에서 발행회차 추론 없이 공통주권 종목코드·상장일을 추출한다. */
   public Evidence parse(String html) {

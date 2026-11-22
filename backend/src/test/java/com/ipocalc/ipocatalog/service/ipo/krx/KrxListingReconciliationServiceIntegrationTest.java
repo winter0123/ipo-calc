@@ -226,8 +226,7 @@ class KrxListingReconciliationServiceIntegrationTest {
         .isEqualTo("APPLIED");
     Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
     assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
-    assertThat(confirmed.getLastImportedListingDate())
-        .isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(confirmed.getLastImportedListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
     assertThat(confirmed.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
     assertThat(
             service
@@ -371,8 +370,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
     var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
     assertThat(preview.applyAllowed()).isTrue();
-    String otherUrl =
-        "https://kind.krx.co.kr/external/2026/11/11/000999/20261111001234/70760.htm";
+    String otherUrl = "https://kind.krx.co.kr/external/2026/11/11/000999/20261111001234/70760.htm";
     transactionTemplate.executeWithoutResult(
         status ->
             entityManager
@@ -481,7 +479,9 @@ class KrxListingReconciliationServiceIntegrationTest {
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
     transactionTemplate.executeWithoutResult(
         status -> {
-          ipoRepository.findById(saved.getId()).orElseThrow()
+          ipoRepository
+              .findById(saved.getId())
+              .orElseThrow()
               .recordSyncSourceReceipt("20261102000001");
         });
     assertThatThrownBy(

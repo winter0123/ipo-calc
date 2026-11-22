@@ -370,8 +370,7 @@ class KrxListingAutoSyncServiceTest {
               return URL;
             });
     var discoveryResult =
-        discovered.find(
-            "121850", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 20));
+        discovered.find("121850", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 20));
     assertThat(discoveryResult.disclosures()).hasSize(revision ? 2 : 1);
     service =
         new KrxListingAutoSyncService(
@@ -476,8 +475,9 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
 
-    var report = service.reconcileSubscriptionMonths(
-        java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
+    var report =
+        service.reconcileSubscriptionMonths(
+            java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
 
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
     assertThat(report.dryRun()).isTrue();
@@ -502,8 +502,9 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
 
-    var report = service.reconcileSubscriptionMonths(
-        java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
+    var report =
+        service.reconcileSubscriptionMonths(
+            java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
 
     assertThat(report.rows()).hasSize(1);
     assertThat(report.rows().get(0).ipoId()).isEqualTo(7L);
@@ -559,12 +560,7 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var correction =
         new KrxListingNoticeDiscoveryClient.Disclosure(
-            OTHER_RECEIPT,
-            LocalDate.of(2026, 11, 20),
-            "코이즈",
-            "상장 변경",
-            "코스닥",
-            "12185");
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "코이즈", "상장 변경", "코스닥", "12185");
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(result(newListingDisclosure(RECEIPT), correction));
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
@@ -587,8 +583,7 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
     when(discovery.resolveNewListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_NEW_URL);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
-    when(reconciliation.previewNewListing(7L, OTHER_NEW_URL))
-        .thenReturn(newListingPreview(false));
+    when(reconciliation.previewNewListing(7L, OTHER_NEW_URL)).thenReturn(newListingPreview(false));
 
     var report = service.reconcileRecent();
 
