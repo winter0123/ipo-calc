@@ -656,8 +656,8 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   private void stubNotice(CaseData c) {
     when(noticeClient.fetch(c.url())).thenReturn(readResource("/krx/notices/" + c.file()));
-    when(dartClient.downloadDocument(c.dartReceipt()))
-        .thenReturn(Optional.of(readResource("/krx/dart/" + c.dartReceipt() + ".xml")));
+    when(dartClient.downloadDocumentStrict(c.dartReceipt()))
+        .thenReturn(readResource("/krx/dart/" + c.dartReceipt() + ".xml"));
   }
 
   private Ipo createIpo(CaseData c) {
