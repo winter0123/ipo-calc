@@ -80,6 +80,20 @@ public class IpoHistoricalListingService {
 
   /** 양끝 포함 90일씩 조회한다. 다음 구간은 전 구간 종료 다음 날이므로 경계 누락·중복이 없다. */
   public Result backfill(LocalDate start, LocalDate end) {
+    return backfill(start, end, null, null);
+  }
+
+  /**
+   * 마지막 선택 달 다음 달 상장을 추가 조회한다. 추가 범위는 다음 달 1일부터 그 달 말일(또는 오늘)까지이고, 조회 대상은 선택한 청약 월에 속한 행으로 한정한다.
+   *
+   * @param start 추가 조회 시작일(다음 달 1일)
+   * @param end 추가 조회 종료일(다음 달 말일 또는 오늘)
+   * @param subscriptionFrom 조회 대상 행의 접수일 시작 하한
+   * @param subscriptionTo 조회 대상 행의 접수일 종료(포함)
+   * @return 조회 결과
+   */
+  public Result backfill(
+      LocalDate start, LocalDate end, LocalDate subscriptionFrom, LocalDate subscriptionTo) {
     if (start == null || end == null || start.isAfter(end)) {
       throw new IllegalArgumentException("상장일 조회 기간이 올바르지 않습니다.");
     }
@@ -156,6 +170,14 @@ public class IpoHistoricalListingService {
         if (ipo.getSyncSource() == null || ipo.getSubscriptionEndDate() == null) {
           continue;
         }
+        if (subscriptionFrom != null && subscriptionTo != null) {
+          LocalDate subscriptionStart = ipo.getSubscriptionStartDate();
+          if (subscriptionStart == null
+              || subscriptionStart.isBefore(subscriptionFrom)
+              || subscriptionStart.isAfter(subscriptionTo)) {
+            continue;
+          }
+        }
         LocalDate prior = candidates.existingDate();
         LocalDate alternative = candidates.candidateDate();
         if (!ipo.getSubscriptionEndDate().isBefore(prior)
@@ -211,6 +233,14 @@ public class IpoHistoricalListingService {
                       || subscriptionEnd == null
                       || !subscriptionEnd.isBefore(entry.getValue())) {
                     return SaveOutcome.SKIPPED;
+                  }
+                  if (subscriptionFrom != null && subscriptionTo != null) {
+                    LocalDate subscriptionStart = ipo.getSubscriptionStartDate();
+                    if (subscriptionStart == null
+                        || subscriptionStart.isBefore(subscriptionFrom)
+                        || subscriptionStart.isAfter(subscriptionTo)) {
+                      return SaveOutcome.SKIPPED;
+                    }
                   }
                   if (ipo.getListingDate() != null) {
                     if (ipo.getListingDate().equals(entry.getValue())) {

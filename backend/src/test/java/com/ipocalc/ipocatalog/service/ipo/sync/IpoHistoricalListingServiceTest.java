@@ -275,4 +275,60 @@ class IpoHistoricalListingServiceTest {
     assertThat(service.backfill(start, end).listingBackfilled()).isZero();
     verify(repo, times(0)).saveAndFlush(any());
   }
+
+  @Test
+  void additionalLookupSavesOnlyRowsSubscribedWithinSelectedMonth() {
+    LocalDate start = LocalDate.of(2026, 11, 1);
+    LocalDate end = LocalDate.of(2026, 11, 20);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 10, 20), null);
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", LocalDate.of(2026, 11, 5))));
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+
+    var result =
+        service.backfill(start, end, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+
+    assertThat(result.listingBackfilled()).isEqualTo(1);
+    assertThat(row.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 5));
+    verify(repo).saveAndFlush(row);
+  }
+
+  @Test
+  void additionalLookupSkipsRowsOutsideSelectedSubscriptionMonth() {
+    LocalDate start = LocalDate.of(2026, 11, 1);
+    LocalDate end = LocalDate.of(2026, 11, 20);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 11, 20), null);
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(List.of(item("271160", LocalDate.of(2026, 11, 5))));
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+
+    var result =
+        service.backfill(start, end, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+
+    assertThat(result.listingBackfilled()).isZero();
+    verify(repo, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void additionalLookupConflictAggregationRespectsSelectedSubscriptionMonth() {
+    LocalDate start = LocalDate.of(2026, 11, 1);
+    LocalDate end = LocalDate.of(2026, 11, 20);
+    Ipo row = ipo(111L, "271160", LocalDate.of(2026, 11, 20), null);
+    when(repo.findByStockCodeAndStatusAndDeletedAtIsNull("271160", RecordStatus.ACTIVE))
+        .thenReturn(Optional.of(row));
+    when(client.fetchListingDatesStrict(start, end))
+        .thenReturn(
+            List.of(
+                item("271160", LocalDate.of(2026, 11, 5)),
+                item("271160", LocalDate.of(2026, 11, 6))));
+
+    var result =
+        service.backfill(start, end, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+
+    assertThat(result.listingBackfilled()).isZero();
+    assertThat(result.listingConflicts()).isEmpty();
+    verify(repo, never()).saveAndFlush(any());
+  }
 }
