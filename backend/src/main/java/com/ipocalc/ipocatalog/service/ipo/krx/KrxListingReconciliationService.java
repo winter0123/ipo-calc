@@ -381,22 +381,29 @@ public class KrxListingReconciliationService {
         receipt, payment, shares, price, listing, original, extractDartRound(xml));
   }
 
-  // 발행실적 본문에 명시적으로 표시된 '발행회수(발행일)'만 연결 근거로 인정한다.
-  // 날짜·수량·가격을 조합해 회차를 추정하지 않는다.
+  // 발행실적 문서 전체에 등장하는 과거 회차/인용 문구는 연결 근거가 아니다.
+  // 현재 발행임을 밝히는 전용 섹션의 구조화된 발행회수 행에 한해서만 인정한다.
+  // 실제 DART 자료에 이 구역이 없으면 회차 연결은 검토 대상으로 남긴다.
   private String extractDartRound(String xml) {
-    String plain = xml.replaceAll("(?s)<[^>]+>", " ").replaceAll("\\s+", " ");
-    java.util.regex.Matcher matcher =
+    java.util.regex.Matcher sections =
         java.util.regex.Pattern.compile(
-                "발행회수\\s*\\(발행일\\)\\s*[:：]\\s*(제\\s*\\d+\\s*회\\s*\\('\\d{2}\\.\\d{2}\\.\\d{2}\\))")
-            .matcher(plain);
-    if (!matcher.find()) {
-      return null;
-    }
-    String round = normalizeRound(matcher.group(1));
-    // 원문에 상충하는 복수 회차가 있으면 자동 확정하지 않는다.
-    while (matcher.find()) {
-      if (!round.equals(normalizeRound(matcher.group(1)))) {
-        return null;
+                "<SECTION-2\\b[^>]*>\\s*<TITLE[^>]*>금번\\s*유상증자\\s*발행내역</TITLE>(.*?)</SECTION-2>",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+            .matcher(xml);
+    java.util.regex.Pattern roundRow =
+        java.util.regex.Pattern.compile(
+            "<TR\\b[^>]*>\\s*<TH\\b[^>]*>발행회수\\s*\\(발행일\\)</TH>\\s*"
+                + "<TD\\b[^>]*>(제\\s*\\d+\\s*회\\s*\\('\\d{2}\\.\\d{2}\\.\\d{2}\\))</TD>\\s*</TR>",
+            java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL);
+    String round = null;
+    while (sections.find()) {
+      java.util.regex.Matcher rows = roundRow.matcher(sections.group(1));
+      while (rows.find()) {
+        String candidate = normalizeRound(rows.group(1));
+        if (round != null && !round.equals(candidate)) {
+          return null;
+        }
+        round = candidate;
       }
     }
     return round;

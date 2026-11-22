@@ -565,7 +565,8 @@ class KrxListingReconciliationServiceIntegrationTest {
   void conflictingRoundLabelsInsideDartDocumentCannotConfirm() throws Exception {
     stubLinkedNotice(KOIZ);
     String contradictory =
-        linkedDartXml(KOIZ).replace("</DOCUMENT>", "<P>발행회수(발행일): 제17회('26.01.30)</P></DOCUMENT>");
+        linkedDartXml(KOIZ)
+            .replace("</BODY>", syntheticRoundSection("제17회('26.01.30)") + "</BODY>");
     when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(contradictory);
     Ipo saved = createIpo(KOIZ);
 
@@ -724,12 +725,43 @@ class KrxListingReconciliationServiceIntegrationTest {
     String html = readResource("/krx/notices/" + c.file());
     String round = new KrxListingNoticeParser().parse(html).roundLabel();
     assertThat(round).as("KIND fixture round").isNotBlank();
-    return dart.replace("</DOCUMENT>", "<P>발행회수(발행일): " + round + "</P></DOCUMENT>");
+    assertThat(dart).contains("</BODY>");
+    return dart.replace("</BODY>", syntheticRoundSection(round) + "</BODY>");
+  }
+
+  // 합성 유상증자 발행내역 구역: 실공시 원문에 없는 식별자를 명시적으로 삽입한다.
+  private String syntheticRoundSection(String round) {
+    return "<SECTION-2><TITLE>금번 유상증자 발행내역</TITLE>"
+        + "<TABLE><TR><TH>발행회수(발행일)</TH><TD>"
+        + round
+        + "</TD></TR></TABLE></SECTION-2>";
   }
 
   private void stubLinkedNotice(CaseData c) {
     stubNotice(c);
     when(dartClient.downloadDocumentStrict(c.dartReceipt())).thenReturn(linkedDartXml(c));
+  }
+
+  @Test
+  void quotedHistoricalRoundOutsideCurrentIssuanceSectionCannotAuthorizeWrite() {
+    stubNotice(KOIZ);
+    String historical =
+        readResource("/krx/dart/" + KOIZ.dartReceipt() + ".xml")
+            .replace(
+                "</BODY>",
+                "<SECTION-2><TITLE>과거 발행내역</TITLE>"
+                    + "<P>발행회수(발행일): 제16회('26.01.30)</P></SECTION-2></BODY>");
+    when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(historical);
+    Ipo saved = createIpo(KOIZ);
+
+    var preview = service.preview(saved.getId(), KOIZ.url());
+
+    assertThat(preview.issuedSharesMatch()).isTrue();
+    assertThat(preview.issuePriceMatch()).isTrue();
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+        .isNull();
   }
 
   @Test
