@@ -205,7 +205,8 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void acceptsExplicitUnissuedSharesOnlyWhenDifferenceMatches() {
-    String xml = "<DOCUMENT><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+    String xml =
+        "<DOCUMENT><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
             + "<P>실권주 1,004,418주 미발행</P></SECTION-2></DOCUMENT>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_583L)).isFalse();
@@ -232,7 +233,8 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void acceptsConfirmedUnissuedQuantityInSingleCell() {
-    String xml = "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
             + "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
             + "</SECTION-2>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
@@ -341,5 +343,4 @@ class DartRightsIssueListingParserTest {
             + "</SECTION-3></SECTION-2>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
-
 }
