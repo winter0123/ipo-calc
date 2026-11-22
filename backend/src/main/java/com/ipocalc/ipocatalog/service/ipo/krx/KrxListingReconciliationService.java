@@ -124,8 +124,11 @@ public class KrxListingReconciliationService {
     // DART 상장예정일은 KIND 공식 확정일과 달라도 회차 동일성의 근거가 아니다.
     // 실제 발행수량, 발행가, 보통주 종류, 납입일·발행일 관계로만 매칭한다.
     if (dart != null && dart.paymentDate() != null && notice.issueDate() != null) {
-      if (!notice.issueDate().isAfter(dart.paymentDate())) {
-        reasons.add("KRX 발행일이 DART 납입일 이후가 아닙니다");
+      long daysAfterPayment =
+          java.time.temporal.ChronoUnit.DAYS.between(dart.paymentDate(), notice.issueDate());
+      // 발행일과 납입일은 같지 않다. 다만 다른 회차의 늦은 발행일을 매칭하지 않는다.
+      if (daysAfterPayment < 1 || daysAfterPayment > 7) {
+        reasons.add("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
         datesValid = false;
       }
     } else if (notice.issueDate() == null) {
