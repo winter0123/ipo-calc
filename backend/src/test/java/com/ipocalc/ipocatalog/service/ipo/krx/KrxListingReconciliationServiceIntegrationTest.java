@@ -188,6 +188,127 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void importedSupplementalDateIsPromotedToOfficialDateAndRetryIsNoOp() {
+    Ipo saved = createNewListingIpo(true);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
+          assertThat(
+                  current.mergeSupplementalSchedule(
+                      null,
+                      null,
+                      null,
+                      LocalDate.of(2026, 11, 14),
+                      "OPENDART+USTOCKPLUS",
+                      LocalDateTime.now()))
+              .isTrue();
+        });
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getLastImportedListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 14));
+
+    assertThat(
+            service
+                .applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001")
+                .status())
+        .isEqualTo("APPLIED");
+    Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(confirmed.getLastImportedListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(confirmed.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(
+            service
+                .applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001")
+                .status())
+        .isEqualTo("NO_OP");
+  }
+
+  @Test
+  void unknownOrManuallyEditedDateIsNeverPromoted() {
+    Ipo unknown = createNewListingIpo(true);
+    Ipo edited = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo tracked = ipoRepository.findById(edited.getId()).orElseThrow();
+          tracked.mergeSupplementalSchedule(
+              null, null, null, LocalDate.of(2026, 11, 14),
+              "OPENDART+USTOCKPLUS", LocalDateTime.now());
+        });
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          entityManager
+              .createNativeQuery("update ipos set listing_date = ?1 where id = ?2")
+              .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 14)))
+              .setParameter(2, unknown.getId())
+              .executeUpdate();
+          entityManager
+              .createNativeQuery("update ipos set listing_date = ?1 where id = ?2")
+              .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 13)))
+              .setParameter(2, edited.getId())
+              .executeUpdate();
+        });
+    entityManager.clear();
+
+    var first = service.previewNewListing(unknown.getId(), NEW_LISTING_URL);
+    var second = service.previewNewListing(edited.getId(), NEW_LISTING_URL);
+    assertThat(first.applyAllowed()).isFalse();
+    assertThat(second.applyAllowed()).isFalse();
+    assertThat(first.reasons()).anyMatch(r -> r.contains("수동 상장일"));
+    assertThat(second.reasons()).anyMatch(r -> r.contains("수동 상장일"));
+    assertThat(ipoRepository.findById(unknown.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 14));
+    assertThat(ipoRepository.findById(edited.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 13));
+  }
+
+  @Test
+  void subscriptionEndChangeAfterPreviewMustConflictWithoutWrite() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          entityManager
+              .createNativeQuery("update ipos set subscription_end_date = ?1 where id = ?2")
+              .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 15)))
+              .setParameter(2, saved.getId())
+              .executeUpdate();
+        });
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDate()).isNull();
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
   void newListingCannotOverrideManualIpoOrWrongStockCode() {
     Ipo manual = createNewListingIpo(false);
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);

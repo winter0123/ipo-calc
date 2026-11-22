@@ -466,6 +466,51 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void importedListingDateIsStillEligibleForOfficialNewListing() {
+    Ipo row = newListingIpo();
+    when(row.getListingDate()).thenReturn(LocalDate.of(2026, 11, 14));
+    when(row.getLastImportedListingDate()).thenReturn(LocalDate.of(2026, 11, 14));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.reconcileSubscriptionMonths(
+        java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
+
+    assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
+    assertThat(report.dryRun()).isTrue();
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void monthlyNewListingReconciliationDoesNotReadOtherSubscriptionMonths() {
+    Ipo selected = newListingIpo();
+    Ipo other = mock(Ipo.class);
+    when(other.getId()).thenReturn(8L);
+    when(other.getStatus()).thenReturn(RecordStatus.ACTIVE);
+    when(other.getStockCode()).thenReturn("300120");
+    when(other.getSyncSource()).thenReturn("OPENDART");
+    when(other.getSourceReceiptNo()).thenReturn("20261001000001");
+    when(other.getSubscriptionStartDate()).thenReturn(LocalDate.of(2026, 10, 3));
+    when(other.getSubscriptionEndDate()).thenReturn(LocalDate.of(2026, 10, 6));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(selected, other));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.reconcileSubscriptionMonths(
+        java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), true);
+
+    assertThat(report.rows()).hasSize(1);
+    assertThat(report.rows().get(0).ipoId()).isEqualTo(7L);
+    verify(discovery, never()).find(eq("300120"), any(), any());
+  }
+
+  @Test
   void newListingIsReadOnlyWhenFlagDisabled() {
     Ipo row = newListingIpo();
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));

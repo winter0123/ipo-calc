@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 
 import com.ipocalc.ipocatalog.exception.IpoSyncBusyException;
@@ -107,6 +108,37 @@ class IpoManualSyncServiceTest {
 
     assertThatThrownBy(() -> service.syncNow()).isInstanceOf(OpenDartKeyMissingException.class);
     verify(sync, never()).sync(any(Integer.class));
+  }
+
+  @Test
+  void defaultImportMergesSupplementalScheduleBeforeOfficialKindCheck() {
+    when(sync.sync(90)).thenReturn(result(false));
+    when(detail.syncRecent()).thenReturn(7);
+    when(kind.isAutoApplyEnabled()).thenReturn(true);
+
+    service.syncNow();
+
+    var order = inOrder(sync, detail, kind);
+    order.verify(sync).sync(90);
+    order.verify(detail).syncRecent();
+    order.verify(kind).reconcileRecent();
+  }
+
+  @Test
+  void rangeImportRunsRightsIssueAndSupplementalBackfillsBeforeOfficialKindCheck() {
+    var month = java.time.YearMonth.of(2026, 11);
+    when(sync.syncMonthWithoutSchedule(month)).thenReturn(result(false));
+    when(historical.backfill(any(), any()))
+        .thenReturn(new IpoHistoricalListingService.Result(0, java.util.List.of()));
+    when(kind.isAutoApplyEnabled()).thenReturn(true);
+
+    ReflectionTestUtils.invokeMethod(service, "runRangeSync", month, month);
+
+    var order = inOrder(sync, historical, rights, kind);
+    order.verify(sync).syncMonthWithoutSchedule(month);
+    order.verify(historical).backfill(any(), any());
+    order.verify(rights).backfill(any(), any());
+    order.verify(kind).reconcileSubscriptionMonths(month, month, false);
   }
 
   @Test
