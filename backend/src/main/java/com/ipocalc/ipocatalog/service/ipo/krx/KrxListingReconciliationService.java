@@ -60,7 +60,7 @@ public class KrxListingReconciliationService {
       reasons.add("활성 IPO를 찾을 수 없습니다");
       return new NewListingPreview(evidence.listingDate(), hash, false, false, reasons);
     }
-    boolean idempotent =
+    final boolean idempotent =
         "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
             && noticeUrl.equals(ipo.getKrxListingNoticeUrl())
             && evidence.listingDate().equals(ipo.getListingDate());

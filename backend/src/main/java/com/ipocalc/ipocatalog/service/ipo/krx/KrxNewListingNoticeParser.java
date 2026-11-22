@@ -29,7 +29,7 @@ public class KrxNewListingNoticeParser {
     if (html == null || html.isBlank()) {
       throw new IllegalArgumentException("KIND 신규상장 공고가 비어 있습니다");
     }
-  // 공식 원문은 본문보다 앞에 CSS(style)와 Javascript(script)가 있으므로 제거 후 제목 검증.
+    // 공식 원문은 본문보다 앞에 CSS(style)와 Javascript(script)가 있으므로 제거 후 제목 검증.
     Matcher body = BODY.matcher(html);
     String documentBody = body.find() ? body.group(1) : html;
     String visible = INVISIBLE.matcher(documentBody).replaceAll(" ");
@@ -46,7 +46,7 @@ public class KrxNewListingNoticeParser {
     if (!stock.find()) {
       throw new IllegalArgumentException("KIND 신규상장 보통주 종목코드가 없습니다");
     }
-    String code = stock.group(1);
+    final String code = stock.group(1);
     if (stock.find()) {
       throw new IllegalArgumentException("KIND 신규상장 보통주 후보가 둘 이상입니다");
     }
