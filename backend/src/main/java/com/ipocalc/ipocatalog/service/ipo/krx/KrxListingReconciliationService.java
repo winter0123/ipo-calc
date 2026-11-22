@@ -347,12 +347,7 @@ public class KrxListingReconciliationService {
       reasons.add("DART receipt가 없습니다");
       return null;
     }
-    java.util.Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(receipt);
-    if (xmlOpt.isEmpty()) {
-      reasons.add("DART 실적보고서를 다운로드할 수 없습니다");
-      return null;
-    }
-    String xml = xmlOpt.get();
+    String xml = dartIpoFilingClient.downloadDocumentStrict(receipt);
     DartRightsIssueListingParser parser = new DartRightsIssueListingParser();
     java.util.List<Evidence> evidences = parser.parse(xml);
     // 서로 다른 유효 후보가 둘 이상이면 임의로 하나를 고를 수 없다. review-only로 남긴다.
