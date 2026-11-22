@@ -21,6 +21,39 @@ class KrxListingNoticeDiscoveryLiveTest {
       String expectedContentId) {}
 
   @Test
+  void parsesThreeRealOfficialNewListingNoticesWithoutDatabaseWrites() {
+    var official = new KrxListingNoticeClient(RestClient.builder());
+    var parser = new KrxNewListingNoticeParser();
+    List<NewCase> cases =
+        List.of(
+            new NewCase(
+                "넥스아이",
+                "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm",
+                "493410",
+                LocalDate.of(2026, 11, 12)),
+            new NewCase(
+                "이에스티",
+                "https://kind.krx.co.kr/external/2026/11/02/000506/20261102001162/70760.htm",
+                "495910",
+                LocalDate.of(2026, 11, 4)),
+            new NewCase(
+                "크리에이츠",
+                "https://kind.krx.co.kr/external/2026/10/28/000705/20261028001803/70760.htm",
+                "439270",
+                LocalDate.of(2026, 10, 30)));
+    for (NewCase c : cases) {
+      var evidence = parser.parse(official.fetchNewListing(c.url()));
+      assertThat(evidence.stockCode()).as(c.name()).isEqualTo(c.code());
+      assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.date());
+      System.out.printf(
+          "KIND_NEW_LISTING_PROOF name=%s code=%s date=%s%n",
+          c.name(), evidence.stockCode(), evidence.listingDate());
+    }
+  }
+
+  private record NewCase(String name, String url, String code, LocalDate date) {}
+
+  @Test
   void findsAndParsesFourKnownNoticesUsingOnlyStockCodeAndPublicationRange() {
     List<Case> cases =
         List.of(
