@@ -109,6 +109,20 @@ public class KrxListingNoticeDiscoveryClient {
       query.put("reportNm", "상장");
       query.put("lastReport", "");
       query.put("bfrDsclsType", "on");
+      // KIND 상세검색은 빈 검색 필드도 폼으로 전송해야 필터를 정확히 적용한다.
+      for (String field : List.of(
+          "searchCodeType", "allRepIsuSrtCd", "oldSearchCorpName", "disclosureType",
+          "disTypevalue", "reportCd", "searchCorpName", "business", "marketType",
+          "kosdaqSegment", "settlementMonth", "securities", "submitOblgNm",
+          "enterprise", "reportNmTemp", "reportNmPop")) {
+        query.put(field, "");
+      }
+      for (String category : List.of(
+          "01", "02", "03", "04", "05", "06", "07", "08",
+          "09", "10", "11", "13", "14", "20")) {
+        query.put("disclosureType" + category, "");
+        query.put("pDisclosureType" + category, "");
+      }
       query.put("fromDate", from.format(DATE));
       query.put("toDate", to.format(DATE));
       String html = transport.request("/disclosure/details.do", query, true);
@@ -172,6 +186,11 @@ public class KrxListingNoticeDiscoveryClient {
         query.put("marketType", "all");
         query.put("listingType", "2");
         query.put("isurCd", stockCode.substring(0, 5));
+        for (String field : List.of(
+            "searchCorpName", "comAbbrv", "repIsuSrtCd", "repIsuCd",
+            "bzProcsNo", "paxreq", "outsvcno")) {
+          query.put(field, "");
+        }
         query.put("fromDate", windowStart.format(DATE));
         query.put("toDate", windowEnd.format(DATE));
         List<Disclosure> current = parseStockIssuePage(
