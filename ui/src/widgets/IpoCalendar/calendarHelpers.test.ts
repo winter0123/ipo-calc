@@ -1,4 +1,33 @@
-import { buildWeekRows } from './calendarHelpers.ts'
+import { barLabel, buildWeekRows } from './calendarHelpers.ts'
+import type { CalendarEvent } from '@/features/ipo-calendar/index.ts'
+
+describe('barLabel', () => {
+  const listing = (overrides: Partial<CalendarEvent> = {}): CalendarEvent => ({
+    ipoId: 1,
+    type: 'LISTING',
+    companyName: '테스트기업',
+    ipoName: '테스트IPO',
+    startDate: '2026-10-15',
+    endDate: '2026-10-15',
+    ...overrides,
+  })
+
+  it('상장 이벤트의 접근성 라벨에 화면에 보이는 증거 상태를 포함한다', () => {
+    expect(barLabel(listing({ listingLabel: '상장 예정' }))).toBe(
+      '테스트기업 상장 10월 15일 (상장 예정)',
+    )
+    expect(barLabel(listing({ listingLabel: '상장예정일 경과 · 거래소 미확인' }))).toBe(
+      '테스트기업 상장 10월 15일 (상장예정일 경과 · 거래소 미확인)',
+    )
+    expect(barLabel(listing({ listingLabel: '상장 확정' }))).toBe(
+      '테스트기업 상장 10월 15일 (상장 확정)',
+    )
+  })
+
+  it('출처가 없는 기존 상장 이벤트 라벨은 기존과 같다', () => {
+    expect(barLabel(listing())).toBe('테스트기업 상장 10월 15일')
+  })
+})
 
 describe('buildWeekRows mobile (isMobile)', () => {
   // 2026-10 시작 요일: 목요일(4) — 첫 주 Mon~Fri 확인

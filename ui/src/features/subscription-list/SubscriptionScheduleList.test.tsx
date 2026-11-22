@@ -465,6 +465,87 @@ describe('SubscriptionScheduleList 현재 단계 표시', () => {
     )
 
     expect(result.getByText('상장 완료')).toBeInTheDocument()
+    expect(result.queryByText('상장 확정')).not.toBeInTheDocument()
+  })
+
+  it('과거 DART 예정일은 상장 완료가 아니라 거래소 미확인으로 표시한다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: 'DART 예정 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: '2026-10-10',
+              listingDateEvidenceType: 'ESTIMATED_DART',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장예정일 경과 · 거래소 미확인')).toBeInTheDocument()
+    expect(result.queryByText('상장 완료')).not.toBeInTheDocument()
+  })
+
+  it('오늘 DART 예정일은 예정일 상태로 유지한다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: 'DART 당일 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: '2026-10-15',
+              listingDateEvidenceType: 'ESTIMATED_DART',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장 예정')).toBeInTheDocument()
+    expect(result.queryByText('상장예정일 경과 · 거래소 미확인')).not.toBeInTheDocument()
+  })
+
+  it('거래소 확정 상장일은 상장 확정으로 표시한다', async () => {
+    const { result, queryClient } = renderWithRouter(
+      <SubscriptionScheduleList
+        items={[
+          makeItem({
+            ipo: makeIpo({
+              id: 1,
+              ipoName: '확정 공모주',
+              subscriptionStartDate: '2026-10-01',
+              subscriptionEndDate: '2026-10-05',
+              listingDate: '2026-10-10',
+              listingDateEvidenceType: 'CONFIRMED_KRX',
+            }),
+          }),
+        ]}
+        investorSelected={false}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(ipoKeys.insight(1))?.status).toBe('success'),
+    )
+
+    expect(result.getByText('상장 확정')).toBeInTheDocument()
   })
 })
 

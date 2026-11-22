@@ -1,4 +1,4 @@
-import { type Ipo } from '@/entities/ipo/index.ts'
+import { getListingDisplay, type Ipo } from '@/entities/ipo/index.ts'
 import { formatWon } from '@/shared/lib/format.ts'
 import { dateOnly } from '@/shared/lib/date.ts'
 
@@ -14,6 +14,8 @@ export interface CalendarEvent {
   price?: string
   estimated?: boolean
   confirmed?: boolean
+  /** 상장 이벤트의 증거 기반 표시 라벨(상장 예정/상장예정일 경과 · 거래소 미확인/상장 확정) */
+  listingLabel?: string
 }
 
 export interface BarSegment {
@@ -56,7 +58,12 @@ export function eventBarCoversDate(event: CalendarEvent, date: string): boolean 
   return event.startDate <= date && date <= event.endDate
 }
 
-export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): CalendarEvent[] {
+export function buildCalendarEvents(
+  ipos: Ipo[],
+  year: number,
+  month: number,
+  today: Date = new Date(),
+): CalendarEvent[] {
   const events: CalendarEvent[] = []
   const targetStart = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()
@@ -83,11 +90,13 @@ export function buildCalendarEvents(ipos: Ipo[], year: number, month: number): C
     }
 
     if (listingDate && listingDate >= targetStart && listingDate <= targetEnd) {
+      const listingDisplay = getListingDisplay(ipo, today)
       events.push({
         ipoId: ipo.id,
         type: 'LISTING',
-        ...(ipo.listingDateEvidenceType === 'ESTIMATED_DART' ? { estimated: true } : {}),
-        ...(ipo.listingDateEvidenceType === 'CONFIRMED_KRX' ? { confirmed: true } : {}),
+        ...(listingDisplay?.dashed ? { estimated: true } : {}),
+        ...(listingDisplay?.confirmed ? { confirmed: true } : {}),
+        ...(listingDisplay ? { listingLabel: listingDisplay.label } : {}),
         companyName: ipo.companyName,
         ipoName: ipo.ipoName,
         startDate: listingDate,

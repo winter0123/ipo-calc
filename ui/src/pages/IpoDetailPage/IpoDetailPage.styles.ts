@@ -78,6 +78,16 @@ export const StyleScope = styled.div`
     color: var(--warning-ink);
   }
 
+  .s-66fd75d-statusEstimated {
+    background: var(--surface-sea);
+    color: var(--ink);
+  }
+
+  .s-66fd75d-statusOverdue {
+    background: var(--warning-bg);
+    color: var(--warning-ink);
+  }
+
   .s-66fd75d-statusClosed {
     background: var(--surface-soft);
     color: var(--ink-muted);
@@ -131,6 +141,14 @@ export const StyleScope = styled.div`
       padding: var(--space-4);
     }
 
+    .s-66fd75d-krxAdminForm {
+      grid-template-columns: 1fr;
+    }
+
+    .s-66fd75d-krxAdminForm label {
+      grid-column: 1;
+    }
+
     .s-66fd75d-wide {
       grid-column: 1 / -1;
     }
@@ -153,6 +171,92 @@ export const StyleScope = styled.div`
     font-size: 15px;
     color: var(--ink);
     word-break: break-word;
+  }
+
+  .s-66fd75d-krxAdminPanel {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .s-66fd75d-krxAdminTitle {
+    margin: 0;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  .s-66fd75d-krxAdminForm {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .s-66fd75d-krxAdminForm label {
+    grid-column: 1 / -1;
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .s-66fd75d-krxAdminInput {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+  }
+
+  .s-66fd75d-krxAdminInput:focus-visible,
+  .s-66fd75d-krxAdminButton:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+  }
+
+  .s-66fd75d-krxAdminButton {
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: var(--on-primary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .s-66fd75d-krxAdminButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .s-66fd75d-krxAdminDetails {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+    gap: var(--space-2) var(--space-3);
+    margin: 0 0 var(--space-3);
+  }
+
+  .s-66fd75d-krxAdminDetails dt {
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
+  .s-66fd75d-krxAdminDetails dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .s-66fd75d-krxAdminResult [role='alert'] {
+    color: var(--danger-ink);
   }
 
   /* 밴드 가격 보조 라벨 */

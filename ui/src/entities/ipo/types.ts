@@ -26,6 +26,71 @@ export const ipoSchema = z.object({
 
 export type Ipo = z.infer<typeof ipoSchema>
 
+export const krxListingNoticeSchema = z.object({
+  noticeUrl: z.string().nullable(),
+  companyName: z.string().nullable(),
+  stockCode: z.string().nullable(),
+  stockType: z.string().nullable(),
+  reason: z.string().nullable(),
+  roundLabel: z.string().nullable(),
+  issuedShares: z.number().nullable(),
+  issuePrice: z.number().nullable(),
+  listingDate: z.string().nullable(),
+  issueDate: z.string().nullable(),
+})
+
+export const krxListingPreviewSchema = z.object({
+  ipoId: z.number(),
+  stockCode: z.string().nullable(),
+  currentListingDate: z.string().nullable(),
+  currentEvidenceType: z.string().nullable(),
+  currentEvidenceReceipt: z.string().nullable(),
+  notice: krxListingNoticeSchema.nullable(),
+  dartReceiptNo: z.string().nullable(),
+  dartPaymentDate: z.string().nullable(),
+  dartIssuedShares: z.number().nullable(),
+  dartIssuePrice: z.number().nullable(),
+  dartListingDate: z.string().nullable(),
+  dartOriginalListingDate: z.string().nullable(),
+  stockCodeMatches: z.boolean(),
+  stockTypeCommon: z.boolean(),
+  reasonAllowed: z.boolean(),
+  singleMatch: z.boolean(),
+  issuedSharesMatch: z.boolean(),
+  issuePriceMatch: z.boolean(),
+  datesValid: z.boolean(),
+  expired: z.boolean(),
+  applyAllowed: z.boolean(),
+  idempotent: z.boolean(),
+  reasons: z.array(z.string()),
+  reviewStatus: z.string(),
+  expectedDartReceiptNo: z.string().nullable(),
+  expectedDartListingDate: z.string().nullable(),
+  expectedStockCode: z.string().nullable(),
+  expectedIssuedShares: z.number().nullable(),
+  expectedIssuePrice: z.number().nullable(),
+  expectedKrxListingDate: z.string().nullable(),
+  expectedNoticeHash: z.string().nullable(),
+})
+
+export type KrxListingPreview = z.infer<typeof krxListingPreviewSchema>
+export type KrxListingApplyRequest = Pick<
+  KrxListingPreview,
+  | 'expectedDartReceiptNo'
+  | 'expectedDartListingDate'
+  | 'expectedStockCode'
+  | 'expectedIssuedShares'
+  | 'expectedIssuePrice'
+  | 'expectedKrxListingDate'
+  | 'expectedNoticeHash'
+> & { noticeUrl: string }
+export type KrxListingApplyResult = {
+  ipoId: number
+  applied: boolean
+  status: string
+  reasons: string[]
+}
+
 export interface IpoRegisterRequest {
   companyName?: string
   ipoName: string

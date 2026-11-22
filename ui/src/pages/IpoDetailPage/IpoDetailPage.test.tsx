@@ -203,6 +203,67 @@ describe('IpoDetailPage', () => {
     })
   })
 
+  it('과거 DART 예정일은 상장 완료가 아니라 거래소 미확인으로 표시한다', async () => {
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-05T09:00:00Z',
+        listingDateEvidenceType: 'ESTIMATED_DART',
+      }),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() =>
+      expect(screen.getByText('상장예정일 경과 · 거래소 미확인')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('상장 완료')).not.toBeInTheDocument()
+  })
+
+  it('오늘 DART 예정일은 예정일 상태로 유지한다', async () => {
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-10T09:00:00Z',
+        listingDateEvidenceType: 'ESTIMATED_DART',
+      }),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('상장 예정')).toBeInTheDocument())
+    expect(screen.queryByText('상장예정일 경과 · 거래소 미확인')).not.toBeInTheDocument()
+  })
+
+  it('거래소 확정 상장일은 상장 확정으로 표시한다', async () => {
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-05T09:00:00Z',
+        listingDateEvidenceType: 'CONFIRMED_KRX',
+      }),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('상장 확정')).toBeInTheDocument())
+  })
+
+  it('출처가 없는 기존 데이터는 기존 상장 완료 표시를 유지하고 KRX 확정 라벨을 쓰지 않는다', async () => {
+    stubFetch(
+      makeIpo({
+        subscriptionStartDate: '2026-09-20T09:00:00Z',
+        subscriptionEndDate: '2026-09-25T17:00:00Z',
+        listingDate: '2026-10-05T09:00:00Z',
+        listingDateEvidenceType: null,
+      }),
+    )
+
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await vi.waitFor(() => expect(screen.getByText('상장 완료')).toBeInTheDocument())
+    expect(screen.queryByText('상장 확정')).not.toBeInTheDocument()
+  })
+
   it('상태 옆에 주관사 약칭 이름을 표시한다', async () => {
     stubFetch(makeIpo())
     render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
@@ -344,6 +405,34 @@ describe('IpoDetailPage', () => {
       'href',
       '/ipos/7/manage',
     )
+  })
+
+  it('관리자에게만 KIND 상장일 미리보기 도구가 보인다', async () => {
+    stubIpoAndAccount({
+      accountId: 1,
+      email: 'admin@b.com',
+      name: '관리자',
+      nickname: '관리자',
+      role: 'ADMIN',
+    })
+    const { unmount } = render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    expect(
+      await screen.findByRole('heading', { name: '관리자 · KIND 상장일 검토' }),
+    ).toBeInTheDocument()
+    unmount()
+
+    stubIpoAndAccount({
+      accountId: 2,
+      email: 'user@b.com',
+      name: '사용자',
+      nickname: '사용자',
+      role: 'USER',
+    })
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await screen.findByText('테스트IPO')
+    expect(
+      screen.queryByRole('heading', { name: '관리자 · KIND 상장일 검토' }),
+    ).not.toBeInTheDocument()
   })
 
   it('청약 기간이 끝나도 청약·매도 관리 링크는 보인다', async () => {

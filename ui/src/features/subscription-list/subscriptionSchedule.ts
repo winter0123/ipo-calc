@@ -1,6 +1,6 @@
-import type { Ipo } from '@/entities/ipo/index.ts'
+import { getListingDisplay, type Ipo } from '@/entities/ipo/index.ts'
 import type { InvestmentHistoryItem } from '@/entities/subscription/index.ts'
-import { toLocalYmd } from '@/shared/lib/date.ts'
+import { toLocalYmd, toSeoulYmd } from '@/shared/lib/date.ts'
 
 export interface DateRange {
   from: string
@@ -133,10 +133,16 @@ export function aggregateSubscriptionSchedule(
 }
 
 export type IpoPhase =
-  'scheduled' | 'subscribing' | 'listing-scheduled' | 'listing-unknown' | 'listed'
+  | 'scheduled'
+  | 'subscribing'
+  | 'listing-scheduled'
+  | 'listing-overdue'
+  | 'listing-confirmed'
+  | 'listing-unknown'
+  | 'listed'
 
 export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
-  const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(today)
+  const todayStr = toSeoulYmd(today)
   const subscriptionStart = ipo.subscriptionStartDate.slice(0, 10)
   const subscriptionEnd = ipo.subscriptionEndDate.slice(0, 10)
   const listingDate = ipo.listingDate ? ipo.listingDate.slice(0, 10) : null
@@ -147,7 +153,22 @@ export function getCurrentPhase(ipo: Ipo, today = new Date()): IpoPhase {
   // 2. 청약 진행 중: subscriptionStart <= today <= subscriptionEnd
   if (todayStr >= subscriptionStart && todayStr <= subscriptionEnd) return 'subscribing'
 
-  // 3. 청약 종료 후: listingDate 기준으로 상장 예정/상장일/상장 완료 분기
+  // 3. 청약 종료 후: DART 예정/거래소 확정 증거가 있으면 공통 표시 상태를 쓴다.
+  const listingDisplay = getListingDisplay(ipo, today)
+  if (listingDisplay) {
+    switch (listingDisplay.kind) {
+      case 'unknown':
+        return 'listing-unknown'
+      case 'estimated':
+        return 'listing-scheduled'
+      case 'estimated-overdue':
+        return 'listing-overdue'
+      case 'confirmed':
+        return 'listing-confirmed'
+    }
+  }
+
+  // 4. 증거가 없는 기존 데이터는 날짜 기반 단계를 유지한다.
   if (listingDate) {
     if (todayStr < listingDate) return 'listing-scheduled'
     return 'listed'
@@ -165,6 +186,10 @@ export function getPhaseLabel(phase: IpoPhase): string {
       return '청약 진행 중'
     case 'listing-scheduled':
       return '상장 예정'
+    case 'listing-overdue':
+      return '상장예정일 경과 · 거래소 미확인'
+    case 'listing-confirmed':
+      return '상장 확정'
     case 'listing-unknown':
       return '상장일 미정'
     case 'listed':

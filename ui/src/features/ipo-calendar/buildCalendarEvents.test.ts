@@ -77,6 +77,69 @@ describe('buildCalendarEvents', () => {
     expect(octSub?.endDate).toBe('2026-10-02')
   })
 
+  it('DART 예정일은 점선과 상장 예정 라벨, 과거 예정일은 경과 라벨을 붙인다', () => {
+    const today = new Date('2026-10-10T12:00:00Z')
+    const future = buildCalendarEvents(
+      [
+        makeIpo({
+          listingDate: '2026-10-15T09:00:00Z',
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+      ],
+      2026,
+      10,
+      today,
+    ).find((event) => event.type === 'LISTING')
+    expect(future).toMatchObject({ estimated: true, listingLabel: '상장 예정' })
+    expect(future?.confirmed).toBeUndefined()
+
+    const past = buildCalendarEvents(
+      [
+        makeIpo({
+          listingDate: '2026-10-05T09:00:00Z',
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+      ],
+      2026,
+      10,
+      today,
+    ).find((event) => event.type === 'LISTING')
+    expect(past).toMatchObject({
+      estimated: true,
+      listingLabel: '상장예정일 경과 · 거래소 미확인',
+    })
+  })
+
+  it('거래소 확정 상장일은 실선과 상장 확정 라벨을 붙인다', () => {
+    const listing = buildCalendarEvents(
+      [
+        makeIpo({
+          listingDate: '2026-10-15T09:00:00Z',
+          listingDateEvidenceType: 'CONFIRMED_KRX',
+        }),
+      ],
+      2026,
+      10,
+      new Date('2026-10-10T12:00:00Z'),
+    ).find((event) => event.type === 'LISTING')
+
+    expect(listing).toMatchObject({ confirmed: true, listingLabel: '상장 확정' })
+    expect(listing?.estimated).toBeUndefined()
+  })
+
+  it('출처가 없는 기존 상장일은 기존 실선을 유지하고 확정 라벨을 붙이지 않는다', () => {
+    const listing = buildCalendarEvents(
+      [makeIpo({ listingDate: '2026-10-15T09:00:00Z', listingDateEvidenceType: null })],
+      2026,
+      10,
+      new Date('2026-10-10T12:00:00Z'),
+    ).find((event) => event.type === 'LISTING')
+
+    expect(listing?.estimated).toBeUndefined()
+    expect(listing?.confirmed).toBeUndefined()
+    expect(listing?.listingLabel).toBeUndefined()
+  })
+
   it('상장일 null이면 LISTING 이벤트를 만들지 않는다', () => {
     const ipos = [makeIpo({ listingDate: null })]
     const events = buildCalendarEvents(ipos, 2026, 10)

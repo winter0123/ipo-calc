@@ -1,14 +1,15 @@
 import { useParams, Link } from 'react-router-dom'
 import { useCurrentAccount } from '@/entities/current-account/index.ts'
-import { useIpo, useIpoInsight } from '@/entities/ipo/index.ts'
+import { getListingDisplay, useIpo, useIpoInsight } from '@/entities/ipo/index.ts'
 import { toErrorMessage } from '@/shared/api/apiError.ts'
 import Spinner from '@/shared/components/Spinner/Spinner.tsx'
 import ErrorMessage from '@/shared/components/ErrorMessage/ErrorMessage.tsx'
 import styles, { StyleScope } from './IpoDetailPage.styles.ts'
 import IpoInsightSections from './IpoInsightSections.tsx'
-import { dateOnly, toLocalYmd } from '@/shared/lib/date.ts'
+import { dateOnly, toSeoulYmd } from '@/shared/lib/date.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
+import KrxListingAdminPanel from './KrxListingAdminPanel.tsx'
 
 export default function IpoDetailPage() {
   const { ipoId } = useParams<{ ipoId: string }>()
@@ -45,7 +46,8 @@ export default function IpoDetailPage() {
 
   const getStatus = (ipoData: typeof ipo) => {
     if (!ipoData) return { label: '알 수 없음', className: styles.statusUnknown }
-    const today = toLocalYmd()
+    const now = new Date()
+    const today = toSeoulYmd(now)
     const start = dateOnly(ipoData.subscriptionStartDate)
     const end = dateOnly(ipoData.subscriptionEndDate)
     const listing = dateOnly(ipoData.listingDate)
@@ -53,6 +55,22 @@ export default function IpoDetailPage() {
     if (today < start) return { label: '청약 예정', className: styles.statusScheduled }
     if (today >= start && today <= end)
       return { label: '청약 진행 중', className: styles.statusInProgress }
+
+    // 청약 종료 후에는 DART 예정/거래소 확정 증거를 날짜 기반 '상장 완료'보다 우선한다.
+    const listingDisplay = getListingDisplay(ipoData, now)
+    if (listingDisplay) {
+      const className =
+        listingDisplay.kind === 'confirmed'
+          ? styles.statusListed
+          : listingDisplay.kind === 'estimated'
+            ? styles.statusEstimated
+            : listingDisplay.kind === 'estimated-overdue'
+              ? styles.statusOverdue
+              : styles.statusUnknown
+      return { label: listingDisplay.label, className }
+    }
+
+    // 증거가 없는 기존 데이터는 기존 날짜 기반 단계를 유지한다.
     if (today > end && (!listing || today < listing))
       return { label: '청약 마감', className: styles.statusClosed }
     if (listing && today === listing) return { label: '상장일', className: styles.statusListed }
@@ -203,6 +221,7 @@ export default function IpoDetailPage() {
             lowerBandPrice={ipo!.lowerBandPrice}
             upperBandPrice={ipo!.upperBandPrice}
           />
+          {account?.role === 'ADMIN' && <KrxListingAdminPanel key={id} ipoId={id} />}
         </div>
       }
     </StyleScope>

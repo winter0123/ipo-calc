@@ -54,5 +54,6 @@ export function barLabel(event: CalendarEvent): string {
   if (event.type === 'REFUND') {
     return `${event.companyName} 환불 ${startText}${event.estimated ? ' (예상)' : ''}`
   }
-  return `${event.companyName} 상장 ${startText}`
+  const listingLabel = event.listingLabel ? ` (${event.listingLabel})` : ''
+  return `${event.companyName} 상장 ${startText}${listingLabel}`
 }

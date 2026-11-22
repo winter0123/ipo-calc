@@ -385,7 +385,7 @@ export const StyleScope = styled.div`
     border-color: var(--warning-border);
   }
 
-  /* 증권사 데이터가 아니라 청약 종료일 + 2영업일로 계산한 환불일은 점선 테두리로 구분한다 */
+  /* 계산된 환불일과 DART 상장예정일처럼 확정 전인 일정은 점선 테두리로 구분한다 */
   .s-e1b278a-barEstimated {
     border: 1px dashed var(--warning-border);
   }

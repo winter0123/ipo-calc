@@ -437,6 +437,81 @@ describe('IpoCalendar', () => {
     expect(listingBar).toHaveClass('s-e1b278a-barListing')
   })
 
+  it('미래 DART 상장예정일은 점선과 접근성 라벨에 상장 예정을 표시한다', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[
+          makeIpo({
+            listingDate: '2026-10-15T09:00:00Z',
+            listingDateEvidenceType: 'ESTIMATED_DART',
+          }),
+        ]}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['LISTING'])}
+      />,
+    )
+
+    const bar = screen.getByRole('button', {
+      name: /테스트기업 상장 10월 15일 \(상장 예정\)/,
+    })
+    expect(bar).toHaveClass(styles.barEstimated)
+
+    await userEvent.click(screen.getByRole('button', { name: /^10월 15일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => expect(region).toHaveTextContent('(상장 예정)'))
+  })
+
+  it('과거 DART 상장예정일은 점선을 유지하고 거래소 미확인 라벨을 표시한다', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[
+          makeIpo({
+            listingDate: '2026-10-05T09:00:00Z',
+            listingDateEvidenceType: 'ESTIMATED_DART',
+          }),
+        ]}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['LISTING'])}
+      />,
+    )
+
+    const bar = screen.getByRole('button', {
+      name: /테스트기업 상장 10월 5일 \(상장예정일 경과 · 거래소 미확인\)/,
+    })
+    expect(bar).toHaveClass(styles.barEstimated)
+
+    await userEvent.click(screen.getByRole('button', { name: /^10월 5일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => expect(region).toHaveTextContent('(상장예정일 경과 · 거래소 미확인)'))
+  })
+
+  it('거래소 확정 상장일은 실선과 상장 확정 라벨을 표시한다', async () => {
+    renderWithRouter(
+      <IpoCalendar
+        ipos={[
+          makeIpo({
+            listingDate: '2026-10-15T09:00:00Z',
+            listingDateEvidenceType: 'CONFIRMED_KRX',
+          }),
+        ]}
+        initialYear={2026}
+        initialMonth={10}
+        visibleTypes={new Set(['LISTING'])}
+      />,
+    )
+
+    const bar = screen.getByRole('button', {
+      name: /테스트기업 상장 10월 15일 \(상장 확정\)/,
+    })
+    expect(bar).not.toHaveClass(styles.barEstimated)
+
+    await userEvent.click(screen.getByRole('button', { name: /^10월 15일/ }))
+    const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
+    await waitFor(() => expect(region).toHaveTextContent('(상장 확정)'))
+  })
+
   it('환불 바는 렌더링되며 기존 클래스를 유지한다', async () => {
     const ipos = [makeIpo({ refundDate: '2026-10-10T09:00:00Z' })]
     renderWithRouter(

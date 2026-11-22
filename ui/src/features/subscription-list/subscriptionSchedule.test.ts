@@ -294,10 +294,88 @@ describe('subscription schedule helpers', () => {
     expect(getCurrentPhase(target, new Date('2026-11-09T15:00:00Z'))).toBe('listed')
   })
 
+  it('DART 예정/거래소 확정 증거를 공통 표시 단계로 반영한다', () => {
+    const today = new Date('2026-10-15')
+    const base = {
+      subscriptionStartDate: '2026-10-01',
+      subscriptionEndDate: '2026-10-05',
+    }
+
+    // 미래 DART 예정일과 오늘 예정일은 상장 예정
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: '2026-10-20',
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+        today,
+      ),
+    ).toBe('listing-scheduled')
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: '2026-10-15',
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+        today,
+      ),
+    ).toBe('listing-scheduled')
+
+    // 과거 DART 예정일은 상장 완료가 아니라 거래소 미확인
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: '2026-10-10',
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+        today,
+      ),
+    ).toBe('listing-overdue')
+
+    // 거래소 확정과 증거가 있어도 날짜가 없는 경우
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: '2026-10-10',
+          listingDateEvidenceType: 'CONFIRMED_KRX',
+        }),
+        today,
+      ),
+    ).toBe('listing-confirmed')
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: null,
+          listingDateEvidenceType: 'ESTIMATED_DART',
+        }),
+        today,
+      ),
+    ).toBe('listing-unknown')
+
+    // 출처가 없는 기존 데이터는 기존 날짜 기반 단계 유지
+    expect(
+      getCurrentPhase(
+        ipo(1, '2026-10-01', {
+          ...base,
+          listingDate: '2026-10-10',
+          listingDateEvidenceType: null,
+        }),
+        today,
+      ),
+    ).toBe('listed')
+  })
+
   it('getPhaseLabel returns correct Korean labels', () => {
     expect(getPhaseLabel('scheduled')).toBe('미청약')
     expect(getPhaseLabel('subscribing')).toBe('청약 진행 중')
     expect(getPhaseLabel('listing-scheduled')).toBe('상장 예정')
+    expect(getPhaseLabel('listing-overdue')).toBe('상장예정일 경과 · 거래소 미확인')
+    expect(getPhaseLabel('listing-confirmed')).toBe('상장 확정')
     expect(getPhaseLabel('listing-unknown')).toBe('상장일 미정')
     expect(getPhaseLabel('listed')).toBe('상장 완료')
   })
