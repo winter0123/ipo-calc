@@ -429,8 +429,8 @@ public class KrxListingNoticeDiscoveryClient {
                 + "/"
                 + receiptNo.substring(6, 8)
                 + "/";
-        if (!url.contains(expectedDatePath)) {
-          throw new IllegalStateException("KIND 공고 게시일과 원문 경로가 다릅니다");
+        if (!url.contains(expectedDatePath + receiptNo.substring(8) + "/")) {
+          throw new IllegalStateException("KIND 공고 접수번호와 원문 경로가 다릅니다");
         }
         return url;
       }
