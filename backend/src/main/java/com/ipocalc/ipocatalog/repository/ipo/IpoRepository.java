@@ -179,6 +179,7 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
           + "and i.listingDateEvidenceReceipt is null "
           + "and i.krxListingNoticeUrl is null "
           + "and i.lastImportedListingDate is null "
+          + "and i.listingOpenPrice is null "
           + "and i.withdrawnReceiptNo is null")
   @SuppressWarnings("checkstyle:LineLength")
   int confirmNewKrxListingIfEmpty(

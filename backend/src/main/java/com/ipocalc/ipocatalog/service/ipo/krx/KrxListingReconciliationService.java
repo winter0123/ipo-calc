@@ -81,6 +81,7 @@ public class KrxListingReconciliationService {
             || ipo.getListingDateEvidenceType() != null
             || ipo.getListingDateEvidenceReceipt() != null
             || ipo.getLastImportedListingDate() != null
+            || ipo.getListingOpenPrice() != null
             || ipo.getKrxListingNoticeUrl() != null)) {
       reasons.add("기존 상장일 또는 출처를 자동 덮어쓸 수 없습니다");
     }
