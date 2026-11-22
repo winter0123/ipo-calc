@@ -1,5 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +40,7 @@ class IpoManualSyncServiceRangeTest {
   @Mock private IpoDetailSyncService ipoDetailSyncService;
   @Mock private IpoHistoricalListingService historicalListingService;
   @Mock private DartRightsIssueListingService rightsIssueListingService;
+  @Mock private KrxListingAutoSyncService krxListingAutoSyncService;
   @Mock private OpenDartApiProperties openDartProperties;
   @Mock private IpoSyncStateManager syncStateManager;
   @Mock private Executor syncExecutor;
@@ -65,6 +68,7 @@ class IpoManualSyncServiceRangeTest {
             ipoDetailSyncService,
             historicalListingService,
             rightsIssueListingService,
+            krxListingAutoSyncService,
             openDartProperties,
             syncStateManager,
             syncExecutor);
