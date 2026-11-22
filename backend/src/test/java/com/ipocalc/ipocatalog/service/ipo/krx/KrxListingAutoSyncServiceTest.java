@@ -264,6 +264,46 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void withdrawalNoticeBlocksOtherwiseEligibleOriginalNotice() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var withdrawn =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "코이즈", "추가상장 철회", "코스닥", "12185");
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), withdrawn));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var eligible = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligible);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "철회");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+    verify(discovery, never()).resolveAdditionalListingUrl(OTHER_RECEIPT);
+  }
+
+  @Test
+  void changedListingNoticeBlocksOtherwiseEligibleOriginalNotice() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var changed =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "코이즈", "추가상장 변경", "코스닥", "12185");
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), changed));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var eligible = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligible);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "변경");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+    verify(discovery, never()).resolveAdditionalListingUrl(OTHER_RECEIPT);
+  }
+
+  @Test
   void newListingNoticeIsNotMisparsedAsAdditionalListing() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var newListing =
