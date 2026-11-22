@@ -3,6 +3,7 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -175,7 +176,7 @@ class IpoManualSyncServiceTest {
     ReflectionTestUtils.invokeMethod(service, "runRangeSync", month, month);
 
     verify(rights).backfill(any(), any());
-    verify(kind, never()).reconcileSubscriptionMonths(any(), any(), any(Boolean.class));
+    verify(kind, never()).reconcileSubscriptionMonths(any(), any(), anyBoolean());
   }
 
   @Test
