@@ -144,7 +144,8 @@ public class DartRightsIssueListingParser {
         } else if (!structured) {
           legacyTitle = title;
         }
-      } else if (!structured && token.matches("(?is)<P\\b.*")
+      } else if (!structured
+          && token.matches("(?is)<P\\b.*")
           && isLegacySectionHeading(plain(token))) {
         legacyTitle = plain(token);
       } else if (eligibleRightsContext(sectionContext(sections, legacyTitle, structured))) {
@@ -186,8 +187,7 @@ public class DartRightsIssueListingParser {
   private static boolean eligibleRightsContext(String context) {
     if (context.equals("UNKNOWN")
         || context.matches(
-            "(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건"
-                + "|제\\s*\\d+\\s*차\\s*유상증자).*")) {
+            "(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건" + "|제\\s*\\d+\\s*차\\s*유상증자).*")) {
       return false;
     }
     return context.contains("실권주 처리내역");
