@@ -172,6 +172,19 @@ class KrxListingReconciliationServiceIntegrationTest {
                     "20261101000001")
                 .status())
         .isEqualTo("NO_OP");
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
+          current.mergeSupplementalSchedule(
+              "493410", null, null, LocalDate.of(2026, 11, 14), "OPENDART+USTOCKPLUS",
+              LocalDateTime.now());
+          assertThat(
+                  current.fillMissingRightsListing(
+                      LocalDate.of(2026, 11, 15), "20261113000001", LocalDateTime.now()))
+              .isFalse();
+        });
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 12));
   }
 
   @Test
