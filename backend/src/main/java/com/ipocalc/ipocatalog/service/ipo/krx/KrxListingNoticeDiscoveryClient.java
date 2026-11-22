@@ -32,7 +32,8 @@ public class KrxListingNoticeDiscoveryClient {
   private static final int MAX_BYTES = 1_000_000;
   private static final Pattern TABLE =
       Pattern.compile(
-          "<table\\b[^>]*class\\s*=\\s*['\"][^'\"]*\\blist\\s+type-00\\b[^'\"]*['\"][^>]*>(.*?)</table>",
+          "<table\\b[^>]*class\\s*=\\s*['\"]"
+              + "[^'\"]*\\blist\\s+type-00\\b[^'\"]*['\"][^>]*>(.*?)</table>",
           Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern BODY =
       Pattern.compile("<tbody\\b[^>]*>(.*?)</tbody>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -46,7 +47,9 @@ public class KrxListingNoticeDiscoveryClient {
       Pattern.compile("<option\\b[^>]*value\\s*=\\s*['\"](\\d{14})\\|([YN])['\"]",
           Pattern.CASE_INSENSITIVE);
   private static final Pattern DOCUMENT_URL =
-      Pattern.compile("https://kind\\.krx\\.co\\.kr/external/\\d{4}/\\d{2}/\\d{2}/\\d{6}/\\d{14}/70791\\.htm");
+      Pattern.compile(
+          "https://kind\\.krx\\.co\\.kr/external/\\d{4}/\\d{2}/\\d{2}/"
+              + "\\d{6}/\\d{14}/70791\\.htm");
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern SPACE = Pattern.compile("\\s+");
   private static final Pattern SHORT_CODE = Pattern.compile("[0-9][0-9A-Z]{5}");
@@ -227,6 +230,7 @@ public class KrxListingNoticeDiscoveryClient {
         throw new IllegalStateException("KIND 증자현황 공고 접수번호가 없습니다");
       }
       String no = receipt.group(1);
+      String title = plain(data.get(3));
       Matcher issuer = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
           .matcher(data.get(0));
       result.add(new Disclosure(
@@ -305,7 +309,6 @@ public class KrxListingNoticeDiscoveryClient {
       if (data.size() < 5) {
         continue;
       }
-      String title = plain(data.get(3));
       Matcher receipt = RECEIPT.matcher(data.get(3));
       if (!receipt.find()) {
         throw new IllegalStateException("KIND 공시 검색 결과에서 접수번호를 읽을 수 없습니다");
