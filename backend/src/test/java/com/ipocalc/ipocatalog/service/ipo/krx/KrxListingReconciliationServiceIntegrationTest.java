@@ -238,7 +238,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(preview.issuedSharesMatch()).isTrue();
     assertThat(preview.issuePriceMatch()).isTrue();
     assertThat(preview.applyAllowed()).isFalse();
-    assertThat(preview.reasons()).contains("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
     assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, url)))
         .isInstanceOf(ResponseStatusException.class);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDateEvidenceType())
