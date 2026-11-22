@@ -78,6 +78,16 @@ export const StyleScope = styled.div`
     color: var(--warning-ink);
   }
 
+  .s-66fd75d-statusEstimated {
+    background: var(--surface-sea);
+    color: var(--ink);
+  }
+
+  .s-66fd75d-statusOverdue {
+    background: var(--warning-bg);
+    color: var(--warning-ink);
+  }
+
   .s-66fd75d-statusClosed {
     background: var(--surface-soft);
     color: var(--ink-muted);
