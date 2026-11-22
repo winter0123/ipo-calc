@@ -47,6 +47,42 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void monthlyWriteRequestRemainsReadOnlyWhenAutoApplyIsDisabled() {
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+
+    var report =
+        service.reconcileSubscriptionMonths(
+            java.time.YearMonth.of(2026, 11), java.time.YearMonth.of(2026, 11), false);
+
+    assertThat(report.dryRun()).isTrue();
+    assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void multipleUnmatchedNoticesRequireReviewNotRoundConflict() {
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), disclosure(OTHER_RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(discovery.resolveAdditionalListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
+    var first = mock(KrxListingReconciliationPreview.class);
+    var second = mock(KrxListingReconciliationPreview.class);
+    when(first.reasons()).thenReturn(List.of("발행주식수 불일치"));
+    when(second.reasons()).thenReturn(List.of("발행가 불일치"));
+    when(reconciliation.preview(7L, URL)).thenReturn(first);
+    when(reconciliation.preview(7L, OTHER_URL)).thenReturn(second);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.ROUND_CONFLICT)).isZero();
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
   void pastPreviewFindsSameOfficialReceiptInMultipleWindowsButNeverWrites() {
     Ipo prior = ipo();
     when(prior.getListingDate()).thenReturn(LocalDate.of(2026, 10, 20));
