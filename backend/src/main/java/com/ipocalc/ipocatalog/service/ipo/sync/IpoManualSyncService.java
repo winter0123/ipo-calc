@@ -1,13 +1,12 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
-import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
-
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncRangeRequest;
 import com.ipocalc.ipocatalog.controller.ipo.dto.IpoSyncStatusResponse;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.exception.IpoSyncRangeValidationException;
 import com.ipocalc.ipocatalog.exception.OpenDartKeyMissingException;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSyncService;
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import java.time.LocalDate;
 import java.time.YearMonth;
