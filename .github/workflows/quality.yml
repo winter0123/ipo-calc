@@ -86,3 +86,20 @@ jobs:
       - name: Run backend sync tests
         working-directory: backend
         run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.sync.*" --tests "com.ipocalc.ipocatalog.service.ipo.IpoServiceTest" --tests "com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParserTest" --no-daemon
+
+  kind-discovery-live:
+    name: KIND live discovery proof (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Discover four real KIND notices without notice URLs
+        working-directory: backend
+        env:
+          KIND_DISCOVERY_LIVE: 'true'
+        run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.krx.KrxListingNoticeDiscoveryLiveTest" --no-daemon --info
