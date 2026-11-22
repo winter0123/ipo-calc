@@ -66,7 +66,7 @@ public class KrxListingReconciliationService {
       noticeHash = sha256(html);
     } catch (RuntimeException e) {
       reasons.add("KIND 공고를 읽을 수 없습니다: " + e.getMessage());
-      return emptyPreview(ipo.getId(), reasons);
+      throw new IllegalStateException("KIND 공고 원문 조회·파싱 실패", e);
     }
 
     boolean stockCodeMatches =
@@ -126,8 +126,9 @@ public class KrxListingReconciliationService {
     if (dart != null && dart.paymentDate() != null && notice.issueDate() != null) {
       long daysAfterPayment =
           java.time.temporal.ChronoUnit.DAYS.between(dart.paymentDate(), notice.issueDate());
-      // 발행일과 납입일은 같지 않다. 다만 다른 회차의 늦은 발행일을 매칭하지 않는다.
-      if (daysAfterPayment < 1 || daysAfterPayment > 7) {
+      // 독립적인 회차 ID 연결이 없는 경우, 넓은 1~7일 허용은 다른 회차를 오인한다.
+      // 우선 납입 직후 발행만 자동 허용하고 그 외는 수동 검토로 보수적으로 차단한다.
+      if (daysAfterPayment < 1 || daysAfterPayment > 2) {
         reasons.add("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
         datesValid = false;
       }
