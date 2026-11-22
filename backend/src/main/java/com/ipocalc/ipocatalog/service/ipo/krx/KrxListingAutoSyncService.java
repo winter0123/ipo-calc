@@ -215,11 +215,14 @@ public class KrxListingAutoSyncService {
     for (var notice : notices.values()) {
       // 서로 다른 유형의 공고를 추가상장 원문 해석기로 전달하지 않는다.
       // 신규상장·정정·취소는 별도의 원문 검증 및 원공고 연결이 필요하다.
-      if (!notice.title().contains("추가상장")
-          || notice.title().contains("정정")
-          || notice.title().contains("취소")) {
+      boolean revised =
+          notice.title().contains("정정")
+              || notice.title().contains("취소")
+              || notice.title().contains("철회")
+              || notice.title().contains("변경");
+      if (!notice.title().contains("추가상장") || revised) {
         reviews.add(notice.receiptNo() + ": 별도 공고 유형 검증 필요: " + notice.title());
-        if (notice.title().contains("정정") || notice.title().contains("취소")) {
+        if (revised) {
           unresolvedRevision = true;
         }
         continue;
