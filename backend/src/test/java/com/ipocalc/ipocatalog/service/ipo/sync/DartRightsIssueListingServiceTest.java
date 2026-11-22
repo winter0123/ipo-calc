@@ -681,6 +681,37 @@ class DartRightsIssueListingServiceTest {
             + "</SECTION-3></SECTION-2><P>");
   }
 
+  @Test
+  void untitledPlainParagraphMustNotSaveListing() {
+    assertRejectedUnissuedEvidence("실권주 1,004,418주 미발행");
+  }
+
+  @Test
+  void untitledNestedSectionMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<SECTION-3><TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
+  @Test
+  void tenthRightsRoundMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>제10차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
+  @Test
+  void separateIssuanceParentMustNotSaveListing() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>별도 발행 건</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
+  }
+
   private void assertRejectedUnissuedEvidence(String claim) {
     Ipo row = ipo("20251105000215");
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
