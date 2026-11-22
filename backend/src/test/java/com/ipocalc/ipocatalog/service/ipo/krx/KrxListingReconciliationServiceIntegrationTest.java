@@ -500,8 +500,7 @@ class KrxListingReconciliationServiceIntegrationTest {
           ipoRepository.saveAndFlush(current);
         });
 
-    when(dartClient.downloadDocumentStrict("20260215000001"))
-        .thenReturn(linkedDartXml(KOIZ));
+    when(dartClient.downloadDocumentStrict("20260215000001")).thenReturn(linkedDartXml(KOIZ));
 
     assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, KOIZ.url())))
         .isInstanceOfSatisfying(
