@@ -264,6 +264,32 @@ class KrxListingReconciliationServiceIntegrationTest {
         .isEqualTo(LocalDate.of(2026, 11, 15));
   }
 
+  @Test
+  void newListingCannotOverwriteManuallyRecordedOpenPrice() {
+    Ipo saved = createNewListingIpo(true);
+    transactionTemplate.executeWithoutResult(
+        status ->
+            ipoRepository.findById(saved.getId()).orElseThrow().updateListingOpenPrice(13_000L));
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("덮어쓸 수 없습니다"));
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingOpenPrice())
+        .isEqualTo(13_000L);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate()).isNull();
+  }
+
   private Ipo createNewListingIpo(boolean auto) {
     Ipo result =
         ipoRepository.saveAndFlush(

@@ -405,6 +405,50 @@ class KrxListingAutoSyncServiceTest {
       "https://kind.krx.co.kr/external/2026/11/20/001020/20261120002020/70760.htm";
 
   @Test
+  void syntheticNewListingFlowsFromOfficialSearchToAutoApplyWithoutInputUrl() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    String page =
+        "<html><table class='list type-00 mt10'><tbody>"
+            + syntheticSearchRow(RECEIPT, "신규상장")
+            + "</tbody></table></html>";
+    var officialDiscovery =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("/disclosure/details.do".equals(path)) {
+                assertThat(params).containsEntry("repIsuSrtCd", "A121850");
+                return page;
+              }
+              if ("search".equals(params.get("method"))) {
+                assertThat(params).containsEntry("acptno", RECEIPT);
+                return "<option value='20261120002019|Y'>신규상장</option>";
+              }
+              assertThat(params).containsEntry("docNo", "20261120002019");
+              return NEW_URL;
+            });
+    service =
+        new KrxListingAutoSyncService(
+            officialDiscovery,
+            reconciliation,
+            repository,
+            Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul")));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var preview = newListingPreview(false);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(preview);
+    when(reconciliation.applyNewListing(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001")))
+        .thenReturn(
+            new KrxListingReconciliationService.KrxListingApplyResult(
+                7L, true, "APPLIED", List.of()));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isEqualTo(1);
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    verify(reconciliation).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
   void newListingIsReadOnlyWhenFlagDisabled() {
     Ipo row = newListingIpo();
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));

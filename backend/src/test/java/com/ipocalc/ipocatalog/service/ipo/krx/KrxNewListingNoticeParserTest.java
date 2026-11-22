@@ -44,6 +44,23 @@ class KrxNewListingNoticeParserTest {
   }
 
   @Test
+  void newListingUrlAllowsOnlyOfficialHttps70760Document() {
+    String url =
+        "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
+    KrxListingNoticeClient.validateNewListingUrl(url);
+    assertThatThrownBy(() -> KrxListingNoticeClient.validateNoticeUrl(url))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(
+            url.replace("kind.krx.co.kr", "example.com")))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(url + "?redirect=1"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(
+            url.replace("https://", "http://")))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void refusesMissingOrRepeatedListingDate() {
     assertThatThrownBy(
             () -> parser.parse(NOTICE.replace("10.상장일(매매개시일)", "10.참고일")))
