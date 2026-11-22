@@ -190,12 +190,7 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var correction =
         new KrxListingNoticeDiscoveryClient.Disclosure(
-            OTHER_RECEIPT,
-            LocalDate.of(2026, 11, 20),
-            "코이즈",
-            "추가상장 정정",
-            "코스닥",
-            "12185");
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "코이즈", "추가상장 정정", "코스닥", "12185");
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(result(disclosure(RECEIPT), correction));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
@@ -215,12 +210,7 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var newListing =
         new KrxListingNoticeDiscoveryClient.Disclosure(
-            OTHER_RECEIPT,
-            LocalDate.of(2026, 11, 20),
-            "신규회사",
-            "신규상장",
-            "코스닥",
-            "12185");
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "신규회사", "신규상장", "코스닥", "12185");
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(newListing));
 
     var report = service.reconcileRecent();
