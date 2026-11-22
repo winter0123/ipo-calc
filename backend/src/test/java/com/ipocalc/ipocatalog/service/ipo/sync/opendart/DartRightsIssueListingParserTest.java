@@ -205,7 +205,8 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void acceptsExplicitUnissuedSharesOnlyWhenDifferenceMatches() {
-    String xml = "<DOCUMENT><P>실권주 1,004,418주 미발행</P></DOCUMENT>";
+    String xml = "<DOCUMENT><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P>실권주 1,004,418주 미발행</P></SECTION-2></DOCUMENT>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_583L)).isFalse();
   }
@@ -231,7 +232,9 @@ class DartRightsIssueListingParserTest {
 
   @Test
   void acceptsConfirmedUnissuedQuantityInSingleCell() {
-    String xml = "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String xml = "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
   }
 
@@ -312,7 +315,7 @@ class DartRightsIssueListingParserTest {
   void koizNumberedSubscriptionParagraphDoesNotOverrideSectionTitle() {
     String xml =
         "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
-            + "<P>2. 신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<P><SPAN>2. 신주인수권증서 청약 및 초과청약 배정</SPAN></P>"
             + "<TABLE><TR><TD>비고</TD>"
             + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
             + "</TR></TABLE></SECTION-2>";
