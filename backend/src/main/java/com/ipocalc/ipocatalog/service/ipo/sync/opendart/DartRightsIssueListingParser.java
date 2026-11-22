@@ -139,7 +139,8 @@ public class DartRightsIssueListingParser {
         }
       } else if (token.matches("(?is)<TITLE\\b.*")) {
         // ATOC=N identifies a table caption, not a section heading.
-        boolean caption = token.matches("(?is)<TITLE\\b[^>]*\\bATOC\\s*=\\s*['\\\"]?N(?:['\\\"]|\\s|>).*");
+        boolean caption =
+            token.matches("(?is)<TITLE\\b[^>]*\\bATOC\\s*=\\s*['\\\"]?N(?:['\\\"]|\\s|>).*");
         if (!caption) {
           String title = plain(token);
           if (structured && !sections.isEmpty()) {
