@@ -141,8 +141,7 @@ public class KrxListingReconciliationService {
     if (notice.roundLabel() == null || notice.roundLabel().isBlank()) {
       reasons.add("KIND 발행회차 식별자가 없습니다");
     } else {
-      reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: "
-          + notice.roundLabel());
+      reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: " + notice.roundLabel());
     }
     if (ipo.getSubscriptionEndDate() != null
         && notice.listingDate() != null
