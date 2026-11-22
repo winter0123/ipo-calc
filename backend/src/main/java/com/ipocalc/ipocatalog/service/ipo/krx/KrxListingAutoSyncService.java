@@ -105,8 +105,15 @@ public class KrxListingAutoSyncService {
   public Report previewPastUnconfirmed() {
     List<Ipo> targets =
         candidates().stream()
-            .filter(ipo -> "ESTIMATED_DART".equals(ipo.getListingDateEvidenceType()))
-            .filter(ipo -> ipo.getListingDate() != null && ipo.getListingDate().isBefore(today()))
+            .filter(
+                ipo ->
+                    ("ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
+                        && ipo.getListingDate() != null
+                        && ipo.getListingDate().isBefore(today()))
+                        || (ipo.getListingDate() == null
+                            && ipo.getSyncSource() != null
+                            && ipo.getSubscriptionEndDate() != null
+                            && ipo.getSubscriptionEndDate().isBefore(today())))
             .toList();
     return run(targets, null, today(), true);
   }
@@ -165,8 +172,14 @@ public class KrxListingAutoSyncService {
         LocalDate from = commonFrom;
         LocalDate to = min(today(), commonTo);
         if (from == null) {
-          from = ipo.getListingDate().minusMonths(2);
-          to = min(today(), ipo.getListingDate().plusMonths(2));
+          LocalDate anchor =
+              ipo.getListingDate() != null ? ipo.getListingDate() : ipo.getSubscriptionEndDate();
+          if (anchor == null) {
+            outcomes.add(outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "조회 기준일 없음"));
+            continue;
+          }
+          from = anchor.minusMonths(2);
+          to = min(today(), anchor.plusMonths(ipo.getListingDate() == null ? 4 : 2));
         }
         try {
           outcomes.add(reconcileOne(ipo, from, to, dryRun));
