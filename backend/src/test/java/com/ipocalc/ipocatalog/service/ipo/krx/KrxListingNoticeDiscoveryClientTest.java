@@ -133,6 +133,31 @@ class KrxListingNoticeDiscoveryClientTest {
   }
 
   @Test
+  void resolvesNewListingViewerAndRejectsMismatchedContentId() {
+    String receipt = "20261110001806";
+    String official =
+        "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                "search".equals(params.get("method"))
+                    ? "<option value='20261110001806|Y'>신규상장</option>"
+                    : official);
+    assertThat(client.resolveNewListingUrl(receipt)).isEqualTo(official);
+    assertThatThrownBy(() -> client.resolveAdditionalListingUrl(receipt))
+        .isInstanceOf(IllegalStateException.class);
+
+    var mismatch =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                "search".equals(params.get("method"))
+                    ? "<option value='20261110001806|Y'>신규상장</option>"
+                    : official.replace("20261110001806/70760.htm", "20261110001999/70760.htm"));
+    assertThatThrownBy(() -> mismatch.resolveNewListingUrl(receipt))
+        .hasMessageContaining("원문 경로");
+  }
+
+  @Test
   void resolvesDiscoveredReceiptThroughOfficialViewer() {
     List<String> requests = new ArrayList<>();
     var client =

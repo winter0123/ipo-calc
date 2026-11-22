@@ -399,6 +399,114 @@ class KrxListingAutoSyncServiceTest {
         + "</a></td><td>거래소</td></tr>";
   }
 
+  private static final String NEW_URL =
+      "https://kind.krx.co.kr/external/2026/11/20/001019/20261120002019/70760.htm";
+
+  @Test
+  void newListingIsReadOnlyWhenFlagDisabled() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    var preview = newListingPreview(false);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(preview);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.dryRun()).isTrue();
+    assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void oneNewListingWithExplicitFlagSavesOnce() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    var preview = newListingPreview(false);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(preview);
+    when(reconciliation.applyNewListing(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001")))
+        .thenReturn(
+            new KrxListingReconciliationService.KrxListingApplyResult(
+                7L, true, "APPLIED", List.of()));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isEqualTo(1);
+    verify(reconciliation)
+        .applyNewListing(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001"));
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void newListingCorrectionBlocksWriteWithoutOriginalReference() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var correction =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT,
+            LocalDate.of(2026, 11, 20),
+            "코이즈",
+            "상장 변경",
+            "코스닥",
+            "12185");
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT), correction));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains("변경");
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void conflictingNewListingCandidatesCannotApply() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT), newListingDisclosure(OTHER_RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(discovery.resolveNewListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+    when(reconciliation.previewNewListing(7L, OTHER_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.ROUND_CONFLICT)).isEqualTo(1);
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  private static Ipo newListingIpo() {
+    Ipo row = ipo();
+    when(row.getListingDate()).thenReturn(null);
+    when(row.getListingDateEvidenceType()).thenReturn(null);
+    when(row.getSyncSource()).thenReturn("OPENDART");
+    when(row.getSourceReceiptNo()).thenReturn("20261101000001");
+    return row;
+  }
+
+  private static KrxListingNoticeDiscoveryClient.Disclosure newListingDisclosure(String receipt) {
+    return new KrxListingNoticeDiscoveryClient.Disclosure(
+        receipt, LocalDate.of(2026, 11, 20), "코이즈", "신규상장", "코스닥", "12185");
+  }
+
+  private static KrxListingReconciliationService.NewListingPreview newListingPreview(
+      boolean idempotent) {
+    return new KrxListingReconciliationService.NewListingPreview(
+        LocalDate.of(2026, 11, 25), "hash", true, idempotent, List.of());
+  }
+
   private static Ipo ipo() {
     Ipo ipo = mock(Ipo.class);
     when(ipo.getId()).thenReturn(7L);

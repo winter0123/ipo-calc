@@ -124,6 +124,161 @@ class KrxListingReconciliationServiceIntegrationTest {
     createdIds.clear();
   }
 
+  // 70760 신규상장 원문 공식 필드에 근거한 합성 HTML이며 실원문 파일 재생은 아니다.
+  private static final String NEW_LISTING_URL =
+      "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
+  private static final String NEW_LISTING_HTML =
+      "<html><body>신규상장"
+          + "<table><tr><td>2.주식의 종류와 수</td><td>주권 종류</td>"
+          + "<td>표준코드</td><td>단축코드</td><td>주식수(주)</td></tr>"
+          + "<tr><td>보통주</td><td>KR7493410005</td>"
+          + "<td>A493410</td><td>45,845,239</td></tr>"
+          + "<tr><td>3.액면가(원)</td><td>500</td></tr>"
+          + "<tr><td>10.상장일(매매개시일)</td>"
+          + "<td>2026년 11월 12일</td></tr></table></body></html>";
+
+  @Test
+  void newListingOnlyFillsMissingAutoIpoAndIsIdempotent() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    assertThat(preview.idempotent()).isFalse();
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate()).isNull();
+
+    var result =
+        service.applyNewListing(
+            saved.getId(),
+            NEW_LISTING_URL,
+            preview.listingDate(),
+            preview.noticeHash(),
+            "20261101000001");
+
+    assertThat(result.status()).isEqualTo("APPLIED");
+    Ipo after = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(after.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(after.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(after.getKrxListingNoticeUrl()).isEqualTo(NEW_LISTING_URL);
+    assertThat(after.getSourceReceiptNo()).isEqualTo("20261101000001");
+    assertThat(after.getListingDateEvidenceReceipt()).isNull();
+    assertThat(after.getLastImportedListingDate()).isEqualTo(after.getListingDate());
+    assertThat(
+            service
+                .applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001")
+                .status())
+        .isEqualTo("NO_OP");
+  }
+
+  @Test
+  void newListingCannotOverrideManualIpoOrWrongStockCode() {
+    Ipo manual = createNewListingIpo(false);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var manualPreview = service.previewNewListing(manual.getId(), NEW_LISTING_URL);
+    assertThat(manualPreview.applyAllowed()).isFalse();
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    manual.getId(),
+                    NEW_LISTING_URL,
+                    manualPreview.listingDate(),
+                    manualPreview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(manual.getId()).orElseThrow().getListingDate()).isNull();
+
+    Ipo different = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL))
+        .thenReturn(NEW_LISTING_HTML.replace("A493410", "A493411"));
+    var wrongCode = service.previewNewListing(different.getId(), NEW_LISTING_URL);
+    assertThat(wrongCode.applyAllowed()).isFalse();
+    assertThat(wrongCode.reasons()).anyMatch(reason -> reason.contains("종목코드"));
+  }
+
+  @Test
+  void newListingRejectsStaleDocumentAndChangedOriginalReceipt() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL))
+        .thenReturn(NEW_LISTING_HTML.replace("2026년 11월 12일", "2026년 11월 13일"));
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          ipoRepository.findById(saved.getId()).orElseThrow()
+              .recordSyncSourceReceipt("20261102000001");
+        });
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate()).isNull();
+  }
+
+  @Test
+  void newListingCannotOverwriteManualDateSetAfterPreview() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    transactionTemplate.executeWithoutResult(
+        status ->
+            entityManager
+                .createNativeQuery("update ipos set listing_date = ?1 where id = ?2")
+                .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 15)))
+                .setParameter(2, saved.getId())
+                .executeUpdate());
+    entityManager.clear();
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 15));
+  }
+
+  private Ipo createNewListingIpo(boolean auto) {
+    Ipo result =
+        ipoRepository.saveAndFlush(
+            Ipo.builder()
+                .companyName("넥스아이")
+                .ipoName("넥스아이")
+                .stockCode("493410")
+                .subscriptionStartDate(LocalDate.of(2026, 11, 3))
+                .subscriptionEndDate(LocalDate.of(2026, 11, 6))
+                .status(RecordStatus.ACTIVE)
+                .syncSource(auto ? "OPENDART" : null)
+                .sourceReceiptNo(auto ? "20261101000001" : null)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build());
+    createdIds.add(result.getId());
+    return result;
+  }
+
   @Test
   void appliesFourSyntheticRoundLinkedCasesAndIsIdempotent() throws Exception {
     for (CaseData c : CASES) {
