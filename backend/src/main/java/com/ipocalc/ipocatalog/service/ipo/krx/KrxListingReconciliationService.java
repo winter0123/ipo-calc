@@ -121,13 +121,8 @@ public class KrxListingReconciliationService {
       reasons.add("KIND 공고에서 상장일을 확인할 수 없습니다");
       datesValid = false;
     }
-    if (dart != null
-        && dart.listingDate() != null
-        && notice.listingDate() != null
-        && !notice.listingDate().equals(dart.listingDate())) {
-      reasons.add("KRX 상장일이 DART 예정일과 다릅니다");
-      datesValid = false;
-    }
+    // DART 상장예정일은 KIND 공식 확정일과 달라도 회차 동일성의 근거가 아니다.
+    // 실제 발행수량, 발행가, 보통주 종류, 납입일·발행일 관계로만 매칭한다.
     if (dart != null && dart.paymentDate() != null && notice.issueDate() != null) {
       if (!notice.issueDate().isAfter(dart.paymentDate())) {
         reasons.add("KRX 발행일이 DART 납입일 이후가 아닙니다");
@@ -167,7 +162,6 @@ public class KrxListingReconciliationService {
     boolean applyAllowed =
         idempotent
             || (reasons.isEmpty()
-                && expired
                 && stockCodeMatches
                 && stockTypeCommon
                 && reasonAllowed
@@ -175,11 +169,6 @@ public class KrxListingReconciliationService {
                 && issuedSharesMatch
                 && issuePriceMatch
                 && datesValid);
-
-    if (!expired && !idempotent) {
-      reasons.add("기간이 지나지 않은 건은 적용할 수 없습니다");
-      applyAllowed = false;
-    }
 
     String reviewStatus = applyAllowed ? (idempotent ? "IDEMPOTENT" : "APPLYABLE") : "REVIEW_ONLY";
 
