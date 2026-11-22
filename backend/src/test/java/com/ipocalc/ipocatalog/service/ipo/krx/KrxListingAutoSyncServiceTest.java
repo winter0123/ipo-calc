@@ -319,6 +319,81 @@ class KrxListingAutoSyncServiceTest {
     verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
   }
 
+  @Test
+  void syntheticSearchHtmlWithdrawalBlocksOriginalWrite() {
+    var report = reconcileSyntheticSearchRows("상장 철회", true);
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "철회");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void syntheticSearchHtmlChangeBlocksOriginalWrite() {
+    var report = reconcileSyntheticSearchRows("[정정] 상장 변경", true);
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "변경");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void syntheticSearchHtmlUnrelatedDisclosureDoesNotBlockOriginalWrite() {
+    var report = reconcileSyntheticSearchRows("감사보고서", false);
+
+    assertThat(report.counts().get(OutcomeType.DATE_CORRECTED)).isEqualTo(1);
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    verify(reconciliation).apply(eq(7L), any(KrxListingApplyRequest.class));
+  }
+
+  // 합성 KIND 검색 HTML → 실제 목록 파서 → 자동 배치. 외부 공시 실응답이 아니다.
+  private KrxListingAutoSyncService.Report reconcileSyntheticSearchRows(
+      String secondaryTitle, boolean revision) {
+    String html =
+        "<html><table class='list type-00 mt10'><tbody>"
+            + syntheticSearchRow(RECEIPT, "추가상장")
+            + syntheticSearchRow(OTHER_RECEIPT, secondaryTitle)
+            + "</tbody></table></html>";
+    var realParser =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              assertThat(path).isEqualTo("/disclosure/details.do");
+              assertThat(params).containsEntry("repIsuSrtCd", "A121850");
+              return html;
+            });
+    var discoveryResult =
+        realParser.find(
+            "121850", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 20));
+    assertThat(discoveryResult.disclosures()).hasSize(revision ? 2 : 1);
+    KrxListingNoticeDiscoveryClient discovered = mock(KrxListingNoticeDiscoveryClient.class);
+    when(discovered.find(eq("121850"), any(), any())).thenReturn(discoveryResult);
+    when(discovered.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    service =
+        new KrxListingAutoSyncService(
+            discovered,
+            reconciliation,
+            repository,
+            Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul")));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+    var applied = mock(KrxListingReconciliationService.KrxListingApplyResult.class);
+    when(applied.status()).thenReturn("APPLIED");
+    when(reconciliation.apply(eq(7L), any(KrxListingApplyRequest.class))).thenReturn(applied);
+
+    return service.reconcileRecent();
+  }
+
+  private static String syntheticSearchRow(String receipt, String title) {
+    return "<tr><td>1</td><td>09:00</td>"
+        + "<td><a onclick=\\\"companysummary_open('12185')\\\">코이즈</a></td>"
+        + "<td><a onclick=\\\"openDisclsViewer('"
+        + receipt
+        + "','')\\\">"
+        + title
+        + "</a></td><td>거래소</td></tr>";
+  }
+
   private static Ipo ipo() {
     Ipo ipo = mock(Ipo.class);
     when(ipo.getId()).thenReturn(7L);

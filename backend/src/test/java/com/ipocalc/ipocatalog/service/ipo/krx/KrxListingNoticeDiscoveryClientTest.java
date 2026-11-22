@@ -15,6 +15,26 @@ class KrxListingNoticeDiscoveryClientTest {
   private static final String RECEIPT = "20260205001019";
 
   @Test
+  void classifiesSyntheticAmendmentsAndIgnoresUnrelatedCompanyDisclosures() {
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("추가상장"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.ADDITIONAL);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("[기재정정] 추가상장"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.REVISION);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("상장 철회"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.REVISION);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("상장 변경"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.REVISION);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("상장 일정 변경"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.REVISION);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("신규 상장"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("사업보고서 상장 철회 언급"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.OTHER);
+    assertThat(KrxListingNoticeDiscoveryClient.classifyListingTitle("감사보고서"))
+        .isEqualTo(KrxListingNoticeDiscoveryClient.ListingType.OTHER);
+  }
+
+  @Test
   void findsOfficialReceiptWithoutProvidingNoticeUrl() {
     var client =
         new KrxListingNoticeDiscoveryClient(

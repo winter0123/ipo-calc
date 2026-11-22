@@ -565,10 +565,7 @@ class KrxListingReconciliationServiceIntegrationTest {
   void conflictingRoundLabelsInsideDartDocumentCannotConfirm() throws Exception {
     stubLinkedNotice(KOIZ);
     String contradictory =
-        linkedDartXml(KOIZ)
-            .replace(
-                "</DOCUMENT>",
-                "<P>발행회수(발행일): 제17회('26.01.30)</P></DOCUMENT>");
+        linkedDartXml(KOIZ).replace("</DOCUMENT>", "<P>발행회수(발행일): 제17회('26.01.30)</P></DOCUMENT>");
     when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(contradictory);
     Ipo saved = createIpo(KOIZ);
 

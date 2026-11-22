@@ -80,6 +80,49 @@ public class KrxListingNoticeDiscoveryClient {
       String market,
       String issuerCode) {}
 
+  /** 목록 검색과 자동 저장에서 공통으로 쓰는 상장 공고 제목 분류. */
+  enum ListingType {
+    ADDITIONAL,
+    NEW_LISTING,
+    REVISION,
+    OTHER
+  }
+
+  /** 공백과 대괄호/소괄호 접두 표시를 정규화하되 상장 공고가 아닌 일반 공시는 제외한다. */
+  static ListingType classifyListingTitle(String title) {
+    if (title == null || title.isBlank()) {
+      return ListingType.OTHER;
+    }
+    String normalized = title.replaceAll("\\s+", "");
+    boolean revisedPrefix = false;
+    Matcher prefix = Pattern.compile("^(\\\\[[^]\\\\r\\\\n]{1,24}]|\\\\([^()\\\\r\\\\n]{1,24}\\\\))").matcher(normalized);
+    while (prefix.find()) {
+      revisedPrefix |= hasRevisionWord(prefix.group());
+      normalized = normalized.substring(prefix.end());
+      prefix.reset(normalized);
+    }
+    if (normalized.startsWith("추가상장") || normalized.startsWith("신규상장")) {
+      if (revisedPrefix || hasRevisionWord(normalized)) {
+        return ListingType.REVISION;
+      }
+      return normalized.startsWith("추가상장")
+          ? ListingType.ADDITIONAL
+          : ListingType.NEW_LISTING;
+    }
+    // 추가상장/신규상장 없는 독립 상장 철회·취소·변경·정정 제목을 보존한다.
+    if (normalized.matches("^상장(?:일정|예정일|일)?(?:정정|취소|철회|변경).*")) {
+      return ListingType.REVISION;
+    }
+    return ListingType.OTHER;
+  }
+
+  private static boolean hasRevisionWord(String value) {
+    return value.contains("정정")
+        || value.contains("취소")
+        || value.contains("철회")
+        || value.contains("변경");
+  }
+
   /** 모든 검색 페이지의 파싱을 완료한 결과. */
   public record SearchResult(List<Disclosure> disclosures, int pagesRead) {}
 
@@ -109,10 +152,7 @@ public class KrxListingNoticeDiscoveryClient {
       for (Disclosure item : current) {
         if (!item.publishedAt().isBefore(from)
             && !item.publishedAt().isAfter(to)
-            && (item.title().contains("추가상장")
-                || item.title().contains("신규상장")
-                || item.title().contains("상장취소")
-                || item.title().contains("상장정정"))) {
+            && classifyListingTitle(item.title()) != ListingType.OTHER) {
           unique.putIfAbsent(item.receiptNo(), item);
         }
       }
