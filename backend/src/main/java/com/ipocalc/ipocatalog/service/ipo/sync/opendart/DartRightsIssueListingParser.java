@@ -495,7 +495,7 @@ public class DartRightsIssueListingParser {
     if (!heading.isEmpty() && !context.contains(heading)) {
       context += " / " + heading;
     }
-    return context.isBlank() ? "UNKNOWN" : context;
+    return context.isBlank() ? (hasStructuredSections ? "UNKNOWN" : "LEGACY") : context;
   }
 
   private static boolean eligibleRightsContext(String context) {
@@ -503,7 +503,7 @@ public class DartRightsIssueListingParser {
         || context.matches("(?s).*(?:무상증자|제\\s*[2-9]\\d*\\s*차\\s*유상증자).*")) {
       return false;
     }
-    return context.contains("실권주 처리내역");
+    return context.contains("실권주 처리내역") || context.equals("LEGACY");
   }
 
   private static boolean eligibleRightsClaim(String claim) {
