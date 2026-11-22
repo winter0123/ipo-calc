@@ -36,6 +36,16 @@ class KrxNewListingNoticeParserTest {
   }
 
   @Test
+  void htmlHeadTitleAloneIsNotTheOfficialBodyTitle() {
+    String misleading =
+        NOTICE.replace(
+            "<html><body>신규상장",
+            "<html><head><title>신규상장</title></head><body>감사보고서");
+    assertThatThrownBy(() -> parser.parse(misleading))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void hiddenNewListingWordsNeverAuthorizeOtherDocument() {
     String unrelated =
         NOTICE.replace("<html><body>신규상장", "<html><body>감사보고서");

@@ -12,6 +12,8 @@ public class KrxNewListingNoticeParser {
           Pattern.CASE_INSENSITIVE);
   private static final Pattern HTML_COMMENT =
       Pattern.compile("<!--[\\s\\S]*?-->");
+  private static final Pattern BODY =
+      Pattern.compile("<body\\b[^>]*>(.*?)</body\\s*>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern SPACE = Pattern.compile("[\\s\\u00a0]+");
   private static final Pattern STOCK_SECTION =
@@ -28,7 +30,9 @@ public class KrxNewListingNoticeParser {
       throw new IllegalArgumentException("KIND 신규상장 공고가 비어 있습니다");
     }
   // 공식 원문은 본문보다 앞에 CSS(style)와 Javascript(script)가 있으므로 제거 후 제목 검증.
-    String visible = INVISIBLE.matcher(html).replaceAll(" ");
+    Matcher body = BODY.matcher(html);
+    String documentBody = body.find() ? body.group(1) : html;
+    String visible = INVISIBLE.matcher(documentBody).replaceAll(" ");
     visible = HTML_COMMENT.matcher(visible).replaceAll(" ");
     String text = SPACE.matcher(TAG.matcher(visible).replaceAll(" ")).replaceAll(" ").trim();
     if (!text.startsWith("신규상장")) {
