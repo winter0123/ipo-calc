@@ -304,12 +304,12 @@ class KrxListingReconciliationServiceIntegrationTest {
 
     CountDownLatch previewReached = new CountDownLatch(1);
     CountDownLatch release = new CountDownLatch(1);
-    when(dartClient.downloadDocument(KOIZ.dartReceipt()))
+    when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt()))
         .thenAnswer(
             inv -> {
               previewReached.countDown();
               assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
-              return Optional.of(readResource("/krx/dart/" + KOIZ.dartReceipt() + ".xml"));
+              return readResource("/krx/dart/" + KOIZ.dartReceipt() + ".xml");
             });
 
     ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -590,7 +590,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     String ambiguous =
         original.replace("</DOCUMENT>", "<P>주권 상장 및 유통 예정일: 2026년 03월 11일</P></DOCUMENT>");
     stubNotice(KOIZ);
-    when(dartClient.downloadDocument(KOIZ.dartReceipt())).thenReturn(Optional.of(ambiguous));
+    when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(ambiguous);
     Ipo saved = createIpo(KOIZ);
 
     var preview = service.preview(saved.getId(), KOIZ.url());
