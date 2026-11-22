@@ -343,4 +343,46 @@ class DartRightsIssueListingParserTest {
             + "</SECTION-3></SECTION-2>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
+
+  @Test
+  void koizUntitledTopLevelContainerAllowsTitledRightsSection() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P>2. 신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void untitledNestedSectionCannotInheritRightsTitle() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<SECTION-3><TABLE><TR>"
+            + "<TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void closedRightsSectionInUntitledContainerCannotAuthorizeLaterTable() {
+    String xml =
+        "<SECTION-1><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "</SECTION-2><TABLE><TR>"
+            + "<TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void namedBonusParentCannotBeBypassedByNestedRightsSection() {
+    String xml =
+        "<SECTION-1><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2></SECTION-1>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
