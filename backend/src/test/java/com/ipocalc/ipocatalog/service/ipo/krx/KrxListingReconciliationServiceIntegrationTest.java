@@ -523,7 +523,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(preview.notice().listingDate()).isEqualTo(LocalDate.of(2026, 3, 24));
     assertThat(preview.applyAllowed()).isFalse();
     assertThat(preview.reviewStatus()).isEqualTo("REVIEW_ONLY");
-    assertThat(preview.reasons()).contains("유상증자 사유가 아니거나 제외 사유입니다");
+    assertThat(preview.reasons())
+        .contains("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
 
     KrxListingApplyRequest otherRequest = request(preview, RAON_OTHER_ROUND.url());
     assertThatThrownBy(() -> service.apply(saved.getId(), otherRequest))
