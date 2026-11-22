@@ -145,7 +145,11 @@ public class KrxListingAutoSyncService {
         .filter(
             ipo ->
                 "ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
-                    || "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType()))
+                    || "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
+                    || (ipo.getListingDate() == null
+                        && ipo.getSyncSource() != null
+                        && ipo.getSourceReceiptNo() != null
+                        && ipo.getListingDateEvidenceType() == null))
         .toList();
   }
 
@@ -208,6 +212,14 @@ public class KrxListingAutoSyncService {
     }
     if (notices.isEmpty()) {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "공고 게시일 범위의 모든 검색 페이지 정상 조회 후 공고 없음");
+    }
+    boolean newListing =
+        ipo.getListingDate() == null
+            || ("CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
+                && ipo.getKrxListingNoticeUrl() != null
+                && ipo.getKrxListingNoticeUrl().endsWith("/70760.htm"));
+    if (newListing) {
+      return reconcileNewListing(ipo, notices, dryRun);
     }
     List<Match> eligible = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
@@ -298,6 +310,65 @@ public class KrxListingAutoSyncService {
         preview.expectedKrxListingDate(),
         "DART 실제 발행과 KIND 동일 회차 확인 후 반영");
   }
+
+  /** 일반 IPO의 신규상장 70760은 추가상장과 별도 판정·저장한다. */
+  private Outcome reconcileNewListing(
+      Ipo ipo, Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices, boolean dryRun) {
+    List<NewMatch> matches = new ArrayList<>();
+    List<String> reviews = new ArrayList<>();
+    boolean unresolvedRevision = false;
+    for (var notice : notices.values()) {
+      var type = KrxListingNoticeDiscoveryClient.classifyListingTitle(notice.title());
+      if (type == KrxListingNoticeDiscoveryClient.ListingType.REVISION) {
+        unresolvedRevision = true;
+        reviews.add(notice.receiptNo() + ": 원공고 미확인 정정·취소·철회·변경: " + notice.title());
+        continue;
+      }
+      if (type != KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING) {
+        continue;
+      }
+      String url = discovery.resolveNewListingUrl(notice.receiptNo());
+      var preview = reconciliation.previewNewListing(ipo.getId(), url);
+      if (preview.applyAllowed()) {
+        matches.add(new NewMatch(notice.receiptNo(), url, preview));
+      } else {
+        reviews.add(notice.receiptNo() + ": " + String.join("; ", preview.reasons()));
+      }
+    }
+    if (unresolvedRevision) {
+      return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
+    }
+    if (matches.size() > 1) {
+      return outcome(ipo, OutcomeType.ROUND_CONFLICT, null, null, "신규상장 공고 후보가 복수입니다");
+    }
+    if (matches.isEmpty()) {
+      return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
+    }
+    var chosen = matches.get(0);
+    var preview = chosen.preview();
+    if (preview.idempotent()) {
+      return outcome(
+          ipo, OutcomeType.ALREADY_APPLIED, chosen.receipt(), preview.listingDate(), "이미 확정됨");
+    }
+    if (dryRun) {
+      return outcome(
+          ipo, OutcomeType.APPLY_CANDIDATE, chosen.receipt(), preview.listingDate(), "읽기 전용");
+    }
+    var result =
+        reconciliation.applyNewListing(
+            ipo.getId(), chosen.url(), preview.listingDate(), preview.noticeHash());
+    return outcome(
+        ipo,
+        "NO_OP".equals(result.status())
+            ? OutcomeType.ALREADY_APPLIED
+            : OutcomeType.NEW_CONFIRMED,
+        chosen.receipt(),
+        preview.listingDate(),
+        "공식 신규상장 보통주 종목코드와 매매개시일 확정");
+  }
+
+  private record NewMatch(
+      String receipt, String url, KrxListingReconciliationService.NewListingPreview preview) {}
 
   private static Outcome outcome(
       Ipo ipo, OutcomeType kind, String receipt, LocalDate date, String reason) {

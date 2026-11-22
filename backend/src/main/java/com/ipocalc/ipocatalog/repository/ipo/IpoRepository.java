@@ -161,6 +161,51 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
       @Param("stockCode") String stockCode,
       @Param("dartReceipt") String dartReceipt);
 
+  /** 공식 신규상장 70760 공고로 날짜가 비어 있는 자동 수집 행만 원자 갱신한다. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Ipo i set i.listingDate = :date, "
+          + "i.listingDateEvidenceType = 'CONFIRMED_KRX', "
+          + "i.krxListingNoticeUrl = :url, "
+          + "i.lastImportedListingDate = :date, "
+          + "i.lastSyncedAt = :now, i.updatedAt = :now "
+          + "where i.id = :id "
+          + "and i.status = com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE "
+          + "and i.deletedAt is null and i.stockCode = :stockCode "
+          + "and i.listingDate is null and i.syncSource is not null "
+          + "and i.sourceReceiptNo = :sourceReceipt "
+          + "and i.listingDateEvidenceType is null "
+          + "and i.listingDateEvidenceReceipt is null "
+          + "and i.krxListingNoticeUrl is null "
+          + "and i.lastImportedListingDate is null "
+          + "and i.withdrawnReceiptNo is null")
+  @SuppressWarnings("checkstyle:LineLength")
+  int confirmNewKrxListingIfEmpty(
+      @Param("id") Long id,
+      @Param("stockCode") String stockCode,
+      @Param("sourceReceipt") String sourceReceipt,
+      @Param("date") LocalDate date,
+      @Param("url") String url,
+      @Param("now") LocalDateTime now);
+
+  /** 같은 70760 공식 공고가 이미 원자 적용됐는지 확인한다. */
+  @Query(
+      "select count(i) from Ipo i where i.id = :id "
+          + "and i.status = com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE "
+          + "and i.deletedAt is null and i.stockCode = :stockCode "
+          + "and i.sourceReceiptNo = :sourceReceipt "
+          + "and i.listingDate = :date "
+          + "and i.listingDateEvidenceType = 'CONFIRMED_KRX' "
+          + "and i.krxListingNoticeUrl = :url")
+  @SuppressWarnings("checkstyle:LineLength")
+  int countSameConfirmedNewKrxCandidate(
+      @Param("id") Long id,
+      @Param("stockCode") String stockCode,
+      @Param("sourceReceipt") String sourceReceipt,
+      @Param("date") LocalDate date,
+      @Param("url") String url);
+
   /** ACTIVE 공모주의 청약 시작일 최소값을 조회한다. */
   Optional<LocalDate> findMinSubscriptionStartDateByStatusAndDeletedAtIsNull(RecordStatus status);
 

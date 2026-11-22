@@ -47,6 +47,103 @@ public class KrxListingReconciliationService {
     this.clock = clock;
   }
 
+  /** 70760 신규상장 미리보기는 추가상장 발행회차와 별개로 검증한다. */
+  public NewListingPreview previewNewListing(Long ipoId, String noticeUrl) {
+    KrxListingNoticeClient.validateNewListingUrl(noticeUrl);
+    String html = noticeClient.fetchNewListing(noticeUrl);
+    var evidence = new KrxNewListingNoticeParser().parse(html);
+    String hash = sha256(html);
+    List<String> reasons = new ArrayList<>();
+    Ipo ipo = ipoRepository.findById(ipoId).orElse(null);
+    if (ipo == null || ipo.getDeletedAt() != null || ipo.getStatus() != RecordStatus.ACTIVE) {
+      reasons.add("활성 IPO를 찾을 수 없습니다");
+      return new NewListingPreview(evidence.listingDate(), hash, false, false, reasons);
+    }
+    boolean idempotent =
+        "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
+            && noticeUrl.equals(ipo.getKrxListingNoticeUrl())
+            && evidence.listingDate().equals(ipo.getListingDate());
+    if (!evidence.stockCode().equals(ipo.getStockCode())) {
+      reasons.add("공식 신규상장 종목코드가 다릅니다");
+    }
+    if (ipo.getSyncSource() == null
+        || ipo.getSourceReceiptNo() == null
+        || !ipo.getSourceReceiptNo().matches("\\d{14}")
+        || ipo.getWithdrawnReceiptNo() != null) {
+      reasons.add("원신고가 확인된 자동 수집 IPO가 아닙니다");
+    }
+    if (ipo.getSubscriptionEndDate() == null
+        || !evidence.listingDate().isAfter(ipo.getSubscriptionEndDate())) {
+      reasons.add("상장일이 청약 종료일 이후가 아닙니다");
+    }
+    if (!idempotent
+        && (ipo.getListingDate() != null
+            || ipo.getListingDateEvidenceType() != null
+            || ipo.getListingDateEvidenceReceipt() != null
+            || ipo.getLastImportedListingDate() != null
+            || ipo.getKrxListingNoticeUrl() != null)) {
+      reasons.add("기존 상장일 또는 출처를 자동 덮어쓸 수 없습니다");
+    }
+    Optional<Ipo> same =
+        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+            evidence.stockCode(), RecordStatus.ACTIVE);
+    if (same.isPresent() && !same.get().getId().equals(ipoId)) {
+      reasons.add("같은 종목코드의 다른 활성 IPO가 있습니다");
+    }
+    return new NewListingPreview(evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
+  }
+
+  /** 검증된 신규상장 미리보기만 재조회·조건부 UPDATE로 저장한다. */
+  public KrxListingApplyResult applyNewListing(
+      Long ipoId, String url, LocalDate expectedDate, String expectedHash) {
+    if (expectedDate == null || expectedHash == null || expectedHash.isBlank()) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.BAD_REQUEST, "new listing evidence required");
+    }
+    NewListingPreview preview = previewNewListing(ipoId, url);
+    if (!expectedDate.equals(preview.listingDate()) || !expectedHash.equals(preview.noticeHash())) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "stale new listing notice");
+    }
+    if (!preview.applyAllowed()) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "new listing conditions changed");
+    }
+    String stockCode = new KrxNewListingNoticeParser()
+        .parse(noticeClient.fetchNewListing(url)).stockCode();
+    String status =
+        transactionTemplate.execute(
+            tx -> {
+              Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
+              if (current == null || current.getSourceReceiptNo() == null) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "ipo source changed");
+              }
+              String receipt = current.getSourceReceiptNo();
+              if (ipoRepository.countSameConfirmedNewKrxCandidate(
+                      ipoId, stockCode, receipt, expectedDate, url) == 1) {
+                return "NO_OP";
+              }
+              int updated =
+                  ipoRepository.confirmNewKrxListingIfEmpty(
+                      ipoId, stockCode, receipt, expectedDate, url, LocalDateTime.now(clock));
+              if (updated == 1) {
+                return "APPLIED";
+              }
+              throw new org.springframework.web.server.ResponseStatusException(
+                  org.springframework.http.HttpStatus.CONFLICT, "concurrent new listing change");
+            });
+    return new KrxListingApplyResult(ipoId, true, status, preview.reasons());
+  }
+
+  /** 공식 신규상장 원문과 읽기 시점의 해시를 보존한다. */
+  public record NewListingPreview(
+      LocalDate listingDate,
+      String noticeHash,
+      boolean applyAllowed,
+      boolean idempotent,
+      List<String> reasons) {}
+
   /** 미리보기를 수행한다. */
   public KrxListingReconciliationPreview preview(Long ipoId, String noticeUrl) {
     List<String> reasons = new ArrayList<>();
