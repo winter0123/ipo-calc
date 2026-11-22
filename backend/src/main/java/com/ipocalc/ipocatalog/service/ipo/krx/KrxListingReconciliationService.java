@@ -376,7 +376,8 @@ public class KrxListingReconciliationService {
         ipo.getLastImportedListingDate() != null
             ? ipo.getLastImportedListingDate()
             : ipo.getListingDate();
-    return new DartEvidence(receipt, payment, shares, price, listing, original, extractDartRound(xml));
+    return new DartEvidence(
+        receipt, payment, shares, price, listing, original, extractDartRound(xml));
   }
 
   // 발행실적 본문에 명시적으로 표시된 '발행회수(발행일)'만 연결 근거로 인정한다.
