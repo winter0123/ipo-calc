@@ -293,6 +293,111 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void importedDateAlsoRejectsChangedSubscriptionEndAfterPreview() {
+    Ipo saved = createNewListingIpo(true);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
+          current.mergeSupplementalSchedule(
+              null,
+              null,
+              null,
+              LocalDate.of(2026, 11, 14),
+              "OPENDART+USTOCKPLUS",
+              LocalDateTime.now());
+        });
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    transactionTemplate.executeWithoutResult(
+        status ->
+            entityManager
+                .createNativeQuery("update ipos set subscription_end_date = ?1 where id = ?2")
+                .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 15)))
+                .setParameter(2, saved.getId())
+                .executeUpdate());
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 14));
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
+  void withdrawnAndDeletedIposCannotBeConfirmedByNewListing() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    transactionTemplate.executeWithoutResult(
+        status ->
+            ipoRepository
+                .findById(saved.getId())
+                .orElseThrow()
+                .withdraw("20261112000001", LocalDateTime.now()));
+
+    var withdrawn = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(withdrawn.applyAllowed()).isFalse();
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate()).isNull();
+  }
+
+  @Test
+  void differentConfirmedKindNoticeIsNeverReplacedByNewListing() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var preview = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(preview.applyAllowed()).isTrue();
+    String otherUrl =
+        "https://kind.krx.co.kr/external/2026/11/11/000999/20261111001234/70760.htm";
+    transactionTemplate.executeWithoutResult(
+        status ->
+            entityManager
+                .createNativeQuery(
+                    "update ipos set listing_date = ?1, "
+                        + "listing_date_evidence_type = 'CONFIRMED_KRX', "
+                        + "krx_listing_notice_url = ?2 where id = ?3")
+                .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 12)))
+                .setParameter(2, otherUrl)
+                .setParameter(3, saved.getId())
+                .executeUpdate());
+    entityManager.clear();
+
+    var changed = service.previewNewListing(saved.getId(), NEW_LISTING_URL);
+    assertThat(changed.applyAllowed()).isFalse();
+    assertThatThrownBy(
+            () ->
+                service.applyNewListing(
+                    saved.getId(),
+                    NEW_LISTING_URL,
+                    preview.listingDate(),
+                    preview.noticeHash(),
+                    "20261101000001"))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+        .isEqualTo(otherUrl);
+  }
+
+  @Test
   void subscriptionEndChangeAfterPreviewMustConflictWithoutWrite() {
     Ipo saved = createNewListingIpo(true);
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
