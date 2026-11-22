@@ -129,6 +129,117 @@ public class KrxListingNoticeDiscoveryClient {
     throw new IllegalStateException("KIND 공고가 최대 검색 페이지를 초과했습니다");
   }
 
+  /**
+   * KIND 주식발행현황을 상장일 기준으로 월별 조회하고 접수일로 필터링한다.
+   *
+   * <p>상장일은 아직 알 수 없으므로 게시일 전후 두 달을 탐색한다. 이 결과는 반드시 원문에서
+   * 종목코드와 발행 회차를 재검증해야 하며 회사 코드만으로는 적용하지 않는다.
+   */
+  public SearchResult findViaStockIssue(
+      String stockCode, LocalDate fromPublication, LocalDate toPublication) {
+    if (stockCode == null || !SHORT_CODE.matcher(stockCode).matches()) {
+      throw new IllegalArgumentException("KIND 조회에는 정확한 6자리 종목코드가 필요합니다");
+    }
+    if (fromPublication == null || toPublication == null
+        || fromPublication.isAfter(toPublication)
+        || fromPublication.plusMonths(1).isBefore(toPublication)) {
+      throw new IllegalArgumentException("KIND 공고 게시일 범위는 최대 한 달입니다");
+    }
+    LocalDate searchStart = fromPublication.minusMonths(2);
+    LocalDate searchEnd = toPublication.plusMonths(2);
+    Map<String, Disclosure> unique = new LinkedHashMap<>();
+    int pagesRead = 0;
+    for (LocalDate month = searchStart.withDayOfMonth(1);
+        !month.isAfter(searchEnd); month = month.plusMonths(1)) {
+      LocalDate windowStart = month.isBefore(searchStart) ? searchStart : month;
+      LocalDate monthEnd = month.withDayOfMonth(month.lengthOfMonth());
+      LocalDate windowEnd = monthEnd.isAfter(searchEnd) ? searchEnd : monthEnd;
+      Set<String> fingerprints = new LinkedHashSet<>();
+      boolean finished = false;
+      for (int page = 1; page <= MAX_PAGES; page++) {
+        Map<String, String> query = new LinkedHashMap<>();
+        query.put("method", "searchStockIssueList");
+        query.put("forward", "searchStockIssueList");
+        query.put("searchMode", "");
+        query.put("searchCodeType", "");
+        query.put("currentPageSize", Integer.toString(PAGE_SIZE));
+        query.put("pageIndex", Integer.toString(page));
+        query.put("orderMode", "1");
+        query.put("orderStat", "D");
+        query.put("marketType", "all");
+        query.put("listingType", "2");
+        query.put("isurCd", stockCode.substring(0, 5));
+        query.put("fromDate", windowStart.format(DATE));
+        query.put("toDate", windowEnd.format(DATE));
+        List<Disclosure> current = parseStockIssuePage(
+            transport.request("/corpgeneral/stockissuelist.do", query, true));
+        pagesRead++;
+        String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
+        if (!current.isEmpty() && !fingerprints.add(fingerprint)) {
+          throw new IllegalStateException("KIND 증자현황 페이지가 반복 반환됐습니다");
+        }
+        for (Disclosure item : current) {
+          if (!item.publishedAt().isBefore(fromPublication)
+              && !item.publishedAt().isAfter(toPublication)) {
+            unique.putIfAbsent(item.receiptNo(), item);
+          }
+        }
+        if (current.size() < PAGE_SIZE) {
+          finished = true;
+          break;
+        }
+      }
+      if (!finished) {
+        throw new IllegalStateException("KIND 증자현황 조회가 최대 페이지를 초과했습니다");
+      }
+    }
+    return new SearchResult(List.copyOf(unique.values()), pagesRead);
+  }
+
+  private static List<Disclosure> parseStockIssuePage(String html) {
+    if (html == null || html.isBlank()) {
+      throw new IllegalStateException("KIND 주식발행현황 응답이 비어 있습니다");
+    }
+    Matcher table = TABLE.matcher(html);
+    if (!table.find()) {
+      throw new IllegalStateException("KIND 주식발행현황 테이블 구조가 변경됐습니다");
+    }
+    Matcher body = BODY.matcher(table.group(1));
+    if (!body.find()) {
+      throw new IllegalStateException("KIND 주식발행현황 tbody 구조가 변경됐습니다");
+    }
+    Matcher rows = Pattern.compile(
+        "(<tr\\b[^>]*>)(.*?)</tr>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+        .matcher(body.group(1));
+    List<Disclosure> result = new ArrayList<>();
+    while (rows.find()) {
+      Matcher cells = CELL.matcher(rows.group(2));
+      List<String> data = new ArrayList<>();
+      while (cells.find()) {
+        data.add(cells.group(1));
+      }
+      if (data.size() < 6) {
+        continue;
+      }
+      Matcher receipt = Pattern.compile("fnDetailView\\(\\s*['\"](\\d{14})['\"]")
+          .matcher(rows.group(1));
+      if (!receipt.find()) {
+        throw new IllegalStateException("KIND 증자현황 공고 접수번호가 없습니다");
+      }
+      String no = receipt.group(1);
+      Matcher issuer = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
+          .matcher(data.get(0));
+      result.add(new Disclosure(
+          no,
+          LocalDate.parse(no.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE),
+          plain(data.get(0)),
+          plain(data.get(2)) + " " + plain(data.get(5)),
+          "",
+          issuer.find() ? issuer.group(1) : ""));
+    }
+    return result;
+  }
+
   /** 검색으로 발견한 접수번호로 공식 70791 추가상장 원문 URL을 조회한다. */
   public String resolveAdditionalListingUrl(String receiptNo) {
     if (receiptNo == null || !receiptNo.matches("\\d{14}")) {
