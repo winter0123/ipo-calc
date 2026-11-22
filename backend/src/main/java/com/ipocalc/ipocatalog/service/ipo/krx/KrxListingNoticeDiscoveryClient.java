@@ -98,33 +98,7 @@ public class KrxListingNoticeDiscoveryClient {
     Map<String, Disclosure> unique = new LinkedHashMap<>();
     Set<String> pageFingerprints = new LinkedHashSet<>();
     for (int page = 1; page <= MAX_PAGES; page++) {
-      Map<String, String> query = new LinkedHashMap<>();
-      query.put("method", "searchDetailsSub");
-      query.put("forward", "details_sub");
-      query.put("currentPageSize", Integer.toString(PAGE_SIZE));
-      query.put("pageIndex", Integer.toString(page));
-      query.put("orderMode", "1");
-      query.put("orderStat", "D");
-      query.put("repIsuSrtCd", "A" + stockCode);
-      query.put("reportNm", "상장");
-      query.put("lastReport", "");
-      query.put("bfrDsclsType", "on");
-      // KIND 상세검색은 빈 검색 필드도 폼으로 전송해야 필터를 정확히 적용한다.
-      for (String field : List.of(
-          "searchCodeType", "allRepIsuSrtCd", "oldSearchCorpName", "disclosureType",
-          "disTypevalue", "reportCd", "searchCorpName", "business", "marketType",
-          "kosdaqSegment", "settlementMonth", "securities", "submitOblgNm",
-          "enterprise", "reportNmTemp", "reportNmPop")) {
-        query.put(field, "");
-      }
-      for (String category : List.of(
-          "01", "02", "03", "04", "05", "06", "07", "08",
-          "09", "10", "11", "13", "14", "20")) {
-        query.put("disclosureType" + category, "");
-        query.put("pDisclosureType" + category, "");
-      }
-      query.put("fromDate", from.format(DATE));
-      query.put("toDate", to.format(DATE));
+      Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "상장");
       String html = transport.request("/disclosure/details.do", query, true);
       List<Disclosure> current = parsePage(html);
       String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
@@ -162,6 +136,7 @@ public class KrxListingNoticeDiscoveryClient {
         || fromPublication.plusMonths(1).isBefore(toPublication)) {
       throw new IllegalArgumentException("KIND 공고 게시일 범위는 최대 한 달입니다");
     }
+    String issuerCode = resolveIssuerCode(stockCode, toPublication);
     LocalDate searchStart = fromPublication.minusMonths(2);
     LocalDate searchEnd = toPublication.plusMonths(2);
     Map<String, Disclosure> unique = new LinkedHashMap<>();
@@ -185,7 +160,7 @@ public class KrxListingNoticeDiscoveryClient {
         query.put("orderStat", "D");
         query.put("marketType", "all");
         query.put("listingType", "2");
-        query.put("isurCd", stockCode.substring(0, 5));
+        query.put("isurCd", issuerCode);
         for (String field : List.of(
             "searchCorpName", "comAbbrv", "repIsuSrtCd", "repIsuCd",
             "bzProcsNo", "paxreq", "outsvcno")) {
@@ -260,6 +235,68 @@ public class KrxListingNoticeDiscoveryClient {
           issuer.find() ? issuer.group(1) : ""));
     }
     return result;
+  }
+
+  /**
+   * 공식 KIND 공시 상세검색의 종목코드를 회사 내부 식별코드(isurCd)로 변환한다.
+   *
+   * <p>isurCd는 5자리 KIND 회사코드이지 주식 종목코드 6자리의 앞 5자리가 아니다.
+   * 다른 공시 제목으로 검색해도 종목코드 필터가 적용되는지 확인한 후 후보를 탐색한다.
+   */
+  private String resolveIssuerCode(String stockCode, LocalDate publicationEnd) {
+    for (int offset = 0; offset <= 6; offset++) {
+      LocalDate month = publicationEnd.withDayOfMonth(1).minusMonths(offset);
+      LocalDate end = month.withDayOfMonth(month.lengthOfMonth());
+      if (end.isAfter(publicationEnd)) {
+        end = publicationEnd;
+      }
+      var query = detailedSearchForm(stockCode, month, end, 1, "");
+      var found = parsePage(transport.request("/disclosure/details.do", query, true));
+      List<String> issuerCodes = found.stream()
+          .map(Disclosure::issuerCode)
+          .filter(code -> code != null && code.matches("\\d{5}"))
+          .distinct()
+          .toList();
+      if (issuerCodes.size() > 1) {
+        throw new IllegalStateException("KIND 종목코드 조회가 여러 회사 식별자로 반환됐습니다");
+      }
+      if (!issuerCodes.isEmpty()) {
+        return issuerCodes.get(0);
+      }
+    }
+    throw new IllegalStateException(
+        "KIND 종목코드에 대응하는 공식 회사 식별자를 찾을 수 없습니다");
+  }
+
+  private static Map<String, String> detailedSearchForm(
+      String stockCode, LocalDate from, LocalDate to, int page, String titleFilter) {
+    Map<String, String> query = new LinkedHashMap<>();
+    query.put("method", "searchDetailsSub");
+    query.put("forward", "details_sub");
+    query.put("currentPageSize", Integer.toString(PAGE_SIZE));
+    query.put("pageIndex", Integer.toString(page));
+    query.put("orderMode", "1");
+    query.put("orderStat", "D");
+    query.put("repIsuSrtCd", "A" + stockCode);
+    query.put("reportNm", titleFilter);
+    query.put("lastReport", "");
+    query.put("bfrDsclsType", "on");
+    for (String field : List.of(
+        "searchCodeType", "allRepIsuSrtCd", "oldSearchCorpName", "disclosureType",
+        "disTypevalue", "reportCd", "searchCorpName", "business", "marketType",
+        "kosdaqSegment", "settlementMonth", "securities", "submitOblgNm",
+        "enterprise", "reportNmTemp", "reportNmPop")) {
+      query.put(field, "");
+    }
+    for (String category : List.of(
+        "01", "02", "03", "04", "05", "06", "07", "08",
+        "09", "10", "11", "13", "14", "20")) {
+      query.put("disclosureType" + category, "");
+      query.put("pDisclosureType" + category, "");
+    }
+    query.put("fromDate", from.format(DATE));
+    query.put("toDate", to.format(DATE));
+    return query;
   }
 
   /** 검색으로 발견한 접수번호로 공식 70791 추가상장 원문 URL을 조회한다. */
