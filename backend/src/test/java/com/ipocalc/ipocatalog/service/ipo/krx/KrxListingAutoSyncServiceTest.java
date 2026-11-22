@@ -159,6 +159,40 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void dartHttpFailureRemainsFetchFailedAndWritesZero() {
+    org.springframework.test.util.ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(reconciliation.preview(7L, URL))
+        .thenThrow(
+            new com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException(
+                "FETCH_FAILED", "DART document HTTP failure"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isZero();
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void invalidDartZipRemainsFetchFailedAndWritesZero() {
+    org.springframework.test.util.ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(reconciliation.preview(7L, URL))
+        .thenThrow(
+            new com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException(
+                "INVALID_ZIP", "DART document is not a valid ZIP"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isZero();
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
   void failedPageInLaterWindowDoesNotBecomeNoNoticeOrPartialConfirmation() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
