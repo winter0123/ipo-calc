@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, toErrorMessage } from '@/shared/api/apiError.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
-import { applyKrxListing, ipoKeys, previewKrxListing } from '@/entities/ipo/index.ts'
+import { applyKrxListing, getKrxAutoStatus, ipoKeys, previewKrxListing } from '@/entities/ipo/index.ts'
 import type { KrxListingPreview } from '@/entities/ipo/index.ts'
 import styles from './IpoDetailPage.styles.ts'
 
@@ -17,6 +17,13 @@ function show(value: string | number | null | undefined) {
 
 export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
   const queryClient = useQueryClient()
+  const autoStatus = useQuery({
+    queryKey: ['ipo', 'krx-auto-status'],
+    queryFn: ({ signal }) => getKrxAutoStatus(signal),
+    staleTime: 10_000,
+    refetchInterval: 60_000,
+  })
+  const matchingAutoRow = autoStatus.data?.lastReport?.rows.find((row) => row.ipoId === ipoId)
   const [noticeUrl, setNoticeUrl] = useState('')
   const [preview, setPreview] = useState<{ key: string; data: KrxListingPreview } | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -114,6 +121,40 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
       <h2 className={styles.krxAdminTitle} id="krx-listing-title">
         관리자 · KIND 상장일 검토
       </h2>
+      <div className={styles.krxAdminResult} aria-label="KIND 자동 처리 결과">
+        <p>
+          자동 수집 상태:{' '}
+          {autoStatus.isPending
+            ? '조회 중'
+            : autoStatus.isError
+              ? '결과 조회 실패'
+              : autoStatus.data.autoApplyEnabled
+                ? '자동 반영 사용'
+                : '읽기 전용 검증 중'}
+        </p>
+        {autoStatus.data?.lastReport && (
+          <>
+            <p>마지막 점검: {show(autoStatus.data.lastReport.completedAt)}</p>
+            <p>
+              신규 확정 {autoStatus.data.lastReport.counts.NEW_CONFIRMED ?? 0}건 / 날짜 정정{' '}
+              {autoStatus.data.lastReport.counts.DATE_CORRECTED ?? 0}건 / 이미 반영{' '}
+              {autoStatus.data.lastReport.counts.ALREADY_APPLIED ?? 0}건 / 공고 없음{' '}
+              {autoStatus.data.lastReport.counts.NO_NOTICE ?? 0}건 / 회차 충돌{' '}
+              {autoStatus.data.lastReport.counts.ROUND_CONFLICT ?? 0}건 / 조회 실패{' '}
+              {autoStatus.data.lastReport.counts.FETCH_FAILED ?? 0}건
+            </p>
+            {matchingAutoRow && (
+              <p>
+                이 종목: {matchingAutoRow.status}
+                {matchingAutoRow.proposedListingDate
+                  ? ' · 상장일 ' + matchingAutoRow.proposedListingDate
+                  : ''}
+                {' · ' + matchingAutoRow.reason}
+              </p>
+            )}
+          </>
+        )}
+      </div>
       <form className={styles.krxAdminForm} onSubmit={handlePreview}>
         <label htmlFor="krx-notice-url">KIND 추가상장 공고 URL</label>
         <input
