@@ -147,7 +147,7 @@ public class DartRightsIssueListingService {
         Boolean changed =
             transactionTemplate.execute(
                 status -> {
-                  var found = ipoRepository.findByIdAndDeletedAtIsNull(candidate.getId());
+                  var found = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(candidate.getId());
                   if (found.isEmpty()) {
                     return false;
                   }

@@ -97,7 +97,12 @@ public class IpoService {
     if (request.getSubscriptionEndDate() != null) {
       ipo.protectSubscriptionEndDate();
     }
-    if (request.getListingDate() != null) {
+    LocalDate computedListingDate = pick(request.getListingDate(), ipo.getListingDate());
+    if (request.getListingDate() != null
+        && !request.getListingDate().equals(ipo.getListingDate())) {
+      ipo.protectListingDate();
+    } else if (request.getListingDate() != null
+        && !"CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())) {
       ipo.protectListingDate();
     }
     ipo.updateDetails(
@@ -110,7 +115,7 @@ public class IpoService {
         computedLowerBandPrice,
         computedUpperBandPrice,
         pick(updatedFixedPrice, ipo.getFixedPrice()),
-        pick(request.getListingDate(), ipo.getListingDate()),
+        computedListingDate,
         pick(updatedOfferingShareCount, ipo.getOfferingShareCount()),
         LocalDateTime.now(clock));
     try {

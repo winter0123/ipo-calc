@@ -8,7 +8,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 상장일 시초가 동기화 서비스.
@@ -40,7 +39,6 @@ public class IpoOpenPriceSyncService {
    *
    * @return 동기화 결과 요약
    */
-  @Transactional
   public SyncResult syncOpenPrices() {
     SyncResult result = new SyncResult();
 
@@ -56,19 +54,42 @@ public class IpoOpenPriceSyncService {
 
     for (Ipo ipo : targets) {
       try {
-        var openPrice = stockPriceClient.fetchOpenPrice(ipo.getStockCode(), ipo.getListingDate());
+        // ESTIMATED_DART(예정일)만 있는 행은 자동 수집 대상에서 제외한다.
+        if ("ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())) {
+          log.debug("시초가 수집 제외(ESTIMATED_DART): id={}", ipo.getId());
+          continue;
+        }
+        LocalDate queriedListingDate = ipo.getListingDate();
+        String queriedStockCode = ipo.getStockCode();
+        Long ipoId = ipo.getId();
+        if (queriedListingDate == null || queriedStockCode == null || ipoId == null) {
+          continue;
+        }
+        // 기존 시초가가 이미 있으면 보호한다.
+        if (ipo.getListingOpenPrice() != null) {
+          log.debug("시초가 보호(기존 값 존재): id={}", ipoId);
+          continue;
+        }
+        // 외부 시세 HTTP 호출은 트랜잭션/DB 락 없이 수행한다.
+        var openPrice = stockPriceClient.fetchOpenPrice(queriedStockCode, queriedListingDate);
         if (openPrice.isPresent()) {
-          ipo.updateListingOpenPrice(openPrice.get());
-          ipoRepository.save(ipo);
-          result.incrementSaved();
-          log.debug(
-              "시초가 저장: id={}, stockCode={}, openPrice={}",
-              ipo.getId(),
-              ipo.getStockCode(),
-              openPrice.get());
+          // 실제 DB 조건부 갱신: 조회 시점 값과 현재 DB 값이 일치할 때만 1행 갱신.
+          int updated =
+              ipoRepository.updateListingOpenPriceIfCurrent(
+                  ipoId, queriedStockCode, queriedListingDate, openPrice.get());
+          if (updated == 1) {
+            result.incrementSaved();
+            log.debug(
+                "시초가 저장: id={}, stockCode={}, openPrice={}",
+                ipoId,
+                queriedStockCode,
+                openPrice.get());
+          } else {
+            log.debug("시초가 저장 건너뜀(값 변경/기존 값 보호): id={}", ipoId);
+          }
         } else {
           result.incrementEmpty();
-          log.debug("시초가 없음(빈 응답): id={}, stockCode={}", ipo.getId(), ipo.getStockCode());
+          log.debug("시초가 없음(빈 응답): id={}, stockCode={}", ipoId, queriedStockCode);
         }
       } catch (IllegalStateException e) {
         // 키 미설정 — 전체 중단

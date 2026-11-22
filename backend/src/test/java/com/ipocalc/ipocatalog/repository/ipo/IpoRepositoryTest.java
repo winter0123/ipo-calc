@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.ipocalc.IpoCalcApplication;
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +34,8 @@ import org.springframework.test.context.ContextConfiguration;
 class IpoRepositoryTest {
 
   @Autowired private IpoRepository ipoRepository;
+
+  @PersistenceContext private EntityManager entityManager;
 
   private String uniqueStockCode() {
     return "123456" + ThreadLocalRandom.current().nextLong(100000, 999999);
@@ -500,5 +504,74 @@ class IpoRepositoryTest {
     // Then: 유니크 위반 없이 저장된다 (활성 IPO 간 중복만 제약)
     assertThat(reRegistered.getId()).isNotNull();
     assertThat(reRegistered.getStatus()).isEqualTo(RecordStatus.ACTIVE);
+  }
+
+  @Test
+  void updateListingOpenPriceIfCurrent_isConditionalOnCurrentDbValues() {
+    LocalDateTime now = LocalDateTime.now();
+    String stockCode = uniqueStockCode();
+    LocalDate listingDate = LocalDate.of(2026, 10, 10);
+    Ipo ipo =
+        Ipo.builder()
+            .companyName("조건부기업")
+            .ipoName("조건부공모")
+            .stockCode(stockCode)
+            .subscriptionStartDate(LocalDate.of(2026, 10, 1))
+            .subscriptionEndDate(LocalDate.of(2026, 10, 2))
+            .listingDate(listingDate)
+            .status(RecordStatus.ACTIVE)
+            .listingOpenPrice(null)
+            .createdAt(now)
+            .updatedAt(now)
+            .build();
+    Ipo saved = ipoRepository.saveAndFlush(ipo);
+    Long id = saved.getId();
+
+    // DB row의 날짜/코드를 다른 값으로 바꿔 stale 인자를 무효화한다.
+    String changedCode = uniqueStockCode();
+    LocalDate changedDate = listingDate.plusDays(1);
+    entityManager
+        .createNativeQuery("update ipos set stock_code = ?1, listing_date = ?2 where id = ?3")
+        .setParameter(1, changedCode)
+        .setParameter(2, java.sql.Date.valueOf(changedDate))
+        .setParameter(3, id)
+        .executeUpdate();
+    entityManager.flush();
+    entityManager.clear();
+
+    assertThat(ipoRepository.updateListingOpenPriceIfCurrent(id, stockCode, listingDate, 12345L))
+        .isZero();
+
+    // 현재 DB 값으로 호출하면 1행 갱신된다.
+    assertThat(ipoRepository.updateListingOpenPriceIfCurrent(id, changedCode, changedDate, 12345L))
+        .isEqualTo(1);
+    entityManager.flush();
+    entityManager.clear();
+    Ipo updated = ipoRepository.findById(id).orElseThrow();
+    assertThat(updated.getListingOpenPrice()).isEqualTo(12345L);
+
+    // DART 예정 행은 0행이다.
+    entityManager
+        .createNativeQuery(
+            "update ipos set listing_open_price = null, "
+                + "listing_date_evidence_type = 'ESTIMATED_DART' where id = ?1")
+        .setParameter(1, id)
+        .executeUpdate();
+    entityManager.flush();
+    entityManager.clear();
+    assertThat(ipoRepository.updateListingOpenPriceIfCurrent(id, changedCode, changedDate, 99999L))
+        .isZero();
+
+    // 이미 시초가가 있으면 0행이다.
+    entityManager
+        .createNativeQuery(
+            "update ipos set listing_open_price = 77777, "
+                + "listing_date_evidence_type = null where id = ?1")
+        .setParameter(1, id)
+        .executeUpdate();
+    entityManager.flush();
+    entityManager.clear();
+    assertThat(ipoRepository.updateListingOpenPriceIfCurrent(id, changedCode, changedDate, 88888L))
+        .isZero();
   }
 }

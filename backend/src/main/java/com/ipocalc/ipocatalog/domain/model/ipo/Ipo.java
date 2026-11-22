@@ -31,7 +31,20 @@ public class Ipo {
   public void correctSchedule(
       LocalDate listingDate, LocalDate refundDate, LocalDate subscriptionEndDate) {
     if (listingDate != null) {
+      // 날짜가 실제로 바뀌면 이전 시초가를 무효화해 새 날짜 기준으로 재수집한다.
+      // 같은 날짜 재적용은 시초가를 보존한다.
+      if (!listingDate.equals(this.listingDate)) {
+        this.listingOpenPrice = null;
+        this.krxListingNoticeUrl = null;
+      }
       this.lastImportedListingDate = null;
+      this.listingDateEvidenceType = null;
+      this.listingDateEvidenceReceipt = null;
+    } else if (this.listingDate != null) {
+      // 상장일이 제거되면 기존 시초가도 무효화한다.
+      this.listingOpenPrice = null;
+      this.lastImportedListingDate = null;
+      this.krxListingNoticeUrl = null;
     }
     if (refundDate != null) {
       this.lastImportedRefundDate = null;
@@ -82,8 +95,19 @@ public class Ipo {
         changed = true;
       }
     }
+    // KRX 확정일은 uStockPlus/DART 보조 일정으로 덮어쓰거나 출처를 초기화하지 않는다.
+    boolean canOverwriteListing =
+        !"CONFIRMED_KRX".equals(this.listingDateEvidenceType)
+            && (this.listingDate == null || this.listingDate.equals(this.lastImportedListingDate));
+    // 보조 상장일은 청약 종료일이 있는 경우에만 종료일 이후여야 한다.
+    // (다른 환불/배정/종목코드 필드 갱신은 이 조건과 독립적으로 수행한다.)
+    boolean listingAfterSubscriptionEnd =
+        this.subscriptionEndDate == null
+            || listing == null
+            || listing.isAfter(this.subscriptionEndDate);
     if (listing != null
-        && (this.listingDate == null || this.listingDate.equals(this.lastImportedListingDate))
+        && canOverwriteListing
+        && listingAfterSubscriptionEnd
         && !listing.equals(this.listingDate)) {
       this.listingDate = listing;
       this.listingDateEvidenceType = null;
@@ -158,6 +182,25 @@ public class Ipo {
       this.fixedPriceSourceReceiptNo = null;
       this.fixedPriceParserVersion = null;
     }
+    boolean listingDateChanged = !java.util.Objects.equals(this.listingDate, listing);
+    boolean stockCodeChanged = !java.util.Objects.equals(this.stockCode, stockCode);
+    if (listingDateChanged) {
+      this.lastImportedListingDate = null;
+      this.listingDateEvidenceType = null;
+      this.listingDateEvidenceReceipt = null;
+      this.krxListingNoticeUrl = null;
+      // 날짜가 실제 변경되면 이전 시초가를 무효화해 새 날짜 기준으로 재수집한다.
+      this.listingOpenPrice = null;
+    }
+    if (stockCodeChanged) {
+      // 종목코드가 실제 변경되면 이전 종목의 시초가와 증거/자동 추적값을 무효화한다.
+      // 상장일 값 자체는 보존해 명시적 재확인을 허용한다.
+      this.listingOpenPrice = null;
+      this.listingDateEvidenceType = null;
+      this.listingDateEvidenceReceipt = null;
+      this.lastImportedListingDate = null;
+      this.krxListingNoticeUrl = null;
+    }
     this.companyName = companyName;
     this.ipoName = ipoName;
     this.stockCode = stockCode;
@@ -168,9 +211,6 @@ public class Ipo {
     if (!java.util.Objects.equals(this.subscriptionEndDate, end)) {
       this.lastImportedSubscriptionEndDate = null;
     }
-    if (!java.util.Objects.equals(this.listingDate, listing)) {
-      this.lastImportedListingDate = null;
-    }
     if (!java.util.Objects.equals(this.offeringShareCount, shares)) {
       this.lastImportedOfferingShareCount = null;
     }
@@ -179,10 +219,6 @@ public class Ipo {
     this.lowerBandPrice = lower;
     this.upperBandPrice = upper;
     this.fixedPrice = fixed;
-    if (!java.util.Objects.equals(this.listingDate, listing)) {
-      this.listingDateEvidenceType = null;
-      this.listingDateEvidenceReceipt = null;
-    }
     this.listingDate = listing;
     this.offeringShareCount = shares;
     this.updatedAt = now;
@@ -375,6 +411,10 @@ public class Ipo {
   @Column(name = "listing_date_evidence_receipt", length = 20)
   @Comment("상장예정일 근거 증권발행실적보고서 접수번호")
   private String listingDateEvidenceReceipt;
+
+  @Column(name = "krx_listing_notice_url", length = 500)
+  @Comment("KRX 추가상장 공고 URL (CONFIRMED_KRX 증거)")
+  private String krxListingNoticeUrl;
 
   /** DART 고유번호(8자리). 공시 기반 일정 동기화에 쓴다. */
   @Column(name = "corp_code", length = 8)

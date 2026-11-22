@@ -82,7 +82,7 @@ class DartRightsIssueListingServiceTest {
   private void setupReports(Ipo row, FilingRef... reports) {
     when(repo.findByStatusAndSyncSourceIsNotNullAndDeletedAtIsNull(RecordStatus.ACTIVE))
         .thenReturn(List.of(row));
-    when(repo.findByIdAndDeletedAtIsNull(125L)).thenReturn(Optional.of(row));
+    when(repo.findByIdAndDeletedAtIsNullForUpdate(125L)).thenReturn(Optional.of(row));
     when(filings.findIssuanceResults(any(), any(), any())).thenReturn(List.of(reports));
   }
 
@@ -358,7 +358,7 @@ class DartRightsIssueListingServiceTest {
               .build();
       rows.add(row);
       receipts.add(report);
-      when(repo.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(row));
+      when(repo.findByIdAndDeletedAtIsNullForUpdate(id)).thenReturn(Optional.of(row));
       when(filings.findIssuanceResults(
               corp,
               end.minusDays(5),

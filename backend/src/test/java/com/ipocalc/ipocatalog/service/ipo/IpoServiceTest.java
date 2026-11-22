@@ -87,6 +87,58 @@ class IpoServiceTest {
   }
 
   @Test
+  void update_sameListingDate_preservesConfirmedKrxEvidenceAndQuote() {
+    Ipo ipo = withKrxEvidence(existing(START, END));
+    when(repository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(ipo));
+
+    service.update(1L, IpoUpdateRequest.builder().listingDate(END.plusDays(10)).build());
+
+    assertThat(ipo.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(ipo.getListingDateEvidenceReceipt()).isEqualTo("20261001000001");
+    assertThat(ipo.getKrxListingNoticeUrl())
+        .isEqualTo("https://kind.krx.co.kr/external/notice.htm");
+    assertThat(ipo.getLastImportedListingDate()).isEqualTo(END.plusDays(10));
+    assertThat(ipo.getListingOpenPrice()).isEqualTo(12_345L);
+  }
+
+  @Test
+  void update_changedListingDateInvalidatesEvidenceAndQuote() {
+    Ipo ipo = withKrxEvidence(existing(START, END));
+    when(repository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(ipo));
+
+    service.update(1L, IpoUpdateRequest.builder().listingDate(END.plusDays(11)).build());
+
+    assertThat(ipo.getListingDateEvidenceType()).isNull();
+    assertThat(ipo.getListingDateEvidenceReceipt()).isNull();
+    assertThat(ipo.getKrxListingNoticeUrl()).isNull();
+    assertThat(ipo.getLastImportedListingDate()).isNull();
+    assertThat(ipo.getListingOpenPrice()).isNull();
+  }
+
+  private Ipo withKrxEvidence(Ipo base) {
+    return Ipo.builder()
+        .id(base.getId())
+        .companyName(base.getCompanyName())
+        .ipoName(base.getIpoName())
+        .stockCode(base.getStockCode())
+        .roundLabel(base.getRoundLabel())
+        .lowerBandPrice(base.getLowerBandPrice())
+        .upperBandPrice(base.getUpperBandPrice())
+        .subscriptionStartDate(base.getSubscriptionStartDate())
+        .subscriptionEndDate(base.getSubscriptionEndDate())
+        .listingDate(END.plusDays(10))
+        .listingDateEvidenceType("CONFIRMED_KRX")
+        .listingDateEvidenceReceipt("20261001000001")
+        .krxListingNoticeUrl("https://kind.krx.co.kr/external/notice.htm")
+        .lastImportedListingDate(END.plusDays(10))
+        .listingOpenPrice(12_345L)
+        .status(RecordStatus.ACTIVE)
+        .createdAt(base.getCreatedAt())
+        .updatedAt(base.getUpdatedAt())
+        .build();
+  }
+
+  @Test
   void update_blankStockCodeAndRoundLabel_clearsThem() {
     Ipo ipo = existing(START, END);
     when(repository.findByIpoNameAndSubscriptionStartDateAndStatusAndDeletedAtIsNull(

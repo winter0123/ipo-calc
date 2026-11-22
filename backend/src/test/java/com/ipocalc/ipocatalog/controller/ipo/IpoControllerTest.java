@@ -19,6 +19,7 @@ import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailService;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSnapshot;
 import com.ipocalc.testsupport.AuthTestSupport;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -534,6 +535,55 @@ class IpoControllerTest {
     assertThat(response.get("companyName")).isEqualTo("변경된기업명");
     assertThat(response.get("ipoName")).isEqualTo("공모주A");
     assertThat(response.get("updatedAt")).isNotNull();
+  }
+
+  @Test
+  void patchSameListingDatePreservesConfirmedEvidenceAndQuote() throws Exception {
+    signupAndLogin();
+    Map<String, Object> request = validRequest();
+    MvcResult registered = registerIpo(request);
+    Long id = ((Number) readBody(registered).get("id")).longValue();
+    Ipo ipo = ipoRepository.findById(id).orElseThrow();
+    ipo =
+        ipoRepository.saveAndFlush(
+            Ipo.builder()
+                .id(ipo.getId())
+                .companyName(ipo.getCompanyName())
+                .ipoName(ipo.getIpoName())
+                .stockCode(ipo.getStockCode())
+                .subscriptionStartDate(ipo.getSubscriptionStartDate())
+                .subscriptionEndDate(ipo.getSubscriptionEndDate())
+                .listingDate(ipo.getListingDate())
+                .listingDateEvidenceType("CONFIRMED_KRX")
+                .listingDateEvidenceReceipt("20261001000001")
+                .krxListingNoticeUrl("https://kind.krx.co.kr/external/notice.htm")
+                .lastImportedListingDate(ipo.getListingDate())
+                .listingOpenPrice(12_345L)
+                .status(RecordStatus.ACTIVE)
+                .createdAt(ipo.getCreatedAt())
+                .updatedAt(ipo.getUpdatedAt())
+                .build());
+    LocalDate listingDate = ipo.getListingDate();
+    Map<String, Object> updateRequest = new java.util.LinkedHashMap<>();
+    updateRequest.put("listingDate", listingDate.toString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                patch("/ipos/{id}", id)
+                    .session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(updateRequest)))
+            .andReturn();
+
+    assertThat(result.getResponse().getStatus()).isEqualTo(200);
+    Ipo after = ipoRepository.findById(id).orElseThrow();
+    assertThat(after.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(after.getListingDateEvidenceReceipt()).isEqualTo("20261001000001");
+    assertThat(after.getKrxListingNoticeUrl())
+        .isEqualTo("https://kind.krx.co.kr/external/notice.htm");
+    assertThat(after.getLastImportedListingDate()).isEqualTo(listingDate);
+    assertThat(after.getListingOpenPrice()).isEqualTo(12_345L);
   }
 
   @Test

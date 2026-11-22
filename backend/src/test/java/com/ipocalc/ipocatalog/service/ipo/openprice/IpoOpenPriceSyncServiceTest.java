@@ -69,12 +69,17 @@ class IpoOpenPriceSyncServiceTest {
     when(ipoRepository.findOpenPriceSyncTargets(TODAY)).thenReturn(List.of(target));
     when(stockPriceClient.fetchOpenPrice("123450", LocalDate.of(2026, 10, 10)))
         .thenReturn(Optional.of(27400L));
+    when(ipoRepository.updateListingOpenPriceIfCurrent(
+            1L, "123450", LocalDate.of(2026, 10, 10), 27400L))
+        .thenReturn(1);
 
     // when
     IpoOpenPriceSyncService.SyncResult result = service.syncOpenPrices();
 
     // then
-    verify(ipoRepository).save(target);
+    verify(ipoRepository)
+        .updateListingOpenPriceIfCurrent(1L, "123450", LocalDate.of(2026, 10, 10), 27400L);
+    verify(ipoRepository, never()).save(any());
     assertThat(result.summary()).contains("targetCount=1").contains("saved=1");
   }
 
@@ -104,12 +109,17 @@ class IpoOpenPriceSyncServiceTest {
         .thenThrow(new StockPriceClient.StockPriceApiException("test error"));
     when(stockPriceClient.fetchOpenPrice("222222", LocalDate.of(2026, 10, 10)))
         .thenReturn(Optional.of(15000L));
+    when(ipoRepository.updateListingOpenPriceIfCurrent(
+            2L, "222222", LocalDate.of(2026, 10, 10), 15000L))
+        .thenReturn(1);
 
     // when
     IpoOpenPriceSyncService.SyncResult result = service.syncOpenPrices();
 
     // then
-    verify(ipoRepository).save(target2);
+    verify(ipoRepository)
+        .updateListingOpenPriceIfCurrent(2L, "222222", LocalDate.of(2026, 10, 10), 15000L);
+    verify(ipoRepository, never()).save(any());
     assertThat(result.summary()).contains("saved=1").contains("failed=1");
   }
 
