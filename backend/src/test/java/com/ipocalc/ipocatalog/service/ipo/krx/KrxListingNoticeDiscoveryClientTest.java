@@ -152,6 +152,62 @@ class KrxListingNoticeDiscoveryClientTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void stockIssuanceFallbackSearchesByListingWindowButFiltersByPublicationDay() {
+    AtomicInteger queriedMonths = new AtomicInteger();
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) -> {
+          assertThat(path).isEqualTo("/corpgeneral/stockissuelist.do");
+          assertThat(params).containsEntry("isurCd", "12185")
+              .containsEntry("listingType", "2")
+              .containsEntry("marketType", "all");
+          queriedMonths.incrementAndGet();
+          return "2026-02-01".equals(params.get("fromDate"))
+              ? stockIssuePage(List.of(RECEIPT, "20260101000001"))
+              : stockIssuePage(List.of());
+        });
+
+    var result = client.findViaStockIssue("121850", DAY, DAY);
+
+    assertThat(result.disclosures()).hasSize(1);
+    assertThat(result.disclosures().get(0).receiptNo()).isEqualTo(RECEIPT);
+    assertThat(result.pagesRead()).isEqualTo(queriedMonths.get());
+    assertThat(queriedMonths.get()).isGreaterThan(1);
+  }
+
+  @Test
+  void stockIssuanceFallbackPageTwoFailureIsNotSilentlyIgnored() {
+    List<String> first = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      first.add("20260205" + String.format("%06d", i));
+    }
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) -> {
+          if ("2026-02-01".equals(params.get("fromDate"))) {
+            if ("2".equals(params.get("pageIndex"))) {
+              throw new IllegalStateException("KIND page 2 timed out");
+            }
+            return stockIssuePage(first);
+          }
+          return stockIssuePage(List.of());
+        });
+    assertThatThrownBy(() -> client.findViaStockIssue("121850", DAY, DAY))
+        .hasMessageContaining("page 2 timed out");
+  }
+
+  private static String stockIssuePage(List<String> receipts) {
+    StringBuilder html = new StringBuilder("<table class='list type-00'><tbody>");
+    for (String receipt : receipts) {
+      html.append("<tr onclick=\"fnDetailView('")
+          .append(receipt)
+          .append("')\">")
+          .append("<td><a onclick=\"companysummary_open('12185')\">코이즈</a></td>")
+          .append("<td>2026-02-10</td><td>추가상장</td>")
+          .append("<td>1,995,582</td><td>500</td><td>유상증자</td></tr>");
+    }
+    return html.append("</tbody></table>").toString();
+  }
+
   private static String page(List<String> receipts) {
     StringBuilder html = new StringBuilder(
         "<html><table class='list type-00 mt10'><tbody>");
