@@ -114,6 +114,11 @@ public class KrxListingNoticeParser {
           continue;
         }
         if (!rowReason.contains("유상")) {
+          // 무상증자 등 별도 회차도 사유를 보존해 자동 검증에서 명시적으로 제외한다.
+          if (reason == null) {
+            reason = rowReason;
+            roundLabel = row.size() > 5 ? row.get(5) : null;
+          }
           continue;
         }
         commonPaidInRowCount++;
