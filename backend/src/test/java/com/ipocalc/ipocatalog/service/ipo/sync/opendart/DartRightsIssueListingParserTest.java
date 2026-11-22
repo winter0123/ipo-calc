@@ -269,4 +269,43 @@ class DartRightsIssueListingParserTest {
     String xml = "<P>별도 발행 건 유상증자</P>" + "<P>다른 발행 회차 실권주 1,004,418주는 미발행 처리</P>";
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
+
+  @Test
+  void closedRightsSectionDoesNotAuthorizeFollowingBonusSection() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void secondRightsRoundCannotInheritFirstRoundContext() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>제2차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void validRightsSectionStillAcceptsKoizRemark() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void closedRightsSectionCannotAuthorizeUnlabelledTable() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
