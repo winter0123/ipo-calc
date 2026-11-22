@@ -135,12 +135,13 @@ public class KrxListingReconciliationService {
       reasons.add("KIND 공고에서 발행일을 확인할 수 없습니다");
       datesValid = false;
     }
-    // DART 원신고/발행실적의 연결만으로 KIND 발행회차까지 증명되지는 않는다.
-    // 양쪽 원문에서 공통 회차 식별자를 확인하지 못한 건은 자동 저장하지 않는다.
-    // KIND 회차번호가 존재하더라도 DART에 대응하는 회차 근거가 없다면 검토 대상이다.
+    // 단순 수량·가격·납입일 근접성은 같은 발행회차의 증명이 아니다.
+    // DART 발행실적 원문과 KIND 발행내역이 독립적으로 명시한 회차+발행일이 정확히 같아야 한다.
+    // 실제 공시에 이 연결 근거가 없으면 보수적으로 검토 대상으로 유지한다.
     if (notice.roundLabel() == null || notice.roundLabel().isBlank()) {
       reasons.add("KIND 발행회차 식별자가 없습니다");
-    } else {
+    } else if (dart == null || dart.roundLabel() == null
+        || !normalizeRound(notice.roundLabel()).equals(normalizeRound(dart.roundLabel()))) {
       reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: " + notice.roundLabel());
     }
     if (ipo.getSubscriptionEndDate() != null
@@ -375,7 +376,32 @@ public class KrxListingReconciliationService {
         ipo.getLastImportedListingDate() != null
             ? ipo.getLastImportedListingDate()
             : ipo.getListingDate();
-    return new DartEvidence(receipt, payment, shares, price, listing, original);
+    return new DartEvidence(receipt, payment, shares, price, listing, original, extractDartRound(xml));
+  }
+
+  // 발행실적 본문에 명시적으로 표시된 '발행회수(발행일)'만 연결 근거로 인정한다.
+  // 날짜·수량·가격을 조합해 회차를 추정하지 않는다.
+  private String extractDartRound(String xml) {
+    String plain = xml.replaceAll("(?s)<[^>]+>", " ").replaceAll("\\s+", " ");
+    java.util.regex.Matcher matcher =
+        java.util.regex.Pattern.compile(
+                "발행회수\\s*\\(발행일\\)\\s*[:：]\\s*(제\\s*\\d+\\s*회\\s*\\('\\d{2}\\.\\d{2}\\.\\d{2}\\))")
+            .matcher(plain);
+    if (!matcher.find()) {
+      return null;
+    }
+    String round = normalizeRound(matcher.group(1));
+    // 원문에 상충하는 복수 회차가 있으면 자동 확정하지 않는다.
+    while (matcher.find()) {
+      if (!round.equals(normalizeRound(matcher.group(1)))) {
+        return null;
+      }
+    }
+    return round;
+  }
+
+  private String normalizeRound(String round) {
+    return round == null ? "" : round.replaceAll("\\s+", "").trim();
   }
 
   private Long parseDartIssuePrice(String xml) {
@@ -489,7 +515,8 @@ public class KrxListingReconciliationService {
       Long issuedShares,
       Long issuePrice,
       LocalDate listingDate,
-      LocalDate originalListingDate) {}
+      LocalDate originalListingDate,
+      String roundLabel) {}
 
   /** 적용 결과. */
   public record KrxListingApplyResult(
