@@ -199,7 +199,8 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(result(disclosure(RECEIPT), correction));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var eligible = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligible);
 
     var report = service.reconcileRecent();
 
