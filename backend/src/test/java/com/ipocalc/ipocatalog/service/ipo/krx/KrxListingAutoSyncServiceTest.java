@@ -53,7 +53,8 @@ class KrxListingAutoSyncServiceTest {
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(prior));
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
 
     var report = service.previewPastUnconfirmed();
 
@@ -70,7 +71,8 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
     var applied = mock(KrxListingReconciliationService.KrxListingApplyResult.class);
     when(applied.status()).thenReturn("APPLIED");
     when(reconciliation.apply(eq(7L), any(KrxListingApplyRequest.class))).thenReturn(applied);
@@ -90,8 +92,10 @@ class KrxListingAutoSyncServiceTest {
         .thenReturn(result(disclosure(RECEIPT), disclosure(OTHER_RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(discovery.resolveAdditionalListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
-    when(reconciliation.preview(7L, OTHER_URL)).thenReturn(eligiblePreview(false));
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+    var otherPreview = eligiblePreview(false);
+    when(reconciliation.preview(7L, OTHER_URL)).thenReturn(otherPreview);
 
     var report = service.reconcileRecent();
 
@@ -118,7 +122,8 @@ class KrxListingAutoSyncServiceTest {
   void sameConfirmedNoticeReturnsAlreadyAppliedWithoutMutation() {
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(true));
+    var preview = eligiblePreview(true);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
 
     var report = service.reconcileRecent();
 
