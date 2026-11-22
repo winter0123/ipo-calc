@@ -42,7 +42,8 @@ class KrxListingAutoSyncServiceTest {
     repository = mock(IpoRepository.class);
     Clock clock = Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul"));
     service = new KrxListingAutoSyncService(discovery, reconciliation, repository, clock);
-    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(ipo()));
+    Ipo initial = ipo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(initial));
   }
 
   @Test
