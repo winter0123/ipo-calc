@@ -1,6 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync.opendart;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
@@ -248,6 +249,80 @@ class DartIpoFilingClientTest {
     assertThat(client.findLatestOfferingDocument("00123456", TODAY))
         .map(FilingRef::rceptNo)
         .contains("20260901000002");
+  }
+
+  @Test
+  void 증권발행실적보고서_조회시_013이면_빈_목록을_반환한다() {
+    expectJson("/api/list.json", "{\"status\":\"013\",\"message\":\"조회된 데이터가 없습니다.\"}");
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThat(client.findIssuanceResults("00123456", from, to)).isEmpty();
+  }
+
+  @Test
+  void 증권발행실적보고서_조회시_020이면_예외를_던진다() {
+    expectJson("/api/list.json", "{\"status\":\"020\",\"message\":\"요청 제한 초과\"}");
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThatThrownBy(() -> client.findIssuanceResults("00123456", from, to))
+        .isInstanceOf(OpenDartApiException.class);
+  }
+
+  @Test
+  void 증권발행실적보고서_조회시_빈_본문이면_예외를_던진다() {
+    mockServer
+        .expect(requestTo(containsString("/api/list.json")))
+        .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThatThrownBy(() -> client.findIssuanceResults("00123456", from, to))
+        .isInstanceOf(OpenDartApiException.class);
+  }
+
+  @Test
+  void 증권발행실적보고서_조회시_깨진_JSON이면_예외를_던진다() {
+    mockServer
+        .expect(requestTo(containsString("/api/list.json")))
+        .andRespond(withSuccess("{not json", MediaType.APPLICATION_JSON));
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThatThrownBy(() -> client.findIssuanceResults("00123456", from, to))
+        .isInstanceOf(OpenDartApiException.class);
+  }
+
+  @Test
+  void 앞_페이지에_결과가_있으면서_두_번째_페이지가_실패하면_예외를_던진다() {
+    expectJson(
+        "page_no=1",
+        "{\"status\":\"000\",\"total_page\":2,\"list\":["
+            + item("20261001000001", "증권신고서(지분증권)", "20261001")
+            + "]}");
+    expectJson("page_no=2", "{\"status\":\"020\",\"message\":\"요청 제한 초과\"}");
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThatThrownBy(() -> client.findIssuanceResults("00123456", from, to))
+        .isInstanceOf(OpenDartApiException.class);
+    mockServer.verify();
+  }
+
+  @Test
+  void 앞_페이지_성공_후_013이면_페이지_누락으로_예외를_던진다() {
+    expectJson(
+        "page_no=1",
+        "{\"status\":\"000\",\"total_page\":2,\"list\":["
+            + item("20261001000001", "증권신고서(지분증권)", "20261001")
+            + "]}");
+    expectJson("page_no=2", "{\"status\":\"013\",\"message\":\"조회된 데이터가 없습니다.\"}");
+
+    LocalDate from = LocalDate.of(2026, 9, 1);
+    LocalDate to = LocalDate.of(2026, 10, 13);
+    assertThatThrownBy(() -> client.findIssuanceResults("00123456", from, to))
+        .isInstanceOf(OpenDartApiException.class);
   }
 
   @Test

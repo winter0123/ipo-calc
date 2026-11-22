@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
@@ -214,15 +215,57 @@ public class IpoManualSyncService {
     }
     IpoHistoricalListingService.Result backfill =
         historicalListingService.backfill(fromMonth.atDay(1), listingEnd);
-    syncStateManager.recordListingBackfill(backfill);
     // 유상증자는 uStockPlus 신규상장 목록에 없으므로 DART 발행실적보고서로 별도 보완.
     DartRightsIssueListingService.Result rights =
         rightsIssueListingService.backfill(fromMonth.atDay(1), listingEnd);
     syncStateManager.recordRightsIssueListingBackfill(rights);
 
+    // 마지막 선택 달 다음 달 상장일을 추가 조회한다. 추가 범위 = 마지막 선택 달 다음 달 1일 ~ 그 달 말일 또는 오늘.
+    YearMonth nextMonth = toMonth.plusMonths(1);
+    LocalDate additionalEnd = nextMonth.atEndOfMonth();
+    if (additionalEnd.isAfter(today)) {
+      additionalEnd = today;
+    }
+    if (nextMonth.atDay(1).isAfter(today)) {
+      // 마지막 선택 달 다음 달이 시작 전이면 추가 조회를 생략하고 기본 결과만 기록한다.
+      syncStateManager.recordListingBackfill(backfill);
+    } else {
+      IpoHistoricalListingService.Result additionalBackfill =
+          historicalListingService.backfill(
+              nextMonth.atDay(1), additionalEnd, fromMonth.atDay(1), toMonth.atEndOfMonth());
+      syncStateManager.recordListingBackfill(mergeListingResults(backfill, additionalBackfill));
+    }
+
     // 모든 월 완료
     syncStateManager.completeRangeSync();
     log.info("범위 동기화 전체 완료: fromMonth={}, toMonth={}", fromMonth, toMonth);
+  }
+
+  /**
+   * 일반 상장일 보완 결과와 마지막 선택 달 다음 달 추가 보완 결과를 합친다.
+   *
+   * <p>조회·저장·상충 결과를 이어붙여 상태 요약에 일관되게 반영한다.
+   *
+   * @param primary 선택 범위 일반 상장일 보완 결과
+   * @param additional 마지막 선택 달 다음 달 추가 상장일 보완 결과
+   * @return 합산된 보완 결과
+   */
+  private IpoHistoricalListingService.Result mergeListingResults(
+      IpoHistoricalListingService.Result primary, IpoHistoricalListingService.Result additional) {
+    List<IpoHistoricalListingService.FailedRange> failedRanges =
+        new ArrayList<>(primary.failedRanges());
+    failedRanges.addAll(additional.failedRanges());
+    List<IpoHistoricalListingService.FailedStock> failedStocks =
+        new ArrayList<>(primary.failedStocks());
+    failedStocks.addAll(additional.failedStocks());
+    List<IpoHistoricalListingService.ListingConflict> listingConflicts =
+        new ArrayList<>(primary.listingConflicts());
+    listingConflicts.addAll(additional.listingConflicts());
+    return new IpoHistoricalListingService.Result(
+        primary.listingBackfilled() + additional.listingBackfilled(),
+        List.copyOf(failedRanges),
+        List.copyOf(failedStocks),
+        List.copyOf(listingConflicts));
   }
 
   /** 기본 동기화 실행 (동기). */

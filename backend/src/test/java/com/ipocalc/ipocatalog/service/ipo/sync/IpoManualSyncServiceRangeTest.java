@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,7 @@ import java.util.concurrent.Executor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -77,14 +79,21 @@ class IpoManualSyncServiceRangeTest {
     req.setToMonth("2026-10");
     when(ipoSyncService.syncMonthWithoutSchedule(any()))
         .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
-    var backfill =
-        new IpoHistoricalListingService.Result(
-            3,
-            java.util.List.of(
-                new IpoHistoricalListingService.FailedRange(
-                    LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
+    var failedRange =
+        new IpoHistoricalListingService.FailedRange(
+            LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+    var backfill = new IpoHistoricalListingService.Result(3, java.util.List.of(failedRange));
+    var additionalBackfill = new IpoHistoricalListingService.Result(1, java.util.List.of());
     when(historicalListingService.backfill(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)))
         .thenReturn(backfill);
+    LocalDate additionalStart = YearMonth.of(2026, 11).atDay(1);
+    LocalDate additionalEnd = YearMonth.of(2026, 11).atEndOfMonth();
+    if (additionalEnd.isAfter(LocalDate.now())) {
+      additionalEnd = LocalDate.now();
+    }
+    when(historicalListingService.backfill(
+            additionalStart, additionalEnd, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31)))
+        .thenReturn(additionalBackfill);
 
     service.syncRange(req);
 
@@ -92,6 +101,37 @@ class IpoManualSyncServiceRangeTest {
     verify(ipoSyncService).syncMonthWithoutSchedule(YearMonth.of(2026, 10));
     verify(ipoSyncService, times(2)).syncMonthWithoutSchedule(any());
     verify(historicalListingService).backfill(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31));
+    verify(historicalListingService)
+        .backfill(
+            additionalStart, additionalEnd, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 10, 31));
+    ArgumentCaptor<IpoHistoricalListingService.Result> resultCaptor =
+        ArgumentCaptor.forClass(IpoHistoricalListingService.Result.class);
+    verify(syncStateManager).recordListingBackfill(resultCaptor.capture());
+    var merged = resultCaptor.getValue();
+    assertThat(merged.listingBackfilled()).isEqualTo(4);
+    assertThat(merged.failedRanges()).containsExactly(failedRange);
+    verify(syncStateManager).completeRangeSync();
+  }
+
+  @Test
+  void rangeSyncForCurrentMonthSkipsNextMonthAdditionalBackfill() {
+    // given
+    var req = new IpoSyncRangeRequest();
+    req.setFromMonth("2026-11");
+    req.setToMonth("2026-11");
+    when(ipoSyncService.syncMonthWithoutSchedule(any()))
+        .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
+    var backfill = new IpoHistoricalListingService.Result(0, java.util.List.of());
+    LocalDate listingEnd = LocalDate.of(2026, 11, 22);
+    when(historicalListingService.backfill(LocalDate.of(2026, 11, 1), listingEnd))
+        .thenReturn(backfill);
+
+    // when
+    service.syncRange(req);
+
+    // then
+    verify(historicalListingService).backfill(LocalDate.of(2026, 11, 1), listingEnd);
+    verify(historicalListingService, never()).backfill(any(), any(), any(), any());
     verify(syncStateManager).recordListingBackfill(backfill);
     verify(syncStateManager).completeRangeSync();
   }
