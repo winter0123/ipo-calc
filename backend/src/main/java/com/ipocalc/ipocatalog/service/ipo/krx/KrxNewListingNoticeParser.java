@@ -6,6 +6,12 @@ import java.util.regex.Pattern;
 
 /** 공식 KIND 70760 신규상장 공고의 보통주 종목코드와 매매개시일만 파싱한다. */
 public class KrxNewListingNoticeParser {
+  private static final Pattern INVISIBLE =
+      Pattern.compile(
+          "<(?:style|script)\\b[^>]*>[\\s\\S]*?</(?:style|script)\\s*>",
+          Pattern.CASE_INSENSITIVE);
+  private static final Pattern HTML_COMMENT =
+      Pattern.compile("<!--[\\s\\S]*?-->");
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern SPACE = Pattern.compile("[\\s\\u00a0]+");
   private static final Pattern STOCK_SECTION =
@@ -21,7 +27,10 @@ public class KrxNewListingNoticeParser {
     if (html == null || html.isBlank()) {
       throw new IllegalArgumentException("KIND 신규상장 공고가 비어 있습니다");
     }
-    String text = SPACE.matcher(TAG.matcher(html).replaceAll(" ")).replaceAll(" ").trim();
+  // 공식 원문은 본문보다 앞에 CSS(style)와 Javascript(script)가 있으므로 제거 후 제목 검증.
+    String visible = INVISIBLE.matcher(html).replaceAll(" ");
+    visible = HTML_COMMENT.matcher(visible).replaceAll(" ");
+    String text = SPACE.matcher(TAG.matcher(visible).replaceAll(" ")).replaceAll(" ").trim();
     if (!text.startsWith("신규상장")) {
       throw new IllegalArgumentException("KIND 신규상장 원문이 아닙니다");
     }

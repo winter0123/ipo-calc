@@ -24,6 +24,32 @@ class KrxNewListingNoticeParserTest {
           + "<td>2026년 11월 12일</td></tr></table></body></html>";
 
   @Test
+  void parsesNewListingWithOfficialStyleAndScriptBeforeVisibleTitle() {
+    String html =
+        "<html><head><STYLE type='text/css'>.PGBRK { page-break-after: always; }"
+            + "신규상장 { color: red; }</STYLE>"
+            + "<ScRiPt>var heading = '추가상장';</ScRiPt></head><body>"
+            + NOTICE.substring("<html><body>".length());
+    var evidence = parser.parse(html);
+    assertThat(evidence.stockCode()).isEqualTo("493410");
+    assertThat(evidence.listingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+  }
+
+  @Test
+  void hiddenNewListingWordsNeverAuthorizeOtherDocument() {
+    String unrelated =
+        NOTICE.replace("<html><body>신규상장", "<html><body>감사보고서");
+    String hiddenOnly =
+        "<STYLE>.PGBRK { content: '신규상장'; }</STYLE>"
+            + "<script>var text = '신규상장';</script>"
+            + unrelated;
+    assertThatThrownBy(() -> parser.parse(hiddenOnly))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> parser.parse(unrelated.replace("감사보고서", "추가상장")))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void parsesVerifiedNewListingFieldsWithSeparateApprovalDay() {
     var evidence = parser.parse(NOTICE);
     assertThat(evidence.stockCode()).isEqualTo("493410");
