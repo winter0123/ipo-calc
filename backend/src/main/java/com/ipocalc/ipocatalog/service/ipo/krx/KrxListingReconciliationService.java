@@ -95,7 +95,11 @@ public class KrxListingReconciliationService {
 
   /** 검증된 신규상장 미리보기만 재조회·조건부 UPDATE로 저장한다. */
   public KrxListingApplyResult applyNewListing(
-      Long ipoId, String url, LocalDate expectedDate, String expectedHash) {
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt) {
     if (expectedDate == null || expectedHash == null || expectedHash.isBlank()) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.BAD_REQUEST, "new listing evidence required");
@@ -109,13 +113,19 @@ public class KrxListingReconciliationService {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "new listing conditions changed");
     }
-    String stockCode = new KrxNewListingNoticeParser()
-        .parse(noticeClient.fetchNewListing(url)).stockCode();
+    String currentHtml = noticeClient.fetchNewListing(url);
+    if (!expectedHash.equals(sha256(currentHtml))) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "stale new listing notice");
+    }
+    String stockCode = new KrxNewListingNoticeParser().parse(currentHtml).stockCode();
     String status =
         transactionTemplate.execute(
             tx -> {
               Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
-              if (current == null || current.getSourceReceiptNo() == null) {
+              if (current == null
+                  || expectedSourceReceipt == null
+                  || !expectedSourceReceipt.equals(current.getSourceReceiptNo())) {
                 throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "ipo source changed");
               }
