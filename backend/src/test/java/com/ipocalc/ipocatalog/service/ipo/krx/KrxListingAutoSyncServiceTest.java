@@ -490,6 +490,64 @@ class KrxListingAutoSyncServiceTest {
     verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
   }
 
+  @Test
+  void oneUnverifiableNewListingBlocksOtherwiseEligibleCandidate() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT), newListingDisclosure(OTHER_RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(discovery.resolveNewListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+    when(reconciliation.previewNewListing(7L, OTHER_NEW_URL))
+        .thenReturn(
+            new KrxListingReconciliationService.NewListingPreview(
+                null, "", false, false, List.of("다른 종목코드")));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isZero();
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void alreadyConfirmedSameNewListingIsNoOp() {
+    Ipo row = newListingIpo();
+    when(row.getListingDate()).thenReturn(LocalDate.of(2026, 11, 25));
+    when(row.getListingDateEvidenceType()).thenReturn("CONFIRMED_KRX");
+    when(row.getKrxListingNoticeUrl()).thenReturn(NEW_URL);
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(true));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.ALREADY_APPLIED)).isEqualTo(1);
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void newListingHttpFailureCannotBeReportedAsNoNotice() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT))
+        .thenThrow(new IllegalStateException("KIND official viewer timed out"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isZero();
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
   private static Ipo newListingIpo() {
     Ipo row = ipo();
     when(row.getListingDate()).thenReturn(null);

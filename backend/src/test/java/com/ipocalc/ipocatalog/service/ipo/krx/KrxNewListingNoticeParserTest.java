@@ -48,8 +48,12 @@ class KrxNewListingNoticeParserTest {
     assertThatThrownBy(
             () -> parser.parse(NOTICE.replace("10.상장일(매매개시일)", "10.참고일")))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> parser.parse(NOTICE.replace("</table>", 
-        "<tr><td>10.상장일(매매개시일)</td><td>2026년 11월 13일</td></tr></table>")))
+    String duplicate =
+        NOTICE.replace(
+            "</table>",
+            "<tr><td>10.상장일(매매개시일)</td>"
+                + "<td>2026년 11월 13일</td></tr></table>");
+    assertThatThrownBy(() -> parser.parse(duplicate))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }
