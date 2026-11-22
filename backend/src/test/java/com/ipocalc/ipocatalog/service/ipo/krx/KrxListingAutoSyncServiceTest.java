@@ -141,6 +141,24 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void oneEligibleNoticeAndOneFailedDocumentNeverWrite() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), disclosure(OTHER_RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(discovery.resolveAdditionalListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
+    var eligible = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligible);
+    when(reconciliation.preview(7L, OTHER_URL))
+        .thenThrow(new IllegalStateException("KIND 공고 원문 조회·파싱 실패"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
   void failedPageInLaterWindowDoesNotBecomeNoNoticeOrPartialConfirmation() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
