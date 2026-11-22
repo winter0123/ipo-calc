@@ -712,6 +712,36 @@ class DartRightsIssueListingServiceTest {
             + "</TR></TABLE></SECTION-3></SECTION-2></SECTION-1><P>");
   }
 
+  @Test
+  void directBonusCaptionMustNotSaveListing() {
+    assertRejectedCaption("Ⅸ. 무상증자", false);
+  }
+
+  @Test
+  void groupedBonusCaptionMustNotSaveListing() {
+    assertRejectedCaption("Ⅸ. 무상증자", true);
+  }
+
+  @Test
+  void directTenthRoundCaptionMustNotSaveListing() {
+    assertRejectedCaption("제10차 유상증자", false);
+  }
+
+  @Test
+  void groupedTenthRoundCaptionMustNotSaveListing() {
+    assertRejectedCaption("제10차 유상증자", true);
+  }
+
+  private void assertRejectedCaption(String heading, boolean grouped) {
+    String caption = "<TITLE ATOC=\"N\">실권주 처리내역</TITLE>";
+    String table =
+        "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>";
+    String content = grouped ? "<TABLE-GROUP>" + caption + table + "</TABLE-GROUP>" : caption + table;
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-1><SECTION-2><TITLE>" + heading + "</TITLE>"
+            + content + "</SECTION-2></SECTION-1><P>");
+  }
+
   private void assertRejectedUnissuedEvidence(String claim) {
     Ipo row = ipo("20251105000215");
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
