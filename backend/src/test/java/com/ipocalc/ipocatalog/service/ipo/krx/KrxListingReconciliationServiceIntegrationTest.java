@@ -125,9 +125,9 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
-  void appliesFourRealCasesAndIsIdempotent() throws Exception {
+  void appliesFourSyntheticRoundLinkedCasesAndIsIdempotent() throws Exception {
     for (CaseData c : CASES) {
-      stubNotice(c);
+      stubLinkedNotice(c);
       Ipo saved = createIpo(c);
 
       var preview = service.preview(saved.getId(), c.url());
@@ -158,7 +158,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void previewDoesNotWriteAndExposesExpectedValues() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     Ipo before = ipoRepository.findById(saved.getId()).orElseThrow();
     LocalDateTime beforeUpdatedAt = before.getUpdatedAt();
@@ -182,7 +182,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void krxOfficialDateCanCorrectDifferentDartPlannedDate() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     String url = KOIZ.url();
     String changedHtml =
         readResource("/krx/notices/" + KOIZ.file()).replace("2026-02-10", "2026-02-12");
@@ -205,7 +205,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void futureOfficialListingCanBePublishedBeforeTradingDay() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     String url = KOIZ.url();
     String changedHtml =
         readResource("/krx/notices/" + KOIZ.file()).replace("2026-02-10", "2027-03-11");
@@ -224,7 +224,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void sameListingDayAndQuantitiesButDifferentIssuanceRoundCannotBeConfirmed() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     String url = KOIZ.url();
     String differentRound =
         readResource("/krx/notices/" + KOIZ.file()).replace("제16회('26.01.30)", "제17회('26.02.15)");
@@ -247,7 +247,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void stalePreviewDoesNotWrite() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     assertThat(preview.applyAllowed()).isTrue();
@@ -273,7 +273,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void noticeUrlOnlyJsonIsRejectedAndDoesNotWrite() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     assertThat(preview.applyAllowed()).isTrue();
@@ -297,7 +297,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void concurrentChangeAfterPreviewWritesZero() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     assertThat(preview.applyAllowed()).isTrue();
@@ -309,7 +309,7 @@ class KrxListingReconciliationServiceIntegrationTest {
             inv -> {
               previewReached.countDown();
               assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
-              return readResource("/krx/dart/" + KOIZ.dartReceipt() + ".xml");
+              return linkedDartXml(KOIZ);
             });
 
     ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -354,7 +354,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void concurrentIdenticalAppliesReportSingleAppliedAndNoOp() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     assertThat(preview.applyAllowed()).isTrue();
@@ -394,7 +394,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void dartSaveAfterKrxConfirmationPreservesConfirmedEvidence() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createRightsIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     when(dartClient.findIssuanceResults(
@@ -489,7 +489,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void krxPreviewApplyAfterDartSaveRejectsStaleCandidate() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createRightsIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     transactionTemplate.executeWithoutResult(
@@ -499,6 +499,9 @@ class KrxListingReconciliationServiceIntegrationTest {
               KOIZ.listingDate().plusDays(1), "20260215000001", LocalDateTime.now());
           ipoRepository.saveAndFlush(current);
         });
+
+    when(dartClient.downloadDocumentStrict("20260215000001"))
+        .thenReturn(linkedDartXml(KOIZ));
 
     assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, KOIZ.url())))
         .isInstanceOfSatisfying(
@@ -535,7 +538,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void dartDocumentFetchFailureNeverWrites() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt()))
         .thenThrow(
@@ -577,7 +580,7 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   @Test
   void sameListingDateButDifferentNoticeDocumentIsRejectedAndDoesNotWrite() throws Exception {
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
     var preview = service.preview(saved.getId(), KOIZ.url());
     assertThat(preview.applyAllowed()).isTrue();
@@ -604,7 +607,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     String original = readResource("/krx/dart/" + KOIZ.dartReceipt() + ".xml");
     String ambiguous =
         original.replace("</DOCUMENT>", "<P>주권 상장 및 유통 예정일: 2026년 03월 11일</P></DOCUMENT>");
-    stubNotice(KOIZ);
+    stubLinkedNotice(KOIZ);
     when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(ambiguous);
     Ipo saved = createIpo(KOIZ);
 
@@ -667,6 +670,37 @@ class KrxListingReconciliationServiceIntegrationTest {
                 AMICO.url(),
                 LocalDateTime.now()))
         .isZero();
+  }
+
+  // 합성 연결 근거: 실제 DART 발행실적 원문에는 KIND 발행회수와 공통인
+  // '발행회수(발행일)'이 확인되지 않았다. 실제 원문 자체를 수정하지 않는다.
+  private String linkedDartXml(CaseData c) {
+    String dart = readResource("/krx/dart/" + c.dartReceipt() + ".xml");
+    String html = readResource("/krx/notices/" + c.file());
+    String round = new KrxListingNoticeParser().parse(html).roundLabel();
+    assertThat(round).as("KIND fixture round").isNotBlank();
+    return dart.replace("</DOCUMENT>",
+        "<P>발행회수(발행일): " + round + "</P></DOCUMENT>");
+  }
+
+  private void stubLinkedNotice(CaseData c) {
+    stubNotice(c);
+    when(dartClient.downloadDocumentStrict(c.dartReceipt())).thenReturn(linkedDartXml(c));
+  }
+
+  @Test
+  void realDartAndKindNoticesWithoutCrossDocumentRoundEvidenceStayReviewOnly() {
+    for (CaseData c : CASES) {
+      stubNotice(c);
+      Ipo saved = createIpo(c);
+      var preview = service.preview(saved.getId(), c.url());
+      assertThat(preview.applyAllowed()).isFalse();
+      assertThat(preview.reviewStatus()).isEqualTo("REVIEW_ONLY");
+      assertThat(preview.reasons())
+          .anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+      assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+          .isNull();
+    }
   }
 
   private void stubNotice(CaseData c) {
