@@ -148,6 +148,8 @@ class IpoManualSyncServiceTest {
         .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
     when(historical.backfill(any(), any()))
         .thenReturn(new IpoHistoricalListingService.Result(0, java.util.List.of()));
+    when(rights.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(0, 0, 0));
     when(kind.isAutoApplyEnabled()).thenReturn(true);
 
     ReflectionTestUtils.invokeMethod(service, "runRangeSync", month, month);
@@ -157,6 +159,23 @@ class IpoManualSyncServiceTest {
     order.verify(historical).backfill(any(), any());
     order.verify(rights).backfill(any(), any());
     order.verify(kind).reconcileSubscriptionMonths(month, month, false);
+  }
+
+  @Test
+  void rangeImportSkipsKindWhenRightsIssueEvidenceHasFailures() {
+    var month = java.time.YearMonth.of(2026, 11);
+    when(sync.syncMonthWithoutSchedule(month))
+        .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
+    when(historical.backfill(any(), any()))
+        .thenReturn(new IpoHistoricalListingService.Result(0, java.util.List.of()));
+    when(rights.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(0, 0, 2));
+    when(kind.isAutoApplyEnabled()).thenReturn(true);
+
+    ReflectionTestUtils.invokeMethod(service, "runRangeSync", month, month);
+
+    verify(rights).backfill(any(), any());
+    verify(kind, never()).reconcileSubscriptionMonths(any(), any(), any(Boolean.class));
   }
 
   @Test

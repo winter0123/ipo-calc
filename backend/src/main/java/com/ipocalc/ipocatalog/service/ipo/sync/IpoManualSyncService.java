@@ -241,14 +241,18 @@ public class IpoManualSyncService {
     // 선택한 청약월만 KIND에 대조한다. 최근 공고의 게시일과 상장일은 다를 수 있다.
     // 외부 KIND 장애가 나도 앞서 완료한 DART 월별 동기화 결과는 보존한다.
     if (krxListingAutoSyncService.isAutoApplyEnabled()) {
-      try {
-        log.info(
-            "KIND 월별 자동 대조: {}",
-            krxListingAutoSyncService
-                .reconcileSubscriptionMonths(fromMonth, toMonth, false)
-                .counts());
-      } catch (RuntimeException ex) {
-        log.warn("KIND 월별 대조 실패(DART 처리 결과 보존): {}", ex.getClass().getSimpleName());
+      if (rights.failures() > 0) {
+        log.warn("DART 유상증자 원문 실패로 KIND 월별 대조를 건너뜀: {}", rights.failures());
+      } else {
+        try {
+          log.info(
+              "KIND 월별 자동 대조: {}",
+              krxListingAutoSyncService
+                  .reconcileSubscriptionMonths(fromMonth, toMonth, false)
+                  .counts());
+        } catch (RuntimeException ex) {
+          log.warn("KIND 월별 대조 실패(DART 처리 결과 보존): {}", ex.getClass().getSimpleName());
+        }
       }
     }
 
