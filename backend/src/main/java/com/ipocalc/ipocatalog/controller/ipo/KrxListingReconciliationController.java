@@ -4,8 +4,8 @@ import com.ipocalc.ipocatalog.controller.ipo.dto.KrxListingApplyRequest;
 import com.ipocalc.ipocatalog.controller.ipo.dto.KrxListingPreviewRequest;
 import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingReconciliationPreview;
-import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingReconciliationService;
 import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingReconciliationService.KrxListingApplyResult;
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingReconciliationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +42,7 @@ public class KrxListingReconciliationController {
       @PathVariable Long id, @Valid @RequestBody(required = false) KrxListingApplyRequest request) {
     return ResponseEntity.ok(service.apply(id, request));
   }
+
   /** KIND 자동 처리 상태와 직전 종목별 실패 사유를 관리자 화면에 제공한다. */
   @GetMapping("/krx-listing/auto-status")
   public ResponseEntity<AutoStatus> autoStatus() {
@@ -55,6 +56,7 @@ public class KrxListingReconciliationController {
     return ResponseEntity.ok(autoSyncService.previewPastUnconfirmed());
   }
 
+  /** KIND 자동 반영 여부 및 마지막 점검 결과. */
   public record AutoStatus(
       boolean autoApplyEnabled, KrxListingAutoSyncService.Report lastReport) {}
 
