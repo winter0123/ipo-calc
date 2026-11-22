@@ -123,7 +123,7 @@ describe('buildCalendarEvents', () => {
       new Date('2026-10-10T12:00:00Z'),
     ).find((event) => event.type === 'LISTING')
 
-    expect(listing).toMatchObject({ confirmed: true, listingLabel: '상장 확정' })
+    expect(listing).toMatchObject({ confirmed: true, listingLabel: '상장 예정 · 거래소 공고' })
     expect(listing?.estimated).toBeUndefined()
   })
 
