@@ -536,6 +536,23 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void dartDocumentFetchFailureNeverWrites() throws Exception {
+    stubNotice(KOIZ);
+    Ipo saved = createIpo(KOIZ);
+    when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt()))
+        .thenThrow(new com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException(
+            "FETCH_FAILED", "OpenDART 원문 HTTP 조회 실패"));
+
+    assertThatThrownBy(() -> service.preview(saved.getId(), KOIZ.url()))
+        .isInstanceOf(
+            com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+        .isNull();
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDateEvidenceType())
+        .isEqualTo("ESTIMATED_DART");
+  }
+
+  @Test
   void differentRoundNoticeStaysReviewOnlyAndDoesNotWrite() throws Exception {
     stubNotice(RAON_OTHER_ROUND);
     Ipo saved = createIpo(RAON_OTHER_ROUND);
