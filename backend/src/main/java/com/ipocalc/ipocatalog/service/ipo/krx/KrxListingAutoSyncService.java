@@ -33,14 +33,17 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class KrxListingAutoSyncService {
 
+  /** 자동 처리 결과 유형. */
   public enum OutcomeType {
     NEW_CONFIRMED, DATE_CORRECTED, ALREADY_APPLIED, NO_NOTICE, ROUND_CONFLICT,
     FETCH_FAILED, REVIEW_REQUIRED, APPLY_CANDIDATE
   }
 
+  /** 공고 식별자, 상장일 후보 및 행별 판정 이유. */
   public record Outcome(Long ipoId, String stockCode, OutcomeType status,
       String receiptNo, LocalDate proposedListingDate, String reason) {}
 
+  /** 일괄 처리 후 집계와 개별 판정 내역. */
   public record Report(LocalDateTime completedAt, boolean dryRun,
       Map<OutcomeType, Long> counts, List<Outcome> rows) {}
 
@@ -88,6 +91,7 @@ public class KrxListingAutoSyncService {
     return run(targets, null, today(), true);
   }
 
+  /** 매일 낮에도 공식 신규 공고를 재확인한다. */
   @Scheduled(cron = "0 15 12,18 * * *", zone = "Asia/Seoul")
   public void scanDuringDay() {
     if (!autoApplyEnabled) {
@@ -100,10 +104,12 @@ public class KrxListingAutoSyncService {
     }
   }
 
+  /** 자동 DB 반영 활성 여부. */
   public boolean isAutoApplyEnabled() {
     return autoApplyEnabled;
   }
 
+  /** 마지막 자동 판정 결과 스냅샷. */
   public Report latestReport() {
     return latest.get();
   }
