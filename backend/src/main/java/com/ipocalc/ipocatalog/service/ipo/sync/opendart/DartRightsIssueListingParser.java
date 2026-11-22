@@ -127,12 +127,12 @@ public class DartRightsIssueListingParser {
             "(?is)</?SECTION-[1-3]\\b[^>]*>|<TITLE\\b[^>]*>.*?</TITLE>"
                 + "|<TABLE\\b[^>]*>.*?</TABLE>|<P\\b[^>]*>.*?</P>");
     Matcher matcher = tokens.matcher(xml);
-    List<String> sections = new ArrayList<>();
+    List<Section> sections = new ArrayList<>();
     String legacyTitle = "";
     while (matcher.find()) {
       String token = matcher.group();
       if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
-        sections.add("");
+        sections.add(new Section(Integer.parseInt(token.substring(9, 10)), ""));
       } else if (token.matches("(?is)</SECTION-[1-3]\\s*>")) {
         if (!sections.isEmpty()) {
           sections.remove(sections.size() - 1);
@@ -140,7 +140,7 @@ public class DartRightsIssueListingParser {
       } else if (token.matches("(?is)<TITLE\\b.*")) {
         String title = plain(token);
         if (structured && !sections.isEmpty()) {
-          sections.set(sections.size() - 1, title);
+          sections.set(sections.size() - 1, new Section(sections.get(sections.size() - 1).level(), title));
         } else if (!structured) {
           legacyTitle = title;
         }
@@ -173,13 +173,27 @@ public class DartRightsIssueListingParser {
         || text.matches("(?s)^제\\s*\\d+\\s*차\\s+.*");
   }
 
+  private record Section(int level, String title) {}
+
   private static String sectionContext(
-      List<String> sections, String legacyTitle, boolean structured) {
+      List<Section> sections, String legacyTitle, boolean structured) {
     if (structured) {
-      if (sections.isEmpty() || sections.stream().anyMatch(String::isBlank)) {
+      if (sections.isEmpty()) {
         return "UNKNOWN";
       }
-      return String.join(" / ", sections);
+      List<String> titles = new ArrayList<>();
+      for (int i = 0; i < sections.size(); i++) {
+        Section section = sections.get(i);
+        if (section.title().isBlank()) {
+          // Only the outermost SECTION-1 can be an untitled document container.
+          if (i != 0 || section.level() != 1 || sections.size() == 1) {
+            return "UNKNOWN";
+          }
+        } else {
+          titles.add(section.title());
+        }
+      }
+      return titles.isEmpty() ? "UNKNOWN" : String.join(" / ", titles);
     }
     return legacyTitle.isBlank() ? "UNKNOWN" : legacyTitle;
   }
