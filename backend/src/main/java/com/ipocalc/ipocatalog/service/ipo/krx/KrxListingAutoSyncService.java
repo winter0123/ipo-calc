@@ -356,7 +356,11 @@ public class KrxListingAutoSyncService {
     }
     var result =
         reconciliation.applyNewListing(
-            ipo.getId(), chosen.url(), preview.listingDate(), preview.noticeHash());
+            ipo.getId(),
+            chosen.url(),
+            preview.listingDate(),
+            preview.noticeHash(),
+            ipo.getSourceReceiptNo());
     return outcome(
         ipo,
         "NO_OP".equals(result.status())
