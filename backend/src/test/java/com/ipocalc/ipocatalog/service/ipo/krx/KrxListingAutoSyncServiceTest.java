@@ -185,6 +185,51 @@ class KrxListingAutoSyncServiceTest {
     verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
   }
 
+  @Test
+  void unresolvedCorrectionBlocksOtherwiseEligibleOriginalNotice() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var correction =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT,
+            LocalDate.of(2026, 11, 20),
+            "코이즈",
+            "추가상장 정정",
+            "코스닥",
+            "12185");
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), correction));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "정정");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+    verify(discovery, never()).resolveAdditionalListingUrl(OTHER_RECEIPT);
+  }
+
+  @Test
+  void newListingNoticeIsNotMisparsedAsAdditionalListing() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    var newListing =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT,
+            LocalDate.of(2026, 11, 20),
+            "신규회사",
+            "신규상장",
+            "코스닥",
+            "12185");
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(newListing));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains("신규상장");
+    verify(discovery, never()).resolveAdditionalListingUrl(OTHER_RECEIPT);
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
   private static Ipo ipo() {
     Ipo ipo = mock(Ipo.class);
     when(ipo.getId()).thenReturn(7L);
