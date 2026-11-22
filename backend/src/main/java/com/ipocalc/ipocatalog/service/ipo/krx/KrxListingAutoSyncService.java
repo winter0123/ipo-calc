@@ -212,6 +212,14 @@ public class KrxListingAutoSyncService {
     List<Match> eligible = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
     for (var notice : notices.values()) {
+      // 서로 다른 유형의 공고를 추가상장 원문 해석기로 전달하지 않는다.
+      // 신규상장·정정·취소는 별도의 원문 검증 및 원공고 연결이 필요하다.
+      if (!notice.title().contains("추가상장")
+          || notice.title().contains("정정")
+          || notice.title().contains("취소")) {
+        reviews.add(notice.receiptNo() + ": 별도 공고 유형 검증 필요: " + notice.title());
+        continue;
+      }
       // 1개 공고라도 원문 조회 실패하면 해당 행 전체가 실패하며 일부만 확정하지 않는다.
       String url = discovery.resolveAdditionalListingUrl(notice.receiptNo());
       var preview = reconciliation.preview(ipo.getId(), url);
