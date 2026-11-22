@@ -343,6 +343,7 @@ public class KrxListingNoticeDiscoveryClient {
     @Override
     public String request(String path, Map<String, String> parameters, boolean post) {
       if (!path.equals("/disclosure/details.do")
+          && !path.equals("/corpgeneral/stockissuelist.do")
           && !path.equals("/common/disclsviewer.do")) {
         throw new IllegalArgumentException("허용되지 않은 KIND 경로입니다");
       }
