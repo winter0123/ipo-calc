@@ -249,7 +249,6 @@ public class KrxListingNoticeDiscoveryClient {
         throw new IllegalStateException("KIND 증자현황 공고 접수번호가 없습니다");
       }
       String no = receipt.group(1);
-      String title = plain(data.get(3));
       Matcher issuer = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
           .matcher(data.get(0));
       result.add(new Disclosure(
@@ -333,6 +332,7 @@ public class KrxListingNoticeDiscoveryClient {
         throw new IllegalStateException("KIND 공시 검색 결과에서 접수번호를 읽을 수 없습니다");
       }
       String no = receipt.group(1);
+      String title = plain(data.get(3));
       String issuer = "";
       Matcher company = Pattern.compile("companysummary_open\\(\\s*['\"]([0-9A-Za-z]+)")
           .matcher(data.get(2));
