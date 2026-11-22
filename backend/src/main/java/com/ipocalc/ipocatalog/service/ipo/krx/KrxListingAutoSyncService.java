@@ -95,7 +95,8 @@ public class KrxListingAutoSyncService {
             .filter(ipo -> !ipo.getSubscriptionStartDate().isAfter(toMonth.atEndOfMonth()))
             .toList();
     return run(
-        targets, fromMonth.atDay(1), min(today(), toMonth.atEndOfMonth().plusMonths(3)), dryRun);
+        targets, fromMonth.atDay(1), min(today(), toMonth.atEndOfMonth().plusMonths(3)),
+        dryRun || !autoApplyEnabled);
   }
 
   /** 과거 누락 후보 전체를 저장 없이 원문 조회·판정한다. */
@@ -147,6 +148,8 @@ public class KrxListingAutoSyncService {
   }
 
   private Report run(List<Ipo> ipos, LocalDate commonFrom, LocalDate commonTo, boolean dryRun) {
+    // 운영 플래그가 꺼져 있으면 어떤 호출 경로에서도 자동 저장을 허용하지 않는다.
+    dryRun = dryRun || !autoApplyEnabled;
     if (!activeRun.tryLock()) {
       throw new IllegalStateException("KIND 자동 점검이 이미 실행 중입니다");
     }
@@ -227,7 +230,7 @@ public class KrxListingAutoSyncService {
     if (eligible.isEmpty()) {
       return outcome(
           ipo,
-          notices.size() > 1 ? OutcomeType.ROUND_CONFLICT : OutcomeType.REVIEW_REQUIRED,
+          OutcomeType.REVIEW_REQUIRED,
           null,
           null,
           String.join(" | ", reviews));
