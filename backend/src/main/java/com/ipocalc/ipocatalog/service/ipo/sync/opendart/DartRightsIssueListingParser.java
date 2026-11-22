@@ -148,54 +148,53 @@ public class DartRightsIssueListingParser {
   }
 
   private static String sectionContext(String document, int position) {
-    // 열린 SECTION-N만 유효하다. 닫힌 절의 제목은 다음 절에 전파하지 않는다.
+    // SECTION의 계층을 유지하며 TITLE만 절 제목으로 취급한다.
     Pattern tokens =
         Pattern.compile(
-            "(?is)</?SECTION-[1-3]\\b[^>]*>|<TITLE\\b[^>]*>.*?</TITLE>"
-                + "|<P\\b[^>]*>.*?</P>");
+            "(?is)</?SECTION-[1-3]\b[^>]*>|<TITLE\b[^>]*>.*?</TITLE>"
+                + "|<P\b[^>]*>.*?</P>");
     Matcher matcher = tokens.matcher(document);
     List<String> scopes = new ArrayList<>();
-    String heading = "";
-    boolean hasStructuredSections =
-        Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(document).find();
+    String legacyHeading = "";
+    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\b").matcher(document).find();
     while (matcher.find() && matcher.start() < position) {
       String token = matcher.group();
-      if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
+      if (token.matches("(?is)<SECTION-[1-3]\b[^>]*>")) {
         scopes.add("");
-        heading = "";
-      } else if (token.matches("(?is)</SECTION-[1-3]\\s*>")) {
+      } else if (token.matches("(?is)</SECTION-[1-3]\s*>")) {
         if (!scopes.isEmpty()) {
           scopes.remove(scopes.size() - 1);
         }
-        heading = "";
-      } else {
+      } else if (token.matches("(?is)<TITLE\b.*")) {
+        String title = plain(token);
+        if (!scopes.isEmpty()) {
+          scopes.set(scopes.size() - 1, title);
+        } else if (!structured) {
+          legacyHeading = title;
+        }
+      } else if (!structured) {
         String value = plain(token);
-        boolean title = token.matches("(?is)<TITLE\\b.*");
-        boolean numbered =
-            value.matches(
-                "(?s)^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+|[IVX]+|제\\s*\\d+\\s*차|\\d+[.)])"
-                    + "\\s*[.．:]?\\s*.*");
-        if (title || numbered) {
-          heading = value;
-          if (!scopes.isEmpty()) {
-            scopes.set(scopes.size() - 1, value);
-          }
+        if (value.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\s+.*")
+            || value.matches("(?s)^제\s*\d+\s*차\s+.*")) {
+          legacyHeading = value;
         }
       }
     }
-    if (hasStructuredSections && scopes.isEmpty()) {
-      return "UNKNOWN";
+    if (structured) {
+      if (scopes.isEmpty()) {
+        return "UNKNOWN";
+      }
+      String context = String.join(" / ", scopes);
+      return context.isBlank() ? "UNKNOWN" : context;
     }
-    String context = String.join(" / ", scopes);
-    if (!heading.isEmpty() && !context.contains(heading)) {
-      context += " / " + heading;
-    }
-    return context.isBlank() ? (hasStructuredSections ? "UNKNOWN" : "LEGACY") : context;
+    return legacyHeading.isBlank() ? "LEGACY" : legacyHeading;
   }
 
   private static boolean eligibleRightsContext(String context) {
     if (context.equals("UNKNOWN")
-        || context.matches("(?s).*(?:무상증자|제\\s*[2-9]\\d*\\s*차\\s*유상증자).*")) {
+        || context.matches(
+            "(?s).*(?:무상증자|다른\s*발행\s*회차|별도\s*발행\s*건"
+                + "|제\s*(?:[2-9]|\d{2,})\s*차\s*유상증자).*")) {
       return false;
     }
     return context.contains("실권주 처리내역") || context.equals("LEGACY");
