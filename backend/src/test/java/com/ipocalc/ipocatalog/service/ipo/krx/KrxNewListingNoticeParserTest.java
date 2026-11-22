@@ -50,13 +50,17 @@ class KrxNewListingNoticeParserTest {
     KrxListingNoticeClient.validateNewListingUrl(url);
     assertThatThrownBy(() -> KrxListingNoticeClient.validateNoticeUrl(url))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(
-            url.replace("kind.krx.co.kr", "example.com")))
+    assertThatThrownBy(
+            () ->
+                KrxListingNoticeClient.validateNewListingUrl(
+                    url.replace("kind.krx.co.kr", "example.com")))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(url + "?redirect=1"))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> KrxListingNoticeClient.validateNewListingUrl(
-            url.replace("https://", "http://")))
+    assertThatThrownBy(
+            () ->
+                KrxListingNoticeClient.validateNewListingUrl(
+                    url.replace("https://", "http://")))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
