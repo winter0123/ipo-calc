@@ -115,13 +115,30 @@ class IpoManualSyncServiceTest {
     when(sync.sync(90)).thenReturn(result(false));
     when(detail.syncRecent()).thenReturn(7);
     when(kind.isAutoApplyEnabled()).thenReturn(true);
+    when(rights.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(0, 0, 0));
 
     service.syncNow();
 
-    var order = inOrder(sync, detail, kind);
+    var order = inOrder(sync, detail, rights, kind);
     order.verify(sync).sync(90);
     order.verify(detail).syncRecent();
+    order.verify(rights).backfill(any(), any());
     order.verify(kind).reconcileRecent();
+  }
+
+  @Test
+  void defaultImportSkipsKindWhenRightsIssueDocumentsFailed() {
+    when(sync.sync(90)).thenReturn(result(false));
+    when(detail.syncRecent()).thenReturn(7);
+    when(kind.isAutoApplyEnabled()).thenReturn(true);
+    when(rights.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(0, 0, 1));
+
+    service.syncNow();
+
+    verify(rights).backfill(any(), any());
+    verify(kind, never()).reconcileRecent();
   }
 
   @Test

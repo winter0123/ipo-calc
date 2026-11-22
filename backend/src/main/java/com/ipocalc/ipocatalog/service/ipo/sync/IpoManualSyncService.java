@@ -296,7 +296,14 @@ public class IpoManualSyncService {
     int detail = r.isAborted() ? 0 : ipoDetailSyncService.syncRecent();
     if (!r.isAborted() && krxListingAutoSyncService.isAutoApplyEnabled()) {
       try {
-        krxListingAutoSyncService.reconcileRecent();
+        LocalDate today = LocalDate.now();
+        DartRightsIssueListingService.Result rights =
+            rightsIssueListingService.backfill(today.minusDays(daysBack), today);
+        if (rights.failures() == 0) {
+          krxListingAutoSyncService.reconcileRecent();
+        } else {
+          log.warn("DART 유상증자 원문 실패로 KIND 기본 대조를 건너뜀: {}", rights.failures());
+        }
       } catch (RuntimeException ex) {
         log.warn("KIND 기본 수동 동기화 보완 실패: {}", ex.getClass().getSimpleName());
       }
