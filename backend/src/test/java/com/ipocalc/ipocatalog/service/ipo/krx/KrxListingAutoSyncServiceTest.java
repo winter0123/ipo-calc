@@ -401,6 +401,8 @@ class KrxListingAutoSyncServiceTest {
 
   private static final String NEW_URL =
       "https://kind.krx.co.kr/external/2026/11/20/001019/20261120002019/70760.htm";
+  private static final String OTHER_NEW_URL =
+      "https://kind.krx.co.kr/external/2026/11/20/001020/20261120002020/70760.htm";
 
   @Test
   void newListingIsReadOnlyWhenFlagDisabled() {
@@ -477,9 +479,10 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(result(newListingDisclosure(RECEIPT), newListingDisclosure(OTHER_RECEIPT)));
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
-    when(discovery.resolveNewListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
+    when(discovery.resolveNewListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_NEW_URL);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
-    when(reconciliation.previewNewListing(7L, OTHER_URL)).thenReturn(newListingPreview(false));
+    when(reconciliation.previewNewListing(7L, OTHER_NEW_URL))
+        .thenReturn(newListingPreview(false));
 
     var report = service.reconcileRecent();
 

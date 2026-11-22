@@ -90,7 +90,8 @@ public class KrxListingReconciliationService {
     if (same.isPresent() && !same.get().getId().equals(ipoId)) {
       reasons.add("같은 종목코드의 다른 활성 IPO가 있습니다");
     }
-    return new NewListingPreview(evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
+    return new NewListingPreview(
+        evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
   }
 
   /** 검증된 신규상장 미리보기만 재조회·조건부 UPDATE로 저장한다. */

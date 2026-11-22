@@ -191,6 +191,10 @@ class KrxListingReconciliationServiceIntegrationTest {
         .isInstanceOf(ResponseStatusException.class);
     assertThat(ipoRepository.findById(manual.getId()).orElseThrow().getListingDate()).isNull();
 
+  }
+
+  @Test
+  void newListingRejectsWrongStockCode() {
     Ipo different = createNewListingIpo(true);
     when(noticeClient.fetchNewListing(NEW_LISTING_URL))
         .thenReturn(NEW_LISTING_HTML.replace("A493410", "A493411"));
