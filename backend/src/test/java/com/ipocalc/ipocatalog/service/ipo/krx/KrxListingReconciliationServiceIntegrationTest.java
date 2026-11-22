@@ -513,8 +513,7 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
-  void sameSharesPriceAndNearbyIssueDateWithoutIndependentRoundProofNeverWrite()
-      throws Exception {
+  void sameSharesPriceAndNearbyIssueDateWithoutIndependentRoundProofNeverWrite() throws Exception {
     stubNotice(RAON_OTHER_ROUND);
     String nearbyRound =
         readResource("/krx/notices/raon-other-round.html")
@@ -527,8 +526,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(preview.issuedSharesMatch()).isTrue();
     assertThat(preview.issuePriceMatch()).isTrue();
     assertThat(preview.applyAllowed()).isFalse();
-    assertThat(preview.reasons())
-        .anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
     assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, RAON_OTHER_ROUND.url())))
         .isInstanceOf(ResponseStatusException.class);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
