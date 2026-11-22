@@ -77,14 +77,18 @@ public class KrxListingReconciliationService {
         || !evidence.listingDate().isAfter(ipo.getSubscriptionEndDate())) {
       reasons.add("상장일이 청약 종료일 이후가 아닙니다");
     }
+    boolean importedDate =
+        ipo.getListingDate() != null
+            && ipo.getLastImportedListingDate() != null
+            && ipo.getListingDate().equals(ipo.getLastImportedListingDate());
     if (!idempotent
-        && (ipo.getListingDate() != null
-            || ipo.getListingDateEvidenceType() != null
+        && (ipo.getListingDateEvidenceType() != null
             || ipo.getListingDateEvidenceReceipt() != null
-            || ipo.getLastImportedListingDate() != null
             || ipo.getListingOpenPrice() != null
-            || ipo.getKrxListingNoticeUrl() != null)) {
-      reasons.add("기존 상장일 또는 출처를 자동 덮어쓸 수 없습니다");
+            || ipo.getKrxListingNoticeUrl() != null
+            || (ipo.getListingDate() != null && !importedDate)
+            || (ipo.getListingDate() == null && ipo.getLastImportedListingDate() != null))) {
+      reasons.add("기존 수동 상장일 또는 출처를 자동 덮어쓸 수 없습니다");
     }
     Optional<Ipo> same =
         ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
@@ -132,14 +136,40 @@ public class KrxListingReconciliationService {
                 throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT, "ipo source changed");
               }
+              // 미리보기 이후 청약 종료일 변경을 반드시 잠금 안에서 재검증한다.
+              if (current.getSubscriptionEndDate() == null
+                  || !current.getSubscriptionEndDate().isBefore(expectedDate)
+                  || current.getStatus() != RecordStatus.ACTIVE
+                  || current.getWithdrawnReceiptNo() != null
+                  || current.getSyncSource() == null
+                  || !stockCode.equals(current.getStockCode())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "ipo conditions changed");
+              }
               String receipt = current.getSourceReceiptNo();
               if (ipoRepository.countSameConfirmedNewKrxCandidate(
                       ipoId, stockCode, receipt, expectedDate, url) == 1) {
                 return "NO_OP";
               }
-              int updated =
-                  ipoRepository.confirmNewKrxListingIfEmpty(
-                      ipoId, stockCode, receipt, expectedDate, url, LocalDateTime.now(clock));
+              int updated;
+              if (current.getListingDate() == null) {
+                updated =
+                    ipoRepository.confirmNewKrxListingIfEmpty(
+                        ipoId, stockCode, receipt, expectedDate, url, LocalDateTime.now(clock));
+              } else if (current.getLastImportedListingDate() != null
+                  && current.getListingDate().equals(current.getLastImportedListingDate())) {
+                updated =
+                    ipoRepository.confirmNewKrxListingIfImported(
+                        ipoId,
+                        stockCode,
+                        receipt,
+                        current.getListingDate(),
+                        expectedDate,
+                        url,
+                        LocalDateTime.now(clock));
+              } else {
+                updated = 0;
+              }
               if (updated == 1) {
                 return "APPLIED";
               }

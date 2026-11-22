@@ -110,10 +110,14 @@ public class KrxListingAutoSyncService {
                     ("ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
                         && ipo.getListingDate() != null
                         && ipo.getListingDate().isBefore(today()))
-                        || (ipo.getListingDate() == null
-                            && ipo.getSyncSource() != null
+                        || (ipo.getSyncSource() != null
                             && ipo.getSubscriptionEndDate() != null
-                            && ipo.getSubscriptionEndDate().isBefore(today())))
+                            && ipo.getSubscriptionEndDate().isBefore(today())
+                            && ipo.getListingDateEvidenceType() == null
+                            && (ipo.getListingDate() == null
+                                || (ipo.getLastImportedListingDate() != null
+                                    && ipo.getListingDate().equals(
+                                        ipo.getLastImportedListingDate())))))
             .toList();
     return run(targets, null, today(), true);
   }
@@ -153,10 +157,13 @@ public class KrxListingAutoSyncService {
             ipo ->
                 "ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
                     || "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
-                    || (ipo.getListingDate() == null
-                        && ipo.getSyncSource() != null
+                    || (ipo.getSyncSource() != null
                         && ipo.getSourceReceiptNo() != null
-                        && ipo.getListingDateEvidenceType() == null))
+                        && ipo.getListingDateEvidenceType() == null
+                        && (ipo.getListingDate() == null
+                            || (ipo.getLastImportedListingDate() != null
+                                && ipo.getListingDate().equals(
+                                    ipo.getLastImportedListingDate())))))
         .toList();
   }
 
@@ -228,6 +235,10 @@ public class KrxListingAutoSyncService {
     }
     boolean newListing =
         ipo.getListingDate() == null
+            || (ipo.getSyncSource() != null
+                && ipo.getListingDateEvidenceType() == null
+                && ipo.getLastImportedListingDate() != null
+                && ipo.getListingDate().equals(ipo.getLastImportedListingDate()))
             || ("CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
                 && ipo.getKrxListingNoticeUrl() != null
                 && ipo.getKrxListingNoticeUrl().endsWith("/70760.htm"));

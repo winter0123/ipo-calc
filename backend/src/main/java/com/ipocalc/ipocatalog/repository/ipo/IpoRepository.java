@@ -174,6 +174,7 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
           + "and i.status = com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE "
           + "and i.deletedAt is null and i.stockCode = :stockCode "
           + "and i.listingDate is null and i.syncSource is not null "
+          + "and i.subscriptionEndDate < :date "
           + "and i.sourceReceiptNo = :sourceReceipt "
           + "and i.listingDateEvidenceType is null "
           + "and i.listingDateEvidenceReceipt is null "
@@ -186,6 +187,36 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
       @Param("id") Long id,
       @Param("stockCode") String stockCode,
       @Param("sourceReceipt") String sourceReceipt,
+      @Param("date") LocalDate date,
+      @Param("url") String url,
+      @Param("now") LocalDateTime now);
+
+  /** 보조 수집원이 기록한 상장일과 정확히 일치하는 경우에만 공식 날짜로 승격한다. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Ipo i set i.listingDate = :date, "
+          + "i.listingDateEvidenceType = 'CONFIRMED_KRX', "
+          + "i.krxListingNoticeUrl = :url, "
+          + "i.lastImportedListingDate = :date, "
+          + "i.lastSyncedAt = :now, i.updatedAt = :now "
+          + "where i.id = :id "
+          + "and i.status = com.ipocalc.accountauthentication.domain.model.RecordStatus.ACTIVE "
+          + "and i.deletedAt is null and i.stockCode = :stockCode "
+          + "and i.subscriptionEndDate < :date "
+          + "and i.syncSource is not null and i.sourceReceiptNo = :sourceReceipt "
+          + "and i.listingDate = :importedDate "
+          + "and i.lastImportedListingDate = :importedDate "
+          + "and i.listingDateEvidenceType is null "
+          + "and i.listingDateEvidenceReceipt is null "
+          + "and i.krxListingNoticeUrl is null "
+          + "and i.listingOpenPrice is null "
+          + "and i.withdrawnReceiptNo is null")
+  int confirmNewKrxListingIfImported(
+      @Param("id") Long id,
+      @Param("stockCode") String stockCode,
+      @Param("sourceReceipt") String sourceReceipt,
+      @Param("importedDate") LocalDate importedDate,
       @Param("date") LocalDate date,
       @Param("url") String url,
       @Param("now") LocalDateTime now);
