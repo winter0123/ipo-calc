@@ -95,7 +95,9 @@ public class KrxListingAutoSyncService {
             .filter(ipo -> !ipo.getSubscriptionStartDate().isAfter(toMonth.atEndOfMonth()))
             .toList();
     return run(
-        targets, fromMonth.atDay(1), min(today(), toMonth.atEndOfMonth().plusMonths(3)),
+        targets,
+        fromMonth.atDay(1),
+        min(today(), toMonth.atEndOfMonth().plusMonths(3)),
         dryRun || !autoApplyEnabled);
   }
 
@@ -228,12 +230,7 @@ public class KrxListingAutoSyncService {
           "복수 공고가 발행 회차 후보: " + eligible.stream().map(Match::receiptNo).toList());
     }
     if (eligible.isEmpty()) {
-      return outcome(
-          ipo,
-          OutcomeType.REVIEW_REQUIRED,
-          null,
-          null,
-          String.join(" | ", reviews));
+      return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
     }
     Match selected = eligible.get(0);
     var preview = selected.preview();
