@@ -138,11 +138,16 @@ public class DartRightsIssueListingParser {
           sections.remove(sections.size() - 1);
         }
       } else if (token.matches("(?is)<TITLE\\b.*")) {
-        String title = plain(token);
-        if (structured && !sections.isEmpty()) {
-          sections.set(sections.size() - 1, new Section(sections.get(sections.size() - 1).level(), title));
-        } else if (!structured) {
-          legacyTitle = title;
+        // ATOC=N identifies a table caption, not a section heading.
+        boolean caption = token.matches("(?is)<TITLE\\b[^>]*\\bATOC\\s*=\\s*['\\\"]?N(?:['\\\"]|\\s|>).*");
+        if (!caption) {
+          String title = plain(token);
+          if (structured && !sections.isEmpty()) {
+            sections.set(
+                sections.size() - 1, new Section(sections.get(sections.size() - 1).level(), title));
+          } else if (!structured) {
+            legacyTitle = title;
+          }
         }
       } else if (!structured
           && token.matches("(?is)<P\\b.*")
