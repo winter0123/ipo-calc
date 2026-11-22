@@ -164,15 +164,14 @@ public class KrxListingReconciliationService {
             && ipo.getListingDate().equals(notice.listingDate());
 
     boolean applyAllowed =
-        idempotent
-            || (reasons.isEmpty()
-                && stockCodeMatches
-                && stockTypeCommon
-                && reasonAllowed
-                && singleMatch
-                && issuedSharesMatch
-                && issuePriceMatch
-                && datesValid);
+        reasons.isEmpty()
+            && stockCodeMatches
+            && stockTypeCommon
+            && reasonAllowed
+            && singleMatch
+            && issuedSharesMatch
+            && issuePriceMatch
+            && datesValid;
 
     String reviewStatus = applyAllowed ? (idempotent ? "IDEMPOTENT" : "APPLYABLE") : "REVIEW_ONLY";
 
@@ -331,7 +330,8 @@ public class KrxListingReconciliationService {
   }
 
   private DartEvidence loadDart(Ipo ipo, List<String> reasons) {
-    if (!"ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())) {
+    if (!"ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
+        && !"CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())) {
       return null;
     }
     String receipt = ipo.getListingDateEvidenceReceipt();
