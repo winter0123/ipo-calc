@@ -83,6 +83,12 @@ jobs:
       - name: Run backend quality checks
         working-directory: backend
         run: ./gradlew checkstyleMain checkstyleTest spotlessCheck build --no-daemon
+      - name: Diagnose Java formatting when backend checks fail
+        if: failure()
+        working-directory: backend
+        run: |
+          ./gradlew spotlessApply --no-daemon
+          git diff -- src/main/java src/test/java
       - name: Run backend sync tests
         working-directory: backend
         run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.sync.*" --tests "com.ipocalc.ipocatalog.service.ipo.IpoServiceTest" --tests "com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParserTest" --no-daemon
