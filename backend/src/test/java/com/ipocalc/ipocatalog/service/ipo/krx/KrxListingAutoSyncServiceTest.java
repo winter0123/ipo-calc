@@ -354,20 +354,25 @@ class KrxListingAutoSyncServiceTest {
             + syntheticSearchRow(RECEIPT, "추가상장")
             + syntheticSearchRow(OTHER_RECEIPT, secondaryTitle)
             + "</tbody></table></html>";
-    var realParser =
+    var discovered =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
-              assertThat(path).isEqualTo("/disclosure/details.do");
-              assertThat(params).containsEntry("repIsuSrtCd", "A121850");
-              return html;
+              if ("/disclosure/details.do".equals(path)) {
+                assertThat(params).containsEntry("repIsuSrtCd", "A121850");
+                return html;
+              }
+              assertThat(path).isEqualTo("/common/disclsviewer.do");
+              if ("search".equals(params.get("method"))) {
+                assertThat(params).containsEntry("acptno", RECEIPT);
+                return "<option value='20261120002019|Y'>추가상장</option>";
+              }
+              assertThat(params).containsEntry("docNo", "20261120002019");
+              return URL;
             });
     var discoveryResult =
-        realParser.find(
+        discovered.find(
             "121850", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 20));
     assertThat(discoveryResult.disclosures()).hasSize(revision ? 2 : 1);
-    KrxListingNoticeDiscoveryClient discovered = mock(KrxListingNoticeDiscoveryClient.class);
-    when(discovered.find(eq("121850"), any(), any())).thenReturn(discoveryResult);
-    when(discovered.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     service =
         new KrxListingAutoSyncService(
             discovered,

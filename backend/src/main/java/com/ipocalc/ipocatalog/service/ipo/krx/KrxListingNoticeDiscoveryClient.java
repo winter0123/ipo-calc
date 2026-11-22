@@ -95,7 +95,7 @@ public class KrxListingNoticeDiscoveryClient {
     }
     String normalized = title.replaceAll("\\s+", "");
     boolean revisedPrefix = false;
-    Matcher prefix = Pattern.compile("^(\\\\[[^]\\\\r\\\\n]{1,24}]|\\\\([^()\\\\r\\\\n]{1,24}\\\\))").matcher(normalized);
+    Matcher prefix = Pattern.compile("^(\\[[^]]{1,24}]|\\([^()]{1,24}\\))").matcher(normalized);
     while (prefix.find()) {
       revisedPrefix |= hasRevisionWord(prefix.group());
       normalized = normalized.substring(prefix.end());
