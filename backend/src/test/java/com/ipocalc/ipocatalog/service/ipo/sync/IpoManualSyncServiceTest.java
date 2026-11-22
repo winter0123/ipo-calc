@@ -1,5 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,6 +29,7 @@ class IpoManualSyncServiceTest {
   private IpoDetailSyncService detail;
   private IpoHistoricalListingService historical;
   private DartRightsIssueListingService rights;
+  private KrxListingAutoSyncService kind;
   private OpenDartApiProperties props;
   private IpoSyncStateManager stateManager;
   private Executor executor;
@@ -38,6 +41,7 @@ class IpoManualSyncServiceTest {
     detail = mock(IpoDetailSyncService.class);
     historical = mock(IpoHistoricalListingService.class);
     rights = mock(DartRightsIssueListingService.class);
+    kind = mock(KrxListingAutoSyncService.class);
     props = new OpenDartApiProperties("dummy", "http://localhost");
     stateManager = mock(IpoSyncStateManager.class);
     executor = mock(Executor.class);
@@ -49,7 +53,8 @@ class IpoManualSyncServiceTest {
         .when(executor)
         .execute(any(Runnable.class));
     service =
-        new IpoManualSyncService(sync, detail, historical, rights, props, stateManager, executor);
+        new IpoManualSyncService(sync, detail, historical, rights,
+            kind, props, stateManager, executor);
     ReflectionTestUtils.setField(service, "daysBack", 90);
     when(sync.runExclusively(any())).thenAnswer(i -> ((Supplier<?>) i.getArgument(0)).get());
   }
@@ -96,6 +101,7 @@ class IpoManualSyncServiceTest {
             detail,
             historical,
             rights,
+            kind,
             new OpenDartApiProperties(" ", "http://x"),
             stateManager,
             executor);
