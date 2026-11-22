@@ -126,15 +126,23 @@ public class KrxListingReconciliationService {
     if (dart != null && dart.paymentDate() != null && notice.issueDate() != null) {
       long daysAfterPayment =
           java.time.temporal.ChronoUnit.DAYS.between(dart.paymentDate(), notice.issueDate());
-      // 독립적인 회차 ID 연결이 없는 경우, 넓은 1~7일 허용은 다른 회차를 오인한다.
-      // 우선 납입 직후 발행만 자동 허용하고 그 외는 수동 검토로 보수적으로 차단한다.
-      if (daysAfterPayment < 1 || daysAfterPayment > 2) {
+      // 날짜 간격은 다른 회차를 배제하는 보조 조건이지 동일 회차의 증명이 아니다.
+      if (daysAfterPayment < 1 || daysAfterPayment > 7) {
         reasons.add("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
         datesValid = false;
       }
     } else if (notice.issueDate() == null) {
       reasons.add("KIND 공고에서 발행일을 확인할 수 없습니다");
       datesValid = false;
+    }
+    // DART 원신고/발행실적의 연결만으로 KIND 발행회차까지 증명되지는 않는다.
+    // 양쪽 원문에서 공통 회차 식별자를 확인하지 못한 건은 자동 저장하지 않는다.
+    // KIND 회차번호가 존재하더라도 DART에 대응하는 회차 근거가 없다면 검토 대상이다.
+    if (notice.roundLabel() == null || notice.roundLabel().isBlank()) {
+      reasons.add("KIND 발행회차 식별자가 없습니다");
+    } else {
+      reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: "
+          + notice.roundLabel());
     }
     if (ipo.getSubscriptionEndDate() != null
         && notice.listingDate() != null
