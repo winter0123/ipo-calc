@@ -536,6 +536,55 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void differentExplicitRoundsWithSameSharesPriceAndIssueDayNeverWrite() throws Exception {
+    stubLinkedNotice(RAON);
+    // DART 명시 근거는 제19회인데 KIND는 제20회다. 발행일·수량·가격은 동일하게 유지한다.
+    String conflictingKind =
+        readResource("/krx/notices/raon-other-round.html")
+            .replace("제20회('26.03.02)", "제20회('26.02.26)");
+    when(noticeClient.fetch(RAON_OTHER_ROUND.url())).thenReturn(conflictingKind);
+    Ipo saved = createIpo(RAON_OTHER_ROUND);
+
+    var preview = service.preview(saved.getId(), RAON_OTHER_ROUND.url());
+
+    assertThat(preview.issuedSharesMatch()).isTrue();
+    assertThat(preview.issuePriceMatch()).isTrue();
+    assertThat(preview.datesValid()).isTrue();
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+    assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, RAON_OTHER_ROUND.url())))
+        .isInstanceOfSatisfying(
+            ResponseStatusException.class,
+            e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDateEvidenceType()).isEqualTo("ESTIMATED_DART");
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
+  void conflictingRoundLabelsInsideDartDocumentCannotConfirm() throws Exception {
+    stubLinkedNotice(KOIZ);
+    String contradictory =
+        linkedDartXml(KOIZ)
+            .replace(
+                "</DOCUMENT>",
+                "<P>발행회수(발행일): 제17회('26.01.30)</P></DOCUMENT>");
+    when(dartClient.downloadDocumentStrict(KOIZ.dartReceipt())).thenReturn(contradictory);
+    Ipo saved = createIpo(KOIZ);
+
+    var preview = service.preview(saved.getId(), KOIZ.url());
+
+    assertThat(preview.issuedSharesMatch()).isTrue();
+    assertThat(preview.issuePriceMatch()).isTrue();
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+    assertThatThrownBy(() -> service.apply(saved.getId(), request(preview, KOIZ.url())))
+        .isInstanceOf(ResponseStatusException.class);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+        .isNull();
+  }
+
+  @Test
   void dartDocumentFetchFailureNeverWrites() throws Exception {
     stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
