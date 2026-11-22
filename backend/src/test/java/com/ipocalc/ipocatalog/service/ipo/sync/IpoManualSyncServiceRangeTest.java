@@ -1,7 +1,5 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
-import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,6 +15,7 @@ import com.ipocalc.ipocatalog.exception.IpoSyncRangeValidationException;
 import com.ipocalc.ipocatalog.exception.OpenDartKeyMissingException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSyncService;
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
