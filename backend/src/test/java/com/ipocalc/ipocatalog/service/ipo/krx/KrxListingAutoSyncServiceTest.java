@@ -240,6 +240,30 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void unresolvedCancellationBlocksAlreadyConfirmedNoticeFromBeingReapplied() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    Ipo confirmed = ipo();
+    when(confirmed.getListingDateEvidenceType()).thenReturn("CONFIRMED_KRX");
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(confirmed));
+    var cancellation =
+        new KrxListingNoticeDiscoveryClient.Disclosure(
+            OTHER_RECEIPT, LocalDate.of(2026, 11, 20), "코이즈", "추가상장 취소", "코스닥", "12185");
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), cancellation));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var alreadyConfirmed = eligiblePreview(true);
+    when(reconciliation.preview(7L, URL)).thenReturn(alreadyConfirmed);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.ALREADY_APPLIED)).isZero();
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "취소");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+    verify(discovery, never()).resolveAdditionalListingUrl(OTHER_RECEIPT);
+  }
+
+  @Test
   void newListingNoticeIsNotMisparsedAsAdditionalListing() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var newListing =
