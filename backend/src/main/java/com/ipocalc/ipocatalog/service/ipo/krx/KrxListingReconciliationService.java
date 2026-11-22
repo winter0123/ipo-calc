@@ -140,7 +140,8 @@ public class KrxListingReconciliationService {
     // 실제 공시에 이 연결 근거가 없으면 보수적으로 검토 대상으로 유지한다.
     if (notice.roundLabel() == null || notice.roundLabel().isBlank()) {
       reasons.add("KIND 발행회차 식별자가 없습니다");
-    } else if (dart == null || dart.roundLabel() == null
+    } else if (dart == null
+        || dart.roundLabel() == null
         || !normalizeRound(notice.roundLabel()).equals(normalizeRound(dart.roundLabel()))) {
       reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: " + notice.roundLabel());
     }
