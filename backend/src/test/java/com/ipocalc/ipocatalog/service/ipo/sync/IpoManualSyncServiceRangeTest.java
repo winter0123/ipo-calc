@@ -127,8 +127,7 @@ class IpoManualSyncServiceRangeTest {
         .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
     var backfill = new IpoHistoricalListingService.Result(0, java.util.List.of());
     LocalDate listingEnd = LocalDate.now();
-    when(historicalListingService.backfill(currentMonth.atDay(1), listingEnd))
-        .thenReturn(backfill);
+    when(historicalListingService.backfill(currentMonth.atDay(1), listingEnd)).thenReturn(backfill);
 
     // when
     service.syncRange(req);
