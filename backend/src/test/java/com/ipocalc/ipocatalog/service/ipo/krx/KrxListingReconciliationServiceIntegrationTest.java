@@ -238,17 +238,9 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
-  void unknownOrManuallyEditedDateIsNeverPromoted() {
+  void unknownDateWithoutImportedTrackingCannotBePromoted() {
     Ipo unknown = createNewListingIpo(true);
-    Ipo edited = createNewListingIpo(true);
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
-    transactionTemplate.executeWithoutResult(
-        status -> {
-          Ipo tracked = ipoRepository.findById(edited.getId()).orElseThrow();
-          tracked.mergeSupplementalSchedule(
-              null, null, null, LocalDate.of(2026, 11, 14),
-              "OPENDART+USTOCKPLUS", LocalDateTime.now());
-        });
     transactionTemplate.executeWithoutResult(
         status -> {
           entityManager
@@ -256,6 +248,34 @@ class KrxListingReconciliationServiceIntegrationTest {
               .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 14)))
               .setParameter(2, unknown.getId())
               .executeUpdate();
+        });
+    entityManager.clear();
+
+    var preview = service.previewNewListing(unknown.getId(), NEW_LISTING_URL);
+
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("수동 상장일"));
+    assertThat(ipoRepository.findById(unknown.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 14));
+  }
+
+  @Test
+  void manuallyEditedImportedDateCannotBePromoted() {
+    Ipo edited = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo tracked = ipoRepository.findById(edited.getId()).orElseThrow();
+          tracked.mergeSupplementalSchedule(
+              null,
+              null,
+              null,
+              LocalDate.of(2026, 11, 14),
+              "OPENDART+USTOCKPLUS",
+              LocalDateTime.now());
+        });
+    transactionTemplate.executeWithoutResult(
+        status -> {
           entityManager
               .createNativeQuery("update ipos set listing_date = ?1 where id = ?2")
               .setParameter(1, java.sql.Date.valueOf(LocalDate.of(2026, 11, 13)))
@@ -264,14 +284,10 @@ class KrxListingReconciliationServiceIntegrationTest {
         });
     entityManager.clear();
 
-    var first = service.previewNewListing(unknown.getId(), NEW_LISTING_URL);
-    var second = service.previewNewListing(edited.getId(), NEW_LISTING_URL);
-    assertThat(first.applyAllowed()).isFalse();
-    assertThat(second.applyAllowed()).isFalse();
-    assertThat(first.reasons()).anyMatch(r -> r.contains("수동 상장일"));
-    assertThat(second.reasons()).anyMatch(r -> r.contains("수동 상장일"));
-    assertThat(ipoRepository.findById(unknown.getId()).orElseThrow().getListingDate())
-        .isEqualTo(LocalDate.of(2026, 11, 14));
+    var preview = service.previewNewListing(edited.getId(), NEW_LISTING_URL);
+
+    assertThat(preview.applyAllowed()).isFalse();
+    assertThat(preview.reasons()).anyMatch(reason -> reason.contains("수동 상장일"));
     assertThat(ipoRepository.findById(edited.getId()).orElseThrow().getListingDate())
         .isEqualTo(LocalDate.of(2026, 11, 13));
   }
