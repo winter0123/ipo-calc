@@ -149,6 +149,45 @@ class DartIpoFilingClientTest {
   }
 
   @Test
+  void 자동확정_원문_정상ZIP은_본문을_반환한다() throws IOException {
+    mockServer
+        .expect(requestTo(containsString("rcept_no=20261007000003")))
+        .andRespond(withSuccess(zip("report.xml", "<DOCUMENT>정상</DOCUMENT>"), MediaType.APPLICATION_OCTET_STREAM));
+
+    assertThat(client.downloadDocumentStrict("20261007000003"))
+        .isEqualTo("<DOCUMENT>정상</DOCUMENT>");
+    mockServer.verify();
+  }
+
+  @Test
+  void 자동확정_원문_JSON오류는_조회실패로_구분한다() {
+    expectJson("/api/document.xml", "{\"status\":\"014\",\"message\":\"파일이 존재하지 않습니다.\"}");
+
+    assertThatThrownBy(() -> client.downloadDocumentStrict("20261007000003"))
+        .isInstanceOf(OpenDartApiException.class)
+        .satisfies(
+            ex ->
+                assertThat(((OpenDartApiException) ex).getStatusCode())
+                    .isEqualTo("INVALID_ZIP"));
+    mockServer.verify();
+  }
+
+  @Test
+  void 자동확정_원문_HTTP실패는_조회실패로_구분한다() {
+    mockServer
+        .expect(requestTo(containsString("/api/document.xml")))
+        .andRespond(withException(new IOException("HTTP connection closed")));
+
+    assertThatThrownBy(() -> client.downloadDocumentStrict("20261007000003"))
+        .isInstanceOf(OpenDartApiException.class)
+        .satisfies(
+            ex ->
+                assertThat(((OpenDartApiException) ex).getStatusCode())
+                    .isEqualTo("FETCH_FAILED"));
+    mockServer.verify();
+  }
+
+  @Test
   void 압축_해제_합계가_한도를_넘으면_empty() throws IOException {
     DartIpoFilingClient small =
         new DartIpoFilingClient(
