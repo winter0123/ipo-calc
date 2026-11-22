@@ -49,6 +49,10 @@ class KrxListingAutoSyncServiceTest {
 
   @Test
   void pastPreviewFindsSameOfficialReceiptInMultipleWindowsButNeverWrites() {
+    Ipo prior = ipo();
+    when(prior.getListingDate()).thenReturn(LocalDate.of(2026, 10, 20));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(prior));
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
