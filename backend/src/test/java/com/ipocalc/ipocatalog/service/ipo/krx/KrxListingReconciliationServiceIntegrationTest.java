@@ -176,7 +176,11 @@ class KrxListingReconciliationServiceIntegrationTest {
         status -> {
           Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
           current.mergeSupplementalSchedule(
-              "493410", null, null, LocalDate.of(2026, 11, 14), "OPENDART+USTOCKPLUS",
+              "493410",
+              null,
+              null,
+              LocalDate.of(2026, 11, 14),
+              "OPENDART+USTOCKPLUS",
               LocalDateTime.now());
           assertThat(
                   current.fillMissingRightsListing(
@@ -445,7 +449,6 @@ class KrxListingReconciliationServiceIntegrationTest {
                     "20261101000001"))
         .isInstanceOf(ResponseStatusException.class);
     assertThat(ipoRepository.findById(manual.getId()).orElseThrow().getListingDate()).isNull();
-
   }
 
   @Test
