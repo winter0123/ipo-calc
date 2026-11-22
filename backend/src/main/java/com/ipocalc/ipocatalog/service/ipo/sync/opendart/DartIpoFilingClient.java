@@ -27,6 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>공시 목록(list.json)에서 최신 투자설명서·증권신고서를 찾고, 원문(document.xml)과 증권신고서 주요정보(estkRs.json)를 가져온다. 키
  * 없음·형식 오류·HTTP 오류·status≠000은 모두 {@link Optional#empty()}이며, 로그·예외에 crtfc_key가 든 URL을 남기지 않는다.
+ * 증권발행실적보고서 목록 조회(findIssuanceResults·findEquityFilings)는 실패 시 {@link OpenDartApiException}으로 전파한다.
  */
 public class DartIpoFilingClient {
 
@@ -130,10 +131,11 @@ public class DartIpoFilingClient {
       return List.of();
     }
     List<FilingRef> result = new ArrayList<>();
+
     for (int page = 1; page <= MAX_PAGES; page++) {
       int pageNo = page;
       Optional<JsonNode> json =
-          getJson(
+          getStrictJson(
               b ->
                   b.path("/api/list.json")
                       .queryParam("corp_code", corpCode)
@@ -142,6 +144,11 @@ public class DartIpoFilingClient {
                       .queryParam("page_no", pageNo)
                       .queryParam("page_count", PAGE_COUNT));
       if (json.isEmpty()) {
+        // 013(조회된 데이터 없음)은 정상 종료. 첫 페이지에서 온 것은 빈 목록으로 끝내고,
+        // 앞 페이지에서 더 조회를 기대한 다음 페이지에서 온 것은 페이지 누락으로 실패한다.
+        if (page > 1) {
+          throw new OpenDartApiException("013", "OpenDART 공시 목록 페이지가 누락되었습니다.");
+        }
         break;
       }
       for (JsonNode item : json.get().path("list")) {
@@ -156,6 +163,7 @@ public class DartIpoFilingClient {
         break;
       }
     }
+
     return result.stream()
         .distinct()
         .sorted(
@@ -172,10 +180,11 @@ public class DartIpoFilingClient {
       return List.of();
     }
     List<FilingRef> result = new ArrayList<>();
+
     for (int page = 1; page <= MAX_PAGES; page++) {
       int pageNo = page;
       Optional<JsonNode> json =
-          getJson(
+          getStrictJson(
               b ->
                   b.path("/api/list.json")
                       .queryParam("corp_code", corpCode)
@@ -184,15 +193,21 @@ public class DartIpoFilingClient {
                       .queryParam("page_no", pageNo)
                       .queryParam("page_count", PAGE_COUNT));
       if (json.isEmpty()) {
+        // 013(조회된 데이터 없음)은 정상 종료. 첫 페이지에서 온 것은 빈 목록으로 끝내고,
+        // 앞 페이지에서 더 조회를 기대한 다음 페이지에서 온 것은 페이지 누락으로 실패한다.
+        if (page > 1) {
+          throw new OpenDartApiException("013", "OpenDART 공시 목록 페이지가 누락되었습니다.");
+        }
         break;
       }
-      for (JsonNode item : json.get().path("list")) {
+      for (JsonNode item : json.get().get("list")) {
         toFiling(item).filter(f -> f.reportName().contains(EQUITY_REPORT)).ifPresent(result::add);
       }
       if (pageNo >= json.get().path("total_page").asInt(1)) {
         break;
       }
     }
+
     return result.stream()
         .distinct()
         .sorted(Comparator.comparing(FilingRef::receivedOn).thenComparing(FilingRef::rceptNo))
@@ -340,6 +355,43 @@ public class DartIpoFilingClient {
       return "000".equals(json.path("status").asString()) ? Optional.of(json) : Optional.empty();
     } catch (RestClientException | JacksonException e) {
       return Optional.empty(); // 메시지에 crtfc_key가 든 URL이 있어 남기지 않는다
+    }
+  }
+
+  /** 공시 목록을 엄격하게 조회해 status 000 응답만 돌려주고, 013(데이터 없음)·오류는 예외로 전환한다. */
+  private Optional<JsonNode> getStrictJson(
+      Function<org.springframework.web.util.UriBuilder, org.springframework.web.util.UriBuilder>
+          params) {
+    try {
+      throttle.acquire();
+      String body =
+          restClient
+              .get()
+              .uri(b -> params.apply(b).queryParam("crtfc_key", properties.getApiKey()).build())
+              .retrieve()
+              .body(String.class);
+      if (body == null || body.isBlank()) {
+        throw new OpenDartApiException("null", "OpenDART API 응답이 없습니다.");
+      }
+      JsonNode json = objectMapper.readTree(body);
+      String status = json.path("status").asString();
+      if ("013".equals(status)) {
+        // 조회된 데이터가 없으면 정상 종료다.
+        return Optional.empty();
+      }
+      if (!"000".equals(status)) {
+        // 020(요청 제한 초과) 등 DART 오류는 즉시 실패로 본다.
+        throw new OpenDartApiException(status, "OpenDART API 오류입니다.");
+      }
+      if (json.get("list") == null || !json.get("list").isArray()) {
+        // status 000이라도 list 스키마가 틀리면 형식 오류로 본다.
+        throw new OpenDartApiException("000", "OpenDART API 응답 형식이 올바르지 않습니다.");
+      }
+      return Optional.of(json);
+    } catch (RestClientException e) {
+      throw new OpenDartApiException("http_error", "OpenDART API 호출 실패");
+    } catch (JacksonException e) {
+      throw new OpenDartApiException("json_error", "OpenDART JSON 파싱 오류");
     }
   }
 }
