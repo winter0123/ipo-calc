@@ -98,7 +98,8 @@ public class KrxListingNoticeDiscoveryClient {
     Map<String, Disclosure> unique = new LinkedHashMap<>();
     Set<String> pageFingerprints = new LinkedHashSet<>();
     for (int page = 1; page <= MAX_PAGES; page++) {
-      Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "상장");
+      // KIND reportNm=상장은 실제 추가상장 공고도 0건이 되는 사례가 있어 제목 필터를 쓰지 않는다.
+      Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "");
       String html = transport.request("/disclosure/details.do", query, true);
       List<Disclosure> current = parsePage(html);
       String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
