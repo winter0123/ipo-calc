@@ -335,7 +335,8 @@ public class KrxListingAutoSyncService {
         reviews.add(notice.receiptNo() + ": " + String.join("; ", preview.reasons()));
       }
     }
-    if (unresolvedRevision) {
+    // 신규상장 원문 중 하나라도 검증 실패하면 다른 후보로 부분 확정하지 않는다.
+    if (unresolvedRevision || !reviews.isEmpty()) {
       return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
     }
     if (matches.size() > 1) {
