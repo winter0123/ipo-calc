@@ -121,83 +121,76 @@ public class DartRightsIssueListingParser {
       return false;
     }
     long difference = planned - issued;
-    Matcher tables = TABLE.matcher(xml);
-    while (tables.find()) {
-      if (!eligibleRightsContext(sectionContext(xml, tables.start()))) {
-        continue;
-      }
-      Matcher cells = CELL.matcher(tables.group(1));
-      while (cells.find()) {
-        String claim = plain(cells.group(1));
-        if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
-          return true;
+    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\b").matcher(xml).find();
+    Pattern tokens =
+        Pattern.compile(
+            "(?is)</?SECTION-[1-3]\b[^>]*>|<TITLE\b[^>]*>.*?</TITLE>"
+                + "|<TABLE\b[^>]*>.*?</TABLE>|<P\b[^>]*>.*?</P>");
+    Matcher matcher = tokens.matcher(xml);
+    List<String> sections = new ArrayList<>();
+    String legacyTitle = "";
+    while (matcher.find()) {
+      String token = matcher.group();
+      if (token.matches("(?is)<SECTION-[1-3]\b[^>]*>")) {
+        sections.add("");
+      } else if (token.matches("(?is)</SECTION-[1-3]\s*>")) {
+        if (!sections.isEmpty()) {
+          sections.remove(sections.size() - 1);
         }
-      }
-    }
-    String outsideTables = TABLE.matcher(xml).replaceAll(" ");
-    Matcher paragraphs = PARAGRAPH.matcher(outsideTables);
-    while (paragraphs.find()) {
-      String claim = plain(paragraphs.group(1));
-      if (eligibleRightsContext(sectionContext(outsideTables, paragraphs.start()))
-          && eligibleRightsClaim(claim)
-          && containsConfirmedUnissued(claim, difference)) {
-        return true;
+      } else if (token.matches("(?is)<TITLE\b.*")) {
+        String title = plain(token);
+        if (structured && !sections.isEmpty()) {
+          sections.set(sections.size() - 1, title);
+        } else if (!structured) {
+          legacyTitle = title;
+        }
+      } else if (!structured && token.matches("(?is)<P\b.*")
+          && isLegacySectionHeading(plain(token))) {
+        legacyTitle = plain(token);
+      } else if (eligibleRightsContext(sectionContext(sections, legacyTitle, structured))) {
+        if (token.matches("(?is)<TABLE\b.*")) {
+          Matcher cells = CELL.matcher(token);
+          while (cells.find()) {
+            String claim = plain(cells.group(1));
+            if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
+              return true;
+            }
+          }
+        } else if (token.matches("(?is)<P\b.*")) {
+          String claim = plain(token);
+          if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
+            return true;
+          }
+        }
       }
     }
     return false;
   }
 
-  private static String sectionContext(String document, int position) {
-    // SECTION의 계층을 유지하며 TITLE만 절 제목으로 취급한다.
-    Pattern tokens =
-        Pattern.compile(
-            "(?is)</?SECTION-[1-3]\\b[^>]*>|<TITLE\\b[^>]*>.*?</TITLE>"
-                + "|<P\\b[^>]*>.*?</P>");
-    Matcher matcher = tokens.matcher(document);
-    List<String> scopes = new ArrayList<>();
-    String legacyHeading = "";
-    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(document).find();
-    while (matcher.find() && matcher.start() < position) {
-      String token = matcher.group();
-      if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
-        scopes.add("");
-      } else if (token.matches("(?is)</SECTION-[1-3]\\s*>")) {
-        if (!scopes.isEmpty()) {
-          scopes.remove(scopes.size() - 1);
-        }
-      } else if (token.matches("(?is)<TITLE\\b.*")) {
-        String title = plain(token);
-        if (!scopes.isEmpty()) {
-          scopes.set(scopes.size() - 1, title);
-        } else if (!structured) {
-          legacyHeading = title;
-        }
-      } else if (!structured) {
-        String value = plain(token);
-        if (value.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\\s+.*")
-            || value.matches("(?s)^제\\s*\\d+\\s*차\\s+.*")) {
-          legacyHeading = value;
-        }
-      }
-    }
+  private static boolean isLegacySectionHeading(String text) {
+    return text.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\s+.*")
+        || text.matches("(?s)^제\s*\d+\s*차\s+.*");
+  }
+
+  private static String sectionContext(
+      List<String> sections, String legacyTitle, boolean structured) {
     if (structured) {
-      if (scopes.isEmpty()) {
+      if (sections.isEmpty() || sections.stream().anyMatch(String::isBlank)) {
         return "UNKNOWN";
       }
-      String context = String.join(" / ", scopes);
-      return context.isBlank() ? "UNKNOWN" : context;
+      return String.join(" / ", sections);
     }
-    return legacyHeading.isBlank() ? "LEGACY" : legacyHeading;
+    return legacyTitle.isBlank() ? "UNKNOWN" : legacyTitle;
   }
 
   private static boolean eligibleRightsContext(String context) {
     if (context.equals("UNKNOWN")
         || context.matches(
-            "(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건"
-                + "|제\\s*(?:[2-9]|\\d{2,})\\s*차\\s*유상증자).*")) {
+            "(?s).*(?:무상증자|다른\s*발행\s*회차|별도\s*발행\s*건"
+                + "|제\s*\d+\s*차\s*유상증자).*")) {
       return false;
     }
-    return context.contains("실권주 처리내역") || context.equals("LEGACY");
+    return context.contains("실권주 처리내역");
   }
 
   private static boolean eligibleRightsClaim(String claim) {
