@@ -152,7 +152,9 @@ class DartIpoFilingClientTest {
   void 자동확정_원문_정상ZIP은_본문을_반환한다() throws IOException {
     mockServer
         .expect(requestTo(containsString("rcept_no=20261007000003")))
-        .andRespond(withSuccess(zip("report.xml", "<DOCUMENT>정상</DOCUMENT>"), MediaType.APPLICATION_OCTET_STREAM));
+        .andRespond(
+            withSuccess(
+                zip("report.xml", "<DOCUMENT>정상</DOCUMENT>"), MediaType.APPLICATION_OCTET_STREAM));
 
     assertThat(client.downloadDocumentStrict("20261007000003"))
         .isEqualTo("<DOCUMENT>정상</DOCUMENT>");
