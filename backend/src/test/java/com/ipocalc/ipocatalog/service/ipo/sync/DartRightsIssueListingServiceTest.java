@@ -654,6 +654,25 @@ class DartRightsIssueListingServiceTest {
             + "<TD>1,004,418주는 미발행 처리</TD></TR></TABLE><P>무상증자");
   }
 
+  @Test
+  void closedRightsSectionThenBonusSectionMustNotSave() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>Ⅸ. 무상증자</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-2><P>");
+  }
+
+  @Test
+  void nestedSecondRightsRoundMustNotSave() {
+    assertRejectedUnissuedEvidence(
+        "</P><SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE></SECTION-2>"
+            + "<SECTION-2><TITLE>제2차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2><P>");
+  }
+
   private void assertRejectedUnissuedEvidence(String claim) {
     Ipo row = ipo("20251105000215");
     setupReports(row, new FilingRef(REPORT, "증권발행실적보고서", LocalDate.of(2026, 3, 5)));
