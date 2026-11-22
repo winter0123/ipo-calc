@@ -22,6 +22,7 @@ class KrxListingNoticeDiscoveryClientTest {
           assertThat(post).isTrue();
           assertThat(params).containsEntry("repIsuSrtCd", "A121850")
               .containsEntry("lastReport", "")
+              .containsEntry("reportNm", "")
               .containsEntry("fromDate", "2026-02-05")
               .containsEntry("toDate", "2026-02-05")
               .containsEntry("pageIndex", "1");
