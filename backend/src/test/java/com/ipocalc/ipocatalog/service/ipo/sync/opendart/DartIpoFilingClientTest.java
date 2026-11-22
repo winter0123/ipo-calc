@@ -168,9 +168,7 @@ class DartIpoFilingClientTest {
     assertThatThrownBy(() -> client.downloadDocumentStrict("20261007000003"))
         .isInstanceOf(OpenDartApiException.class)
         .satisfies(
-            ex ->
-                assertThat(((OpenDartApiException) ex).getStatusCode())
-                    .isEqualTo("INVALID_ZIP"));
+            ex -> assertThat(((OpenDartApiException) ex).getStatusCode()).isEqualTo("INVALID_ZIP"));
     mockServer.verify();
   }
 
@@ -184,8 +182,7 @@ class DartIpoFilingClientTest {
         .isInstanceOf(OpenDartApiException.class)
         .satisfies(
             ex ->
-                assertThat(((OpenDartApiException) ex).getStatusCode())
-                    .isEqualTo("FETCH_FAILED"));
+                assertThat(((OpenDartApiException) ex).getStatusCode()).isEqualTo("FETCH_FAILED"));
     mockServer.verify();
   }
 
