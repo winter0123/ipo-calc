@@ -308,4 +308,35 @@ class DartRightsIssueListingParserTest {
     assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
   }
 
+  @Test
+  void koizNumberedSubscriptionParagraphDoesNotOverrideSectionTitle() {
+    String xml =
+        "<SECTION-2><TITLE>Ⅷ. 실권주 처리내역</TITLE>"
+            + "<P>2. 신주인수권증서 청약 및 초과청약 배정</P>"
+            + "<TABLE><TR><TD>비고</TD>"
+            + "<TD>초과청약 배정 후 실권주 1,004,418주는 미발행 처리</TD>"
+            + "</TR></TABLE></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isTrue();
+  }
+
+  @Test
+  void tenthRightsIssueRoundDoesNotAuthorizeUnissuedShares() {
+    String xml =
+        "<SECTION-2><TITLE>제10차 유상증자</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
+  @Test
+  void separateIssuanceParentRejectsNestedRightsSection() {
+    String xml =
+        "<SECTION-2><TITLE>별도 발행 건</TITLE>"
+            + "<SECTION-3><TITLE>실권주 처리내역</TITLE>"
+            + "<TABLE><TR><TD>실권주 1,004,418주는 미발행 처리</TD></TR></TABLE>"
+            + "</SECTION-3></SECTION-2>";
+    assertThat(parser.hasVerifiedUnissuedShares(xml, 3_000_000L, 1_995_582L)).isFalse();
+  }
+
 }
