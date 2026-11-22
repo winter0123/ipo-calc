@@ -121,34 +121,34 @@ public class DartRightsIssueListingParser {
       return false;
     }
     long difference = planned - issued;
-    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\b").matcher(xml).find();
+    boolean structured = Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(xml).find();
     Pattern tokens =
         Pattern.compile(
-            "(?is)</?SECTION-[1-3]\b[^>]*>|<TITLE\b[^>]*>.*?</TITLE>"
-                + "|<TABLE\b[^>]*>.*?</TABLE>|<P\b[^>]*>.*?</P>");
+            "(?is)</?SECTION-[1-3]\\b[^>]*>|<TITLE\\b[^>]*>.*?</TITLE>"
+                + "|<TABLE\\b[^>]*>.*?</TABLE>|<P\\b[^>]*>.*?</P>");
     Matcher matcher = tokens.matcher(xml);
     List<String> sections = new ArrayList<>();
     String legacyTitle = "";
     while (matcher.find()) {
       String token = matcher.group();
-      if (token.matches("(?is)<SECTION-[1-3]\b[^>]*>")) {
+      if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
         sections.add("");
-      } else if (token.matches("(?is)</SECTION-[1-3]\s*>")) {
+      } else if (token.matches("(?is)</SECTION-[1-3]\\s*>")) {
         if (!sections.isEmpty()) {
           sections.remove(sections.size() - 1);
         }
-      } else if (token.matches("(?is)<TITLE\b.*")) {
+      } else if (token.matches("(?is)<TITLE\\b.*")) {
         String title = plain(token);
         if (structured && !sections.isEmpty()) {
           sections.set(sections.size() - 1, title);
         } else if (!structured) {
           legacyTitle = title;
         }
-      } else if (!structured && token.matches("(?is)<P\b.*")
+      } else if (!structured && token.matches("(?is)<P\\b.*")
           && isLegacySectionHeading(plain(token))) {
         legacyTitle = plain(token);
       } else if (eligibleRightsContext(sectionContext(sections, legacyTitle, structured))) {
-        if (token.matches("(?is)<TABLE\b.*")) {
+        if (token.matches("(?is)<TABLE\\b.*")) {
           Matcher cells = CELL.matcher(token);
           while (cells.find()) {
             String claim = plain(cells.group(1));
@@ -156,7 +156,7 @@ public class DartRightsIssueListingParser {
               return true;
             }
           }
-        } else if (token.matches("(?is)<P\b.*")) {
+        } else if (token.matches("(?is)<P\\b.*")) {
           String claim = plain(token);
           if (eligibleRightsClaim(claim) && containsConfirmedUnissued(claim, difference)) {
             return true;
@@ -168,8 +168,8 @@ public class DartRightsIssueListingParser {
   }
 
   private static boolean isLegacySectionHeading(String text) {
-    return text.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\s+.*")
-        || text.matches("(?s)^제\s*\d+\s*차\s+.*");
+    return text.matches("(?s)^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.．:]?\\s+.*")
+        || text.matches("(?s)^제\\s*\\d+\\s*차\\s+.*");
   }
 
   private static String sectionContext(
@@ -186,8 +186,8 @@ public class DartRightsIssueListingParser {
   private static boolean eligibleRightsContext(String context) {
     if (context.equals("UNKNOWN")
         || context.matches(
-            "(?s).*(?:무상증자|다른\s*발행\s*회차|별도\s*발행\s*건"
-                + "|제\s*\d+\s*차\s*유상증자).*")) {
+            "(?s).*(?:무상증자|다른\\s*발행\\s*회차|별도\\s*발행\\s*건"
+                + "|제\\s*\\d+\\s*차\\s*유상증자).*")) {
       return false;
     }
     return context.contains("실권주 처리내역");
