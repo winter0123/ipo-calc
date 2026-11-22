@@ -1,5 +1,7 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -28,6 +30,7 @@ class IpoSyncSchedulerTest {
 
   @Mock private IpoSyncService ipoSyncService;
   @Mock private DartRightsIssueListingService rightsIssueListingService;
+  @Mock private KrxListingAutoSyncService krxListingAutoSyncService;
   @Mock private TaskScheduler taskScheduler;
 
   @Captor private ArgumentCaptor<Runnable> runnableCaptor;
@@ -44,7 +47,8 @@ class IpoSyncSchedulerTest {
   void setUp() {
     mockitoCloseable = MockitoAnnotations.openMocks(this);
     scheduler =
-        new IpoSyncScheduler(ipoSyncService, rightsIssueListingService, taskScheduler, FIXED_CLOCK);
+        new IpoSyncScheduler(ipoSyncService, rightsIssueListingService,
+            krxListingAutoSyncService, taskScheduler, FIXED_CLOCK);
     when(rightsIssueListingService.backfill(any(), any()))
         .thenReturn(new DartRightsIssueListingService.Result(0, 0, 0));
     // daysBack 필드는 @Value로 주입되므로 리플렉션으로 설정
