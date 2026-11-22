@@ -49,7 +49,7 @@ public class KrxListingNoticeDiscoveryClient {
   private static final Pattern DOCUMENT_URL =
       Pattern.compile(
           "https://kind\\.krx\\.co\\.kr/external/\\d{4}/\\d{2}/\\d{2}/"
-              + "\\d{6}/\\d{14}/70791\\.htm");
+              + "\\d{6}/\\d{14}/(?:70791|70760)\\.htm");
   private static final Pattern TAG = Pattern.compile("<[^>]+>");
   private static final Pattern SPACE = Pattern.compile("\\s+");
   private static final Pattern SHORT_CODE = Pattern.compile("[0-9][0-9A-Z]{5}");
@@ -363,8 +363,17 @@ public class KrxListingNoticeDiscoveryClient {
     return query;
   }
 
-  /** 검색으로 발견한 접수번호로 공식 70791 추가상장 원문 URL을 조회한다. */
+  /** 검색 접수번호를 공식 70791 추가상장 공고 URL로 해석한다. */
   public String resolveAdditionalListingUrl(String receiptNo) {
+    return resolveListingUrl(receiptNo, "70791.htm");
+  }
+
+  /** 검색 접수번호를 공식 70760 신규상장 공고 URL로 해석한다. */
+  public String resolveNewListingUrl(String receiptNo) {
+    return resolveListingUrl(receiptNo, "70760.htm");
+  }
+
+  private String resolveListingUrl(String receiptNo, String documentName) {
     if (receiptNo == null || !receiptNo.matches("\\d{14}")) {
       throw new IllegalArgumentException("KIND 공고 접수번호가 유효하지 않습니다");
     }
@@ -402,25 +411,31 @@ public class KrxListingNoticeDiscoveryClient {
               Map.of("method", "searchContents", "docNo", contentId),
               true);
       Matcher match = DOCUMENT_URL.matcher(resolved);
-      if (match.find()) {
+      while (match.find()) {
         String url = match.group();
-        KrxListingNoticeClient.validateNoticeUrl(url);
-        if (!url.contains(
+        if (!url.endsWith("/" + documentName)) {
+          continue;
+        }
+        if (documentName.equals("70760.htm")) {
+          KrxListingNoticeClient.validateNewListingUrl(url);
+        } else {
+          KrxListingNoticeClient.validateNoticeUrl(url);
+        }
+        String expectedDatePath =
             "/"
                 + receiptNo.substring(0, 4)
                 + "/"
                 + receiptNo.substring(4, 6)
                 + "/"
                 + receiptNo.substring(6, 8)
-                + "/"
-                + receiptNo.substring(8)
-                + "/")) {
-          throw new IllegalStateException("KIND 공고 접수번호와 원문 경로가 다릅니다");
+                + "/";
+        if (!url.contains(expectedDatePath)) {
+          throw new IllegalStateException("KIND 공고 게시일과 원문 경로가 다릅니다");
         }
         return url;
       }
     }
-    throw new IllegalStateException("KIND 추가상장 원문 URL을 찾을 수 없습니다");
+    throw new IllegalStateException("KIND " + documentName + " 원문 URL을 찾을 수 없습니다");
   }
 
   private static List<Disclosure> parsePage(String html) {
