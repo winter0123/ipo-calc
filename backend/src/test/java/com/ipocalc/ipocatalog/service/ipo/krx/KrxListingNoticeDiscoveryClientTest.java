@@ -157,8 +157,13 @@ class KrxListingNoticeDiscoveryClientTest {
     AtomicInteger queriedMonths = new AtomicInteger();
     var client = new KrxListingNoticeDiscoveryClient(
         (path, params, post) -> {
+          if ("/disclosure/details.do".equals(path)) {
+            assertThat(params).containsEntry("repIsuSrtCd", "A121850")
+                .containsEntry("reportNm", "");
+            return page(List.of(RECEIPT)).replace("12185", "27957");
+          }
           assertThat(path).isEqualTo("/corpgeneral/stockissuelist.do");
-          assertThat(params).containsEntry("isurCd", "12185")
+          assertThat(params).containsEntry("isurCd", "27957")
               .containsEntry("listingType", "2")
               .containsEntry("marketType", "all");
           queriedMonths.incrementAndGet();
@@ -183,6 +188,10 @@ class KrxListingNoticeDiscoveryClientTest {
     }
     var client = new KrxListingNoticeDiscoveryClient(
         (path, params, post) -> {
+          if ("/disclosure/details.do".equals(path)) {
+            return page(List.of(RECEIPT)).replace("12185", "27957");
+          }
+          assertThat(params).containsEntry("isurCd", "27957");
           if ("2026-02-01".equals(params.get("fromDate"))) {
             if ("2".equals(params.get("pageIndex"))) {
               throw new IllegalStateException("KIND page 2 timed out");
@@ -193,6 +202,18 @@ class KrxListingNoticeDiscoveryClientTest {
         });
     assertThatThrownBy(() -> client.findViaStockIssue("121850", DAY, DAY))
         .hasMessageContaining("page 2 timed out");
+  }
+
+  @Test
+  void unknownKindIssuerCodeIsFetchFailureNotNoNotices() {
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) -> {
+          assertThat(path).isEqualTo("/disclosure/details.do");
+          return page(List.of());
+        });
+
+    assertThatThrownBy(() -> client.findViaStockIssue("121850", DAY, DAY))
+        .hasMessageContaining("회사 식별자를 찾을 수 없습니다");
   }
 
   private static String stockIssuePage(List<String> receipts) {
