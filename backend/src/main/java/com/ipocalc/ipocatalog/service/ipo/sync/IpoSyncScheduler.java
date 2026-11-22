@@ -1,7 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
 import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
