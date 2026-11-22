@@ -115,7 +115,6 @@ public class DartRightsIssueListingParser {
         .toList();
   }
 
-  /** 현재 유상증자 회차의 확정된 미발행 수량만 인정한다. */
   /** 문서의 실제 절 경계 안에서 현재 유상증자 실권주 처리 근거만 인정한다. */
   public boolean hasVerifiedUnissuedShares(String xml, long planned, long issued) {
     if (xml == null || issued <= 0 || planned <= issued) {
@@ -157,7 +156,8 @@ public class DartRightsIssueListingParser {
     Matcher matcher = tokens.matcher(document);
     List<String> scopes = new ArrayList<>();
     String heading = "";
-    boolean hasStructuredSections = Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(document).find();
+    boolean hasStructuredSections =
+        Pattern.compile("(?i)<SECTION-[1-3]\\b").matcher(document).find();
     while (matcher.find() && matcher.start() < position) {
       String token = matcher.group();
       if (token.matches("(?is)<SECTION-[1-3]\\b[^>]*>")) {
@@ -171,7 +171,10 @@ public class DartRightsIssueListingParser {
       } else {
         String value = plain(token);
         boolean title = token.matches("(?is)<TITLE\\b.*");
-        boolean numbered = value.matches("(?s)^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+|[IVX]+|제\\s*\\d+\\s*차|\\d+[.)])\\s*[.．:]?\\s*.*");
+        boolean numbered =
+            value.matches(
+                "(?s)^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+|[IVX]+|제\\s*\\d+\\s*차|\\d+[.)])"
+                    + "\\s*[.．:]?\\s*.*");
         if (title || numbered) {
           heading = value;
           if (!scopes.isEmpty()) {
