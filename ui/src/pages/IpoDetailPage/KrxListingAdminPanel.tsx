@@ -3,7 +3,12 @@ import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, toErrorMessage } from '@/shared/api/apiError.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
-import { applyKrxListing, getKrxAutoStatus, ipoKeys, previewKrxListing } from '@/entities/ipo/index.ts'
+import {
+  applyKrxListing,
+  getKrxAutoStatus,
+  ipoKeys,
+  previewKrxListing,
+} from '@/entities/ipo/index.ts'
 import type { KrxListingPreview } from '@/entities/ipo/index.ts'
 import styles from './IpoDetailPage.styles.ts'
 

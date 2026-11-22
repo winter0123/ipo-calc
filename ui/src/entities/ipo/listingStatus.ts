@@ -2,11 +2,7 @@ import type { Ipo } from './types.ts'
 import { dateOnly, toSeoulYmd } from '@/shared/lib/date.ts'
 
 export type ListingDisplayKind =
-  | 'unknown'
-  | 'estimated'
-  | 'estimated-overdue'
-  | 'confirmed-upcoming'
-  | 'confirmed'
+  'unknown' | 'estimated' | 'estimated-overdue' | 'confirmed-upcoming' | 'confirmed'
 
 export interface ListingDisplay {
   kind: ListingDisplayKind
