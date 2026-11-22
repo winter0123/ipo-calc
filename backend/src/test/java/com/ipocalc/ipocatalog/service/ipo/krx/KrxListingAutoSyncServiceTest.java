@@ -449,6 +449,23 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void historicalPreviewIncludesAutoIpoWithoutListingDateButNeverWrites() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(newListingDisclosure(RECEIPT)));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.previewPastUnconfirmed();
+
+    assertThat(report.dryRun()).isTrue();
+    assertThat(report.rows()).hasSize(1);
+    assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
+    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+  }
+
+  @Test
   void newListingIsReadOnlyWhenFlagDisabled() {
     Ipo row = newListingIpo();
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
