@@ -25,3 +25,6 @@ jobs:
         env:
           KIND_DISCOVERY_LIVE: 'true'
         run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.krx.KrxListingNoticeDiscoveryLiveTest" --no-daemon --info
+      - name: Diagnose official KIND search contracts without DB writes
+        if: always()
+        run: python3 scripts/kind_discovery_probe.py
