@@ -678,8 +678,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     String html = readResource("/krx/notices/" + c.file());
     String round = new KrxListingNoticeParser().parse(html).roundLabel();
     assertThat(round).as("KIND fixture round").isNotBlank();
-    return dart.replace("</DOCUMENT>",
-        "<P>발행회수(발행일): " + round + "</P></DOCUMENT>");
+    return dart.replace("</DOCUMENT>", "<P>발행회수(발행일): " + round + "</P></DOCUMENT>");
   }
 
   private void stubLinkedNotice(CaseData c) {
@@ -695,8 +694,7 @@ class KrxListingReconciliationServiceIntegrationTest {
       var preview = service.preview(saved.getId(), c.url());
       assertThat(preview.applyAllowed()).isFalse();
       assertThat(preview.reviewStatus()).isEqualTo("REVIEW_ONLY");
-      assertThat(preview.reasons())
-          .anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
+      assertThat(preview.reasons()).anyMatch(reason -> reason.contains("독립적인 연결 근거가 없습니다"));
       assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
           .isNull();
     }
