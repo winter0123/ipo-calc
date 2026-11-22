@@ -1,7 +1,20 @@
 import { z } from 'zod'
 import { apiFetchParsed, apiGetParsed } from '@/shared/api/parsed.ts'
-import { ipoInsightSchema, ipoSchema, ipoSyncStatusSchema } from './types.ts'
-import type { Ipo, IpoInsight, IpoRegisterRequest, IpoSyncStatus } from './types.ts'
+import {
+  ipoInsightSchema,
+  ipoSchema,
+  ipoSyncStatusSchema,
+  krxListingPreviewSchema,
+} from './types.ts'
+import type {
+  Ipo,
+  IpoInsight,
+  IpoRegisterRequest,
+  IpoSyncStatus,
+  KrxListingApplyRequest,
+  KrxListingApplyResult,
+  KrxListingPreview,
+} from './types.ts'
 
 export async function fetchIpos(signal?: AbortSignal): Promise<Ipo[]> {
   return apiGetParsed('/ipos', z.array(ipoSchema), signal)
@@ -36,4 +49,27 @@ export async function syncIposNow(range?: {
 // 동기화 상태를 조회한다(관리자).
 export async function getIpoSyncStatus(signal?: AbortSignal): Promise<IpoSyncStatus> {
   return apiGetParsed('/ipos/sync/status', ipoSyncStatusSchema, signal)
+}
+
+export async function previewKrxListing(id: number, noticeUrl: string): Promise<KrxListingPreview> {
+  return apiFetchParsed(`/ipos/${id}/krx-listing/preview`, krxListingPreviewSchema, {
+    method: 'POST',
+    body: JSON.stringify({ noticeUrl }),
+  })
+}
+
+export async function applyKrxListing(
+  id: number,
+  request: KrxListingApplyRequest,
+): Promise<KrxListingApplyResult> {
+  return apiFetchParsed(
+    `/ipos/${id}/krx-listing/apply`,
+    z.object({
+      ipoId: z.number(),
+      applied: z.boolean(),
+      status: z.string(),
+      reasons: z.array(z.string()),
+    }),
+    { method: 'POST', body: JSON.stringify(request) },
+  )
 }

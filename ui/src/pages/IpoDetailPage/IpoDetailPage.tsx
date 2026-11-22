@@ -9,6 +9,7 @@ import IpoInsightSections from './IpoInsightSections.tsx'
 import { dateOnly, toSeoulYmd } from '@/shared/lib/date.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
 import { formatSecuritiesFirmName } from '@/shared/lib/formatSecuritiesFirmName.ts'
+import KrxListingAdminPanel from './KrxListingAdminPanel.tsx'
 
 export default function IpoDetailPage() {
   const { ipoId } = useParams<{ ipoId: string }>()
@@ -220,6 +221,7 @@ export default function IpoDetailPage() {
             lowerBandPrice={ipo!.lowerBandPrice}
             upperBandPrice={ipo!.upperBandPrice}
           />
+          {account?.role === 'ADMIN' && <KrxListingAdminPanel key={id} ipoId={id} />}
         </div>
       }
     </StyleScope>

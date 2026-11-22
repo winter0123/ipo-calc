@@ -407,6 +407,34 @@ describe('IpoDetailPage', () => {
     )
   })
 
+  it('관리자에게만 KIND 상장일 미리보기 도구가 보인다', async () => {
+    stubIpoAndAccount({
+      accountId: 1,
+      email: 'admin@b.com',
+      name: '관리자',
+      nickname: '관리자',
+      role: 'ADMIN',
+    })
+    const { unmount } = render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    expect(
+      await screen.findByRole('heading', { name: '관리자 · KIND 상장일 검토' }),
+    ).toBeInTheDocument()
+    unmount()
+
+    stubIpoAndAccount({
+      accountId: 2,
+      email: 'user@b.com',
+      name: '사용자',
+      nickname: '사용자',
+      role: 'USER',
+    })
+    render(<IpoDetailPage />, { wrapper: createWrapper(['/ipos/7']) })
+    await screen.findByText('테스트IPO')
+    expect(
+      screen.queryByRole('heading', { name: '관리자 · KIND 상장일 검토' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('청약 기간이 끝나도 청약·매도 관리 링크는 보인다', async () => {
     stubIpoAndAccount(
       { accountId: 1, email: 'a@b.com', name: '나', nickname: '나', role: 'USER' },
