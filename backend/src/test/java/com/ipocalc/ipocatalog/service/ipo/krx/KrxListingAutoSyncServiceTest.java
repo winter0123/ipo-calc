@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,6 +62,43 @@ class KrxListingAutoSyncServiceTest {
     assertThat(report.dryRun()).isTrue();
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
     verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
+  void sharedStockAndPublicationWindowsAreSearchedOnlyOncePerRun() {
+    Ipo first = ipo();
+    Ipo second = ipo();
+    when(second.getId()).thenReturn(8L);
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(first, second));
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result());
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.rows()).hasSize(2);
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isEqualTo(2);
+    // 35-day window uses two 28-day chunks, not two chunks per IPO row.
+    verify(discovery, times(2)).find(eq("121850"), any(), any());
+    verifyNoInteractions(reconciliation);
+  }
+
+  @Test
+  void failedSharedSearchWindowIsNotRetriedOrMisreportedAsNoNotice() {
+    Ipo first = ipo();
+    Ipo second = ipo();
+    when(second.getId()).thenReturn(8L);
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(first, second));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenThrow(new IllegalStateException("KIND 조회 HTTP 403"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.rows()).hasSize(2);
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(2);
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isZero();
+    verify(discovery).find(eq("121850"), any(), any());
+    verifyNoInteractions(reconciliation);
   }
 
   @Test
