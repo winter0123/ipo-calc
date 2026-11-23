@@ -281,8 +281,13 @@ public class KrxListingAutoSyncService {
           null,
           "복수 공고가 발행 회차 후보: " + eligible.stream().map(Match::receiptNo).toList());
     }
-    if (eligible.isEmpty()) {
+    // 다른 추가상장 공고의 발행회차가 확인되지 않으면 후보 하나만 확정하지 않는다.
+    // 매칭이 실패한 다른 공고를 무시하면 같은 발행에 대한 중복 공고를 놓칠 수 있다.
+    if (!reviews.isEmpty()) {
       return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
+    }
+    if (eligible.isEmpty()) {
+      return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "검증 가능한 추가상장 후보 없음");
     }
     Match selected = eligible.get(0);
     var preview = selected.preview();
