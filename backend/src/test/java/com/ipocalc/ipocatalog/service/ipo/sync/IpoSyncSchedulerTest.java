@@ -111,6 +111,13 @@ class IpoSyncSchedulerTest {
   void runSync_rightsBackfillWithoutFailures_runsKindAfterBackfill() {
     when(ipoSyncService.sync(90)).thenReturn(successfulSyncResult());
     when(krxListingAutoSyncService.isAutoApplyEnabled()).thenReturn(true);
+    when(krxListingAutoSyncService.reconcileRecent())
+        .thenReturn(
+            new KrxListingAutoSyncService.Report(
+                java.time.LocalDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                true,
+                java.util.Map.of(),
+                List.of()));
     // REVIEW_REQUIRED is not a fetch failure and must not block KIND.
     when(rightsIssueListingService.backfill(any(), any()))
         .thenReturn(new DartRightsIssueListingService.Result(2, 3, 0));
