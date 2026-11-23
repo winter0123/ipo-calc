@@ -83,3 +83,12 @@
 - 자동 갱신은 수동 값과 `CONFIRMED_KRX` 값을 보존한다.
 - KRX 확정 시 DART 원래 날짜/receipt를 보존하고, KRX 증거 참조 하나만 최소로 추가한다.
 - 운영 DB 변경, 배포, push, merge는 이 단계에서 하지 않는다.
+
+
+## 9. 2026-11-24 자동 탐색 공급 검증 현황 (기존 PR #515)
+
+- 공식 상세검색: `https://kind.krx.co.kr/disclosure/details.do` (종목코드 `repIsuSrtCd=A+6자리`, 게시일 `fromDate/toDate`, 페이지 `pageIndex`); 원문 뷰어 `https://kind.krx.co.kr/common/disclsviewer.do`, 공식 원문 `/external/YYYY/MM/DD/.../70760.htm`(신규) 및 `70791.htm`(추가).
+- 검색은 100건/페이지, 최대 50페이지, 요청 구간 최대 1개월; 자동 실행은 최대 28일 구간으로 분할하며 접수번호 중복 제거. 페이지 반복·누락·HTML 구조 변경·HTTP 403은 `FETCH_FAILED`, 임의 공고 없음 판정 금지.
+- 현재 브랜치의 수동 KIND live proof 기록: 추가상장 4건의 종목코드/게시일 검색→뷰어→원문 파싱은 [#45112576419](https://github.com/winter0123/ipo-calc/actions/runs/45112576419)에서 성공. 신규상장 3건은 같은 실행에서 **알려진 URL을 통한 원문 파싱만** 검증; 후속 [`6caa629d`](https://github.com/winter0123/ipo-calc/commit/6caa629d15f53d56f214f577998a38c26284a6c3)부터 검색→뷰어 경로 테스트가 추가됐으나 최신 SHA의 수동 라이브 검사는 별도 검증이 필요하다.
+- 검색 제목의 신규/추가/정정·취소·철회·변경을 분류하고, 원공고 연결이 불확실한 정정 유형은 저장 금지. DART 원문과 KIND의 동일 발행회차를 독립 확인한 실제 추가상장 **0/4**이므로 이 4건을 자동 저장 성공으로 주장하지 않는다.
+- HTML 검색은 공식 사이트의 구현 경로이지만 문서화된 안정적 OpenAPI/완전한 정정 이력 보장은 미확인. 운영에서 `auto-apply-enabled=false` 유지와 운영 공급 완결성 확인이 필수다.
