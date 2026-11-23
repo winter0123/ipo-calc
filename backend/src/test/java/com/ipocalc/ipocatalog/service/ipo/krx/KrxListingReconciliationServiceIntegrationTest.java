@@ -212,6 +212,19 @@ class KrxListingReconciliationServiceIntegrationTest {
   @Test
   void scheduledSyncDiscoversOfficialNewListingAndPersistsThroughPostgresCas() {
     Ipo saved = createNewListingIpo(true);
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
+          assertThat(
+                  current.mergeSupplementalSchedule(
+                      null,
+                      null,
+                      null,
+                      LocalDate.of(2026, 11, 14),
+                      "OPENDART+USTOCKPLUS",
+                      LocalDateTime.now()))
+              .isTrue();
+        });
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
     var automatic = syntheticSearchToRealDatabase(false);
     var dartSync = mock(IpoSyncService.class);
@@ -241,6 +254,8 @@ class KrxListingReconciliationServiceIntegrationTest {
             Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul")));
     ReflectionTestUtils.setField(scheduler, "daysBack", 90);
 
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 14));
     scheduler.runSync(0);
 
     assertThat(automatic.latestReport().counts()
