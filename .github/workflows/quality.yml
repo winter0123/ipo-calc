@@ -94,7 +94,10 @@ jobs:
         run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.sync.*" --tests "com.ipocalc.ipocatalog.service.ipo.IpoServiceTest" --tests "com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParserTest" --no-daemon
 
   kind-discovery-live:
-    name: KIND live discovery proof (read-only)
+    name: KIND live discovery proof (read-only, manual)
+    # KIND may respond HTTP 403 to GitHub-hosted runner IPs; do not make flaky
+    # external network access a PR quality gate. Manual runs still fail on 403.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
