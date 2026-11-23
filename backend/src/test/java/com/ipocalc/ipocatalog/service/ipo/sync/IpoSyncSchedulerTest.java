@@ -3,6 +3,8 @@ package com.ipocalc.ipocatalog.service.ipo.sync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -12,6 +14,7 @@ import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.scheduling.TaskScheduler;
@@ -86,6 +90,65 @@ class IpoSyncSchedulerTest {
     // then: 재시도 예약 없음
     verifyNoInteractions(taskScheduler);
     verify(ipoSyncService).sync(90);
+  }
+
+  @Test
+  void runSync_rightsBackfillPartiallyFails_skipsKindEvenWhenEnabled() {
+    when(ipoSyncService.sync(90)).thenReturn(successfulSyncResult());
+    when(krxListingAutoSyncService.isAutoApplyEnabled()).thenReturn(true);
+    when(rightsIssueListingService.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(2, 1, 1));
+
+    scheduler.runSync(0);
+
+    verify(rightsIssueListingService)
+        .backfill(LocalDate.of(2026, 6, 17), LocalDate.of(2026, 10, 15));
+    verify(krxListingAutoSyncService, never()).reconcileRecent();
+    verifyNoInteractions(taskScheduler);
+  }
+
+  @Test
+  void runSync_rightsBackfillWithoutFailures_runsKindAfterBackfill() {
+    when(ipoSyncService.sync(90)).thenReturn(successfulSyncResult());
+    when(krxListingAutoSyncService.isAutoApplyEnabled()).thenReturn(true);
+    // REVIEW_REQUIRED is not a fetch failure and must not block KIND.
+    when(rightsIssueListingService.backfill(any(), any()))
+        .thenReturn(new DartRightsIssueListingService.Result(2, 3, 0));
+
+    scheduler.runSync(0);
+
+    InOrder order = inOrder(ipoSyncService, rightsIssueListingService, krxListingAutoSyncService);
+    order.verify(ipoSyncService).sync(90);
+    order.verify(rightsIssueListingService)
+        .backfill(LocalDate.of(2026, 6, 17), LocalDate.of(2026, 10, 15));
+    order.verify(krxListingAutoSyncService).reconcileRecent();
+    verify(krxListingAutoSyncService).isAutoApplyEnabled();
+    verifyNoInteractions(taskScheduler);
+  }
+
+  @Test
+  void runSync_autoApplyDisabled_doesNotCallKind() {
+    when(ipoSyncService.sync(90)).thenReturn(successfulSyncResult());
+    when(krxListingAutoSyncService.isAutoApplyEnabled()).thenReturn(false);
+
+    scheduler.runSync(0);
+
+    verify(rightsIssueListingService).backfill(any(), any());
+    verify(krxListingAutoSyncService, never()).reconcileRecent();
+    verifyNoInteractions(taskScheduler);
+  }
+
+  private static IpoSyncResult successfulSyncResult() {
+    return IpoSyncResult.builder()
+        .created(1)
+        .updated(0)
+        .skippedManual(0)
+        .skippedNonIpo(0)
+        .failureCount(0)
+        .failures(List.of())
+        .aborted(false)
+        .retryable(false)
+        .build();
   }
 
   @Test
@@ -179,6 +242,7 @@ class IpoSyncSchedulerTest {
 
     // then: 재시도 예약 없음
     verifyNoInteractions(taskScheduler);
+    verifyNoInteractions(rightsIssueListingService, krxListingAutoSyncService);
   }
 
   @Test
