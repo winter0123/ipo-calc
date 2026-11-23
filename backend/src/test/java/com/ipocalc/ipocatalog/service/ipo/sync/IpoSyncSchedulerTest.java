@@ -126,7 +126,8 @@ class IpoSyncSchedulerTest {
 
     InOrder order = inOrder(ipoSyncService, rightsIssueListingService, krxListingAutoSyncService);
     order.verify(ipoSyncService).sync(90);
-    order.verify(rightsIssueListingService)
+    order
+        .verify(rightsIssueListingService)
         .backfill(LocalDate.of(2026, 6, 17), LocalDate.of(2026, 10, 15));
     order.verify(krxListingAutoSyncService).reconcileRecent();
     verify(krxListingAutoSyncService).isAutoApplyEnabled();
