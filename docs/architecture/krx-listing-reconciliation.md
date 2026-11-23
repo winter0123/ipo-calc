@@ -166,3 +166,21 @@ IpoManualSyncService.runDefault / runRangeSync (동일한 DART 선행 조건)
 네트워크/파싱은 트랜잭션 밖에 두고 저장 시점에 현재 행을 비교한다. 동일 공고 `NO_OP`, 날짜 변경 시 시초가 null, 다른 확정 근거와 수동 수정 보호. KIND HTTP 403, 페이지 누락, 형식 변경은 `FETCH_FAILED`로 실패 폐쇄. 근거 없는 추가상장·정정·취소는 `REVIEW_REQUIRED`이고 임의 확정하지 않는다.
 
 **남은 설계 한계:** 자동 추가상장 경로는 내부 `KrxListingApplyRequest` DTO를 이용해 기존 서비스 검증·조건부 저장을 재사용한다(관리자 HTTP 호출은 아님). 관리자 DTO와 도메인 적용 계약 분리는 별도 리팩터링 대상. 공개 KIND HTML 공급의 포괄성·장기 안정성 미보증, DART-KIND 실제 4건의 독립 회차 연결 증거 없음. 자동 적용 기본값 `false`이므로 안전성 및 운영 공급 경로 검증 없이 설정을 켜서는 안 된다.
+
+## 자동 탐색·적용 경로 (2026-11-24)
+
+```text
+IpoSyncScheduler.runSync (04:30) / IpoManualSyncService.syncNow·syncRange
+  → 기존 DART 목록·보완 완료 (중단 없음, rights.failures == 0)
+  → KrxListingAutoSyncService.reconcileRecent / reconcileSubscriptionMonths
+  → KrxListingNoticeDiscoveryClient.find(종목코드, 게시일 창)
+  → 공고 제목 유형 분리, 여러 페이지·정정/취소/후보 유일성 확인
+  → 접수번호로 공식 KIND 뷰어에서 70760(신규) 또는 70791(추가) 원문 해석
+  → KrxListingReconciliationService.previewNewListing / preview
+  → applyNewListing / apply (외부 HTTP는 DB 잠금 전에 수행)
+  → IpoRepository 조건부 UPDATE (CONFIRMED_KRX, 공식 URL, 원 DART 참조 보존)
+```
+
+- 실패를 `FETCH_FAILED` / `REVIEW_REQUIRED` / `ROUND_CONFLICT` / `NO_NOTICE`로 구분하고 종목별 실패를 격리한다. **추가상장에 하나라도 근거 불충분한 공고가 섞이면** 다른 적격 공고도 자동 확정하지 않는다.
+- 후보 결과는 게시일 28일 이하 창으로 탐색하며 최대 페이지 50, 페이지 실패 시 전체 종목을 조회 실패로 처리한다. 반복 공고는 접수번호로 중복 제거한다. 스키마 증설 없이 V49 기존 근거 필드를 사용한다.
+- 외부 KIND API/실서버 검색의 안정성은 배포·실서버 자동 저장 활성화와 별도로 검증해야 한다. 현재 기본 flag false이며 관리자 API/UI는 예외 처리 경로로 유지한다.
