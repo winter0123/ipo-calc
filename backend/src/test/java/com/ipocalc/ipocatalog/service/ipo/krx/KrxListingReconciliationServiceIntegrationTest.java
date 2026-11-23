@@ -15,6 +15,10 @@ import jakarta.persistence.PersistenceContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +40,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
@@ -136,6 +141,81 @@ class KrxListingReconciliationServiceIntegrationTest {
           + "<tr><td>3.액면가(원)</td><td>500</td></tr>"
           + "<tr><td>10.상장일(매매개시일)</td>"
           + "<td>2026년 11월 12일</td></tr></table></body></html>";
+
+  // 공식 필드를 재구성한 합성 응답: 검색 → 접수번호 → 뷰어 → 원문 → 실제 PostgreSQL CAS.
+  private KrxListingAutoSyncService syntheticSearchToRealDatabase(boolean failSearch) {
+    var discovery =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("/disclosure/details.do".equals(path)) {
+                assertThat(params).containsEntry("repIsuSrtCd", "A493410");
+                if (failSearch) {
+                  throw new IllegalStateException("KIND 조회 HTTP 403");
+                }
+                return "<html><table class='list type-00 mt10'><tbody>"
+                    + "<tr><td>1</td><td>09:00</td>"
+                    + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
+                    + "<td><a onclick=\"openDisclsViewer('20261110001806','')\">신규상장</a></td>"
+                    + "<td>거래소</td></tr></tbody></table></html>";
+              }
+              if ("search".equals(params.get("method"))) {
+                assertThat(params).containsEntry("acptno", "20261110001806");
+                return "<option value='20261110001806|Y'>신규상장</option>";
+              }
+              assertThat(params).containsEntry("docNo", "20261110001806");
+              return NEW_LISTING_URL;
+            });
+    var automatic =
+        new KrxListingAutoSyncService(
+            discovery,
+            service,
+            ipoRepository,
+            Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul")));
+    ReflectionTestUtils.setField(automatic, "autoApplyEnabled", true);
+    return automatic;
+  }
+
+  @Test
+  void syntheticSearchToViewerToOfficialHtmlPersistsViaRealPostgresCas() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var automatic = syntheticSearchToRealDatabase(false);
+
+    var first =
+        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+
+    assertThat(first.counts().get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
+        .isEqualTo(1);
+    assertThat(first.rows()).hasSize(1);
+    assertThat(first.rows().get(0).receiptNo()).isEqualTo("20261110001806");
+    Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(confirmed.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(confirmed.getKrxListingNoticeUrl()).isEqualTo(NEW_LISTING_URL);
+
+    var again =
+        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+    assertThat(again.counts().get(KrxListingAutoSyncService.OutcomeType.ALREADY_APPLIED))
+        .isEqualTo(1);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 12));
+  }
+
+  @Test
+  void searchHttp403FailsClosedBeforeViewerOrDatabaseWrite() {
+    Ipo saved = createNewListingIpo(true);
+    var automatic = syntheticSearchToRealDatabase(true);
+
+    var report =
+        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+
+    assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.FETCH_FAILED))
+        .isEqualTo(1);
+    assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.NO_NOTICE)).isZero();
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDate()).isNull();
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
 
   @Test
   void newListingOnlyFillsMissingAutoIpoAndIsIdempotent() {
