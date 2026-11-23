@@ -146,3 +146,23 @@ SF4는 `013` empty와 실패를 구분해 관측한다. 새 실패 enum을 만�
 - DART 원본 날짜/receipt를 UI에 노출할지
 - 공식 추가상장 OpenAPI 부재에 대한 장기 공급 계약
 - 배치 자동화는 별도 Epic으로 분리할지
+
+
+## 13. 2026-11-24 운영 경로의 자동화 구조 (PR #515)
+
+```text
+IpoSyncScheduler.runSync (DART sync 성공 → rights.backfill failures=0)
+IpoManualSyncService.runDefault / runRangeSync (동일한 DART 선행 조건)
+  → KrxListingAutoSyncService (auto-apply-enabled=false 기본; 범위별 IPO 후보)
+  → KrxListingNoticeDiscoveryClient.find (종목코드·게시일, bounded pagination)
+  → 제목 분류/수정·취소/후보 수 판정
+  → disclsviewer 접수번호→70760/70791 URL → KrxListingNoticeClient
+  → KrxListingReconciliationService.previewNewListing / preview
+  → 단일 후보·독립 회차 근거 확인 시 applyNewListing / apply
+  → IpoRepository 조건부 UPDATE (원천 접수번호·현재 날짜·증거·상태 재검증)
+  → OutcomeType별 건수 및 행별 사유 집계
+```
+
+네트워크/파싱은 트랜잭션 밖에 두고 저장 시점에 현재 행을 비교한다. 동일 공고 `NO_OP`, 날짜 변경 시 시초가 null, 다른 확정 근거와 수동 수정 보호. KIND HTTP 403, 페이지 누락, 형식 변경은 `FETCH_FAILED`로 실패 폐쇄. 근거 없는 추가상장·정정·취소는 `REVIEW_REQUIRED`이고 임의 확정하지 않는다.
+
+**남은 설계 한계:** 자동 추가상장 경로는 내부 `KrxListingApplyRequest` DTO를 이용해 기존 서비스 검증·조건부 저장을 재사용한다(관리자 HTTP 호출은 아님). 관리자 DTO와 도메인 적용 계약 분리는 별도 리팩터링 대상. 공개 KIND HTML 공급의 포괄성·장기 안정성 미보증, DART-KIND 실제 4건의 독립 회차 연결 증거 없음. 자동 적용 기본값 `false`이므로 안전성 및 운영 공급 경로 검증 없이 설정을 켜서는 안 된다.
