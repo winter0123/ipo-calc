@@ -17,10 +17,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.YearMonth;
-import java.time.ZoneId;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -182,7 +182,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     var automatic = syntheticSearchToRealDatabase(false);
 
     var first =
-        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+        automatic.reconcileSubscriptionMonths(
+            YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
 
     assertThat(first.counts().get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
         .isEqualTo(1);
@@ -194,7 +195,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(confirmed.getKrxListingNoticeUrl()).isEqualTo(NEW_LISTING_URL);
 
     var again =
-        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+        automatic.reconcileSubscriptionMonths(
+            YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
     assertThat(again.counts().get(KrxListingAutoSyncService.OutcomeType.ALREADY_APPLIED))
         .isEqualTo(1);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
@@ -207,7 +209,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     var automatic = syntheticSearchToRealDatabase(true);
 
     var report =
-        automatic.reconcileSubscriptionMonths(YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+        automatic.reconcileSubscriptionMonths(
+            YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
 
     assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.FETCH_FAILED))
         .isEqualTo(1);
