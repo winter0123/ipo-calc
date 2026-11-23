@@ -186,7 +186,8 @@ class KrxListingAutoSyncServiceTest {
         .thenReturn(result(disclosure(RECEIPT), disclosure(OTHER_RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(discovery.resolveAdditionalListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var eligible = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligible);
     var unverified = mock(KrxListingReconciliationPreview.class);
     when(unverified.reasons()).thenReturn(List.of("다른 발행회차의 독립적인 연결 근거 없음"));
     when(reconciliation.preview(7L, OTHER_URL)).thenReturn(unverified);
