@@ -2,6 +2,8 @@ package com.ipocalc.ipocatalog.service.ipo.krx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
@@ -9,6 +11,9 @@ import com.ipocalc.ipocatalog.controller.ipo.dto.KrxListingApplyRequest;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.sync.DartRightsIssueListingService;
+import com.ipocalc.ipocatalog.service.ipo.sync.IpoSyncResult;
+import com.ipocalc.ipocatalog.service.ipo.sync.IpoSyncScheduler;
+import com.ipocalc.ipocatalog.service.ipo.sync.IpoSyncService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartIpoFilingClient;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -38,6 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -201,6 +207,61 @@ class KrxListingReconciliationServiceIntegrationTest {
         .isEqualTo(1);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
         .isEqualTo(LocalDate.of(2026, 11, 12));
+  }
+
+  @Test
+  void scheduledSyncDiscoversOfficialNewListingAndPersistsThroughPostgresCas() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var automatic = syntheticSearchToRealDatabase(false);
+    var dartSync = mock(IpoSyncService.class);
+    var rightsBackfill = mock(DartRightsIssueListingService.class);
+    var retryScheduler = mock(TaskScheduler.class);
+    when(dartSync.sync(90))
+        .thenReturn(
+            IpoSyncResult.builder()
+                .created(1)
+                .updated(0)
+                .skippedManual(0)
+                .skippedNonIpo(0)
+                .failureCount(0)
+                .failures(List.of())
+                .aborted(false)
+                .retryable(false)
+                .build());
+    when(rightsBackfill.backfill(
+            LocalDate.of(2026, 7, 25), LocalDate.of(2026, 11, 22)))
+        .thenReturn(new DartRightsIssueListingService.Result(1, 0, 0));
+    var scheduler =
+        new IpoSyncScheduler(
+            dartSync,
+            rightsBackfill,
+            automatic,
+            retryScheduler,
+            Clock.fixed(Instant.parse("2026-11-22T09:00:00Z"), ZoneId.of("Asia/Seoul")));
+    ReflectionTestUtils.setField(scheduler, "daysBack", 90);
+
+    scheduler.runSync(0);
+
+    assertThat(automatic.latestReport().counts()
+            .get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
+        .isEqualTo(1);
+    Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+    assertThat(confirmed.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
+    assertThat(confirmed.getKrxListingNoticeUrl()).isEqualTo(NEW_LISTING_URL);
+
+    scheduler.runSync(0);
+
+    assertThat(automatic.latestReport().counts()
+            .get(KrxListingAutoSyncService.OutcomeType.ALREADY_APPLIED))
+        .isEqualTo(1);
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 12));
+    verify(dartSync, org.mockito.Mockito.times(2)).sync(90);
+    verify(rightsBackfill, org.mockito.Mockito.times(2))
+        .backfill(LocalDate.of(2026, 7, 25), LocalDate.of(2026, 11, 22));
+    org.mockito.Mockito.verifyNoInteractions(retryScheduler);
   }
 
   @Test
