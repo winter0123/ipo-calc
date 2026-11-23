@@ -236,7 +236,8 @@ public class KrxListingAutoSyncService {
               key,
               unused -> {
                 try {
-                  return new SearchAttempt(discovery.find(key.stockCode(), key.from(), key.to()), null);
+                  return new SearchAttempt(
+                      discovery.find(key.stockCode(), key.from(), key.to()), null);
                 } catch (RuntimeException ex) {
                   return new SearchAttempt(null, ex);
                 }
