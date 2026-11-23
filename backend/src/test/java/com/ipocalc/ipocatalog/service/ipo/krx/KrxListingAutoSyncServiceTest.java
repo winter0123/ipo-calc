@@ -141,6 +141,26 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void oneEligibleAndOneUnverifiedIssuanceNoticeMustNotAutoApply() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT), disclosure(OTHER_RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(discovery.resolveAdditionalListingUrl(OTHER_RECEIPT)).thenReturn(OTHER_URL);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var unverified = mock(KrxListingReconciliationPreview.class);
+    when(unverified.reasons()).thenReturn(List.of("다른 발행회차의 독립적인 연결 근거 없음"));
+    when(reconciliation.preview(7L, OTHER_URL)).thenReturn(unverified);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.DATE_CORRECTED)).isZero();
+    assertThat(report.rows().get(0).reason()).contains(OTHER_RECEIPT, "다른 발행회차");
+    verify(reconciliation, never()).apply(any(), any(KrxListingApplyRequest.class));
+  }
+
+  @Test
   void oneEligibleNoticeAndOneFailedDocumentNeverWrite() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
