@@ -133,3 +133,13 @@
 - invalid/missing/ambiguous 입력에 쓰기 0건이다.
 - push, merge, deployment, production writes는 수행하지 않는다.
 - DB migration 구현은 로컬 우선, 배포는 별도 승인 후 수행한다.
+
+
+## 4. 2026-11-24 자동화 후속 SF 및 검증 게이트 (PR #515)
+
+1. **SF-A 경로 연결:** 정기/수동 기본/월별 DART 성공 뒤 `KrxListingAutoSyncService` 호출. DART 중단·발행실적 실패 시 KIND 차단. 테스트: `IpoSyncSchedulerTest`, `IpoManualSyncServiceTest`.
+2. **SF-B 공식 자동 발견:** 종목코드/게시일 검색→모든 페이지→제목 분류→뷰어→공식 원문. 대상 월/기간 한정, 정정·취소 및 페이지 실패 보류. 테스트: `KrxListingNoticeDiscoveryClientTest`, 수동 live test.
+3. **SF-C 안전한 저장:** 신규상장 단일 후보 조건부 저장; 추가상장은 독립 발행회차 필요. 유효 1건+미확인 다른 1건도 쓰기 금지. 테스트: `KrxListingAutoSyncServiceTest`, PostgreSQL `KrxListingReconciliationServiceIntegrationTest`.
+4. **SF-D 운영 출시 게이트:** 공식 KIND 응답 범위·정정 연결의 안정성, 실제 DART-KIND 발행회차 증명, 신규/추가 실서버 read-only 확인 후 자동 적용 활성화를 별도로 결정한다. 로컬 41건 스냅샷과 운영 브라우저는 검증 없이 PASS 주장 금지.
+
+CI: 기존 Quality의 Backend checkstyle/spotless/build/동기화 테스트 + UI 품질. KIND live는 `workflow_dispatch` 전용이므로 PR run에서는 `SKIPPED`이며 공식 조회 PASS가 아니다. `git diff --check`는 GitHub만 접근 가능한 경우 별도 명령 실행 `NOT_RUN`으로 표기한다.
