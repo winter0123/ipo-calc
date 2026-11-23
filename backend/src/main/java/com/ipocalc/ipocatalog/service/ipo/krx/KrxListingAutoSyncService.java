@@ -174,6 +174,8 @@ public class KrxListingAutoSyncService {
     }
     try {
       List<Outcome> outcomes = new ArrayList<>();
+      // 같은 실행의 종목코드·게시일 창은 성공/실패 모두 한 번만 조회한다.
+      Map<SearchKey, SearchAttempt> searches = new LinkedHashMap<>();
       for (Ipo ipo : ipos) {
         LocalDate from = commonFrom;
         LocalDate to = min(today(), commonTo);
@@ -188,7 +190,7 @@ public class KrxListingAutoSyncService {
           to = min(today(), anchor.plusMonths(ipo.getListingDate() == null ? 4 : 2));
         }
         try {
-          outcomes.add(reconcileOne(ipo, from, to, dryRun));
+          outcomes.add(reconcileOne(ipo, from, to, dryRun, searches));
         } catch (RuntimeException ex) {
           log.warn(
               "KIND 종목별 점검 실패: code={}, kind={}",
@@ -216,15 +218,33 @@ public class KrxListingAutoSyncService {
     }
   }
 
-  private Outcome reconcileOne(Ipo ipo, LocalDate from, LocalDate to, boolean dryRun) {
+  private Outcome reconcileOne(
+      Ipo ipo,
+      LocalDate from,
+      LocalDate to,
+      boolean dryRun,
+      Map<SearchKey, SearchAttempt> searches) {
     if (from.isAfter(to)) {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "조회할 공고 게시일 기간 없음");
     }
     Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices = new LinkedHashMap<>();
     for (LocalDate cursor = from; !cursor.isAfter(to); ) {
       LocalDate end = min(to, cursor.plusDays(27));
-      var found = discovery.find(ipo.getStockCode(), cursor, end);
-      for (var notice : found.disclosures()) {
+      var key = new SearchKey(ipo.getStockCode(), cursor, end);
+      var attempt =
+          searches.computeIfAbsent(
+              key,
+              unused -> {
+                try {
+                  return new SearchAttempt(discovery.find(key.stockCode(), key.from(), key.to()), null);
+                } catch (RuntimeException ex) {
+                  return new SearchAttempt(null, ex);
+                }
+              });
+      if (attempt.error() != null) {
+        throw attempt.error();
+      }
+      for (var notice : attempt.result().disclosures()) {
         notices.putIfAbsent(notice.receiptNo(), notice);
       }
       cursor = end.plusDays(1);
@@ -420,6 +440,11 @@ public class KrxListingAutoSyncService {
             .replaceAll("(?i)(api[_-]?key|service[_-]?key)\\s*[=:]\\s*\\S+", "$1=(비공개)");
     return sanitized.substring(0, Math.min(160, sanitized.length()));
   }
+
+  private record SearchKey(String stockCode, LocalDate from, LocalDate to) {}
+
+  private record SearchAttempt(
+      KrxListingNoticeDiscoveryClient.SearchResult result, RuntimeException error) {}
 
   private record Match(String receiptNo, String url, KrxListingReconciliationPreview preview) {}
 }
