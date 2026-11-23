@@ -242,8 +242,7 @@ class KrxListingReconciliationServiceIntegrationTest {
                 .aborted(false)
                 .retryable(false)
                 .build());
-    when(rightsBackfill.backfill(
-            LocalDate.of(2026, 7, 25), LocalDate.of(2026, 11, 22)))
+    when(rightsBackfill.backfill(LocalDate.of(2026, 7, 25), LocalDate.of(2026, 11, 22)))
         .thenReturn(new DartRightsIssueListingService.Result(1, 0, 0));
     var scheduler =
         new IpoSyncScheduler(
@@ -258,8 +257,11 @@ class KrxListingReconciliationServiceIntegrationTest {
         .isEqualTo(LocalDate.of(2026, 11, 14));
     scheduler.runSync(0);
 
-    assertThat(automatic.latestReport().counts()
-            .get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
+    assertThat(
+            automatic
+                .latestReport()
+                .counts()
+                .get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
         .isEqualTo(1);
     Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
     assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
@@ -268,8 +270,11 @@ class KrxListingReconciliationServiceIntegrationTest {
 
     scheduler.runSync(0);
 
-    assertThat(automatic.latestReport().counts()
-            .get(KrxListingAutoSyncService.OutcomeType.ALREADY_APPLIED))
+    assertThat(
+            automatic
+                .latestReport()
+                .counts()
+                .get(KrxListingAutoSyncService.OutcomeType.ALREADY_APPLIED))
         .isEqualTo(1);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate())
         .isEqualTo(LocalDate.of(2026, 11, 12));
