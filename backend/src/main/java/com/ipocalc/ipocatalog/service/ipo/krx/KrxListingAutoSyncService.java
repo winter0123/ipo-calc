@@ -270,7 +270,7 @@ public class KrxListingAutoSyncService {
         reviews.add(notice.receiptNo() + ": " + String.join("; ", preview.reasons()));
       }
     }
-    if (unresolvedRevision) {
+    if (unresolvedRevision || !reviews.isEmpty()) {
       return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, String.join(" | ", reviews));
     }
     if (eligible.size() > 1) {
