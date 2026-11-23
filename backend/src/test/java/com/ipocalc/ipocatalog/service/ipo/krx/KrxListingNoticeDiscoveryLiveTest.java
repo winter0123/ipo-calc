@@ -75,9 +75,11 @@ class KrxListingNoticeDiscoveryLiveTest {
 
       var found = candidates.get(0);
       // Compare expected receipt only AFTER candidate selection; never use a known URL.
-      assertThat(found.receiptNo()).as("KIND 신규상장 접수번호: stock=%s", c.stockCode())
+      assertThat(found.receiptNo())
+          .as("KIND 신규상장 접수번호: stock=%s", c.stockCode())
           .isEqualTo(c.expectedReceiptNo());
-      assertThat(found.publishedAt()).as("KIND 게시일: stock=%s", c.stockCode())
+      assertThat(found.publishedAt())
+          .as("KIND 게시일: stock=%s", c.stockCode())
           .isEqualTo(c.publishedAt());
       String discoveredUrl = discovery.resolveNewListingUrl(found.receiptNo());
       var evidence = parser.parse(official.fetchNewListing(discoveredUrl));
@@ -85,10 +87,7 @@ class KrxListingNoticeDiscoveryLiveTest {
       assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.listingDate());
       System.out.printf(
           "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s listing=%s pages=%d%n",
-          evidence.stockCode(),
-          found.receiptNo(),
-          evidence.listingDate(),
-          search.pagesRead());
+          evidence.stockCode(), found.receiptNo(), evidence.listingDate(), search.pagesRead());
     }
   }
 
