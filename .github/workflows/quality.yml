@@ -75,6 +75,11 @@ jobs:
       SPRING_DATASOURCE_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check PR diff whitespace
+        if: github.event_name == 'pull_request'
+        run: git diff --check "${{ github.event.pull_request.base.sha }}" HEAD
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
