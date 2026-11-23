@@ -74,15 +74,15 @@ class KrxListingNoticeDiscoveryLiveTest {
           .hasSize(1);
 
       var found = candidates.get(0);
-      // Compare expected receipt only AFTER candidate selection; never use a known URL.
+      // Select by title alone, resolve the viewer, then validate all expected evidence.
+      String discoveredUrl = discovery.resolveNewListingUrl(found.receiptNo());
+      var evidence = parser.parse(official.fetchNewListing(discoveredUrl));
       assertThat(found.receiptNo())
           .as("KIND 신규상장 접수번호: stock=%s", c.stockCode())
           .isEqualTo(c.expectedReceiptNo());
       assertThat(found.publishedAt())
           .as("KIND 게시일: stock=%s", c.stockCode())
           .isEqualTo(c.publishedAt());
-      String discoveredUrl = discovery.resolveNewListingUrl(found.receiptNo());
-      var evidence = parser.parse(official.fetchNewListing(discoveredUrl));
       assertThat(evidence.stockCode()).as(c.name()).isEqualTo(c.stockCode());
       assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.listingDate());
       System.out.printf(
