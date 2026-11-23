@@ -143,3 +143,11 @@
 4. **SF-D 운영 출시 게이트:** 공식 KIND 응답 범위·정정 연결의 안정성, 실제 DART-KIND 발행회차 증명, 신규/추가 실서버 read-only 확인 후 자동 적용 활성화를 별도로 결정한다. 로컬 41건 스냅샷과 운영 브라우저는 검증 없이 PASS 주장 금지.
 
 CI: 기존 Quality의 Backend checkstyle/spotless/build/동기화 테스트 + UI 품질. KIND live는 `workflow_dispatch` 전용이므로 PR run에서는 `SKIPPED`이며 공식 조회 PASS가 아니다. `git diff --check`는 GitHub만 접근 가능한 경우 별도 명령 실행 `NOT_RUN`으로 표기한다.
+
+## 자동 대조 후속 구현 및 검증 (2026-11-24)
+
+1. 호출부 확인: `IpoSyncScheduler.runSync`, `IpoManualSyncService.runDefault/runRangeSync`에서 DART 보완 후 `KrxListingAutoSyncService` 호출, 실패 건수 남으면 스킵; 별도 배치 추가 불필요.
+2. 탐색·대조: 공식 상세검색·접수번호·뷰어·70760/70791, 공고 분류·정정/취소 fail-closed, 동일 DART 발행회차 검증, 미리보기 재검증 후 CAS 적용.
+3. 보수적 추가 보호: 적격 공고와 검증 불충분 추가상장 공고가 혼재하면 `REVIEW_REQUIRED`, 자동 쓰기 0건.
+4. 검증: `KrxListingAutoSyncServiceTest`, `KrxListingReconciliationServiceIntegrationTest`의 합성 KIND 응답 + CI PostgreSQL 및 정기 진입점 기반 실제 DB 변경·멱등 회귀; `IpoManualSyncServiceTest`, `IpoSyncSchedulerTest`, 기존 관리자 API/UI 회귀. CI Quality Backend/UI 및 읽기 전용 라이브 실행은 별도 판정.
+5. 배포/운영 DB/과거 41건 일괄 변경 없음. DART↔KIND 독립 발행회차 4건 검증, 신규상장 URL 없는 실서버 3건, 정정·취소 원공고 연결은 미완료 게이트. 기본 auto-apply false.
