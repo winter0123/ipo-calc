@@ -21,37 +21,83 @@ class KrxListingNoticeDiscoveryLiveTest {
       String expectedContentId) {}
 
   @Test
-  void parsesThreeRealOfficialNewListingNoticesWithoutDatabaseWrites() {
+  void discoversAndParsesThreeRealNewListingNoticesWithoutInputUrlsOrDatabaseWrites() {
+    var discovery = new KrxListingNoticeDiscoveryClient();
     var official = new KrxListingNoticeClient(RestClient.builder());
     var parser = new KrxNewListingNoticeParser();
     List<NewCase> cases =
         List.of(
             new NewCase(
                 "넥스아이",
-                "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm",
                 "493410",
+                LocalDate.of(2026, 11, 10),
+                "20261110001806",
                 LocalDate.of(2026, 11, 12)),
             new NewCase(
                 "이에스티",
-                "https://kind.krx.co.kr/external/2026/11/02/000506/20261102001162/70760.htm",
                 "495910",
+                LocalDate.of(2026, 11, 2),
+                "20261102001162",
                 LocalDate.of(2026, 11, 4)),
             new NewCase(
                 "크리에이츠",
-                "https://kind.krx.co.kr/external/2026/10/28/000705/20261028001803/70760.htm",
                 "439270",
+                LocalDate.of(2026, 10, 28),
+                "20261028001803",
                 LocalDate.of(2026, 10, 30)));
+
     for (NewCase c : cases) {
-      var evidence = parser.parse(official.fetchNewListing(c.url()));
-      assertThat(evidence.stockCode()).as(c.name()).isEqualTo(c.code());
-      assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.date());
+      LocalDate from = c.publishedAt().minusDays(1);
+      LocalDate to = c.publishedAt().plusDays(1);
+      var search = discovery.find(c.stockCode(), from, to);
+      var candidates =
+          search.disclosures().stream()
+              .filter(
+                  notice ->
+                      KrxListingNoticeDiscoveryClient.classifyListingTitle(notice.title())
+                          == KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING)
+              .toList();
+      var receipts =
+          search.disclosures().stream()
+              .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
+              .toList();
+      assertThat(candidates)
+          .as(
+              "KIND 신규상장 후보 수 불일치: stock=%s, from=%s, to=%s, candidates=%s, receipts=%s",
+              c.stockCode(),
+              from,
+              to,
+              candidates.stream()
+                  .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
+                  .toList(),
+              receipts)
+          .hasSize(1);
+
+      var found = candidates.get(0);
+      // Compare expected receipt only AFTER candidate selection; never use a known URL.
+      assertThat(found.receiptNo()).as("KIND 신규상장 접수번호: stock=%s", c.stockCode())
+          .isEqualTo(c.expectedReceiptNo());
+      assertThat(found.publishedAt()).as("KIND 게시일: stock=%s", c.stockCode())
+          .isEqualTo(c.publishedAt());
+      String discoveredUrl = discovery.resolveNewListingUrl(found.receiptNo());
+      var evidence = parser.parse(official.fetchNewListing(discoveredUrl));
+      assertThat(evidence.stockCode()).as(c.name()).isEqualTo(c.stockCode());
+      assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.listingDate());
       System.out.printf(
-          "KIND_NEW_LISTING_PROOF name=%s code=%s date=%s%n",
-          c.name(), evidence.stockCode(), evidence.listingDate());
+          "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s listing=%s pages=%d%n",
+          evidence.stockCode(),
+          found.receiptNo(),
+          evidence.listingDate(),
+          search.pagesRead());
     }
   }
 
-  private record NewCase(String name, String url, String code, LocalDate date) {}
+  private record NewCase(
+      String name,
+      String stockCode,
+      LocalDate publishedAt,
+      String expectedReceiptNo,
+      LocalDate listingDate) {}
 
   @Test
   void findsAndParsesFourKnownNoticesUsingOnlyStockCodeAndPublicationRange() {
