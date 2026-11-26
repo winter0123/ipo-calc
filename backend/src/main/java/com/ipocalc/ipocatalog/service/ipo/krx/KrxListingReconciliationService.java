@@ -416,11 +416,12 @@ public class KrxListingReconciliationService {
   }
 
   /**
-   * 자동 탐색은 관리자 HTTP 요청 DTO를 사용하지 않는다. 탐색 단계의 미리보기와
-   * 원문 재조회 결과가 동일한지 확인한 후 관리자와 동일한 조건부 저장 계약으로 진입한다.
+   * 자동 탐색은 관리자 HTTP 요청 DTO를 사용하지 않는다. 탐색 단계의 미리보기와 원문 재조회 결과가 동일한지 확인한 후 관리자와 동일한 조건부 저장 계약으로 진입한다.
    */
   public KrxListingApplyResult applyAutomatically(
-      Long ipoId, String noticeUrl, KrxListingReconciliationPreview expected,
+      Long ipoId,
+      String noticeUrl,
+      KrxListingReconciliationPreview expected,
       java.time.LocalDate expectedSubscriptionStart,
       java.time.LocalDate expectedSubscriptionEnd) {
     if (expected == null || !expected.applyAllowed()) {
@@ -429,12 +430,15 @@ public class KrxListingReconciliationService {
     }
     KrxListingReconciliationPreview actual = preview(ipoId, noticeUrl);
     if (!actual.applyAllowed()
-        || !java.util.Objects.equals(expected.expectedDartReceiptNo(), actual.expectedDartReceiptNo())
-        || !java.util.Objects.equals(expected.expectedDartListingDate(), actual.expectedDartListingDate())
+        || !java.util.Objects.equals(
+            expected.expectedDartReceiptNo(), actual.expectedDartReceiptNo())
+        || !java.util.Objects.equals(
+            expected.expectedDartListingDate(), actual.expectedDartListingDate())
         || !java.util.Objects.equals(expected.expectedStockCode(), actual.expectedStockCode())
         || !java.util.Objects.equals(expected.expectedIssuedShares(), actual.expectedIssuedShares())
         || !java.util.Objects.equals(expected.expectedIssuePrice(), actual.expectedIssuePrice())
-        || !java.util.Objects.equals(expected.expectedKrxListingDate(), actual.expectedKrxListingDate())
+        || !java.util.Objects.equals(
+            expected.expectedKrxListingDate(), actual.expectedKrxListingDate())
         || !java.util.Objects.equals(expected.expectedNoticeHash(), actual.expectedNoticeHash())) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate changed");
@@ -444,7 +448,9 @@ public class KrxListingReconciliationService {
   }
 
   private KrxListingApplyResult applyVerified(
-      Long ipoId, String noticeUrl, KrxListingReconciliationPreview preview,
+      Long ipoId,
+      String noticeUrl,
+      KrxListingReconciliationPreview preview,
       java.time.LocalDate expectedSubscriptionStart,
       java.time.LocalDate expectedSubscriptionEnd) {
     final String finalNoticeUrl = noticeUrl;
