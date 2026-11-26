@@ -216,7 +216,7 @@ public class KrxListingAutoSyncService {
       Map<SearchKey, SearchAttempt> searches,
       KrxListingReconciliationService.NewListingSnapshot initialState) {
     if (from.isAfter(to)) {
-      return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "조회할 공고 게시일 기간 없음");
+      return outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "공고를 조회할 게시일 범위가 없습니다");
     }
     Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices = new LinkedHashMap<>();
     boolean correctionCoverageVerified = true;
