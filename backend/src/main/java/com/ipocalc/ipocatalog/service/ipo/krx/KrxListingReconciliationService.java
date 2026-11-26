@@ -412,7 +412,7 @@ public class KrxListingReconciliationService {
           "apply conditions are not satisfied: " + preview.reasons());
     }
 
-    return applyVerified(ipoId, noticeUrl, preview);
+    return applyVerified(ipoId, noticeUrl, preview, null);
   }
 
   /**
@@ -420,7 +420,8 @@ public class KrxListingReconciliationService {
    * 원문 재조회 결과가 동일한지 확인한 후 관리자와 동일한 조건부 저장 계약으로 진입한다.
    */
   public KrxListingApplyResult applyAutomatically(
-      Long ipoId, String noticeUrl, KrxListingReconciliationPreview expected) {
+      Long ipoId, String noticeUrl, KrxListingReconciliationPreview expected,
+      java.time.LocalDate expectedSubscriptionStart) {
     if (expected == null || !expected.applyAllowed()) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate is not eligible");
@@ -437,16 +438,23 @@ public class KrxListingReconciliationService {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate changed");
     }
-    return applyVerified(ipoId, noticeUrl, actual);
+    return applyVerified(ipoId, noticeUrl, actual, expectedSubscriptionStart);
   }
 
   private KrxListingApplyResult applyVerified(
-      Long ipoId, String noticeUrl, KrxListingReconciliationPreview preview) {
+      Long ipoId, String noticeUrl, KrxListingReconciliationPreview preview,
+      java.time.LocalDate expectedSubscriptionStart) {
     final String finalNoticeUrl = noticeUrl;
     final boolean[] idempotent = new boolean[] {preview.idempotent()};
     transactionTemplate.execute(
         status -> {
-          Ipo current = ipoRepository.findById(ipoId).orElse(null);
+          Ipo current = ipoRepository.findByIdForKrxApply(ipoId).orElse(null);
+          if (expectedSubscriptionStart != null
+              && (current == null
+                  || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate()))) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT, "subscription month changed");
+          }
           if (current == null
               || current.getDeletedAt() != null
               || current.getStatus() != RecordStatus.ACTIVE) {
