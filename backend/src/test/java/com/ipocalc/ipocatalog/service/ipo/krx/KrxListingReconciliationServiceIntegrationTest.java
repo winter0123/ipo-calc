@@ -795,6 +795,36 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void automaticAdditionalApplyRejectsChangedSubscriptionMonthUnderRowLock() throws Exception {
+    stubLinkedNotice(KOIZ);
+    Ipo saved = createIpo(KOIZ);
+    var preview = service.preview(saved.getId(), KOIZ.url());
+    assertThat(preview.applyAllowed()).isTrue();
+    LocalDate originallySelectedMonth = saved.getSubscriptionStartDate();
+    LocalDate changedMonth = originallySelectedMonth.plusMonths(1);
+
+    transactionTemplate.executeWithoutResult(
+        status ->
+            entityManager
+                .createNativeQuery("update ipos set subscription_start_date = ?1 where id = ?2")
+                .setParameter(1, changedMonth)
+                .setParameter(2, saved.getId())
+                .executeUpdate());
+    entityManager.clear();
+
+    assertThatThrownBy(
+            () ->
+                service.applyAutomatically(
+                    saved.getId(), KOIZ.url(), preview, originallySelectedMonth))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("subscription month changed");
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getSubscriptionStartDate()).isEqualTo(changedMonth);
+    assertThat(unchanged.getListingDateEvidenceType()).isEqualTo("ESTIMATED_DART");
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
   void previewDoesNotWriteAndExposesExpectedValues() throws Exception {
     stubLinkedNotice(KOIZ);
     Ipo saved = createIpo(KOIZ);
