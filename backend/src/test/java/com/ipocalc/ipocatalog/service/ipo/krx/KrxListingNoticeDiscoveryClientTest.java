@@ -178,7 +178,8 @@ class KrxListingNoticeDiscoveryClientTest {
 
   @Test
   void resolvesNewListingViewerAndRejectsMismatchedContentId() {
-    String receipt = "20261110001806";
+    // 검색 결과의 접수번호 00840과 뷰어 원문 ID 01806은 서로 다른 값이다.
+    String receipt = "20261110000840";
     String official = "https://kind.krx.co.kr/external/2026/11/10/000840/20261110001806/70760.htm";
     var client =
         new KrxListingNoticeDiscoveryClient(
@@ -197,6 +198,15 @@ class KrxListingNoticeDiscoveryClientTest {
                     ? "<option value='20261110001806|Y'>신규상장</option>"
                     : official.replace("20261110001806/70760.htm", "20261110001999/70760.htm"));
     assertThatThrownBy(() -> mismatch.resolveNewListingUrl(receipt)).hasMessageContaining("원문 경로");
+
+    var wrongReceipt =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                "search".equals(params.get("method"))
+                    ? "<option value='20261110001806|Y'>신규상장</option>"
+                    : official);
+    assertThatThrownBy(() -> wrongReceipt.resolveNewListingUrl("20261110001806"))
+        .hasMessageContaining("접수번호와 원문 경로");
   }
 
   @Test
