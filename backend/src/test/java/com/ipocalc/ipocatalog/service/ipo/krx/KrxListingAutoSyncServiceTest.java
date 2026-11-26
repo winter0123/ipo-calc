@@ -519,8 +519,8 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     var preview = newListingPreview(false);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(preview);
-    when(reconciliation.applyNewListing(
-            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001")))
+    when(reconciliation.applyNewListingAutomatically(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001"), any()))
         .thenReturn(
             new KrxListingReconciliationService.KrxListingApplyResult(
                 7L, true, "APPLIED", List.of()));
@@ -529,7 +529,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isEqualTo(1);
     assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
-    verify(reconciliation).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -546,7 +546,7 @@ class KrxListingAutoSyncServiceTest {
     assertThat(report.dryRun()).isTrue();
     assertThat(report.rows()).hasSize(1);
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -566,7 +566,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
     assertThat(report.dryRun()).isTrue();
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -610,7 +610,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.dryRun()).isTrue();
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isEqualTo(1);
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -623,8 +623,8 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
     var preview = newListingPreview(false);
     when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(preview);
-    when(reconciliation.applyNewListing(
-            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001")))
+    when(reconciliation.applyNewListingAutomatically(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001"), any()))
         .thenReturn(
             new KrxListingReconciliationService.KrxListingApplyResult(
                 7L, true, "APPLIED", List.of()));
@@ -633,8 +633,8 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isEqualTo(1);
     verify(reconciliation)
-        .applyNewListing(
-            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001"));
+        .applyNewListingAutomatically(
+            eq(7L), eq(NEW_URL), eq(preview.listingDate()), eq("hash"), eq("20261101000001"), any());
     verify(reconciliation, never()).applyAutomatically(any(), any(), any(), any(), any());
   }
 
@@ -655,7 +655,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
     assertThat(report.rows().get(0).reason()).contains("변경");
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -673,7 +673,7 @@ class KrxListingAutoSyncServiceTest {
     var report = service.reconcileRecent();
 
     assertThat(report.counts().get(OutcomeType.ROUND_CONFLICT)).isEqualTo(1);
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -695,7 +695,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
     assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isZero();
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -714,7 +714,7 @@ class KrxListingAutoSyncServiceTest {
     var report = service.reconcileRecent();
 
     assertThat(report.counts().get(OutcomeType.ALREADY_APPLIED)).isEqualTo(1);
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -731,7 +731,7 @@ class KrxListingAutoSyncServiceTest {
 
     assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
     assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isZero();
-    verify(reconciliation, never()).applyNewListing(any(), any(), any(), any(), any());
+    verify(reconciliation, never()).applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
   }
 
   private static Ipo newListingIpo() {
