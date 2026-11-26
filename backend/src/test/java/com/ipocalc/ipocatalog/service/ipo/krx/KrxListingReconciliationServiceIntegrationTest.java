@@ -150,6 +150,11 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   // 공식 필드를 재구성한 합성 응답: 검색 → 접수번호 → 뷰어 → 원문 → 실제 PostgreSQL CAS.
   private KrxListingAutoSyncService syntheticSearchToRealDatabase(boolean failSearch) {
+    return syntheticSearchToRealDatabase(failSearch, false);
+  }
+
+  private KrxListingAutoSyncService syntheticSearchToRealDatabase(
+      boolean failSearch, boolean failTerminalPage) {
     var discovery =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
@@ -159,6 +164,9 @@ class KrxListingReconciliationServiceIntegrationTest {
                   throw new IllegalStateException("KIND 조회 HTTP 403");
                 }
                 if (!"1".equals(params.get("pageIndex"))) {
+                  if (failTerminalPage) {
+                    throw new IllegalStateException("KIND page 2 timeout");
+                  }
                   return "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
                 }
                 return "<html><table class='list type-00 mt10'><tbody>"
@@ -302,6 +310,26 @@ class KrxListingReconciliationServiceIntegrationTest {
     Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
     assertThat(unchanged.getListingDate()).isNull();
     assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
+  void firstPageHasApplicableNoticeButSecondPageFailureCannotWritePostgres() {
+    Ipo saved = createNewListingIpo(true);
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
+    var automatic = syntheticSearchToRealDatabase(false, true);
+
+    var report =
+        automatic.reconcileSubscriptionMonths(
+            YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+
+    assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.FETCH_FAILED))
+        .isEqualTo(1);
+    assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.NO_NOTICE)).isZero();
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDate()).isNull();
+    assertThat(unchanged.getListingDateEvidenceType()).isNull();
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+    org.mockito.Mockito.verifyNoInteractions(noticeClient);
   }
 
   @Test
