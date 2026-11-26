@@ -122,6 +122,7 @@ public class KrxListingReconciliationService {
       String evidenceReceipt,
       String noticeUrl,
       Long listingOpenPrice) {
+    /** 조회 대상 선정 시점의 실제 행 값을 복사한다. */
     public static NewListingSnapshot from(Ipo ipo) {
       return new NewListingSnapshot(
           ipo.getStockCode(),
@@ -138,6 +139,7 @@ public class KrxListingReconciliationService {
           ipo.getListingOpenPrice());
     }
 
+    /** 저장 전 현재 행이 조회 시점의 기대값과 정확히 일치하는지 검사한다. */
     boolean matches(Ipo ipo) {
       return java.util.Objects.equals(stockCode, ipo.getStockCode())
           && java.util.Objects.equals(sourceReceipt, ipo.getSourceReceiptNo())
