@@ -136,6 +136,7 @@ public class KrxListingNoticeDiscoveryClient {
   /** 모든 검색 페이지의 파싱을 완료한 결과. */
   public record SearchResult(
       List<Disclosure> disclosures, int pagesRead, boolean correctionCoverageVerified) {
+    /** 커버리지 증명이 없는 호출자는 항상 자동 저장을 보류한다. */
     public SearchResult(List<Disclosure> disclosures, int pagesRead) {
       this(disclosures, pagesRead, false);
     }
@@ -160,7 +161,7 @@ public class KrxListingNoticeDiscoveryClient {
     for (int page = 1; page <= MAX_PAGES; page++) {
       Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "");
       String html = transport.request("/disclosure/details.do", query, true);
-      List<Disclosure> current = parsePage(html);
+      final List<Disclosure> current = parsePage(html);
       Matcher pageInfo = PAGE_INFO.matcher(plain(html));
       if (!pageInfo.find()) {
         throw new IllegalStateException("KIND 공식 검색 전체 건수/현재 페이지/종료 표식을 확인할 수 없습니다");
