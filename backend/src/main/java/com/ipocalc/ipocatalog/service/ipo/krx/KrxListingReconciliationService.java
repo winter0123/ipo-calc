@@ -100,6 +100,55 @@ public class KrxListingReconciliationService {
         evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
   }
 
+  /** 자동 대상 선정 시점의 상태. 관리자 HTTP 계약과 별개로 원래 기대값을 유지한다. */
+  public record NewListingSnapshot(
+      LocalDate subscriptionStart,
+      LocalDate subscriptionEnd,
+      LocalDate listingDate,
+      LocalDate importedListingDate,
+      String evidenceType,
+      String evidenceReceipt,
+      String noticeUrl,
+      Long listingOpenPrice) {
+    public static NewListingSnapshot from(Ipo ipo) {
+      return new NewListingSnapshot(
+          ipo.getSubscriptionStartDate(),
+          ipo.getSubscriptionEndDate(),
+          ipo.getListingDate(),
+          ipo.getLastImportedListingDate(),
+          ipo.getListingDateEvidenceType(),
+          ipo.getListingDateEvidenceReceipt(),
+          ipo.getKrxListingNoticeUrl(),
+          ipo.getListingOpenPrice());
+    }
+
+    boolean matches(Ipo ipo) {
+      return java.util.Objects.equals(subscriptionStart, ipo.getSubscriptionStartDate())
+          && java.util.Objects.equals(subscriptionEnd, ipo.getSubscriptionEndDate())
+          && java.util.Objects.equals(listingDate, ipo.getListingDate())
+          && java.util.Objects.equals(importedListingDate, ipo.getLastImportedListingDate())
+          && java.util.Objects.equals(evidenceType, ipo.getListingDateEvidenceType())
+          && java.util.Objects.equals(evidenceReceipt, ipo.getListingDateEvidenceReceipt())
+          && java.util.Objects.equals(noticeUrl, ipo.getKrxListingNoticeUrl())
+          && java.util.Objects.equals(listingOpenPrice, ipo.getListingOpenPrice());
+    }
+  }
+
+  /** 자동 탐색 시점에 캡처한 값으로만 저장을 허용한다. */
+  public KrxListingApplyResult applyNewListingAutomatically(
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt,
+      NewListingSnapshot expectedState) {
+    if (expectedState == null) {
+      throw new IllegalArgumentException("automatic listing snapshot required");
+    }
+    return applyNewListingVerified(
+        ipoId, url, expectedDate, expectedHash, expectedSourceReceipt, expectedState);
+  }
+
   /** 검증된 신규상장 미리보기만 재조회·조건부 UPDATE로 저장한다. */
   public KrxListingApplyResult applyNewListing(
       Long ipoId,
@@ -107,6 +156,17 @@ public class KrxListingReconciliationService {
       LocalDate expectedDate,
       String expectedHash,
       String expectedSourceReceipt) {
+    return applyNewListingVerified(
+        ipoId, url, expectedDate, expectedHash, expectedSourceReceipt, null);
+  }
+
+  private KrxListingApplyResult applyNewListingVerified(
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt,
+      NewListingSnapshot expectedState) {
     if (expectedDate == null || expectedHash == null || expectedHash.isBlank()) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.BAD_REQUEST, "new listing evidence required");
@@ -130,6 +190,11 @@ public class KrxListingReconciliationService {
         transactionTemplate.execute(
             tx -> {
               Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
+              if (expectedState != null
+                  && (current == null || !expectedState.matches(current))) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "new listing snapshot changed");
+              }
               if (current == null
                   || expectedSourceReceipt == null
                   || !expectedSourceReceipt.equals(current.getSourceReceiptNo())) {
