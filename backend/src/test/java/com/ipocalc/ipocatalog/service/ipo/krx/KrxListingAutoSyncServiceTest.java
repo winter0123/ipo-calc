@@ -218,6 +218,39 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void saveConflictAndSourceFailureRemainSeparateWhileFollowingStockContinues() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    Ipo candidate = ipo();
+    Ipo forbidden = ipo();
+    Ipo noNotice = ipo();
+    when(forbidden.getId()).thenReturn(8L);
+    when(forbidden.getStockCode()).thenReturn("987650");
+    when(noNotice.getId()).thenReturn(9L);
+    when(noNotice.getStockCode()).thenReturn("654320");
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(candidate, forbidden, noNotice));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
+        .thenThrow(new KrxListingReconciliationService.SaveStateConflict("stale ipo state"));
+    when(discovery.find(eq("987650"), any(), any()))
+        .thenThrow(
+            new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "KIND 403"));
+    when(discovery.find(eq("654320"), any(), any())).thenReturn(result());
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.STATE_CONFLICT)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isEqualTo(1);
+    assertThat(report.rows()).hasSize(3);
+    assertThat(report.rows().get(2).stockCode()).isEqualTo("654320");
+  }
+
+  @Test
   void ambiguousOfficialNoticesNeverWriteEvenWhenBothPreviewsAreEligible() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
