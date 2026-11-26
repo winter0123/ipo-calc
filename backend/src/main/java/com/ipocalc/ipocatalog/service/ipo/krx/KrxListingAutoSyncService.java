@@ -39,6 +39,7 @@ public class KrxListingAutoSyncService {
     ALREADY_APPLIED,
     NO_NOTICE,
     ROUND_CONFLICT,
+    STATE_CONFLICT,
     FETCH_FAILED,
     REVIEW_REQUIRED,
     APPLY_CANDIDATE
@@ -176,10 +177,11 @@ public class KrxListingAutoSyncService {
           to = min(today(), anchor.plusMonths(ipo.getListingDate() == null ? 4 : 2));
         }
         try {
-          outcomes.add(reconcileOne(ipo, from, to, dryRun, searches));
-        } catch (ResponseStatusException ex) {
-          log.warn("KIND 적용 직전 상태 충돌: code={}, status={}", ipo.getStockCode(), ex.getStatusCode());
-          outcomes.add(outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "저장 직전 상태/근거 충돌"));
+          var initialState = KrxListingReconciliationService.NewListingSnapshot.from(ipo);
+          outcomes.add(reconcileOne(ipo, from, to, dryRun, searches, initialState));
+        } catch (AutomaticSaveConflict ex) {
+          log.warn("KIND 저장 직전 상태 변경: code={}", ipo.getStockCode());
+          outcomes.add(outcome(ipo, OutcomeType.STATE_CONFLICT, null, null, "저장 직전 IPO 상태 변경"));
         } catch (RuntimeException ex) {
           log.warn(
               "KIND 종목별 점검 실패: code={}, kind={}",
@@ -212,7 +214,8 @@ public class KrxListingAutoSyncService {
       LocalDate from,
       LocalDate to,
       boolean dryRun,
-      Map<SearchKey, SearchAttempt> searches) {
+      Map<SearchKey, SearchAttempt> searches,
+      KrxListingReconciliationService.NewListingSnapshot initialState) {
     if (from.isAfter(to)) {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "조회할 공고 게시일 기간 없음");
     }
@@ -252,7 +255,7 @@ public class KrxListingAutoSyncService {
                 && ipo.getKrxListingNoticeUrl() != null
                 && ipo.getKrxListingNoticeUrl().endsWith("/70760.htm"));
     if (newListing) {
-      return reconcileNewListing(ipo, notices, dryRun);
+      return reconcileNewListing(ipo, notices, dryRun, initialState);
     }
     List<Match> eligible = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
@@ -317,13 +320,20 @@ public class KrxListingAutoSyncService {
           preview.expectedKrxListingDate(),
           "공식 근거 대조 성공(읽기 전용)");
     }
-    var result =
-        reconciliation.applyAutomatically(
+    KrxListingReconciliationService.KrxListingApplyResult result;
+    try {
+      result = reconciliation.applyAutomatically(
             ipo.getId(),
             selected.url(),
             preview,
             ipo.getSubscriptionStartDate(),
             ipo.getSubscriptionEndDate());
+    } catch (ResponseStatusException ex) {
+      if (ex.getStatusCode().value() == 409) {
+        throw new AutomaticSaveConflict(ex);
+      }
+      throw ex;
+    }
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
           ipo,
@@ -347,7 +357,10 @@ public class KrxListingAutoSyncService {
 
   /** 일반 IPO의 신규상장 70760은 추가상장과 별도 판정·저장한다. */
   private Outcome reconcileNewListing(
-      Ipo ipo, Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices, boolean dryRun) {
+      Ipo ipo,
+      Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices,
+      boolean dryRun,
+      KrxListingReconciliationService.NewListingSnapshot initialState) {
     List<NewMatch> matches = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
     boolean unresolvedRevision = false;
@@ -389,13 +402,22 @@ public class KrxListingAutoSyncService {
       return outcome(
           ipo, OutcomeType.APPLY_CANDIDATE, chosen.receipt(), preview.listingDate(), "읽기 전용");
     }
-    var result =
-        reconciliation.applyNewListing(
-            ipo.getId(),
-            chosen.url(),
-            preview.listingDate(),
-            preview.noticeHash(),
-            ipo.getSourceReceiptNo());
+    KrxListingReconciliationService.KrxListingApplyResult result;
+    try {
+      result =
+          reconciliation.applyNewListingAutomatically(
+              ipo.getId(),
+              chosen.url(),
+              preview.listingDate(),
+              preview.noticeHash(),
+              ipo.getSourceReceiptNo(),
+              initialState);
+    } catch (ResponseStatusException ex) {
+      if (ex.getStatusCode().value() == 409) {
+        throw new AutomaticSaveConflict(ex);
+      }
+      throw ex;
+    }
     return outcome(
         ipo,
         "NO_OP".equals(result.status()) ? OutcomeType.ALREADY_APPLIED : OutcomeType.NEW_CONFIRMED,
@@ -425,6 +447,13 @@ public class KrxListingAutoSyncService {
             .replaceAll("https?://\\S+", "(URL 비공개)")
             .replaceAll("(?i)(api[_-]?key|service[_-]?key)\\s*[=:]\\s*\\S+", "$1=(비공개)");
     return sanitized.substring(0, Math.min(160, sanitized.length()));
+  }
+
+  /** 검증된 후보의 쓰기 경계에서 확인한 충돌에만 사용한다. */
+  private static final class AutomaticSaveConflict extends RuntimeException {
+    AutomaticSaveConflict(ResponseStatusException cause) {
+      super(cause);
+    }
   }
 
   private record SearchKey(String stockCode, LocalDate from, LocalDate to) {}
