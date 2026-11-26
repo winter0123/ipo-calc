@@ -214,8 +214,7 @@ public class KrxListingReconciliationService {
         transactionTemplate.execute(
             tx -> {
               Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
-              if (expectedState != null
-                  && (current == null || !expectedState.matches(current))) {
+              if (expectedState != null && (current == null || !expectedState.matches(current))) {
                 throw new SaveStateConflict("new listing snapshot changed");
               }
               if (current == null
@@ -535,12 +534,9 @@ public class KrxListingReconciliationService {
         || !java.util.Objects.equals(before.getStockCode(), expected.expectedStockCode())
         || !java.util.Objects.equals(
             before.getListingDateEvidenceReceipt(), expected.expectedDartReceiptNo())
-        || !java.util.Objects.equals(
-            before.getListingDate(), expected.expectedDartListingDate())
-        || !java.util.Objects.equals(
-            before.getSubscriptionStartDate(), expectedSubscriptionStart)
-        || !java.util.Objects.equals(
-            before.getSubscriptionEndDate(), expectedSubscriptionEnd)) {
+        || !java.util.Objects.equals(before.getListingDate(), expected.expectedDartListingDate())
+        || !java.util.Objects.equals(before.getSubscriptionStartDate(), expectedSubscriptionStart)
+        || !java.util.Objects.equals(before.getSubscriptionEndDate(), expectedSubscriptionEnd)) {
       throw new SaveStateConflict("additional listing snapshot changed before apply");
     }
     KrxListingReconciliationPreview actual = preview(ipoId, noticeUrl);
