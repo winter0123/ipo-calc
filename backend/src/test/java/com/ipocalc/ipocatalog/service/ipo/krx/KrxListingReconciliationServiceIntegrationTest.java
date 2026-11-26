@@ -178,7 +178,8 @@ class KrxListingReconciliationServiceIntegrationTest {
                           "<html><table class='list type-00 mt10'><tbody>"
                               + "<tr><td>1</td><td>09:00</td>"
                               + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
-                              + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
+                              + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">"
+                              + "신규상장</a></td>"
                               + "<td>거래소</td></tr>");
                   for (int i = 1; i < 100; i++) {
                     first.append("<tr><td>2</td><td>09:00</td><td>넥스아이</td>")
@@ -430,7 +431,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.STATE_CONFLICT))
         .isEqualTo(1);
     assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getListingDate()).isNull();
-    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl()).isNull();
+    assertThat(ipoRepository.findById(saved.getId()).orElseThrow().getKrxListingNoticeUrl())
+        .isNull();
   }
 
   @Test
