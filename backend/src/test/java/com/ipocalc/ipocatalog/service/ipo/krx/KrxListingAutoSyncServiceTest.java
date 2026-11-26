@@ -149,7 +149,8 @@ class KrxListingAutoSyncServiceTest {
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
     var applied = mock(KrxListingReconciliationService.KrxListingApplyResult.class);
     when(applied.status()).thenReturn("APPLIED");
-    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any())).thenReturn(applied);
+    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
+        .thenReturn(applied);
 
     var report = service.reconcileRecent();
 
@@ -464,7 +465,8 @@ class KrxListingAutoSyncServiceTest {
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
     var applied = mock(KrxListingReconciliationService.KrxListingApplyResult.class);
     when(applied.status()).thenReturn("APPLIED");
-    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any())).thenReturn(applied);
+    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
+        .thenReturn(applied);
 
     return service.reconcileRecent();
   }
