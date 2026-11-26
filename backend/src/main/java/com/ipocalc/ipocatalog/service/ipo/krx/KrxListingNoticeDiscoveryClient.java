@@ -138,11 +138,23 @@ public class KrxListingNoticeDiscoveryClient {
     }
     Map<String, Disclosure> unique = new LinkedHashMap<>();
     Set<String> pageFingerprints = new LinkedHashSet<>();
+    boolean precedingShortPage = false;
     for (int page = 1; page <= MAX_PAGES; page++) {
       // KIND reportNm=상장은 실제 추가상장 공고도 0건이 되는 사례가 있어 제목 필터를 쓰지 않는다.
       Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "");
       String html = transport.request("/disclosure/details.do", query, true);
       List<Disclosure> current = parsePage(html);
+      // 한 페이지의 행 수가 부족하다는 사실은 종료 증명이 아니다.
+      // 반드시 다음 페이지의 실제 빈 결과를 조회하며, 앞 페이지의 후보는 그 전까지 적용하지 않는다.
+      if (precedingShortPage) {
+        if (!current.isEmpty()) {
+          throw new IllegalStateException("KIND 단축 페이지 이후에도 공고가 있어 페이지 완결성을 확인할 수 없습니다");
+        }
+        return new SearchResult(List.copyOf(unique.values()), page);
+      }
+      if (current.isEmpty()) {
+        return new SearchResult(List.copyOf(unique.values()), page);
+      }
       String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
       if (!current.isEmpty() && !pageFingerprints.add(fingerprint)) {
         throw new IllegalStateException("KIND 페이지 번호가 적용되지 않아 중복 페이지가 반환됐습니다");
@@ -155,10 +167,10 @@ public class KrxListingNoticeDiscoveryClient {
         }
       }
       if (current.size() < PAGE_SIZE) {
-        return new SearchResult(List.copyOf(unique.values()), page);
+        precedingShortPage = true;
       }
     }
-    throw new IllegalStateException("KIND 공고가 최대 검색 페이지를 초과했습니다");
+    throw new IllegalStateException("KIND 공고 검색 종료를 최대 페이지 안에서 확인하지 못했습니다");
   }
 
   /**
@@ -460,7 +472,7 @@ public class KrxListingNoticeDiscoveryClient {
         data.add(cells.group(1));
       }
       if (data.size() < 5) {
-        continue;
+        throw new IllegalStateException("KIND 공시 검색 데이터 행의 열이 누락됐습니다");
       }
       Matcher receipt = RECEIPT.matcher(data.get(3));
       if (!receipt.find()) {
