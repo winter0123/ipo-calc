@@ -160,6 +160,26 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void staleAutomaticSaveConflictIsReviewRequiredNotFetchFailure() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+    when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any()))
+        .thenThrow(
+            new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT, "subscription month changed"));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isZero();
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isZero();
+    assertThat(report.rows().get(0).reason()).contains("저장 직전");
+  }
+
+  @Test
   void ambiguousOfficialNoticesNeverWriteEvenWhenBothPreviewsAreEligible() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
