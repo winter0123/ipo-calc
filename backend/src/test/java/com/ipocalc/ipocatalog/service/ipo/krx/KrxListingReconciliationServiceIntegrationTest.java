@@ -974,7 +974,7 @@ class KrxListingReconciliationServiceIntegrationTest {
                     originallySelectedMonth,
                     saved.getSubscriptionEndDate()))
         .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("subscription month changed");
+        .hasMessageContaining("additional listing snapshot changed before apply");
     Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
     assertThat(unchanged.getSubscriptionStartDate()).isEqualTo(changedMonth);
     assertThat(unchanged.getListingDateEvidenceType()).isEqualTo("ESTIMATED_DART");
