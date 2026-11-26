@@ -412,7 +412,7 @@ public class KrxListingReconciliationService {
           "apply conditions are not satisfied: " + preview.reasons());
     }
 
-    return applyVerified(ipoId, noticeUrl, preview, null);
+    return applyVerified(ipoId, noticeUrl, preview, null, null);
   }
 
   /**
@@ -421,7 +421,8 @@ public class KrxListingReconciliationService {
    */
   public KrxListingApplyResult applyAutomatically(
       Long ipoId, String noticeUrl, KrxListingReconciliationPreview expected,
-      java.time.LocalDate expectedSubscriptionStart) {
+      java.time.LocalDate expectedSubscriptionStart,
+      java.time.LocalDate expectedSubscriptionEnd) {
     if (expected == null || !expected.applyAllowed()) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate is not eligible");
@@ -438,12 +439,14 @@ public class KrxListingReconciliationService {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate changed");
     }
-    return applyVerified(ipoId, noticeUrl, actual, expectedSubscriptionStart);
+    return applyVerified(
+        ipoId, noticeUrl, actual, expectedSubscriptionStart, expectedSubscriptionEnd);
   }
 
   private KrxListingApplyResult applyVerified(
       Long ipoId, String noticeUrl, KrxListingReconciliationPreview preview,
-      java.time.LocalDate expectedSubscriptionStart) {
+      java.time.LocalDate expectedSubscriptionStart,
+      java.time.LocalDate expectedSubscriptionEnd) {
     final String finalNoticeUrl = noticeUrl;
     final boolean[] idempotent = new boolean[] {preview.idempotent()};
     transactionTemplate.execute(
@@ -451,7 +454,9 @@ public class KrxListingReconciliationService {
           Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
           if (expectedSubscriptionStart != null
               && (current == null
-                  || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate()))) {
+                  || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate())
+                  || !java.util.Objects.equals(
+                      expectedSubscriptionEnd, current.getSubscriptionEndDate()))) {
             throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.CONFLICT, "subscription month changed");
           }
