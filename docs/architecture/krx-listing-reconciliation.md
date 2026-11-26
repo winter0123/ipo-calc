@@ -191,3 +191,12 @@ IpoSyncScheduler.runSync (04:30) / IpoManualSyncService.syncNow·syncRange
 - 자동 추가상장은 관리자 HTTP DTO 없이 서비스 내부 `applyAutomatically`를 사용하며 관리자 `apply`와 동일한 `applyVerified` 트랜잭션/조건부 갱신을 공유한다. 검색 당시 청약 시작일은 저장 시 행 잠금 아래 다시 비교한다.
 - 공시 목록에서 열이 부족한 데이터 행은 버리지 않고 전체 검색을 실패 처리한다. 짧은 페이지 직후 명시적인 빈 페이지를 확인하지 못하면 후보 전체를 보류한다. 사이트 전체 결과 수·정정 원공고 관계에 대한 공식 종료 계약이 확인되지 않은 범위는 운영 자동 적용 승인 대상이 아니다.
 - 관리자 자동 상태 UI는 플래그 false를 실행 중인 검증 상태와 혼동하지 않도록 명시적으로 비활성으로 표시한다.
+
+## 2026-11-26 후속 안전성 게이트 — 신규 70760 및 KIND 페이지 완결성
+
+- 자동 신규상장 경로는 최초 청약월 대상 선정 시점의 종목코드, 원신고·수집 출처, 청약 시작/종료일, 기존 상장일/보강 예정일, KIND/DART 근거, 시초가를 `NewListingSnapshot`으로 캡처한다. 원문 HTTP는 잠금 밖에서 조회하되, 저장 직전에 기존 비관적 행 잠금 아래 스냅샷과 현재 값을 비교한다. 관리자 `applyNewListing` 공개 계약은 보존한다.
+- `SaveStateConflict`는 HTTP 409와 호환되는 실제 IPO 행 상태 변경만 표시하며 자동 대조 결과에서는 `STATE_CONFLICT`로 집계한다. 일반 HTTP/본문·페이지 조회 오류는 `FETCH_FAILED`, 공고 근거 부족과 정정 관계 미확인은 `REVIEW_REQUIRED`다.
+- KIND 공개 상세검색 화면에 노출되는 `전체 N건 : 현재/전체 페이지` 형식을 읽고 실제 응답이 같은 표기를 제공하는 경우에만 건수·페이지·중복·행 수를 대조한다. 상세검색 서브 POST 응답에서 이 표식의 지속적 제공을 아직 입증하지 못했으므로 누락/모순 시 실패 폐쇄한다. 0건 역시 명시적인 공식 전체 건수 표기 없이는 정상 무공고로 인정하지 않는다.
+- 정정·취소 공고의 **원공고 연결 및 검색 창 외 정정 완결성은 아직 입증되지 않았다.** 따라서 운영 생성자의 검색 결과는 자동 저장 승인 대상이 아니다. 합성 fixture 전용 생성자만 테스트 데이터에 대한 닫힌 범위를 명시하여 CI PostgreSQL 저장 경로를 검증한다. 이것은 실서버 공급 계약을 증명하지 않는다.
+- 회귀: `selectedOctoberNewListingMovingToNovemberDuringSearchNeverWrites`, `changedSubscriptionEndStillBeforeListingDayCannotConfirmStaleNewListing`, `importedDateChangedAfterPreviewCannotBecomeNewExpectedCasValue`, `partialDuplicateOnDifferentPagesDoesNotHideMissingReceipt`, `emptyTbodyWithoutOfficialCountIsNotNoNotice`, `unknownCorrectionCoverageBlocksWritesEvenWhenAutomaticFlagIsEnabled`.
+- 기존 flag 기본 `false`, 관리자 읽기 전용 점검, 운영 데이터/설정 및 병합 금지 유지. 실제 공식 정정/취소 관계와 70760 3건, 70791 4건의 라이브 검증은 별도 출시 게이트다.
