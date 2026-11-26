@@ -172,11 +172,11 @@ class KrxListingReconciliationServiceIntegrationTest {
                 return "<html><table class='list type-00 mt10'><tbody>"
                     + "<tr><td>1</td><td>09:00</td>"
                     + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
-                    + "<td><a onclick=\"openDisclsViewer('20261110001806','')\">신규상장</a></td>"
+                    + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
                     + "<td>거래소</td></tr></tbody></table></html>";
               }
               if ("search".equals(params.get("method"))) {
-                assertThat(params).containsEntry("acptno", "20261110001806");
+                assertThat(params).containsEntry("acptno", "20261110000840");
                 return "<option value='20261110001806|Y'>신규상장</option>";
               }
               assertThat(params).containsEntry("docNo", "20261110001806");
@@ -205,7 +205,7 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThat(first.counts().get(KrxListingAutoSyncService.OutcomeType.NEW_CONFIRMED))
         .isEqualTo(1);
     assertThat(first.rows()).hasSize(1);
-    assertThat(first.rows().get(0).receiptNo()).isEqualTo("20261110001806");
+    assertThat(first.rows().get(0).receiptNo()).isEqualTo("20261110000840");
     Ipo confirmed = ipoRepository.findById(saved.getId()).orElseThrow();
     assertThat(confirmed.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 12));
     assertThat(confirmed.getListingDateEvidenceType()).isEqualTo("CONFIRMED_KRX");
