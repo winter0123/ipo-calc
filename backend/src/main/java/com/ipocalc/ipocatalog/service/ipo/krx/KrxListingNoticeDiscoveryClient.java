@@ -149,7 +149,7 @@ public class KrxListingNoticeDiscoveryClient {
       String html = transport.request("/disclosure/details.do", query, true);
       List<Disclosure> current = parsePage(html);
       Matcher pageInfo = PAGE_INFO.matcher(plain(html));
-      if (!pageInfo.find() || pageInfo.find()) {
+      if (!pageInfo.find()) {
         throw new IllegalStateException("KIND 공식 검색 전체 건수/현재 페이지/종료 표식을 확인할 수 없습니다");
       }
       int total;
