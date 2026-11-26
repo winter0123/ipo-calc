@@ -448,7 +448,7 @@ public class KrxListingReconciliationService {
     final boolean[] idempotent = new boolean[] {preview.idempotent()};
     transactionTemplate.execute(
         status -> {
-          Ipo current = ipoRepository.findByIdForKrxApply(ipoId).orElse(null);
+          Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
           if (expectedSubscriptionStart != null
               && (current == null
                   || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate()))) {
