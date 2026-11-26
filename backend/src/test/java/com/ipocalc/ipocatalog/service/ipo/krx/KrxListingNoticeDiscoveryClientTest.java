@@ -117,8 +117,7 @@ class KrxListingNoticeDiscoveryClientTest {
     }
     var client =
         new KrxListingNoticeDiscoveryClient(
-            (path, params, post) ->
-                page(first, 101, Integer.parseInt(params.get("pageIndex"))));
+            (path, params, post) -> page(first, 101, Integer.parseInt(params.get("pageIndex"))));
 
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
         .isInstanceOf(IllegalStateException.class)
@@ -153,9 +152,7 @@ class KrxListingNoticeDiscoveryClientTest {
   @Test
   void shortPageContradictingOfficialCountIsRejected() {
     var client =
-        new KrxListingNoticeDiscoveryClient(
-            (path, params, post) ->
-                page(List.of(RECEIPT), 101, 1));
+        new KrxListingNoticeDiscoveryClient((path, params, post) -> page(List.of(RECEIPT), 101, 1));
     assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("행 수");
   }
 
@@ -178,10 +175,10 @@ class KrxListingNoticeDiscoveryClientTest {
 
   @Test
   void emptyTbodyWithoutOfficialCountIsNotNoNotice() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> "<table class='list type-00'><tbody></tbody></table>");
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
-        .hasMessageContaining("전체 건수");
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> "<table class='list type-00'><tbody></tbody></table>");
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("전체 건수");
   }
 
   @Test
@@ -190,20 +187,20 @@ class KrxListingNoticeDiscoveryClientTest {
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) ->
-            "1".equals(params.get("pageIndex"))
-                ? page(first, 101, 1) : page(List.of(first.get(99)), 101, 2));
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
-        .hasMessageContaining("같은 접수번호");
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                "1".equals(params.get("pageIndex"))
+                    ? page(first, 101, 1)
+                    : page(List.of(first.get(99)), 101, 2));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("같은 접수번호");
   }
 
   @Test
   void officialPageIdentityMismatchFailsClosed() {
-    var client = new KrxListingNoticeDiscoveryClient(
-        (path, params, post) -> page(List.of(RECEIPT), 1, 2));
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
-        .hasMessageContaining("페이지 번호");
+    var client =
+        new KrxListingNoticeDiscoveryClient((path, params, post) -> page(List.of(RECEIPT), 1, 2));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("페이지 번호");
   }
 
   @Test
