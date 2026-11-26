@@ -161,7 +161,7 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
-  void staleAutomaticSaveConflictIsReviewRequiredNotFetchFailure() {
+  void staleAutomaticSaveConflictIsDistinctFromFetchFailure() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
@@ -174,10 +174,32 @@ class KrxListingAutoSyncServiceTest {
 
     var report = service.reconcileRecent();
 
-    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.STATE_CONFLICT)).isEqualTo(1);
     assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isZero();
     assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isZero();
     assertThat(report.rows().get(0).reason()).contains("저장 직전");
+  }
+
+  @Test
+  void externalHttpForbiddenDoesNotBecomeStateConflictAndNextStockContinues() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    Ipo second = ipo();
+    when(second.getId()).thenReturn(8L);
+    when(second.getStockCode()).thenReturn("987650");
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
+        .thenReturn(List.of(ipo(), second));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenThrow(
+            new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "KIND access blocked"));
+    when(discovery.find(eq("987650"), any(), any())).thenReturn(result());
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.FETCH_FAILED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.NO_NOTICE)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.STATE_CONFLICT)).isZero();
+    assertThat(report.rows()).hasSize(2);
   }
 
   @Test
@@ -433,15 +455,13 @@ class KrxListingAutoSyncServiceTest {
         "<html><table class='list type-00 mt10'><tbody>"
             + syntheticSearchRow(RECEIPT, "추가상장")
             + syntheticSearchRow(OTHER_RECEIPT, secondaryTitle)
-            + "</tbody></table></html>";
+            + "</tbody></table><div>전체 2건 : 1/1</div></html>";
     var discovered =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
               if ("/disclosure/details.do".equals(path)) {
                 assertThat(params).containsEntry("repIsuSrtCd", "A121850");
-                return "1".equals(params.get("pageIndex"))
-                    ? html
-                    : "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
+                return html;
               }
               assertThat(path).isEqualTo("/common/disclsviewer.do");
               if ("search".equals(params.get("method"))) {
@@ -493,7 +513,7 @@ class KrxListingAutoSyncServiceTest {
     String page =
         "<html><table class='list type-00 mt10'><tbody>"
             + syntheticSearchRow(RECEIPT, "신규상장")
-            + "</tbody></table></html>";
+            + "</tbody></table><div>전체 1건 : 1/1</div></html>";
     var officialDiscovery =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
