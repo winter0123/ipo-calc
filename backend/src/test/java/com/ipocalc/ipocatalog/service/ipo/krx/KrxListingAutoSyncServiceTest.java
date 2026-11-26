@@ -169,8 +169,7 @@ class KrxListingAutoSyncServiceTest {
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
     when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
         .thenThrow(
-            new KrxListingReconciliationService.SaveStateConflict(
-                "subscription month changed"));
+            new KrxListingReconciliationService.SaveStateConflict("subscription month changed"));
 
     var report = service.reconcileRecent();
 
@@ -185,8 +184,7 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(
-            new KrxListingNoticeDiscoveryClient.SearchResult(
-                List.of(disclosure(RECEIPT)), 1));
+            new KrxListingNoticeDiscoveryClient.SearchResult(List.of(disclosure(RECEIPT)), 1));
 
     var report = service.reconcileRecent();
 
@@ -229,8 +227,7 @@ class KrxListingAutoSyncServiceTest {
     when(noNotice.getStockCode()).thenReturn("654320");
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
         .thenReturn(List.of(candidate, forbidden, noNotice));
-    when(discovery.find(eq("121850"), any(), any()))
-        .thenReturn(result(disclosure(RECEIPT)));
+    when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
     when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
