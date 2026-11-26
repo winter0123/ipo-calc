@@ -103,6 +103,7 @@ public class KrxListingReconciliationService {
   /** HTTP 409 계약을 보존하면서 외부 원문 실패와 DB 상태 변경을 구분한다. */
   public static final class SaveStateConflict
       extends org.springframework.web.server.ResponseStatusException {
+    /** 잠금·조건부 쓰기 단계에서 발견한 상태 충돌을 409로 알린다. */
     public SaveStateConflict(String reason) {
       super(org.springframework.http.HttpStatus.CONFLICT, reason);
     }
