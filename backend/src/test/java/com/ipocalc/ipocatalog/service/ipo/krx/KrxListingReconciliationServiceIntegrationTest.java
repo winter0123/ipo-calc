@@ -170,11 +170,25 @@ class KrxListingReconciliationServiceIntegrationTest {
                 }
                 onSearch.run();
                 if (failTerminalPage) {
-                  return "<html><table class='list type-00 mt10'><tbody>"
-                      + "<tr><td>1</td><td>09:00</td>"
-                      + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
-                      + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
-                      + "<td>거래소</td></tr></tbody></table></html>";
+                  if (!"1".equals(params.get("pageIndex"))) {
+                    return "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
+                  }
+                  StringBuilder first =
+                      new StringBuilder(
+                          "<html><table class='list type-00 mt10'><tbody>"
+                              + "<tr><td>1</td><td>09:00</td>"
+                              + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
+                              + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
+                              + "<td>거래소</td></tr>");
+                  for (int i = 1; i < 100; i++) {
+                    first.append("<tr><td>2</td><td>09:00</td><td>넥스아이</td>")
+                        .append("<td><a onclick=\"openDisclsViewer('20261110")
+                        .append(String.format("%06d", i))
+                        .append("','')\">감사보고서</a></td><td>거래소</td></tr>");
+                  }
+                  return first.append(
+                          "</tbody></table><div>전체 101건 : 1/2</div></html>")
+                      .toString();
                 }
                 return "<html><table class='list type-00 mt10'><tbody>"
                     + "<tr><td>1</td><td>09:00</td>"
