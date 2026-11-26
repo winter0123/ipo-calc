@@ -187,6 +187,8 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
       @Param("id") Long id,
       @Param("stockCode") String stockCode,
       @Param("sourceReceipt") String sourceReceipt,
+      @Param("expectedStart") LocalDate expectedStart,
+      @Param("expectedEnd") LocalDate expectedEnd,
       @Param("date") LocalDate date,
       @Param("url") String url,
       @Param("now") LocalDateTime now);
@@ -216,6 +218,8 @@ public interface IpoRepository extends JpaRepository<Ipo, Long> {
       @Param("id") Long id,
       @Param("stockCode") String stockCode,
       @Param("sourceReceipt") String sourceReceipt,
+      @Param("expectedStart") LocalDate expectedStart,
+      @Param("expectedEnd") LocalDate expectedEnd,
       @Param("importedDate") LocalDate importedDate,
       @Param("date") LocalDate date,
       @Param("url") String url,
