@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.client.RestClient;
 
@@ -20,82 +23,84 @@ class KrxListingNoticeDiscoveryLiveTest {
       LocalDate listingDate,
       String expectedContentId) {}
 
-  @Test
-  void discoversAndParsesThreeRealNewListingNoticesWithoutInputUrlsOrDatabaseWrites() {
-    var discovery = new KrxListingNoticeDiscoveryClient();
-    var official = new KrxListingNoticeClient(RestClient.builder());
-    var parser = new KrxNewListingNoticeParser();
+  /** 검색 접수번호와 원문 ID는 별도 식별자다. 각 사례를 독립 DynamicTest로 실행한다. */
+  @TestFactory
+  Stream<DynamicTest> discoversThreeNewListingsIndependentlyFromStockAndDate() {
     List<NewCase> cases =
         List.of(
             new NewCase(
                 "넥스아이",
                 "493410",
                 LocalDate.of(2026, 11, 10),
+                "20261110000840",
                 "20261110001806",
                 LocalDate.of(2026, 11, 12)),
             new NewCase(
                 "이에스티",
                 "495910",
                 LocalDate.of(2026, 11, 2),
+                null,
                 "20261102001162",
                 LocalDate.of(2026, 11, 4)),
             new NewCase(
                 "크리에이츠",
                 "439270",
                 LocalDate.of(2026, 10, 28),
+                null,
                 "20261028001803",
                 LocalDate.of(2026, 10, 30)));
-
-    for (NewCase c : cases) {
-      LocalDate from = c.publishedAt().minusDays(1);
-      LocalDate to = c.publishedAt().plusDays(1);
-      var search = discovery.find(c.stockCode(), from, to);
-      var candidates =
-          search.disclosures().stream()
-              .filter(
-                  notice ->
-                      KrxListingNoticeDiscoveryClient.classifyListingTitle(notice.title())
-                          == KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING)
-              .toList();
-      var receipts =
-          search.disclosures().stream()
-              .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
-              .toList();
-      assertThat(candidates)
-          .as(
-              "KIND 신규상장 후보 수 불일치: stock=%s, from=%s, to=%s, candidates=%s, receipts=%s",
-              c.stockCode(),
-              from,
-              to,
-              candidates.stream()
-                  .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
-                  .toList(),
-              receipts)
-          .hasSize(1);
-
-      var found = candidates.get(0);
-      // Select by title alone, resolve the viewer, then validate all expected evidence.
-      String discoveredUrl = discovery.resolveNewListingUrl(found.receiptNo());
-      var evidence = parser.parse(official.fetchNewListing(discoveredUrl));
-      assertThat(found.receiptNo())
-          .as("KIND 신규상장 접수번호: stock=%s", c.stockCode())
-          .isEqualTo(c.expectedReceiptNo());
-      assertThat(found.publishedAt())
-          .as("KIND 게시일: stock=%s", c.stockCode())
-          .isEqualTo(c.publishedAt());
-      assertThat(evidence.stockCode()).as(c.name()).isEqualTo(c.stockCode());
-      assertThat(evidence.listingDate()).as(c.name()).isEqualTo(c.listingDate());
-      System.out.printf(
-          "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s listing=%s pages=%d%n",
-          evidence.stockCode(), found.receiptNo(), evidence.listingDate(), search.pagesRead());
-    }
+    return cases.stream()
+        .map(
+            c ->
+                DynamicTest.dynamicTest(
+                    c.name(),
+                    () -> {
+                      var discovery = new KrxListingNoticeDiscoveryClient();
+                      var official = new KrxListingNoticeClient(RestClient.builder());
+                      var parser = new KrxNewListingNoticeParser();
+                      LocalDate from = c.publishedAt().minusDays(1);
+                      LocalDate to = c.publishedAt().plusDays(1);
+                      var search = discovery.find(c.stockCode(), from, to);
+                      var candidates =
+                          search.disclosures().stream()
+                              .filter(
+                                  notice ->
+                                      KrxListingNoticeDiscoveryClient.classifyListingTitle(
+                                              notice.title())
+                                          == KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING)
+                              .toList();
+                      assertThat(candidates)
+                          .as("stock=%s from=%s to=%s receipts=%s", c.stockCode(), from, to,
+                              search.disclosures().stream()
+                                  .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
+                                  .toList())
+                          .hasSize(1);
+                      var found = candidates.get(0);
+                      String url = discovery.resolveNewListingUrl(found.receiptNo());
+                      var evidence = parser.parse(official.fetchNewListing(url));
+                      if (c.knownSearchReceipt() != null) {
+                        assertThat(found.receiptNo()).isEqualTo(c.knownSearchReceipt());
+                      }
+                      // 실제 외부 URL의 중간 경로에는 검색 접수번호의 뒤 6자리가,
+                      // 원문 폴더에는 뷰어가 선택한 별도 content ID가 있어야 한다.
+                      assertThat(url).contains("/" + found.receiptNo().substring(8) + "/");
+                      assertThat(url).contains("/" + c.knownContentId() + "/70760.htm");
+                      assertThat(found.publishedAt()).isEqualTo(c.publishedAt());
+                      assertThat(evidence.stockCode()).isEqualTo(c.stockCode());
+                      assertThat(evidence.listingDate()).isEqualTo(c.listingDate());
+                      System.out.printf(
+                          "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s content=%s listing=%s pages=%d%n",
+                          c.stockCode(), found.receiptNo(), c.knownContentId(),
+                          evidence.listingDate(), search.pagesRead());
+                    }));
   }
 
   private record NewCase(
       String name,
       String stockCode,
       LocalDate publishedAt,
-      String expectedReceiptNo,
+      String knownSearchReceipt,
+      String knownContentId,
       LocalDate listingDate) {}
 
   @Test
