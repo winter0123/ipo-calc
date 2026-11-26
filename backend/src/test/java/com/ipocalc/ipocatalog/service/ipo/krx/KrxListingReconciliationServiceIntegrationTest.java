@@ -182,14 +182,13 @@ class KrxListingReconciliationServiceIntegrationTest {
                               + "신규상장</a></td>"
                               + "<td>거래소</td></tr>");
                   for (int i = 1; i < 100; i++) {
-                    first.append("<tr><td>2</td><td>09:00</td><td>넥스아이</td>")
+                    first
+                        .append("<tr><td>2</td><td>09:00</td><td>넥스아이</td>")
                         .append("<td><a onclick=\"openDisclsViewer('20261110")
                         .append(String.format("%06d", i))
                         .append("','')\">감사보고서</a></td><td>거래소</td></tr>");
                   }
-                  return first.append(
-                          "</tbody></table><div>전체 101건 : 1/2</div></html>")
-                      .toString();
+                  return first.append("</tbody></table><div>전체 101건 : 1/2</div></html>").toString();
                 }
                 return "<html><table class='list type-00 mt10'><tbody>"
                     + "<tr><td>1</td><td>09:00</td>"
