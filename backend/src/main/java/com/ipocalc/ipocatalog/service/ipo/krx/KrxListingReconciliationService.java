@@ -100,6 +100,14 @@ public class KrxListingReconciliationService {
         evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
   }
 
+  /** HTTP 409 계약을 보존하면서 외부 원문 실패와 DB 상태 변경을 구분한다. */
+  public static final class SaveStateConflict
+      extends org.springframework.web.server.ResponseStatusException {
+    public SaveStateConflict(String reason) {
+      super(org.springframework.http.HttpStatus.CONFLICT, reason);
+    }
+  }
+
   /** 자동 대상 선정 시점의 상태. 관리자 HTTP 계약과 별개로 원래 기대값을 유지한다. */
   public record NewListingSnapshot(
       String stockCode,
@@ -204,14 +212,12 @@ public class KrxListingReconciliationService {
               Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
               if (expectedState != null
                   && (current == null || !expectedState.matches(current))) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.CONFLICT, "new listing snapshot changed");
+                throw new SaveStateConflict("new listing snapshot changed");
               }
               if (current == null
                   || expectedSourceReceipt == null
                   || !expectedSourceReceipt.equals(current.getSourceReceiptNo())) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.CONFLICT, "ipo source changed");
+                throw new SaveStateConflict("ipo source changed");
               }
               // 미리보기 이후 청약 종료일 변경을 반드시 잠금 안에서 재검증한다.
               if (current.getSubscriptionEndDate() == null
@@ -220,8 +226,7 @@ public class KrxListingReconciliationService {
                   || current.getWithdrawnReceiptNo() != null
                   || current.getSyncSource() == null
                   || !stockCode.equals(current.getStockCode())) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.CONFLICT, "ipo conditions changed");
+                throw new SaveStateConflict("ipo conditions changed");
               }
               String receipt = current.getSourceReceiptNo();
               if (ipoRepository.countSameConfirmedNewKrxCandidate(
@@ -251,8 +256,7 @@ public class KrxListingReconciliationService {
               if (updated == 1) {
                 return "APPLIED";
               }
-              throw new org.springframework.web.server.ResponseStatusException(
-                  org.springframework.http.HttpStatus.CONFLICT, "concurrent new listing change");
+              throw new SaveStateConflict("concurrent new listing change");
             });
     return new KrxListingApplyResult(ipoId, true, status, preview.reasons());
   }
@@ -540,14 +544,12 @@ public class KrxListingReconciliationService {
                   || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate())
                   || !java.util.Objects.equals(
                       expectedSubscriptionEnd, current.getSubscriptionEndDate()))) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "subscription month changed");
+            throw new SaveStateConflict("subscription month changed");
           }
           if (current == null
               || current.getDeletedAt() != null
               || current.getStatus() != RecordStatus.ACTIVE) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo state changed");
+            throw new SaveStateConflict("ipo state changed");
           }
           if ("CONFIRMED_KRX".equals(current.getListingDateEvidenceType())
               && finalNoticeUrl.equals(current.getKrxListingNoticeUrl())
@@ -556,22 +558,18 @@ public class KrxListingReconciliationService {
             return null;
           }
           if (!"ESTIMATED_DART".equals(current.getListingDateEvidenceType())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo evidence type changed");
+            throw new SaveStateConflict("ipo evidence type changed");
           }
           if (!java.util.Objects.equals(current.getStockCode(), preview.expectedStockCode())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo stock code changed");
+            throw new SaveStateConflict("ipo stock code changed");
           }
           if (!java.util.Objects.equals(
               current.getListingDate(), preview.expectedDartListingDate())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo dart listing date changed");
+            throw new SaveStateConflict("ipo dart listing date changed");
           }
           if (!java.util.Objects.equals(
               current.getListingDateEvidenceReceipt(), preview.expectedDartReceiptNo())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo dart receipt changed");
+            throw new SaveStateConflict("ipo dart receipt changed");
           }
 
           int updated =
@@ -597,8 +595,7 @@ public class KrxListingReconciliationService {
             idempotent[0] = true;
             return null;
           }
-          throw new org.springframework.web.server.ResponseStatusException(
-              org.springframework.http.HttpStatus.CONFLICT, "concurrent ipo change");
+          throw new SaveStateConflict("concurrent ipo change");
         });
 
     return new KrxListingApplyResult(
