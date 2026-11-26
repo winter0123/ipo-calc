@@ -97,6 +97,7 @@ describe('KrxListingAdminPanel', () => {
           ALREADY_APPLIED: 0,
           NO_NOTICE: 2,
           ROUND_CONFLICT: 1,
+          STATE_CONFLICT: 3,
           FETCH_FAILED: 0,
         },
         rows: [
@@ -113,6 +114,7 @@ describe('KrxListingAdminPanel', () => {
     })
     expect(await screen.findByText(/자동 반영 사용/)).toBeInTheDocument()
     expect(screen.getByText(/회차 충돌 1건/)).toBeInTheDocument()
+    expect(screen.getByText(/저장 직전 충돌 3건/)).toBeInTheDocument()
     expect(screen.getByText(/발행 회차가 둘 이상입니다/)).toBeInTheDocument()
     expect(api.previewKrxListing).not.toHaveBeenCalled()
     expect(api.applyKrxListing).not.toHaveBeenCalled()
