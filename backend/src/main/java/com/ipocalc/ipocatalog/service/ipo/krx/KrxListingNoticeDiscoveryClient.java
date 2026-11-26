@@ -176,7 +176,9 @@ public class KrxListingNoticeDiscoveryClient {
         throw new IllegalStateException("KIND 페이지 건수 파싱에 실패했습니다", ex);
       }
       int calculatedPages = Math.max(1, (total + PAGE_SIZE - 1) / PAGE_SIZE);
-      if (actualPage != page || totalPages != calculatedPages || totalPages > MAX_PAGES
+      if (actualPage != page
+          || totalPages != calculatedPages
+          || totalPages > MAX_PAGES
           || expectedTotal >= 0 && (expectedTotal != total || expectedPages != totalPages)) {
         throw new IllegalStateException("KIND 페이지 번호/총건수 정보가 일치하지 않습니다");
       }
@@ -198,8 +200,7 @@ public class KrxListingNoticeDiscoveryClient {
         }
       }
       if (page == totalPages) {
-        return new SearchResult(
-            List.copyOf(unique.values()), page, syntheticCorrectionCoverage);
+        return new SearchResult(List.copyOf(unique.values()), page, syntheticCorrectionCoverage);
       }
     }
     throw new IllegalStateException("KIND 검색 페이지 상한 내에서 전체 결과를 확인하지 못했습니다");
