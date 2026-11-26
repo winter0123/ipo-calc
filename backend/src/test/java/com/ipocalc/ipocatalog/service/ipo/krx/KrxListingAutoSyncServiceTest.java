@@ -66,7 +66,6 @@ class KrxListingAutoSyncServiceTest {
   @Test
   void sharedStockAndPublicationWindowsAreSearchedOnlyOncePerRun() {
     Ipo first = ipo();
-    Ipo first = ipo();
     Ipo second = ipo();
     when(second.getId()).thenReturn(8L);
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
@@ -197,6 +196,7 @@ class KrxListingAutoSyncServiceTest {
   @Test
   void externalHttpForbiddenDoesNotBecomeStateConflictAndNextStockContinues() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    Ipo first = ipo();
     Ipo second = ipo();
     when(second.getId()).thenReturn(8L);
     when(second.getStockCode()).thenReturn("987650");
