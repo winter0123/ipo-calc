@@ -238,11 +238,26 @@ public class KrxListingReconciliationService {
                   == 1) {
                 return "NO_OP";
               }
+              LocalDate expectedStart =
+                  expectedState == null
+                      ? current.getSubscriptionStartDate()
+                      : expectedState.subscriptionStart();
+              LocalDate expectedEnd =
+                  expectedState == null
+                      ? current.getSubscriptionEndDate()
+                      : expectedState.subscriptionEnd();
               int updated;
               if (current.getListingDate() == null) {
                 updated =
                     ipoRepository.confirmNewKrxListingIfEmpty(
-                        ipoId, stockCode, receipt, expectedDate, url, LocalDateTime.now(clock));
+                        ipoId,
+                        stockCode,
+                        receipt,
+                        expectedStart,
+                        expectedEnd,
+                        expectedDate,
+                        url,
+                        LocalDateTime.now(clock));
               } else if (current.getLastImportedListingDate() != null
                   && current.getListingDate().equals(current.getLastImportedListingDate())) {
                 updated =
