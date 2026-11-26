@@ -66,6 +66,7 @@ class KrxListingAutoSyncServiceTest {
   @Test
   void sharedStockAndPublicationWindowsAreSearchedOnlyOncePerRun() {
     Ipo first = ipo();
+    Ipo first = ipo();
     Ipo second = ipo();
     when(second.getId()).thenReturn(8L);
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
@@ -200,7 +201,7 @@ class KrxListingAutoSyncServiceTest {
     when(second.getId()).thenReturn(8L);
     when(second.getStockCode()).thenReturn("987650");
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc())
-        .thenReturn(List.of(ipo(), second));
+        .thenReturn(List.of(first, second));
     when(discovery.find(eq("121850"), any(), any()))
         .thenThrow(
             new org.springframework.web.server.ResponseStatusException(
@@ -229,7 +230,8 @@ class KrxListingAutoSyncServiceTest {
         .thenReturn(List.of(candidate, forbidden, noNotice));
     when(discovery.find(eq("121850"), any(), any())).thenReturn(result(disclosure(RECEIPT)));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
-    when(reconciliation.preview(7L, URL)).thenReturn(eligiblePreview(false));
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
     when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
         .thenThrow(new KrxListingReconciliationService.SaveStateConflict("stale ipo state"));
     when(discovery.find(eq("987650"), any(), any()))
