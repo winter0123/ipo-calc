@@ -158,6 +158,9 @@ class KrxListingReconciliationServiceIntegrationTest {
                 if (failSearch) {
                   throw new IllegalStateException("KIND 조회 HTTP 403");
                 }
+                if (!"1".equals(params.get("pageIndex"))) {
+                  return "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
+                }
                 return "<html><table class='list type-00 mt10'><tbody>"
                     + "<tr><td>1</td><td>09:00</td>"
                     + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
