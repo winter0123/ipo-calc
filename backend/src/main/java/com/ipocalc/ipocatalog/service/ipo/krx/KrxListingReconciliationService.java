@@ -165,6 +165,10 @@ public class KrxListingReconciliationService {
     if (expectedState == null) {
       throw new IllegalArgumentException("automatic listing snapshot required");
     }
+    Ipo current = ipoRepository.findById(ipoId).orElse(null);
+    if (current == null || !expectedState.matches(current)) {
+      throw new SaveStateConflict("new listing snapshot changed before apply");
+    }
     return applyNewListingVerified(
         ipoId, url, expectedDate, expectedHash, expectedSourceReceipt, expectedState);
   }
@@ -508,6 +512,19 @@ public class KrxListingReconciliationService {
     if (expected == null || !expected.applyAllowed()) {
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.CONFLICT, "automatic candidate is not eligible");
+    }
+    Ipo before = ipoRepository.findById(ipoId).orElse(null);
+    if (before == null
+        || !java.util.Objects.equals(before.getStockCode(), expected.expectedStockCode())
+        || !java.util.Objects.equals(
+            before.getListingDateEvidenceReceipt(), expected.expectedDartReceiptNo())
+        || !java.util.Objects.equals(
+            before.getListingDate(), expected.expectedDartListingDate())
+        || !java.util.Objects.equals(
+            before.getSubscriptionStartDate(), expectedSubscriptionStart)
+        || !java.util.Objects.equals(
+            before.getSubscriptionEndDate(), expectedSubscriptionEnd)) {
+      throw new SaveStateConflict("additional listing snapshot changed before apply");
     }
     KrxListingReconciliationPreview actual = preview(ipoId, noticeUrl);
     if (!actual.applyAllowed()
