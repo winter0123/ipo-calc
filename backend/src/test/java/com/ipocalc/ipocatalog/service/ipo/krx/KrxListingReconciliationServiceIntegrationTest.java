@@ -188,7 +188,8 @@ class KrxListingReconciliationServiceIntegrationTest {
               }
               assertThat(params).containsEntry("docNo", "20261110001806");
               return NEW_LISTING_URL;
-            });
+            },
+            true);
     var automatic =
         new KrxListingAutoSyncService(
             discovery,
