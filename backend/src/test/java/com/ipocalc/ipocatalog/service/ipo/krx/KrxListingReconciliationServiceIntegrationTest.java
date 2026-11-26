@@ -155,6 +155,11 @@ class KrxListingReconciliationServiceIntegrationTest {
 
   private KrxListingAutoSyncService syntheticSearchToRealDatabase(
       boolean failSearch, boolean failTerminalPage) {
+    return syntheticSearchToRealDatabase(failSearch, failTerminalPage, () -> {});
+  }
+
+  private KrxListingAutoSyncService syntheticSearchToRealDatabase(
+      boolean failSearch, boolean failTerminalPage, Runnable onSearch) {
     var discovery =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
@@ -163,17 +168,19 @@ class KrxListingReconciliationServiceIntegrationTest {
                 if (failSearch) {
                   throw new IllegalStateException("KIND 조회 HTTP 403");
                 }
-                if (!"1".equals(params.get("pageIndex"))) {
-                  if (failTerminalPage) {
-                    throw new IllegalStateException("KIND page 2 timeout");
-                  }
-                  return "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
+                onSearch.run();
+                if (failTerminalPage) {
+                  return "<html><table class='list type-00 mt10'><tbody>"
+                      + "<tr><td>1</td><td>09:00</td>"
+                      + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
+                      + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
+                      + "<td>거래소</td></tr></tbody></table></html>";
                 }
                 return "<html><table class='list type-00 mt10'><tbody>"
                     + "<tr><td>1</td><td>09:00</td>"
                     + "<td><a onclick=\"companysummary_open('49341')\">넥스아이</a></td>"
                     + "<td><a onclick=\"openDisclsViewer('20261110000840','')\">신규상장</a></td>"
-                    + "<td>거래소</td></tr></tbody></table></html>";
+                    + "<td>거래소</td></tr></tbody></table><div>전체 1건 : 1/1</div></html>";
               }
               if ("search".equals(params.get("method"))) {
                 assertThat(params).containsEntry("acptno", "20261110000840");
