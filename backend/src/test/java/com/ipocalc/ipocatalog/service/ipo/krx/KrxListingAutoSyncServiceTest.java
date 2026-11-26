@@ -181,6 +181,21 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void unknownCorrectionCoverageBlocksWritesEvenWhenAutomaticFlagIsEnabled() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(
+            new KrxListingNoticeDiscoveryClient.SearchResult(
+                List.of(disclosure(RECEIPT)), 1));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).reason()).contains("정정·취소");
+    verify(reconciliation, never()).applyAutomatically(any(), any(), any(), any(), any());
+  }
+
+  @Test
   void externalHttpForbiddenDoesNotBecomeStateConflictAndNextStockContinues() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     Ipo second = ipo();
@@ -470,7 +485,8 @@ class KrxListingAutoSyncServiceTest {
               }
               assertThat(params).containsEntry("docNo", "20261120002019");
               return URL;
-            });
+            },
+            true);
     var discoveryResult =
         discovered.find("121850", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 20));
     assertThat(discoveryResult.disclosures()).hasSize(revision ? 2 : 1);
@@ -529,7 +545,8 @@ class KrxListingAutoSyncServiceTest {
               }
               assertThat(params).containsEntry("docNo", "20261120002019");
               return NEW_URL;
-            });
+            },
+            true);
     service =
         new KrxListingAutoSyncService(
             officialDiscovery,
@@ -788,7 +805,7 @@ class KrxListingAutoSyncServiceTest {
 
   private static KrxListingNoticeDiscoveryClient.SearchResult result(
       KrxListingNoticeDiscoveryClient.Disclosure... notices) {
-    return new KrxListingNoticeDiscoveryClient.SearchResult(List.of(notices), 1);
+    return new KrxListingNoticeDiscoveryClient.SearchResult(List.of(notices), 1, true);
   }
 
   private static KrxListingNoticeDiscoveryClient.Disclosure disclosure(String receipt) {
