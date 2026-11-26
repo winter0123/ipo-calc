@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.client.RestClient;
@@ -67,10 +67,15 @@ class KrxListingNoticeDiscoveryLiveTest {
                                   notice ->
                                       KrxListingNoticeDiscoveryClient.classifyListingTitle(
                                               notice.title())
-                                          == KrxListingNoticeDiscoveryClient.ListingType.NEW_LISTING)
+                                          == KrxListingNoticeDiscoveryClient.ListingType
+                                              .NEW_LISTING)
                               .toList();
                       assertThat(candidates)
-                          .as("stock=%s from=%s to=%s receipts=%s", c.stockCode(), from, to,
+                          .as(
+                              "stock=%s from=%s to=%s receipts=%s",
+                              c.stockCode(),
+                              from,
+                              to,
                               search.disclosures().stream()
                                   .map(KrxListingNoticeDiscoveryClient.Disclosure::receiptNo)
                                   .toList())
@@ -90,8 +95,11 @@ class KrxListingNoticeDiscoveryLiveTest {
                       assertThat(evidence.listingDate()).isEqualTo(c.listingDate());
                       System.out.printf(
                           "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s content=%s listing=%s pages=%d%n",
-                          c.stockCode(), found.receiptNo(), c.knownContentId(),
-                          evidence.listingDate(), search.pagesRead());
+                          c.stockCode(),
+                          found.receiptNo(),
+                          c.knownContentId(),
+                          evidence.listingDate(),
+                          search.pagesRead());
                     }));
   }
 
