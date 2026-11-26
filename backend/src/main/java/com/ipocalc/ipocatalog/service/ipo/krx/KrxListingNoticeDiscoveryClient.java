@@ -441,8 +441,7 @@ public class KrxListingNoticeDiscoveryClient {
                 + "/";
         if (!url.contains(expectedDatePath)
             || !url.endsWith("/" + contentId + "/" + documentName)
-            || (documentName.equals("70791.htm")
-                && !url.contains(expectedDatePath + receiptNo.substring(8) + "/"))) {
+            || !url.contains(expectedDatePath + receiptNo.substring(8) + "/")) {
           throw new IllegalStateException("KIND 공고 접수번호와 원문 경로가 다릅니다");
         }
         return url;
