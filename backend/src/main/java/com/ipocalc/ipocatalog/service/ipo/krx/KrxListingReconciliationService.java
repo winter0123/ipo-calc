@@ -265,6 +265,8 @@ public class KrxListingReconciliationService {
                         ipoId,
                         stockCode,
                         receipt,
+                        expectedStart,
+                        expectedEnd,
                         current.getListingDate(),
                         expectedDate,
                         url,
