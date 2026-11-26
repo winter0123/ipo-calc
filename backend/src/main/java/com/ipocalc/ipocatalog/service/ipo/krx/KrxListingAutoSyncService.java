@@ -319,7 +319,8 @@ public class KrxListingAutoSyncService {
           "공식 근거 대조 성공(읽기 전용)");
     }
     var result = reconciliation.applyAutomatically(
-            ipo.getId(), selected.url(), preview, ipo.getSubscriptionStartDate());
+            ipo.getId(), selected.url(), preview, ipo.getSubscriptionStartDate(),
+            ipo.getSubscriptionEndDate());
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
           ipo,
