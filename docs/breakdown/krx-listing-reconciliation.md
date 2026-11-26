@@ -151,3 +151,10 @@ CI: 기존 Quality의 Backend checkstyle/spotless/build/동기화 테스트 + UI
 3. 보수적 추가 보호: 적격 공고와 검증 불충분 추가상장 공고가 혼재하면 `REVIEW_REQUIRED`, 자동 쓰기 0건.
 4. 검증: `KrxListingAutoSyncServiceTest`, `KrxListingReconciliationServiceIntegrationTest`의 합성 KIND 응답 + CI PostgreSQL 및 정기 진입점 기반 실제 DB 변경·멱등 회귀; `IpoManualSyncServiceTest`, `IpoSyncSchedulerTest`, 기존 관리자 API/UI 회귀. CI Quality Backend/UI 및 읽기 전용 라이브 실행은 별도 판정.
 5. 배포/운영 DB/과거 41건 일괄 변경 없음. DART↔KIND 독립 발행회차 4건 검증, 신규상장 URL 없는 실서버 3건, 정정·취소 원공고 연결은 미완료 게이트. 기본 auto-apply false.
+
+## 2026-11-26 후속 안전성 회귀 (#515)
+
+1. **검색 완결성:** 열 누락·짧은 첫 페이지 뒤 추가 결과·종료 페이지 조회 실패를 전체 `FETCH_FAILED`로 보류한다. `KrxListingNoticeDiscoveryClientTest`, 검색→PostgreSQL 저장 통합 테스트를 실행한다.
+2. **진입점:** 낮 별도 스케줄러 제거, DART 보완 성공 후에만 기존 정기/수동 기본/월별 KIND 실행. 기존 예약 테스트와 DART 실패 차단 회귀를 유지한다.
+3. **저장 결합 해제:** 관리자 DTO는 공개 API에서만 사용한다. 자동 탐색은 내부 apply 경로를 통해 row-lock·현재 청약 시작일·근거·상장일 재검증 후 CAS 처리한다.
+4. **남은 외부 검증:** 실제 KIND 목록의 총건수/페이지 종료/정정 관계, 신규상장 검색 접수번호와 70760 원문 식별자 차이, 실 DART↔KIND 동일 회차는 읽기 전용 live 증거 확보 전 자동 쓰기 활성화 금지.
