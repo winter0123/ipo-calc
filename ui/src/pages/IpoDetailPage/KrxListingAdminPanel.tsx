@@ -135,7 +135,7 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
               ? '결과 조회 실패'
               : autoStatus.data.autoApplyEnabled
                 ? '자동 반영 사용'
-                : '읽기 전용 검증 중'}
+                : '자동 반영 꺼짐 (수동 미리보기 가능)'}
         </p>
         {autoStatus.data?.lastReport && (
           <>
