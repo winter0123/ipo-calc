@@ -220,6 +220,7 @@ public class KrxListingAutoSyncService {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "조회할 공고 게시일 기간 없음");
     }
     Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices = new LinkedHashMap<>();
+    boolean correctionCoverageVerified = true;
     for (LocalDate cursor = from; !cursor.isAfter(to); ) {
       LocalDate end = min(to, cursor.plusDays(27));
       var key = new SearchKey(ipo.getStockCode(), cursor, end);
@@ -237,6 +238,7 @@ public class KrxListingAutoSyncService {
       if (attempt.error() != null) {
         throw attempt.error();
       }
+      correctionCoverageVerified &= attempt.result().correctionCoverageVerified();
       for (var notice : attempt.result().disclosures()) {
         notices.putIfAbsent(notice.receiptNo(), notice);
       }
@@ -244,6 +246,14 @@ public class KrxListingAutoSyncService {
     }
     if (notices.isEmpty()) {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "공고 게시일 범위의 모든 검색 페이지 정상 조회 후 공고 없음");
+    }
+    if (!correctionCoverageVerified) {
+      return outcome(
+          ipo,
+          OutcomeType.REVIEW_REQUIRED,
+          null,
+          null,
+          "공식 KIND 검색 종료 또는 정정·취소 원공고 연결 범위가 미확인되어 자동 저장 보류");
     }
     boolean newListing =
         ipo.getListingDate() == null
@@ -410,7 +420,7 @@ public class KrxListingAutoSyncService {
               chosen.url(),
               preview.listingDate(),
               preview.noticeHash(),
-              ipo.getSourceReceiptNo(),
+              initialState.sourceReceipt(),
               initialState);
     } catch (ResponseStatusException ex) {
       if (ex.getStatusCode().value() == 409) {
