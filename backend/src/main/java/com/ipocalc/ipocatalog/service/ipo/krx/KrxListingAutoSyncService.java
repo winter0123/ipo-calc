@@ -331,12 +331,13 @@ public class KrxListingAutoSyncService {
     }
     KrxListingReconciliationService.KrxListingApplyResult result;
     try {
-      result = reconciliation.applyAutomatically(
-            ipo.getId(),
-            selected.url(),
-            preview,
-            ipo.getSubscriptionStartDate(),
-            ipo.getSubscriptionEndDate());
+      result =
+          reconciliation.applyAutomatically(
+              ipo.getId(),
+              selected.url(),
+              preview,
+              ipo.getSubscriptionStartDate(),
+              ipo.getSubscriptionEndDate());
     } catch (KrxListingReconciliationService.SaveStateConflict ex) {
       throw new AutomaticSaveConflict(ex);
     }
