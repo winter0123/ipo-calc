@@ -46,8 +46,7 @@ class KrxListingNoticeDiscoveryClientTest {
                   .containsEntry("lastReport", "")
                   .containsEntry("reportNm", "")
                   .containsEntry("fromDate", "2026-02-05")
-                  .containsEntry("toDate", "2026-02-05")
-                  .containsEntry("pageIndex", "1");
+                  .containsEntry("toDate", "2026-02-05");
               return page("1".equals(params.get("pageIndex")) ? List.of(RECEIPT) : List.of());
             });
 
