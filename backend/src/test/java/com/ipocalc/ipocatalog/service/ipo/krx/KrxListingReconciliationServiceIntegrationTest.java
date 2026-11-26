@@ -434,6 +434,57 @@ class KrxListingReconciliationServiceIntegrationTest {
   }
 
   @Test
+  void importedDateChangedAfterPreviewCannotBecomeNewExpectedCasValue() {
+    Ipo saved = createNewListingIpo(true);
+    transactionTemplate.executeWithoutResult(
+        tx -> {
+          Ipo current = ipoRepository.findById(saved.getId()).orElseThrow();
+          assertThat(
+                  current.mergeSupplementalSchedule(
+                      null,
+                      null,
+                      null,
+                      LocalDate.of(2026, 11, 14),
+                      "OPENDART+USTOCKPLUS",
+                      LocalDateTime.now()))
+              .isTrue();
+        });
+    entityManager.clear();
+    var fetchCount = new java.util.concurrent.atomic.AtomicInteger();
+    when(noticeClient.fetchNewListing(NEW_LISTING_URL))
+        .thenAnswer(
+            invocation -> {
+              if (fetchCount.incrementAndGet() == 2) {
+                transactionTemplate.executeWithoutResult(
+                    tx ->
+                        entityManager
+                            .createNativeQuery(
+                                "update ipos set listing_date = ?1, "
+                                    + "last_imported_listing_date = ?1 where id = ?2")
+                            .setParameter(1, LocalDate.of(2026, 11, 15))
+                            .setParameter(2, saved.getId())
+                            .executeUpdate());
+                entityManager.clear();
+              }
+              return NEW_LISTING_HTML;
+            });
+    var automatic = syntheticSearchToRealDatabase(false);
+
+    var report =
+        automatic.reconcileSubscriptionMonths(
+            YearMonth.of(2026, 11), YearMonth.of(2026, 11), false);
+
+    assertThat(fetchCount.get()).isGreaterThanOrEqualTo(2);
+    assertThat(report.counts().get(KrxListingAutoSyncService.OutcomeType.STATE_CONFLICT))
+        .isEqualTo(1);
+    Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
+    assertThat(unchanged.getListingDate()).isEqualTo(LocalDate.of(2026, 11, 15));
+    assertThat(unchanged.getLastImportedListingDate()).isEqualTo(LocalDate.of(2026, 11, 15));
+    assertThat(unchanged.getListingDateEvidenceType()).isNull();
+    assertThat(unchanged.getKrxListingNoticeUrl()).isNull();
+  }
+
+  @Test
   void newListingOnlyFillsMissingAutoIpoAndIsIdempotent() {
     Ipo saved = createNewListingIpo(true);
     when(noticeClient.fetchNewListing(NEW_LISTING_URL)).thenReturn(NEW_LISTING_HTML);
