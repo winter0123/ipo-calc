@@ -35,6 +35,10 @@ public class KrxListingNoticeDiscoveryClient {
           "<table\\b[^>]*class\\s*=\\s*['\"]"
               + "[^'\"]*\\blist\\s+type-00\\b[^'\"]*['\"][^>]*>(.*?)</table>",
           Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  // KIND 상세검색 공개 화면에 표시되는 "전체 18,054건 : 1/1,204" 형식을 사용한다.
+  // 검색 서브 응답에 이 증거가 없으면 목록의 완결성을 추정하지 않고 실패 폐쇄한다.
+  private static final Pattern PAGE_INFO =
+      Pattern.compile("전체\\s*([\\d,]+)\\s*건\\s*:\\s*(\\d+)\\s*/\\s*([\\d,]+)");
   private static final Pattern BODY =
       Pattern.compile("<tbody\\b[^>]*>(.*?)</tbody>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern ROW =
@@ -137,40 +141,54 @@ public class KrxListingNoticeDiscoveryClient {
       throw new IllegalArgumentException("KIND 공고 게시일 범위는 최대 한 달입니다");
     }
     Map<String, Disclosure> unique = new LinkedHashMap<>();
-    Set<String> pageFingerprints = new LinkedHashSet<>();
-    boolean precedingShortPage = false;
+    Set<String> seenReceipts = new LinkedHashSet<>();
+    int expectedTotal = -1;
+    int expectedPages = -1;
     for (int page = 1; page <= MAX_PAGES; page++) {
-      // KIND reportNm=상장은 실제 추가상장 공고도 0건이 되는 사례가 있어 제목 필터를 쓰지 않는다.
       Map<String, String> query = detailedSearchForm(stockCode, from, to, page, "");
       String html = transport.request("/disclosure/details.do", query, true);
       List<Disclosure> current = parsePage(html);
-      // 한 페이지의 행 수가 부족하다는 사실은 종료 증명이 아니다.
-      // 반드시 다음 페이지의 실제 빈 결과를 조회하며, 앞 페이지의 후보는 그 전까지 적용하지 않는다.
-      if (precedingShortPage) {
-        if (!current.isEmpty()) {
-          throw new IllegalStateException("KIND 단축 페이지 이후에도 공고가 있어 페이지 완결성을 확인할 수 없습니다");
-        }
-        return new SearchResult(List.copyOf(unique.values()), page);
+      Matcher pageInfo = PAGE_INFO.matcher(plain(html));
+      if (!pageInfo.find() || pageInfo.find()) {
+        throw new IllegalStateException("KIND 공식 검색 전체 건수/현재 페이지/종료 표식을 확인할 수 없습니다");
       }
-      if (current.isEmpty()) {
-        return new SearchResult(List.copyOf(unique.values()), page);
+      int total;
+      int actualPage;
+      int totalPages;
+      try {
+        total = Integer.parseInt(pageInfo.group(1).replace(",", ""));
+        actualPage = Integer.parseInt(pageInfo.group(2));
+        totalPages = Integer.parseInt(pageInfo.group(3).replace(",", ""));
+      } catch (NumberFormatException ex) {
+        throw new IllegalStateException("KIND 페이지 건수 파싱에 실패했습니다", ex);
       }
-      String fingerprint = current.stream().map(Disclosure::receiptNo).toList().toString();
-      if (!current.isEmpty() && !pageFingerprints.add(fingerprint)) {
-        throw new IllegalStateException("KIND 페이지 번호가 적용되지 않아 중복 페이지가 반환됐습니다");
+      int calculatedPages = Math.max(1, (total + PAGE_SIZE - 1) / PAGE_SIZE);
+      if (actualPage != page || totalPages != calculatedPages || totalPages > MAX_PAGES
+          || expectedTotal >= 0 && (expectedTotal != total || expectedPages != totalPages)) {
+        throw new IllegalStateException("KIND 페이지 번호/총건수 정보가 일치하지 않습니다");
+      }
+      expectedTotal = total;
+      expectedPages = totalPages;
+      int expectedRows = Math.min(PAGE_SIZE, total - (page - 1) * PAGE_SIZE);
+      if (current.size() != expectedRows) {
+        throw new IllegalStateException("KIND 페이지 공고 행 수와 공식 전체 건수가 일치하지 않습니다");
       }
       for (Disclosure item : current) {
+        // 목록 필터보다 먼저 중복을 검증한다. 서로 다른 페이지의 부분 중복은 누락 위험이다.
+        if (!seenReceipts.add(item.receiptNo())) {
+          throw new IllegalStateException("KIND 여러 페이지에 같은 접수번호가 반복됐습니다");
+        }
         if (!item.publishedAt().isBefore(from)
             && !item.publishedAt().isAfter(to)
             && classifyListingTitle(item.title()) != ListingType.OTHER) {
-          unique.putIfAbsent(item.receiptNo(), item);
+          unique.put(item.receiptNo(), item);
         }
       }
-      if (current.size() < PAGE_SIZE) {
-        precedingShortPage = true;
+      if (page == totalPages) {
+        return new SearchResult(List.copyOf(unique.values()), page);
       }
     }
-    throw new IllegalStateException("KIND 공고 검색 종료를 최대 페이지 안에서 확인하지 못했습니다");
+    throw new IllegalStateException("KIND 검색 페이지 상한 내에서 전체 결과를 확인하지 못했습니다");
   }
 
   /**
