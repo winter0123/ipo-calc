@@ -499,7 +499,9 @@ class KrxListingAutoSyncServiceTest {
             (path, params, post) -> {
               if ("/disclosure/details.do".equals(path)) {
                 assertThat(params).containsEntry("repIsuSrtCd", "A121850");
-                return page;
+                return "1".equals(params.get("pageIndex"))
+                    ? page
+                    : "<html><table class='list type-00 mt10'><tbody></tbody></table></html>";
               }
               if ("search".equals(params.get("method"))) {
                 assertThat(params).containsEntry("acptno", RECEIPT);
