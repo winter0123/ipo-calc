@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 공고 게시일 기준 KIND 자동 발견과 DART 실제 발행증거의 단일 회차 대조.
@@ -338,11 +337,8 @@ public class KrxListingAutoSyncService {
             preview,
             ipo.getSubscriptionStartDate(),
             ipo.getSubscriptionEndDate());
-    } catch (ResponseStatusException ex) {
-      if (ex.getStatusCode().value() == 409) {
-        throw new AutomaticSaveConflict(ex);
-      }
-      throw ex;
+    } catch (KrxListingReconciliationService.SaveStateConflict ex) {
+      throw new AutomaticSaveConflict(ex);
     }
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
@@ -422,11 +418,8 @@ public class KrxListingAutoSyncService {
               preview.noticeHash(),
               initialState.sourceReceipt(),
               initialState);
-    } catch (ResponseStatusException ex) {
-      if (ex.getStatusCode().value() == 409) {
-        throw new AutomaticSaveConflict(ex);
-      }
-      throw ex;
+    } catch (KrxListingReconciliationService.SaveStateConflict ex) {
+      throw new AutomaticSaveConflict(ex);
     }
     return outcome(
         ipo,
@@ -461,7 +454,7 @@ public class KrxListingAutoSyncService {
 
   /** 검증된 후보의 쓰기 경계에서 확인한 충돌에만 사용한다. */
   private static final class AutomaticSaveConflict extends RuntimeException {
-    AutomaticSaveConflict(ResponseStatusException cause) {
+    AutomaticSaveConflict(KrxListingReconciliationService.SaveStateConflict cause) {
       super(cause);
     }
   }
