@@ -1,7 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.krx;
 
 import com.ipocalc.accountauthentication.domain.model.RecordStatus;
-import com.ipocalc.ipocatalog.controller.ipo.dto.KrxListingApplyRequest;
 import com.ipocalc.ipocatalog.domain.model.ipo.Ipo;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import java.time.Clock;
@@ -19,7 +18,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -120,19 +118,6 @@ public class KrxListingAutoSyncService {
                                         .equals(ipo.getLastImportedListingDate())))))
             .toList();
     return run(targets, null, today(), true);
-  }
-
-  /** 매일 낮에도 공식 신규 공고를 재확인한다. */
-  @Scheduled(cron = "0 15 12,18 * * *", zone = "Asia/Seoul")
-  public void scanDuringDay() {
-    if (!autoApplyEnabled) {
-      return;
-    }
-    try {
-      log.info("KIND 낮 자동 점검: {}", reconcileRecent().counts());
-    } catch (RuntimeException ex) {
-      log.warn("KIND 낮 자동 점검 실패: {}", ex.getClass().getSimpleName());
-    }
   }
 
   /** 자동 DB 반영 활성 여부. */
@@ -328,17 +313,7 @@ public class KrxListingAutoSyncService {
           preview.expectedKrxListingDate(),
           "공식 근거 대조 성공(읽기 전용)");
     }
-    var request =
-        new KrxListingApplyRequest(
-            selected.url(),
-            preview.expectedDartReceiptNo(),
-            preview.expectedDartListingDate(),
-            preview.expectedStockCode(),
-            preview.expectedIssuedShares(),
-            preview.expectedIssuePrice(),
-            preview.expectedKrxListingDate(),
-            preview.expectedNoticeHash());
-    var result = reconciliation.apply(ipo.getId(), request);
+    var result = reconciliation.applyAutomatically(ipo.getId(), selected.url(), preview);
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
           ipo,
