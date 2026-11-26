@@ -169,8 +169,8 @@ class KrxListingAutoSyncServiceTest {
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
     when(reconciliation.applyAutomatically(eq(7L), eq(URL), any(), any(), any()))
         .thenThrow(
-            new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "subscription month changed"));
+            new KrxListingReconciliationService.SaveStateConflict(
+                "subscription month changed"));
 
     var report = service.reconcileRecent();
 
