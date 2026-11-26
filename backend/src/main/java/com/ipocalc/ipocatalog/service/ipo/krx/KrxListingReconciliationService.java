@@ -102,6 +102,10 @@ public class KrxListingReconciliationService {
 
   /** 자동 대상 선정 시점의 상태. 관리자 HTTP 계약과 별개로 원래 기대값을 유지한다. */
   public record NewListingSnapshot(
+      String stockCode,
+      String sourceReceipt,
+      String syncSource,
+      String withdrawnReceipt,
       LocalDate subscriptionStart,
       LocalDate subscriptionEnd,
       LocalDate listingDate,
@@ -112,6 +116,10 @@ public class KrxListingReconciliationService {
       Long listingOpenPrice) {
     public static NewListingSnapshot from(Ipo ipo) {
       return new NewListingSnapshot(
+          ipo.getStockCode(),
+          ipo.getSourceReceiptNo(),
+          ipo.getSyncSource(),
+          ipo.getWithdrawnReceiptNo(),
           ipo.getSubscriptionStartDate(),
           ipo.getSubscriptionEndDate(),
           ipo.getListingDate(),
@@ -123,7 +131,11 @@ public class KrxListingReconciliationService {
     }
 
     boolean matches(Ipo ipo) {
-      return java.util.Objects.equals(subscriptionStart, ipo.getSubscriptionStartDate())
+      return java.util.Objects.equals(stockCode, ipo.getStockCode())
+          && java.util.Objects.equals(sourceReceipt, ipo.getSourceReceiptNo())
+          && java.util.Objects.equals(syncSource, ipo.getSyncSource())
+          && java.util.Objects.equals(withdrawnReceipt, ipo.getWithdrawnReceiptNo())
+          && java.util.Objects.equals(subscriptionStart, ipo.getSubscriptionStartDate())
           && java.util.Objects.equals(subscriptionEnd, ipo.getSubscriptionEndDate())
           && java.util.Objects.equals(listingDate, ipo.getListingDate())
           && java.util.Objects.equals(importedListingDate, ipo.getLastImportedListingDate())
