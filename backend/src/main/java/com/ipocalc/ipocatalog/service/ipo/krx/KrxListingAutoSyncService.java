@@ -18,6 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -176,6 +177,10 @@ public class KrxListingAutoSyncService {
         }
         try {
           outcomes.add(reconcileOne(ipo, from, to, dryRun, searches));
+        } catch (ResponseStatusException ex) {
+          log.warn("KIND 적용 직전 상태 충돌: code={}, status={}", ipo.getStockCode(), ex.getStatusCode());
+          outcomes.add(
+              outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "저장 직전 상태/근거 충돌"));
         } catch (RuntimeException ex) {
           log.warn(
               "KIND 종목별 점검 실패: code={}, kind={}",
