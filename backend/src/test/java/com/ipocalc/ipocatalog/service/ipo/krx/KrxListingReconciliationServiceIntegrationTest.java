@@ -815,7 +815,8 @@ class KrxListingReconciliationServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 service.applyAutomatically(
-                    saved.getId(), KOIZ.url(), preview, originallySelectedMonth))
+                    saved.getId(), KOIZ.url(), preview, originallySelectedMonth,
+                    saved.getSubscriptionEndDate()))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("subscription month changed");
     Ipo unchanged = ipoRepository.findById(saved.getId()).orElseThrow();
