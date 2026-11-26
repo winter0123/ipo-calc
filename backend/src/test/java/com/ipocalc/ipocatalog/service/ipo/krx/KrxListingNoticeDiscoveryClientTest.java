@@ -141,8 +141,7 @@ class KrxListingNoticeDiscoveryClientTest {
       receipts.add("20260205" + String.format("%06d", i));
     }
     String incomplete =
-        page(receipts).replace(
-            "</tbody>", "<tr><td>09:00</td><td>누락된 데이터 행</td></tr></tbody>");
+        page(receipts).replace("</tbody>", "<tr><td>09:00</td><td>누락된 데이터 행</td></tr></tbody>");
     var client = new KrxListingNoticeDiscoveryClient((path, params, post) -> incomplete);
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
         .isInstanceOf(IllegalStateException.class)
@@ -158,8 +157,7 @@ class KrxListingNoticeDiscoveryClientTest {
                     "1".equals(params.get("pageIndex"))
                         ? List.of(RECEIPT)
                         : List.of("20260205001020")));
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
-        .hasMessageContaining("페이지 완결성");
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("페이지 완결성");
   }
 
   @Test
@@ -172,8 +170,7 @@ class KrxListingNoticeDiscoveryClientTest {
               }
               return page(List.of(RECEIPT));
             });
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
-        .hasMessageContaining("HTTP 403");
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("HTTP 403");
   }
 
   @Test
