@@ -60,14 +60,22 @@ public class KrxListingNoticeDiscoveryClient {
   private static final DateTimeFormatter DATE = DateTimeFormatter.ISO_LOCAL_DATE;
 
   private final Transport transport;
+  private final boolean syntheticCorrectionCoverage;
 
   /** 운영 환경에서는 외부 리다이렉트를 허용하지 않는 고정 호스트 HTTP 클라이언트를 사용한다. */
   public KrxListingNoticeDiscoveryClient() {
-    this(new KindHttpTransport());
+    this(new KindHttpTransport(), false);
   }
 
   KrxListingNoticeDiscoveryClient(Transport transport) {
+    this(transport, false);
+  }
+
+  // 오직 fixture 통합 회귀에서만 정정 공고 범위가 테스트 데이터 전체로 제한됐음을 선언한다.
+  // 운영 생성자는 이 경로에 접근하지 않으며 미검증 원공고 관계로 자동 확정을 허용하지 않는다.
+  KrxListingNoticeDiscoveryClient(Transport transport, boolean syntheticCorrectionCoverage) {
     this.transport = transport;
+    this.syntheticCorrectionCoverage = syntheticCorrectionCoverage;
   }
 
   /** 단일 KIND 요청을 교체할 수 있게 하여 페이지네이션·실패를 네트워크 없이 검증한다. */
@@ -126,7 +134,12 @@ public class KrxListingNoticeDiscoveryClient {
   }
 
   /** 모든 검색 페이지의 파싱을 완료한 결과. */
-  public record SearchResult(List<Disclosure> disclosures, int pagesRead) {}
+  public record SearchResult(
+      List<Disclosure> disclosures, int pagesRead, boolean correctionCoverageVerified) {
+    public SearchResult(List<Disclosure> disclosures, int pagesRead) {
+      this(disclosures, pagesRead, false);
+    }
+  }
 
   /**
    * KIND 공시 상세검색을 게시일 기준으로 전 페이지 조회한다.
@@ -185,7 +198,8 @@ public class KrxListingNoticeDiscoveryClient {
         }
       }
       if (page == totalPages) {
-        return new SearchResult(List.copyOf(unique.values()), page);
+        return new SearchResult(
+            List.copyOf(unique.values()), page, syntheticCorrectionCoverage);
       }
     }
     throw new IllegalStateException("KIND 검색 페이지 상한 내에서 전체 결과를 확인하지 못했습니다");
