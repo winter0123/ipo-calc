@@ -48,12 +48,12 @@ class KrxListingNoticeDiscoveryClientTest {
                   .containsEntry("fromDate", "2026-02-05")
                   .containsEntry("toDate", "2026-02-05")
                   .containsEntry("pageIndex", "1");
-              return page(List.of(RECEIPT));
+              return page("1".equals(params.get("pageIndex")) ? List.of(RECEIPT) : List.of());
             });
 
     var result = client.find("121850", DAY, DAY);
 
-    assertThat(result.pagesRead()).isEqualTo(1);
+    assertThat(result.pagesRead()).isEqualTo(2);
     assertThat(result.disclosures()).hasSize(1);
     assertThat(result.disclosures().get(0).receiptNo()).isEqualTo(RECEIPT);
     assertThat(result.disclosures().get(0).publishedAt()).isEqualTo(DAY);
@@ -72,13 +72,16 @@ class KrxListingNoticeDiscoveryClientTest {
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
               calls.incrementAndGet();
-              return "1".equals(params.get("pageIndex")) ? page(first) : page(second);
+              return page(
+                  "1".equals(params.get("pageIndex"))
+                      ? first
+                      : "2".equals(params.get("pageIndex")) ? second : List.of());
             });
 
     var result = client.find("121850", DAY, DAY);
 
-    assertThat(result.pagesRead()).isEqualTo(2);
-    assertThat(calls).hasValue(2);
+    assertThat(result.pagesRead()).isEqualTo(3);
+    assertThat(calls).hasValue(3);
     assertThat(result.disclosures()).hasSize(101);
     assertThat(
             result.disclosures().stream()
@@ -130,6 +133,48 @@ class KrxListingNoticeDiscoveryClientTest {
 
     var empty = new KrxListingNoticeDiscoveryClient((path, params, post) -> page(List.of()));
     assertThat(empty.find("121850", DAY, DAY).disclosures()).isEmpty();
+  }
+
+  @Test
+  void malformedDataRowCannotTurnHundredRowsIntoFalseLastPage() {
+    List<String> receipts = new ArrayList<>();
+    for (int i = 1; i <= 99; i++) {
+      receipts.add("20260205" + String.format("%06d", i));
+    }
+    String incomplete =
+        page(receipts).replace(
+            "</tbody>", "<tr><td>09:00</td><td>누락된 데이터 행</td></tr></tbody>");
+    var client = new KrxListingNoticeDiscoveryClient((path, params, post) -> incomplete);
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("열이 누락");
+  }
+
+  @Test
+  void shortPageWithMoreResultsIsNotTrustedAsTerminal() {
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                page(
+                    "1".equals(params.get("pageIndex"))
+                        ? List.of(RECEIPT)
+                        : List.of("20260205001020")));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .hasMessageContaining("페이지 완결성");
+  }
+
+  @Test
+  void shortPageMustObserveNextPageAndRejectHttpFailure() {
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) -> {
+              if ("2".equals(params.get("pageIndex"))) {
+                throw new IllegalStateException("HTTP 403 on page 2");
+              }
+              return page(List.of(RECEIPT));
+            });
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .hasMessageContaining("HTTP 403");
   }
 
   @Test
