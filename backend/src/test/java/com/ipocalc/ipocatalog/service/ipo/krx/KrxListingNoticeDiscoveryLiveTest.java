@@ -94,7 +94,8 @@ class KrxListingNoticeDiscoveryLiveTest {
                       assertThat(evidence.stockCode()).isEqualTo(c.stockCode());
                       assertThat(evidence.listingDate()).isEqualTo(c.listingDate());
                       System.out.printf(
-                          "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s content=%s listing=%s pages=%d%n",
+                          "KIND_NEW_LISTING_DISCOVERY_PROOF stock=%s receipt=%s "
+                              + "content=%s listing=%s pages=%d%n",
                           c.stockCode(),
                           found.receiptNo(),
                           c.knownContentId(),
