@@ -52,7 +52,7 @@ class KrxListingNoticeDiscoveryClientTest {
 
     var result = client.find("121850", DAY, DAY);
 
-    assertThat(result.pagesRead()).isEqualTo(2);
+    assertThat(result.pagesRead()).isEqualTo(1);
     assertThat(result.disclosures()).hasSize(1);
     assertThat(result.disclosures().get(0).receiptNo()).isEqualTo(RECEIPT);
     assertThat(result.disclosures().get(0).publishedAt()).isEqualTo(DAY);
@@ -60,27 +60,26 @@ class KrxListingNoticeDiscoveryClientTest {
   }
 
   @Test
-  void readsSecondPageAndDeduplicatesByOfficialReceipt() {
+  void readsSecondPageOnlyWhenOfficialCountMatches() {
     AtomicInteger calls = new AtomicInteger();
     List<String> first = new ArrayList<>();
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    List<String> second = List.of(first.get(99), RECEIPT);
+    List<String> second = List.of(RECEIPT);
     var client =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
               calls.incrementAndGet();
-              return page(
-                  "1".equals(params.get("pageIndex"))
-                      ? first
-                      : "2".equals(params.get("pageIndex")) ? second : List.of());
+              return "1".equals(params.get("pageIndex"))
+                  ? page(first, 101, 1)
+                  : page(second, 101, 2);
             });
 
     var result = client.find("121850", DAY, DAY);
 
-    assertThat(result.pagesRead()).isEqualTo(3);
-    assertThat(calls).hasValue(3);
+    assertThat(result.pagesRead()).isEqualTo(2);
+    assertThat(calls).hasValue(2);
     assertThat(result.disclosures()).hasSize(101);
     assertThat(
             result.disclosures().stream()
@@ -102,7 +101,7 @@ class KrxListingNoticeDiscoveryClientTest {
               if ("2".equals(params.get("pageIndex"))) {
                 throw new IllegalStateException("KIND 조회 HTTP 429");
               }
-              return page(first);
+              return page(first, 101, 1);
             });
 
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
@@ -116,11 +115,14 @@ class KrxListingNoticeDiscoveryClientTest {
     for (int i = 1; i <= 100; i++) {
       first.add("20260205" + String.format("%06d", i));
     }
-    var client = new KrxListingNoticeDiscoveryClient((path, params, post) -> page(first));
+    var client =
+        new KrxListingNoticeDiscoveryClient(
+            (path, params, post) ->
+                page(first, 101, Integer.parseInt(params.get("pageIndex"))));
 
     assertThatThrownBy(() -> client.find("121850", DAY, DAY))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("중복 페이지");
+        .hasMessageContaining("행 수");
   }
 
   @Test
@@ -149,28 +151,59 @@ class KrxListingNoticeDiscoveryClientTest {
   }
 
   @Test
-  void shortPageWithMoreResultsIsNotTrustedAsTerminal() {
+  void shortPageContradictingOfficialCountIsRejected() {
     var client =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) ->
-                page(
-                    "1".equals(params.get("pageIndex"))
-                        ? List.of(RECEIPT)
-                        : List.of("20260205001020")));
-    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("페이지 완결성");
+                page(List.of(RECEIPT), 101, 1));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("행 수");
   }
 
   @Test
-  void shortPageMustObserveNextPageAndRejectHttpFailure() {
+  void officialSecondPageRequestFailureIsNotSwallowed() {
     var client =
         new KrxListingNoticeDiscoveryClient(
             (path, params, post) -> {
               if ("2".equals(params.get("pageIndex"))) {
                 throw new IllegalStateException("HTTP 403 on page 2");
               }
-              return page(List.of(RECEIPT));
+              List<String> first = new ArrayList<>();
+              for (int i = 1; i <= 100; i++) {
+                first.add("20260205" + String.format("%06d", i));
+              }
+              return page(first, 101, 1);
             });
     assertThatThrownBy(() -> client.find("121850", DAY, DAY)).hasMessageContaining("HTTP 403");
+  }
+
+  @Test
+  void emptyTbodyWithoutOfficialCountIsNotNoNotice() {
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) -> "<table class='list type-00'><tbody></tbody></table>");
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .hasMessageContaining("전체 건수");
+  }
+
+  @Test
+  void partialDuplicateOnDifferentPagesDoesNotHideMissingReceipt() {
+    List<String> first = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      first.add("20260205" + String.format("%06d", i));
+    }
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) ->
+            "1".equals(params.get("pageIndex"))
+                ? page(first, 101, 1) : page(List.of(first.get(99)), 101, 2));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .hasMessageContaining("같은 접수번호");
+  }
+
+  @Test
+  void officialPageIdentityMismatchFailsClosed() {
+    var client = new KrxListingNoticeDiscoveryClient(
+        (path, params, post) -> page(List.of(RECEIPT), 1, 2));
+    assertThatThrownBy(() -> client.find("121850", DAY, DAY))
+        .hasMessageContaining("페이지 번호");
   }
 
   @Test
@@ -339,6 +372,10 @@ class KrxListingNoticeDiscoveryClientTest {
   }
 
   private static String page(List<String> receipts) {
+    return page(receipts, receipts.size(), 1);
+  }
+
+  private static String page(List<String> receipts, int total, int index) {
     StringBuilder html = new StringBuilder("<html><table class='list type-00 mt10'><tbody>");
     for (String receipt : receipts) {
       html.append("<tr><td>1</td><td>09:00</td>")
@@ -347,6 +384,13 @@ class KrxListingNoticeDiscoveryClientTest {
           .append(receipt)
           .append("','')\">추가상장</a></td><td>거래소</td></tr>");
     }
-    return html.append("</tbody></table></html>").toString();
+    return html.append("</tbody></table><div>전체 ")
+        .append(total)
+        .append("건 : ")
+        .append(index)
+        .append("/")
+        .append(Math.max(1, (total + 99) / 100))
+        .append("</div></html>")
+        .toString();
   }
 }
