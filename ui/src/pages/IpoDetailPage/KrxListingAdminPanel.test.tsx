@@ -77,6 +77,14 @@ function setup(status: KrxAutoStatus = { autoApplyEnabled: false, lastReport: nu
 }
 
 describe('KrxListingAdminPanel', () => {
+  it('자동 적용이 꺼져 있으면 실행 중으로 표시하지 않고 수동 미리보기를 안내한다', async () => {
+    setup()
+    expect(
+      await screen.findByText(/자동 반영 꺼짐 \(수동 미리보기 가능\)/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('읽기 전용 검증 중')).not.toBeInTheDocument()
+  })
+
   afterEach(() => vi.clearAllMocks())
 
   it('공고 URL을 입력하지 않아도 자동 처리 건수와 종목별 실패 사유를 표시한다', async () => {
