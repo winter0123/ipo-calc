@@ -318,7 +318,8 @@ public class KrxListingAutoSyncService {
           preview.expectedKrxListingDate(),
           "공식 근거 대조 성공(읽기 전용)");
     }
-    var result = reconciliation.applyAutomatically(ipo.getId(), selected.url(), preview);
+    var result = reconciliation.applyAutomatically(
+            ipo.getId(), selected.url(), preview, ipo.getSubscriptionStartDate());
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
           ipo,
