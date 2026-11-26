@@ -146,7 +146,8 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
               {autoStatus.data.lastReport.counts.ALREADY_APPLIED ?? 0}건 / 공고 없음{' '}
               {autoStatus.data.lastReport.counts.NO_NOTICE ?? 0}건 / 회차 충돌{' '}
               {autoStatus.data.lastReport.counts.ROUND_CONFLICT ?? 0}건 / 저장 직전 충돌{' '}
-              {autoStatus.data.lastReport.counts.STATE_CONFLICT ?? 0}건 / 조회 실패{' '}
+              {autoStatus.data.lastReport.counts.STATE_CONFLICT ?? 0}건 / 근거 검토{' '}
+              {autoStatus.data.lastReport.counts.REVIEW_REQUIRED ?? 0}건 / 조회 실패{' '}
               {autoStatus.data.lastReport.counts.FETCH_FAILED ?? 0}건
             </p>
             {matchingAutoRow && (
