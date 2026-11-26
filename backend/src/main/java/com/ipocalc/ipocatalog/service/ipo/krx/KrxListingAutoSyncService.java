@@ -18,8 +18,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 공고 게시일 기준 KIND 자동 발견과 DART 실제 발행증거의 단일 회차 대조.
@@ -179,8 +179,7 @@ public class KrxListingAutoSyncService {
           outcomes.add(reconcileOne(ipo, from, to, dryRun, searches));
         } catch (ResponseStatusException ex) {
           log.warn("KIND 적용 직전 상태 충돌: code={}, status={}", ipo.getStockCode(), ex.getStatusCode());
-          outcomes.add(
-              outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "저장 직전 상태/근거 충돌"));
+          outcomes.add(outcome(ipo, OutcomeType.REVIEW_REQUIRED, null, null, "저장 직전 상태/근거 충돌"));
         } catch (RuntimeException ex) {
           log.warn(
               "KIND 종목별 점검 실패: code={}, kind={}",
@@ -318,8 +317,12 @@ public class KrxListingAutoSyncService {
           preview.expectedKrxListingDate(),
           "공식 근거 대조 성공(읽기 전용)");
     }
-    var result = reconciliation.applyAutomatically(
-            ipo.getId(), selected.url(), preview, ipo.getSubscriptionStartDate(),
+    var result =
+        reconciliation.applyAutomatically(
+            ipo.getId(),
+            selected.url(),
+            preview,
+            ipo.getSubscriptionStartDate(),
             ipo.getSubscriptionEndDate());
     if (Objects.equals(result.status(), "NO_OP")) {
       return outcome(
