@@ -185,11 +185,16 @@ class KrxListingAutoSyncServiceTest {
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(
             new KrxListingNoticeDiscoveryClient.SearchResult(List.of(disclosure(RECEIPT)), 1));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
 
     var report = service.reconcileRecent();
 
     assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
-    assertThat(report.rows().get(0).reason()).contains("정정·취소");
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    assertThat(report.rows().get(0).reason()).contains("정정·취소", "자동 저장 보류");
+    verify(reconciliation).preview(7L, URL);
     verify(reconciliation, never()).applyAutomatically(any(), any(), any(), any(), any());
   }
 
