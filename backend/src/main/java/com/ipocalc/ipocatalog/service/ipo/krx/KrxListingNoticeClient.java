@@ -21,6 +21,8 @@ public class KrxListingNoticeClient {
   public static final int READ_TIMEOUT_MS = 10_000;
   private static final Pattern PATH_PATTERN =
       Pattern.compile("^/external/\\d{4}/\\d{2}/\\d{2}/\\d{6}/\\d{14}/70791\\.htm$");
+  private static final Pattern NEW_PATH_PATTERN =
+      Pattern.compile("^/external/\\d{4}/\\d{2}/\\d{2}/\\d{6}/\\d{14}/70760\\.htm$");
 
   private final RestClient restClient;
 
@@ -50,8 +52,17 @@ public class KrxListingNoticeClient {
     return factory;
   }
 
-  /** URL이 공식 KIND 추가상장 공고 형식인지 검증한다. 유효하지 않으면 {@link IllegalArgumentException}. */
+  /** URL이 공식 KIND 추가상장 공고 형식인지 검증한다. */
   public static void validateNoticeUrl(String url) {
+    validateListingUrl(url, PATH_PATTERN);
+  }
+
+  /** URL이 공식 KIND 신규상장 공고(70760.htm) 형식인지 검증한다. */
+  public static void validateNewListingUrl(String url) {
+    validateListingUrl(url, NEW_PATH_PATTERN);
+  }
+
+  private static void validateListingUrl(String url, Pattern allowedPath) {
     if (url == null || url.isBlank()) {
       throw new IllegalArgumentException("KIND 공고 URL이 비어 있습니다");
     }
@@ -74,7 +85,7 @@ public class KrxListingNoticeClient {
       throw new IllegalArgumentException("KIND 공고 URL 포트가 허용되지 않습니다");
     }
     String path = uri.getPath();
-    if (path == null || !PATH_PATTERN.matcher(path).matches()) {
+    if (path == null || !allowedPath.matcher(path).matches()) {
       throw new IllegalArgumentException("KIND 공고 URL path가 허용되지 않습니다");
     }
     if (uri.getQuery() != null || uri.getFragment() != null) {
@@ -102,9 +113,20 @@ public class KrxListingNoticeClient {
     }
   }
 
-  /** 공식 공고 HTML을 읽는다. redirect/오류/크기 초과 시 예외를 던진다. */
+  /** 추가상장 원문을 읽는다. */
   public String fetch(String noticeUrl) {
     validateNoticeUrl(noticeUrl);
+    return fetchValidated(noticeUrl);
+  }
+
+  /** 신규상장 원문을 읽는다. */
+  public String fetchNewListing(String noticeUrl) {
+    validateNewListingUrl(noticeUrl);
+    return fetchValidated(noticeUrl);
+  }
+
+  /** 공식 공고 HTML을 읽는다. redirect/오류/크기 초과 시 예외를 던진다. */
+  private String fetchValidated(String noticeUrl) {
     String url = noticeUrl.trim();
     try {
       return restClient

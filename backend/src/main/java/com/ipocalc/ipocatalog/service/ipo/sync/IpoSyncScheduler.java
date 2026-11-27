@@ -1,5 +1,6 @@
 package com.ipocalc.ipocatalog.service.ipo.sync;
 
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,6 +35,7 @@ public class IpoSyncScheduler {
 
   private final IpoSyncService ipoSyncService;
   private final DartRightsIssueListingService rightsIssueListingService;
+  private final KrxListingAutoSyncService krxListingAutoSyncService;
   private final TaskScheduler taskScheduler;
   private final Clock clock;
 
@@ -79,6 +81,19 @@ public class IpoSyncScheduler {
           rights.saved(),
           rights.reviewRequired(),
           rights.failures());
+      // 원신고·발행실적이 저장된 후 거래소 공식 공고를 조회한다.
+      // KIND 장애는 앞서 성공한 DART 청약·환불/유상증자 결과를 롤백하지 않는다.
+      if (krxListingAutoSyncService.isAutoApplyEnabled()) {
+        if (rights.failures() > 0) {
+          log.warn("DART 유상증자 원문 실패로 KIND 정기 대조를 건너뜀: failures={}", rights.failures());
+        } else {
+          try {
+            log.info("KIND 자동 대조: {}", krxListingAutoSyncService.reconcileRecent().counts());
+          } catch (RuntimeException ex) {
+            log.warn("KIND 자동 대조 실패(기존 DART 저장은 유지): {}", ex.getClass().getSimpleName());
+          }
+        }
+      }
     }
 
     // 결과 요약 로그

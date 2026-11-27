@@ -44,6 +44,12 @@ jobs:
       - name: Check formatting
         working-directory: ui
         run: pnpm run format:check
+      - name: Diagnose UI formatting when checks fail
+        if: failure()
+        working-directory: ui
+        run: |
+          pnpm exec prettier --write src/pages/IpoDetailPage/KrxListingAdminPanel.tsx
+          git diff -- src/pages/IpoDetailPage/KrxListingAdminPanel.tsx
       - name: Build
         working-directory: ui
         run: pnpm run build
@@ -75,6 +81,11 @@ jobs:
       SPRING_DATASOURCE_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check PR diff whitespace
+        if: github.event_name == 'pull_request'
+        run: git diff --check "${{ github.event.pull_request.base.sha }}" HEAD
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -83,6 +94,32 @@ jobs:
       - name: Run backend quality checks
         working-directory: backend
         run: ./gradlew checkstyleMain checkstyleTest spotlessCheck build --no-daemon
+      - name: Diagnose Java formatting when backend checks fail
+        if: failure()
+        working-directory: backend
+        run: |
+          ./gradlew spotlessApply --no-daemon
+          git diff -- src/main/java src/test/java
       - name: Run backend sync tests
         working-directory: backend
         run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.sync.*" --tests "com.ipocalc.ipocatalog.service.ipo.IpoServiceTest" --tests "com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartOfferingTermsParserTest" --no-daemon
+
+  kind-discovery-live:
+    name: KIND live discovery proof (read-only, manual)
+    # KIND may respond HTTP 403 to GitHub-hosted runner IPs; do not make flaky
+    # external network access a PR quality gate. Manual runs still fail on 403.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Discover four real KIND notices without notice URLs
+        working-directory: backend
+        env:
+          KIND_DISCOVERY_LIVE: 'true'
+        run: ./gradlew test --tests "com.ipocalc.ipocatalog.service.ipo.krx.KrxListingNoticeDiscoveryLiveTest" --no-daemon --info

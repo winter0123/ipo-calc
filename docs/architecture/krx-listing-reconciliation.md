@@ -146,3 +146,57 @@ SF4는 `013` empty와 실패를 구분해 관측한다. 새 실패 enum을 만�
 - DART 원본 날짜/receipt를 UI에 노출할지
 - 공식 추가상장 OpenAPI 부재에 대한 장기 공급 계약
 - 배치 자동화는 별도 Epic으로 분리할지
+
+
+## 13. 2026-11-24 운영 경로의 자동화 구조 (PR #515)
+
+```text
+IpoSyncScheduler.runSync (DART sync 성공 → rights.backfill failures=0)
+IpoManualSyncService.runDefault / runRangeSync (동일한 DART 선행 조건)
+  → KrxListingAutoSyncService (auto-apply-enabled=false 기본; 범위별 IPO 후보)
+  → KrxListingNoticeDiscoveryClient.find (종목코드·게시일, bounded pagination)
+  → 제목 분류/수정·취소/후보 수 판정
+  → disclsviewer 접수번호→70760/70791 URL → KrxListingNoticeClient
+  → KrxListingReconciliationService.previewNewListing / preview
+  → 단일 후보·독립 회차 근거 확인 시 applyNewListing / apply
+  → IpoRepository 조건부 UPDATE (원천 접수번호·현재 날짜·증거·상태 재검증)
+  → OutcomeType별 건수 및 행별 사유 집계
+```
+
+네트워크/파싱은 트랜잭션 밖에 두고 저장 시점에 현재 행을 비교한다. 동일 공고 `NO_OP`, 날짜 변경 시 시초가 null, 다른 확정 근거와 수동 수정 보호. KIND HTTP 403, 페이지 누락, 형식 변경은 `FETCH_FAILED`로 실패 폐쇄. 근거 없는 추가상장·정정·취소는 `REVIEW_REQUIRED`이고 임의 확정하지 않는다.
+
+**남은 설계 한계:** 자동 추가상장 경로는 내부 `KrxListingApplyRequest` DTO를 이용해 기존 서비스 검증·조건부 저장을 재사용한다(관리자 HTTP 호출은 아님). 관리자 DTO와 도메인 적용 계약 분리는 별도 리팩터링 대상. 공개 KIND HTML 공급의 포괄성·장기 안정성 미보증, DART-KIND 실제 4건의 독립 회차 연결 증거 없음. 자동 적용 기본값 `false`이므로 안전성 및 운영 공급 경로 검증 없이 설정을 켜서는 안 된다.
+
+## 자동 탐색·적용 경로 (2026-11-24)
+
+```text
+IpoSyncScheduler.runSync (04:30) / IpoManualSyncService.syncNow·syncRange
+  → 기존 DART 목록·보완 완료 (중단 없음, rights.failures == 0)
+  → KrxListingAutoSyncService.reconcileRecent / reconcileSubscriptionMonths
+  → KrxListingNoticeDiscoveryClient.find(종목코드, 게시일 창)
+  → 공고 제목 유형 분리, 여러 페이지·정정/취소/후보 유일성 확인
+  → 접수번호로 공식 KIND 뷰어에서 70760(신규) 또는 70791(추가) 원문 해석
+  → KrxListingReconciliationService.previewNewListing / preview
+  → applyNewListing / apply (외부 HTTP는 DB 잠금 전에 수행)
+  → IpoRepository 조건부 UPDATE (CONFIRMED_KRX, 공식 URL, 원 DART 참조 보존)
+```
+
+- 실패를 `FETCH_FAILED` / `REVIEW_REQUIRED` / `ROUND_CONFLICT` / `NO_NOTICE`로 구분하고 종목별 실패를 격리한다. **추가상장에 하나라도 근거 불충분한 공고가 섞이면** 다른 적격 공고도 자동 확정하지 않는다.
+- 후보 결과는 게시일 28일 이하 창으로 탐색하며 최대 페이지 50, 페이지 실패 시 전체 종목을 조회 실패로 처리한다. 반복 공고는 접수번호로 중복 제거한다. 스키마 증설 없이 V49 기존 근거 필드를 사용한다.
+- 외부 KIND API/실서버 검색의 안정성은 배포·실서버 자동 저장 활성화와 별도로 검증해야 한다. 현재 기본 flag false이며 관리자 API/UI는 예외 처리 경로로 유지한다.
+
+## 2026-11-26 자동 적용 안전성 보완 (#515)
+
+- 별도 낮 `scanDuringDay` 예약은 제거했다. DART 선행 검증이 포함된 기존 정기·기본·월별 동기화만 자동 적용을 시작한다.
+- 자동 추가상장은 관리자 HTTP DTO 없이 서비스 내부 `applyAutomatically`를 사용하며 관리자 `apply`와 동일한 `applyVerified` 트랜잭션/조건부 갱신을 공유한다. 검색 당시 청약 시작일은 저장 시 행 잠금 아래 다시 비교한다.
+- 공시 목록에서 열이 부족한 데이터 행은 버리지 않고 전체 검색을 실패 처리한다. 짧은 페이지 직후 명시적인 빈 페이지를 확인하지 못하면 후보 전체를 보류한다. 사이트 전체 결과 수·정정 원공고 관계에 대한 공식 종료 계약이 확인되지 않은 범위는 운영 자동 적용 승인 대상이 아니다.
+- 관리자 자동 상태 UI는 플래그 false를 실행 중인 검증 상태와 혼동하지 않도록 명시적으로 비활성으로 표시한다.
+
+## 2026-11-26 후속 안전성 게이트 — 신규 70760 및 KIND 페이지 완결성
+
+- 자동 신규상장 경로는 최초 청약월 대상 선정 시점의 종목코드, 원신고·수집 출처, 청약 시작/종료일, 기존 상장일/보강 예정일, KIND/DART 근거, 시초가를 `NewListingSnapshot`으로 캡처한다. 원문 HTTP는 잠금 밖에서 조회하되, 저장 직전에 기존 비관적 행 잠금 아래 스냅샷과 현재 값을 비교한다. 관리자 `applyNewListing` 공개 계약은 보존한다.
+- `SaveStateConflict`는 HTTP 409와 호환되는 실제 IPO 행 상태 변경만 표시하며 자동 대조 결과에서는 `STATE_CONFLICT`로 집계한다. 일반 HTTP/본문·페이지 조회 오류는 `FETCH_FAILED`, 공고 근거 부족과 정정 관계 미확인은 `REVIEW_REQUIRED`다.
+- KIND 공개 상세검색 화면에 노출되는 `전체 N건 : 현재/전체 페이지` 형식을 읽고 실제 응답이 같은 표기를 제공하는 경우에만 건수·페이지·중복·행 수를 대조한다. 상세검색 서브 POST 응답에서 이 표식의 지속적 제공을 아직 입증하지 못했으므로 누락/모순 시 실패 폐쇄한다. 0건 역시 명시적인 공식 전체 건수 표기 없이는 정상 무공고로 인정하지 않는다.
+- 정정·취소 공고의 **원공고 연결 및 검색 창 외 정정 완결성은 아직 입증되지 않았다.** 따라서 운영 생성자의 검색 결과는 자동 저장 승인 대상이 아니다. 합성 fixture 전용 생성자만 테스트 데이터에 대한 닫힌 범위를 명시하여 CI PostgreSQL 저장 경로를 검증한다. 이것은 실서버 공급 계약을 증명하지 않는다.
+- 회귀: `selectedOctoberNewListingMovingToNovemberDuringSearchNeverWrites`, `changedSubscriptionEndStillBeforeListingDayCannotConfirmStaleNewListing`, `importedDateChangedAfterPreviewCannotBecomeNewExpectedCasValue`, `partialDuplicateOnDifferentPagesDoesNotHideMissingReceipt`, `emptyTbodyWithoutOfficialCountIsNotNoNotice`, `unknownCorrectionCoverageBlocksWritesEvenWhenAutomaticFlagIsEnabled`.
+- 기존 flag 기본 `false`, 관리자 읽기 전용 점검, 운영 데이터/설정 및 병합 금지 유지. 실제 공식 정정/취소 관계와 70760 3건, 70791 4건의 라이브 검증은 별도 출시 게이트다.

@@ -60,12 +60,12 @@ describe('getListingDisplay', () => {
     })
   })
 
-  it('거래소 확정은 상장 확정 라벨과 실선이다', () => {
+  it('미래 공식 공고는 거래소 상장 예정이고 지난 날짜는 확정 상태다', () => {
     expect(
       getListingDisplay(ipo('2026-10-15T09:00:00Z', 'CONFIRMED_KRX'), new Date('2026-10-10')),
     ).toEqual({
-      kind: 'confirmed',
-      label: '상장 확정',
+      kind: 'confirmed-upcoming',
+      label: '상장 예정 · 거래소 공고',
       dashed: false,
       confirmed: true,
     })

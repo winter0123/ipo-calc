@@ -51,6 +51,42 @@ export async function getIpoSyncStatus(signal?: AbortSignal): Promise<IpoSyncSta
   return apiGetParsed('/ipos/sync/status', ipoSyncStatusSchema, signal)
 }
 
+const krxAutoOutcomeSchema = z.object({
+  ipoId: z.number(),
+  stockCode: z.string(),
+  status: z.string(),
+  receiptNo: z.string().nullable(),
+  proposedListingDate: z.string().nullable(),
+  reason: z.string(),
+})
+
+const krxAutoReportSchema = z.object({
+  completedAt: z.string(),
+  dryRun: z.boolean(),
+  counts: z.record(z.string(), z.number()),
+  rows: z.array(krxAutoOutcomeSchema),
+})
+
+const krxAutoStatusSchema = z.object({
+  autoApplyEnabled: z.boolean(),
+  lastReport: krxAutoReportSchema.nullable(),
+})
+
+export type KrxAutoStatus = z.infer<typeof krxAutoStatusSchema>
+export type KrxAutoReport = z.infer<typeof krxAutoReportSchema>
+
+/** 관리자 과거 공고를 원문과 대조하지만 절대 자동 적용을 호출하지 않는다. */
+export async function previewPastKrxListings(): Promise<KrxAutoReport> {
+  return apiFetchParsed('/ipos/krx-listing/preview-past', krxAutoReportSchema, {
+    method: 'POST',
+  })
+}
+
+/** 관리자 자동 대조 집계와 개별 공고 확인/보류 원인을 읽는다. */
+export async function getKrxAutoStatus(signal?: AbortSignal): Promise<KrxAutoStatus> {
+  return apiGetParsed('/ipos/krx-listing/auto-status', krxAutoStatusSchema, signal)
+}
+
 export async function previewKrxListing(id: number, noticeUrl: string): Promise<KrxListingPreview> {
   return apiFetchParsed(`/ipos/${id}/krx-listing/preview`, krxListingPreviewSchema, {
     method: 'POST',

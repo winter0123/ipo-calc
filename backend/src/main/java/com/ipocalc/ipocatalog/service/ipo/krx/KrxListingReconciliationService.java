@@ -9,6 +9,7 @@ import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingPa
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.DartRightsIssueListingParser.Evidence;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +48,250 @@ public class KrxListingReconciliationService {
     this.clock = clock;
   }
 
+  /** 70760 신규상장 미리보기는 추가상장 발행회차와 별개로 검증한다. */
+  public NewListingPreview previewNewListing(Long ipoId, String noticeUrl) {
+    KrxListingNoticeClient.validateNewListingUrl(noticeUrl);
+    String html = noticeClient.fetchNewListing(noticeUrl);
+    var evidence = new KrxNewListingNoticeParser().parse(html);
+    String hash = sha256(html);
+    List<String> reasons = new ArrayList<>();
+    Ipo ipo = ipoRepository.findById(ipoId).orElse(null);
+    if (ipo == null || ipo.getDeletedAt() != null || ipo.getStatus() != RecordStatus.ACTIVE) {
+      reasons.add("활성 IPO를 찾을 수 없습니다");
+      return new NewListingPreview(evidence.listingDate(), hash, false, false, reasons);
+    }
+    final boolean idempotent =
+        "CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())
+            && noticeUrl.equals(ipo.getKrxListingNoticeUrl())
+            && evidence.listingDate().equals(ipo.getListingDate());
+    if (!evidence.stockCode().equals(ipo.getStockCode())) {
+      reasons.add("공식 신규상장 종목코드가 다릅니다");
+    }
+    if (ipo.getSyncSource() == null
+        || ipo.getSourceReceiptNo() == null
+        || !ipo.getSourceReceiptNo().matches("\\d{14}")
+        || ipo.getWithdrawnReceiptNo() != null) {
+      reasons.add("원신고가 확인된 자동 수집 IPO가 아닙니다");
+    }
+    if (ipo.getSubscriptionEndDate() == null
+        || !evidence.listingDate().isAfter(ipo.getSubscriptionEndDate())) {
+      reasons.add("상장일이 청약 종료일 이후가 아닙니다");
+    }
+    boolean importedDate =
+        ipo.getListingDate() != null
+            && ipo.getLastImportedListingDate() != null
+            && ipo.getListingDate().equals(ipo.getLastImportedListingDate());
+    if (!idempotent
+        && (ipo.getListingDateEvidenceType() != null
+            || ipo.getListingDateEvidenceReceipt() != null
+            || ipo.getListingOpenPrice() != null
+            || ipo.getKrxListingNoticeUrl() != null
+            || (ipo.getListingDate() != null && !importedDate)
+            || (ipo.getListingDate() == null && ipo.getLastImportedListingDate() != null))) {
+      reasons.add("기존 수동 상장일 또는 출처를 자동 덮어쓸 수 없습니다");
+    }
+    Optional<Ipo> same =
+        ipoRepository.findByStockCodeAndStatusAndDeletedAtIsNull(
+            evidence.stockCode(), RecordStatus.ACTIVE);
+    if (same.isPresent() && !same.get().getId().equals(ipoId)) {
+      reasons.add("같은 종목코드의 다른 활성 IPO가 있습니다");
+    }
+    return new NewListingPreview(
+        evidence.listingDate(), hash, reasons.isEmpty(), idempotent, reasons);
+  }
+
+  /** HTTP 409 계약을 보존하면서 외부 원문 실패와 DB 상태 변경을 구분한다. */
+  public static final class SaveStateConflict
+      extends org.springframework.web.server.ResponseStatusException {
+    /** 잠금·조건부 쓰기 단계에서 발견한 상태 충돌을 409로 알린다. */
+    public SaveStateConflict(String reason) {
+      super(org.springframework.http.HttpStatus.CONFLICT, reason);
+    }
+  }
+
+  /** 자동 대상 선정 시점의 상태. 관리자 HTTP 계약과 별개로 원래 기대값을 유지한다. */
+  public record NewListingSnapshot(
+      String stockCode,
+      String sourceReceipt,
+      String syncSource,
+      String withdrawnReceipt,
+      LocalDate subscriptionStart,
+      LocalDate subscriptionEnd,
+      LocalDate listingDate,
+      LocalDate importedListingDate,
+      String evidenceType,
+      String evidenceReceipt,
+      String noticeUrl,
+      Long listingOpenPrice) {
+    /** 조회 대상 선정 시점의 실제 행 값을 복사한다. */
+    public static NewListingSnapshot from(Ipo ipo) {
+      return new NewListingSnapshot(
+          ipo.getStockCode(),
+          ipo.getSourceReceiptNo(),
+          ipo.getSyncSource(),
+          ipo.getWithdrawnReceiptNo(),
+          ipo.getSubscriptionStartDate(),
+          ipo.getSubscriptionEndDate(),
+          ipo.getListingDate(),
+          ipo.getLastImportedListingDate(),
+          ipo.getListingDateEvidenceType(),
+          ipo.getListingDateEvidenceReceipt(),
+          ipo.getKrxListingNoticeUrl(),
+          ipo.getListingOpenPrice());
+    }
+
+    /** 저장 전 현재 행이 조회 시점의 기대값과 정확히 일치하는지 검사한다. */
+    boolean matches(Ipo ipo) {
+      return java.util.Objects.equals(stockCode, ipo.getStockCode())
+          && java.util.Objects.equals(sourceReceipt, ipo.getSourceReceiptNo())
+          && java.util.Objects.equals(syncSource, ipo.getSyncSource())
+          && java.util.Objects.equals(withdrawnReceipt, ipo.getWithdrawnReceiptNo())
+          && java.util.Objects.equals(subscriptionStart, ipo.getSubscriptionStartDate())
+          && java.util.Objects.equals(subscriptionEnd, ipo.getSubscriptionEndDate())
+          && java.util.Objects.equals(listingDate, ipo.getListingDate())
+          && java.util.Objects.equals(importedListingDate, ipo.getLastImportedListingDate())
+          && java.util.Objects.equals(evidenceType, ipo.getListingDateEvidenceType())
+          && java.util.Objects.equals(evidenceReceipt, ipo.getListingDateEvidenceReceipt())
+          && java.util.Objects.equals(noticeUrl, ipo.getKrxListingNoticeUrl())
+          && java.util.Objects.equals(listingOpenPrice, ipo.getListingOpenPrice());
+    }
+  }
+
+  /** 자동 탐색 시점에 캡처한 값으로만 저장을 허용한다. */
+  public KrxListingApplyResult applyNewListingAutomatically(
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt,
+      NewListingSnapshot expectedState) {
+    if (expectedState == null) {
+      throw new IllegalArgumentException("automatic listing snapshot required");
+    }
+    Ipo current = ipoRepository.findById(ipoId).orElse(null);
+    if (current == null || !expectedState.matches(current)) {
+      throw new SaveStateConflict("new listing snapshot changed before apply");
+    }
+    return applyNewListingVerified(
+        ipoId, url, expectedDate, expectedHash, expectedSourceReceipt, expectedState);
+  }
+
+  /** 검증된 신규상장 미리보기만 재조회·조건부 UPDATE로 저장한다. */
+  public KrxListingApplyResult applyNewListing(
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt) {
+    return applyNewListingVerified(
+        ipoId, url, expectedDate, expectedHash, expectedSourceReceipt, null);
+  }
+
+  private KrxListingApplyResult applyNewListingVerified(
+      Long ipoId,
+      String url,
+      LocalDate expectedDate,
+      String expectedHash,
+      String expectedSourceReceipt,
+      NewListingSnapshot expectedState) {
+    if (expectedDate == null || expectedHash == null || expectedHash.isBlank()) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.BAD_REQUEST, "new listing evidence required");
+    }
+    NewListingPreview preview = previewNewListing(ipoId, url);
+    if (!expectedDate.equals(preview.listingDate()) || !expectedHash.equals(preview.noticeHash())) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "stale new listing notice");
+    }
+    if (!preview.applyAllowed()) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "new listing conditions changed");
+    }
+    String currentHtml = noticeClient.fetchNewListing(url);
+    if (!expectedHash.equals(sha256(currentHtml))) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "stale new listing notice");
+    }
+    String stockCode = new KrxNewListingNoticeParser().parse(currentHtml).stockCode();
+    String status =
+        transactionTemplate.execute(
+            tx -> {
+              Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
+              if (expectedState != null && (current == null || !expectedState.matches(current))) {
+                throw new SaveStateConflict("new listing snapshot changed");
+              }
+              if (current == null
+                  || expectedSourceReceipt == null
+                  || !expectedSourceReceipt.equals(current.getSourceReceiptNo())) {
+                throw new SaveStateConflict("ipo source changed");
+              }
+              // 미리보기 이후 청약 종료일 변경을 반드시 잠금 안에서 재검증한다.
+              if (current.getSubscriptionEndDate() == null
+                  || !current.getSubscriptionEndDate().isBefore(expectedDate)
+                  || current.getStatus() != RecordStatus.ACTIVE
+                  || current.getWithdrawnReceiptNo() != null
+                  || current.getSyncSource() == null
+                  || !stockCode.equals(current.getStockCode())) {
+                throw new SaveStateConflict("ipo conditions changed");
+              }
+              String receipt = current.getSourceReceiptNo();
+              if (ipoRepository.countSameConfirmedNewKrxCandidate(
+                      ipoId, stockCode, receipt, expectedDate, url)
+                  == 1) {
+                return "NO_OP";
+              }
+              LocalDate expectedStart =
+                  expectedState == null
+                      ? current.getSubscriptionStartDate()
+                      : expectedState.subscriptionStart();
+              LocalDate expectedEnd =
+                  expectedState == null
+                      ? current.getSubscriptionEndDate()
+                      : expectedState.subscriptionEnd();
+              int updated;
+              if (current.getListingDate() == null) {
+                updated =
+                    ipoRepository.confirmNewKrxListingIfEmpty(
+                        ipoId,
+                        stockCode,
+                        receipt,
+                        expectedStart,
+                        expectedEnd,
+                        expectedDate,
+                        url,
+                        LocalDateTime.now(clock));
+              } else if (current.getLastImportedListingDate() != null
+                  && current.getListingDate().equals(current.getLastImportedListingDate())) {
+                updated =
+                    ipoRepository.confirmNewKrxListingIfImported(
+                        ipoId,
+                        stockCode,
+                        receipt,
+                        expectedStart,
+                        expectedEnd,
+                        current.getListingDate(),
+                        expectedDate,
+                        url,
+                        LocalDateTime.now(clock));
+              } else {
+                updated = 0;
+              }
+              if (updated == 1) {
+                return "APPLIED";
+              }
+              throw new SaveStateConflict("concurrent new listing change");
+            });
+    return new KrxListingApplyResult(ipoId, true, status, preview.reasons());
+  }
+
+  /** 공식 신규상장 원문과 읽기 시점의 해시를 보존한다. */
+  public record NewListingPreview(
+      LocalDate listingDate,
+      String noticeHash,
+      boolean applyAllowed,
+      boolean idempotent,
+      List<String> reasons) {}
+
   /** 미리보기를 수행한다. */
   public KrxListingReconciliationPreview preview(Long ipoId, String noticeUrl) {
     List<String> reasons = new ArrayList<>();
@@ -66,7 +311,7 @@ public class KrxListingReconciliationService {
       noticeHash = sha256(html);
     } catch (RuntimeException e) {
       reasons.add("KIND 공고를 읽을 수 없습니다: " + e.getMessage());
-      return emptyPreview(ipo.getId(), reasons);
+      throw new IllegalStateException("KIND 공고 원문 조회·파싱 실패", e);
     }
 
     boolean stockCodeMatches =
@@ -121,21 +366,29 @@ public class KrxListingReconciliationService {
       reasons.add("KIND 공고에서 상장일을 확인할 수 없습니다");
       datesValid = false;
     }
-    if (dart != null
-        && dart.listingDate() != null
-        && notice.listingDate() != null
-        && !notice.listingDate().equals(dart.listingDate())) {
-      reasons.add("KRX 상장일이 DART 예정일과 다릅니다");
-      datesValid = false;
-    }
+    // DART 상장예정일은 KIND 공식 확정일과 달라도 회차 동일성의 근거가 아니다.
+    // 실제 발행수량, 발행가, 보통주 종류, 납입일·발행일 관계로만 매칭한다.
     if (dart != null && dart.paymentDate() != null && notice.issueDate() != null) {
-      if (!notice.issueDate().isAfter(dart.paymentDate())) {
-        reasons.add("KRX 발행일이 DART 납입일 이후가 아닙니다");
+      long daysAfterPayment =
+          java.time.temporal.ChronoUnit.DAYS.between(dart.paymentDate(), notice.issueDate());
+      // 날짜 간격은 다른 회차를 배제하는 보조 조건이지 동일 회차의 증명이 아니다.
+      if (daysAfterPayment < 1 || daysAfterPayment > 7) {
+        reasons.add("KRX 발행일이 DART 납입일과 같은 발행 회차로 확인되지 않습니다");
         datesValid = false;
       }
     } else if (notice.issueDate() == null) {
       reasons.add("KIND 공고에서 발행일을 확인할 수 없습니다");
       datesValid = false;
+    }
+    // 단순 수량·가격·납입일 근접성은 같은 발행회차의 증명이 아니다.
+    // DART 발행실적 원문과 KIND 발행내역이 독립적으로 명시한 회차+발행일이 정확히 같아야 한다.
+    // 실제 공시에 이 연결 근거가 없으면 보수적으로 검토 대상으로 유지한다.
+    if (notice.roundLabel() == null || notice.roundLabel().isBlank()) {
+      reasons.add("KIND 발행회차 식별자가 없습니다");
+    } else if (dart == null
+        || dart.roundLabel() == null
+        || !normalizeRound(notice.roundLabel()).equals(normalizeRound(dart.roundLabel()))) {
+      reasons.add("DART 원신고·발행실적과 KIND 발행회차의 독립적인 연결 근거가 없습니다: " + notice.roundLabel());
     }
     if (ipo.getSubscriptionEndDate() != null
         && notice.listingDate() != null
@@ -165,21 +418,14 @@ public class KrxListingReconciliationService {
             && ipo.getListingDate().equals(notice.listingDate());
 
     boolean applyAllowed =
-        idempotent
-            || (reasons.isEmpty()
-                && expired
-                && stockCodeMatches
-                && stockTypeCommon
-                && reasonAllowed
-                && singleMatch
-                && issuedSharesMatch
-                && issuePriceMatch
-                && datesValid);
-
-    if (!expired && !idempotent) {
-      reasons.add("기간이 지나지 않은 건은 적용할 수 없습니다");
-      applyAllowed = false;
-    }
+        reasons.isEmpty()
+            && stockCodeMatches
+            && stockTypeCommon
+            && reasonAllowed
+            && singleMatch
+            && issuedSharesMatch
+            && issuePriceMatch
+            && datesValid;
 
     String reviewStatus = applyAllowed ? (idempotent ? "IDEMPOTENT" : "APPLYABLE") : "REVIEW_ONLY";
 
@@ -270,16 +516,73 @@ public class KrxListingReconciliationService {
           "apply conditions are not satisfied: " + preview.reasons());
     }
 
+    return applyVerified(ipoId, noticeUrl, preview, null, null);
+  }
+
+  /**
+   * 자동 탐색은 관리자 HTTP 요청 DTO를 사용하지 않는다. 탐색 단계의 미리보기와 원문 재조회 결과가 동일한지 확인한 후 관리자와 동일한 조건부 저장 계약으로 진입한다.
+   */
+  public KrxListingApplyResult applyAutomatically(
+      Long ipoId,
+      String noticeUrl,
+      KrxListingReconciliationPreview expected,
+      java.time.LocalDate expectedSubscriptionStart,
+      java.time.LocalDate expectedSubscriptionEnd) {
+    if (expected == null || !expected.applyAllowed()) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "automatic candidate is not eligible");
+    }
+    Ipo before = ipoRepository.findById(ipoId).orElse(null);
+    if (before == null
+        || !java.util.Objects.equals(before.getStockCode(), expected.expectedStockCode())
+        || !java.util.Objects.equals(
+            before.getListingDateEvidenceReceipt(), expected.expectedDartReceiptNo())
+        || !java.util.Objects.equals(before.getListingDate(), expected.expectedDartListingDate())
+        || !java.util.Objects.equals(before.getSubscriptionStartDate(), expectedSubscriptionStart)
+        || !java.util.Objects.equals(before.getSubscriptionEndDate(), expectedSubscriptionEnd)) {
+      throw new SaveStateConflict("additional listing snapshot changed before apply");
+    }
+    KrxListingReconciliationPreview actual = preview(ipoId, noticeUrl);
+    if (!actual.applyAllowed()
+        || !java.util.Objects.equals(
+            expected.expectedDartReceiptNo(), actual.expectedDartReceiptNo())
+        || !java.util.Objects.equals(
+            expected.expectedDartListingDate(), actual.expectedDartListingDate())
+        || !java.util.Objects.equals(expected.expectedStockCode(), actual.expectedStockCode())
+        || !java.util.Objects.equals(expected.expectedIssuedShares(), actual.expectedIssuedShares())
+        || !java.util.Objects.equals(expected.expectedIssuePrice(), actual.expectedIssuePrice())
+        || !java.util.Objects.equals(
+            expected.expectedKrxListingDate(), actual.expectedKrxListingDate())
+        || !java.util.Objects.equals(expected.expectedNoticeHash(), actual.expectedNoticeHash())) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.CONFLICT, "automatic candidate changed");
+    }
+    return applyVerified(
+        ipoId, noticeUrl, actual, expectedSubscriptionStart, expectedSubscriptionEnd);
+  }
+
+  private KrxListingApplyResult applyVerified(
+      Long ipoId,
+      String noticeUrl,
+      KrxListingReconciliationPreview preview,
+      java.time.LocalDate expectedSubscriptionStart,
+      java.time.LocalDate expectedSubscriptionEnd) {
     final String finalNoticeUrl = noticeUrl;
     final boolean[] idempotent = new boolean[] {preview.idempotent()};
     transactionTemplate.execute(
         status -> {
-          Ipo current = ipoRepository.findById(ipoId).orElse(null);
+          Ipo current = ipoRepository.findByIdAndDeletedAtIsNullForUpdate(ipoId).orElse(null);
+          if (expectedSubscriptionStart != null
+              && (current == null
+                  || !expectedSubscriptionStart.equals(current.getSubscriptionStartDate())
+                  || !java.util.Objects.equals(
+                      expectedSubscriptionEnd, current.getSubscriptionEndDate()))) {
+            throw new SaveStateConflict("subscription month changed");
+          }
           if (current == null
               || current.getDeletedAt() != null
               || current.getStatus() != RecordStatus.ACTIVE) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo state changed");
+            throw new SaveStateConflict("ipo state changed");
           }
           if ("CONFIRMED_KRX".equals(current.getListingDateEvidenceType())
               && finalNoticeUrl.equals(current.getKrxListingNoticeUrl())
@@ -288,22 +591,18 @@ public class KrxListingReconciliationService {
             return null;
           }
           if (!"ESTIMATED_DART".equals(current.getListingDateEvidenceType())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo evidence type changed");
+            throw new SaveStateConflict("ipo evidence type changed");
           }
           if (!java.util.Objects.equals(current.getStockCode(), preview.expectedStockCode())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo stock code changed");
+            throw new SaveStateConflict("ipo stock code changed");
           }
           if (!java.util.Objects.equals(
               current.getListingDate(), preview.expectedDartListingDate())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo dart listing date changed");
+            throw new SaveStateConflict("ipo dart listing date changed");
           }
           if (!java.util.Objects.equals(
               current.getListingDateEvidenceReceipt(), preview.expectedDartReceiptNo())) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "ipo dart receipt changed");
+            throw new SaveStateConflict("ipo dart receipt changed");
           }
 
           int updated =
@@ -329,8 +628,7 @@ public class KrxListingReconciliationService {
             idempotent[0] = true;
             return null;
           }
-          throw new org.springframework.web.server.ResponseStatusException(
-              org.springframework.http.HttpStatus.CONFLICT, "concurrent ipo change");
+          throw new SaveStateConflict("concurrent ipo change");
         });
 
     return new KrxListingApplyResult(
@@ -338,7 +636,8 @@ public class KrxListingReconciliationService {
   }
 
   private DartEvidence loadDart(Ipo ipo, List<String> reasons) {
-    if (!"ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())) {
+    if (!"ESTIMATED_DART".equals(ipo.getListingDateEvidenceType())
+        && !"CONFIRMED_KRX".equals(ipo.getListingDateEvidenceType())) {
       return null;
     }
     String receipt = ipo.getListingDateEvidenceReceipt();
@@ -346,12 +645,7 @@ public class KrxListingReconciliationService {
       reasons.add("DART receipt가 없습니다");
       return null;
     }
-    java.util.Optional<String> xmlOpt = dartIpoFilingClient.downloadDocument(receipt);
-    if (xmlOpt.isEmpty()) {
-      reasons.add("DART 실적보고서를 다운로드할 수 없습니다");
-      return null;
-    }
-    String xml = xmlOpt.get();
+    String xml = dartIpoFilingClient.downloadDocumentStrict(receipt);
     DartRightsIssueListingParser parser = new DartRightsIssueListingParser();
     java.util.List<Evidence> evidences = parser.parse(xml);
     // 서로 다른 유효 후보가 둘 이상이면 임의로 하나를 고를 수 없다. review-only로 남긴다.
@@ -380,7 +674,40 @@ public class KrxListingReconciliationService {
         ipo.getLastImportedListingDate() != null
             ? ipo.getLastImportedListingDate()
             : ipo.getListingDate();
-    return new DartEvidence(receipt, payment, shares, price, listing, original);
+    return new DartEvidence(
+        receipt, payment, shares, price, listing, original, extractDartRound(xml));
+  }
+
+  // 발행실적 문서 전체에 등장하는 과거 회차/인용 문구는 연결 근거가 아니다.
+  // 현재 발행임을 밝히는 전용 섹션의 구조화된 발행회수 행에 한해서만 인정한다.
+  // 실제 DART 자료에 이 구역이 없으면 회차 연결은 검토 대상으로 남긴다.
+  private String extractDartRound(String xml) {
+    java.util.regex.Matcher sections =
+        java.util.regex.Pattern.compile(
+                "<SECTION-2\\b[^>]*>\\s*<TITLE[^>]*>금번\\s*유상증자\\s*발행내역</TITLE>(.*?)</SECTION-2>",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+            .matcher(xml);
+    java.util.regex.Pattern roundRow =
+        java.util.regex.Pattern.compile(
+            "<TR\\b[^>]*>\\s*<TH\\b[^>]*>발행회수\\s*\\(발행일\\)</TH>\\s*"
+                + "<TD\\b[^>]*>(제\\s*\\d+\\s*회\\s*\\('\\d{2}\\.\\d{2}\\.\\d{2}\\))</TD>\\s*</TR>",
+            java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL);
+    String round = null;
+    while (sections.find()) {
+      java.util.regex.Matcher rows = roundRow.matcher(sections.group(1));
+      while (rows.find()) {
+        String candidate = normalizeRound(rows.group(1));
+        if (round != null && !round.equals(candidate)) {
+          return null;
+        }
+        round = candidate;
+      }
+    }
+    return round;
+  }
+
+  private String normalizeRound(String round) {
+    return round == null ? "" : round.replaceAll("\\s+", "").trim();
   }
 
   private Long parseDartIssuePrice(String xml) {
@@ -494,7 +821,8 @@ public class KrxListingReconciliationService {
       Long issuedShares,
       Long issuePrice,
       LocalDate listingDate,
-      LocalDate originalListingDate) {}
+      LocalDate originalListingDate,
+      String roundLabel) {}
 
   /** 적용 결과. */
   public record KrxListingApplyResult(

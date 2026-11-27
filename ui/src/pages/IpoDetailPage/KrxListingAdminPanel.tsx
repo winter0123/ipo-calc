@@ -1,10 +1,16 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, toErrorMessage } from '@/shared/api/apiError.ts'
 import { formatShares, formatWon } from '@/shared/lib/format.ts'
-import { applyKrxListing, ipoKeys, previewKrxListing } from '@/entities/ipo/index.ts'
-import type { KrxListingPreview } from '@/entities/ipo/index.ts'
+import {
+  applyKrxListing,
+  getKrxAutoStatus,
+  ipoKeys,
+  previewKrxListing,
+  previewPastKrxListings,
+} from '@/entities/ipo/index.ts'
+import type { KrxAutoReport, KrxListingPreview } from '@/entities/ipo/index.ts'
 import styles from './IpoDetailPage.styles.ts'
 
 function required(value: string | number | null) {
@@ -17,6 +23,22 @@ function show(value: string | number | null | undefined) {
 
 export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
   const queryClient = useQueryClient()
+  const autoStatus = useQuery({
+    queryKey: ['ipo', 'krx-auto-status'],
+    queryFn: ({ signal }) => getKrxAutoStatus(signal),
+    staleTime: 10_000,
+    refetchInterval: 60_000,
+  })
+  const [pastReport, setPastReport] = useState<KrxAutoReport | null>(null)
+  const [pastError, setPastError] = useState<string | null>(null)
+  const pastMutation = useMutation({
+    mutationFn: previewPastKrxListings,
+    onSuccess: (report) => setPastReport(report),
+    onError: (error) =>
+      setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
+  })
+  const shownReport = pastReport ?? autoStatus.data?.lastReport
+  const matchingAutoRow = shownReport?.rows.find((row) => row.ipoId === ipoId)
   const [noticeUrl, setNoticeUrl] = useState('')
   const [preview, setPreview] = useState<{ key: string; data: KrxListingPreview } | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -114,6 +136,62 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
       <h2 className={styles.krxAdminTitle} id="krx-listing-title">
         관리자 · KIND 상장일 검토
       </h2>
+      <div className={styles.krxAdminResult} aria-label="KIND 자동 처리 결과">
+        <p>
+          자동 수집 상태:{' '}
+          {autoStatus.isPending
+            ? '조회 중'
+            : autoStatus.isError
+              ? '결과 조회 실패'
+              : autoStatus.data.autoApplyEnabled
+                ? '자동 저장 플래그 켜짐 (KIND 정정·취소 검증 전 적용 보류)'
+                : '자동 반영 꺼짐 (수동 미리보기 가능)'}
+        </p>
+        {shownReport && (
+          <>
+            <p>
+              {pastReport ? '읽기 전용 점검' : '마지막 점검'}: {show(shownReport.completedAt)}
+            </p>
+            <p>
+              신규 확정 {shownReport.counts.NEW_CONFIRMED ?? 0}건 / 날짜 정정{' '}
+              {shownReport.counts.DATE_CORRECTED ?? 0}건 / 이미 반영{' '}
+              {shownReport.counts.ALREADY_APPLIED ?? 0}건 / 공고 없음{' '}
+              {shownReport.counts.NO_NOTICE ?? 0}건 / 회차 충돌{' '}
+              {shownReport.counts.ROUND_CONFLICT ?? 0}건 / 저장 직전 충돌{' '}
+              {shownReport.counts.STATE_CONFLICT ?? 0}건 / 근거 검토{' '}
+              {shownReport.counts.REVIEW_REQUIRED ?? 0}건 / 조회 실패{' '}
+              {shownReport.counts.FETCH_FAILED ?? 0}건
+            </p>
+            {matchingAutoRow && (
+              <p>
+                이 종목: {matchingAutoRow.status}
+                {matchingAutoRow.receiptNo ? ' · 공고 접수번호 ' + matchingAutoRow.receiptNo : ''}
+                {matchingAutoRow.proposedListingDate
+                  ? ' · 상장일 ' + matchingAutoRow.proposedListingDate
+                  : ''}
+                {' · ' + matchingAutoRow.reason}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={pastMutation.isPending}
+        onClick={() => {
+          setPastReport(null)
+          setPastError(null)
+          pastMutation.mutate()
+        }}
+      >
+        {pastMutation.isPending ? '읽기 전용 공고 점검 중…' : '과거 공고 읽기 전용 점검'}
+      </button>
+      {pastError && <p role="alert">{pastError}</p>}
+      {pastReport && (
+        <p>
+          이 점검은 원문·DART 근거만 확인하며, 정정·취소 범위 미확인 후보는 자동 저장하지 않습니다.
+        </p>
+      )}
       <form className={styles.krxAdminForm} onSubmit={handlePreview}>
         <label htmlFor="krx-notice-url">KIND 추가상장 공고 URL</label>
         <input

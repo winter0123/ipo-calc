@@ -1,7 +1,8 @@
 import type { Ipo } from './types.ts'
 import { dateOnly, toSeoulYmd } from '@/shared/lib/date.ts'
 
-export type ListingDisplayKind = 'unknown' | 'estimated' | 'estimated-overdue' | 'confirmed'
+export type ListingDisplayKind =
+  'unknown' | 'estimated' | 'estimated-overdue' | 'confirmed-upcoming' | 'confirmed'
 
 export interface ListingDisplay {
   kind: ListingDisplayKind
@@ -30,6 +31,14 @@ export function getListingDisplay(
   }
 
   if (evidence === 'CONFIRMED_KRX') {
+    if (listingDate > toSeoulYmd(today)) {
+      return {
+        kind: 'confirmed-upcoming',
+        label: '상장 예정 · 거래소 공고',
+        dashed: false,
+        confirmed: true,
+      }
+    }
     return { kind: 'confirmed', label: '상장 확정', dashed: false, confirmed: true }
   }
 

@@ -133,3 +133,28 @@
 - invalid/missing/ambiguous 입력에 쓰기 0건이다.
 - push, merge, deployment, production writes는 수행하지 않는다.
 - DB migration 구현은 로컬 우선, 배포는 별도 승인 후 수행한다.
+
+
+## 4. 2026-11-24 자동화 후속 SF 및 검증 게이트 (PR #515)
+
+1. **SF-A 경로 연결:** 정기/수동 기본/월별 DART 성공 뒤 `KrxListingAutoSyncService` 호출. DART 중단·발행실적 실패 시 KIND 차단. 테스트: `IpoSyncSchedulerTest`, `IpoManualSyncServiceTest`.
+2. **SF-B 공식 자동 발견:** 종목코드/게시일 검색→모든 페이지→제목 분류→뷰어→공식 원문. 대상 월/기간 한정, 정정·취소 및 페이지 실패 보류. 테스트: `KrxListingNoticeDiscoveryClientTest`, 수동 live test.
+3. **SF-C 안전한 저장:** 신규상장 단일 후보 조건부 저장; 추가상장은 독립 발행회차 필요. 유효 1건+미확인 다른 1건도 쓰기 금지. 테스트: `KrxListingAutoSyncServiceTest`, PostgreSQL `KrxListingReconciliationServiceIntegrationTest`.
+4. **SF-D 운영 출시 게이트:** 공식 KIND 응답 범위·정정 연결의 안정성, 실제 DART-KIND 발행회차 증명, 신규/추가 실서버 read-only 확인 후 자동 적용 활성화를 별도로 결정한다. 로컬 41건 스냅샷과 운영 브라우저는 검증 없이 PASS 주장 금지.
+
+CI: 기존 Quality의 Backend checkstyle/spotless/build/동기화 테스트 + UI 품질. KIND live는 `workflow_dispatch` 전용이므로 PR run에서는 `SKIPPED`이며 공식 조회 PASS가 아니다. `git diff --check`는 GitHub만 접근 가능한 경우 별도 명령 실행 `NOT_RUN`으로 표기한다.
+
+## 자동 대조 후속 구현 및 검증 (2026-11-24)
+
+1. 호출부 확인: `IpoSyncScheduler.runSync`, `IpoManualSyncService.runDefault/runRangeSync`에서 DART 보완 후 `KrxListingAutoSyncService` 호출, 실패 건수 남으면 스킵; 별도 배치 추가 불필요.
+2. 탐색·대조: 공식 상세검색·접수번호·뷰어·70760/70791, 공고 분류·정정/취소 fail-closed, 동일 DART 발행회차 검증, 미리보기 재검증 후 CAS 적용.
+3. 보수적 추가 보호: 적격 공고와 검증 불충분 추가상장 공고가 혼재하면 `REVIEW_REQUIRED`, 자동 쓰기 0건.
+4. 검증: `KrxListingAutoSyncServiceTest`, `KrxListingReconciliationServiceIntegrationTest`의 합성 KIND 응답 + CI PostgreSQL 및 정기 진입점 기반 실제 DB 변경·멱등 회귀; `IpoManualSyncServiceTest`, `IpoSyncSchedulerTest`, 기존 관리자 API/UI 회귀. CI Quality Backend/UI 및 읽기 전용 라이브 실행은 별도 판정.
+5. 배포/운영 DB/과거 41건 일괄 변경 없음. DART↔KIND 독립 발행회차 4건 검증, 신규상장 URL 없는 실서버 3건, 정정·취소 원공고 연결은 미완료 게이트. 기본 auto-apply false.
+
+## 2026-11-26 후속 안전성 회귀 (#515)
+
+1. **검색 완결성:** 열 누락·짧은 첫 페이지 뒤 추가 결과·종료 페이지 조회 실패를 전체 `FETCH_FAILED`로 보류한다. `KrxListingNoticeDiscoveryClientTest`, 검색→PostgreSQL 저장 통합 테스트를 실행한다.
+2. **진입점:** 낮 별도 스케줄러 제거, DART 보완 성공 후에만 기존 정기/수동 기본/월별 KIND 실행. 기존 예약 테스트와 DART 실패 차단 회귀를 유지한다.
+3. **저장 결합 해제:** 관리자 DTO는 공개 API에서만 사용한다. 자동 탐색은 내부 apply 경로를 통해 row-lock·현재 청약 시작일·근거·상장일 재검증 후 CAS 처리한다.
+4. **남은 외부 검증:** 실제 KIND 목록의 총건수/페이지 종료/정정 관계, 신규상장 검색 접수번호와 70760 원문 식별자 차이, 실 DART↔KIND 동일 회차는 읽기 전용 live 증거 확보 전 자동 쓰기 활성화 금지.

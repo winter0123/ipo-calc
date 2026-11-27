@@ -4,16 +4,21 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import KrxListingAdminPanel from './KrxListingAdminPanel.tsx'
 import { ApiError } from '@/shared/api/apiError.ts'
+import type { KrxAutoStatus } from '@/entities/ipo/index.ts'
 
 const api = vi.hoisted(() => ({
   previewKrxListing: vi.fn(),
   applyKrxListing: vi.fn(),
+  getKrxAutoStatus: vi.fn(),
+  previewPastKrxListings: vi.fn(),
 }))
 
 vi.mock('@/entities/ipo/index.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/ipo/index.ts')>()),
   previewKrxListing: api.previewKrxListing,
   applyKrxListing: api.applyKrxListing,
+  getKrxAutoStatus: api.getKrxAutoStatus,
+  previewPastKrxListings: api.previewPastKrxListings,
 }))
 
 const preview = {
@@ -61,7 +66,8 @@ const preview = {
   expectedNoticeHash: 'notice-hash',
 }
 
-function setup() {
+function setup(status: KrxAutoStatus = { autoApplyEnabled: false, lastReport: null }) {
+  api.getKrxAutoStatus.mockResolvedValue(status)
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
   render(
@@ -73,7 +79,79 @@ function setup() {
 }
 
 describe('KrxListingAdminPanel', () => {
+  it('자동 적용이 꺼져 있으면 실행 중으로 표시하지 않고 수동 미리보기를 안내한다', async () => {
+    setup()
+    expect(await screen.findByText(/자동 반영 꺼짐 \(수동 미리보기 가능\)/)).toBeInTheDocument()
+    expect(screen.queryByText('읽기 전용 검증 중')).not.toBeInTheDocument()
+  })
+
   afterEach(() => vi.clearAllMocks())
+
+  it('과거 공고 읽기 전용 점검에서 접수번호·상장일·보류 사유를 보여주고 적용하지 않는다', async () => {
+    const user = userEvent.setup()
+    setup()
+    api.previewPastKrxListings.mockResolvedValueOnce({
+      completedAt: '2026-11-27T09:00:00',
+      dryRun: true,
+      counts: { REVIEW_REQUIRED: 1, FETCH_FAILED: 0 },
+      rows: [
+        {
+          ipoId: 7,
+          stockCode: '123456',
+          status: 'REVIEW_REQUIRED',
+          receiptNo: '20261120001019',
+          proposedListingDate: '2026-11-25',
+          reason: 'KIND 70791 원문·DART 대조 완료; 정정·취소 원공고 연결 미검증으로 자동 저장 보류',
+        },
+      ],
+    })
+
+    await user.click(screen.getByRole('button', { name: '과거 공고 읽기 전용 점검' }))
+
+    expect(await screen.findByText(/이 종목: REVIEW_REQUIRED/)).toBeInTheDocument()
+    expect(screen.getByText(/공고 접수번호 20261120001019/)).toBeInTheDocument()
+    expect(screen.getByText(/상장일 2026-11-25/)).toBeInTheDocument()
+    expect(screen.getByText(/정정·취소 원공고 연결 미검증으로 자동 저장 보류/)).toBeInTheDocument()
+    expect(api.previewPastKrxListings).toHaveBeenCalledOnce()
+    expect(api.applyKrxListing).not.toHaveBeenCalled()
+  })
+
+  it('공고 URL을 입력하지 않아도 자동 처리 건수와 종목별 실패 사유를 표시한다', async () => {
+    setup({
+      autoApplyEnabled: true,
+      lastReport: {
+        completedAt: '2026-11-22T17:00:00',
+        dryRun: false,
+        counts: {
+          NEW_CONFIRMED: 1,
+          DATE_CORRECTED: 1,
+          ALREADY_APPLIED: 0,
+          NO_NOTICE: 2,
+          ROUND_CONFLICT: 1,
+          STATE_CONFLICT: 3,
+          REVIEW_REQUIRED: 4,
+          FETCH_FAILED: 0,
+        },
+        rows: [
+          {
+            ipoId: 7,
+            stockCode: '123456',
+            status: 'ROUND_CONFLICT',
+            receiptNo: null,
+            proposedListingDate: null,
+            reason: '발행 회차가 둘 이상입니다',
+          },
+        ],
+      },
+    })
+    expect(await screen.findByText(/자동 저장 플래그 켜짐/)).toBeInTheDocument()
+    expect(screen.getByText(/회차 충돌 1건/)).toBeInTheDocument()
+    expect(screen.getByText(/저장 직전 충돌 3건/)).toBeInTheDocument()
+    expect(screen.getByText(/근거 검토 4건/)).toBeInTheDocument()
+    expect(screen.getByText(/발행 회차가 둘 이상입니다/)).toBeInTheDocument()
+    expect(api.previewKrxListing).not.toHaveBeenCalled()
+    expect(api.applyKrxListing).not.toHaveBeenCalled()
+  })
 
   it('미리보기 기대값을 변형 없이 apply에 전달하고 적용 후 IPO 캐시를 무효화한다', async () => {
     const user = userEvent.setup()

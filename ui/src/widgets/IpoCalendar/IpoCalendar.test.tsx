@@ -503,13 +503,13 @@ describe('IpoCalendar', () => {
     )
 
     const bar = screen.getByRole('button', {
-      name: /테스트기업 상장 10월 15일 \(상장 확정\)/,
+      name: /테스트기업 상장 10월 15일 \(상장 예정 · 거래소 공고\)/,
     })
     expect(bar).not.toHaveClass(styles.barEstimated)
 
     await userEvent.click(screen.getByRole('button', { name: /^10월 15일/ }))
     const region = screen.getByRole('region', { name: '선택한 날짜 일정 상세' })
-    await waitFor(() => expect(region).toHaveTextContent('(상장 확정)'))
+    await waitFor(() => expect(region).toHaveTextContent('(상장 예정 · 거래소 공고)'))
   })
 
   it('환불 바는 렌더링되며 기존 클래스를 유지한다', async () => {

@@ -15,6 +15,7 @@ import com.ipocalc.ipocatalog.exception.IpoSyncRangeValidationException;
 import com.ipocalc.ipocatalog.exception.OpenDartKeyMissingException;
 import com.ipocalc.ipocatalog.repository.ipo.IpoRepository;
 import com.ipocalc.ipocatalog.service.ipo.detail.IpoDetailSyncService;
+import com.ipocalc.ipocatalog.service.ipo.krx.KrxListingAutoSyncService;
 import com.ipocalc.ipocatalog.service.ipo.sync.opendart.OpenDartApiProperties;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +39,7 @@ class IpoManualSyncServiceRangeTest {
   @Mock private IpoDetailSyncService ipoDetailSyncService;
   @Mock private IpoHistoricalListingService historicalListingService;
   @Mock private DartRightsIssueListingService rightsIssueListingService;
+  @Mock private KrxListingAutoSyncService krxListingAutoSyncService;
   @Mock private OpenDartApiProperties openDartProperties;
   @Mock private IpoSyncStateManager syncStateManager;
   @Mock private Executor syncExecutor;
@@ -65,6 +67,7 @@ class IpoManualSyncServiceRangeTest {
             ipoDetailSyncService,
             historicalListingService,
             rightsIssueListingService,
+            krxListingAutoSyncService,
             openDartProperties,
             syncStateManager,
             syncExecutor);
@@ -117,20 +120,20 @@ class IpoManualSyncServiceRangeTest {
   void rangeSyncForCurrentMonthSkipsNextMonthAdditionalBackfill() {
     // given
     var req = new IpoSyncRangeRequest();
-    req.setFromMonth("2026-11");
-    req.setToMonth("2026-11");
+    YearMonth currentMonth = YearMonth.now();
+    req.setFromMonth(currentMonth.toString());
+    req.setToMonth(currentMonth.toString());
     when(ipoSyncService.syncMonthWithoutSchedule(any()))
         .thenReturn(IpoSyncResult.builder().created(0).updated(0).aborted(false).build());
     var backfill = new IpoHistoricalListingService.Result(0, java.util.List.of());
-    LocalDate listingEnd = LocalDate.of(2026, 11, 22);
-    when(historicalListingService.backfill(LocalDate.of(2026, 11, 1), listingEnd))
-        .thenReturn(backfill);
+    LocalDate listingEnd = LocalDate.now();
+    when(historicalListingService.backfill(currentMonth.atDay(1), listingEnd)).thenReturn(backfill);
 
     // when
     service.syncRange(req);
 
     // then
-    verify(historicalListingService).backfill(LocalDate.of(2026, 11, 1), listingEnd);
+    verify(historicalListingService).backfill(currentMonth.atDay(1), listingEnd);
     verify(historicalListingService, never()).backfill(any(), any(), any(), any());
     verify(syncStateManager).recordListingBackfill(backfill);
     verify(syncStateManager).completeRangeSync();

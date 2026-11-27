@@ -264,6 +264,43 @@ public class DartIpoFilingClient {
     return largestEntry(body).map(bytes -> new String(bytes, StandardCharsets.UTF_8));
   }
 
+  /** 자동 확정용 원문 조회. 정상적으로 근거가 없는 문서와 HTTP·요청 제한·ZIP 오류를 구분하기 위해 조회 실패는 예외로 전파한다. */
+  public synchronized String downloadDocumentStrict(String rceptNo) {
+    if (properties.isApiKeyMissing()) {
+      throw new OpenDartApiException("CONFIG", "OpenDART 인증키가 설정되지 않았습니다");
+    }
+    if (rceptNo == null || !rceptNo.matches("\\d{14}")) {
+      throw new IllegalArgumentException("DART 접수번호 형식이 올바르지 않습니다");
+    }
+    byte[] body;
+    try {
+      throttle.acquire();
+      body =
+          restClient
+              .get()
+              .uri(
+                  b ->
+                      b.path("/api/document.xml")
+                          .queryParam("crtfc_key", properties.getApiKey())
+                          .queryParam("rcept_no", rceptNo)
+                          .build())
+              .retrieve()
+              .body(byte[].class);
+    } catch (RestClientException e) {
+      throw new OpenDartApiException("FETCH_FAILED", "OpenDART 원문 HTTP 조회 실패");
+    }
+    if (body == null
+        || body.length > MAX_RESPONSE_BYTES
+        || body.length < 2
+        || body[0] != 'P'
+        || body[1] != 'K') {
+      throw new OpenDartApiException("INVALID_ZIP", "OpenDART 원문 ZIP 응답이 올바르지 않습니다");
+    }
+    return largestEntry(body)
+        .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
+        .orElseThrow(() -> new OpenDartApiException("INVALID_ZIP", "OpenDART 원문 ZIP을 해제할 수 없습니다"));
+  }
+
   private Optional<byte[]> largestEntry(byte[] zip) {
     byte[] largest = null;
     long total = 0;
