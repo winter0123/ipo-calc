@@ -194,6 +194,101 @@ class KrxListingAutoSyncServiceTest {
   }
 
   @Test
+  void adminReadOnlyUnverifiedAdditionalStillResolvesViewerAndDartEvidence() {
+    Ipo prior = ipo();
+    when(prior.getListingDate()).thenReturn(LocalDate.of(2026, 10, 20));
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(prior));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(
+            new KrxListingNoticeDiscoveryClient.SearchResult(
+                List.of(disclosure(RECEIPT)), 1));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+
+    var report = service.previewPastUnconfirmed();
+
+    assertThat(report.dryRun()).isTrue();
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isZero();
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    assertThat(report.rows().get(0).proposedListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(report.rows().get(0).reason()).contains("DART", "정정·취소", "자동 저장 보류");
+    verify(discovery).resolveAdditionalListingUrl(RECEIPT);
+    verify(reconciliation).preview(7L, URL);
+    verify(reconciliation, never()).applyAutomatically(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void unverifiedAdditionalNeverWritesEvenWithAutomaticFlagEnabled() {
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(
+            new KrxListingNoticeDiscoveryClient.SearchResult(
+                List.of(disclosure(RECEIPT)), 1));
+    when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
+    var preview = eligiblePreview(false);
+    when(reconciliation.preview(7L, URL)).thenReturn(preview);
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.dryRun()).isFalse();
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.DATE_CORRECTED)).isZero();
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    assertThat(report.rows().get(0).reason()).contains("자동 저장 보류");
+    verify(reconciliation, never()).applyAutomatically(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void adminReadOnlyUnverifiedNewListingShowsOriginalEvidenceWithoutWriting() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(
+            new KrxListingNoticeDiscoveryClient.SearchResult(
+                List.of(newListingDisclosure(RECEIPT)), 1));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.previewPastUnconfirmed();
+
+    assertThat(report.dryRun()).isTrue();
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    assertThat(report.rows().get(0).proposedListingDate())
+        .isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(report.rows().get(0).reason()).contains("70760", "자동 저장 보류");
+    verify(discovery).resolveNewListingUrl(RECEIPT);
+    verify(reconciliation).previewNewListing(7L, NEW_URL);
+    verify(reconciliation, never())
+        .applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void unverifiedNewListingNeverWritesEvenWithAutomaticFlagEnabled() {
+    Ipo row = newListingIpo();
+    when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(row));
+    ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
+    when(discovery.find(eq("121850"), any(), any()))
+        .thenReturn(
+            new KrxListingNoticeDiscoveryClient.SearchResult(
+                List.of(newListingDisclosure(RECEIPT)), 1));
+    when(discovery.resolveNewListingUrl(RECEIPT)).thenReturn(NEW_URL);
+    when(reconciliation.previewNewListing(7L, NEW_URL)).thenReturn(newListingPreview(false));
+
+    var report = service.reconcileRecent();
+
+    assertThat(report.dryRun()).isFalse();
+    assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
+    assertThat(report.counts().get(OutcomeType.NEW_CONFIRMED)).isZero();
+    assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
+    verify(reconciliation, never())
+        .applyNewListingAutomatically(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
   void externalHttpForbiddenDoesNotBecomeStateConflictAndNextStockContinues() {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     Ipo first = ipo();
