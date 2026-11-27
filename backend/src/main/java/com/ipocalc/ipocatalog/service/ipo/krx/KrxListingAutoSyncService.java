@@ -246,14 +246,6 @@ public class KrxListingAutoSyncService {
     if (notices.isEmpty()) {
       return outcome(ipo, OutcomeType.NO_NOTICE, null, null, "공고 게시일 범위의 모든 검색 페이지 정상 조회 후 공고 없음");
     }
-    if (!correctionCoverageVerified) {
-      return outcome(
-          ipo,
-          OutcomeType.REVIEW_REQUIRED,
-          null,
-          null,
-          "공식 KIND 검색 종료 또는 정정·취소 원공고 연결 범위가 미확인되어 자동 저장 보류");
-    }
     boolean newListing =
         ipo.getListingDate() == null
             || (ipo.getSyncSource() != null
@@ -264,7 +256,7 @@ public class KrxListingAutoSyncService {
                 && ipo.getKrxListingNoticeUrl() != null
                 && ipo.getKrxListingNoticeUrl().endsWith("/70760.htm"));
     if (newListing) {
-      return reconcileNewListing(ipo, notices, dryRun, initialState);
+      return reconcileNewListing(ipo, notices, dryRun, correctionCoverageVerified, initialState);
     }
     List<Match> eligible = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
@@ -313,6 +305,17 @@ public class KrxListingAutoSyncService {
     }
     Match selected = eligible.get(0);
     var preview = selected.preview();
+    // 운영 검색은 정정·취소의 원공고 연결 범위가 미검증이어도 진단을 계속한다.
+    // 단, 읽기 전용과 자동 경로 모두 실제 저장 경계에는 도달하지 못한다.
+    if (!correctionCoverageVerified) {
+      return outcome(
+          ipo,
+          OutcomeType.REVIEW_REQUIRED,
+          selected.receiptNo(),
+          preview.expectedKrxListingDate(),
+          "KIND 70791 원문·DART 동일 발행회차 대조 완료; "
+              + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
+    }
     if (preview.idempotent()) {
       return outcome(
           ipo,
@@ -367,6 +370,7 @@ public class KrxListingAutoSyncService {
       Ipo ipo,
       Map<String, KrxListingNoticeDiscoveryClient.Disclosure> notices,
       boolean dryRun,
+      boolean correctionCoverageVerified,
       KrxListingReconciliationService.NewListingSnapshot initialState) {
     List<NewMatch> matches = new ArrayList<>();
     List<String> reviews = new ArrayList<>();
@@ -401,6 +405,15 @@ public class KrxListingAutoSyncService {
     }
     var chosen = matches.get(0);
     var preview = chosen.preview();
+    if (!correctionCoverageVerified) {
+      return outcome(
+          ipo,
+          OutcomeType.REVIEW_REQUIRED,
+          chosen.receipt(),
+          preview.listingDate(),
+          "KIND 70760 신규상장 원문 종목코드·상장일 대조 완료; "
+              + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
+    }
     if (preview.idempotent()) {
       return outcome(
           ipo, OutcomeType.ALREADY_APPLIED, chosen.receipt(), preview.listingDate(), "이미 확정됨");
