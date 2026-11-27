@@ -8,8 +8,9 @@ import {
   getKrxAutoStatus,
   ipoKeys,
   previewKrxListing,
+  previewPastKrxListings,
 } from '@/entities/ipo/index.ts'
-import type { KrxListingPreview } from '@/entities/ipo/index.ts'
+import type { KrxAutoReport, KrxListingPreview } from '@/entities/ipo/index.ts'
 import styles from './IpoDetailPage.styles.ts'
 
 function required(value: string | number | null) {
@@ -28,7 +29,16 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
     staleTime: 10_000,
     refetchInterval: 60_000,
   })
-  const matchingAutoRow = autoStatus.data?.lastReport?.rows.find((row) => row.ipoId === ipoId)
+  const [pastReport, setPastReport] = useState<KrxAutoReport | null>(null)
+  const [pastError, setPastError] = useState<string | null>(null)
+  const pastMutation = useMutation({
+    mutationFn: previewPastKrxListings,
+    onSuccess: (report) => setPastReport(report),
+    onError: (error) =>
+      setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
+  })
+  const shownReport = pastReport ?? autoStatus.data?.lastReport
+  const matchingAutoRow = shownReport?.rows.find((row) => row.ipoId === ipoId)
   const [noticeUrl, setNoticeUrl] = useState('')
   const [preview, setPreview] = useState<{ key: string; data: KrxListingPreview } | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -137,18 +147,18 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
                 ? '자동 반영 사용'
                 : '자동 반영 꺼짐 (수동 미리보기 가능)'}
         </p>
-        {autoStatus.data?.lastReport && (
+        {shownReport && (
           <>
-            <p>마지막 점검: {show(autoStatus.data.lastReport.completedAt)}</p>
+            <p>{pastReport ? '읽기 전용 점검' : '마지막 점검'}: {show(shownReport.completedAt)}</p>
             <p>
-              신규 확정 {autoStatus.data.lastReport.counts.NEW_CONFIRMED ?? 0}건 / 날짜 정정{' '}
-              {autoStatus.data.lastReport.counts.DATE_CORRECTED ?? 0}건 / 이미 반영{' '}
-              {autoStatus.data.lastReport.counts.ALREADY_APPLIED ?? 0}건 / 공고 없음{' '}
-              {autoStatus.data.lastReport.counts.NO_NOTICE ?? 0}건 / 회차 충돌{' '}
-              {autoStatus.data.lastReport.counts.ROUND_CONFLICT ?? 0}건 / 저장 직전 충돌{' '}
-              {autoStatus.data.lastReport.counts.STATE_CONFLICT ?? 0}건 / 근거 검토{' '}
-              {autoStatus.data.lastReport.counts.REVIEW_REQUIRED ?? 0}건 / 조회 실패{' '}
-              {autoStatus.data.lastReport.counts.FETCH_FAILED ?? 0}건
+              신규 확정 {shownReport.counts.NEW_CONFIRMED ?? 0}건 / 날짜 정정{' '}
+              {shownReport.counts.DATE_CORRECTED ?? 0}건 / 이미 반영{' '}
+              {shownReport.counts.ALREADY_APPLIED ?? 0}건 / 공고 없음{' '}
+              {shownReport.counts.NO_NOTICE ?? 0}건 / 회차 충돌{' '}
+              {shownReport.counts.ROUND_CONFLICT ?? 0}건 / 저장 직전 충돌{' '}
+              {shownReport.counts.STATE_CONFLICT ?? 0}건 / 근거 검토{' '}
+              {shownReport.counts.REVIEW_REQUIRED ?? 0}건 / 조회 실패{' '}
+              {shownReport.counts.FETCH_FAILED ?? 0}건
             </p>
             {matchingAutoRow && (
               <p>
@@ -162,6 +172,21 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
           </>
         )}
       </div>
+      <button
+        type="button"
+        disabled={pastMutation.isPending}
+        onClick={() => {
+          setPastReport(null)
+          setPastError(null)
+          pastMutation.mutate()
+        }}
+      >
+        {pastMutation.isPending ? '읽기 전용 공고 점검 중…' : '과거 공고 읽기 전용 점검'}
+      </button>
+      {pastError && <p role="alert">{pastError}</p>}
+      {pastReport && (
+        <p>이 점검은 원문·DART 근거만 확인하며, 정정·취소 범위 미확인 후보는 자동 저장하지 않습니다.</p>
+      )}
       <form className={styles.krxAdminForm} onSubmit={handlePreview}>
         <label htmlFor="krx-notice-url">KIND 추가상장 공고 URL</label>
         <input
