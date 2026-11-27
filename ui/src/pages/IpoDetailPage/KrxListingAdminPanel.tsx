@@ -34,8 +34,7 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
   const pastMutation = useMutation({
     mutationFn: previewPastKrxListings,
     onSuccess: (report) => setPastReport(report),
-    onError: (error) =>
-      setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
+    onError: (error) => setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
   })
   const shownReport = pastReport ?? autoStatus.data?.lastReport
   const matchingAutoRow = shownReport?.rows.find((row) => row.ipoId === ipoId)
@@ -163,9 +162,7 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
             {matchingAutoRow && (
               <p>
                 이 종목: {matchingAutoRow.status}
-                {matchingAutoRow.receiptNo
-                  ? ' · 공고 접수번호 ' + matchingAutoRow.receiptNo
-                  : ''}
+                {matchingAutoRow.receiptNo ? ' · 공고 접수번호 ' + matchingAutoRow.receiptNo : ''}
                 {matchingAutoRow.proposedListingDate
                   ? ' · 상장일 ' + matchingAutoRow.proposedListingDate
                   : ''}
