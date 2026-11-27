@@ -163,6 +163,9 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
             {matchingAutoRow && (
               <p>
                 이 종목: {matchingAutoRow.status}
+                {matchingAutoRow.receiptNo
+                  ? ' · 공고 접수번호 ' + matchingAutoRow.receiptNo
+                  : ''}
                 {matchingAutoRow.proposedListingDate
                   ? ' · 상장일 ' + matchingAutoRow.proposedListingDate
                   : ''}
