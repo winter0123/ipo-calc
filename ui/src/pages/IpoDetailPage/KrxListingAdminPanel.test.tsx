@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   previewKrxListing: vi.fn(),
   applyKrxListing: vi.fn(),
   getKrxAutoStatus: vi.fn(),
+  previewPastKrxListings: vi.fn(),
 }))
 
 vi.mock('@/entities/ipo/index.ts', async (importOriginal) => ({
@@ -17,6 +18,7 @@ vi.mock('@/entities/ipo/index.ts', async (importOriginal) => ({
   previewKrxListing: api.previewKrxListing,
   applyKrxListing: api.applyKrxListing,
   getKrxAutoStatus: api.getKrxAutoStatus,
+  previewPastKrxListings: api.previewPastKrxListings,
 }))
 
 const preview = {
@@ -84,6 +86,34 @@ describe('KrxListingAdminPanel', () => {
   })
 
   afterEach(() => vi.clearAllMocks())
+
+  it('과거 공고 읽기 전용 점검에서 접수번호·상장일·보류 사유를 보여주고 적용하지 않는다', async () => {
+    const user = userEvent.setup()
+    setup()
+    api.previewPastKrxListings.mockResolvedValueOnce({
+      completedAt: '2026-11-27T09:00:00',
+      dryRun: true,
+      counts: { REVIEW_REQUIRED: 1, FETCH_FAILED: 0 },
+      rows: [
+        {
+          ipoId: 7,
+          stockCode: '123456',
+          status: 'REVIEW_REQUIRED',
+          receiptNo: '20261120001019',
+          proposedListingDate: '2026-11-25',
+          reason: 'KIND 70791 원문·DART 대조 완료; 정정·취소 원공고 연결 미검증으로 자동 저장 보류',
+        },
+      ],
+    })
+
+    await user.click(screen.getByRole('button', { name: '과거 공고 읽기 전용 점검' }))
+
+    expect(await screen.findByText(/이 종목: REVIEW_REQUIRED/)).toBeInTheDocument()
+    expect(screen.getByText(/상장일 2026-11-25/)).toBeInTheDocument()
+    expect(screen.getByText(/정정·취소 원공고 연결 미검증으로 자동 저장 보류/)).toBeInTheDocument()
+    expect(api.previewPastKrxListings).toHaveBeenCalledOnce()
+    expect(api.applyKrxListing).not.toHaveBeenCalled()
+  })
 
   it('공고 URL을 입력하지 않아도 자동 처리 건수와 종목별 실패 사유를 표시한다', async () => {
     setup({
