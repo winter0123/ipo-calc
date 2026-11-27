@@ -205,8 +205,7 @@ class KrxListingAutoSyncServiceTest {
     when(repository.findAllByDeletedAtIsNullOrderByCreatedAtDesc()).thenReturn(List.of(prior));
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(
-            new KrxListingNoticeDiscoveryClient.SearchResult(
-                List.of(disclosure(RECEIPT)), 1));
+            new KrxListingNoticeDiscoveryClient.SearchResult(List.of(disclosure(RECEIPT)), 1));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     var preview = eligiblePreview(false);
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
@@ -217,8 +216,7 @@ class KrxListingAutoSyncServiceTest {
     assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
     assertThat(report.counts().get(OutcomeType.APPLY_CANDIDATE)).isZero();
     assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
-    assertThat(report.rows().get(0).proposedListingDate())
-        .isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(report.rows().get(0).proposedListingDate()).isEqualTo(LocalDate.of(2026, 11, 25));
     assertThat(report.rows().get(0).reason()).contains("DART", "정정·취소", "자동 저장 보류");
     verify(discovery).resolveAdditionalListingUrl(RECEIPT);
     verify(reconciliation).preview(7L, URL);
@@ -230,8 +228,7 @@ class KrxListingAutoSyncServiceTest {
     ReflectionTestUtils.setField(service, "autoApplyEnabled", true);
     when(discovery.find(eq("121850"), any(), any()))
         .thenReturn(
-            new KrxListingNoticeDiscoveryClient.SearchResult(
-                List.of(disclosure(RECEIPT)), 1));
+            new KrxListingNoticeDiscoveryClient.SearchResult(List.of(disclosure(RECEIPT)), 1));
     when(discovery.resolveAdditionalListingUrl(RECEIPT)).thenReturn(URL);
     var preview = eligiblePreview(false);
     when(reconciliation.preview(7L, URL)).thenReturn(preview);
@@ -262,8 +259,7 @@ class KrxListingAutoSyncServiceTest {
     assertThat(report.dryRun()).isTrue();
     assertThat(report.counts().get(OutcomeType.REVIEW_REQUIRED)).isEqualTo(1);
     assertThat(report.rows().get(0).receiptNo()).isEqualTo(RECEIPT);
-    assertThat(report.rows().get(0).proposedListingDate())
-        .isEqualTo(LocalDate.of(2026, 11, 25));
+    assertThat(report.rows().get(0).proposedListingDate()).isEqualTo(LocalDate.of(2026, 11, 25));
     assertThat(report.rows().get(0).reason()).contains("70760", "자동 저장 보류");
     verify(discovery).resolveNewListingUrl(RECEIPT);
     verify(reconciliation).previewNewListing(7L, NEW_URL);
