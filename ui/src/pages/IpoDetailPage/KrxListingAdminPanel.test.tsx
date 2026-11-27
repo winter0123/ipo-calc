@@ -109,6 +109,7 @@ describe('KrxListingAdminPanel', () => {
     await user.click(screen.getByRole('button', { name: '과거 공고 읽기 전용 점검' }))
 
     expect(await screen.findByText(/이 종목: REVIEW_REQUIRED/)).toBeInTheDocument()
+    expect(screen.getByText(/공고 접수번호 20261120001019/)).toBeInTheDocument()
     expect(screen.getByText(/상장일 2026-11-25/)).toBeInTheDocument()
     expect(screen.getByText(/정정·취소 원공고 연결 미검증으로 자동 저장 보류/)).toBeInTheDocument()
     expect(api.previewPastKrxListings).toHaveBeenCalledOnce()
