@@ -34,7 +34,8 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
   const pastMutation = useMutation({
     mutationFn: previewPastKrxListings,
     onSuccess: (report) => setPastReport(report),
-    onError: (error) => setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
+    onError: (error) =>
+      setPastError(toErrorMessage(error, { fallback: '읽기 전용 점검에 실패했습니다.' })),
   })
   const shownReport = pastReport ?? autoStatus.data?.lastReport
   const matchingAutoRow = shownReport?.rows.find((row) => row.ipoId === ipoId)
@@ -148,7 +149,9 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
         </p>
         {shownReport && (
           <>
-            <p>{pastReport ? '읽기 전용 점검' : '마지막 점검'}: {show(shownReport.completedAt)}</p>
+            <p>
+              {pastReport ? '읽기 전용 점검' : '마지막 점검'}: {show(shownReport.completedAt)}
+            </p>
             <p>
               신규 확정 {shownReport.counts.NEW_CONFIRMED ?? 0}건 / 날짜 정정{' '}
               {shownReport.counts.DATE_CORRECTED ?? 0}건 / 이미 반영{' '}
@@ -185,7 +188,9 @@ export default function KrxListingAdminPanel({ ipoId }: { ipoId: number }) {
       </button>
       {pastError && <p role="alert">{pastError}</p>}
       {pastReport && (
-        <p>이 점검은 원문·DART 근거만 확인하며, 정정·취소 범위 미확인 후보는 자동 저장하지 않습니다.</p>
+        <p>
+          이 점검은 원문·DART 근거만 확인하며, 정정·취소 범위 미확인 후보는 자동 저장하지 않습니다.
+        </p>
       )}
       <form className={styles.krxAdminForm} onSubmit={handlePreview}>
         <label htmlFor="krx-notice-url">KIND 추가상장 공고 URL</label>
