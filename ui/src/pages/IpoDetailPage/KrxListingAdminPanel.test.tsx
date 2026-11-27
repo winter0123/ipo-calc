@@ -143,7 +143,7 @@ describe('KrxListingAdminPanel', () => {
         ],
       },
     })
-    expect(await screen.findByText(/자동 반영 사용/)).toBeInTheDocument()
+    expect(await screen.findByText(/자동 저장 플래그 켜짐/)).toBeInTheDocument()
     expect(screen.getByText(/회차 충돌 1건/)).toBeInTheDocument()
     expect(screen.getByText(/저장 직전 충돌 3건/)).toBeInTheDocument()
     expect(screen.getByText(/근거 검토 4건/)).toBeInTheDocument()
