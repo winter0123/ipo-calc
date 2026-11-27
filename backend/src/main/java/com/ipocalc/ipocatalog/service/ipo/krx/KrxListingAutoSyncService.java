@@ -313,8 +313,7 @@ public class KrxListingAutoSyncService {
           OutcomeType.REVIEW_REQUIRED,
           selected.receiptNo(),
           preview.expectedKrxListingDate(),
-          "KIND 70791 원문·DART 동일 발행회차 대조 완료; "
-              + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
+          "KIND 70791 원문·DART 동일 발행회차 대조 완료; " + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
     }
     if (preview.idempotent()) {
       return outcome(
@@ -411,8 +410,7 @@ public class KrxListingAutoSyncService {
           OutcomeType.REVIEW_REQUIRED,
           chosen.receipt(),
           preview.listingDate(),
-          "KIND 70760 신규상장 원문 종목코드·상장일 대조 완료; "
-              + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
+          "KIND 70760 신규상장 원문 종목코드·상장일 대조 완료; " + "정정·취소 원공고 연결 범위 미검증으로 자동 저장 보류");
     }
     if (preview.idempotent()) {
       return outcome(
