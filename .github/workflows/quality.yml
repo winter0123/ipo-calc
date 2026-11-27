@@ -44,6 +44,12 @@ jobs:
       - name: Check formatting
         working-directory: ui
         run: pnpm run format:check
+      - name: Diagnose UI formatting when checks fail
+        if: failure()
+        working-directory: ui
+        run: |
+          pnpm exec prettier --write src/pages/IpoDetailPage/KrxListingAdminPanel.tsx
+          git diff -- src/pages/IpoDetailPage/KrxListingAdminPanel.tsx
       - name: Build
         working-directory: ui
         run: pnpm run build
